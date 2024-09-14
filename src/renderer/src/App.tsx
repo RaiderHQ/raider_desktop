@@ -1,5 +1,11 @@
-function App(): JSX.Element {
-  return <h1 className="text-3xl font-bold underline">Ruby Raider!</h1>
+import Router from './Router'
+
+const App = (): JSX.Element => {
+  return (
+    <>
+      <Router />
+    </>
+  )
 }
 
 export default App
