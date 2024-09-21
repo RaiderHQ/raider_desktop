@@ -1,3 +1,4 @@
+import { map } from 'lodash'
 import ArrowDown from '@assets/icons/arrow-down.svg'
 
 interface SelectInputProps {
@@ -22,11 +23,14 @@ const SelectInput: React.FC<SelectInputProps> = ({
           value={selected}
           onChange={onChange}
         >
-          {options.map((option: string) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
+          {map(
+            options,
+            (option: string): JSX.Element => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            )
+          )}
         </select>
         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
           <img src={ArrowDown} className="w-4 h-auto" />
