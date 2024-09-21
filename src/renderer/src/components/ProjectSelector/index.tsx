@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import QuestionIcon from '../../assets/icons/Question_vector.svg'
+import QuestionIcon from '@assets/icons/Question_vector.svg'
+import Button from '@components/Button'
 
 interface ProjectSelectorProps {
   icon: string
@@ -26,8 +27,8 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
           <img src={icon} className="w-12 h-auto" />
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-6">{description}</h2>
-        <Link to={url} className="px-4 py-2 bg-gray-300 text-blue-500 rounded-lg shadow">
-          {buttonValue}
+        <Link to={url}>
+          <Button>{buttonValue}</Button>
         </Link>
       </div>
     </div>

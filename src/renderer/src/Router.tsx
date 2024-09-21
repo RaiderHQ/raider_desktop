@@ -1,6 +1,7 @@
 import { createHashRouter, RouterProvider } from 'react-router-dom'
-import Landing from './pages/Landing'
-import NewProject from './pages/Project/New'
+import Landing from '@pages/Landing'
+import MainTemplate from '@templates/Main'
+import NewProject from '@pages/Project/New'
 
 const Router = (): JSX.Element => {
   const router = createHashRouter([
@@ -9,8 +10,9 @@ const Router = (): JSX.Element => {
       element: <Landing />
     },
     {
-      path: '/project/new',
-      element: <NewProject />
+      path: '/project',
+      element: <MainTemplate />,
+      children: [{ path: '/project/new', element: <NewProject /> }]
     }
   ])
 

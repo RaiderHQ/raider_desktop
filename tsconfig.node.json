@@ -3,6 +3,14 @@
   "include": ["electron.vite.config.*", "src/main/**/*", "src/preload/**/*"],
   "compilerOptions": {
     "composite": true,
-    "types": ["electron-vite/node"]
+    "types": ["electron-vite/node"],
+    "baseUrl": ".",
+    "paths": {
+      "@/assets": ["src/assets/*"],
+      "@/components": ["src/components/*"],
+      "@/foundation": ["src/foundation/*"],
+      "@/pages": ["src/pages/*"],
+      "@/templates": ["src/templates/*"],
+    }
   }
 }
