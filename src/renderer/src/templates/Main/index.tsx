@@ -30,7 +30,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
       </main>
 
       <footer className="flex justify-center py-4 bg-white">
-        <p className="text-gray-500">Ruby Raider Version: X.X.X</p>
+        <p className="text-gray-500">Ruby Raider Version: 1.0.8</p>
       </footer>
     </div>
   )

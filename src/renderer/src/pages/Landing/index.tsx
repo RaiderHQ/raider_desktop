@@ -18,19 +18,19 @@ const Landing: React.FC = (): JSX.Element => {
         <div className="flex space-x-8 mb-8">
           <ProjectSelector
             icon={OpenFolder}
-            description="Open existing project"
+            description="Create new project"
             url="/project/new"
-            buttonValue="Check"
+            buttonValue="Create"
           />
           <ProjectSelector
             icon={AddIcon}
             description="Open existing project"
             url="/project/new"
-            buttonValue="Check"
+            buttonValue="Open"
           />
         </div>
 
-        <footer className="text-gray-500">Ruby Raider Version: X.X.X</footer>
+        <footer className="text-gray-500">Ruby Raider Version: 1.0.8</footer>
       </div>
     </>
   )
