@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import QuestionIcon from '@assets/icons/Question_vector.svg'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
+import LoadingScreen from '@components/LoadingScreen' // Import the LoadingScreen component
 import SelectInput from '@components/SelectInput'
 
 const CreateProject: React.FC = () => {
@@ -12,6 +13,9 @@ const CreateProject: React.FC = () => {
   const [testFramework, setTestFramework] = useState('Rspec')
   const [mobilePlatform, setMobilePlatform] = useState('Android')
 
+  // State for loading
+  const [isLoading, setIsLoading] = useState(false)
+
   // Options for dropdowns
   const automationFrameworkOptions = ['Appium', 'Selenium', 'Axe']
   const testFrameworkOptions = ['Rspec', 'Cucumber']
@@ -20,12 +24,32 @@ const CreateProject: React.FC = () => {
   // Check if the mobile platform selector is needed (Appium is selected)
   const showMobilePlatformSelector = automationFramework === 'Appium'
 
+  // Function to handle project creation and show loading screen
+  const handleCreateProject = () => {
+    setIsLoading(true) // Show loading screen
+
+    // Simulate a delay for the loading process (like an API call)
+    setTimeout(() => {
+      console.log('Creating project with the following options:', {
+        automationFramework,
+        testFramework,
+        mobilePlatform,
+      })
+      setIsLoading(false) // Hide loading screen after "creation"
+      navigate('/projects') // Navigate to another route after creation
+    }, 3000) // Simulate 3-second delay for the example
+  }
+
   return (
     <>
+      {/* Loading screen */}
+      <LoadingScreen isOpen={isLoading} message="Creating your project, please wait..." />
+
       <div className="text-center mb-10">
         <h1 className="text-3xl font-bold mb-2">Create a new project</h1>
         <p className="text-gray-600">To create a project, first you need to select the following:</p>
       </div>
+
       <ContentArea>
         <div className="bg-white p-8">
           <div className="absolute top-2 right-2">
@@ -67,7 +91,7 @@ const CreateProject: React.FC = () => {
             <Button onClick={() => navigate(-1)} type="secondary">
               Back
             </Button>
-            <Button onClick={() => console.log('Creating project')} type="primary">
+            <Button onClick={handleCreateProject} type="primary">
               Create
             </Button>
           </div>
