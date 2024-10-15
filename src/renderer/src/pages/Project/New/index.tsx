@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import QuestionIcon from '@assets/icons/Question_vector.svg'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
-import LoadingScreen from '@components/LoadingScreen' // Import the LoadingScreen component
+import LoadingScreen from '@components/LoadingScreen'
 import SelectInput from '@components/SelectInput'
 
 const CreateProject: React.FC = () => {
   const navigate = useNavigate()
+
   // State for selected options
   const [automationFramework, setAutomationFramework] = useState('Appium')
   const [testFramework, setTestFramework] = useState('Rspec')
@@ -25,19 +26,26 @@ const CreateProject: React.FC = () => {
   const showMobilePlatformSelector = automationFramework === 'Appium'
 
   // Function to handle project creation and show loading screen
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
     setIsLoading(true) // Show loading screen
 
-    // Simulate a delay for the loading process (like an API call)
-    setTimeout(() => {
-      console.log('Creating project with the following options:', {
-        automationFramework,
-        testFramework,
-        mobilePlatform,
-      })
-      setIsLoading(false) // Hide loading screen after "creation"
-      navigate('/projects') // Navigate to another route after creation
-    }, 3000) // Simulate 3-second delay for the example
+    // Construct the name of the project and other parameters
+    const nameOfProject = 'NewProject' // You can change this to be dynamic if needed
+    const framework = testFramework
+    const automationType = automationFramework
+
+    try {
+      // Call the raider command API exposed in the preload script
+      const output = await (window as any).api.runRaiderCommand(nameOfProject, framework, automationType)
+      console.log('Raider command output:', output)
+
+      // After successfully running the command, navigate to the projects page
+      navigate('/projects')
+    } catch (error) {
+      console.error('Error running raider command:', error)
+    } finally {
+      setIsLoading(false) // Hide loading screen
+    }
   }
 
   return (
