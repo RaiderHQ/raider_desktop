@@ -4,18 +4,18 @@ import { exec } from 'child_process'
 
 // Custom APIs for renderer
 const api = {
-  doesGemfileExist: () => {
-    const gemfilePath = path.join(__dirname, 'Gemfile')
-    return fs.existsSync(gemfilePath)
-  },
-  runRaiderCommand: (nameOfProject, framework, automationType) => {
+  runRaiderCommand: (nameOfProject: string, framework: string, automationType: string) => {
     return new Promise((resolve, reject) => {
-      const command = `raider new ${nameOfProject} p framework : ${framework} automation : ${automationType}`
+      // Properly format the raider command to avoid errors
+      const command = `raider new ${nameOfProject} --framework ${framework} --automation ${automationType}`
+      console.log('Executing command:', command) // Debugging log
+
       exec(command, (error, stdout, stderr) => {
         if (error) {
-          console.error(`Error: ${stderr}`)
-          reject(stderr)
+          console.error(`Command execution failed: ${stderr}`)
+          reject(`Error: ${stderr}`)
         } else {
+          console.log('Command executed successfully:', stdout)
           resolve(stdout)
         }
       })
@@ -31,7 +31,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
   } catch (error) {
-    console.error(error)
+    console.error('Error exposing APIs:', error)
   }
 } else {
   // @ts-ignore (define in dts)

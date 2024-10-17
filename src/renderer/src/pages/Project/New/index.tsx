@@ -39,8 +39,8 @@ const CreateProject: React.FC = () => {
       const output = await (window as any).api.runRaiderCommand(nameOfProject, framework, automationType)
       console.log('Raider command output:', output)
 
-      // After successfully running the command, navigate to the projects page
-      navigate('/projects')
+      // After successfully running the command, navigate to the overview page
+      navigate('/project/overview') // Redirect to the Overview page
     } catch (error) {
       console.error('Error running raider command:', error)
     } finally {

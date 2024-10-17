@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 
 interface LoadingModalProps {
   isOpen: boolean
@@ -6,16 +6,7 @@ interface LoadingModalProps {
 }
 
 const LoadingScreen: React.FC<LoadingModalProps> = ({ isOpen, message = 'Loading...' }): JSX.Element | null => {
-  const [isGemfilePresent, setIsGemfilePresent] = useState(false)
-
-  useEffect(() => {
-    if (isOpen) {
-      const gemfileExists = (window as any).api.doesGemfileExist()
-      setIsGemfilePresent(gemfileExists)
-    }
-  }, [isOpen])
-
-  if (!isOpen || isGemfilePresent) return null
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
