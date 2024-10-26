@@ -14,8 +14,8 @@ const Router = (): JSX.Element => {
       path: '/project',
       element: <MainTemplate />,
       children: [
-        { path: '/project/new', element: <NewProject /> },
-        { path: '/project/overview', element: <Overview /> }
+        { path: 'new', element: <NewProject /> },
+        { path: 'overview', element: <Overview /> }
       ]
     }
   ])
