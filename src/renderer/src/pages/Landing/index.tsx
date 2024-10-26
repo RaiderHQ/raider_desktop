@@ -4,6 +4,8 @@ import OpenFolder from '../../assets/icons/open-folder.svg'
 import AddIcon from '../../assets/icons/add.svg'
 
 const Landing: React.FC = (): JSX.Element => {
+  const raiderVersion = import.meta.env.VITE_RAIDER_VERSION
+
   return (
     <>
       <div className="min-h-screen flex flex-col items-center justify-center">
@@ -30,7 +32,7 @@ const Landing: React.FC = (): JSX.Element => {
           />
         </div>
 
-        <footer className="text-gray-500">Ruby Raider Version: 1.0.8</footer>
+        <footer className="text-gray-500">Ruby Raider Version: {raiderVersion}</footer>
       </div>
     </>
   )
