@@ -25,7 +25,7 @@ const Landing: React.FC = (): JSX.Element => {
           <ProjectSelector
             icon={AddIcon}
             description="Open existing project"
-            url="/project/new"
+            url="/project/overview"
             buttonValue="Open"
           />
         </div>
