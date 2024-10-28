@@ -10,27 +10,30 @@ const CreateProject: React.FC = () => {
   // State for selected options
   const [automationFramework, setAutomationFramework] = useState('Appium')
   const [testFramework, setTestFramework] = useState('Rspec')
-  const [infrastructureProvider, setInfrastructureProvider] = useState('Browserstack')
   const [mobilePlatform, setMobilePlatform] = useState('Android')
 
   // Options for dropdowns
-  const automationFrameworkOptions = ['Appium', 'Selenium', 'Cypress']
-  const testFrameworkOptions = ['Rspec', 'Jest', 'Mocha']
-  const infrastructureProviderOptions = ['Browserstack', 'Sauce Labs', 'Local']
+  const automationFrameworkOptions = ['Appium', 'Selenium', 'Axe']
+  const testFrameworkOptions = ['Rspec', 'Cucumber']
   const mobilePlatformOptions = ['Android', 'iOS']
+
+  // Check if the mobile platform selector is needed (Appium is selected)
+  const showMobilePlatformSelector = automationFramework === 'Appium'
 
   return (
     <>
       <div className="text-center mb-10">
         <h1 className="text-3xl font-bold mb-2">Create a new project</h1>
-        <p className="text-gray-600">To create a project, first you need to select following:</p>
+        <p className="text-gray-600">To create a project, first you need to select the following:</p>
       </div>
       <ContentArea>
         <div className="bg-white p-8">
           <div className="absolute top-2 right-2">
             <img src={QuestionIcon} className="w-4 h-auto" />
           </div>
-          <div className="grid grid-cols-2 gap-x-8 mb-6 w-full">
+
+          {/* Grid structure based on the number of visible selectors */}
+          <div className={`grid ${showMobilePlatformSelector ? 'grid-cols-2' : 'grid-cols-1'} gap-x-8 mb-6 w-full`}>
             <div className="flex flex-col space-y-6">
               <SelectInput
                 label="Select your automation framework"
@@ -45,29 +48,29 @@ const CreateProject: React.FC = () => {
                 onChange={(event) => setTestFramework(event.target.value)}
               />
             </div>
-            <div className="flex flex-col space-y-6">
-              <SelectInput
-                label="Select your infrastructure provider"
-                options={infrastructureProviderOptions}
-                selected={infrastructureProvider}
-                onChange={(event) => setInfrastructureProvider(event.target.value)}
-              />
-              <SelectInput
-                label="Select your mobile platform"
-                options={mobilePlatformOptions}
-                selected={mobilePlatform}
-                onChange={(event) => setMobilePlatform(event.target.value)}
-              />
-            </div>
+
+            {/* Render mobile platform selector conditionally and below other selectors if Appium is selected */}
+            {showMobilePlatformSelector && (
+              <div className="flex flex-col space-y-6">
+                <SelectInput
+                  label="Select your mobile platform"
+                  options={mobilePlatformOptions}
+                  selected={mobilePlatform}
+                  onChange={(event) => setMobilePlatform(event.target.value)}
+                />
+              </div>
+            )}
           </div>
-        </div>
-        <div className="flex justify-center space-x-4">
-          <Button onClick={() => navigate(-1)} type="secondary">
-            Back
-          </Button>
-          <Button onClick={() => console.log('Creating project')} type="primary">
-            Create
-          </Button>
+
+          {/* Adjust buttons layout */}
+          <div className={`flex ${showMobilePlatformSelector ? 'justify-end' : 'justify-between'} space-x-4`}>
+            <Button onClick={() => navigate(-1)} type="secondary">
+              Back
+            </Button>
+            <Button onClick={() => console.log('Creating project')} type="primary">
+              Create
+            </Button>
+          </div>
         </div>
       </ContentArea>
     </>

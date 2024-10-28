@@ -4,6 +4,8 @@ import OpenFolder from '../../assets/icons/open-folder.svg'
 import AddIcon from '../../assets/icons/add.svg'
 
 const Landing: React.FC = (): JSX.Element => {
+  const raiderVersion = import.meta.env.VITE_RAIDER_VERSION
+
   return (
     <>
       <div className="min-h-screen flex flex-col items-center justify-center">
@@ -18,19 +20,19 @@ const Landing: React.FC = (): JSX.Element => {
         <div className="flex space-x-8 mb-8">
           <ProjectSelector
             icon={OpenFolder}
-            description="Open existing project"
+            description="Create new project"
             url="/project/new"
-            buttonValue="Check"
+            buttonValue="Create"
           />
           <ProjectSelector
             icon={AddIcon}
             description="Open existing project"
             url="/project/new"
-            buttonValue="Check"
+            buttonValue="Open"
           />
         </div>
 
-        <footer className="text-gray-500">Ruby Raider Version: X.X.X</footer>
+        <footer className="text-gray-500">Ruby Raider Version: {raiderVersion}</footer>
       </div>
     </>
   )
