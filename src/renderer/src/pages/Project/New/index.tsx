@@ -16,6 +16,7 @@ const CreateProject: React.FC = () => {
 
   // State for loading
   const [isLoading, setIsLoading] = useState(false)
+  const [isTransitioning, setIsTransitioning] = useState(false) // New loading state for transitions
 
   // Options for dropdowns
   const automationFrameworkOptions = ['Appium', 'Selenium', 'Axe']
@@ -48,10 +49,21 @@ const CreateProject: React.FC = () => {
     }
   }
 
+  // Function to handle dropdown change with a brief loading effect
+  const handleOptionChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
+    setIsTransitioning(true) // Show transition loading screen
+    setter(value) // Set the selected value
+
+    // Hide the transition loader after a short delay (e.g., 300ms)
+    setTimeout(() => {
+      setIsTransitioning(false)
+    }, 300)
+  }
+
   return (
     <>
-      {/* Loading screen */}
-      <LoadingScreen isOpen={isLoading} message="Creating your project, please wait..." />
+      {/* Loading screen for full-page loading and transitions */}
+      <LoadingScreen isOpen={isLoading || isTransitioning} message="Updating options, please wait..." />
 
       <div className="text-center mb-10">
         <h1 className="text-3xl font-bold mb-2">Create a new project</h1>
@@ -71,13 +83,13 @@ const CreateProject: React.FC = () => {
                 label="Select your automation framework"
                 options={automationFrameworkOptions}
                 selected={automationFramework}
-                onChange={(event) => setAutomationFramework(event.target.value)}
+                onChange={(event) => handleOptionChange(setAutomationFramework, event.target.value)}
               />
               <SelectInput
                 label="Select your test framework"
                 options={testFrameworkOptions}
                 selected={testFramework}
-                onChange={(event) => setTestFramework(event.target.value)}
+                onChange={(event) => handleOptionChange(setTestFramework, event.target.value)}
               />
             </div>
 
@@ -88,7 +100,7 @@ const CreateProject: React.FC = () => {
                   label="Select your mobile platform"
                   options={mobilePlatformOptions}
                   selected={mobilePlatform}
-                  onChange={(event) => setMobilePlatform(event.target.value)}
+                  onChange={(event) => handleOptionChange(setMobilePlatform, event.target.value)}
                 />
               </div>
             )}
