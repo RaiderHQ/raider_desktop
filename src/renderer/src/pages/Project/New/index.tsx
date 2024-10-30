@@ -59,7 +59,6 @@ const CreateProject: React.FC = () => {
       setIsTransitioning(false)
     }, 300)
   }
-
   return (
     <>
       {/* Loading screen for full-page loading and transitions */}

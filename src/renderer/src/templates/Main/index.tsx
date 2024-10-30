@@ -2,6 +2,8 @@ import { Outlet } from 'react-router-dom'
 import Logo from '@assets/images/logo-with-title.svg'
 
 const MainTemplate: React.FC = (): JSX.Element => {
+  const raiderVersion = import.meta.env.VITE_RAIDER_VERSION
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <header className="flex items-center justify-between bg-white px-8 py-4 border-b-[1px] border-black">
@@ -27,7 +29,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
       </main>
 
       <footer className="flex justify-center py-4 bg-white">
-        <p className="text-gray-500">Ruby Raider Version: 1.0.8</p>
+        <p className="text-gray-500">Ruby Raider Version: {raiderVersion}</p>
       </footer>
     </div>
   )
