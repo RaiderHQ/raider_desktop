@@ -27,11 +27,10 @@ const Landing: React.FC = (): JSX.Element => {
           <ProjectSelector
             icon={AddIcon}
             description="Open existing project"
-            url="/project/new"
+            url="/project/overview"
             buttonValue="Open"
           />
         </div>
-
         <footer className="text-gray-500">Ruby Raider Version: {raiderVersion}</footer>
       </div>
     </>
