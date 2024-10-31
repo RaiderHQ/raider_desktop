@@ -19,9 +19,6 @@ const MainTemplate: React.FC = (): JSX.Element => {
             Tests
           </a>
           <a href="#" className="text-gray-600 hover:text-gray-800">
-            Run
-          </a>
-          <a href="#" className="text-gray-600 hover:text-gray-800">
             Settings
           </a>
         </nav>
