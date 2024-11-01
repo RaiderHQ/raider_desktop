@@ -1,88 +1,84 @@
-import React, { useState } from 'react'
-import { FaFolder, FaFileAlt, FaChevronDown, FaChevronRight, FaPlay, FaStop } from 'react-icons/fa'
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FaFolder, FaFileAlt, FaChevronDown, FaChevronRight, FaPlay, FaStop } from 'react-icons/fa';
+import Button from '@components/Button';
 
 const Overview: React.FC = () => {
-  const [isIntegrationExpanded, setIntegrationExpanded] = useState(true)
-  const [isExamplesExpanded, setExamplesExpanded] = useState(true)
-  const [allSelected, setAllSelected] = useState(false) // State for Select All checkbox
-  const [fileSelections, setFileSelections] = useState<boolean[]>([false, false, false, false]) // Track individual file selections
+  const navigate = useNavigate();
+  const [isIntegrationExpanded, setIntegrationExpanded] = useState(true);
+  const [isExamplesExpanded, setExamplesExpanded] = useState(true);
+  const [allSelected, setAllSelected] = useState(false);
+  const [fileSelections, setFileSelections] = useState<boolean[]>([false, false, false, false]);
+
+  const files = ['actions_spec.rb', 'aliasing_spec.rb', 'pdp_spec.rb', 'connections_spec.rb'];
 
   const handleIntegrationToggle = () => {
-    setIntegrationExpanded(!isIntegrationExpanded)
-  }
+    setIntegrationExpanded(!isIntegrationExpanded);
+  };
 
   const handleExamplesToggle = () => {
-    setExamplesExpanded(!isExamplesExpanded)
-  }
+    setExamplesExpanded(!isExamplesExpanded);
+  };
 
-  // Mock file structure
-  const files = ['actions_spec.rb', 'aliasing_spec.rb', 'pdp_spec.rb', 'connections_spec.rb']
-
-  // Handlers for play, stop, and file select
   const handlePlay = () => {
-    console.log('Play button clicked')
-    // Add play logic here
-  }
+    console.log('Play button clicked');
+  };
 
   const handleStop = () => {
-    console.log('Stop button clicked')
-    // Add stop logic here
-  }
+    console.log('Stop button clicked');
+  };
 
   const handleSelectAll = () => {
-    const newSelectAll = !allSelected
-    setAllSelected(newSelectAll)
-    setFileSelections(Array(files.length).fill(newSelectAll)) // Set all files to selected or unselected
-  }
+    const newSelectAll = !allSelected;
+    setAllSelected(newSelectAll);
+    setFileSelections(Array(files.length).fill(newSelectAll));
+  };
 
   const handleFileCheckboxChange = (index: number) => {
-    const newSelections = [...fileSelections]
-    newSelections[index] = !newSelections[index]
-    setFileSelections(newSelections)
+    const newSelections = [...fileSelections];
+    newSelections[index] = !newSelections[index];
+    setFileSelections(newSelections);
+    setAllSelected(newSelections.every((selected) => selected));
+  };
 
-    // Update the Select All checkbox if all files are selected/unselected
-    setAllSelected(newSelections.every(selected => selected))
-  }
+  const handleFileClick = (fileName: string) => {
+    // Navigate to the Editor view with the selected file name
+    navigate('/project/editor', { state: { fileName } });
+  };
 
   return (
     <div className="flex flex-col w-screen p-8">
-      {/* Control area with icons, checkbox, and dashboard button */}
       <div className="flex items-center justify-between mb-4 bg-gray-200 p-2 rounded-md">
-        {/* Icons and checkbox group */}
-        <div className="flex items-center space-x-2">
-          {/* Select All Checkbox */}
+        <div className="flex items-center space-x-1">
           <input
             type="checkbox"
             checked={allSelected}
             onChange={handleSelectAll}
-            className="w-5 h-5 cursor-pointer appearance-none bg-transparent checked:bg-red-300 border-b-[1px]"
+            className="w-5 h-5 cursor-pointer border border-black rounded"
           />
 
-          {/* Play and Stop icons */}
-          <FaPlay
+          <button
             onClick={handlePlay}
-            className="text-green-500 text-xl cursor-pointer"
+            className="text-green-500 border border-green-500 rounded w-5 h-5 flex items-center justify-center hover:bg-green-50"
             title="Play"
-          />
-          <FaStop
+          >
+            <FaPlay size={12} />
+          </button>
+          <button
             onClick={handleStop}
-            className="text-red-500 text-xl cursor-pointer"
+            className="text-red-500 border border-red-500 rounded w-5 h-5 flex items-center justify-center hover:bg-red-50"
             title="Stop"
-          />
+          >
+            <FaStop size={12} />
+          </button>
         </div>
 
-        {/* Open Allure Dashboard Button */}
-        <button
-          onClick={() => console.log('Open Allure Dashboard clicked')}
-          className="bg-gray-50 text-black px-4 py-2 hover:bg-red-200 text-sm"
-        >
-          Open Allure Dashboard
-        </button>
+        <Button onClick={() => console.log('Open Allure Dashboard clicked')} type="primary">
+          Allure Dashboard
+        </Button>
       </div>
 
-      {/* Folder Section - Occupies 80% of the screen height */}
       <div className="h-[70vh] border rounded-lg shadow-sm overflow-y-auto bg-white">
-        {/* Integration Testing Folder */}
         <button
           className="flex items-center w-full px-4 py-2 bg-gray-100 border-b focus:outline-none"
           onClick={handleIntegrationToggle}
@@ -94,7 +90,6 @@ const Overview: React.FC = () => {
 
         {isIntegrationExpanded && (
           <div className="pl-8">
-            {/* Examples Folder */}
             <button
               className="flex items-center w-full px-4 py-2 bg-gray-50 border-b focus:outline-none"
               onClick={handleExamplesToggle}
@@ -106,14 +101,18 @@ const Overview: React.FC = () => {
 
             {isExamplesExpanded && (
               <div className="pl-8">
-                {/* Render list of files */}
                 {files.map((file, index) => (
-                  <div key={index} className="flex items-center px-4 py-2 border-b">
+                  <div
+                    key={index}
+                    className="flex items-center px-4 py-2 border-b cursor-pointer hover:bg-gray-100 hover:text-blue-600"
+                    onClick={() => handleFileClick(file)}
+                  >
                     <input
                       type="checkbox"
-                      className="mr-2"
+                      className="mr-2 w-4 h-4 cursor-pointer"
                       checked={fileSelections[index]}
                       onChange={() => handleFileCheckboxChange(index)}
+                      onClick={(e) => e.stopPropagation()} // Prevent checkbox click from triggering file click
                     />
                     <FaFileAlt className="mr-2 text-gray-600" />
                     <span>{file}</span>
@@ -125,7 +124,7 @@ const Overview: React.FC = () => {
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Overview
+export default Overview;
