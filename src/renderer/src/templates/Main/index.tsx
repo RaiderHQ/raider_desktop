@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, Link } from 'react-router-dom'
 import Logo from '@assets/images/logo-with-title.svg'
 
 const MainTemplate: React.FC = (): JSX.Element => {
@@ -15,12 +15,12 @@ const MainTemplate: React.FC = (): JSX.Element => {
           />
         </div>
         <nav className="flex space-x-8">
-          <a href="#" className="text-gray-600 hover:text-gray-800">
+          <Link to="/project/overview" className="text-gray-600 hover:text-gray-800">
             Tests
-          </a>
-          <a href="#" className="text-gray-600 hover:text-gray-800">
+          </Link>
+          <Link to="/project/settings" className="text-gray-600 hover:text-gray-800">
             Settings
-          </a>
+          </Link>
         </nav>
       </header>
 
@@ -32,7 +32,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
         <p className="text-gray-500">Ruby Raider Version: {raiderVersion}</p>
       </footer>
     </div>
-  )
-}
+  );
+};
 
 export default MainTemplate
