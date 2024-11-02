@@ -1,0 +1,34 @@
+{
+  "landing": {
+    "title": "Welcome to Ruby Raider!",
+    "subtitle": "It is a gem that provides a generator and scaffolding to simplify UI test automation."
+  },
+  "newProject": {
+    "title": "Create a new project",
+    "subtitle": "To create a project, first you need to select the following:",
+    "question": {
+      "automation": "Select your automation framework",
+      "mobile": "Select your mobile platform",
+      "test": "Select your test framework"
+    }
+  },
+  "button": {
+    "create": {
+      "text": "Create",
+      "description": "Create a new project"
+    },
+    "open": {
+      "text": "Open",
+      "description": "Open existing project"
+    },
+    "back": {
+      "text": "Back",
+      "description": "Go back to the previous step"
+    }
+  },
+  "menu": {
+    "tests": "Tests",
+    "settings": "Settings"
+  },
+  "version": "Ruby Raider Version: {{version}}"
+}

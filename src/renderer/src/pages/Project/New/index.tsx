@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import QuestionIcon from '@assets/icons/Question_vector.svg'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
@@ -8,6 +9,7 @@ import SelectInput from '@components/SelectInput'
 
 const CreateProject: React.FC = () => {
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   // State for selected options
   const [automationFramework, setAutomationFramework] = useState('Appium')
@@ -27,7 +29,7 @@ const CreateProject: React.FC = () => {
   const showMobilePlatformSelector = automationFramework === 'Appium'
 
   // Function to handle project creation and show loading screen
-  const handleCreateProject = async () => {
+  const handleCreateProject = async (): Promise<void> => {
     setIsLoading(true) // Show loading screen
 
     // Construct the name of the project and other parameters
@@ -50,7 +52,10 @@ const CreateProject: React.FC = () => {
   }
 
   // Function to handle dropdown change with a brief loading effect
-  const handleOptionChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
+  const handleOptionChange = (
+    setter: React.Dispatch<React.SetStateAction<string>>,
+    value: string
+  ): void => {
     setIsTransitioning(true) // Show transition loading screen
     setter(value) // Set the selected value
 
@@ -62,11 +67,14 @@ const CreateProject: React.FC = () => {
   return (
     <>
       {/* Loading screen for full-page loading and transitions */}
-      <LoadingScreen isOpen={isLoading || isTransitioning} message="Updating options, please wait..." />
+      <LoadingScreen
+        isOpen={isLoading || isTransitioning}
+        message="Updating options, please wait..."
+      />
 
       <div className="text-center mb-10">
-        <h1 className="text-3xl font-bold mb-2">Create a new project</h1>
-        <p className="text-gray-600">To create a project, first you need to select the following:</p>
+        <h1 className="text-3xl font-bold mb-2">{t('newProject.title')}</h1>
+        <p className="text-gray-600">{t('newProject.subtitle')}</p>
       </div>
 
       <ContentArea>
@@ -76,16 +84,18 @@ const CreateProject: React.FC = () => {
           </div>
 
           {/* Grid structure based on the number of visible selectors */}
-          <div className={`grid ${showMobilePlatformSelector ? 'grid-cols-2' : 'grid-cols-1'} gap-x-8 mb-6 w-full`}>
+          <div
+            className={`grid ${showMobilePlatformSelector ? 'grid-cols-2' : 'grid-cols-1'} gap-x-8 mb-6 w-full`}
+          >
             <div className="flex flex-col space-y-6">
               <SelectInput
-                label="Select your automation framework"
+                label={t('newProject.question.automation')}
                 options={automationFrameworkOptions}
                 selected={automationFramework}
                 onChange={(event) => handleOptionChange(setAutomationFramework, event.target.value)}
               />
               <SelectInput
-                label="Select your test framework"
+                label={t('newProject.question.test')}
                 options={testFrameworkOptions}
                 selected={testFramework}
                 onChange={(event) => handleOptionChange(setTestFramework, event.target.value)}
@@ -96,7 +106,7 @@ const CreateProject: React.FC = () => {
             {showMobilePlatformSelector && (
               <div className="flex flex-col space-y-6">
                 <SelectInput
-                  label="Select your mobile platform"
+                  label={t('newProject.question.mobile')}
                   options={mobilePlatformOptions}
                   selected={mobilePlatform}
                   onChange={(event) => handleOptionChange(setMobilePlatform, event.target.value)}
@@ -106,12 +116,14 @@ const CreateProject: React.FC = () => {
           </div>
 
           {/* Adjust buttons layout */}
-          <div className={`flex ${showMobilePlatformSelector ? 'justify-end' : 'justify-between'} space-x-4`}>
+          <div
+            className={`flex ${showMobilePlatformSelector ? 'justify-end' : 'justify-between'} space-x-4`}
+          >
             <Button onClick={() => navigate(-1)} type="secondary">
-              Back
+              {t('button.back.text')}
             </Button>
             <Button onClick={handleCreateProject} type="primary">
-              Create
+              {t('button.create.text')}
             </Button>
           </div>
         </div>

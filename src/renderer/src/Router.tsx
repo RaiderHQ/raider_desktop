@@ -1,5 +1,5 @@
 import { createHashRouter, RouterProvider } from 'react-router-dom'
-import Editor from './pages/Project/Editor'
+import Editor from '@pages/Project/Editor'
 import Landing from '@pages/Landing'
 import MainTemplate from '@templates/Main'
 import NewProject from '@pages/Project/New'
