@@ -3,7 +3,7 @@ import { sample } from 'lodash'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 
 const LoadingScreen: React.FC = (): JSX.Element | null => {
-  const loading = useLoadingStore((state) => state.loading)
+  const loading: boolean = useLoadingStore((state: { loading: boolean }) => state.loading)
 
   if (!loading) return null
 
@@ -11,7 +11,7 @@ const LoadingScreen: React.FC = (): JSX.Element | null => {
     'Sharpening pickaxes... treasure awaits!',
     'Dusting off ancient maps... almost ready!',
     'Hold tight, gem-hunter! Loading precious rubies...'
-  ];
+  ]
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
