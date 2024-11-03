@@ -1,4 +1,4 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { exec } from 'child_process'
 
@@ -20,6 +20,15 @@ const api = {
         }
       })
     })
+  },
+  selectFolder: async (title: string): Promise<string | null> => {
+    return ipcRenderer.invoke('select-folder', title)
+  },
+  createSettingsFile: async (
+    folderPath: string,
+    data: object
+  ): Promise<{ success: boolean; filePath?: string; error?: string }> => {
+    return ipcRenderer.invoke('create-settings-file', folderPath, data)
   }
 }
 
