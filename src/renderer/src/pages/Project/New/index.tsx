@@ -55,13 +55,15 @@ const CreateProject: React.FC = () => {
           browserSettings: []
         }
       }
-      await (window as any).api.createSettingsFile(folder, data)
+      await window.api.createSettingsFile(folder, data)
 
       if (!folder) {
         return
       }
 
-      navigate('/project/overview')
+      const test = await window.api.readDirectory(folder)
+      console.log(test)
+      // navigate('/project/overview')
     } catch (error) {
       console.error('Error running raider command:', error)
     } finally {
