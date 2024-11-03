@@ -6,6 +6,7 @@ import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import SelectInput from '@components/SelectInput'
 import useLoadingStore from '@foundation/Stores/loadingStore'
+import useProjectStore from '@foundation/Stores/projectStore'
 
 const options = {
   automation: ['Appium', 'Selenium', 'Axe'],
@@ -18,6 +19,9 @@ const CreateProject: React.FC = () => {
   const { t } = useTranslation()
   const setLoading: (loading: boolean) => void = useLoadingStore(
     (state: { setLoading: (loading: boolean) => void }) => state.setLoading
+  )
+  const setProjectPath: (path: string) => void = useProjectStore(
+    (state: { setProjectPath: (path: string) => void }) => state.setProjectPath
   )
 
   const [automationFramework, setAutomationFramework] = useState('Appium')
@@ -39,6 +43,9 @@ const CreateProject: React.FC = () => {
       // console.log('Raider command output:', output)
 
       const folder = await window.api.selectFolder('Select a folder to save your project')
+      if (!folder) {
+        return
+      }
 
       const data = {
         name: nameOfProject,
@@ -56,14 +63,9 @@ const CreateProject: React.FC = () => {
         }
       }
       await window.api.createSettingsFile(folder, data)
+      setProjectPath(folder)
 
-      if (!folder) {
-        return
-      }
-
-      const test = await window.api.readDirectory(folder)
-      console.log(test)
-      // navigate('/project/overview')
+      navigate('/project/overview')
     } catch (error) {
       console.error('Error running raider command:', error)
     } finally {
