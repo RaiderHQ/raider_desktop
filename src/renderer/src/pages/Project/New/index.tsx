@@ -4,21 +4,18 @@ import { useTranslation } from 'react-i18next'
 import QuestionIcon from '@assets/icons/Question_vector.svg'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
-import LoadingScreen from '@components/LoadingScreen'
 import SelectInput from '@components/SelectInput'
+import useLoadingStore from '@foundation/Stores/loadingStore'
 
 const CreateProject: React.FC = () => {
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const setLoading = useLoadingStore((state) => state.setLoading)
 
   // State for selected options
   const [automationFramework, setAutomationFramework] = useState('Appium')
   const [testFramework, setTestFramework] = useState('Rspec')
   const [mobilePlatform, setMobilePlatform] = useState('Android')
-
-  // State for loading
-  const [isLoading, setIsLoading] = useState(false)
-  const [isTransitioning, setIsTransitioning] = useState(false) // New loading state for transitions
 
   // Options for dropdowns
   const automationFrameworkOptions = ['Appium', 'Selenium', 'Axe']
@@ -30,7 +27,7 @@ const CreateProject: React.FC = () => {
 
   // Function to handle project creation and show loading screen
   const handleCreateProject = async (): Promise<void> => {
-    setIsLoading(true) // Show loading screen
+    setLoading(true) // Show loading screen
 
     // Construct the name of the project and other parameters
     const nameOfProject = 'NewProject' // You can change this to be dynamic if needed
@@ -47,7 +44,7 @@ const CreateProject: React.FC = () => {
     } catch (error) {
       console.error('Error running raider command:', error)
     } finally {
-      setIsLoading(false) // Hide loading screen
+      setLoading(false) // Hide loading screen
     }
   }
 
@@ -56,21 +53,21 @@ const CreateProject: React.FC = () => {
     setter: React.Dispatch<React.SetStateAction<string>>,
     value: string
   ): void => {
-    setIsTransitioning(true) // Show transition loading screen
+    setLoading(true) // Show transition loading screen
     setter(value) // Set the selected value
 
     // Hide the transition loader after a short delay (e.g., 300ms)
     setTimeout(() => {
-      setIsTransitioning(false)
+      setLoading(false)
     }, 300)
   }
   return (
     <>
       {/* Loading screen for full-page loading and transitions */}
-      <LoadingScreen
+      {/* <LoadingScreen
         isOpen={isLoading || isTransitioning}
         message="Updating options, please wait..."
-      />
+      /> */}
 
       <div className="text-center mb-10">
         <h1 className="text-3xl font-bold mb-2">{t('newProject.title')}</h1>
