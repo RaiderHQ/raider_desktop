@@ -1,72 +1,96 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import QuestionIcon from '@assets/icons/Question_vector.svg'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
-import LoadingScreen from '@components/LoadingScreen'
 import SelectInput from '@components/SelectInput'
+import useLoadingStore from '@foundation/Stores/loadingStore'
+import Error from '@pages/Project/Error'
+
+const options = {
+  automation: ['Appium', 'Selenium', 'Axe'],
+  test: ['Rspec', 'Cucumber'],
+  mobile: ['Android', 'iOS']
+}
 
 const CreateProject: React.FC = () => {
   const navigate = useNavigate()
+  const { t } = useTranslation()
+  const setLoading = useLoadingStore(
+    (state: { setLoading: (loading: boolean) => void }) => state.setLoading
+  )
 
-  // State for selected options
   const [automationFramework, setAutomationFramework] = useState('Appium')
   const [testFramework, setTestFramework] = useState('Rspec')
   const [mobilePlatform, setMobilePlatform] = useState('Android')
+  const [showError, setShowError] = useState(false)
+  const showMobile = automationFramework === 'Appium'
+  const isRubyInstalled = false // Mock variable
+  const isRaiderInstalled = true // Mock variable
 
-  // State for loading
-  const [isLoading, setIsLoading] = useState(false)
-  const [isTransitioning, setIsTransitioning] = useState(false) // New loading state for transitions
+  const handleCreateProject = async (): Promise<void> => {
+    setLoading(true)
 
-  // Options for dropdowns
-  const automationFrameworkOptions = ['Appium', 'Selenium', 'Axe']
-  const testFrameworkOptions = ['Rspec', 'Cucumber']
-  const mobilePlatformOptions = ['Android', 'iOS']
-
-  // Check if the mobile platform selector is needed (Appium is selected)
-  const showMobilePlatformSelector = automationFramework === 'Appium'
-
-  // Function to handle project creation and show loading screen
-  const handleCreateProject = async () => {
-    setIsLoading(true) // Show loading screen
-
-    // Construct the name of the project and other parameters
-    const nameOfProject = 'NewProject' // You can change this to be dynamic if needed
-    const framework = testFramework
-    const automationType = automationFramework
+    // Check if Ruby and Raider are installed before proceeding
+    if (!isRubyInstalled || !isRaiderInstalled) {
+      setShowError(true) // Trigger error rendering if either is not installed
+      setLoading(false) // Stop the loader
+      return // Exit the function to prevent further execution
+    }
 
     try {
-      // Call the raider command API exposed in the preload script
-      const output = await (window as any).api.runRaiderCommand(nameOfProject, framework, automationType)
-      console.log('Raider command output:', output)
+      const nameOfProject = 'NewProject'
+      const folder = await window.api.selectFolder('Select a folder to save your project')
 
-      // After successfully running the command, navigate to the overview page
-      navigate('/project/overview') // Redirect to the Overview page
+      const data = {
+        name: nameOfProject,
+        rubyVersion: null,
+        createdAt: new Date().toISOString(),
+        framework: {
+          automation: automationFramework,
+          test: testFramework,
+          mobile: mobilePlatform
+        },
+        settings: {
+          baseUrl: null,
+          browser: 'Chrome',
+          browserSettings: []
+        }
+      }
+      await (window as any).api.createSettingsFile(folder, data)
+
+      if (!folder) {
+        return
+      }
+
+      navigate('/project/overview')
     } catch (error) {
       console.error('Error running raider command:', error)
     } finally {
-      setIsLoading(false) // Hide loading screen
+      setLoading(false)
     }
   }
 
-  // Function to handle dropdown change with a brief loading effect
-  const handleOptionChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
-    setIsTransitioning(true) // Show transition loading screen
-    setter(value) // Set the selected value
-
-    // Hide the transition loader after a short delay (e.g., 300ms)
-    setTimeout(() => {
-      setIsTransitioning(false)
-    }, 300)
+  const handleOptionChange = (
+    setter: React.Dispatch<React.SetStateAction<string>>,
+    value: string
+  ): void => {
+    setLoading(true)
+    setter(value)
+    setTimeout((): void => setLoading(false), 300)
   }
+
+  // Render ErrorPage if showError is true
+  if (showError) {
+    return <Error isRubyInstalled={isRubyInstalled} isRaiderInstalled={isRaiderInstalled} />
+  }
+
   return (
     <>
-      {/* Loading screen for full-page loading and transitions */}
-      <LoadingScreen isOpen={isLoading || isTransitioning} message="Updating options, please wait..." />
-
       <div className="text-center mb-10">
-        <h1 className="text-3xl font-bold mb-2">Create a new project</h1>
-        <p className="text-gray-600">To create a project, first you need to select the following:</p>
+        <h1 className="text-3xl font-bold mb-2">{t('newProject.title')}</h1>
+        <p className="text-gray-600">{t('newProject.subtitle')}</p>
       </div>
 
       <ContentArea>
@@ -74,44 +98,45 @@ const CreateProject: React.FC = () => {
           <div className="absolute top-2 right-2">
             <img src={QuestionIcon} className="w-4 h-auto" />
           </div>
-
-          {/* Grid structure based on the number of visible selectors */}
-          <div className={`grid ${showMobilePlatformSelector ? 'grid-cols-2' : 'grid-cols-1'} gap-x-8 mb-6 w-full`}>
+          <div className={`grid ${showMobile ? 'grid-cols-2' : 'grid-cols-1'} gap-x-8 mb-6 w-full`}>
             <div className="flex flex-col space-y-6">
               <SelectInput
-                label="Select your automation framework"
-                options={automationFrameworkOptions}
+                label={t('newProject.question.automation')}
+                options={options.automation}
                 selected={automationFramework}
-                onChange={(event) => handleOptionChange(setAutomationFramework, event.target.value)}
+                onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
+                  handleOptionChange(setAutomationFramework, target.value)
+                }
               />
               <SelectInput
-                label="Select your test framework"
-                options={testFrameworkOptions}
+                label={t('newProject.question.test')}
+                options={options.test}
                 selected={testFramework}
-                onChange={(event) => handleOptionChange(setTestFramework, event.target.value)}
+                onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
+                  handleOptionChange(setTestFramework, target.value)
+                }
               />
             </div>
-
-            {/* Render mobile platform selector conditionally and below other selectors if Appium is selected */}
-            {showMobilePlatformSelector && (
+            {showMobile && (
               <div className="flex flex-col space-y-6">
                 <SelectInput
-                  label="Select your mobile platform"
-                  options={mobilePlatformOptions}
+                  label={t('newProject.question.mobile')}
+                  options={options.mobile}
                   selected={mobilePlatform}
-                  onChange={(event) => handleOptionChange(setMobilePlatform, event.target.value)}
+                  onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
+                    handleOptionChange(setMobilePlatform, target.value)
+                  }
                 />
               </div>
             )}
           </div>
 
-          {/* Adjust buttons layout */}
-          <div className={`flex ${showMobilePlatformSelector ? 'justify-end' : 'justify-between'} space-x-4`}>
+          <div className={`flex ${showMobile ? 'justify-end' : 'justify-between'} space-x-4`}>
             <Button onClick={() => navigate(-1)} type="secondary">
-              Back
+              {t('button.back.text')}
             </Button>
             <Button onClick={handleCreateProject} type="primary">
-              Create
+              {t('button.create.text')}
             </Button>
           </div>
         </div>
