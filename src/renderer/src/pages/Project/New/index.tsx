@@ -31,12 +31,35 @@ const CreateProject: React.FC = () => {
     const nameOfProject = 'NewProject' // You can change this to be dynamic if needed
 
     try {
-      const output = await (window as any).api.runRaiderCommand(
-        nameOfProject,
-        testFramework,
-        automationFramework
-      )
-      console.log('Raider command output:', output)
+      // const output = await (window as any).api.runRaiderCommand(
+      //   nameOfProject,
+      //   testFramework,
+      //   automationFramework
+      // )
+      // console.log('Raider command output:', output)
+
+      const folder = await window.api.selectFolder('Select a folder to save your project')
+
+      const data = {
+        name: nameOfProject,
+        rubyVersion: null,
+        createdAt: new Date().toISOString(),
+        framework: {
+          automation: automationFramework,
+          test: testFramework,
+          mobile: mobilePlatform
+        },
+        settings: {
+          baseUrl: null,
+          browser: 'Chrome',
+          browserSettings: []
+        }
+      }
+      await (window as any).api.createSettingsFile(folder, data)
+
+      if (!folder) {
+        return
+      }
 
       navigate('/project/overview')
     } catch (error) {
@@ -67,7 +90,7 @@ const CreateProject: React.FC = () => {
           <div className="absolute top-2 right-2">
             <img src={QuestionIcon} className="w-4 h-auto" />
           </div>
-          <div className={`grid grid-cols-${showMobile ? 2 : 1} gap-x-8 mb-6 w-full`}>
+          <div className={`grid ${showMobile ? 'grid-cols-2' : 'grid-cols-1'} gap-x-8 mb-6 w-full`}>
             <div className="flex flex-col space-y-6">
               <SelectInput
                 label={t('newProject.question.automation')}
@@ -100,7 +123,7 @@ const CreateProject: React.FC = () => {
             )}
           </div>
 
-          <div className={`flex justify-${showMobile ? 'end' : 'between'} space-x-4`}>
+          <div className={`flex ${showMobile ? 'justify-end' : 'justify-between'} space-x-4`}>
             <Button onClick={() => navigate(-1)} type="secondary">
               {t('button.back.text')}
             </Button>
