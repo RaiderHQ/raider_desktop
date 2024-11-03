@@ -23,6 +23,12 @@ const api = {
   },
   selectFolder: async (title: string): Promise<string | null> => {
     return ipcRenderer.invoke('select-folder', title)
+  },
+  createSettingsFile: async (
+    folderPath: string,
+    data: object
+  ): Promise<{ success: boolean; filePath?: string; error?: string }> => {
+    return ipcRenderer.invoke('create-settings-file', folderPath, data)
   }
 }
 

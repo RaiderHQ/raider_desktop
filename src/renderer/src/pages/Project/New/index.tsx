@@ -28,7 +28,7 @@ const CreateProject: React.FC = () => {
   const handleCreateProject = async (): Promise<void> => {
     setLoading(true)
 
-    // const nameOfProject = 'NewProject' // You can change this to be dynamic if needed
+    const nameOfProject = 'NewProject' // You can change this to be dynamic if needed
 
     try {
       // const output = await (window as any).api.runRaiderCommand(
@@ -38,9 +38,30 @@ const CreateProject: React.FC = () => {
       // )
       // console.log('Raider command output:', output)
 
-      // navigate('/project/overview')
-      const folder = await (window as any).api.selectFolder('Select a folder to save your project')
-      console.log(folder)
+      const folder = await window.api.selectFolder('Select a folder to save your project')
+
+      const data = {
+        name: nameOfProject,
+        rubyVersion: null,
+        createdAt: new Date().toISOString(),
+        framework: {
+          automation: automationFramework,
+          test: testFramework,
+          mobile: mobilePlatform
+        },
+        settings: {
+          baseUrl: null,
+          browser: 'Chrome',
+          browserSettings: []
+        }
+      }
+      await (window as any).api.createSettingsFile(folder, data)
+
+      if (!folder) {
+        return
+      }
+
+      navigate('/project/overview')
     } catch (error) {
       console.error('Error running raider command:', error)
     } finally {
