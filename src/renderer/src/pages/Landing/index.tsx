@@ -1,3 +1,4 @@
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import ProjectSelector from '@components/ProjectSelector'
 import Logo from '@assets/images/logo.svg'
@@ -7,6 +8,13 @@ import AddIcon from '@assets/icons/add.svg'
 const Landing: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const raiderVersion = import.meta.env.VITE_RAIDER_VERSION
+
+  // Mock variables to simulate installation checks
+  const isRubyInstalled = true // Set to true if Ruby is installed
+  const isRaiderInstalled = true // Set to true if Raider is installed
+
+  // Determine the URL based on installation status
+  const newProjectUrl = !isRubyInstalled || !isRaiderInstalled ? '/project/error' : '/project/new'
 
   return (
     <>
@@ -21,7 +29,7 @@ const Landing: React.FC = (): JSX.Element => {
           <ProjectSelector
             icon={OpenFolder}
             description={t('button.create.description')}
-            url="/project/new"
+            url={newProjectUrl}
             buttonValue={t('button.create.text')}
           />
           <ProjectSelector

@@ -6,7 +6,6 @@ import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import SelectInput from '@components/SelectInput'
 import useLoadingStore from '@foundation/Stores/loadingStore'
-import Error from '@pages/Project/Error'
 
 const options = {
   automation: ['Appium', 'Selenium', 'Axe'],
@@ -17,30 +16,28 @@ const options = {
 const CreateProject: React.FC = () => {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const setLoading = useLoadingStore(
+  const setLoading: (loading: boolean) => void = useLoadingStore(
     (state: { setLoading: (loading: boolean) => void }) => state.setLoading
   )
 
   const [automationFramework, setAutomationFramework] = useState('Appium')
   const [testFramework, setTestFramework] = useState('Rspec')
   const [mobilePlatform, setMobilePlatform] = useState('Android')
-  const [showError, setShowError] = useState(false)
   const showMobile = automationFramework === 'Appium'
-  const isRubyInstalled = false // Mock variable
-  const isRaiderInstalled = true // Mock variable
 
   const handleCreateProject = async (): Promise<void> => {
     setLoading(true)
 
-    // Check if Ruby and Raider are installed before proceeding
-    if (!isRubyInstalled || !isRaiderInstalled) {
-      setShowError(true) // Trigger error rendering if either is not installed
-      setLoading(false) // Stop the loader
-      return // Exit the function to prevent further execution
-    }
+    const nameOfProject = 'NewProject' // You can change this to be dynamic if needed
 
     try {
-      const nameOfProject = 'NewProject'
+      // const output = await (window as any).api.runRaiderCommand(
+      //   nameOfProject,
+      //   testFramework,
+      //   automationFramework
+      // )
+      // console.log('Raider command output:', output)
+
       const folder = await window.api.selectFolder('Select a folder to save your project')
 
       const data = {
@@ -79,11 +76,6 @@ const CreateProject: React.FC = () => {
     setLoading(true)
     setter(value)
     setTimeout((): void => setLoading(false), 300)
-  }
-
-  // Render ErrorPage if showError is true
-  if (showError) {
-    return <Error isRubyInstalled={isRubyInstalled} isRaiderInstalled={isRaiderInstalled} />
   }
 
   return (
