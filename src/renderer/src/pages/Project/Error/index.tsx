@@ -1,11 +1,10 @@
 import React from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import Logo from '@assets/images/logo.svg'
 
 const ErrorPage: React.FC = () => {
-  const navigate = useNavigate()
   const location = useLocation()
 
   // Access the installation state from location.state
@@ -19,7 +18,7 @@ const ErrorPage: React.FC = () => {
       <>
         Ruby is required to run this application.
         <br />
-        Check our GitHub page for installation instructions.
+        Check our GitHub page or Website for installation instructions.
       </>
     )
   } else if (!isRaiderInstalled) {
@@ -28,7 +27,7 @@ const ErrorPage: React.FC = () => {
       <>
         Ruby Raider is required for this project.
         <br />
-        Check our GitHub page for installation instructions.
+        Check our GitHub page or Website for installation instructions.
       </>
     )
   } else {
@@ -42,8 +41,8 @@ const ErrorPage: React.FC = () => {
     )
   }
 
-  const handleGoHome = () => {
-    navigate('/')
+  const handleGoToWebsite = () => {
+    window.open('https://ruby-raider.com/', '_blank') // Open official website in a new tab
   }
 
   const handleGoToGitHub = () => {
@@ -66,8 +65,8 @@ const ErrorPage: React.FC = () => {
               <Button onClick={handleGoToGitHub} type="secondary">
                 Go to GitHub
               </Button>
-              <Button onClick={handleGoHome} type="primary">
-                Go to Home Page
+              <Button onClick={handleGoToWebsite} type="primary">
+                Go to Website
               </Button>
             </div>
           </div>
