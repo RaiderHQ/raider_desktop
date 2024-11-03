@@ -28,17 +28,19 @@ const CreateProject: React.FC = () => {
   const handleCreateProject = async (): Promise<void> => {
     setLoading(true)
 
-    const nameOfProject = 'NewProject' // You can change this to be dynamic if needed
+    // const nameOfProject = 'NewProject' // You can change this to be dynamic if needed
 
     try {
-      const output = await (window as any).api.runRaiderCommand(
-        nameOfProject,
-        testFramework,
-        automationFramework
-      )
-      console.log('Raider command output:', output)
+      // const output = await (window as any).api.runRaiderCommand(
+      //   nameOfProject,
+      //   testFramework,
+      //   automationFramework
+      // )
+      // console.log('Raider command output:', output)
 
-      navigate('/project/overview')
+      // navigate('/project/overview')
+      const folder = await (window as any).api.selectFolder('Select a folder to save your project')
+      console.log(folder)
     } catch (error) {
       console.error('Error running raider command:', error)
     } finally {
@@ -67,7 +69,7 @@ const CreateProject: React.FC = () => {
           <div className="absolute top-2 right-2">
             <img src={QuestionIcon} className="w-4 h-auto" />
           </div>
-          <div className={`grid grid-cols-${showMobile ? 2 : 1} gap-x-8 mb-6 w-full`}>
+          <div className={`grid ${showMobile ? 'grid-cols-2' : 'grid-cols-1'} gap-x-8 mb-6 w-full`}>
             <div className="flex flex-col space-y-6">
               <SelectInput
                 label={t('newProject.question.automation')}
@@ -100,7 +102,7 @@ const CreateProject: React.FC = () => {
             )}
           </div>
 
-          <div className={`flex justify-${showMobile ? 'end' : 'between'} space-x-4`}>
+          <div className={`flex ${showMobile ? 'justify-end' : 'justify-between'} space-x-4`}>
             <Button onClick={() => navigate(-1)} type="secondary">
               {t('button.back.text')}
             </Button>
