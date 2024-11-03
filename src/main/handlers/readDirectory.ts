@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { IpcMainInvokeEvent } from 'electron'
-import { SETTINGS_FILE } from '@foundation/Constants'
+import { SETTINGS_FILE } from '../../renderer/src/foundation/Constants'
 import { FileNode } from '@foundation/Types/fileNode'
 
 const EXCLUDED_FILES: string[] = ['.DS_Store', 'Thumbs.db', 'desktop.ini']
@@ -38,7 +38,8 @@ const readDirectory = async (
       return {
         name: content.name,
         isDirectory: false,
-        type: 'file' as const
+        type: 'file' as const,
+        path: entryPath
       }
     })
   )

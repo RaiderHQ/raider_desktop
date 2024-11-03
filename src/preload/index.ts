@@ -33,6 +33,9 @@ const api = {
   },
   readDirectory: async (folderPath: string): Promise<FileNode[]> => {
     return ipcRenderer.invoke('read-directory', folderPath)
+  },
+  readFile: async (filePath: string): Promise<string> => {
+    return ipcRenderer.invoke('read-file', filePath)
   }
 }
 

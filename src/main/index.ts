@@ -5,6 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import selectFolder from './handlers/selectFolder'
 import createSettingsFile from './handlers/createSettingsFile'
 import readDirectory from './handlers/readDirectory'
+import readFile from './handlers/readFile'
 
 function createWindow(): void {
   // Create the browser window.
@@ -83,3 +84,4 @@ app.on('window-all-closed', () => {
 ipcMain.handle('select-folder', selectFolder)
 ipcMain.handle('create-settings-file', createSettingsFile)
 ipcMain.handle('read-directory', readDirectory)
+ipcMain.handle('read-file', readFile)
