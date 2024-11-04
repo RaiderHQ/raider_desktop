@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { exec } from 'child_process'
+import { FileNode } from '@foundation/Types/fileNode'
 
 // Custom APIs for renderer
 const api = {
@@ -29,6 +30,12 @@ const api = {
     data: object
   ): Promise<{ success: boolean; filePath?: string; error?: string }> => {
     return ipcRenderer.invoke('create-settings-file', folderPath, data)
+  },
+  readDirectory: async (folderPath: string): Promise<FileNode[]> => {
+    return ipcRenderer.invoke('read-directory', folderPath)
+  },
+  readFile: async (filePath: string): Promise<string> => {
+    return ipcRenderer.invoke('read-file', filePath)
   }
 }
 
