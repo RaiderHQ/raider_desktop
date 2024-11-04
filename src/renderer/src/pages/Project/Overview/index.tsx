@@ -4,12 +4,9 @@ import Button from '@components/Button'
 import Folder from '@components/Library/Folder'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { FileNode } from '@foundation/Types/fileNode'
-import { RaiderConfig } from '@foundation/Types/raiderConfig'
 
 const Overview: React.FC = () => {
-  const projectConfig: RaiderConfig = useProjectStore(
-    (state: { projectConfig: RaiderConfig }) => state.projectConfig
-  )
+  const projectPath: string = useProjectStore((state: { projectPath: string }) => state.projectPath)
   const files: FileNode[] = useProjectStore((state: { files: FileNode[] }) => state.files)
   const toggleAll: (select: boolean) => void = useProjectStore(
     (state: { toggleAll: (select: boolean) => void }) => state.toggleAll
@@ -60,7 +57,7 @@ const Overview: React.FC = () => {
       </div>
 
       <div className="h-[70vh] border rounded-lg shadow-sm overflow-y-auto bg-white">
-        <Folder name={projectConfig.name} files={files} defaultOpen />
+        <Folder name={projectPath.split('/').pop()} files={files} defaultOpen />
       </div>
     </div>
   )
