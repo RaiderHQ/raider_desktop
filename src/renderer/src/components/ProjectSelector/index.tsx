@@ -6,15 +6,17 @@ import Button from '@components/Button'
 interface ProjectSelectorProps {
   icon: string
   description: string
-  url: string
+  url?: string
   buttonValue: string
+  onClick?: () => void
 }
 
 const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   icon,
   description,
   url,
-  buttonValue
+  buttonValue,
+  onClick
 }): JSX.Element => {
   return (
     <div className="relative flex flex-col items-center justify-center">
@@ -27,9 +29,12 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
           <img src={icon} className="w-12 h-auto" />
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-6">{description}</h2>
-        <Link to={url}>
-          <Button>{buttonValue}</Button>
-        </Link>
+        {url && (
+          <Link to={url}>
+            <Button>{buttonValue}</Button>
+          </Link>
+        )}
+        {!url && <Button onClick={onClick}>{buttonValue}</Button>}
       </div>
     </div>
   )
