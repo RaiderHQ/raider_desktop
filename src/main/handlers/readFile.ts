@@ -17,7 +17,7 @@ const handler = async (
     const data = fs.readFileSync(filePath, 'utf-8')
     return { success: true, data, fileExt: extension }
   } catch (error) {
-    console.error('Info reading file:', error)
+    console.error('Error reading file:', error)
     if (error instanceof Error) {
       return { success: false, error: error.message }
     }
