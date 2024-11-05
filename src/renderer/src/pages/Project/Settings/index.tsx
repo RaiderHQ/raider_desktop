@@ -1,42 +1,42 @@
-import React, { useState } from 'react'
-import Button from '@components/Button'
+import React, { useState } from 'react';
+import Button from '@components/Button';
 
 const Settings: React.FC = () => {
-  const [selectedBrowser, setSelectedBrowser] = useState('chrome') // Default to Chrome
-  const [browserUrl, setBrowserUrl] = useState('') // State for Browser URL
+  const [selectedBrowser, setSelectedBrowser] = useState('chrome'); // Default to Chrome
+  const [browserUrl, setBrowserUrl] = useState(''); // State for Browser URL
   const [browserSettings, setBrowserSettings] = useState({
     headless: false,
     incognito: false,
-    disableExtensions: false
-  }) // State for Browser Settings checkboxes
+    disableExtensions: false,
+  }); // State for Browser Settings checkboxes
 
   const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedBrowser(event.target.value)
+    setSelectedBrowser(event.target.value);
   };
 
   const handleUrlChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setBrowserUrl(event.target.value)
+    setBrowserUrl(event.target.value);
   };
 
   const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = event.target
+    const { name, checked } = event.target;
     setBrowserSettings((prevSettings) => ({
       ...prevSettings,
-      [name]: checked
-    }))
-  }
+      [name]: checked,
+    }));
+  };
 
   const handleBrowserUpdateClick = () => {
     console.log(`Browser updated to: ${selectedBrowser}`);
   };
 
   const handleUrlUpdateClick = () => {
-    console.log(`Browser URL updated to: ${browserUrl}`)
+    console.log(`Browser URL updated to: ${browserUrl}`);
   };
 
   const handleBrowserSettingsUpdateClick = () => {
-    console.log('Browser settings updated to:', browserSettings)
-  }
+    console.log('Browser settings updated to:', browserSettings);
+  };
 
   return (
     <div className="p-3 font-sans">
