@@ -6,6 +6,7 @@ import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import SelectInput from '@components/SelectInput'
 import useLoadingStore from '@foundation/Stores/loadingStore'
+import useProjectStore from '@foundation/Stores/projectStore'
 
 const options = {
   automation: ['Appium', 'Selenium', 'Axe'],
@@ -18,6 +19,9 @@ const CreateProject: React.FC = () => {
   const { t } = useTranslation()
   const setLoading: (loading: boolean) => void = useLoadingStore(
     (state: { setLoading: (loading: boolean) => void }) => state.setLoading
+  )
+  const setProjectPath: (path: string) => void = useProjectStore(
+    (state: { setProjectPath: (path: string) => void }) => state.setProjectPath
   )
 
   const [automationFramework, setAutomationFramework] = useState('Appium')
@@ -39,6 +43,9 @@ const CreateProject: React.FC = () => {
       // console.log('Raider command output:', output)
 
       const folder = await window.api.selectFolder('Select a folder to save your project')
+      if (!folder) {
+        return
+      }
 
       const data = {
         name: nameOfProject,
@@ -55,12 +62,14 @@ const CreateProject: React.FC = () => {
           browserSettings: []
         }
       }
-      await (window as any).api.createSettingsFile(folder, data)
-
-      if (!folder) {
+      await window.api.createSettingsFile(folder, data)
+      const { success } = await window.api.checkConfig(folder)
+      if (!success) {
+        // To-do: Inform user about the error with a modal
         return
       }
 
+      setProjectPath(folder)
       navigate('/project/overview')
     } catch (error) {
       console.error('Error running raider command:', error)
