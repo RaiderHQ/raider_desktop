@@ -47,9 +47,16 @@ const Landing: React.FC = (): JSX.Element => {
                   return
                 }
 
+                const { success } = await window.api.checkConfig(folder)
+                if (!success) {
+                  // To-do: Inform user about the error with a modal
+                  return
+                }
+
                 setProjectPath(folder)
                 navigate('/project/overview')
               } catch (error) {
+                // To-do: Inform user about the error with a modal
                 console.error('Error opening project:', error)
               } finally {
                 setLoading(false)

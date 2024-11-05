@@ -36,6 +36,11 @@ const api = {
   },
   readFile: async (filePath: string): Promise<string> => {
     return ipcRenderer.invoke('read-file', filePath)
+  },
+  checkConfig: async (
+    folderPath: string
+  ): Promise<{ success: boolean; filePath?: string; error?: string }> => {
+    return ipcRenderer.invoke('check-config', folderPath)
   }
 }
 
