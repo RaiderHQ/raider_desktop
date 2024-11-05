@@ -63,8 +63,13 @@ const CreateProject: React.FC = () => {
         }
       }
       await window.api.createSettingsFile(folder, data)
-      setProjectPath(folder)
+      const { success } = await window.api.checkConfig(folder)
+      if (!success) {
+        // To-do: Inform user about the error with a modal
+        return
+      }
 
+      setProjectPath(folder)
       navigate('/project/overview')
     } catch (error) {
       console.error('Error running raider command:', error)
