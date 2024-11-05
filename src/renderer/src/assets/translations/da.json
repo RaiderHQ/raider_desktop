@@ -25,13 +25,9 @@
       "text": "Tilbage",
       "description": "Gå tilbage til det forrige trin"
     },
-    "goToGitHubButton": {
-      "text": "Gå til GitHub",
-      "description": "Gå til Ruby Raider GitHub"
-    },
-    "goToWebsiteButton": {
-      "text": "Gå til Hjemmeside",
-      "description": "Gå til Ruby Raider Hjemmeside"
+    "goTo": {
+      "text": "Gå til {{location}}",
+      "description": "Gå til Ruby Raider {{location}}"
     }
   },
   "menu": {

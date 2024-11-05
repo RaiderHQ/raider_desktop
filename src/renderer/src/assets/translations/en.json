@@ -25,13 +25,9 @@
       "text": "Back",
       "description": "Go back to the previous step"
     },
-    "goToGitHubButton": {
-      "text": "Go to GitHub",
-      "description": "Go to the Ruby Raider GitHub"
-    },
-    "goToWebsiteButton": {
-      "text": "Go to Website",
-      "description": "Go to the Ruby Raider Website"
+    "goTo": {
+      "text": "Go to {{location}}",
+      "description": "Go to the Ruby Raider {{location}}"
     }
   },
   "menu": {
@@ -42,6 +38,6 @@
   "installGuide": {
     "title": "Installation Required",
     "message": "You need to install both Ruby and Ruby Raider to run this application.",
-    "information": "Check our GitHub page or Website for installation instructions.",
+    "information": "Check our GitHub page or Website for installation instructions."
   }
 }

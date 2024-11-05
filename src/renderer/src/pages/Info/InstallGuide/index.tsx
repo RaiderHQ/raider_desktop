@@ -24,11 +24,14 @@ const InstallGuide: React.FC = () => {
               </p>
             </div>
             <div className="flex justify-between space-x-4">
-              <Button onClick={() => handleNavigation('https://github.com/RaiderHQ/ruby_raider')} type="secondary">
-                {t('button.goToGitHubButton')}
+              <Button
+                onClick={() => handleNavigation('https://github.com/RaiderHQ/ruby_raider')}
+                type="secondary"
+              >
+                {t('button.goTo.text', { location: 'GitHub' })}
               </Button>
               <Button onClick={() => handleNavigation('https://ruby-raider.com/')} type="primary">
-                {t('button.goToWebsiteButton')}
+                {t('button.goTo.text', { location: 'Website' })}
               </Button>
             </div>
           </div>
