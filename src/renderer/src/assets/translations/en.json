@@ -31,13 +31,13 @@
     "settings": "Settings"
   },
   "version": "Ruby Raider Version: {{version}}",
-  "errorPage": {
+  "installGuide": {
     "title": "Installation Required",
     "message": "You need to install both Ruby and Ruby Raider to run this application.",
-    "instructions": "Check our GitHub page or Website for installation instructions.",
+    "information": "Check our GitHub page or Website for installation instructions.",
     "buttons": {
-      "goToGitHub": "Go to GitHub",
-      "goToWebsite": "Go to Website"
+      "goToGitHubButton": "Go to GitHub",
+      "goToWebsiteButton": "Go to Website"
     }
   }
 }
