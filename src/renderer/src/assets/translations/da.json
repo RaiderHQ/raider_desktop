@@ -24,11 +24,20 @@
     "back": {
       "text": "Tilbage",
       "description": "Gå tilbage til det forrige trin"
+    },
+    "goTo": {
+      "text": "Gå til {{location}}",
+      "description": "Gå til Ruby Raider {{location}}"
     }
   },
   "menu": {
     "tests": "Tests",
     "settings": "Indstillinger"
   },
-  "version": "Ruby Raider Version: {{version}}"
+  "version": "Ruby Raider Version: {{version}}",
+  "installGuide": {
+    "title": "Installation Påkrævet",
+    "message": "Du skal installere både Ruby og Ruby Raider for at køre denne applikation.",
+    "information": "Se vores GitHub-side eller hjemmeside for installationsvejledning."
+  }
 }

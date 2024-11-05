@@ -24,11 +24,20 @@
     "back": {
       "text": "Back",
       "description": "Go back to the previous step"
+    },
+    "goTo": {
+      "text": "Go to {{location}}",
+      "description": "Go to the Ruby Raider {{location}}"
     }
   },
   "menu": {
     "tests": "Tests",
     "settings": "Settings"
   },
-  "version": "Ruby Raider Version: {{version}}"
+  "version": "Ruby Raider Version: {{version}}",
+  "installGuide": {
+    "title": "Installation Required",
+    "message": "You need to install both Ruby and Ruby Raider to run this application.",
+    "information": "Check our GitHub page or Website for installation instructions."
+  }
 }
