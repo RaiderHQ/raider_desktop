@@ -19,13 +19,6 @@ const Landing: React.FC = (): JSX.Element => {
   )
   const raiderVersion = import.meta.env.VITE_RAIDER_VERSION
 
-  // Mock variables to simulate installation checks
-  const isRubyInstalled = true // Set to true if Ruby is installed
-  const isRaiderInstalled = true // Set to true if Raider is installed
-
-  // Determine the URL based on installation status
-  const newProjectUrl = !isRubyInstalled || !isRaiderInstalled ? '/project/error' : '/project/new'
-
   return (
     <>
       <div className="min-h-screen flex flex-col items-center justify-center">
@@ -39,7 +32,7 @@ const Landing: React.FC = (): JSX.Element => {
           <ProjectSelector
             icon={OpenFolder}
             description={t('button.create.description')}
-            url={newProjectUrl}
+            url="/project/new"
             buttonValue={t('button.create.text')}
           />
           <ProjectSelector

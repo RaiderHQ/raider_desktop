@@ -30,5 +30,14 @@
     "tests": "Tests",
     "settings": "Indstillinger"
   },
-  "version": "Ruby Raider Version: {{version}}"
+  "version": "Ruby Raider Version: {{version}}",
+  "errorPage": {
+    "title": "Installation Påkrævet",
+    "message": "Du skal installere både Ruby og Ruby Raider for at køre denne applikation.",
+    "instructions": "Se vores GitHub-side eller hjemmeside for installationsvejledning.",
+    "buttons": {
+      "goToGitHub": "Gå til GitHub",
+      "goToWebsite": "Gå til Hjemmeside"
+    }
+  }
 }
