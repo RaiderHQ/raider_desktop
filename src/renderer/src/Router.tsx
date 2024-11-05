@@ -14,8 +14,8 @@ const Router = (): JSX.Element => {
       element: <Landing />
     },
     {
-      path: '/info/install-guide',
-      element: <InstallGuide />
+      path: '/info',
+      children: [{ path: 'install-guide', element: <InstallGuide /> }]
     },
     {
       path: '/project',

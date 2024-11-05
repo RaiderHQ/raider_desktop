@@ -25,10 +25,10 @@ const InstallGuide: React.FC = () => {
             </div>
             <div className="flex justify-between space-x-4">
               <Button onClick={() => handleNavigation('https://github.com/RaiderHQ/ruby_raider')} type="secondary">
-                {t('installGuide.buttons.goToGitHubButton')}
+                {t('button.goToGitHubButton')}
               </Button>
               <Button onClick={() => handleNavigation('https://ruby-raider.com/')} type="primary">
-                {t('installGuide.buttons.goToWebsiteButton')}
+                {t('button.goToWebsiteButton')}
               </Button>
             </div>
           </div>

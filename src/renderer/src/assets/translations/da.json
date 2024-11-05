@@ -24,6 +24,14 @@
     "back": {
       "text": "Tilbage",
       "description": "Gå tilbage til det forrige trin"
+    },
+    "goToGitHubButton": {
+      "text": "Gå til GitHub",
+      "description": "Gå til Ruby Raider GitHub"
+    },
+    "goToWebsiteButton": {
+      "text": "Gå til Hjemmeside",
+      "description": "Gå til Ruby Raider Hjemmeside"
     }
   },
   "menu": {
@@ -34,10 +42,6 @@
   "installGuide": {
     "title": "Installation Påkrævet",
     "message": "Du skal installere både Ruby og Ruby Raider for at køre denne applikation.",
-    "information": "Se vores GitHub-side eller hjemmeside for installationsvejledning.",
-    "buttons": {
-      "goToGitHubButton": "Gå til GitHub",
-      "goToWebsiteButton": "Gå til Hjemmeside"
-    }
+    "information": "Se vores GitHub-side eller hjemmeside for installationsvejledning."
   }
 }
