@@ -36,7 +36,7 @@
   },
   "version": "Ruby Raider Version: {{version}}",
   "installGuide": {
-    "title": "Installation påkrævet",
+    "title": "Installation Påkrævet",
     "message": "Du skal installere både Ruby og Ruby Raider for at køre denne applikation.",
     "information": "Tjek vores GitHub-side eller hjemmeside for installationsvejledninger."
   },
