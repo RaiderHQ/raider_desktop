@@ -18,8 +18,12 @@ const options = {
 const CreateProject: React.FC = () => {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const setLoading = useLoadingStore((state) => state.setLoading)
-  const setProjectPath = useProjectStore((state) => state.setProjectPath)
+  const setLoading: (loading: boolean) => void = useLoadingStore(
+    (state: { setLoading: (loading: boolean) => void }) => state.setLoading
+  )
+  const setProjectPath: (path: string) => void = useProjectStore(
+    (state: { setProjectPath: (path: string) => void }) => state.setProjectPath
+  )
 
   const [automationFramework, setAutomationFramework] = useState('Appium')
   const [testFramework, setTestFramework] = useState('Rspec')
@@ -28,39 +32,62 @@ const CreateProject: React.FC = () => {
 
   const showMobile = automationFramework === 'Appium'
 
-  const handleCreateProject = async () => {
+  const handleCreateProject = async (): Promise<void> => {
     setLoading(true)
+
+    const nameOfProject = 'NewProject' // You can change this to be dynamic if needed
+
     try {
+      // const output = await (window as any).api.runRaiderCommand(
+      //   nameOfProject,
+      //   testFramework,
+      //   automationFramework
+      // )
+      // console.log('Raider command output:', output)
+
       const folder = await window.api.selectFolder('Select a folder to save your project')
-      if (!folder) return
+      if (!folder) {
+        return
+      }
 
       const data = {
-        name: 'NewProject',
+        name: nameOfProject,
+        rubyVersion: null,
+        createdAt: new Date().toISOString(),
         framework: {
           automation: automationFramework,
           test: testFramework,
           mobile: mobilePlatform
         },
-        settings: { browser: 'Chrome', browserSettings: [] },
+        settings: {
+          baseUrl: null,
+          browser: 'Chrome',
+          browserSettings: []
+        }
       }
-
       await window.api.createSettingsFile(folder, data)
       const { success } = await window.api.checkConfig(folder)
-      if (success) {
-        setProjectPath(folder)
-        navigate('/project/overview')
+      if (!success) {
+        // To-do: Inform user about the error with a modal
+        return
       }
+
+      setProjectPath(folder)
+      navigate('/project/overview')
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Error running raider command:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleOptionChange = (setter, value) => {
+  const handleOptionChange = (
+    setter: React.Dispatch<React.SetStateAction<string>>,
+    value: string
+  ): void => {
     setLoading(true)
     setter(value)
-    setTimeout(() => setLoading(false), 300)
+    setTimeout((): void => setLoading(false), 300)
   }
 
   return (
@@ -86,7 +113,7 @@ const CreateProject: React.FC = () => {
                 label={t('newProject.question.automation')}
                 options={options.automation}
                 selected={automationFramework}
-                onChange={({ target }) =>
+                onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
                   handleOptionChange(setAutomationFramework, target.value)
                 }
               />
@@ -94,7 +121,9 @@ const CreateProject: React.FC = () => {
                 label={t('newProject.question.test')}
                 options={options.test}
                 selected={testFramework}
-                onChange={({ target }) => handleOptionChange(setTestFramework, target.value)}
+                onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
+                  handleOptionChange(setTestFramework, target.value)
+                }
               />
             </div>
             {showMobile && (
@@ -103,7 +132,9 @@ const CreateProject: React.FC = () => {
                   label={t('newProject.question.mobile')}
                   options={options.mobile}
                   selected={mobilePlatform}
-                  onChange={({ target }) => handleOptionChange(setMobilePlatform, target.value)}
+                  onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
+                    handleOptionChange(setMobilePlatform, target.value)
+                  }
                 />
               </div>
             )}
