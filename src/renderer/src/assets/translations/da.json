@@ -1,15 +1,15 @@
 {
   "landing": {
     "title": "Velkommen til Ruby Raider!",
-    "subtitle": "Det er en gem, der leverer en generator og skabeloner til at forenkle UI-testautomatisering."
+    "subtitle": "Det er en gem, der giver en generator og stillads til at forenkle UI-testautomatisering."
   },
   "newProject": {
     "title": "Opret et nyt projekt",
     "subtitle": "For at oprette et projekt skal du først vælge følgende:",
     "question": {
-      "automation": "Vælg dit automatiseringsframework",
+      "automation": "Vælg dit automatiseringsrammeværk",
       "mobile": "Vælg din mobile platform",
-      "test": "Vælg dit testframework"
+      "test": "Vælg dit testrammeværk"
     }
   },
   "button": {
@@ -19,7 +19,7 @@
     },
     "open": {
       "text": "Åbn",
-      "description": "Åbn et eksisterende projekt"
+      "description": "Åbn eksisterende projekt"
     },
     "back": {
       "text": "Tilbage",
