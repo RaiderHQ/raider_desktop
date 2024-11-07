@@ -1,15 +1,15 @@
 {
   "landing": {
     "title": "Velkommen til Ruby Raider!",
-    "subtitle": "Det er en gem, der giver en generator og stillads til at forenkle UI-testautomatisering."
+    "subtitle": "Det er en gem, der leverer en generator og skabeloner til at forenkle UI-testautomatisering."
   },
   "newProject": {
     "title": "Opret et nyt projekt",
     "subtitle": "For at oprette et projekt skal du først vælge følgende:",
     "question": {
-      "automation": "Vælg dit automatiseringsrammeværk",
+      "automation": "Vælg dit automatiseringsframework",
       "mobile": "Vælg din mobile platform",
-      "test": "Vælg dit testrammeværk"
+      "test": "Vælg dit testframework"
     }
   },
   "button": {
@@ -19,7 +19,7 @@
     },
     "open": {
       "text": "Åbn",
-      "description": "Åbn eksisterende projekt"
+      "description": "Åbn et eksisterende projekt"
     },
     "back": {
       "text": "Tilbage",
@@ -36,8 +36,22 @@
   },
   "version": "Ruby Raider Version: {{version}}",
   "installGuide": {
-    "title": "Installation Påkrævet",
+    "title": "Installation påkrævet",
     "message": "Du skal installere både Ruby og Ruby Raider for at køre denne applikation.",
-    "information": "Se vores GitHub-side eller hjemmeside for installationsvejledning."
+    "information": "Tjek vores GitHub-side eller hjemmeside for installationsvejledninger."
+  },
+  "information": {
+    "createProject": {
+      "title": "Opret et nyt projekt",
+      "message": "Her kan du oprette et nyt projekt og begynde at automatisere dine tests."
+    },
+    "openProject": {
+      "title": "Åbn et eksisterende projekt",
+      "message": "Her kan du åbne et eksisterende projekt og fortsætte med at automatisere dine tests."
+    },
+    "new": {
+      "title": "Start et nyt projekt",
+      "message": "Vælg de forskellige muligheder i vælgerne og opret et automatiseringsframework."
+    }
   }
 }
