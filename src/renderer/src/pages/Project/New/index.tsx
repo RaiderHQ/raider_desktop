@@ -29,29 +29,26 @@ const CreateProject: React.FC = () => {
   const [testFramework, setTestFramework] = useState('Rspec')
   const [mobilePlatform, setMobilePlatform] = useState('Android')
   const [isModalOpen, setModalOpen] = useState(false)
+  const [projectName, setProjectName] = useState('')
 
   const showMobile = automationFramework === 'Appium'
 
   const handleCreateProject = async (): Promise<void> => {
+    if (!projectName.trim()) {
+      alert('Please enter a valid project name.')
+      return
+    }
+
     setLoading(true)
 
-    const nameOfProject = 'NewProject' // You can change this to be dynamic if needed
-
     try {
-      // const output = await (window as any).api.runRaiderCommand(
-      //   nameOfProject,
-      //   testFramework,
-      //   automationFramework
-      // )
-      // console.log('Raider command output:', output)
-
       const folder = await window.api.selectFolder('Select a folder to save your project')
       if (!folder) {
         return
       }
 
       const data = {
-        name: nameOfProject,
+        name: projectName,
         rubyVersion: null,
         createdAt: new Date().toISOString(),
         framework: {
@@ -105,6 +102,18 @@ const CreateProject: React.FC = () => {
               className="w-4 h-auto cursor-pointer"
               onClick={() => setModalOpen(true)}
               alt="Help"
+            />
+          </div>
+          <div className="mb-6">
+            <label className="block mb-2 text-sm font-medium text-black-700">
+              {t('newProject.input.label')}
+            </label>
+            <input
+              type="text"
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              placeholder={t('newProject.input.placeholder')}
             />
           </div>
           <div className={`grid ${showMobile ? 'grid-cols-2' : 'grid-cols-1'} gap-x-8 mb-6 w-full`}>
