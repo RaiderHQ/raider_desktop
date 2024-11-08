@@ -6,6 +6,10 @@
   "newProject": {
     "title": "Opret et nyt projekt",
     "subtitle": "For at oprette et projekt skal du først vælge følgende:",
+    "input": {
+      "label": "Projektnavn",
+      "placeholder": "Indtast projektnavn"
+    },
     "question": {
       "automation": "Vælg dit automatiseringsrammeværk",
       "mobile": "Vælg din mobile platform",
