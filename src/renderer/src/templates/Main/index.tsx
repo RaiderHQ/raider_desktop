@@ -7,13 +7,16 @@ const MainTemplate: React.FC = (): JSX.Element => {
   const location = useLocation()
   const raiderVersion = import.meta.env.VITE_RAIDER_VERSION
 
+  // Check if the current route is part of the project section where the menu should be displayed
+  const isProjectPage = ['/project/overview', '/project/settings'].includes(location.pathname)
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <header className="flex items-center justify-between bg-white px-8 py-4 border-b-[1px] border-black">
         <div className="flex items-center space-x-4">
           <img src={Logo} alt="Logo" className="w-100 h-10" />
         </div>
-        {location.pathname === '/project/overview' && (
+        {isProjectPage && (
           <nav className="flex space-x-8">
             <Link to="/project/overview" className="text-gray-600 hover:text-gray-800">
               {t('menu.tests')}
@@ -33,7 +36,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
         <p className="text-gray-500">{t('version', { version: raiderVersion })}</p>
       </footer>
     </div>
-  );
-};
+  )
+}
 
 export default MainTemplate

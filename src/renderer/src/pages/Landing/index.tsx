@@ -33,11 +33,15 @@ const Landing: React.FC = (): JSX.Element => {
             description={t('button.create.description')}
             url="/project/new"
             buttonValue={t('button.create.text')}
+            modalTitleKey="information.createProject.title"
+            modalMessageKey="information.createProject.message"
           />
           <ProjectSelector
             icon={AddIcon}
             description={t('button.open.description')}
             buttonValue={t('button.open.text')}
+            modalTitleKey="information.openProject.title"
+            modalMessageKey="information.openProject.message"
             onClick={async () => {
               try {
                 setLoading(true)

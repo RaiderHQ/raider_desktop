@@ -6,6 +6,10 @@
   "newProject": {
     "title": "Opret et nyt projekt",
     "subtitle": "For at oprette et projekt skal du først vælge følgende:",
+    "input": {
+      "label": "Projektnavn",
+      "placeholder": "Indtast projektnavn"
+    },
     "question": {
       "automation": "Vælg dit automatiseringsrammeværk",
       "mobile": "Vælg din mobile platform",
@@ -38,6 +42,20 @@
   "installGuide": {
     "title": "Installation Påkrævet",
     "message": "Du skal installere både Ruby og Ruby Raider for at køre denne applikation.",
-    "information": "Se vores GitHub-side eller hjemmeside for installationsvejledning."
+    "information": "Tjek vores GitHub-side eller hjemmeside for installationsvejledninger."
+  },
+  "information": {
+    "createProject": {
+      "title": "Opret et nyt projekt",
+      "message": "Her kan du oprette et nyt projekt og begynde at automatisere dine tests."
+    },
+    "openProject": {
+      "title": "Åbn et eksisterende projekt",
+      "message": "Her kan du åbne et eksisterende projekt og fortsætte med at automatisere dine tests."
+    },
+    "new": {
+      "title": "Start et nyt projekt",
+      "message": "Vælg de forskellige muligheder i vælgerne og opret et automatiseringsframework."
+    }
   }
 }
