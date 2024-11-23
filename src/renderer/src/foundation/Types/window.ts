@@ -12,5 +12,8 @@ export interface WindowApi {
     checkConfig: (
       folderPath: string
     ) => Promise<{ success: boolean; filePath?: string; error?: string }>
+    runRubyRaider: (
+      projectName: string
+    ) => Promise<{ success: boolean; output?: string; error?: string }>
   }
 }
