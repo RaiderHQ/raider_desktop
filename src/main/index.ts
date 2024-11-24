@@ -11,6 +11,7 @@ import openAllure from './handlers/openAllure'
 import editFile from './handlers/editFile'
 import runTests from './handlers/runTests'
 import updateBrowserUrl from './handlers/updateBrowserUrl'
+import updateBrowserType from './handlers/updateBrowserType'
 
 function createWindow(): void {
   // Create the browser window.
@@ -95,3 +96,5 @@ ipcMain.handle('check-config', checkConfig)
 ipcMain.handle('run-ruby-raider', runRubyRaider)
 ipcMain.handle('run-tests', runTests)
 ipcMain.handle('update-browser-url', updateBrowserUrl)
+ipcMain.handle('update-browser-type', updateBrowserType)
+

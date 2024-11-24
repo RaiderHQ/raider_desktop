@@ -46,6 +46,12 @@ const api = {
     url: string
   ): Promise<{ success: boolean; output?: string; error?: string }> => {
     return ipcRenderer.invoke('update-browser-url', projectPath, url) // Invoke the update-browser-url handler
+  },
+  updateBrowserType: async (
+    projectPath: string,
+    browser: string
+  ): Promise<{ success: boolean; output?: string; error?: string }> => {
+    return ipcRenderer.invoke('update-browser-type', projectPath, browser) // Invoke the update-browser-type handler
   }
 }
 

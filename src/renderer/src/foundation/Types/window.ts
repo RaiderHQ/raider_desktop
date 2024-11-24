@@ -19,10 +19,14 @@ export interface WindowApi {
       filePath: string,
       newContent: string
     ) => Promise<{ success: boolean; error?: string }>
-    runTests: (folderPath: string) => Promise<{ success: boolean; output?: string; error?: string }> // Added runTests method
+    runTests: (folderPath: string) => Promise<{ success: boolean; output?: string; error?: string }>
     updateBrowserUrl: (
       projectPath: string,
       url: string
-    ) => Promise<{ success: boolean; output?: string; error?: string }> // Added updateBrowserUrl method
+    ) => Promise<{ success: boolean; output?: string; error?: string }>
+    updateBrowserType: (
+      projectPath: string,
+      browser: string
+    ) => Promise<{ success: boolean; output?: string; error?: string }> // Added updateBrowserType method
   }
 }
