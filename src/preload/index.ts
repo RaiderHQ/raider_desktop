@@ -29,6 +29,12 @@ const api = {
   ): Promise<{ success: boolean; data?: string; fileExt?: string; error?: string }> => {
     return ipcRenderer.invoke('read-file', filePath)
   },
+  editFile: async (
+    filePath: string,
+    newContent: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    return ipcRenderer.invoke('edit-file', filePath, newContent) // Invoke the edit-file handler in the main process
+  },
   openAllure: async (folderPath: string): Promise<{ success: boolean; output?: string; error?: string }> => {
     return ipcRenderer.invoke('open-allure', folderPath) // Pass folderPath to the main process
   }

@@ -14,7 +14,9 @@ const Overview: React.FC = () => {
     try {
       const result = await window.api.readFile(filePath)
       if (result.success) {
-        navigate('/project/editor', { state: { fileName: filePath.split('/').pop(), fileContent: result.data } })
+        navigate('/project/editor', {
+          state: { fileName: filePath.split('/').pop(), filePath, fileContent: result.data }
+        })
       } else {
         console.error('Error reading file:', result.error)
         alert('Error reading the file. Please try again.')

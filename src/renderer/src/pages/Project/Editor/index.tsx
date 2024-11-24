@@ -4,6 +4,7 @@ import Button from '@components/Button'
 
 interface FileEditorProps {
   fileName: string
+  filePath: string
   fileContent: string
 }
 
@@ -12,7 +13,7 @@ const Editor: React.FC = () => {
   const navigate = useNavigate()
 
   // Extract state passed during navigation
-  const { fileName, fileContent: initialContent } = location.state as FileEditorProps
+  const { fileName, filePath, fileContent: initialContent } = location.state as FileEditorProps
 
   // Initialize state with the file content
   const [fileContent, setFileContent] = useState(initialContent)
@@ -21,16 +22,22 @@ const Editor: React.FC = () => {
     setFileContent(event.target.value)
   }
 
-  const handlePlay = () => {
-    console.log('Play button clicked')
-  }
+  const handleSave = async () => {
+    if (!filePath || filePath.trim() === '') {
+      console.error('Invalid filePath:', filePath)
+      return
+    }
 
-  const handleStop = () => {
-    console.log('Stop button clicked')
-  }
-
-  const handleSave = () => {
-    console.log(`File "${fileName}" saved with content:`, fileContent)
+    try {
+      const response = await window.api.editFile(filePath, fileContent)
+      if (!response.success) {
+        console.error(`Error saving file "${fileName}":`, response.error)
+        alert('Error saving file. Please try again.')
+      }
+    } catch (error) {
+      console.error('Unexpected error saving file:', error)
+      alert('Unexpected error occurred. Please try again.')
+    }
   }
 
   const handleBackToOverview = () => {
