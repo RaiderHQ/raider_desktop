@@ -18,6 +18,7 @@ export interface WindowApi {
     editFile: (
       filePath: string,
       newContent: string
-    ) => Promise<{ success: boolean; error?: string }> // Added editFile method
+    ) => Promise<{ success: boolean; error?: string }>
+    runTests: (folderPath: string) => Promise<{ success: boolean; output?: string; error?: string }> // Added runTests method
   }
 }

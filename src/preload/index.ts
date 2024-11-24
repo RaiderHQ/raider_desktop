@@ -37,6 +37,9 @@ const api = {
   },
   openAllure: async (folderPath: string): Promise<{ success: boolean; output?: string; error?: string }> => {
     return ipcRenderer.invoke('open-allure', folderPath) // Pass folderPath to the main process
+  },
+  runTests: async (folderPath: string): Promise<{ success: boolean; output?: string; error?: string }> => {
+    return ipcRenderer.invoke('run-tests', folderPath) // Pass folderPath to the main process
   }
 }
 
