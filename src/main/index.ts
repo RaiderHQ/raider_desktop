@@ -3,9 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import selectFolder from './handlers/selectFolder'
-import createSettingsFile from './handlers/createSettingsFile'
 import readDirectory from './handlers/readDirectory'
-import readFile from './handlers/readFile'
 import checkConfig from './handlers/checkConfig'
 import runRubyRaider from './handlers/runRubyRaider'
 
@@ -84,8 +82,6 @@ app.on('window-all-closed', () => {
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
 ipcMain.handle('select-folder', selectFolder)
-ipcMain.handle('create-settings-file', createSettingsFile)
 ipcMain.handle('read-directory', readDirectory)
-ipcMain.handle('read-file', readFile)
 ipcMain.handle('check-config', checkConfig)
 ipcMain.handle('run-ruby-raider', runRubyRaider)
