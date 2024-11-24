@@ -7,6 +7,7 @@ import readDirectory from './handlers/readDirectory'
 import checkConfig from './handlers/checkConfig'
 import runRubyRaider from './handlers/runRubyRaider'
 import readFile from './handlers/readFile'
+import openAllure from './handlers/openAllure'
 
 function createWindow(): void {
   // Create the browser window.
@@ -84,6 +85,7 @@ app.on('window-all-closed', () => {
 // code. You can also put them in separate files and require them here.
 ipcMain.handle('select-folder', selectFolder)
 ipcMain.handle('read-directory', readDirectory)
+ipcMain.handle('open-allure', openAllure)
 ipcMain.handle('read-file', readFile)
 ipcMain.handle('check-config', checkConfig)
 ipcMain.handle('run-ruby-raider', runRubyRaider)

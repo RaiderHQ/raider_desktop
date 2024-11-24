@@ -30,6 +30,21 @@ const Overview: React.FC = () => {
     // Add logic to initiate test execution
   }
 
+  const handleOpenAllure = async (): Promise<void> => {
+    try {
+      const result = await window.api.openAllure(projectPath)
+      if (result.success) {
+        console.log('Allure Dashboard opened:', result.output)
+      } else {
+        console.error('Failed to open Allure Dashboard:', result.error)
+        alert('Error opening Allure Dashboard. Please try again.')
+      }
+    } catch (error) {
+      console.error('Unexpected error opening Allure Dashboard:', error)
+      alert('Unexpected error occurred. Please try again.')
+    }
+  }
+
   return (
     <div className="flex flex-col w-screen p-8">
       <div className="flex items-center justify-between mb-4 bg-gray-200 p-2 rounded-md">
@@ -37,7 +52,7 @@ const Overview: React.FC = () => {
           <Button onClick={handleRunTests} type="secondary">
             Run Tests
           </Button>
-          <Button onClick={() => console.log('Open Allure Dashboard clicked')} type="primary">
+          <Button onClick={handleOpenAllure} type="primary">
             Allure Dashboard
           </Button>
         </div>

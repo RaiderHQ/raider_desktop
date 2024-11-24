@@ -14,5 +14,6 @@ export interface WindowApi {
       framework: string,
       automation: string
     ) => Promise<{ success: boolean; output?: string; error?: string }>
+    openAllure: (folderPath: string) => Promise<{ success: boolean; output?: string; error?: string }> // New method
   }
 }
