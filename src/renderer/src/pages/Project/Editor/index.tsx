@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { FaPlay, FaStop } from 'react-icons/fa'
 import Button from '@components/Button'
 
 interface FileEditorProps {
@@ -41,23 +40,6 @@ const Editor: React.FC = () => {
   return (
     <div className="flex flex-col w-screen h-screen p-8">
       <div className="flex items-center justify-between mb-4 bg-gray-200 p-2 rounded-md">
-        <div className="flex items-center space-x-1">
-          <button
-            onClick={handlePlay}
-            className="text-green-500 border border-green-500 rounded w-5 h-5 flex items-center justify-center hover:bg-green-50"
-            title="Play"
-          >
-            <FaPlay size={12} />
-          </button>
-          <button
-            onClick={handleStop}
-            className="text-red-500 border border-red-500 rounded w-5 h-5 flex items-center justify-center hover:bg-red-50"
-            title="Stop"
-          >
-            <FaStop size={12} />
-          </button>
-        </div>
-
         <div className="flex space-x-2">
           <Button onClick={handleBackToOverview} type="secondary">
             Back to Overview
