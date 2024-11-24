@@ -43,6 +43,7 @@ const CreateProject: React.FC = () => {
 
     const folder = await window.api.selectFolder('Select a folder to save your project')
     if (!folder) {
+      setLoading(false)
       return
     }
 
@@ -65,13 +66,25 @@ const CreateProject: React.FC = () => {
     await window.api.createSettingsFile(folder, data)
     const { success } = await window.api.checkConfig(folder)
     if (!success) {
-      // To-do: Inform user about the error with a modal
+      setLoading(false)
+      alert('Error validating configuration.')
       return
     }
 
-    setProjectPath(folder)
-    navigate('/project/overview')
-    await window.api.runRubyRaider(projectName, folder)
+    const raiderResult = await window.api.runRubyRaider(
+      folder,
+      projectName,
+      testFramework,
+      automationFramework
+    )
+
+    if (raiderResult.success) {
+      setProjectPath(folder)
+      navigate('/project/overview')
+    } else {
+      alert(`Error running Raider command: ${raiderResult.error}`)
+    }
+
     setLoading(false)
   }
 

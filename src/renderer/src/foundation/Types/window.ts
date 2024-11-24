@@ -13,7 +13,10 @@ export interface WindowApi {
       folderPath: string
     ) => Promise<{ success: boolean; filePath?: string; error?: string }>
     runRubyRaider: (
-      projectName: string
+      folderPath: string,
+      projectName: string,
+      framework: string,
+      automation: string
     ) => Promise<{ success: boolean; output?: string; error?: string }>
   }
 }

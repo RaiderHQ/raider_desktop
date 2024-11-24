@@ -1,37 +1,78 @@
-import { execSync } from 'child_process'
-import { IpcMainInvokeEvent } from 'electron'
+const { spawn } = require('child_process')
+const path = require('path')
 
-const handler = async (
-  _event: IpcMainInvokeEvent,
-  folderPath: string,
-  projectName: string
-): Promise<{ success: boolean; output?: string; error?: string }> => {
-  try {
-    if (!projectName.trim()) {
-      throw new Error('Project name is required.')
+const handler = async (_event, folderPath, projectName, framework, automation) => {
+  const fixPath = (await import('fix-path')).default // Dynamically import fix-path
+
+  return new Promise((resolve) => {
+    try {
+      fixPath() // Call the imported fixPath function
+
+      // Validate inputs
+      if (typeof folderPath !== 'string') {
+        throw new Error('Invalid folderPath: Must be a string')
+      }
+      if (typeof projectName !== 'string') {
+        throw new Error('Invalid projectName: Must be a string')
+      }
+      if (typeof framework !== 'string' || typeof automation !== 'string') {
+        throw new Error('Invalid framework or automation: Both must be strings')
+      }
+
+      // Normalize folderPath using path.join
+      const normalizedFolderPath = path.join(folderPath)
+
+      // Convert parameters to lowercase
+      const formattedFramework = framework.toLowerCase()
+      const formattedAutomation = automation.toLowerCase()
+
+      // Construct the Raider command with additional parameters
+      const command = "raider"
+      const args = [
+        "new",
+        projectName,
+        "-p",
+        `framework:${formattedFramework}`,
+        `automation:${formattedAutomation}`
+      ]
+      const options = {
+        cwd: normalizedFolderPath.trim(), // Ensure the working directory is set to the normalized project folder
+        shell: process.env.SHELL
+      }
+
+      // Spawn the command
+      const childProcess = spawn(command, args, options)
+
+      let stdout = ""
+      let stderr = ""
+
+      // Listen for stdout
+      childProcess.stdout.on('data', (data) => {
+        stdout += data.toString()
+        console.log(`[STDOUT] handler: ${data}`)
+      })
+
+      // Listen for stderr
+      childProcess.stderr.on('data', (data) => {
+        stderr += data.toString()
+        console.error(`[STDERR] handler: ${data}`)
+      })
+
+      // Handle process exit
+      childProcess.on('close', (code) => {
+        if (code === 0) {
+          console.log(`[SUCCESS] handler: ${stdout}`)
+          resolve({ success: true, output: stdout.trim() })
+        } else {
+          console.error(`[ERROR] handler: ${stderr}`)
+          resolve({ success: false, error: stderr.trim() })
+        }
+      })
+    } catch (error) {
+      console.error('Error running Ruby Raider command:', error)
+      resolve({ success: false, error: error.message })
     }
-
-    if (!folderPath.trim()) {
-      throw new Error('Folder path is required.')
-    }
-
-    // Construct the command
-    const command = `raider new "${projectName}"`
-    const options = { cwd: folderPath } // Set the working directory
-
-    // Execute the command synchronously
-    const output = execSync(command, options).toString()
-
-    return { success: true, output }
-  } catch (error) {
-    console.error('Error running ruby raider command:', error)
-
-    if (error instanceof Error) {
-      return { success: false, error: error.message }
-    }
-
-    return { success: false, error: 'Unknown error' }
-  }
-};
+  })
+}
 
 export default handler

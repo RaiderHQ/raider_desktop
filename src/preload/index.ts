@@ -4,11 +4,14 @@ import { FileNode } from '@foundation/Types/fileNode'
 
 // Custom APIs for renderer
 const api = {
-  runRubyRaider: async (
-    projectName: string,
-    folderPath: string
-  ): Promise<{ success: boolean; output?: string; error?: string }> => {
-    return ipcRenderer.invoke('run-ruby-raider', projectName, folderPath)
+  runRubyRaider: async (folderPath, projectName, framework, automation) => {
+    return ipcRenderer.invoke(
+      'run-ruby-raider',
+      folderPath,
+      projectName,
+      framework,
+      automation
+    )
   },
   selectFolder: async (title: string): Promise<string | null> => {
     return ipcRenderer.invoke('select-folder', title)
