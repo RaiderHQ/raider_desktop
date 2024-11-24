@@ -3,10 +3,15 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import selectFolder from './handlers/selectFolder'
-import createSettingsFile from './handlers/createSettingsFile'
 import readDirectory from './handlers/readDirectory'
-import readFile from './handlers/readFile'
 import checkConfig from './handlers/checkConfig'
+import runRubyRaider from './handlers/runRubyRaider'
+import readFile from './handlers/readFile'
+import openAllure from './handlers/openAllure'
+import editFile from './handlers/editFile'
+import runTests from './handlers/runTests'
+import updateBrowserUrl from './handlers/updateBrowserUrl'
+import updateBrowserType from './handlers/updateBrowserType'
 
 function createWindow(): void {
   // Create the browser window.
@@ -80,10 +85,16 @@ app.on('window-all-closed', () => {
   }
 })
 
-// In this file you can include the rest of your app"s specific main process
+// In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
 ipcMain.handle('select-folder', selectFolder)
-ipcMain.handle('create-settings-file', createSettingsFile)
 ipcMain.handle('read-directory', readDirectory)
+ipcMain.handle('open-allure', openAllure)
 ipcMain.handle('read-file', readFile)
+ipcMain.handle('edit-file', editFile)
 ipcMain.handle('check-config', checkConfig)
+ipcMain.handle('run-ruby-raider', runRubyRaider)
+ipcMain.handle('run-tests', runTests)
+ipcMain.handle('update-browser-url', updateBrowserUrl)
+ipcMain.handle('update-browser-type', updateBrowserType)
+
