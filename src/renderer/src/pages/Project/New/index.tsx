@@ -41,41 +41,30 @@ const CreateProject: React.FC = () => {
 
     setLoading(true)
 
-    try {
-      const folder = await window.api.selectFolder('Select a folder to save your project')
-      if (!folder) {
-        return
-      }
-
-      const data = {
-        name: projectName,
-        rubyVersion: null,
-        createdAt: new Date().toISOString(),
-        framework: {
-          automation: automationFramework,
-          test: testFramework,
-          mobile: mobilePlatform
-        },
-        settings: {
-          baseUrl: null,
-          browser: 'Chrome',
-          browserSettings: []
-        }
-      }
-      await window.api.createSettingsFile(folder, data)
-      const { success } = await window.api.checkConfig(folder)
-      if (!success) {
-        // To-do: Inform user about the error with a modal
-        return
-      }
-
-      setProjectPath(folder)
-      navigate('/project/overview')
-    } catch (error) {
-      console.error('Error running raider command:', error)
-    } finally {
+    const folder = await window.api.selectFolder('Select a folder to save your project')
+    if (!folder) {
       setLoading(false)
+      return
     }
+
+    // Combine selected folder and project name to create overview folder path
+    const overviewFolder = `${folder}/${projectName}`
+
+    const raiderResult = await window.api.runRubyRaider(
+      folder,
+      projectName,
+      testFramework,
+      automationFramework
+    )
+
+    if (raiderResult.success) {
+      setProjectPath(overviewFolder) // Store the full path for the project
+      navigate('/project/overview')
+    } else {
+      alert(`Error running Raider command: ${raiderResult.error}`)
+    }
+
+    setLoading(false)
   }
 
   const handleOptionChange = (
