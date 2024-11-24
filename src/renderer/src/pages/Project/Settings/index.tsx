@@ -6,21 +6,26 @@ const Settings: React.FC = () => {
   const projectPath: string = useProjectStore((state: { projectPath: string }) => state.projectPath)
   const [selectedBrowser, setSelectedBrowser] = useState('chrome')
   const [browserUrl, setBrowserUrl] = useState('https://automationteststore.com/')
-  const [isUpdating, setIsUpdating] = useState(false) // Loader state
+  const [isUpdatingUrl, setIsUpdatingUrl] = useState(false) // Loader state for URL
+  const [isUpdatingBrowser, setIsUpdatingBrowser] = useState(false) // Loader state for Browser
 
   useEffect(() => {
-    const fetchUrl = async () => {
+    const fetchSettings = async () => {
       try {
         const storedUrl = localStorage.getItem('browserUrl')
+        const storedBrowser = localStorage.getItem('selectedBrowser')
         if (storedUrl) {
           setBrowserUrl(storedUrl)
         }
+        if (storedBrowser) {
+          setSelectedBrowser(storedBrowser)
+        }
       } catch (error) {
-        console.error('Error fetching stored URL:', error)
+        console.error('Error fetching stored settings:', error)
       }
     }
 
-    fetchUrl()
+    fetchSettings()
   }, [])
 
   const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -31,24 +36,39 @@ const Settings: React.FC = () => {
     setBrowserUrl(event.target.value)
   }
 
-  const handleBrowserUpdateClick = () => {
-    console.log(`Browser updated to: ${selectedBrowser}`)
+  const handleBrowserUpdateClick = async () => {
+    setIsUpdatingBrowser(true) // Start the loader for Browser
+    try {
+      const response = await window.api.updateBrowserType(projectPath, selectedBrowser)
+      setIsUpdatingBrowser(false) // Stop the loader for Browser
+      if (response.success) {
+        localStorage.setItem('selectedBrowser', selectedBrowser) // Persist the selected browser
+        console.log(`Browser updated to: ${selectedBrowser}`)
+      } else {
+        console.error('Error updating browser:', response.error)
+        alert('Failed to update browser. Please try again.')
+      }
+    } catch (error) {
+      setIsUpdatingBrowser(false) // Stop the loader for Browser
+      console.error('Unexpected error updating browser:', error)
+      alert('An unexpected error occurred. Please try again.')
+    }
   }
 
   const handleUrlUpdateClick = async () => {
-    setIsUpdating(true) // Start the loader
+    setIsUpdatingUrl(true) // Start the loader for URL
     try {
       const response = await window.api.updateBrowserUrl(projectPath, browserUrl)
-      setIsUpdating(false) // Stop the loader
+      setIsUpdatingUrl(false) // Stop the loader for URL
       if (response.success) {
-        console.log(`Browser URL updated to: ${browserUrl}`)
         localStorage.setItem('browserUrl', browserUrl) // Persist the updated URL
+        console.log(`Browser URL updated to: ${browserUrl}`)
       } else {
         console.error('Error updating browser URL:', response.error)
         alert('Failed to update browser URL. Please try again.')
       }
     } catch (error) {
-      setIsUpdating(false) // Stop the loader
+      setIsUpdatingUrl(false) // Stop the loader for URL
       console.error('Unexpected error updating browser URL:', error)
       alert('An unexpected error occurred. Please try again.')
     }
@@ -80,8 +100,8 @@ const Settings: React.FC = () => {
                     className="border p-1 rounded mt-2 w-full"
                   />
                   <div className="mt-4">
-                    <Button onClick={handleUrlUpdateClick} type="primary" disabled={isUpdating}>
-                      {isUpdating ? 'Updating...' : 'Update URL'}
+                    <Button onClick={handleUrlUpdateClick} type="primary" disabled={isUpdatingUrl}>
+                      {isUpdatingUrl ? 'Updating...' : 'Update URL'}
                     </Button>
                   </div>
                 </>
@@ -103,8 +123,8 @@ const Settings: React.FC = () => {
                   </select>
 
                   <div className="my-4">
-                    <Button onClick={handleBrowserUpdateClick} type="primary">
-                      Update Browser
+                    <Button onClick={handleBrowserUpdateClick} type="primary" disabled={isUpdatingBrowser}>
+                      {isUpdatingBrowser ? 'Updating...' : 'Update Browser'}
                     </Button>
                   </div>
                 </>
