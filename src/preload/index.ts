@@ -40,6 +40,12 @@ const api = {
   },
   runTests: async (folderPath: string): Promise<{ success: boolean; output?: string; error?: string }> => {
     return ipcRenderer.invoke('run-tests', folderPath) // Pass folderPath to the main process
+  },
+  updateBrowserUrl: async (
+    projectPath: string,
+    url: string
+  ): Promise<{ success: boolean; output?: string; error?: string }> => {
+    return ipcRenderer.invoke('update-browser-url', projectPath, url) // Invoke the update-browser-url handler
   }
 }
 
