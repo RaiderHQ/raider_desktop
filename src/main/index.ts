@@ -8,6 +8,7 @@ import checkConfig from './handlers/checkConfig'
 import runRubyRaider from './handlers/runRubyRaider'
 import readFile from './handlers/readFile'
 import openAllure from './handlers/openAllure'
+import editFile from './handlers/editFile'
 
 function createWindow(): void {
   // Create the browser window.
@@ -87,5 +88,6 @@ ipcMain.handle('select-folder', selectFolder)
 ipcMain.handle('read-directory', readDirectory)
 ipcMain.handle('open-allure', openAllure)
 ipcMain.handle('read-file', readFile)
+ipcMain.handle('edit-file', editFile)
 ipcMain.handle('check-config', checkConfig)
 ipcMain.handle('run-ruby-raider', runRubyRaider)
