@@ -25,6 +25,7 @@
     "@electron-toolkit/utils": "^3.0.0",
     "@types/lodash": "^4.17.7",
     "electron-updater": "^6.1.7",
+    "fix-path": "^4.0.0",
     "i18next": "^23.16.4",
     "lodash": "^4.17.21",
     "react-i18next": "^15.1.0",

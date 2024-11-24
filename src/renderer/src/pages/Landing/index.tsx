@@ -6,17 +6,40 @@ import OpenFolder from '@assets/icons/open-folder.svg'
 import AddIcon from '@assets/icons/add.svg'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import { FileNode } from '@foundation/Types/fileNode'
 
 const Landing: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+
   const setLoading: (loading: boolean) => void = useLoadingStore(
     (state: { setLoading: (loading: boolean) => void }) => state.setLoading
   )
   const setProjectPath: (path: string) => void = useProjectStore(
     (state: { setProjectPath: (path: string) => void }) => state.setProjectPath
   )
+
   const raiderVersion = import.meta.env.VITE_RAIDER_VERSION
+
+  const handleOpenProject = async () => {
+    try {
+      setLoading(true)
+
+      const folder = await window.api.selectFolder('Select a project folder')
+      if (!folder) {
+        console.log('No folder selected')
+        return
+      }
+
+      setProjectPath(folder)
+      navigate('/project/overview')
+    } catch (error) {
+      console.error('Error opening project:', error)
+      alert('An error occurred while opening the project. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <>
@@ -42,30 +65,7 @@ const Landing: React.FC = (): JSX.Element => {
             buttonValue={t('button.open.text')}
             modalTitleKey="information.openProject.title"
             modalMessageKey="information.openProject.message"
-            onClick={async () => {
-              try {
-                setLoading(true)
-
-                const folder = await window.api.selectFolder('Select a project folder')
-                if (!folder) {
-                  return
-                }
-
-                const { success } = await window.api.checkConfig(folder)
-                if (!success) {
-                  // To-do: Inform user about the error with a modal
-                  return
-                }
-
-                setProjectPath(folder)
-                navigate('/project/overview')
-              } catch (error) {
-                // To-do: Inform user about the error with a modal
-                console.error('Error opening project:', error)
-              } finally {
-                setLoading(false)
-              }
-            }}
+            onClick={handleOpenProject}
           />
         </div>
         <footer className="text-gray-500">{t('version', { version: raiderVersion })}</footer>

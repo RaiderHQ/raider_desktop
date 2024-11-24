@@ -7,9 +7,10 @@ interface FolderProps {
   name: string
   files?: FileNode[]
   defaultOpen?: boolean
+  onFileClick: (filePath: string) => void
 }
 
-const Folder: React.FC<FolderProps> = ({ name, files, defaultOpen = false }) => {
+const Folder: React.FC<FolderProps> = ({ name, files, defaultOpen = false, onFileClick }) => {
   const [isOpen, setOpen] = useState(defaultOpen)
 
   return (
@@ -28,10 +29,10 @@ const Folder: React.FC<FolderProps> = ({ name, files, defaultOpen = false }) => 
           {files &&
             files.map((file, key) => {
               if (file.type === 'folder') {
-                return <Folder key={key} name={file.name} files={file.children} />
+                return <Folder key={key} name={file.name} files={file.children} onFileClick={onFileClick} />
               }
 
-              return <File key={key} {...file} />
+              return <File key={key} name={file.name} path={file.path} onFileClick={onFileClick} />
             })}
         </div>
       )}
