@@ -1,59 +1,52 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FaPlay, FaStop } from 'react-icons/fa';
-import Button from '@components/Button';
+import React, { useState } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import Button from '@components/Button'
 
 interface FileEditorProps {
-  fileName: string;
-  initialContent: string;
+  fileName: string
+  filePath: string
+  fileContent: string
 }
 
-const Editor: React.FC<FileEditorProps> = ({ fileName, initialContent }) => {
-  const [fileContent, setFileContent] = useState(initialContent);
-  const navigate = useNavigate();
+const Editor: React.FC = () => {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // Extract state passed during navigation
+  const { fileName, filePath, fileContent: initialContent } = location.state as FileEditorProps
+
+  // Initialize state with the file content
+  const [fileContent, setFileContent] = useState(initialContent)
 
   const handleContentChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setFileContent(event.target.value);
-  };
+    setFileContent(event.target.value)
+  }
 
-  const handlePlay = () => {
-    console.log('Play button clicked');
-  };
+  const handleSave = async () => {
+    if (!filePath || filePath.trim() === '') {
+      console.error('Invalid filePath:', filePath)
+      return
+    }
 
-  const handleStop = () => {
-    console.log('Stop button clicked');
-  };
-
-  const handleSave = () => {
-    console.log(`File "${fileName}" saved with content:`, fileContent);
-    // Additional save logic can be added here
-  };
+    try {
+      const response = await window.api.editFile(filePath, fileContent)
+      if (!response.success) {
+        console.error(`Error saving file "${fileName}":`, response.error)
+        alert('Error saving file. Please try again.')
+      }
+    } catch (error) {
+      console.error('Unexpected error saving file:', error)
+      alert('Unexpected error occurred. Please try again.')
+    }
+  }
 
   const handleBackToOverview = () => {
-    navigate('/project/overview'); // Redirect to the Overview page
-  };
+    navigate('/project/overview') // Navigate back to the overview page
+  }
 
   return (
     <div className="flex flex-col w-screen h-screen p-8">
-      {/* Toolbar with Play, Stop, Back, and Save buttons */}
       <div className="flex items-center justify-between mb-4 bg-gray-200 p-2 rounded-md">
-        <div className="flex items-center space-x-1">
-          <button
-            onClick={handlePlay}
-            className="text-green-500 border border-green-500 rounded w-5 h-5 flex items-center justify-center hover:bg-green-50"
-            title="Play"
-          >
-            <FaPlay size={12} />
-          </button>
-          <button
-            onClick={handleStop}
-            className="text-red-500 border border-red-500 rounded w-5 h-5 flex items-center justify-center hover:bg-red-50"
-            title="Stop"
-          >
-            <FaStop size={12} />
-          </button>
-        </div>
-
         <div className="flex space-x-2">
           <Button onClick={handleBackToOverview} type="secondary">
             Back to Overview
@@ -64,9 +57,8 @@ const Editor: React.FC<FileEditorProps> = ({ fileName, initialContent }) => {
         </div>
       </div>
 
-      {/* File Content Editor */}
       <div className="flex flex-col flex-grow border rounded-lg shadow-sm overflow-hidden bg-white p-4">
-        <h2 className="text-xl font-semibold mb-4">actions_spec.rb</h2>
+        <h2 className="text-xl font-semibold mb-4">{fileName}</h2>
         <textarea
           value={fileContent}
           onChange={handleContentChange}
@@ -75,7 +67,7 @@ const Editor: React.FC<FileEditorProps> = ({ fileName, initialContent }) => {
         />
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Editor;
+export default Editor
