@@ -4,7 +4,7 @@ export interface WindowApi {
   api: {
     selectFolder: (message: string) => Promise<string>
     readDirectory: (folder: string) => Promise<FileNode[]>
-    readFiles: (filePath: string) => Promise<{ success: boolean; data?: string; fileExt?: string; error?: string }>
+    readFile: (filePath: string) => Promise<{ success: boolean; data?: string; fileExt?: string; error?: string }>
     checkConfig: (
       folderPath: string
     ) => Promise<{ success: boolean; filePath?: string; error?: string }>

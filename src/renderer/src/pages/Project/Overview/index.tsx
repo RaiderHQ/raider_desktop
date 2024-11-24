@@ -14,12 +14,14 @@ const Overview: React.FC = () => {
     try {
       const result = await window.api.readFile(filePath)
       if (result.success) {
-        navigate('/editor', { state: { fileName: filePath.split('/').pop(), fileContent: result.data } })
+        navigate('/project/editor', { state: { fileName: filePath.split('/').pop(), fileContent: result.data } })
       } else {
         console.error('Error reading file:', result.error)
+        alert('Error reading the file. Please try again.')
       }
     } catch (error) {
       console.error('Unexpected error reading file:', error)
+      alert('Unexpected error occurred. Please try again.')
     }
   }
 
@@ -46,7 +48,7 @@ const Overview: React.FC = () => {
           name={projectPath.split('/').pop()}
           files={files}
           defaultOpen
-          onFileClick={handleFileClick}
+          onFileClick={handleFileClick} // Pass the handleFileClick callback
         />
       </div>
     </div>

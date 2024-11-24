@@ -23,6 +23,11 @@ const api = {
     folderPath: string
   ): Promise<{ success: boolean; filePath?: string; error?: string }> => {
     return ipcRenderer.invoke('check-config', folderPath)
+  },
+  readFile: async (
+    filePath: string
+  ): Promise<{ success: boolean; data?: string; fileExt?: string; error?: string }> => {
+    return ipcRenderer.invoke('read-file', filePath)
   }
 }
 
