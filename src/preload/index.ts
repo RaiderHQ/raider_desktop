@@ -16,17 +16,8 @@ const api = {
   selectFolder: async (title: string): Promise<string | null> => {
     return ipcRenderer.invoke('select-folder', title)
   },
-  createSettingsFile: async (
-    folderPath: string,
-    data: object
-  ): Promise<{ success: boolean; filePath?: string; error?: string }> => {
-    return ipcRenderer.invoke('create-settings-file', folderPath, data)
-  },
   readDirectory: async (folderPath: string): Promise<FileNode[]> => {
     return ipcRenderer.invoke('read-directory', folderPath)
-  },
-  readFile: async (filePath: string): Promise<string> => {
-    return ipcRenderer.invoke('read-file', filePath)
   },
   checkConfig: async (
     folderPath: string

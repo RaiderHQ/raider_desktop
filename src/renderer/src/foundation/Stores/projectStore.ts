@@ -10,7 +10,6 @@ interface ProjectStore {
   files: FileNode[]
   selectedFiles: string[]
   setProjectPath: (path: string) => void
-  loadProjectConfig: (path: string) => void
   loadFiles: (path: string) => void
   toggleFile: (filePath: string) => void
   toggleAll: (select: boolean) => void
@@ -23,18 +22,6 @@ const useProjectStore = create(
     files: [],
     selectedFiles: [],
     setProjectPath: (path: string): void => set({ projectPath: path }),
-
-    loadProjectConfig: async (path: string): Promise<void> => {
-      try {
-        const configPath = `${path}/${SETTINGS_FILE}`
-        const config = await window.api.readFile(configPath)
-        const configData = JSON.parse(config.data)
-        set({ projectConfig: configData })
-      } catch (error) {
-        console.error('Error loading project config:', error)
-        set({ projectConfig: null })
-      }
-    },
 
     loadFiles: async (path: string): Promise<void> => {
       try {
@@ -90,7 +77,6 @@ useProjectStore.subscribe(
   (state) => state.projectPath,
   (projectPath) => {
     if (projectPath) {
-      useProjectStore.getState().loadProjectConfig(projectPath)
       return
     }
 

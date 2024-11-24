@@ -47,29 +47,8 @@ const CreateProject: React.FC = () => {
       return
     }
 
-    const data = {
-      name: projectName,
-      rubyVersion: null,
-      createdAt: new Date().toISOString(),
-      framework: {
-        automation: automationFramework,
-        test: testFramework,
-        mobile: mobilePlatform
-      },
-      settings: {
-        baseUrl: null,
-        browser: 'Chrome',
-        browserSettings: []
-      }
-    }
-
-    await window.api.createSettingsFile(folder, data)
-    const { success } = await window.api.checkConfig(folder)
-    if (!success) {
-      setLoading(false)
-      alert('Error validating configuration.')
-      return
-    }
+    // Combine selected folder and project name to create overview folder path
+    const overviewFolder = `${folder}/${projectName}`
 
     const raiderResult = await window.api.runRubyRaider(
       folder,
@@ -79,7 +58,7 @@ const CreateProject: React.FC = () => {
     )
 
     if (raiderResult.success) {
-      setProjectPath(folder)
+      setProjectPath(overviewFolder) // Store the full path for the project
       navigate('/project/overview')
     } else {
       alert(`Error running Raider command: ${raiderResult.error}`)
