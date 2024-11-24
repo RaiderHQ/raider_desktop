@@ -50,11 +50,16 @@ const CreateProject: React.FC = () => {
     // Combine selected folder and project name to create overview folder path
     const overviewFolder = `${folder}/${projectName}`
 
+    // Determine the automation parameter
+    const automationParam = showMobile
+      ? `${mobilePlatform.toLowerCase()}`
+      : automationFramework.toLowerCase()
+
     const raiderResult = await window.api.runRubyRaider(
       folder,
       projectName,
-      testFramework,
-      automationFramework
+      testFramework.toLowerCase(),
+      automationParam
     )
 
     if (raiderResult.success) {

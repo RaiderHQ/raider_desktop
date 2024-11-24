@@ -1,7 +1,7 @@
 const { spawn } = require('child_process')
 const path = require('path')
 
-const handler = async (_event, folderPath, projectName, framework, automation) => {
+const handler = async (_event, folderPath, projectName, framework, automation, mobile = null) => {
   const fixPath = (await import('fix-path')).default // Dynamically import fix-path
 
   return new Promise((resolve) => {
@@ -18,20 +18,28 @@ const handler = async (_event, folderPath, projectName, framework, automation) =
       if (typeof framework !== 'string' || typeof automation !== 'string') {
         throw new Error('Invalid framework or automation: Both must be strings')
       }
+      if (mobile !== null && typeof mobile !== 'string') {
+        throw new Error('Invalid mobile parameter: Must be a string if provided')
+      }
 
       // Normalize folderPath using path.join
       const normalizedFolderPath = path.join(folderPath)
 
       // Convert parameters to lowercase
       const formattedFramework = framework.toLowerCase()
-      const formattedAutomation = automation.toLowerCase()
+      let formattedAutomation = automation.toLowerCase()
+
+      // Override formattedAutomation with mobile if mobile is provided
+      if (mobile) {
+        formattedAutomation = mobile.toLowerCase() // Ensure only 'ios' or 'android' is set
+      }
 
       // Construct the Raider command with additional parameters
-      const command = "raider"
+      const command = 'raider'
       const args = [
-        "new",
+        'new',
         projectName,
-        "-p",
+        '-p',
         `framework:${formattedFramework}`,
         `automation:${formattedAutomation}`
       ]
@@ -43,8 +51,8 @@ const handler = async (_event, folderPath, projectName, framework, automation) =
       // Spawn the command
       const childProcess = spawn(command, args, options)
 
-      let stdout = ""
-      let stderr = ""
+      let stdout = ''
+      let stderr = ''
 
       // Listen for stdout
       childProcess.stdout.on('data', (data) => {
