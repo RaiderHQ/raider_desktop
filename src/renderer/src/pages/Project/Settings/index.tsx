@@ -1,14 +1,27 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Button from '@components/Button'
+import useProjectStore from '@foundation/Stores/projectStore'
 
 const Settings: React.FC = () => {
+  const projectPath: string = useProjectStore((state: { projectPath: string }) => state.projectPath)
   const [selectedBrowser, setSelectedBrowser] = useState('chrome')
-  const [browserUrl, setBrowserUrl] = useState('')
-  const [browserSettings, setBrowserSettings] = useState({
-    headless: false,
-    incognito: false,
-    disableExtensions: false
-  })
+  const [browserUrl, setBrowserUrl] = useState('https://automationteststore.com/')
+  const [isUpdating, setIsUpdating] = useState(false) // Loader state
+
+  useEffect(() => {
+    const fetchUrl = async () => {
+      try {
+        const storedUrl = localStorage.getItem('browserUrl')
+        if (storedUrl) {
+          setBrowserUrl(storedUrl)
+        }
+      } catch (error) {
+        console.error('Error fetching stored URL:', error)
+      }
+    }
+
+    fetchUrl()
+  }, [])
 
   const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedBrowser(event.target.value)
@@ -18,24 +31,27 @@ const Settings: React.FC = () => {
     setBrowserUrl(event.target.value)
   }
 
-  const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = event.target
-    setBrowserSettings((prevSettings) => ({
-      ...prevSettings,
-      [name]: checked
-    }))
-  }
-
   const handleBrowserUpdateClick = () => {
     console.log(`Browser updated to: ${selectedBrowser}`)
   }
 
-  const handleUrlUpdateClick = () => {
-    console.log(`Browser URL updated to: ${browserUrl}`)
-  }
-
-  const handleBrowserSettingsUpdateClick = () => {
-    console.log('Browser settings updated to:', browserSettings)
+  const handleUrlUpdateClick = async () => {
+    setIsUpdating(true) // Start the loader
+    try {
+      const response = await window.api.updateBrowserUrl(projectPath, browserUrl)
+      setIsUpdating(false) // Stop the loader
+      if (response.success) {
+        console.log(`Browser URL updated to: ${browserUrl}`)
+        localStorage.setItem('browserUrl', browserUrl) // Persist the updated URL
+      } else {
+        console.error('Error updating browser URL:', response.error)
+        alert('Failed to update browser URL. Please try again.')
+      }
+    } catch (error) {
+      setIsUpdating(false) // Stop the loader
+      console.error('Unexpected error updating browser URL:', error)
+      alert('An unexpected error occurred. Please try again.')
+    }
   }
 
   return (
@@ -46,13 +62,15 @@ const Settings: React.FC = () => {
       </header>
 
       <div className="border border-gray-300 rounded-lg overflow-hidden w-[60vw]">
-        {['Base Url', 'Browser', 'Browser Settings'].map((section, index) => (
+        {['Base Url', 'Browser'].map((section, index) => (
           <details key={index} className="border-b border-gray-300 p-4">
             <summary className="cursor-pointer font-semibold">{section}</summary>
             <div className="pt-2">
               {section === 'Base Url' ? (
                 <>
-                  <label htmlFor="browser-url" className="font-medium mr-2">Browser URL:</label>
+                  <label htmlFor="browser-url" className="font-medium mr-2">
+                    Browser URL:
+                  </label>
                   <input
                     type="text"
                     id="browser-url"
@@ -62,14 +80,16 @@ const Settings: React.FC = () => {
                     className="border p-1 rounded mt-2 w-full"
                   />
                   <div className="mt-4">
-                    <Button onClick={handleUrlUpdateClick} type="primary">
-                      Update URL
+                    <Button onClick={handleUrlUpdateClick} type="primary" disabled={isUpdating}>
+                      {isUpdating ? 'Updating...' : 'Update URL'}
                     </Button>
                   </div>
                 </>
               ) : section === 'Browser' ? (
                 <>
-                  <label htmlFor="browser-select" className="font-medium mr-2">Choose Browser:</label>
+                  <label htmlFor="browser-select" className="font-medium mr-2">
+                    Choose Browser:
+                  </label>
                   <select
                     id="browser-select"
                     value={selectedBrowser}
@@ -88,49 +108,7 @@ const Settings: React.FC = () => {
                     </Button>
                   </div>
                 </>
-              ) : section === 'Browser Settings' ? (
-                <>
-                  <div className="flex flex-col mt-2">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="headless"
-                        checked={browserSettings.headless}
-                        onChange={handleCheckboxChange}
-                        className="mr-2"
-                      />
-                      Headless
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="incognito"
-                        checked={browserSettings.incognito}
-                        onChange={handleCheckboxChange}
-                        className="mr-2"
-                      />
-                      Incognito
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="disableExtensions"
-                        checked={browserSettings.disableExtensions}
-                        onChange={handleCheckboxChange}
-                        className="mr-2"
-                      />
-                      Disable Extensions
-                    </label>
-                  </div>
-                  <div className="mt-4">
-                    <Button onClick={handleBrowserSettingsUpdateClick} type="primary" className="p-4">
-                      Update Settings
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <div>Placeholder content for {section}.</div>
-              )}
+              ) : null}
             </div>
           </details>
         ))}

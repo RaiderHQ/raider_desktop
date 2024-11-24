@@ -10,6 +10,7 @@ import readFile from './handlers/readFile'
 import openAllure from './handlers/openAllure'
 import editFile from './handlers/editFile'
 import runTests from './handlers/runTests'
+import updateBrowserUrl from './handlers/updateBrowserUrl'
 
 function createWindow(): void {
   // Create the browser window.
@@ -93,3 +94,4 @@ ipcMain.handle('edit-file', editFile)
 ipcMain.handle('check-config', checkConfig)
 ipcMain.handle('run-ruby-raider', runRubyRaider)
 ipcMain.handle('run-tests', runTests)
+ipcMain.handle('update-browser-url', updateBrowserUrl)
