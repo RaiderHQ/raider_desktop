@@ -27,9 +27,20 @@ const Overview: React.FC = () => {
     }
   }
 
-  const handleRunTests = (): void => {
-    console.log('Run Tests button clicked')
-    // Add logic to initiate test execution
+  const handleRunTests = async (): Promise<void> => {
+    try {
+      const result = await window.api.runTests(projectPath)
+      if (result.success) {
+        console.log('Tests executed successfully:', result.output)
+        alert('Your tests were executed. Check the results on the Allure dashboard.')
+      } else {
+        console.error('Failed to execute tests:', result.error)
+        alert('Error executing tests. Please try again.')
+      }
+    } catch (error) {
+      console.error('Unexpected error executing tests:', error)
+      alert('Unexpected error occurred. Please try again.')
+    }
   }
 
   const handleOpenAllure = async (): Promise<void> => {
