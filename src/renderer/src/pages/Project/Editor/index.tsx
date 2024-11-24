@@ -1,41 +1,45 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FaPlay, FaStop } from 'react-icons/fa';
-import Button from '@components/Button';
+import React, { useState } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { FaPlay, FaStop } from 'react-icons/fa'
+import Button from '@components/Button'
 
 interface FileEditorProps {
-  fileName: string;
-  initialContent: string;
+  fileName: string
+  fileContent: string
 }
 
-const Editor: React.FC<FileEditorProps> = ({ fileName, initialContent }) => {
-  const [fileContent, setFileContent] = useState(initialContent);
-  const navigate = useNavigate();
+const Editor: React.FC = () => {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // Extract state passed during navigation
+  const { fileName, fileContent: initialContent } = location.state as FileEditorProps
+
+  // Initialize state with the file content
+  const [fileContent, setFileContent] = useState(initialContent)
 
   const handleContentChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setFileContent(event.target.value);
-  };
+    setFileContent(event.target.value)
+  }
 
   const handlePlay = () => {
-    console.log('Play button clicked');
-  };
+    console.log('Play button clicked')
+  }
 
   const handleStop = () => {
-    console.log('Stop button clicked');
-  };
+    console.log('Stop button clicked')
+  }
 
   const handleSave = () => {
-    console.log(`File "${fileName}" saved with content:`, fileContent);
-    // Additional save logic can be added here
-  };
+    console.log(`File "${fileName}" saved with content:`, fileContent)
+  }
 
   const handleBackToOverview = () => {
-    navigate('/project/overview'); // Redirect to the Overview page
-  };
+    navigate('/project/overview') // Navigate back to the overview page
+  }
 
   return (
     <div className="flex flex-col w-screen h-screen p-8">
-      {/* Toolbar with Play, Stop, Back, and Save buttons */}
       <div className="flex items-center justify-between mb-4 bg-gray-200 p-2 rounded-md">
         <div className="flex items-center space-x-1">
           <button
@@ -64,9 +68,8 @@ const Editor: React.FC<FileEditorProps> = ({ fileName, initialContent }) => {
         </div>
       </div>
 
-      {/* File Content Editor */}
       <div className="flex flex-col flex-grow border rounded-lg shadow-sm overflow-hidden bg-white p-4">
-        <h2 className="text-xl font-semibold mb-4">actions_spec.rb</h2>
+        <h2 className="text-xl font-semibold mb-4">{fileName}</h2>
         <textarea
           value={fileContent}
           onChange={handleContentChange}
@@ -75,7 +78,7 @@ const Editor: React.FC<FileEditorProps> = ({ fileName, initialContent }) => {
         />
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Editor;
+export default Editor
