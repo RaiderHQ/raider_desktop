@@ -1,21 +1,29 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
 import selectFolder from './handlers/selectFolder'
 import createSettingsFile from './handlers/createSettingsFile'
 import readDirectory from './handlers/readDirectory'
 import readFile from './handlers/readFile'
 import checkConfig from './handlers/checkConfig'
 
+// Select the appropriate icon based on the platform
+const iconPath = join(
+  __dirname,
+  process.platform === 'darwin'
+    ? '../../resources/ruby-raider.icns' // macOS
+    : process.platform === 'win32'
+      ? '../../resources/ruby-raider.ico' // Windows
+      : '../../resources/ruby-raider.png' // Linux
+)
+
 function createWindow(): void {
-  // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1000,
     height: 750,
     show: false,
     autoHideMenuBar: true,
-    ...(process.platform === 'linux' ? { icon } : {}),
+    icon: iconPath, // Set the icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -49,8 +57,7 @@ function createWindow(): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
+  electronApp.setAppUserModelId('com.ruby-raider') // Set a unique app ID
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.

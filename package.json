@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Desktop app for Ruby Raider",
   "main": "./out/main/index.js",
-  "author": "Bogdan Hossu",
+  "authors": ["Augustin Gottlieb Pequeno", "Bogdan Hossu"],
   "homepage": "https://github.com/RaiderHQ",
   "scripts": {
     "format": "prettier --write .",
