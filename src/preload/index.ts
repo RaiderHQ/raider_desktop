@@ -4,13 +4,14 @@ import { FileNode } from '@foundation/Types/fileNode'
 
 // Custom APIs for renderer
 const api = {
-  runRubyRaider: async (folderPath, projectName, framework, automation) => {
+  runRubyRaider: async (folderPath, projectName, framework, automation, mobile = null) => {
     return ipcRenderer.invoke(
       'run-ruby-raider',
       folderPath,
       projectName,
       framework,
-      automation
+      automation,
+      mobile // Pass the optional mobile parameter to the main process
     )
   },
   selectFolder: async (title: string): Promise<string | null> => {
@@ -52,6 +53,11 @@ const api = {
     browser: string
   ): Promise<{ success: boolean; output?: string; error?: string }> => {
     return ipcRenderer.invoke('update-browser-type', projectPath, browser) // Invoke the update-browser-type handler
+  },
+  isMobileProject: async (
+    projectPath: string
+  ): Promise<{ success: boolean; isMobileProject?: boolean; error?: string }> => {
+    return ipcRenderer.invoke('is-mobile-project', projectPath) // Invoke the is-mobile-project handler
   }
 }
 

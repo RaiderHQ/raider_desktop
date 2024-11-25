@@ -12,7 +12,8 @@ export interface WindowApi {
       folderPath: string,
       projectName: string,
       framework: string,
-      automation: string
+      automation: string,
+      mobile?: string // Added optional mobile parameter
     ) => Promise<{ success: boolean; output?: string; error?: string }>
     openAllure: (folderPath: string) => Promise<{ success: boolean; output?: string; error?: string }>
     editFile: (
@@ -27,6 +28,9 @@ export interface WindowApi {
     updateBrowserType: (
       projectPath: string,
       browser: string
-    ) => Promise<{ success: boolean; output?: string; error?: string }> // Added updateBrowserType method
+    ) => Promise<{ success: boolean; output?: string; error?: string }>
+    isMobileProject: (
+      projectPath: string
+    ) => Promise<{ success: boolean; isMobileProject?: boolean; error?: string }> // Added isMobileProject method
   }
 }

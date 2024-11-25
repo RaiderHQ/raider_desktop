@@ -10,7 +10,7 @@ import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 
 const options = {
-  automation: ['Appium', 'Selenium', 'Axe'],
+  automation: ['Appium', 'Selenium', 'Watir'],
   test: ['Rspec', 'Cucumber'],
   mobile: ['Android', 'iOS']
 }
@@ -25,7 +25,7 @@ const CreateProject: React.FC = () => {
     (state: { setProjectPath: (path: string) => void }) => state.setProjectPath
   )
 
-  const [automationFramework, setAutomationFramework] = useState('Appium')
+  const [automationFramework, setAutomationFramework] = useState('Selenium')
   const [testFramework, setTestFramework] = useState('Rspec')
   const [mobilePlatform, setMobilePlatform] = useState('Android')
   const [isModalOpen, setModalOpen] = useState(false)
@@ -50,11 +50,16 @@ const CreateProject: React.FC = () => {
     // Combine selected folder and project name to create overview folder path
     const overviewFolder = `${folder}/${projectName}`
 
+    // Determine the automation parameter
+    const automationParam = showMobile
+      ? `${mobilePlatform.toLowerCase()}`
+      : automationFramework.toLowerCase()
+
     const raiderResult = await window.api.runRubyRaider(
       folder,
       projectName,
-      testFramework,
-      automationFramework
+      testFramework.toLowerCase(),
+      automationParam
     )
 
     if (raiderResult.success) {
