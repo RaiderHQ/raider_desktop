@@ -16,12 +16,15 @@ const updateBrowser = async (_event, projectPath, browser) => {
         throw new Error('Invalid browser: Must be a non-empty string')
       }
 
+      // Prepend colon to browser to simulate a Ruby symbol
+      const rubySymbolBrowser = browser
+
       // Resolve the project folder path
       const normalizedProjectPath = path.resolve(projectPath)
 
       // Construct the Raider command
       const command = 'raider'
-      const args = ['u', 'browser', browser]
+      const args = ['u', 'browser', rubySymbolBrowser]
       const options = {
         cwd: normalizedProjectPath, // Set the working directory to the project folder
         shell: process.env.SHELL // Use the system shell
