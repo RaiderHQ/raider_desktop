@@ -8,6 +8,8 @@ const Settings: React.FC = () => {
   const [browserUrl, setBrowserUrl] = useState('https://automationteststore.com/')
   const [isUpdatingUrl, setIsUpdatingUrl] = useState(false) // Loader state for URL
   const [isUpdatingBrowser, setIsUpdatingBrowser] = useState(false) // Loader state for Browser
+  const [isMobileProject, setIsMobileProject] = useState(false) // Check if it's a mobile project
+  const [loading, setLoading] = useState(true) // Loading state for determining mobile project
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -20,13 +22,23 @@ const Settings: React.FC = () => {
         if (storedBrowser) {
           setSelectedBrowser(storedBrowser)
         }
+
+        // Check if the project is a mobile project
+        const result = await window.api.isMobileProject(projectPath)
+        if (result.success) {
+          setIsMobileProject(result.isMobileProject || false)
+        } else {
+          console.error('Error checking if project is mobile:', result.error)
+        }
       } catch (error) {
-        console.error('Error fetching stored settings:', error)
+        console.error('Error fetching settings or checking mobile project:', error)
+      } finally {
+        setLoading(false)
       }
     }
 
     fetchSettings()
-  }, [])
+  }, [projectPath])
 
   const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedBrowser(event.target.value)
@@ -72,6 +84,21 @@ const Settings: React.FC = () => {
       console.error('Unexpected error updating browser URL:', error)
       alert('An unexpected error occurred. Please try again.')
     }
+  }
+
+  if (loading) {
+    return <p>Loading settings...</p>
+  }
+
+  if (isMobileProject) {
+    return (
+      <div className="p-3 font-sans">
+        <h1 className="text-2xl font-bold mb-2 text-center">Mobile Project</h1>
+        <p className="text-center">
+          For now, mobile settings are not supported. They will come in newer versions of the app.
+        </p>
+      </div>
+    )
   }
 
   return (
