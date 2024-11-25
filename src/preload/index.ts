@@ -53,6 +53,11 @@ const api = {
     browser: string
   ): Promise<{ success: boolean; output?: string; error?: string }> => {
     return ipcRenderer.invoke('update-browser-type', projectPath, browser) // Invoke the update-browser-type handler
+  },
+  isMobileProject: async (
+    projectPath: string
+  ): Promise<{ success: boolean; isMobileProject?: boolean; error?: string }> => {
+    return ipcRenderer.invoke('is-mobile-project', projectPath) // Invoke the is-mobile-project handler
   }
 }
 

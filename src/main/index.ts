@@ -11,6 +11,7 @@ import editFile from './handlers/editFile'
 import runTests from './handlers/runTests'
 import updateBrowserUrl from './handlers/updateBrowserUrl'
 import updateBrowserType from './handlers/updateBrowserType'
+import isMobileProject from './handlers/isMobileProject'
 
 // Select the appropriate icon based on the platform
 const iconPath = join(
@@ -101,6 +102,7 @@ ipcMain.handle('read-file', readFile)
 ipcMain.handle('edit-file', editFile)
 ipcMain.handle('check-config', checkConfig)
 ipcMain.handle('run-ruby-raider', runRubyRaider)
+ipcMain.handle('is-mobile-project', isMobileProject)
 ipcMain.handle('run-tests', runTests)
 ipcMain.handle('update-browser-url', updateBrowserUrl)
 ipcMain.handle('update-browser-type', updateBrowserType)

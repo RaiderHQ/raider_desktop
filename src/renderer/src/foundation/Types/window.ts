@@ -29,5 +29,8 @@ export interface WindowApi {
       projectPath: string,
       browser: string
     ) => Promise<{ success: boolean; output?: string; error?: string }>
+    isMobileProject: (
+      projectPath: string
+    ) => Promise<{ success: boolean; isMobileProject?: boolean; error?: string }> // Added isMobileProject method
   }
 }
