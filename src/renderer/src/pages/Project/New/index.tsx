@@ -10,7 +10,7 @@ import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 
 const options = {
-  automation: ['Appium', 'Selenium', 'Axe'],
+  automation: ['Appium', 'Selenium', 'Watir'],
   test: ['Rspec', 'Cucumber'],
   mobile: ['Android', 'iOS']
 }
@@ -25,7 +25,7 @@ const CreateProject: React.FC = () => {
     (state: { setProjectPath: (path: string) => void }) => state.setProjectPath
   )
 
-  const [automationFramework, setAutomationFramework] = useState('Appium')
+  const [automationFramework, setAutomationFramework] = useState('Selenium')
   const [testFramework, setTestFramework] = useState('Rspec')
   const [mobilePlatform, setMobilePlatform] = useState('Android')
   const [isModalOpen, setModalOpen] = useState(false)
