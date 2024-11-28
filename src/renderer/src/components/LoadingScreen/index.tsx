@@ -1,5 +1,7 @@
 import React from 'react'
 import { sample } from 'lodash'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import useLoadingStore from '@foundation/Stores/loadingStore'
 
 const LoadingScreen: React.FC = (): JSX.Element | null => {

@@ -1,8 +1,5 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
 import { FaFileAlt } from 'react-icons/fa'
-import useProjectStore from '@foundation/Stores/projectStore'
-import { FileNode } from '@foundation/Types/fileNode'
 
 interface FileProps {
   name: string

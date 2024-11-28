@@ -57,7 +57,7 @@ const updateBrowserUrl = async (_event, projectPath, url) => {
       })
     } catch (error) {
       console.error('Error updating browser URL:', error)
-      resolve({ success: false, error: error.message })
+      resolve({ success: false, error: error instanceof Error ? error.message : String(error) })
     }
   })
 }

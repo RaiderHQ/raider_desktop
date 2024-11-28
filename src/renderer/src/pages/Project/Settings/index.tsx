@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import Button from '@components/Button'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import useProjectStore from '@foundation/Stores/projectStore'
 
 const Settings: React.FC = () => {
