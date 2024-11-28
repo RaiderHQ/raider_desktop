@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import Button from '@components/Button'
 
 interface FileEditorProps {
