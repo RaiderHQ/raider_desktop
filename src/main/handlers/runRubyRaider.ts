@@ -111,7 +111,7 @@ const handler = async (
       alert(`Error: ${error instanceof Error ? error.message : String(error)}`)
       resolve({
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.message : String(error)
       })
     }
   })

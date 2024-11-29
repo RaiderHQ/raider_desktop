@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import Button from '@components/Button'
@@ -11,6 +12,7 @@ interface FileEditorProps {
 }
 
 const Editor: React.FC = () => {
+  const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -19,26 +21,33 @@ const Editor: React.FC = () => {
 
   // Initialize state with the file content
   const [fileContent, setFileContent] = useState(initialContent)
+  const [isSaving, setIsSaving] = useState(false) // State to track save operation
 
   const handleContentChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setFileContent(event.target.value)
   }
 
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
   const handleSave = async () => {
     if (!filePath || filePath.trim() === '') {
-      console.error('Invalid filePath:', filePath)
+      console.error(t('editor.error.invalidFilePath'))
       return
     }
 
+    setIsSaving(true) // Start saving state
     try {
+      await sleep(1000) // Add 1-second delay
       const response = await window.api.editFile(filePath, fileContent)
       if (!response.success) {
-        console.error(`Error saving file "${fileName}":`, response.error)
-        alert('Error saving file. Please try again.')
+        console.error(t('editor.error.saveFailed', { fileName }))
+        alert(t('editor.error.saveFailed', { fileName }))
       }
     } catch (error) {
-      console.error('Unexpected error saving file:', error)
-      alert('Unexpected error occurred. Please try again.')
+      console.error(t('editor.error.unexpectedSaveError'))
+      alert(t('editor.error.unexpectedSaveError'))
+    } finally {
+      setIsSaving(false) // Stop saving state
     }
   }
 
@@ -51,10 +60,10 @@ const Editor: React.FC = () => {
       <div className="flex items-center justify-between mb-4 bg-gray-200 p-2 rounded-md">
         <div className="flex space-x-2">
           <Button onClick={handleBackToOverview} type="secondary">
-            Back to Overview
+            {t('editor.buttons.backToOverview')}
           </Button>
-          <Button onClick={handleSave} type="primary">
-            Save
+          <Button onClick={handleSave} type="primary" disabled={isSaving}>
+            {isSaving ? t('editor.buttons.saving') : t('editor.buttons.save')}
           </Button>
         </div>
       </div>
@@ -65,7 +74,7 @@ const Editor: React.FC = () => {
           value={fileContent}
           onChange={handleContentChange}
           className="flex-grow border p-2 rounded-lg w-full resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Start editing file content here..."
+          placeholder={t('editor.placeholder')}
         />
       </div>
     </div>
