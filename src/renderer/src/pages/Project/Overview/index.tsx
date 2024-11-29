@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import Button from '@components/Button'
@@ -14,10 +15,11 @@ import { FileNode } from '@foundation/Types/fileNode'
 import { useNavigate } from 'react-router-dom'
 
 const Overview: React.FC = () => {
+  const { t } = useTranslation()
   const projectPath: string = useProjectStore((state: { projectPath: string }) => state.projectPath)
   const files: FileNode[] = useProjectStore((state: { files: FileNode[] }) => state.files)
   const navigate = useNavigate()
-  const [isRunningTests, setIsRunningTests] = useState(false) // State to track test execution
+  const [isRunningTests, setIsRunningTests] = useState(false)
 
   const handleFileClick = async (filePath: string): Promise<void> => {
     try {
@@ -27,31 +29,30 @@ const Overview: React.FC = () => {
           state: { fileName: filePath.split('/').pop(), filePath, fileContent: result.data }
         })
       } else {
-        console.error('Error reading file:', result.error)
-        alert('Error reading the file. Please try again.')
+        console.error(t('overview.error.readFile'), result.error)
+        alert(t('overview.error.readFile'))
       }
     } catch (error) {
-      console.error('Unexpected error reading file:', error)
-      alert('Unexpected error occurred. Please try again.')
+      console.error(t('overview.error.unexpectedReadFile'), error)
+      alert(t('overview.error.unexpectedReadFile'))
     }
   }
 
   const handleRunTests = async (): Promise<void> => {
-    setIsRunningTests(true) // Start loader
+    setIsRunningTests(true)
     try {
       const result = await window.api.runTests(projectPath)
-      setIsRunningTests(false) // Stop loader
+      setIsRunningTests(false)
       if (result.success) {
         console.log('Tests executed successfully:', result.output)
-        // No alert on success as requested
       } else {
-        console.error('Failed to execute tests:', result.error)
-        alert('Error executing tests. Please try again.')
+        console.error(t('overview.error.runTests'), result.error)
+        alert(t('overview.error.runTests'))
       }
     } catch (error) {
-      setIsRunningTests(false) // Stop loader
-      console.error('Unexpected error executing tests:', error)
-      alert('Unexpected error occurred. Please try again.')
+      setIsRunningTests(false)
+      console.error(t('overview.error.unexpectedRunTests'), error)
+      alert(t('overview.error.unexpectedRunTests'))
     }
   }
 
@@ -61,12 +62,12 @@ const Overview: React.FC = () => {
       if (result.success) {
         console.log('Allure Dashboard opened:', result.output)
       } else {
-        console.error('Failed to open Allure Dashboard:', result.error)
-        alert('Error opening Allure Dashboard. Please try again.')
+        console.error(t('overview.error.openAllure'), result.error)
+        alert(t('overview.error.openAllure'))
       }
     } catch (error) {
-      console.error('Unexpected error opening Allure Dashboard:', error)
-      alert('Unexpected error occurred. Please try again.')
+      console.error(t('overview.error.unexpectedOpenAllure'), error)
+      alert(t('overview.error.unexpectedOpenAllure'))
     }
   }
 
@@ -75,10 +76,10 @@ const Overview: React.FC = () => {
       <div className="flex items-center justify-between mb-4 bg-gray-200 p-2 rounded-md">
         <div className="flex space-x-2">
           <Button onClick={handleRunTests} type="secondary" disabled={isRunningTests}>
-            {isRunningTests ? 'Running...' : 'Run Tests'}
+            {isRunningTests ? t('overview.running') : t('overview.runTests')}
           </Button>
           <Button onClick={handleOpenAllure} type="primary">
-            Allure Dashboard
+            {t('overview.allureDashboard')}
           </Button>
         </div>
       </div>
@@ -88,7 +89,7 @@ const Overview: React.FC = () => {
           name={projectPath.split('/').pop()}
           files={files}
           defaultOpen
-          onFileClick={handleFileClick} // Pass the handleFileClick callback
+          onFileClick={handleFileClick}
         />
       </div>
     </div>

@@ -57,5 +57,65 @@
       "title": "Start et nyt projekt",
       "message": "Vælg de forskellige muligheder i vælgerne og opret et automatiseringsframework."
     }
+  },
+  "settings": {
+    "loading": "Indlæser indstillinger...",
+    "mobileProject": {
+      "title": "Mobilprojekt",
+      "description": "For nu understøttes mobilindstillinger ikke. De vil komme i nyere versioner af appen."
+    },
+    "header": {
+      "title": "Konfigurationsfiler",
+      "description": "Vi har tilføjet følgende filer til dit projekt"
+    },
+    "section": {
+      "baseUrl": "Basis-URL",
+      "browser": "Browser"
+    },
+    "baseUrl": {
+      "label": "Browser-URL:",
+      "placeholder": "Indtast browser-URL"
+    },
+    "browser": {
+      "label": "Vælg browser:",
+      "chrome": "Chrome",
+      "safari": "Safari",
+      "firefox": "Firefox",
+      "edge": "Edge"
+    },
+    "updateUrlButton": "Opdater URL",
+    "updateBrowserButton": "Opdater browser",
+    "updating": "Opdaterer...",
+    "error": {
+      "browserUpdateFailed": "Kunne ikke opdatere browser. Prøv venligst igen.",
+      "urlUpdateFailed": "Kunne ikke opdatere browser-URL. Prøv venligst igen.",
+      "unexpected": "En uventet fejl opstod. Prøv venligst igen."
+    }
+  },
+  "overview": {
+    "runTests": "Kør tests",
+    "running": "Kører...",
+    "allureDashboard": "Allure Dashboard",
+    "error": {
+      "readFile": "Fejl ved læsning af filen. Prøv venligst igen.",
+      "unexpectedReadFile": "Uventet fejl opstod under læsning af filen. Prøv venligst igen.",
+      "runTests": "Fejl ved udførelse af tests. Prøv venligst igen.",
+      "unexpectedRunTests": "Uventet fejl opstod under udførelse af tests. Prøv venligst igen.",
+      "openAllure": "Fejl ved åbning af Allure Dashboard. Prøv venligst igen.",
+      "unexpectedOpenAllure": "Uventet fejl opstod under åbning af Allure Dashboard. Prøv venligst igen."
+    }
+  },
+  "editor": {
+    "buttons": {
+      "backToOverview": "Tilbage til oversigten",
+      "save": "Gem",
+      "saving": "Gemmer..."
+    },
+    "placeholder": "Begynd at redigere filindholdet her...",
+    "error": {
+      "invalidFilePath": "Ugyldig filsti.",
+      "saveFailed": "Fejl ved gemning af fil \"{{fileName}}\". Prøv venligst igen.",
+      "unexpectedSaveError": "Uventet fejl opstod under gemning af filen. Prøv venligst igen."
+    }
   }
 }
