@@ -107,8 +107,6 @@ jobs:
     name: Create Release and Upload Packages
     needs: [ build-linux, build-windows, build-mac-silicon, build-mac-intel ]
     runs-on: ubuntu-latest
-    env:
-      token: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -116,6 +114,8 @@ jobs:
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: 'v1.0.0'
           release_name: 'Release v1.0.0'
