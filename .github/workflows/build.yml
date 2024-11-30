@@ -4,12 +4,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  create-release:
-    name: Create GitHub Release
+  prepare-release:
+    name: Prepare GitHub Release
     runs-on: ubuntu-latest
     outputs:
-      release_upload_url: ${{ steps.create-release.outputs.upload_url }}
+      tag_name: ${{ steps.prepare.outputs.tag_name }}
     steps:
+      - name: Set Release Tag Name
+        id: prepare
+        run: echo "tag_name=release-${{ github.run_id }}" >> $GITHUB_ENV
+
+      - name: Delete Existing Release (if any)
+        run: |
+          curl -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/releases/tags/release-${{ github.run_id }}
+        continue-on-error: true
+
       - name: Create Release
         id: create-release
         uses: actions/create-release@v1
@@ -23,7 +34,7 @@ jobs:
   build-linux:
     name: Build for Linux
     runs-on: ubuntu-latest
-    needs: create-release
+    needs: prepare-release
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -43,14 +54,14 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: release-${{ github.run_id }}
+          tag: ${{ env.tag_name }}
           file: dist/*
           overwrite: true
 
   build-windows:
     name: Build for Windows
     runs-on: windows-latest
-    needs: create-release
+    needs: prepare-release
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -70,14 +81,14 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: release-${{ github.run_id }}
+          tag: ${{ env.tag_name }}
           file: dist/*
           overwrite: true
 
   build-mac-silicon:
     name: Build for Mac (Silicon)
     runs-on: macos-latest
-    needs: create-release
+    needs: prepare-release
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -99,14 +110,14 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: release-${{ github.run_id }}
+          tag: ${{ env.tag_name }}
           file: dist/*
           overwrite: true
 
   build-mac-intel:
     name: Build for Mac (Intel)
     runs-on: macos-latest
-    needs: create-release
+    needs: prepare-release
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -128,6 +139,6 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: release-${{ github.run_id }}
+          tag: ${{ env.tag_name }}
           file: dist/*
           overwrite: true
