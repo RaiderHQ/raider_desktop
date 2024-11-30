@@ -1,7 +1,6 @@
 name: Build and Package
 
-on:
-  workflow_dispatch:
+on: workflow_dispatch
 
 jobs:
   build-linux:
@@ -22,14 +21,11 @@ jobs:
       - name: Build for Linux
         run: npm run build:linux
 
-      - name: Upload Artifact to Release
-        uses: svenstaro/upload-release-action@v2
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: desktop_release-${{ github.run_id }}
-          file: dist/*
-          overwrite: true
-          draft: true
+          name: linux-build
+          path: dist/
 
   build-windows:
     name: Build for Windows
@@ -49,14 +45,11 @@ jobs:
       - name: Build for Windows
         run: npm run build:win
 
-      - name: Upload Artifact to Release
-        uses: svenstaro/upload-release-action@v2
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: desktop_release-${{ github.run_id }}
-          file: dist/*
-          overwrite: true
-          draft: true
+          name: windows-build
+          path: dist/
 
   build-mac-silicon:
     name: Build for Mac (Silicon)
@@ -78,14 +71,11 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: npm run build:mac -- --arm64
 
-      - name: Upload Artifact to Release
-        uses: svenstaro/upload-release-action@v2
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: desktop_release-${{ github.run_id }}
-          file: dist/*
-          overwrite: true
-          draft: true
+          name: mac-silicon-build
+          path: dist/
 
   build-mac-intel:
     name: Build for Mac (Intel)
@@ -107,11 +97,8 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: npm run build:mac -- --x64
 
-      - name: Upload Artifact to Release
-        uses: svenstaro/upload-release-action@v2
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: desktop_release-${{ github.run_id }}
-          file: dist/*
-          overwrite: true
-          draft: true
+          name: mac-intel-build
+          path: dist/
