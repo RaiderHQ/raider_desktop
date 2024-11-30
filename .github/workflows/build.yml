@@ -1,179 +1,75 @@
-name: Build and Package
+package:
+  name: Create Release and Upload Packages
+  needs: [build-linux, build-windows, build-mac-silicon, build-mac-intel]
+  runs-on: ubuntu-latest
+  steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-on: workflow_dispatch
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      with:
+        tag_name: 'v1.0.0'
+        release_name: 'Release v1.0.0'
+        body: |
+          This release contains the latest builds for Linux, Windows, and macOS.
+        draft: false
+        prerelease: false
+        token: ${{ secrets.GITHUB_TOKEN }}
 
-jobs:
-  build-linux:
-    name: Build for Linux
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Download Linux Build
+      uses: actions/download-artifact@v3
+      with:
+        name: linux-build
+        path: ./linux
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
+    - name: Upload Linux Build to Release
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./linux
+        asset_name: linux-build.zip
+        asset_content_type: application/zip
 
-      - name: Install Dependencies
-        run: npm ci
+    - name: Download Windows Build
+      uses: actions/download-artifact@v3
+      with:
+        name: windows-build
+        path: ./windows
 
-      - name: Build for Linux
-        run: npm run build:linux
+    - name: Upload Windows Build to Release
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./windows
+        asset_name: windows-build.zip
+        asset_content_type: application/zip
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: linux-build
-          path: dist/
+    - name: Download Mac Silicon Build
+      uses: actions/download-artifact@v3
+      with:
+        name: mac-silicon-build
+        path: ./mac-silicon
 
-  build-windows:
-    name: Build for Windows
-    runs-on: windows-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Upload Mac Silicon Build to Release
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./mac-silicon
+        asset_name: mac-silicon-build.zip
+        asset_content_type: application/zip
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
+    - name: Download Mac Intel Build
+      uses: actions/download-artifact@v3
+      with:
+        name: mac-intel-build
+        path: ./mac-intel
 
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Build for Windows
-        run: npm run build:win
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: windows-build
-          path: dist/
-
-  build-mac-silicon:
-    name: Build for Mac (Silicon)
-    runs-on: macos-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Build for Mac (Silicon)
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: npm run build:mac -- --arm64
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: mac-silicon-build
-          path: dist/
-
-  build-mac-intel:
-    name: Build for Mac (Intel)
-    runs-on: macos-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Build for Mac (Intel)
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: npm run build:mac -- --x64
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: mac-intel-build
-          path: dist/
-
-  package:
-    name: Create Release and Upload Packages
-    needs: [build-linux, build-windows, build-mac-silicon, build-mac-intel]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        with:
-          tag_name: 'v1.0.0'
-          release_name: 'Release v1.0.0'
-          body: |
-            This release contains the latest builds for Linux, Windows, and macOS.
-          draft: false
-          prerelease: false
-
-      - name: Download Linux Build
-        uses: actions/download-artifact@v3
-        with:
-          name: linux-build
-          path: ./linux
-
-      - name: Upload Linux Build to Release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./linux
-          asset_name: linux-build.zip
-          asset_content_type: application/zip
-
-      - name: Download Windows Build
-        uses: actions/download-artifact@v3
-        with:
-          name: windows-build
-          path: ./windows
-
-      - name: Upload Windows Build to Release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./windows
-          asset_name: windows-build.zip
-          asset_content_type: application/zip
-
-      - name: Download Mac Silicon Build
-        uses: actions/download-artifact@v3
-        with:
-          name: mac-silicon-build
-          path: ./mac-silicon
-
-      - name: Upload Mac Silicon Build to Release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./mac-silicon
-          asset_name: mac-silicon-build.zip
-          asset_content_type: application/zip
-
-      - name: Download Mac Intel Build
-        uses: actions/download-artifact@v3
-        with:
-          name: mac-intel-build
-          path: ./mac-intel
-
-      - name: Upload Mac Intel Build to Release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./mac-intel
-          asset_name: mac-intel-build.zip
-          asset_content_type: application/zip
+    - name: Upload Mac Intel Build to Release
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./mac-intel
+        asset_name: mac-intel-build.zip
+        asset_content_type: application/zip
