@@ -12,20 +12,20 @@ jobs:
     steps:
       - name: Set Release Tag Name
         id: prepare
-        run: echo "tag_name=release-${{ github.run_id }}" >> $GITHUB_ENV
+        run: echo "tag_name=desktop_release-${{ github.run_id }}" >> $GITHUB_ENV
 
       - name: Delete Existing Release (if any)
         run: |
           curl -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/releases/tags/release-${{ github.run_id }}
+            https://api.github.com/repos/${{ github.repository }}/releases/tags/desktop_release-${{ github.run_id }}
         continue-on-error: true
 
       - name: Create Release
         id: create-release
         uses: actions/create-release@v1
         with:
-          tag_name: release-${{ github.run_id }}
+          tag_name: desktop_release-${{ github.run_id }}
           release_name: Build Release ${{ github.run_id }}
           draft: true
           prerelease: false
@@ -54,7 +54,7 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: release-${{ github.run_id }}
+          tag: desktop_release-${{ github.run_id }}
           file: dist/*
           overwrite: true
 
@@ -81,7 +81,7 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: release-${{ github.run_id }}
+          tag: desktop_release-${{ github.run_id }}
           file: dist/*
           overwrite: true
 
@@ -110,7 +110,7 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: release-${{ github.run_id }}
+          tag: desktop_release-${{ github.run_id }}
           file: dist/*
           overwrite: true
 
@@ -139,6 +139,6 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: release-${{ github.run_id }}
+          tag: desktop_release-${{ github.run_id }}
           file: dist/*
           overwrite: true
