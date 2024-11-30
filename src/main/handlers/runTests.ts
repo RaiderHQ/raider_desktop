@@ -54,7 +54,7 @@ const runTests = async (_event, folderPath) => {
       })
     } catch (error) {
       console.error('Error running tests:', error)
-      resolve({ success: false, error: error.message })
+      resolve({ success: false, error: error instanceof Error ? error.message : String(error) })
     }
   })
 }
