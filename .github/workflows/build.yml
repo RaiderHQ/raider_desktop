@@ -121,7 +121,7 @@ jobs:
             This release contains the latest builds for Linux, Windows, and macOS.
           draft: false
           prerelease: false
-          token: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download Linux Build
         uses: actions/download-artifact@v3
