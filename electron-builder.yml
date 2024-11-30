@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: ruby-raider-desktop
+productName: Ruby Raider
 directories:
   buildResources: build
 files:
@@ -12,7 +12,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: ruby-raider-desktop
+  executableName: Ruby Raider
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

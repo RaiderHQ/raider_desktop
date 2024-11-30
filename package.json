@@ -1,5 +1,5 @@
 {
-  "name": "ruby-raider-ui",
+  "name": "ruby-raider",
   "version": "0.0.1",
   "description": "Desktop app for Ruby Raider",
   "main": "./out/main/index.js",
