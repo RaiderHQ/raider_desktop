@@ -1,6 +1,7 @@
 name: Build and Package
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
 
 jobs:
   build-linux:
@@ -21,11 +22,12 @@ jobs:
       - name: Build for Linux
         run: npm run build:linux
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+      - name: Upload Artifact to Release
+        uses: ncipollo/release-action@v1
         with:
-          name: linux-build
-          path: dist/
+          artifacts: dist/*
+          tag: ${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   build-windows:
     name: Build for Windows
@@ -45,11 +47,12 @@ jobs:
       - name: Build for Windows
         run: npm run build:win
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+      - name: Upload Artifact to Release
+        uses: ncipollo/release-action@v1
         with:
-          name: windows-build
-          path: dist/
+          artifacts: dist/*
+          tag: ${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   build-mac-silicon:
     name: Build for Mac (Silicon)
@@ -71,11 +74,12 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: npm run build:mac -- --arm64
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+      - name: Upload Artifact to Release
+        uses: ncipollo/release-action@v1
         with:
-          name: mac-silicon-build
-          path: dist/
+          artifacts: dist/*
+          tag: ${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   build-mac-intel:
     name: Build for Mac (Intel)
@@ -97,8 +101,9 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: npm run build:mac -- --x64
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+      - name: Upload Artifact to Release
+        uses: ncipollo/release-action@v1
         with:
-          name: mac-intel-build
-          path: dist/
+          artifacts: dist/*
+          tag: ${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
