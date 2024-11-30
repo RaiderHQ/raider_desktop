@@ -107,6 +107,8 @@ jobs:
     name: Create Release and Upload Packages
     needs: [ build-linux, build-windows, build-mac-silicon, build-mac-intel ]
     runs-on: ubuntu-latest
+    env:
+      token: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -121,7 +123,6 @@ jobs:
             This release contains the latest builds for Linux, Windows, and macOS.
           draft: false
           prerelease: false
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download Linux Build
         uses: actions/download-artifact@v3
