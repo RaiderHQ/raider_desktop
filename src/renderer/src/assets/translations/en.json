@@ -57,5 +57,65 @@
       "title": "Start a New Project",
       "message": "Choose the different options in the selectors and create an automation framework."
     }
+  },
+  "settings": {
+    "loading": "Loading settings...",
+    "mobileProject": {
+      "title": "Mobile Project",
+      "description": "For now, mobile settings are not supported. They will come in newer versions of the app."
+    },
+    "header": {
+      "title": "Configuration files",
+      "description": "We added the following files to your project"
+    },
+    "section": {
+      "baseUrl": "Base Url",
+      "browser": "Browser"
+    },
+    "baseUrl": {
+      "label": "Browser URL:",
+      "placeholder": "Enter browser URL"
+    },
+    "browser": {
+      "label": "Choose Browser:",
+      "chrome": "Chrome",
+      "safari": "Safari",
+      "firefox": "Firefox",
+      "edge": "Edge"
+    },
+    "updateUrlButton": "Update URL",
+    "updateBrowserButton": "Update Browser",
+    "updating": "Updating...",
+    "error": {
+      "browserUpdateFailed": "Failed to update browser. Please try again.",
+      "urlUpdateFailed": "Failed to update browser URL. Please try again.",
+      "unexpected": "An unexpected error occurred. Please try again."
+    }
+  },
+  "overview": {
+    "runTests": "Run Tests",
+    "running": "Running...",
+    "allureDashboard": "Allure Dashboard",
+    "error": {
+      "readFile": "Error reading the file. Please try again.",
+      "unexpectedReadFile": "Unexpected error occurred while reading the file. Please try again.",
+      "runTests": "Error executing tests. Please try again.",
+      "unexpectedRunTests": "Unexpected error occurred while executing tests. Please try again.",
+      "openAllure": "Error opening Allure Dashboard. Please try again.",
+      "unexpectedOpenAllure": "Unexpected error occurred while opening Allure Dashboard. Please try again."
+    }
+  },
+  "editor": {
+    "buttons": {
+      "backToOverview": "Back to Overview",
+      "save": "Save",
+      "saving": "Saving..."
+    },
+    "placeholder": "Start editing file content here...",
+    "error": {
+      "invalidFilePath": "Invalid file path.",
+      "saveFailed": "Error saving file \"{{fileName}}\". Please try again.",
+      "unexpectedSaveError": "Unexpected error occurred while saving the file. Please try again."
+    }
   }
 }

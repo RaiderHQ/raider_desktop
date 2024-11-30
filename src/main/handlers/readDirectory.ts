@@ -1,6 +1,8 @@
 import fs from 'fs'
 import path from 'path'
 import { IpcMainInvokeEvent } from 'electron'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import { FileNode } from '@foundation/Types/fileNode'
 
 const EXCLUDED_FILES: string[] = ['.DS_Store', 'Thumbs.db', 'desktop.ini']

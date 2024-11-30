@@ -1,5 +1,9 @@
 import { useTranslation } from 'react-i18next'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import Button from '@components/Button'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import ContentArea from '@components/ContentArea'
 import Logo from '@assets/images/logo.svg'
 

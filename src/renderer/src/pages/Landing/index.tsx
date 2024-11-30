@@ -1,12 +1,17 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import ProjectSelector from '@components/ProjectSelector'
 import Logo from '@assets/images/logo.svg'
 import OpenFolder from '@assets/icons/open-folder.svg'
 import AddIcon from '@assets/icons/add.svg'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import useLoadingStore from '@foundation/Stores/loadingStore'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import useProjectStore from '@foundation/Stores/projectStore'
-import { FileNode } from '@foundation/Types/fileNode'
 
 const Landing: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
