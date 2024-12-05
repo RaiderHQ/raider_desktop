@@ -1,7 +1,9 @@
-const { spawn } = require('child_process')
-const path = require('path')
+import { spawn } from 'child_process'
+import path from 'path'
+import { IpcMainInvokeEvent } from 'electron'
 
-const runTests = async (_event, folderPath) => {
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+const runTests = async (_event: IpcMainInvokeEvent, folderPath: string) => {
   const fixPath = (await import('fix-path')).default // Dynamically import fix-path
 
   return new Promise((resolve) => {
@@ -17,11 +19,11 @@ const runTests = async (_event, folderPath) => {
       const normalizedFolderPath = path.resolve(folderPath)
 
       // Construct the Raider command for running tests
-      const command = 'raider'
-      const args = ['u', 'raid']
+      const command = process.platform === 'win32' ? 'cmd.exe' : 'raider'
+      const args = process.platform === 'win32' ? ['/c', 'raider', 'u', 'raid'] : ['u', 'raid']
       const options = {
         cwd: normalizedFolderPath, // Set the working directory to the project path
-        shell: process.env.SHELL // Use the current shell
+        shell: process.platform === 'win32' // Use shell only on Windows
       }
 
       // Spawn the Raider process
@@ -54,7 +56,10 @@ const runTests = async (_event, folderPath) => {
       })
     } catch (error) {
       console.error('Error running tests:', error)
-      resolve({ success: false, error: error instanceof Error ? error.message : String(error) })
+      resolve({
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      })
     }
   })
 }

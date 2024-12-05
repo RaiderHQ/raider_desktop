@@ -1,7 +1,9 @@
-const { spawn } = require('child_process')
-const path = require('path')
+import { spawn } from 'child_process'
+import path from 'path'
+import { IpcMainInvokeEvent } from 'electron'
 
-const updateBrowserUrl = async (_event, projectPath, url) => {
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+const updateBrowserUrl = async (_event: IpcMainInvokeEvent, projectPath: string, url: string) => {
   const fixPath = (await import('fix-path')).default // Dynamically import fix-path
 
   return new Promise((resolve) => {
@@ -20,11 +22,13 @@ const updateBrowserUrl = async (_event, projectPath, url) => {
       const normalizedProjectPath = path.resolve(projectPath)
 
       // Construct the Raider command
-      const command = 'raider'
-      const args = ['u', 'url', url]
+      const command = process.platform === 'win32' ? 'cmd.exe' : 'raider'
+      const args =
+        process.platform === 'win32' ? ['/c', 'raider', 'u', 'url', url] : ['u', 'url', url]
+
       const options = {
         cwd: normalizedProjectPath, // Set the working directory to the project folder
-        shell: process.env.SHELL // Use the system shell
+        shell: process.platform === 'win32' // Use shell only on Windows
       }
 
       // Spawn the command
@@ -57,7 +61,10 @@ const updateBrowserUrl = async (_event, projectPath, url) => {
       })
     } catch (error) {
       console.error('Error updating browser URL:', error)
-      resolve({ success: false, error: error instanceof Error ? error.message : String(error) })
+      resolve({
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      })
     }
   })
 }
