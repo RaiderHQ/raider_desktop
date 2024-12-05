@@ -1,7 +1,9 @@
-const { spawn } = require('child_process')
-const path = require('path')
+import { spawn } from 'child_process'
+import path from 'path'
+import { IpcMainInvokeEvent } from 'electron'
 
-const handler = async (_event, folderPath) => {
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+const handler = async (_event: IpcMainInvokeEvent, folderPath: string) => {
   const fixPath = (await import('fix-path')).default // Dynamically import fix-path
 
   return new Promise((resolve) => {
@@ -17,11 +19,14 @@ const handler = async (_event, folderPath) => {
       const normalizedFolderPath = path.resolve(folderPath)
 
       // Define the command and arguments
-      const command = 'allure'
-      const args = ['serve', 'allure-results']
+      const command = process.platform === 'win32' ? 'cmd.exe' : 'allure'
+      const args =
+        process.platform === 'win32'
+          ? ['/c', 'allure', 'serve', 'allure-results']
+          : ['serve', 'allure-results']
       const options = {
         cwd: normalizedFolderPath, // Set the working directory to the project folder
-        shell: process.env.SHELL // Use the current shell
+        shell: process.platform === 'win32' // Use shell only for Windows
       }
 
       // Spawn the process

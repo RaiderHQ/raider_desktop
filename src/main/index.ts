@@ -3,7 +3,6 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import selectFolder from './handlers/selectFolder'
 import readDirectory from './handlers/readDirectory'
-import checkConfig from './handlers/checkConfig'
 import runRubyRaider from './handlers/runRubyRaider'
 import readFile from './handlers/readFile'
 import openAllure from './handlers/openAllure'
@@ -100,7 +99,6 @@ ipcMain.handle('read-directory', readDirectory)
 ipcMain.handle('open-allure', openAllure)
 ipcMain.handle('read-file', readFile)
 ipcMain.handle('edit-file', editFile)
-ipcMain.handle('check-config', checkConfig)
 ipcMain.handle('run-ruby-raider', runRubyRaider)
 ipcMain.handle('is-mobile-project', isMobileProject)
 ipcMain.handle('run-tests', runTests)

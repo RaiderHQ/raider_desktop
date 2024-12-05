@@ -7,9 +7,6 @@ export interface WindowApi {
     selectFolder: (message: string) => Promise<string>
     readDirectory: (folder: string) => Promise<FileNode[]>
     readFile: (filePath: string) => Promise<{ success: boolean; data?: string; fileExt?: string; error?: string }>
-    checkConfig: (
-      folderPath: string
-    ) => Promise<{ success: boolean; filePath?: string; error?: string }>
     runRubyRaider: (
       folderPath: string,
       projectName: string,

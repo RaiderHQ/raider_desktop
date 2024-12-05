@@ -1,21 +1,25 @@
 import { spawn } from 'child_process'
 import path from 'path'
 
+// Cross-platform runCommand
 const runCommand = (command: string, args: string[], options: any) => {
   return new Promise<{ success: boolean; output: string; error?: string }>((resolve) => {
-    const process = spawn(command, args, options)
+    const platformCommand = process.platform === 'win32' ? 'cmd.exe' : command
+    const platformArgs = process.platform === 'win32' ? ['/c', command, ...args] : args
+
+    const spawnedProcess = spawn(platformCommand, platformArgs, options) // Rename local process variable to spawnedProcess
     let stdout = ''
     let stderr = ''
 
-    process.stdout.on('data', (data) => {
+    spawnedProcess.stdout.on('data', (data) => {
       stdout += data.toString()
     })
 
-    process.stderr.on('data', (data) => {
+    spawnedProcess.stderr.on('data', (data) => {
       stderr += data.toString()
     })
 
-    process.on('close', (code) => {
+    spawnedProcess.on('close', (code) => {
       if (code === 0) {
         resolve({ success: true, output: stdout.trim() })
       } else {
@@ -26,7 +30,7 @@ const runCommand = (command: string, args: string[], options: any) => {
 }
 
 const handler = async (
-  _event,
+  _event: any,
   folderPath: string,
   projectName: string,
   framework: string,
@@ -67,17 +71,17 @@ const handler = async (
 
       // Check if Ruby Raider is installed
       const rubyRaiderCheck = await runCommand('raider', ['v'], {
-        shell: process.env.SHELL,
-        cwd: normalizedFolderPath, // Ensure commands run in the selected folder
+        shell: process.platform === 'win32', // Use shell for Windows
+        cwd: normalizedFolderPath // Ensure commands run in the selected folder
       })
       if (!rubyRaiderCheck.success) {
         console.warn('Ruby Raider is not installed. Attempting to install...')
         const installResult = await runCommand('gem', ['install', 'ruby_raider'], {
-          shell: process.env.SHELL,
-          cwd: normalizedFolderPath, // Install in the normalized folder path
+          shell: process.platform === 'win32', // Use shell for Windows
+          cwd: normalizedFolderPath // Install in the normalized folder path
         })
         if (!installResult.success) {
-          alert(`Failed to install Ruby Raider: ${installResult.error}`)
+          console.error(`Failed to install Ruby Raider: ${installResult.error}`)
           throw new Error(`Failed to install Ruby Raider: ${installResult.error}`)
         }
         console.log('Ruby Raider installed successfully.')
@@ -90,11 +94,11 @@ const handler = async (
         projectName,
         '-p',
         `framework:${formattedFramework}`,
-        `automation:${formattedAutomation}`,
+        `automation:${formattedAutomation}`
       ]
       const options = {
         cwd: normalizedFolderPath.trim(), // Ensure the working directory is set to the normalized project folder
-        shell: process.env.SHELL,
+        shell: process.platform === 'win32' // Use shell for Windows
       }
 
       // Execute Raider command
@@ -108,7 +112,7 @@ const handler = async (
         resolve({ success: false, error: raiderProcess.error })
       }
     } catch (error) {
-      alert(`Error: ${error instanceof Error ? error.message : String(error)}`)
+      console.error(`Error: ${error instanceof Error ? error.message : String(error)}`)
       resolve({
         success: false,
         error: error instanceof Error ? error.message : String(error)
