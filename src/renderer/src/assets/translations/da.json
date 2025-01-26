@@ -112,10 +112,12 @@
       "saving": "Gemmer..."
     },
     "placeholder": "Begynd at redigere filindholdet her...",
+    "success": "Fil gemt med succes.",
     "error": {
       "invalidFilePath": "Ugyldig filsti.",
       "saveFailed": "Fejl ved gemning af fil \"{{fileName}}\". Prøv venligst igen.",
       "unexpectedSaveError": "Uventet fejl opstod under gemning af filen. Prøv venligst igen."
-    }
+    },
+    "loading": "Indlæser..."
   }
 }
