@@ -113,6 +113,13 @@
     },
     "placeholder": "Begynd at redigere filindholdet her...",
     "success": "Fil gemt med succes.",
+    "save": {
+      "stashing": "Gemmer din skat...",
+      "securing": "Sikrer rubinen...",
+      "engraving": "Graverer gemmen...",
+      "prize": "Beskytter røverens præmie...",
+      "ruby": "Gemmer rubinen..."
+    },
     "error": {
       "invalidFilePath": "Ugyldig filsti.",
       "saveFailed": "Fejl ved gemning af fil \"{{fileName}}\". Prøv venligst igen.",

@@ -113,6 +113,13 @@
     },
     "placeholder": "Start editing file content here...",
     "success": "File saved successfully.",
+    "save": {
+      "stashing": "Stashing your treasure...",
+      "securing": "Securing the ruby...",
+      "engraving": "Engraving the gem...",
+      "prize": "Safeguarding the raider's prize...",
+      "ruby": "Sharpening the edges of the ruby..."
+    },
     "error": {
       "invalidFilePath": "Invalid file path.",
       "saveFailed": "Error saving file \"{{fileName}}\". Please try again.",
