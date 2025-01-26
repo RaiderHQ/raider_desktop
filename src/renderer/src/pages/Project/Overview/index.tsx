@@ -1,16 +1,8 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import Button from '@components/Button'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import Folder from '@components/Library/Folder'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import useProjectStore from '@foundation/Stores/projectStore'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import { FileNode } from '@foundation/Types/fileNode'
 import { useNavigate } from 'react-router-dom'
 

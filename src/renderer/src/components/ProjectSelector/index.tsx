@@ -1,11 +1,7 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import QuestionIcon from '@assets/icons/Question_vector.svg'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import Button from '@components/Button'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import InformationModal from '@components/InformationModal'
 import { useTranslation } from 'react-i18next'
 
