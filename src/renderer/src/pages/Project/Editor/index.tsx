@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import toast from 'react-hot-toast';
+import toast from 'react-hot-toast'
+import { sample } from 'lodash'
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import Button from '@components/Button'
@@ -35,8 +36,11 @@ const FileEditor: React.FC = (): JSX.Element => {
   }, [])
 
   const handleSave = async (): Promise<void> => {
+    const loadingTypes: string[] = ['stashing', 'securing', 'engraving', 'prize', 'ruby']
+    const toastId: string = toast.loading(t(`editor.save.${sample(loadingTypes)}`))
+
     if (!filePath || filePath.trim() === '') {
-      toast.error(t('editor.error.invalidFilePath'))
+      toast.error(t('editor.error.invalidFilePath', { id: toastId }))
       return
     }
 
@@ -44,12 +48,12 @@ const FileEditor: React.FC = (): JSX.Element => {
     try {
       const response = await window.api.editFile(filePath, fileContent)
       if (!response.success) {
-        toast.error(t('editor.error.saveFailed', { fileName }))
+        toast.error(t('editor.error.saveFailed', { fileName }), { id: toastId })
       }
 
-      toast.success(t('editor.success'))
+      toast.success(t('editor.success'), { id: toastId })
     } catch (error) {
-      toast.error(t('editor.error.unexpectedSaveError'))
+      toast.error(t('editor.error.unexpectedSaveError'), { id: toastId })
     } finally {
       setIsSaving(false)
     }
@@ -83,7 +87,7 @@ const FileEditor: React.FC = (): JSX.Element => {
             {t('editor.buttons.backToOverview')}
           </Button>
           <Button onClick={handleSave} type="primary" disabled={isSaving}>
-            {t(`editor.buttons.${isSaving ? 'saving' : 'save'}`)}
+            {t('editor.buttons.save')}
           </Button>
         </div>
       </div>
