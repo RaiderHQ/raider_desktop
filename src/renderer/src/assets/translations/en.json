@@ -112,10 +112,12 @@
       "saving": "Saving..."
     },
     "placeholder": "Start editing file content here...",
+    "success": "File saved successfully.",
     "error": {
       "invalidFilePath": "Invalid file path.",
       "saveFailed": "Error saving file \"{{fileName}}\". Please try again.",
       "unexpectedSaveError": "Unexpected error occurred while saving the file. Please try again."
-    }
+    },
+    "loading": "Loading..."
   }
 }
