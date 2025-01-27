@@ -31,10 +31,6 @@ const FileEditor: React.FC = (): JSX.Element => {
   const [isSaving, setIsSaving] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(false)
 
-  useEffect((): void => {
-    getFileContents()
-  }, [])
-
   const handleSave = async (): Promise<void> => {
     const loadingTypes: string[] = ['stashing', 'securing', 'engraving', 'prize', 'ruby']
     const toastId: string = toast.loading(t(`editor.save.${sample(loadingTypes)}`))
@@ -78,6 +74,22 @@ const FileEditor: React.FC = (): JSX.Element => {
       setIsLoading(false)
     }
   }
+
+  useEffect((): void => {
+    getFileContents()
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        handleSave()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return (): void => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleSave])
 
   return (
     <div className="flex flex-col w-screen h-screen p-8">
