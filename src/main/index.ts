@@ -104,4 +104,3 @@ ipcMain.handle('is-mobile-project', isMobileProject)
 ipcMain.handle('run-tests', runTests)
 ipcMain.handle('update-browser-url', updateBrowserUrl)
 ipcMain.handle('update-browser-type', updateBrowserType)
-
