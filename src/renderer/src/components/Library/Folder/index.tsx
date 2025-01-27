@@ -1,10 +1,6 @@
 import React, { useState } from 'react'
 import { FaFolder, FaChevronDown, FaChevronRight } from 'react-icons/fa'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import File from '@components/Library/File'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import { FileNode } from '@foundation/Types/fileNode'
 
 interface FolderProps {

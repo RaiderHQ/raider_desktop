@@ -2,23 +2,11 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import QuestionIcon from '@assets/icons/Question_vector.svg'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import Button from '@components/Button'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import ContentArea from '@components/ContentArea'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import InformationModal from '@components/InformationModal'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import SelectInput from '@components/SelectInput'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import useLoadingStore from '@foundation/Stores/loadingStore'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import useProjectStore from '@foundation/Stores/projectStore'
 
 const options = {

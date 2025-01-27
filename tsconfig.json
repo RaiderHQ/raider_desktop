@@ -4,11 +4,14 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/assets": ["src/assets/*"],
-      "@/components": ["src/components/*"],
-      "@/foundation": ["src/foundation/*"],
-      "@/pages": ["src/pages/*"],
-      "@/templates": ["src/templates/*"],
+      "@renderer/*": [
+        "./src/renderer/src/*"
+      ],
+      "@assets/*": ["./src/renderer/src/assets/*"],
+      "@components/*": ["./src/renderer/src/components/*"],
+      "@foundation/*": ["./src/renderer/src/foundation/*"],
+      "@pages/*": ["./src/renderer/src/pages/*"],
+      "@templates/*": ["./src/renderer/src/templates/*"],
     }
   }
 }

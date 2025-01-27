@@ -1,10 +1,6 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import { FileNode } from '@foundation/Types/fileNode'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import { RaiderConfig } from '@foundation/Types/raiderConfig'
 
 interface ProjectStore {

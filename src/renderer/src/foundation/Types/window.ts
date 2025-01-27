@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import { FileNode } from '@foundation/Types/fileNode'
 
 export interface WindowApi {
