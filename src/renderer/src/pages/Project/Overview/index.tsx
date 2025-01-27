@@ -21,23 +21,6 @@ const Overview: React.FC = () => {
   const navigate = useNavigate()
   const [isRunningTests, setIsRunningTests] = useState(false)
 
-  const handleFileClick = async (filePath: string): Promise<void> => {
-    try {
-      const result = await window.api.readFile(filePath)
-      if (result.success) {
-        navigate('/project/editor', {
-          state: { fileName: filePath.split('/').pop(), filePath, fileContent: result.data }
-        })
-      } else {
-        console.error(t('overview.error.readFile'), result.error)
-        alert(t('overview.error.readFile'))
-      }
-    } catch (error) {
-      console.error(t('overview.error.unexpectedReadFile'), error)
-      alert(t('overview.error.unexpectedReadFile'))
-    }
-  }
-
   const handleRunTests = async (): Promise<void> => {
     setIsRunningTests(true)
     try {
@@ -45,10 +28,11 @@ const Overview: React.FC = () => {
       setIsRunningTests(false)
       if (result.success) {
         console.log('Tests executed successfully:', result.output)
-      } else {
-        console.error(t('overview.error.runTests'), result.error)
-        alert(t('overview.error.runTests'))
+        return
       }
+
+      console.error(t('overview.error.runTests'), result.error)
+      alert(t('overview.error.runTests'))
     } catch (error) {
       setIsRunningTests(false)
       console.error(t('overview.error.unexpectedRunTests'), error)
@@ -89,7 +73,11 @@ const Overview: React.FC = () => {
           name={projectPath.split('/').pop()}
           files={files}
           defaultOpen
-          onFileClick={handleFileClick}
+          onFileClick={(filePath: string): void => {
+            navigate('/project/editor', {
+              state: { fileName: filePath.split('/').pop(), filePath }
+            })
+          }}
         />
       </div>
     </div>
