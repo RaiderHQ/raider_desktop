@@ -35,6 +35,7 @@
     }
   },
   "menu": {
+    "dashboard": "Dashboard",
     "tests": "Tests",
     "settings": "Settings"
   },
@@ -93,9 +94,6 @@
     }
   },
   "overview": {
-    "runTests": "Run Tests",
-    "running": "Running...",
-    "allureDashboard": "Open Dashboard",
     "error": {
       "readFile": "Error reading the file. Please try again.",
       "unexpectedReadFile": "Unexpected error occurred while reading the file. Please try again.",
