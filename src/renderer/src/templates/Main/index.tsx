@@ -4,11 +4,7 @@ import Logo from '@assets/images/logo-with-title.svg'
 
 const MainTemplate: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
-  const location = useLocation()
   const raiderVersion = import.meta.env.VITE_RAIDER_VERSION
-
-  // Check if the current route is part of the project section where the menu should be displayed
-  const isProjectPage = ['/project/overview', '/project/settings'].includes(location.pathname)
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -16,7 +12,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
         <div className="flex items-center space-x-4">
           <img src={Logo} alt="Logo" className="w-100 h-10" />
         </div>
-        {isProjectPage && (
+        {
           <nav className="flex space-x-8">
             <Link to="/project/overview" className="text-gray-600 hover:text-gray-800">
               {t('menu.tests')}
@@ -25,7 +21,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
               {t('menu.settings')}
             </Link>
           </nav>
-        )}
+        }
       </header>
 
       <main className="flex flex-col items-center justify-center flex-grow">

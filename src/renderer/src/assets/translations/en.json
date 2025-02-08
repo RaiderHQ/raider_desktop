@@ -95,22 +95,17 @@
   "overview": {
     "runTests": "Run Tests",
     "running": "Running...",
-    "allureDashboard": "Allure Dashboard",
+    "allureDashboard": "Open Dashboard",
     "error": {
       "readFile": "Error reading the file. Please try again.",
       "unexpectedReadFile": "Unexpected error occurred while reading the file. Please try again.",
       "runTests": "Error executing tests. Please try again.",
       "unexpectedRunTests": "Unexpected error occurred while executing tests. Please try again.",
-      "openAllure": "Error opening Allure Dashboard. Please try again.",
-      "unexpectedOpenAllure": "Unexpected error occurred while opening Allure Dashboard. Please try again."
+      "openAllure": "Error opening Dashboard. Please try again.",
+      "unexpectedOpenAllure": "Unexpected error occurred while opening the dashboard. Please try again."
     }
   },
   "editor": {
-    "buttons": {
-      "backToOverview": "Back to Overview",
-      "save": "Save",
-      "saving": "Saving..."
-    },
     "placeholder": "Start editing file content here...",
     "success": "File saved successfully.",
     "save": {
