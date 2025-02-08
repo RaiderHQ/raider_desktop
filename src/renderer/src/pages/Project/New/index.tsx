@@ -5,6 +5,7 @@ import QuestionIcon from '@assets/icons/Question_vector.svg'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import InformationModal from '@components/InformationModal'
+import Alert from '@components/Alert'
 import SelectInput from '@components/SelectInput'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
@@ -30,12 +31,13 @@ const CreateProject: React.FC = () => {
   const [mobilePlatform, setMobilePlatform] = useState('Android')
   const [isModalOpen, setModalOpen] = useState(false)
   const [projectName, setProjectName] = useState('')
+  const [alertData, setAlertData] = useState<{ message: string } | null>(null)
 
   const showMobile = automationFramework === 'Appium'
 
   const handleCreateProject = async (): Promise<void> => {
     if (!projectName.trim()) {
-      alert('Please enter a valid project name.')
+      setAlertData({ message: 'Please enter a valid project name.' })
       return
     }
 
@@ -66,7 +68,7 @@ const CreateProject: React.FC = () => {
       setProjectPath(overviewFolder) // Store the full path for the project
       navigate('/project/overview')
     } else {
-      alert(`Error running Raider command: ${raiderResult.error}`)
+      setAlertData({ message: `Error running Raider command: ${raiderResult.error}` })
     }
 
     setLoading(false)
@@ -163,6 +165,13 @@ const CreateProject: React.FC = () => {
           title={t('information.new.title')}
           message={t('information.new.message')}
           onClose={() => setModalOpen(false)}
+        />
+      )}
+
+      {alertData && (
+        <Alert
+          message={alertData.message}
+          onClose={() => setAlertData(null)}
         />
       )}
     </>
