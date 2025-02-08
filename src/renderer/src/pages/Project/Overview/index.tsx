@@ -22,7 +22,6 @@ const Overview: React.FC = () => {
         console.log('Tests executed successfully:', result.output)
         return
       }
-
       console.error(t('overview.error.runTests'), result.error)
       alert(t('overview.error.runTests'))
     } catch (error) {
@@ -36,7 +35,7 @@ const Overview: React.FC = () => {
     try {
       const result = await window.api.openAllure(projectPath)
       if (result.success) {
-        console.log('Allure Dashboard opened:', result.output)
+        console.log('Dashboard opened:', result.output)
       } else {
         console.error(t('overview.error.openAllure'), result.error)
         alert(t('overview.error.openAllure'))
@@ -49,9 +48,9 @@ const Overview: React.FC = () => {
 
   return (
     <div className="flex flex-col w-screen p-8">
-      <div className="flex items-center justify-between mb-4 bg-gray-200 p-2 rounded-md">
+      <div className="flex items-center justify-between mb-4 p-2 rounded-md">
         <div className="flex space-x-2">
-          <Button onClick={handleRunTests} type="secondary" disabled={isRunningTests}>
+          <Button onClick={handleRunTests} type="success" disabled={isRunningTests}>
             {isRunningTests ? t('overview.running') : t('overview.runTests')}
           </Button>
           <Button onClick={handleOpenAllure} type="primary">
@@ -60,17 +59,20 @@ const Overview: React.FC = () => {
         </div>
       </div>
 
-      <div className="h-[70vh] border rounded-lg shadow-sm overflow-y-auto bg-white">
-        <Folder
-          name={projectPath.split('/').pop()}
-          files={files}
-          defaultOpen
-          onFileClick={(filePath: string): void => {
-            navigate('/project/editor', {
-              state: { fileName: filePath.split('/').pop(), filePath }
-            })
-          }}
-        />
+      <div className="relative w-full">
+        <div className="absolute -right-1 -bottom-1 w-full h-full bg-[#c14420] rounded-lg" />
+        <div className="relative h-[70vh] border rounded-lg shadow-sm overflow-y-auto bg-white z-10">
+          <Folder
+            name={projectPath.split('/').pop()}
+            files={files}
+            defaultOpen
+            onFileClick={(filePath: string): void => {
+              navigate('/project/editor', {
+                state: { fileName: filePath.split('/').pop(), filePath }
+              })
+            }}
+          />
+        </div>
       </div>
     </div>
   )

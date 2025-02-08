@@ -52,7 +52,7 @@ const CreateProject: React.FC = () => {
 
     // Determine the automation parameter
     const automationParam = showMobile
-      ? `${mobilePlatform.toLowerCase()}`
+      ? mobilePlatform.toLowerCase()
       : automationFramework.toLowerCase()
 
     const raiderResult = await window.api.runRubyRaider(
@@ -76,40 +76,44 @@ const CreateProject: React.FC = () => {
     setter: React.Dispatch<React.SetStateAction<string>>,
     value: string
   ): void => {
-    setLoading(true)
     setter(value)
-    setTimeout((): void => setLoading(false), 300)
   }
 
   return (
     <>
       <div className="text-center mb-10">
-        <h1 className="text-3xl font-bold mb-2">{t('newProject.title')}</h1>
-        <p className="text-gray-600">{t('newProject.subtitle')}</p>
+        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">
+          {t('newProject.title')}
+        </h1>
+        <p className="text-gray-600 text-base md:text-lg lg:text-xl">
+          {t('newProject.subtitle')}
+        </p>
       </div>
 
       <ContentArea>
-        <div className="bg-white p-8">
+        <div className="bg-white p-4 md:p-6 lg:p-8 w-11/12 sm:w-10/12 md:w-9/12 lg:w-8/12 xl:w-7/12 mx-auto relative">
           <div className="absolute top-2 right-2">
             <img
               src={QuestionIcon}
-              className="w-4 h-auto cursor-pointer"
+              className="w-5 md:w-6 lg:w-8 h-auto cursor-pointer"
               onClick={() => setModalOpen(true)}
               alt="Help"
             />
           </div>
+
           <div className="mb-6">
-            <label className="block mb-2 text-sm font-medium text-black-700">
+            <label className="block mb-2 text-sm md:text-base lg:text-lg font-medium text-black-700">
               {t('newProject.input.label')}
             </label>
             <input
               type="text"
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm md:text-base lg:text-lg"
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
               placeholder={t('newProject.input.placeholder')}
             />
           </div>
+
           <div className={`grid ${showMobile ? 'grid-cols-2' : 'grid-cols-1'} gap-x-8 mb-6 w-full`}>
             <div className="flex flex-col space-y-6">
               <SelectInput
@@ -143,7 +147,7 @@ const CreateProject: React.FC = () => {
             )}
           </div>
 
-          <div className={`flex ${showMobile ? 'justify-end' : 'justify-between'} space-x-4`}>
+          <div className="flex justify-center space-x-4">
             <Button onClick={() => navigate(-1)} type="secondary">
               {t('button.back.text')}
             </Button>

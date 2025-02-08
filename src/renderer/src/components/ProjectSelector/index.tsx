@@ -34,21 +34,24 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
         <div className="absolute top-2 right-2">
           <img
             src={QuestionIcon}
-            className="w-4 h-auto cursor-pointer"
+            className="w-5 md:w-6 lg:w-8 h-auto cursor-pointer"
             onClick={() => setModalOpen(true)}
             alt="Help"
           />
         </div>
         <div className="mb-4">
-          <img src={icon} className="w-12 h-auto" />
+          <img src={icon} className="w-12 md:w-16 lg:w-20 h-auto" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">{description}</h2>
-        {url && (
+        <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-gray-900 mb-6">
+          {description}
+        </h2>
+        {url ? (
           <Link to={url}>
             <Button>{buttonValue}</Button>
           </Link>
+        ) : (
+          <Button onClick={onClick}>{buttonValue}</Button>
         )}
-        {!url && <Button onClick={onClick}>{buttonValue}</Button>}
       </div>
 
       {isModalOpen && (
@@ -56,7 +59,7 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
           title={t(modalTitleKey)}
           onClose={() => setModalOpen(false)}
           message={t(modalMessageKey)}
-        ></InformationModal>
+        />
       )}
     </div>
   )

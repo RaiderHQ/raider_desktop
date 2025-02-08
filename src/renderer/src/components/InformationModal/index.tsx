@@ -31,7 +31,7 @@ const InformationModal: React.FC<ModalProps> = ({ title, message, onClose }) => 
           <p className="text-gray-700">{message}</p>
         </div>
         <button
-          className="absolute top-2 right-3 text-gray-600 hover:text-black"
+          className="absolute top-2 right-3 text-gray-600 hover:text-black text-3xl"
           onClick={onClose}
           aria-label="Close"
         >

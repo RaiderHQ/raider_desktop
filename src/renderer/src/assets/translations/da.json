@@ -95,22 +95,17 @@
   "overview": {
     "runTests": "Kør tests",
     "running": "Kører...",
-    "allureDashboard": "Allure Dashboard",
+    "allureDashboard": "Åben Dashboard",
     "error": {
       "readFile": "Fejl ved læsning af filen. Prøv venligst igen.",
       "unexpectedReadFile": "Uventet fejl opstod under læsning af filen. Prøv venligst igen.",
       "runTests": "Fejl ved udførelse af tests. Prøv venligst igen.",
       "unexpectedRunTests": "Uventet fejl opstod under udførelse af tests. Prøv venligst igen.",
-      "openAllure": "Fejl ved åbning af Allure Dashboard. Prøv venligst igen.",
-      "unexpectedOpenAllure": "Uventet fejl opstod under åbning af Allure Dashboard. Prøv venligst igen."
+      "openAllure": "Fejl ved åbning af dashboard. Prøv venligst igen.",
+      "unexpectedOpenAllure": "Uventet fejl opstod under åbning af dashboard. Prøv venligst igen."
     }
   },
   "editor": {
-    "buttons": {
-      "backToOverview": "Tilbage til oversigten",
-      "save": "Gem",
-      "saving": "Gemmer..."
-    },
     "placeholder": "Begynd at redigere filindholdet her...",
     "success": "Fil gemt med succes.",
     "save": {
