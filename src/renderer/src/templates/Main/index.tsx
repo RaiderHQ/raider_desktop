@@ -11,15 +11,9 @@ const MainTemplate: React.FC = (): JSX.Element => {
   const handleOpenAllure = async (): Promise<void> => {
     try {
       const result = await window.api.openAllure(projectPath)
-      if (result.success) {
-        console.log('Dashboard opened:', result.output)
-      } else {
-        console.error(t('overview.error.openAllure'), result.error)
-        alert(t('overview.error.openAllure'))
-      }
+      if (result.error) throw new Error(result.error)
     } catch (error) {
-      console.error(t('overview.error.unexpectedOpenAllure'), error)
-      alert(t('overview.error.unexpectedOpenAllure'))
+      setAlertData({ message: `${t('overview.error.openAllure')}: ${error}` })
     }
   }
 

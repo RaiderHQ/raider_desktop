@@ -1,4 +1,4 @@
-import ReactDOM from 'react-dom'
+import { createPortal } from "react-dom";
 
 interface AlertProps {
   message: string
@@ -12,7 +12,7 @@ const Alert: React.FC<AlertProps> = ({ message, onClose }) => {
     }
   }
 
-  return ReactDOM.createPortal(
+  return createPortal(
     <div
       id="alert-modal-overlay"
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
