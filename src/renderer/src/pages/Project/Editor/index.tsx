@@ -39,9 +39,9 @@ const FileEditor: React.FC = (): JSX.Element => {
       const response = await window.api.editFile(filePath, fileContent)
       if (!response.success) {
         toast.error(t('editor.error.saveFailed', { fileName }), { id: toastId })
-      } else {
-        toast.success(t('editor.success'), { id: toastId })
+        return
       }
+      toast.success(t('editor.success'), { id: toastId })
     } catch (error) {
       toast.error(t('editor.error.unexpectedSaveError'), { id: toastId })
     } finally {
