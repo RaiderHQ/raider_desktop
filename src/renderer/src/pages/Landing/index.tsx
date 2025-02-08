@@ -24,10 +24,12 @@ const Landing: React.FC = (): JSX.Element => {
     try {
       setLoading(true)
       const folder = await window.api.selectFolder('Select a project folder')
+
       if (!folder) {
         console.log('No folder selected')
         return
       }
+
       setProjectPath(folder)
       navigate('/project/overview')
     } catch (error) {
