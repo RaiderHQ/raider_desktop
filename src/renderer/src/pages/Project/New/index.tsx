@@ -49,10 +49,8 @@ const CreateProject: React.FC = () => {
       return
     }
 
-    // Combine selected folder and project name to create overview folder path
     const overviewFolder = `${folder}/${projectName}`
 
-    // Determine the automation parameter
     const automationParam = showMobile
       ? mobilePlatform.toLowerCase()
       : automationFramework.toLowerCase()

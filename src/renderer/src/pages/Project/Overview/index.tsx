@@ -11,21 +11,17 @@ const Overview: React.FC = () => {
   const files: FileNode[] = useProjectStore((state: { files: FileNode[] }) => state.files)
   const navigate = useNavigate()
 
-  // Function to run tests when triggered from the play button
   const handleRunTests = async (): Promise<void> => {
     try {
       const result = await window.api.runTests(projectPath)
-      if (result.success) {
-        console.log('Tests executed successfully:', result.output)
-      } else {
-        console.error(t('overview.error.runTests'), result.error)
-        alert(t('overview.error.runTests'))
+      if (!result.success) {
+        throw new Error(result.error || 'Test execution failed')
       }
     } catch (error) {
-      console.error(t('overview.error.unexpectedRunTests'), error)
-      alert(t('overview.error.unexpectedRunTests'))
+      alert(`${t('overview.error.runTests')}: ${error}`)
     }
   }
+
 
   return (
     <div className="flex flex-col w-screen p-8">
