@@ -19,7 +19,7 @@ const Alert: React.FC<AlertProps> = ({ message, onClose }) => {
       onClick={handleOutsideClick}
     >
       <div
-        className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6 relative border-4 border-[#c14420]"
+        className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6 relative border-2 border-[#c14420]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4">

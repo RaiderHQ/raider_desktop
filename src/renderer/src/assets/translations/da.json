@@ -35,6 +35,7 @@
     }
   },
   "menu": {
+    "dashboard": "Dashboard",
     "tests": "Tests",
     "settings": "Indstillinger"
   },
@@ -93,9 +94,6 @@
     }
   },
   "overview": {
-    "runTests": "Kør tests",
-    "running": "Kører...",
-    "allureDashboard": "Åben Dashboard",
     "error": {
       "readFile": "Fejl ved læsning af filen. Prøv venligst igen.",
       "unexpectedReadFile": "Uventet fejl opstod under læsning af filen. Prøv venligst igen.",

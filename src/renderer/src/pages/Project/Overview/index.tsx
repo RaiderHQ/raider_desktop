@@ -1,6 +1,5 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@components/Button'
 import Folder from '@components/Library/Folder'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { FileNode } from '@foundation/Types/fileNode'
@@ -11,66 +10,39 @@ const Overview: React.FC = () => {
   const projectPath: string = useProjectStore((state: { projectPath: string }) => state.projectPath)
   const files: FileNode[] = useProjectStore((state: { files: FileNode[] }) => state.files)
   const navigate = useNavigate()
-  const [isRunningTests, setIsRunningTests] = useState(false)
 
+  // Function to run tests when triggered from the play button
   const handleRunTests = async (): Promise<void> => {
-    setIsRunningTests(true)
     try {
       const result = await window.api.runTests(projectPath)
-      setIsRunningTests(false)
       if (result.success) {
         console.log('Tests executed successfully:', result.output)
-        return
+      } else {
+        console.error(t('overview.error.runTests'), result.error)
+        alert(t('overview.error.runTests'))
       }
-      console.error(t('overview.error.runTests'), result.error)
-      alert(t('overview.error.runTests'))
     } catch (error) {
-      setIsRunningTests(false)
       console.error(t('overview.error.unexpectedRunTests'), error)
       alert(t('overview.error.unexpectedRunTests'))
     }
   }
 
-  const handleOpenAllure = async (): Promise<void> => {
-    try {
-      const result = await window.api.openAllure(projectPath)
-      if (result.success) {
-        console.log('Dashboard opened:', result.output)
-      } else {
-        console.error(t('overview.error.openAllure'), result.error)
-        alert(t('overview.error.openAllure'))
-      }
-    } catch (error) {
-      console.error(t('overview.error.unexpectedOpenAllure'), error)
-      alert(t('overview.error.unexpectedOpenAllure'))
-    }
-  }
-
   return (
     <div className="flex flex-col w-screen p-8">
-      <div className="flex items-center justify-between mb-4 p-2 rounded-md">
-        <div className="flex space-x-2">
-          <Button onClick={handleRunTests} type="success" disabled={isRunningTests}>
-            {isRunningTests ? t('overview.running') : t('overview.runTests')}
-          </Button>
-          <Button onClick={handleOpenAllure} type="primary">
-            {t('overview.allureDashboard')}
-          </Button>
-        </div>
-      </div>
-
       <div className="relative w-full">
         <div className="absolute -right-1 -bottom-1 w-full h-full bg-[#c14420] rounded-lg" />
         <div className="relative h-[70vh] border rounded-lg shadow-sm overflow-y-auto bg-white z-10">
           <Folder
             name={projectPath.split('/').pop()}
             files={files}
-            defaultOpen
+            defaultOpen={true}
             onFileClick={(filePath: string): void => {
               navigate('/project/editor', {
                 state: { fileName: filePath.split('/').pop(), filePath }
               })
             }}
+            isRoot={true}
+            onRunTests={handleRunTests}
           />
         </div>
       </div>
