@@ -4,6 +4,10 @@
     "subtitle": "Det er en gem, der giver en generator og stillads til at forenkle UI-testautomatisering."
   },
   "newProject": {
+    "alerts": {
+      "invalidName": "Indtast venligst et gyldigt projektnavn.",
+      "selectFolder": "Vælg en mappe til at gemme dit projekt"
+    },
     "title": "Opret et nyt projekt",
     "subtitle": "For at oprette et projekt skal du først vælge følgende:",
     "input": {
