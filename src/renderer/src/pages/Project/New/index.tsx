@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import toast from 'react-hot-toast'
 import QuestionIcon from '@assets/icons/Question_vector.svg'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
@@ -8,7 +9,6 @@ import InformationModal from '@components/InformationModal'
 import SelectInput from '@components/SelectInput'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
-import toast from 'react-hot-toast'
 
 const options = {
   automation: ['Appium', 'Selenium', 'Watir'],

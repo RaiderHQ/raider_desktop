@@ -32,7 +32,6 @@ const Folder: React.FC<FolderProps> = ({
   return (
     <>
       <div className="flex items-center w-full px-4 py-2 bg-gray-50 border-b focus:outline-none">
-        {/* For non-root folders, display the chevron to toggle open state */}
         {!isRoot && (
           <button onClick={handleToggle} className="mr-2 focus:outline-none">
             {isOpen ? <FaChevronDown /> : <FaChevronRight />}
@@ -40,7 +39,6 @@ const Folder: React.FC<FolderProps> = ({
         )}
         <FaFolder className="ml-2 mr-2" />
         <span className="font-semibold flex-grow">{name}</span>
-        {/* For root folder, add a play button on the far right */}
         {isRoot && onRunTests && (
           <button onClick={onRunTests} className="ml-auto focus:outline-none">
             <FaPlay className="text-green-600 hover:text-green-800" />
