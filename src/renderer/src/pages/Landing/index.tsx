@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import ProjectSelector from '@components/ProjectSelector'
 import Logo from '@assets/images/logo.svg'
 import OpenFolder from '@assets/icons/open-folder.svg'
 import AddIcon from '@assets/icons/add.svg'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
-import toast from 'react-hot-toast'
 
 const Landing: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
