@@ -1,9 +1,8 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useState } from 'react'
 import Logo from '@assets/images/logo-with-title.svg'
 import useProjectStore from '@foundation/Stores/projectStore'
-import Alert from '@components/Alert'
+import toast from 'react-hot-toast'
 
 const MainTemplate: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -11,14 +10,12 @@ const MainTemplate: React.FC = (): JSX.Element => {
   const projectPath = useProjectStore((state: { projectPath: string }) => state.projectPath)
   const location = useLocation()
 
-  const [alertData, setAlertData] = useState<{ message: string } | null>(null)
-
   const handleOpenAllure = async (): Promise<void> => {
     try {
       const result = await window.api.openAllure(projectPath)
       if (result.error) throw new Error(result.error)
     } catch (error) {
-      setAlertData({ message: `${t('overview.error.openAllure')}: ${error}` })
+      toast.error(`${t('overview.error.openAllure')}: ${error}`)
     }
   }
 
@@ -56,13 +53,6 @@ const MainTemplate: React.FC = (): JSX.Element => {
       <footer className="flex justify-center py-4 bg-white">
         <p className="text-gray-500">{t('version', { version: raiderVersion })}</p>
       </footer>
-
-      {alertData && (
-        <Alert
-          message={alertData.message}
-          onClose={() => setAlertData(null)}
-        />
-      )}
     </div>
   )
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@components/Button'
 import useProjectStore from '@foundation/Stores/projectStore'
+import toast from 'react-hot-toast'
 
 const Settings: React.FC = () => {
   const { t } = useTranslation()
@@ -33,6 +34,7 @@ const Settings: React.FC = () => {
         }
       } catch (error) {
         console.error(t('settings.error.fetchSettings'), error)
+        toast.error(`${t('settings.error.fetchSettings')} : ${error}`)
       } finally {
         setLoading(false)
       }
@@ -53,15 +55,16 @@ const Settings: React.FC = () => {
     setIsUpdatingBrowser(true)
     try {
       const response = await window.api.updateBrowserType(projectPath, selectedBrowser)
-      setIsUpdatingBrowser(false)
-      if (response.success) {
-        localStorage.setItem('selectedBrowser', selectedBrowser)
-      } else {
-        alert(t('settings.error.browserUpdateFailed'))
+      if (!response.success) {
+        toast.error(t('settings.error.browserUpdateFailed'))
+        return
       }
+      localStorage.setItem('selectedBrowser', selectedBrowser)
+      // Optionally use toast.success(...) for a success message
     } catch (error) {
+      toast.error(`${t('settings.error.unexpected')} : ${error}`)
+    } finally {
       setIsUpdatingBrowser(false)
-      alert(t('settings.error.unexpected'))
     }
   }
 
@@ -69,15 +72,15 @@ const Settings: React.FC = () => {
     setIsUpdatingUrl(true)
     try {
       const response = await window.api.updateBrowserUrl(projectPath, browserUrl)
-      setIsUpdatingUrl(false)
-      if (response.success) {
-        localStorage.setItem('browserUrl', browserUrl)
-      } else {
-        alert(t('settings.error.urlUpdateFailed'))
+      if (!response.success) {
+        toast.error(t('settings.error.urlUpdateFailed'))
+        return
       }
+      localStorage.setItem('browserUrl', browserUrl)
     } catch (error) {
+      toast.error(`${t('settings.error.unexpected')} : ${error}`)
+    } finally {
       setIsUpdatingUrl(false)
-      alert(t('settings.error.unexpected'))
     }
   }
 

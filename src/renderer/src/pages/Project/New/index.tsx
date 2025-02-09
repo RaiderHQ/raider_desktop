@@ -5,10 +5,10 @@ import QuestionIcon from '@assets/icons/Question_vector.svg'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import InformationModal from '@components/InformationModal'
-import Alert from '@components/Alert'
 import SelectInput from '@components/SelectInput'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import toast from 'react-hot-toast'
 
 const options = {
   automation: ['Appium', 'Selenium', 'Watir'],
@@ -31,45 +31,46 @@ const CreateProject: React.FC = () => {
   const [mobilePlatform, setMobilePlatform] = useState('Android')
   const [isModalOpen, setModalOpen] = useState(false)
   const [projectName, setProjectName] = useState('')
-  const [alertData, setAlertData] = useState<{ message: string } | null>(null)
 
   const showMobile = automationFramework === 'Appium'
 
   const handleCreateProject = async (): Promise<void> => {
     if (!projectName.trim()) {
-      setAlertData({ message: 'Please enter a valid project name.' })
+      toast.error(t('newProject.alerts.invalidName'))
       return
     }
 
     setLoading(true)
+    try {
+      const folder = await window.api.selectFolder(t('newProject.alerts.selectFolder'))
+      if (!folder) {
+        setLoading(false)
+        return
+      }
 
-    const folder = await window.api.selectFolder('Select a folder to save your project')
-    if (!folder) {
+      const overviewFolder = `${folder}/${projectName}`
+      const automationParam = showMobile
+        ? mobilePlatform.toLowerCase()
+        : automationFramework.toLowerCase()
+
+      const raiderResult = await window.api.runRubyRaider(
+        folder,
+        projectName,
+        testFramework.toLowerCase(),
+        automationParam
+      )
+
+      if (raiderResult.success) {
+        setProjectPath(overviewFolder)
+        navigate('/project/overview')
+      } else {
+        toast.error(`Error running Raider command: ${raiderResult.error}`)
+      }
+    } catch (error) {
+      toast.error(`Unexpected error while creating the project: ${error}`)
+    } finally {
       setLoading(false)
-      return
     }
-
-    const overviewFolder = `${folder}/${projectName}`
-
-    const automationParam = showMobile
-      ? mobilePlatform.toLowerCase()
-      : automationFramework.toLowerCase()
-
-    const raiderResult = await window.api.runRubyRaider(
-      folder,
-      projectName,
-      testFramework.toLowerCase(),
-      automationParam
-    )
-
-    if (raiderResult.success) {
-      setProjectPath(overviewFolder) // Store the full path for the project
-      navigate('/project/overview')
-    } else {
-      setAlertData({ message: `Error running Raider command: ${raiderResult.error}` })
-    }
-
-    setLoading(false)
   }
 
   const handleOptionChange = (
@@ -163,13 +164,6 @@ const CreateProject: React.FC = () => {
           title={t('information.new.title')}
           message={t('information.new.message')}
           onClose={() => setModalOpen(false)}
-        />
-      )}
-
-      {alertData && (
-        <Alert
-          message={alertData.message}
-          onClose={() => setAlertData(null)}
         />
       )}
     </>

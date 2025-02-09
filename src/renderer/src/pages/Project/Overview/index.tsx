@@ -1,9 +1,10 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import Folder from '@components/Library/Folder'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { FileNode } from '@foundation/Types/fileNode'
-import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 
 const Overview: React.FC = () => {
   const { t } = useTranslation()
@@ -18,7 +19,7 @@ const Overview: React.FC = () => {
         throw new Error(result.error || 'Test execution failed')
       }
     } catch (error) {
-      alert(`${t('overview.error.runTests')}: ${error}`)
+      toast.error(`${t('overview.error.runTests')}: ${error}`)
     }
   }
 

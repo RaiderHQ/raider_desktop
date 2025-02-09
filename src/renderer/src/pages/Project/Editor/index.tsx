@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { sample } from 'lodash'
-import Button from '@components/Button'
 import Editor from '@components/Editor'
 import { getFileLanguage } from '@foundation/helpers'
 
@@ -15,7 +14,6 @@ interface FileEditorProps {
 const FileEditor: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const location = useLocation()
-  const navigate = useNavigate()
 
   // Extract state passed during navigation
   const { fileName, filePath } = location.state as FileEditorProps

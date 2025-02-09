@@ -6,6 +6,7 @@ import OpenFolder from '@assets/icons/open-folder.svg'
 import AddIcon from '@assets/icons/add.svg'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import toast from 'react-hot-toast'
 
 const Landing: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -26,15 +27,14 @@ const Landing: React.FC = (): JSX.Element => {
       const folder = await window.api.selectFolder('Select a project folder')
 
       if (!folder) {
-        console.log('No folder selected')
+        toast.error('The folder does not exists')
         return
       }
 
       setProjectPath(folder)
       navigate('/project/overview')
     } catch (error) {
-      console.error('Error opening project:', error)
-      alert('An error occurred while opening the project. Please try again.')
+      toast.error('An error occurred while opening the project. Please try again.')
     } finally {
       setLoading(false)
     }
