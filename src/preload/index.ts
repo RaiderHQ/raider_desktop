@@ -1,12 +1,24 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import { FileNode } from '@foundation/Types/fileNode'
+import { CommandType } from '@foundation/Types/commandType'
+
+declare global {
+  interface Window {
+    electron: typeof electronAPI
+    api: typeof api
+  }
+}
 
 // Custom APIs for renderer
 const api = {
-  runRubyRaider: async (folderPath, projectName, framework, automation, mobile = null) => {
+  runRubyRaider: async (
+    folderPath: string,
+    projectName: string,
+    framework: string,
+    automation: string,
+    mobile: string | null = null
+  ): Promise<CommandType> => {
     return ipcRenderer.invoke(
       'run-ruby-raider',
       folderPath,
@@ -33,10 +45,14 @@ const api = {
   ): Promise<{ success: boolean; error?: string }> => {
     return ipcRenderer.invoke('edit-file', filePath, newContent) // Invoke the edit-file handler in the main process
   },
-  openAllure: async (folderPath: string): Promise<{ success: boolean; output?: string; error?: string }> => {
+  openAllure: async (
+    folderPath: string
+  ): Promise<{ success: boolean; output?: string; error?: string }> => {
     return ipcRenderer.invoke('open-allure', folderPath) // Pass folderPath to the main process
   },
-  runTests: async (folderPath: string): Promise<{ success: boolean; output?: string; error?: string }> => {
+  runTests: async (
+    folderPath: string
+  ): Promise<{ success: boolean; output?: string; error?: string }> => {
     return ipcRenderer.invoke('run-tests', folderPath) // Pass folderPath to the main process
   },
   updateBrowserUrl: async (
@@ -55,6 +71,12 @@ const api = {
     projectPath: string
   ): Promise<{ success: boolean; isMobileProject?: boolean; error?: string }> => {
     return ipcRenderer.invoke('is-mobile-project', projectPath) // Invoke the is-mobile-project handler
+  },
+  runCommand: async (command: string): Promise<CommandType> => {
+    return ipcRenderer.invoke('run-command', command)
+  },
+  installRaider: async (): Promise<CommandType> => {
+    return ipcRenderer.invoke('install-raider')
   }
 }
 

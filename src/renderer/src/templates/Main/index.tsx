@@ -1,11 +1,12 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Logo from '@assets/images/logo-with-title.svg'
+import useVersionStore from '@foundation/Stores/versionStore'
 
 const MainTemplate: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const location = useLocation()
-  const raiderVersion = import.meta.env.VITE_RAIDER_VERSION
+  const raiderVersion = useVersionStore((state: { version: string }) => state.version)
 
   // Check if the current route is part of the project section where the menu should be displayed
   const isProjectPage = ['/project/overview', '/project/settings'].includes(location.pathname)
