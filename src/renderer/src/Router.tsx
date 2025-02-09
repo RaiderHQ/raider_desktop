@@ -1,6 +1,5 @@
 import { createHashRouter, RouterProvider } from 'react-router-dom'
 import Editor from '@pages/Project/Editor'
-import InstallGuide from '@pages/Info/InstallGuide'
 import Landing from '@pages/Landing'
 import MainTemplate from '@templates/Main'
 import NewProject from '@pages/Project/New'
@@ -12,10 +11,6 @@ const Router = (): JSX.Element => {
     {
       path: '/',
       element: <Landing />
-    },
-    {
-      path: '/info',
-      children: [{ path: 'install-guide', element: <InstallGuide /> }]
     },
     {
       path: '/project',

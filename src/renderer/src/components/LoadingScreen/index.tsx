@@ -2,10 +2,16 @@ import React from 'react'
 import { sample } from 'lodash'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 
-const LoadingScreen: React.FC = (): JSX.Element | null => {
+interface LoadingScreenProps {
+  shouldPersist?: boolean
+}
+
+const LoadingScreen: React.FC<LoadingScreenProps> = ({
+  shouldPersist = true
+}): JSX.Element | null => {
   const loading: boolean = useLoadingStore((state: { loading: boolean }) => state.loading)
 
-  if (!loading) return null
+  if (!loading && shouldPersist) return null
 
   const loadingMessages = [
     'Sharpening pickaxes... treasure awaits!',

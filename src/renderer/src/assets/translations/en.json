@@ -110,7 +110,9 @@
       "unexpectedRunTests": "Unexpected error occurred while executing tests. Please try again.",
       "openAllure": "Error opening Dashboard. Please try again.",
       "unexpectedOpenAllure": "Unexpected error occurred while opening the dashboard. Please try again."
-    }
+    },
+    "running": "Tests are being executed...",
+    "runTestsSuccess": "Tests completed successfully!"
   },
   "editor": {
     "placeholder": "Start editing file content here...",
