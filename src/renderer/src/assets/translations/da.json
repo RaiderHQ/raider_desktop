@@ -110,7 +110,9 @@
       "unexpectedRunTests": "Uventet fejl opstod under udførelse af tests. Prøv venligst igen.",
       "openAllure": "Fejl ved åbning af dashboard. Prøv venligst igen.",
       "unexpectedOpenAllure": "Uventet fejl opstod under åbning af dashboard. Prøv venligst igen."
-    }
+    },
+    "running": "Tests udføres...",
+    "runTestsSuccess": "Tests fuldført med succes!"
   },
   "editor": {
     "placeholder": "Begynd at redigere filindholdet her...",

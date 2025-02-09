@@ -60,7 +60,6 @@ const Settings: React.FC = () => {
         return
       }
       localStorage.setItem('selectedBrowser', selectedBrowser)
-      // Optionally use toast.success(...) for a success message
     } catch (error) {
       toast.error(`${t('settings.error.unexpected')} : ${error}`)
     } finally {

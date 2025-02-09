@@ -8,21 +8,28 @@ import { FileNode } from '@foundation/Types/fileNode'
 
 const Overview: React.FC = () => {
   const { t } = useTranslation()
-  const projectPath: string = useProjectStore((state: { projectPath: string }) => state.projectPath)
-  const files: FileNode[] = useProjectStore((state: { files: FileNode[] }) => state.files)
+  const projectPath: string = useProjectStore((state) => state.projectPath)
+  const files: FileNode[] = useProjectStore((state) => state.files)
   const navigate = useNavigate()
 
   const handleRunTests = async (): Promise<void> => {
+    const toastId = toast.loading(t('overview.running'))
     try {
       const result = await window.api.runTests(projectPath)
+      toast.dismiss(toastId)
+
       if (!result.success) {
         throw new Error(result.error || 'Test execution failed')
       }
+
+      // Show a success toast if tests run successfully
+      toast.success(t('overview.runTestsSuccess'))
     } catch (error) {
+      // Dismiss the loading toast and show an error
+      toast.dismiss(toastId)
       toast.error(`${t('overview.error.runTests')}: ${error}`)
     }
   }
-
 
   return (
     <div className="flex flex-col w-screen p-8">
