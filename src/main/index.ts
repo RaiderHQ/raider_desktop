@@ -11,6 +11,8 @@ import runTests from './handlers/runTests'
 import updateBrowserUrl from './handlers/updateBrowserUrl'
 import updateBrowserType from './handlers/updateBrowserType'
 import isMobileProject from './handlers/isMobileProject'
+import runCommand from './handlers/runCommand'
+import installRaider from './handlers/installRaider'
 
 // Select the appropriate icon based on the platform
 const iconPath = join(
@@ -104,3 +106,5 @@ ipcMain.handle('is-mobile-project', isMobileProject)
 ipcMain.handle('run-tests', runTests)
 ipcMain.handle('update-browser-url', updateBrowserUrl)
 ipcMain.handle('update-browser-type', updateBrowserType)
+ipcMain.handle('run-command', runCommand)
+ipcMain.handle('install-raider', installRaider)
