@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import toast from 'react-hot-toast'
 import Button from '@components/Button'
 import useProjectStore from '@foundation/Stores/projectStore'
-import toast from 'react-hot-toast'
 
 const Settings: React.FC = () => {
   const { t } = useTranslation()
