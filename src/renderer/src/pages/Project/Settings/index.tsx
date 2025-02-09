@@ -98,65 +98,76 @@ const Settings: React.FC = () => {
   }
 
   return (
-    <div className="p-3 font-sans">
-      <header className="flex flex-col items-center mb-3">
-        <h1 className="text-2xl font-bold mb-2">{t('settings.header.title')}</h1>
-        <p className="mb-2 text-center">{t('settings.header.description')}</p>
-      </header>
+    <div className="flex flex-col w-screen p-8 font-sans">
+      <div className="relative w-full">
+        <div className="absolute -right-1 -bottom-1 w-full h-full bg-[#c14420] rounded-lg" />
+        <div className="relative h-[70vh] border rounded-lg shadow-sm overflow-y-auto bg-white z-10 p-4">
+          <header className="flex flex-col items-center mb-3">
+            <h1 className="text-2xl font-bold mb-2">{t('settings.header.title')}</h1>
+            <p className="mb-2 text-center">{t('settings.header.description')}</p>
+          </header>
 
-      <div className="border border-gray-300 rounded-lg overflow-hidden w-[60vw]">
-        {['settings.section.baseUrl', 'settings.section.browser'].map((section, index) => (
-          <details key={index} className="border-b border-gray-300 p-4">
-            <summary className="cursor-pointer font-semibold">{t(section)}</summary>
-            <div className="pt-2">
-              {section === 'settings.section.baseUrl' ? (
-                <>
-                  <label htmlFor="browser-url" className="font-medium mr-2">
-                    {t('settings.baseUrl.label')}
-                  </label>
-                  <input
-                    type="text"
-                    id="browser-url"
-                    value={browserUrl}
-                    onChange={handleUrlChange}
-                    placeholder={t('settings.baseUrl.placeholder')}
-                    className="border p-1 rounded mt-2 w-full"
-                  />
-                  <div className="mt-4">
-                    <Button onClick={handleUrlUpdateClick} type="primary" disabled={isUpdatingUrl}>
-                      {isUpdatingUrl ? t('settings.updating') : t('settings.updateUrlButton')}
-                    </Button>
-                  </div>
-                </>
-              ) : section === 'settings.section.browser' ? (
-                <>
-                  <label htmlFor="browser-select" className="font-medium mr-2">
-                    {t('settings.browser.label')}
-                  </label>
-                  <select
-                    id="browser-select"
-                    value={selectedBrowser}
-                    onChange={handleSelectChange}
-                    className="border p-1 rounded mt-2"
-                  >
-                    <option value="chrome">{t('settings.browser.chrome')}</option>
-                    <option value="safari">{t('settings.browser.safari')}</option>
-                    <option value="firefox">{t('settings.browser.firefox')}</option>
-                    <option value="edge">{t('settings.browser.edge')}</option>
-                  </select>
+          <div className="border border-gray-300 rounded-lg overflow-hidden w-[60vw] mx-auto">
+            {['settings.section.baseUrl', 'settings.section.browser'].map((section, index) => (
+              <details key={index} className="border-b border-gray-300 p-4">
+                <summary className="cursor-pointer font-semibold">
+                  {t(section)}
+                </summary>
+                <div className="pt-2">
+                  {section === 'settings.section.baseUrl' ? (
+                    <>
+                      <label htmlFor="browser-url" className="font-medium mr-2">
+                        {t('settings.baseUrl.label')}
+                      </label>
+                      <input
+                        type="text"
+                        id="browser-url"
+                        value={browserUrl}
+                        onChange={handleUrlChange}
+                        placeholder={t('settings.baseUrl.placeholder')}
+                        className="border p-1 rounded mt-2 w-full"
+                      />
+                      <div className="mt-4">
+                        <Button onClick={handleUrlUpdateClick} type="primary" disabled={isUpdatingUrl}>
+                          {isUpdatingUrl ? t('settings.updating') : t('settings.updateUrlButton')}
+                        </Button>
+                      </div>
+                    </>
+                  ) : section === 'settings.section.browser' ? (
+                    <>
+                      <label htmlFor="browser-select" className="font-medium mr-2">
+                        {t('settings.browser.label')}
+                      </label>
+                      <select
+                        id="browser-select"
+                        value={selectedBrowser}
+                        onChange={handleSelectChange}
+                        className="border p-1 rounded mt-2"
+                      >
+                        <option value="chrome">{t('settings.browser.chrome')}</option>
+                        <option value="safari">{t('settings.browser.safari')}</option>
+                        <option value="firefox">{t('settings.browser.firefox')}</option>
+                        <option value="edge">{t('settings.browser.edge')}</option>
+                      </select>
 
-                  <div className="my-4">
-                    <Button onClick={handleBrowserUpdateClick} type="primary" disabled={isUpdatingBrowser}>
-                      {isUpdatingBrowser
-                        ? t('settings.updating')
-                        : t('settings.updateBrowserButton')}
-                    </Button>
-                  </div>
-                </>
-              ) : null}
-            </div>
-          </details>
-        ))}
+                      <div className="my-4">
+                        <Button
+                          onClick={handleBrowserUpdateClick}
+                          type="primary"
+                          disabled={isUpdatingBrowser}
+                        >
+                          {isUpdatingBrowser
+                            ? t('settings.updating')
+                            : t('settings.updateBrowserButton')}
+                        </Button>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )
