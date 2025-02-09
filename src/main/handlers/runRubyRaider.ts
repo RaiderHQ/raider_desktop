@@ -1,20 +1,10 @@
 import { IpcMainInvokeEvent } from 'electron'
 import { spawn } from 'child_process'
 import path from 'path'
-
-interface CommandType {
-  success: boolean
-  output?: string
-  error?: string
-}
-
-interface CommandOptions {
-  shell: boolean
-  cwd: string
-}
+import { CommandType, CommandOptions } from '@foundation/Types/commandType'
 
 // Cross-platform runCommand
-const runCommand = (
+export const runCommand = (
   command: string,
   args: string[],
   options: CommandOptions
@@ -84,24 +74,6 @@ const handler = async (
       formattedAutomation = mobile.toLowerCase() // Ensure only 'ios' or 'android' is set
     }
 
-    // Check if Ruby Raider is installed
-    const rubyRaiderCheck = await runCommand('raider', ['v'], {
-      shell: process.platform === 'win32', // Use shell for Windows
-      cwd: normalizedFolderPath // Ensure commands run in the selected folder
-    })
-    if (!rubyRaiderCheck.success) {
-      console.warn('Ruby Raider is not installed. Attempting to install...')
-      const installResult = await runCommand('gem', ['install', 'ruby_raider'], {
-        shell: process.platform === 'win32', // Use shell for Windows
-        cwd: normalizedFolderPath // Install in the normalized folder path
-      })
-      if (!installResult.success) {
-        console.error(`Failed to install Ruby Raider: ${installResult.error}`)
-        throw new Error(`Failed to install Ruby Raider: ${installResult.error}`)
-      }
-      console.log('Ruby Raider installed successfully.')
-    }
-
     // Construct the Raider command with additional parameters
     const command = 'raider'
     const args = [
@@ -125,11 +97,12 @@ const handler = async (
     }
 
     console.error(`[ERROR] handler: ${raiderProcess.error}`)
-    return { success: false, error: raiderProcess.error }
+    return { success: false, output: '', error: raiderProcess.error }
   } catch (error) {
     console.error(`Error: ${error instanceof Error ? error.message : String(error)}`)
     return {
       success: false,
+      output: '',
       error: error instanceof Error ? error.message : String(error)
     }
   }
