@@ -1,9 +1,18 @@
 {
   "landing": {
     "title": "Welcome to Ruby Raider!",
-    "subtitle": "It is a gem that provides a generator and scaffolding to simplify UI test automation."
+    "subtitle": "It is a gem that provides a generator and scaffolding to simplify UI test automation.",
+    "error": {
+      "selectFolder": "Select a project folder",
+      "folderNotFound": "The folder does not exist.",
+      "openProject": "An error occurred while opening the project. Please try again."
+    }
   },
   "newProject": {
+    "alerts": {
+      "invalidName": "Please enter a valid project name.",
+      "selectFolder": "Select a folder to save your project"
+    },
     "title": "Create a new project",
     "subtitle": "To create a project, first you need to select the following:",
     "input": {
@@ -35,6 +44,7 @@
     }
   },
   "menu": {
+    "dashboard": "Dashboard",
     "tests": "Tests",
     "settings": "Settings"
   },
@@ -93,24 +103,18 @@
     }
   },
   "overview": {
-    "runTests": "Run Tests",
-    "running": "Running...",
-    "allureDashboard": "Allure Dashboard",
     "error": {
       "readFile": "Error reading the file. Please try again.",
       "unexpectedReadFile": "Unexpected error occurred while reading the file. Please try again.",
       "runTests": "Error executing tests. Please try again.",
       "unexpectedRunTests": "Unexpected error occurred while executing tests. Please try again.",
-      "openAllure": "Error opening Allure Dashboard. Please try again.",
-      "unexpectedOpenAllure": "Unexpected error occurred while opening Allure Dashboard. Please try again."
-    }
+      "openAllure": "Error opening Dashboard. Please try again.",
+      "unexpectedOpenAllure": "Unexpected error occurred while opening the dashboard. Please try again."
+    },
+    "running": "Tests are being executed...",
+    "runTestsSuccess": "Tests completed successfully!"
   },
   "editor": {
-    "buttons": {
-      "backToOverview": "Back to Overview",
-      "save": "Save",
-      "saving": "Saving..."
-    },
     "placeholder": "Start editing file content here...",
     "success": "File saved successfully.",
     "save": {

@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { sample } from 'lodash'
-import Button from '@components/Button'
 import Editor from '@components/Editor'
 import { getFileLanguage } from '@foundation/helpers'
 
@@ -15,7 +14,6 @@ interface FileEditorProps {
 const FileEditor: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const location = useLocation()
-  const navigate = useNavigate()
 
   // Extract state passed during navigation
   const { fileName, filePath } = location.state as FileEditorProps
@@ -39,8 +37,8 @@ const FileEditor: React.FC = (): JSX.Element => {
       const response = await window.api.editFile(filePath, fileContent)
       if (!response.success) {
         toast.error(t('editor.error.saveFailed', { fileName }), { id: toastId })
+        return
       }
-
       toast.success(t('editor.success'), { id: toastId })
     } catch (error) {
       toast.error(t('editor.error.unexpectedSaveError'), { id: toastId })
@@ -81,35 +79,28 @@ const FileEditor: React.FC = (): JSX.Element => {
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown)
     return (): void => window.removeEventListener('keydown', handleKeyDown)
   }, [handleSave])
 
   return (
     <div className="flex flex-col w-screen h-screen p-8">
-      <div className="flex items-center justify-between mb-4 bg-gray-200 p-2 rounded-md">
-        <div className="flex space-x-2">
-          <Button onClick={() => navigate('/project/overview')} type="secondary">
-            {t('editor.buttons.backToOverview')}
-          </Button>
-          <Button onClick={handleSave} type="primary" disabled={isSaving}>
-            {t('editor.buttons.save')}
-          </Button>
+      <div className="relative flex-grow w-full">
+        <div className="absolute -right-1 -bottom-1 w-full h-full bg-[#c14420] rounded-lg" />
+        <div className="relative flex flex-col flex-grow border rounded-lg shadow-sm overflow-hidden bg-white p-4 z-10">
+          {isLoading ? (
+            <h2>{t('editor.loading')}</h2>
+          ) : (
+            <>
+              <h2 className="text-xl font-semibold mb-4">{fileName}</h2>
+              <Editor
+                value={fileContent}
+                language={getFileLanguage(filePath)}
+                onChange={(value: string | undefined) => setFileContent(value || '')}
+              />
+            </>
+          )}
         </div>
-      </div>
-
-      <div className="flex flex-col flex-grow border rounded-lg shadow-sm overflow-hidden bg-white p-4">
-        {isLoading && <h2>{t('editor.loading')}</h2>}
-        {!isLoading && (
-          <>
-            <h2 className="text-xl font-semibold mb-4">{fileName}</h2>
-            <Editor
-              value={fileContent}
-              language={getFileLanguage(filePath)}
-              onChange={(value: string | undefined) => setFileContent(value || '')}
-            />
-          </>
-        )}
       </div>
     </div>
   )

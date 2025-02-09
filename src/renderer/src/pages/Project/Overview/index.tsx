@@ -1,76 +1,54 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@components/Button'
+import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import Folder from '@components/Library/Folder'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { FileNode } from '@foundation/Types/fileNode'
-import { useNavigate } from 'react-router-dom'
 
 const Overview: React.FC = () => {
   const { t } = useTranslation()
-  const projectPath: string = useProjectStore((state: { projectPath: string }) => state.projectPath)
-  const files: FileNode[] = useProjectStore((state: { files: FileNode[] }) => state.files)
+  const projectPath: string = useProjectStore((state) => state.projectPath)
+  const files: FileNode[] = useProjectStore((state) => state.files)
   const navigate = useNavigate()
-  const [isRunningTests, setIsRunningTests] = useState(false)
 
   const handleRunTests = async (): Promise<void> => {
-    setIsRunningTests(true)
+    const toastId = toast.loading(t('overview.running'))
     try {
       const result = await window.api.runTests(projectPath)
-      setIsRunningTests(false)
-      if (result.success) {
-        console.log('Tests executed successfully:', result.output)
-        return
+      toast.dismiss(toastId)
+
+      if (!result.success) {
+        throw new Error(result.error || 'Test execution failed')
       }
 
-      console.error(t('overview.error.runTests'), result.error)
-      alert(t('overview.error.runTests'))
+      // Show a success toast if tests run successfully
+      toast.success(t('overview.runTestsSuccess'))
     } catch (error) {
-      setIsRunningTests(false)
-      console.error(t('overview.error.unexpectedRunTests'), error)
-      alert(t('overview.error.unexpectedRunTests'))
-    }
-  }
-
-  const handleOpenAllure = async (): Promise<void> => {
-    try {
-      const result = await window.api.openAllure(projectPath)
-      if (result.success) {
-        console.log('Allure Dashboard opened:', result.output)
-      } else {
-        console.error(t('overview.error.openAllure'), result.error)
-        alert(t('overview.error.openAllure'))
-      }
-    } catch (error) {
-      console.error(t('overview.error.unexpectedOpenAllure'), error)
-      alert(t('overview.error.unexpectedOpenAllure'))
+      // Dismiss the loading toast and show an error
+      toast.dismiss(toastId)
+      toast.error(`${t('overview.error.runTests')}: ${error}`)
     }
   }
 
   return (
     <div className="flex flex-col w-screen p-8">
-      <div className="flex items-center justify-between mb-4 bg-gray-200 p-2 rounded-md">
-        <div className="flex space-x-2">
-          <Button onClick={handleRunTests} type="secondary" disabled={isRunningTests}>
-            {isRunningTests ? t('overview.running') : t('overview.runTests')}
-          </Button>
-          <Button onClick={handleOpenAllure} type="primary">
-            {t('overview.allureDashboard')}
-          </Button>
+      <div className="relative w-full">
+        <div className="absolute -right-1 -bottom-1 w-full h-full bg-[#c14420] rounded-lg" />
+        <div className="relative h-[70vh] border rounded-lg shadow-sm overflow-y-auto bg-white z-10">
+          <Folder
+            name={projectPath.split('/').pop()}
+            files={files}
+            defaultOpen={true}
+            onFileClick={(filePath: string): void => {
+              navigate('/project/editor', {
+                state: { fileName: filePath.split('/').pop(), filePath }
+              })
+            }}
+            isRoot={true}
+            onRunTests={handleRunTests}
+          />
         </div>
-      </div>
-
-      <div className="h-[70vh] border rounded-lg shadow-sm overflow-y-auto bg-white">
-        <Folder
-          name={projectPath.split('/').pop()}
-          files={files}
-          defaultOpen
-          onFileClick={(filePath: string): void => {
-            navigate('/project/editor', {
-              state: { fileName: filePath.split('/').pop(), filePath }
-            })
-          }}
-        />
       </div>
     </div>
   )
