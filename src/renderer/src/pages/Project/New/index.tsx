@@ -60,12 +60,13 @@ const CreateProject: React.FC = () => {
         automationParam
       )
 
-      if (raiderResult.success) {
-        setProjectPath(overviewFolder)
-        navigate('/project/overview')
-      } else {
+      if (!raiderResult.success) {
         toast.error(`Error running Raider command: ${raiderResult.error}`)
+        return
       }
+
+      setProjectPath(overviewFolder)
+      navigate('/project/overview')
     } catch (error) {
       toast.error(`Unexpected error while creating the project: ${error}`)
     } finally {
