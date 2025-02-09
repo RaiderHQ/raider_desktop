@@ -24,17 +24,17 @@ const Landing: React.FC = (): JSX.Element => {
   const handleOpenProject = async () => {
     try {
       setLoading(true)
-      const folder = await window.api.selectFolder('Select a project folder')
+      const folder = await window.api.selectFolder(t('landing.error.selectFolder'))
 
       if (!folder) {
-        toast.error('The folder does not exists')
+        toast.error(t('landing.error.folderNotFound'))
         return
       }
 
       setProjectPath(folder)
       navigate('/project/overview')
     } catch (error) {
-      toast.error('An error occurred while opening the project. Please try again.')
+      toast.error(t('landing.error.openProject'))
     } finally {
       setLoading(false)
     }

@@ -1,7 +1,12 @@
 {
   "landing": {
     "title": "Welcome to Ruby Raider!",
-    "subtitle": "It is a gem that provides a generator and scaffolding to simplify UI test automation."
+    "subtitle": "It is a gem that provides a generator and scaffolding to simplify UI test automation.",
+    "error": {
+      "selectFolder": "Select a project folder",
+      "folderNotFound": "The folder does not exist.",
+      "openProject": "An error occurred while opening the project. Please try again."
+    }
   },
   "newProject": {
     "alerts": {

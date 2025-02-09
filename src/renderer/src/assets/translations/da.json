@@ -1,7 +1,12 @@
 {
   "landing": {
     "title": "Velkommen til Ruby Raider!",
-    "subtitle": "Det er en gem, der giver en generator og stillads til at forenkle UI-testautomatisering."
+    "subtitle": "Det er en gem, der giver en generator og stillads til at forenkle UI-testautomatisering.",
+    "error": {
+      "selectFolder": "Vælg en projektmappe",
+      "folderNotFound": "Mappen findes ikke.",
+      "openProject": "Der opstod en fejl under åbning af projektet. Prøv venligst igen."
+    }
   },
   "newProject": {
     "alerts": {
