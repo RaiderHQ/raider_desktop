@@ -13,8 +13,9 @@ import updateBrowserType from './handlers/updateBrowserType'
 import isMobileProject from './handlers/isMobileProject'
 import runCommand from './handlers/runCommand'
 import installRaider from './handlers/installRaider'
+import updateMobileCapabilities from './handlers/updateMobileCapabilities'
+import getMobileCapabilities from './handlers/getMobileCapabilities'
 
-// Select the appropriate icon based on the platform
 const iconPath = join(
   __dirname,
   process.platform === 'darwin'
@@ -30,7 +31,7 @@ function createWindow(): void {
     height: 750,
     show: false,
     autoHideMenuBar: true,
-    icon: iconPath, // Set the icon,
+    icon: iconPath,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -38,7 +39,6 @@ function createWindow(): void {
   })
 
   if (is.dev) {
-    // Open the DevTools.
     mainWindow.webContents.openDevTools()
   }
 
@@ -108,3 +108,5 @@ ipcMain.handle('update-browser-url', updateBrowserUrl)
 ipcMain.handle('update-browser-type', updateBrowserType)
 ipcMain.handle('run-command', runCommand)
 ipcMain.handle('install-raider', installRaider)
+ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)
+ipcMain.handle('get-mobile-capabilities', getMobileCapabilities)
