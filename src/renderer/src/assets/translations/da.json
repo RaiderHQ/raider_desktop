@@ -80,7 +80,8 @@
     },
     "section": {
       "baseUrl": "Basis-URL",
-      "browser": "Browser"
+      "browser": "Browser",
+      "appiumSettings": "Appium-indstillinger"
     },
     "baseUrl": {
       "label": "Browser-URL:",
@@ -95,11 +96,39 @@
     },
     "updateUrlButton": "Opdater URL",
     "updateBrowserButton": "Opdater browser",
+    "updateMobileSettingsButton": "Opdater indstillinger",
     "updating": "Opdaterer...",
     "error": {
       "browserUpdateFailed": "Kunne ikke opdatere browser. Prøv venligst igen.",
       "urlUpdateFailed": "Kunne ikke opdatere browser-URL. Prøv venligst igen.",
-      "unexpected": "En uventet fejl opstod. Prøv venligst igen."
+      "unexpected": "En uventet fejl opstod. Prøv venligst igen.",
+      "mobileUrlUpdateFailed": "Kunne ikke opdatere Appium URL. Prøv venligst igen.",
+      "mobileCapabilitiesUpdateFailed": "Kunne ikke opdatere mobile indstillinger. Prøv venligst igen."
+    },
+    "urlUpdateSuccess": "Browser-URL opdateret med succes!",
+    "browserUpdateSuccess": "Browser opdateret med succes!",
+    "mobile": {
+      "appiumUrl": {
+        "label": "Appium URL:",
+        "placeholder": "Indtast Appium URL"
+      },
+      "platformVersion": {
+        "label": "Platformversion:",
+        "placeholder": "Indtast platformversion"
+      },
+      "automationName": {
+        "label": "Automatiseringsnavn:",
+        "placeholder": "Indtast automatiseringsnavn"
+      },
+      "deviceName": {
+        "label": "Enhedsnavn:",
+        "placeholder": "Indtast enhedsnavn"
+      },
+      "app": {
+        "label": "App:",
+        "placeholder": "Indtast app navn"
+      },
+      "updateSuccess": "Opdatering af mobile indstillinger lykkedes!"
     }
   },
   "overview": {

@@ -10,7 +10,7 @@ export interface WindowApi {
       projectName: string,
       framework: string,
       automation: string,
-      mobile?: string // Added optional mobile parameter
+      mobile?: string
     ) => Promise<{ success: boolean; output?: string; error?: string }>
     openAllure: (folderPath: string) => Promise<{ success: boolean; output?: string; error?: string }>
     editFile: (
@@ -28,6 +28,8 @@ export interface WindowApi {
     ) => Promise<{ success: boolean; output?: string; error?: string }>
     isMobileProject: (
       projectPath: string
-    ) => Promise<{ success: boolean; isMobileProject?: boolean; error?: string }> // Added isMobileProject method
+    ) => Promise<{ success: boolean; isMobileProject?: boolean; error?: string }>
+    runCommand: (command: string) => Promise<{ success: boolean; output?: string; error?: string }>
+    installRaider: () => Promise<{ success: boolean; output?: string; error?: string }>
   }
 }

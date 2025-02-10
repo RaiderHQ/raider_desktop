@@ -80,7 +80,8 @@
     },
     "section": {
       "baseUrl": "Base Url",
-      "browser": "Browser"
+      "browser": "Browser",
+      "appiumSettings": "Appium Settings"
     },
     "baseUrl": {
       "label": "Browser URL:",
@@ -95,11 +96,39 @@
     },
     "updateUrlButton": "Update URL",
     "updateBrowserButton": "Update Browser",
+    "updateMobileSettingsButton": "Update Settings",
     "updating": "Updating...",
     "error": {
       "browserUpdateFailed": "Failed to update browser. Please try again.",
       "urlUpdateFailed": "Failed to update browser URL. Please try again.",
-      "unexpected": "An unexpected error occurred. Please try again."
+      "unexpected": "An unexpected error occurred. Please try again.",
+      "mobileUrlUpdateFailed": "Failed to update Appium URL. Please try again.",
+      "mobileCapabilitiesUpdateFailed": "Failed to update mobile settings. Please try again."
+    },
+    "urlUpdateSuccess": "URL successfully updated!",
+    "browserUpdateSuccess": "Browser successfully updated!",
+    "mobile": {
+      "appiumUrl": {
+        "label": "Appium URL:",
+        "placeholder": "Enter Appium URL"
+      },
+      "platformVersion": {
+        "label": "Platform Version:",
+        "placeholder": "Enter platform version"
+      },
+      "automationName": {
+        "label": "Automation Name:",
+        "placeholder": "Enter automation name"
+      },
+      "deviceName": {
+        "label": "Device Name:",
+        "placeholder": "Enter device name"
+      },
+      "app": {
+        "label": "App:",
+        "placeholder": "Enter app name"
+      },
+      "updateSuccess": "Mobile settings updated successfully!"
     }
   },
   "overview": {
