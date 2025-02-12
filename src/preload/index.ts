@@ -77,6 +77,17 @@ const api = {
   },
   installRaider: async (): Promise<CommandType> => {
     return ipcRenderer.invoke('install-raider')
+  },
+  updateMobileCapabilities: async (
+    projectPath: string,
+    capabilities: { platformVersion: string; automationName: string; deviceName: string; app: string }
+  ): Promise<{ success: boolean; output?: string; error?: string }> => {
+    return ipcRenderer.invoke('update-mobile-capabilities', projectPath, capabilities)
+  },
+  getMobileCapabilities: async (
+    projectPath: string
+  ): Promise<{ success: boolean; capabilities?: any; error?: string }> => {
+    return ipcRenderer.invoke('get-mobile-capabilities', projectPath)
   }
 }
 
