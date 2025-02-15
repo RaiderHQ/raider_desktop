@@ -13,11 +13,12 @@ const MainTemplate: React.FC = (): JSX.Element => {
     try {
       const result = await window.api.openAllure(projectPath)
       if (result.error) {
-        if (result.error.toLowerCase().includes('allure')) {
-          throw new Error('overview.error.allureNotInstalled')
-        }
-        throw new Error(result.error)
-      }
+  throw new Error(
+    result.error.toLowerCase().includes('allure') 
+      ? 'overview.error.allureNotInstalled' 
+      : result.error
+  );
+}
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error)
       toast.error(errorMsg)
