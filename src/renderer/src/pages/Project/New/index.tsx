@@ -150,12 +150,12 @@ const CreateProject: React.FC = () => {
           </div>
 
           <div className="flex">
-            <div className="pl-32">
+            <div>
               <Button onClick={() => navigate(-1)} type="secondary">
                 {t('button.back.text')}
               </Button>
             </div>
-            <div className="pl-32">
+            <div className="pl-4">
               <Button onClick={handleCreateProject} type="primary">
                 {t('button.create.text')}
               </Button>
