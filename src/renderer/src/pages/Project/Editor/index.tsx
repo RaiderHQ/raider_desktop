@@ -83,10 +83,6 @@ const FileEditor: React.FC = (): JSX.Element => {
     return (): void => window.removeEventListener('keydown', handleKeyDown)
   }, [handleSave])
 
-  const handleBack = () => {
-    navigate('/project/overview')
-  }
-
   return (
     <div className="flex flex-col w-screen p-8">
       <div className="relative w-full">
