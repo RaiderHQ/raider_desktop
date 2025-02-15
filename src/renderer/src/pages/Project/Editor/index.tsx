@@ -93,7 +93,7 @@ const FileEditor: React.FC = (): JSX.Element => {
           ) : (
             <>
               <div className="flex items-center mb-4">
-                <button onClick={handleBack} className="mr-2 ml-2 focus:outline-none">
+                <button onClick={() => navigate('/project/overview')} className="mr-2 ml-2 focus:outline-none">
                   <FaArrowLeft />
                 </button>
                 <h2 className="text-xl font-semibold">{fileName}</h2>
