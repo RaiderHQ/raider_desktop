@@ -149,13 +149,17 @@ const CreateProject: React.FC = () => {
             )}
           </div>
 
-          <div className="flex justify-between">
-            <Button onClick={() => navigate(-1)} type="secondary">
-              {t('button.back.text')}
-            </Button>
-            <Button onClick={handleCreateProject} type="primary">
-              {t('button.create.text')}
-            </Button>
+          <div className="flex">
+            <div className="pl-32">
+              <Button onClick={() => navigate(-1)} type="secondary">
+                {t('button.back.text')}
+              </Button>
+            </div>
+            <div className="pl-32">
+              <Button onClick={handleCreateProject} type="primary">
+                {t('button.create.text')}
+              </Button>
+            </div>
           </div>
         </div>
       </ContentArea>
