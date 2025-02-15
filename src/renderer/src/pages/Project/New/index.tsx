@@ -93,23 +93,23 @@ const CreateProject: React.FC = () => {
       </div>
 
       <ContentArea>
-        <div className="bg-white p-4 md:p-6 lg:p-8 w-11/12 sm:w-10/12 md:w-9/12 lg:w-8/12 xl:w-7/12 mx-auto relative">
-          <div className="absolute top-2 right-2">
-            <img
-              src={QuestionIcon}
-              className="w-5 md:w-6 lg:w-8 h-auto cursor-pointer"
-              onClick={() => setModalOpen(true)}
-              alt="Help"
-            />
-          </div>
+        <div className="absolute top-2 right-4">
+          <img
+            src={QuestionIcon}
+            className="w-5 md:w-6 lg:w-8 h-auto cursor-pointer"
+            onClick={() => setModalOpen(true)}
+            alt="Help"
+          />
+        </div>
 
+        <div className="bg-white p-4">
           <div className="mb-6">
             <label className="block mb-2 text-sm md:text-base lg:text-lg font-medium text-black-700">
               {t('newProject.input.label')}
             </label>
             <input
               type="text"
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm md:text-base lg:text-lg"
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm md:text-base lg:text-lg"
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
               placeholder={t('newProject.input.placeholder')}
@@ -149,7 +149,7 @@ const CreateProject: React.FC = () => {
             )}
           </div>
 
-          <div className="flex justify-center space-x-4">
+          <div className="flex justify-between">
             <Button onClick={() => navigate(-1)} type="secondary">
               {t('button.back.text')}
             </Button>

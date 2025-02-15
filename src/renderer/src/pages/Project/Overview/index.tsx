@@ -22,10 +22,8 @@ const Overview: React.FC = () => {
         throw new Error(result.error || 'Test execution failed')
       }
 
-      // Show a success toast if tests run successfully
       toast.success(t('overview.runTestsSuccess'))
     } catch (error) {
-      // Dismiss the loading toast and show an error
       toast.dismiss(toastId)
       toast.error(`${t('overview.error.runTests')}: ${error}`)
     }

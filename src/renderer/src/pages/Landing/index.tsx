@@ -42,44 +42,39 @@ const Landing: React.FC = (): JSX.Element => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center">
-      <div className="mb-8">
-        <img
-          src={Logo}
-          alt="Ruby Raider Logo"
-          className="w-28 md:w-36 lg:w-48 h-auto"
-        />
-      </div>
+    <div className="min-h-screen flex flex-col">
+      <main className="flex flex-col items-center justify-center flex-grow">
+        <div className="mb-8">
+          <img src={Logo} alt="Ruby Raider Logo" className="w-28 md:w-36 lg:w-48 h-auto" />
+        </div>
 
-      <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4">
-        {t('landing.title')}
-      </h1>
+        <h1 className="text-[2.5rem] font-bold text-gray-900 mb-4">{t('landing.title')}</h1>
 
-      <p className="text-center text-lg md:text-xl lg:text-2xl text-gray-600 mb-8">
-        {t('landing.subtitle')}
-      </p>
+        <p className="text-center text-lg md:text-xl lg:text-2xl text-gray-600 mb-8">
+          {t('landing.subtitle')}
+        </p>
 
-      <div className="flex space-x-8 mb-8">
-        <ProjectSelector
-          icon={OpenFolder}
-          description={t('button.create.description')}
-          url="/project/new"
-          buttonValue={t('button.create.text')}
-          modalTitleKey="information.createProject.title"
-          modalMessageKey="information.createProject.message"
-        />
-        <ProjectSelector
-          icon={AddIcon}
-          description={t('button.open.description')}
-          buttonValue={t('button.open.text')}
-          modalTitleKey="information.openProject.title"
-          modalMessageKey="information.openProject.message"
-          onClick={handleOpenProject}
-        />
-      </div>
-
-      <footer className="text-gray-500 text-base md:text-lg lg:text-xl">
-        {t('version', { version: raiderVersion })}
+        <div className="flex space-x-8 mb-8">
+          <ProjectSelector
+            icon={OpenFolder}
+            description={t('button.create.description')}
+            url="/project/new"
+            buttonValue={t('button.create.text')}
+            modalTitleKey="information.createProject.title"
+            modalMessageKey="information.createProject.message"
+          />
+          <ProjectSelector
+            icon={AddIcon}
+            description={t('button.open.description')}
+            buttonValue={t('button.open.text')}
+            modalTitleKey="information.openProject.title"
+            modalMessageKey="information.openProject.message"
+            onClick={handleOpenProject}
+          />
+        </div>
+      </main>
+      <footer className="flex justify-center py-4 bg-white">
+        <p className="text-gray-500">{t('version', { version: raiderVersion })}</p>
       </footer>
     </div>
   )

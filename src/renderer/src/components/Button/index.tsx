@@ -18,16 +18,13 @@ const Button = ({
     success: 'bg-green-500 text-white hover:bg-green-600'
   }
 
-  // Fallback to 'disabled' style if the type doesn't match
-  const className = `min-w-[150px] text-sm py-2 font-semibold rounded-lg ${
-    styles[type] || styles.disabled
-  }`
+  const className = `min-w-[150px] text-base py-2 font-semibold rounded-lg ${styles[type] || styles.disabled}`
 
   return (
     <button onClick={onClick} className={className} disabled={disabled}>
       {children}
     </button>
-  );
+  )
 }
 
 export default Button
