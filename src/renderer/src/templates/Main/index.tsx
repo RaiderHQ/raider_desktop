@@ -11,16 +11,11 @@ const MainTemplate: React.FC = (): JSX.Element => {
 
   const handleOpenAllure = async (): Promise<void> => {
     try {
-      const result = await window.api.openAllure(projectPath)
-      if (result.error) {
-        if (result.error.toLowerCase().includes('allure')) {
-          throw new Error('overview.error.allureNotInstalled')
-        }
-        throw new Error(result.error)
-      }
+      const result = await window.api.openAllure()
+      if (result.error) throw new Error(result.error)
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error)
-      toast.error(errorMsg)
+      toast.error(`${t('overview.error.openAllure')}: ${errorMsg}`)
     }
   }
 

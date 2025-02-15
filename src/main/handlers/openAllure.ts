@@ -2,60 +2,48 @@ import { spawn } from 'child_process'
 import path from 'path'
 import { IpcMainInvokeEvent } from 'electron'
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-const handler = async (_event: IpcMainInvokeEvent, folderPath: string) => {
-  const fixPath = (await import('fix-path')).default // Dynamically import fix-path
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const handler = async (_event: IpcMainInvokeEvent): Promise<{ success: boolean; output?: string; error?: string }> => {
+  const fixPath = (await import('fix-path')).default
 
   return new Promise((resolve) => {
     try {
-      fixPath() // Ensure the system PATH is correctly set
+      fixPath()
 
-      // Validate the folderPath
-      if (typeof folderPath !== 'string' || folderPath.trim() === '') {
-        throw new Error('Invalid folderPath: Must be a non-empty string')
+      const localDirectoryPath = process.cwd()
+
+      if (typeof localDirectoryPath !== 'string' || localDirectoryPath.trim() === '') {
+        throw new Error('Invalid local directory path: Must be a non-empty string')
       }
 
-      // Normalize the folder path
-      const normalizedFolderPath = path.resolve(folderPath)
+      const normalizedFolderPath = path.resolve(localDirectoryPath)
 
-      // Define the command and arguments
       const command = process.platform === 'win32' ? 'cmd.exe' : 'allure'
-      const args =
-        process.platform === 'win32'
-          ? ['/c', 'allure', 'serve', 'allure-results']
-          : ['serve', 'allure-results']
+      const args = process.platform === 'win32'
+        ? ['/c', 'allure', 'serve', 'allure-results']
+        : ['serve', 'allure-results']
       const options = {
-        cwd: normalizedFolderPath, // Set the working directory to the project folder
-        shell: process.platform === 'win32' // Use shell only for Windows
+        cwd: normalizedFolderPath,
+        shell: process.platform === 'win32'
       }
 
-      // Spawn the process
       const childProcess = spawn(command, args, options)
 
-      let stdout = ''
-      let stderr = ''
+      if (childProcess.pid) {
+        resolve({ success: true, output: `Allure server started with PID ${childProcess.pid}` })
+      } else {
+        resolve({ success: false, error: 'Failed to spawn Allure process' })
+      }
 
-      // Listen for stdout
+      childProcess.on('error', (error) => {
+        resolve({ success: false, error: error instanceof Error ? error.message : String(error) })
+      })
+
       childProcess.stdout.on('data', (data) => {
-        stdout += data.toString()
-        console.log(`[STDOUT] handler: ${data}`)
+        console.log(`[STDOUT] Allure: ${data.toString()}`)
       })
-
-      // Listen for stderr
       childProcess.stderr.on('data', (data) => {
-        stderr += data.toString()
-        console.error(`[STDERR] handler: ${data}`)
-      })
-
-      // Handle process exit
-      childProcess.on('close', (code) => {
-        if (code === 0) {
-          console.log(`[SUCCESS] Allure server started: ${stdout}`)
-          resolve({ success: true, output: stdout.trim() })
-        } else {
-          console.error(`[ERROR] Failed to start Allure server: ${stderr}`)
-          resolve({ success: false, error: stderr.trim() })
-        }
+        console.error(`[STDERR] Allure: ${data.toString()}`)
       })
     } catch (error) {
       console.error('Error running Allure command:', error)
