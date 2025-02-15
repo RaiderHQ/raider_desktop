@@ -1,9 +1,7 @@
 import { spawn } from 'child_process'
 import path from 'path'
-import { IpcMainInvokeEvent } from 'electron'
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const handler = async (_event: IpcMainInvokeEvent): Promise<{ success: boolean; output?: string; error?: string }> => {
+const handler = async (): Promise<{ success: boolean; output?: string; error?: string }> => {
   const fixPath = (await import('fix-path')).default
 
   return new Promise((resolve) => {
