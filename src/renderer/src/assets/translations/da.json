@@ -137,8 +137,7 @@
       "unexpectedReadFile": "Uventet fejl opstod under læsning af filen. Prøv venligst igen.",
       "runTests": "Fejl ved udførelse af tests. Prøv venligst igen.",
       "unexpectedRunTests": "Uventet fejl opstod under udførelse af tests. Prøv venligst igen.",
-      "openAllure": "Fejl ved åbning af dashboard. Prøv venligst igen.",
-      "unexpectedOpenAllure": "Uventet fejl opstod under åbning af dashboard. Prøv venligst igen."
+      "allureNotInstalled": "Allure er ikke installeret. Installer det for at bruge dashboardet"
     },
     "running": "Tests udføres...",
     "runTestsSuccess": "Tests fuldført med succes!"

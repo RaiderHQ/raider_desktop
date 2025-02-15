@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import toast from 'react-hot-toast'
 import Logo from '@assets/images/logo-with-title.svg'
 import useVersionStore from '@foundation/Stores/versionStore'
 
@@ -11,9 +12,15 @@ const MainTemplate: React.FC = (): JSX.Element => {
   const handleOpenAllure = async (): Promise<void> => {
     try {
       const result = await window.api.openAllure(projectPath)
-      if (result.error) throw new Error(result.error)
+      if (result.error) {
+        if (result.error.toLowerCase().includes('allure')) {
+          throw new Error('overview.error.allureNotInstalled')
+        }
+        throw new Error(result.error)
+      }
     } catch (error) {
-      toast.error(`${t('overview.error.openAllure')}: ${error}`)
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      toast.error(errorMsg)
     }
   }
 
