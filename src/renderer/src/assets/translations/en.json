@@ -137,8 +137,7 @@
       "unexpectedReadFile": "Unexpected error occurred while reading the file. Please try again.",
       "runTests": "Error executing tests. Please try again.",
       "unexpectedRunTests": "Unexpected error occurred while executing tests. Please try again.",
-      "openAllure": "Error opening Dashboard. Please try again.",
-      "unexpectedOpenAllure": "Unexpected error occurred while opening the dashboard. Please try again."
+      "allureNotInstalled": "Allure is not installed. Please install it to use the dashboard"
     },
     "running": "Tests are being executed...",
     "runTestsSuccess": "Tests completed successfully!"
