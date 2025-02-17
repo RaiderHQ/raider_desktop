@@ -162,9 +162,9 @@ const Settings: React.FC = () => {
         <div className="relative w-full">
           <div className="absolute -right-1 -bottom-1 w-full h-full bg-[#c14420] rounded-lg" />
           <div className="relative h-[70vh] border rounded-lg shadow-sm overflow-y-auto bg-white z-10 p-4">
-            <header className="flex flex-col items-center mb-3">
-              <h1 className="text-2xl font-bold mb-2">{t('settings.mobileProject.title')}</h1>
-              <p className="mb-2 text-center">{t('settings.mobileProject.description')}</p>
+            <header className="flex flex-col items-center pt-8 mb-3">
+              <h1 className="text-3xl font-bold mb-2">{t('settings.mobileProject.title')}</h1>
+              <p className="text-xl mb-2 text-center">{t('settings.mobileProject.description')}</p>
             </header>
             <div className="border border-gray-300 rounded-lg overflow-hidden w-[60vw] mx-auto">
               {/* Single expandable section for all mobile settings */}
@@ -256,9 +256,9 @@ const Settings: React.FC = () => {
       <div className="relative w-full">
         <div className="absolute -right-1 -bottom-1 w-full h-full bg-[#c14420] rounded-lg" />
         <div className="relative h-[70vh] border rounded-lg shadow-sm overflow-y-auto bg-white z-10 p-4">
-          <header className="flex flex-col items-center mb-3">
-            <h1 className="text-2xl font-bold mb-2">{t('settings.header.title')}</h1>
-            <p className="mb-2 text-center">{t('settings.header.description')}</p>
+          <header className="flex flex-col items-center pt-8 mb-3">
+            <h1 className="text-3xl font-bold mb-2">{t('settings.header.title')}</h1>
+            <p className="text-xl mb-2 text-center">{t('settings.header.description')}</p>
           </header>
           <div className="border border-gray-300 rounded-lg overflow-hidden w-[60vw] mx-auto">
             {['settings.section.baseUrl', 'settings.section.browser'].map((section, index) => (

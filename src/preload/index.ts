@@ -45,10 +45,8 @@ const api = {
   ): Promise<{ success: boolean; error?: string }> => {
     return ipcRenderer.invoke('edit-file', filePath, newContent) // Invoke the edit-file handler in the main process
   },
-  openAllure: async (
-    folderPath: string
-  ): Promise<{ success: boolean; output?: string; error?: string }> => {
-    return ipcRenderer.invoke('open-allure', folderPath) // Pass folderPath to the main process
+  openAllure: async (): Promise<{ success: boolean; output?: string; error?: string }> => {
+    return ipcRenderer.invoke('open-allure')
   },
   runTests: async (
     folderPath: string
