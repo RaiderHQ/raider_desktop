@@ -19,7 +19,7 @@ const SelectInput: React.FC<SelectInputProps> = ({
       <label className="block mb-1 font-medium text-[14px]">{label}</label>
       <div className="relative">
         <select
-          className="block w-full p-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 appearance-none focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
+          className="block w-full p-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 appearance-none focus:outline-none focus:ring-2 focus:ring-[rgb(229,151,0)] focus:border-[rgb(229,151,0)]"
           value={selected}
           onChange={onChange}
         >

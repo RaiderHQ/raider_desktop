@@ -12,7 +12,7 @@ export interface WindowApi {
       automation: string,
       mobile?: string
     ) => Promise<{ success: boolean; output?: string; error?: string }>
-    openAllure: (folderPath: string) => Promise<{ success: boolean; output?: string; error?: string }>
+    openAllure: () => Promise<{ success: boolean; output?: string; error?: string }>
     editFile: (
       filePath: string,
       newContent: string

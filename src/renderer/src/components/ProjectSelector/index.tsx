@@ -34,17 +34,15 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
         <div className="absolute top-2 right-2">
           <img
             src={QuestionIcon}
-            className="w-5 md:w-6 lg:w-8 h-auto cursor-pointer"
+            className="w-[1.8rem] h-[1.8rem] cursor-pointer"
             onClick={() => setModalOpen(true)}
             alt="Help"
           />
         </div>
         <div className="mb-4">
-          <img src={icon} className="w-12 md:w-16 lg:w-20 h-auto" />
+          <img src={icon} className="w-[3.2rem] h-[3.2rem]" />
         </div>
-        <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-gray-900 mb-6">
-          {description}
-        </h2>
+        <h2 className="text-[1.35rem] font-semibold text-gray-900 mb-6">{description}</h2>
         {url ? (
           <Link to={url}>
             <Button>{buttonValue}</Button>

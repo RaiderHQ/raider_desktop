@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { sample } from 'lodash'
 import Editor from '@components/Editor'
 import { getFileLanguage } from '@foundation/helpers'
+import { FaArrowLeft } from 'react-icons/fa'
 
 interface FileEditorProps {
   fileName: string
@@ -13,12 +14,11 @@ interface FileEditorProps {
 
 const FileEditor: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const location = useLocation()
 
-  // Extract state passed during navigation
   const { fileName, filePath } = location.state as FileEditorProps
 
-  // Initialize state with the file content
   const [fileContent, setFileContent] = useState<string>('')
   const [isSaving, setIsSaving] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(false)
@@ -84,20 +84,27 @@ const FileEditor: React.FC = (): JSX.Element => {
   }, [handleSave])
 
   return (
-    <div className="flex flex-col w-screen h-screen p-8">
-      <div className="relative flex-grow w-full">
+    <div className="flex flex-col w-screen p-8">
+      <div className="relative w-full">
         <div className="absolute -right-1 -bottom-1 w-full h-full bg-[#c14420] rounded-lg" />
-        <div className="relative flex flex-col flex-grow border rounded-lg shadow-sm overflow-hidden bg-white p-4 z-10">
+        <div className="relative h-[70vh] border rounded-lg shadow-sm overflow-y-auto bg-white z-10">
           {isLoading ? (
             <h2>{t('editor.loading')}</h2>
           ) : (
             <>
-              <h2 className="text-xl font-semibold mb-4">{fileName}</h2>
-              <Editor
-                value={fileContent}
-                language={getFileLanguage(filePath)}
-                onChange={(value: string | undefined) => setFileContent(value || '')}
-              />
+              <div className="flex items-center mb-4">
+                <button onClick={() => navigate('/project/overview')} className="mr-2 ml-2 focus:outline-none">
+                  <FaArrowLeft />
+                </button>
+                <h2 className="text-xl font-semibold">{fileName}</h2>
+              </div>
+              <div className="flex-grow overflow-y-auto">
+                <Editor
+                  value={fileContent}
+                  language={getFileLanguage(filePath)}
+                  onChange={(value: string | undefined) => setFileContent(value || '')}
+                />
+              </div>
             </>
           )}
         </div>
