@@ -24,13 +24,14 @@ const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screensho
   const [showModal, setShowModal] = useState(false)
   const [imageData, setImageData] = useState<string>('')
 
-  let statusIcon = null
-  if (status === 'passed') {
-    statusIcon = <FaCheckCircle className="text-green-500" />
-  } else if (status === 'failed') {
-    statusIcon = <FaTimesCircle className="text-red-500" />
-  } else if (status === 'skipped') {
-    statusIcon = <FaExclamationCircle className="text-gray-500" />
+  let statusIcon: JSX.Element | null = null;
+
+  if (status === "passed") {
+    statusIcon = <FaCheckCircle className="text-green-500" />;
+  } else if (status === "failed") {
+    statusIcon = <FaTimesCircle className="text-red-500" />;
+  } else if (status === "skipped") {
+    statusIcon = <FaExclamationCircle className="text-gray-500" />;
   }
 
   const chevronIcon = open ? <FaChevronDown /> : <FaChevronRight />

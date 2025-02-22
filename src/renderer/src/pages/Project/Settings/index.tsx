@@ -6,7 +6,7 @@ import useProjectStore from '@foundation/Stores/projectStore'
 
 const Settings: React.FC = () => {
   const { t } = useTranslation()
-  const projectPath: string = useProjectStore((state: { projectPath: string }) => state.projectPath)
+  const projectPath: string = useProjectStore((state) => state.projectPath) || ''
   const [selectedBrowser, setSelectedBrowser] = useState('chrome')
   const [browserUrl, setBrowserUrl] = useState('https://automationteststore.com/')
   const [isUpdatingUrl, setIsUpdatingUrl] = useState(false)

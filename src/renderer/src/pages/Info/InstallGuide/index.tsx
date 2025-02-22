@@ -9,7 +9,7 @@ const InstallGuide: React.FC = () => {
 
   return (
     <div className="min-h-screen w-[80vw] flex items-center justify-center">
-      <ContentArea className="mx-auto">
+      <ContentArea>
         <div className="flex flex-col items-center justify-center">
           <div className="mb-2">
             <img src={Logo} alt="Ruby Raider Logo" className="w-28 h-auto" />

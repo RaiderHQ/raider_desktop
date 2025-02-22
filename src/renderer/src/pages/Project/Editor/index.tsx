@@ -20,7 +20,7 @@ const FileEditor: React.FC = (): JSX.Element => {
   const { fileName, filePath } = location.state as FileEditorProps
 
   const [fileContent, setFileContent] = useState<string>('')
-  const [isSaving, setIsSaving] = useState<boolean>(false)
+  const [, setIsSaving] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(false)
 
   const handleSave = async (): Promise<void> => {
@@ -58,7 +58,7 @@ const FileEditor: React.FC = (): JSX.Element => {
         return
       }
 
-      setFileContent(result.data)
+      setFileContent(result.data || '')
     } catch (err) {
       console.error('Error reading file', err)
       toast.error(t('overview.error.unexpectedReadFile'))
