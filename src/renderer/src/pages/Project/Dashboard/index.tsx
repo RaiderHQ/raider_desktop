@@ -26,7 +26,7 @@ interface TestResult {
 const Dashboard: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const [results, setResults] = useState<TestResult[]>([])
-  const projectPath: string = useProjectStore((state) => state.projectPath)
+  const projectPath: string | null = useProjectStore((state) => state.projectPath)
 
   useEffect(() => {
     const fetchDashboard = async () => {

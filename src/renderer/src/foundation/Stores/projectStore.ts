@@ -52,7 +52,7 @@ const useProjectStore = create(
       const { files } = get()
 
       const getFilePaths = (files: FileNode[]): string[] => {
-        let filePaths: string[] = []
+        let filePaths: string[] = [];
 
         files.forEach((file) => {
           if (file.type === 'file') {
@@ -60,12 +60,11 @@ const useProjectStore = create(
             return
           }
 
-          filePaths = [...filePaths, ...getFilePaths(file.children)]
+          filePaths = [...filePaths, ...getFilePaths(file.children || [])]
         })
 
         return filePaths
       }
-
       const filePaths = getFilePaths(files)
       set({ selectedFiles: filePaths })
     }
