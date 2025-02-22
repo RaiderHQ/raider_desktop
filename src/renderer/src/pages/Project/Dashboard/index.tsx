@@ -91,78 +91,82 @@ const Dashboard: React.FC = (): JSX.Element => {
 
   return (
     <div className="p-2 min-h-fit sm:p-4 md:p-6 w-full flex flex-col">
-      {totalCount > 0 && (
-        <div className="mb-2 sm:mb-4 md:mb-6 p-4 border rounded bg-white">
-          <h2 className="text-2xl font-bold mb-2">{t('dashboard.overallSummary')}</h2>
-          <p className="text-lg">
-            {t('dashboard.totalTests')}: <span className="font-semibold">{totalCount}</span>
-          </p>
-          <p className="text-lg">
-            {t('dashboard.passed')}: <span className="font-semibold text-[#4caf50]">{passedCount}</span>
-          </p>
-          <p className="text-lg">
-            {t('dashboard.failed')}: <span className="font-semibold text-[#f44336]">{failedCount}</span>
-          </p>
-          <p className="text-lg">
-            {t('dashboard.skipped')}: <span className="font-semibold text-[#ff9800]">{skippedCount}</span>
-          </p>
+      {totalCount === 0 ? (
+        <div className="text-center text-gray-600 text-lg font-semibold p-6 border rounded bg-white shadow">
+          {t('dashboard.noResults')}
         </div>
+      ) : (
+        <>
+          <div className="mb-2 sm:mb-4 md:mb-6 p-4 border rounded bg-white">
+            <h2 className="text-2xl font-bold mb-2">{t('dashboard.overallSummary')}</h2>
+            <p className="text-lg">
+              {t('dashboard.totalTests')}: <span className="font-semibold">{totalCount}</span>
+            </p>
+            <p className="text-lg">
+              {t('dashboard.passed')}: <span className="font-semibold text-[#4caf50]">{passedCount}</span>
+            </p>
+            <p className="text-lg">
+              {t('dashboard.failed')}: <span className="font-semibold text-[#f44336]">{failedCount}</span>
+            </p>
+            <p className="text-lg">
+              {t('dashboard.skipped')}: <span className="font-semibold text-[#ff9800]">{skippedCount}</span>
+            </p>
+          </div>
+
+          <div className="flex flex-1 flex-col md:flex-row gap-4 sm:gap-6 md:gap-8">
+            <div className="items-center">
+              <PieChartWidget passed={passedCount} failed={failedCount} skipped={skippedCount} />
+            </div>
+
+            <div className="flex-1 flex flex-col border rounded shadow p-4 h-min">
+              <div className="flex flex-col gap-4">
+                {passedTests.length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">{t('dashboard.passed')}</h3>
+                    {passedTests.map((result, index) => (
+                      <TestResultCard
+                        key={`passed-${index}`}
+                        name={result.name}
+                        status={result.status}
+                        screenshot={result.screenshot}
+                        message={result.statusDetails?.message}
+                      />
+                    ))}
+                  </div>
+                )}
+                {failedTests.length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">{t('dashboard.failed')}</h3>
+                    {failedTests.map((result, index) => (
+                      <TestResultCard
+                        key={`failed-${index}`}
+                        name={result.name}
+                        status={result.status}
+                        screenshot={result.screenshot}
+                        message={result.statusDetails?.message}
+                      />
+                    ))}
+                  </div>
+                )}
+                {skippedTests.length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">{t('dashboard.skipped')}</h3>
+                    {skippedTests.map((result, index) => (
+                      <TestResultCard
+                        key={`skipped-${index}`}
+                        name={result.name}
+                        status={result.status}
+                        screenshot={result.screenshot}
+                        message={result.statusDetails?.message}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
       )}
-
-      <div className="flex flex-1 flex-col md:flex-row gap-4 sm:gap-6 md:gap-8">
-        {totalCount > 0 && (
-          <div className="items-center">
-            <PieChartWidget passed={passedCount} failed={failedCount} skipped={skippedCount} />
-          </div>
-        )}
-
-        <div className="flex-1 flex flex-col border rounded shadow p-4 h-min">
-          <div className="flex flex-col gap-4">
-            {passedTests.length > 0 && (
-              <div>
-                <h3 className="text-xl font-semibold mb-2">{t('dashboard.passed')}</h3>
-                {passedTests.map((result, index) => (
-                  <TestResultCard
-                    key={`passed-${index}`}
-                    name={result.name}
-                    status={result.status}
-                    screenshot={result.screenshot}
-                    message={result.statusDetails?.message}
-                  />
-                ))}
-              </div>
-            )}
-            {failedTests.length > 0 && (
-              <div>
-                <h3 className="text-xl font-semibold mb-2">{t('dashboard.failed')}</h3>
-                {failedTests.map((result, index) => (
-                  <TestResultCard
-                    key={`failed-${index}`}
-                    name={result.name}
-                    status={result.status}
-                    screenshot={result.screenshot}
-                    message={result.statusDetails?.message}
-                  />
-                ))}
-              </div>
-            )}
-            {skippedTests.length > 0 && (
-              <div>
-                <h3 className="text-xl font-semibold mb-2">{t('dashboard.skipped')}</h3>
-                {skippedTests.map((result, index) => (
-                  <TestResultCard
-                    key={`skipped-${index}`}
-                    name={result.name}
-                    status={result.status}
-                    screenshot={result.screenshot}
-                    message={result.statusDetails?.message}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

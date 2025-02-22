@@ -83,7 +83,12 @@ const api = {
   },
   updateMobileCapabilities: async (
     projectPath: string,
-    capabilities: { platformVersion: string; automationName: string; deviceName: string; app: string }
+    capabilities: {
+      platformVersion: string
+      automationName: string
+      deviceName: string
+      app: string
+    }
   ): Promise<{ success: boolean; output?: string; error?: string }> => {
     return ipcRenderer.invoke('update-mobile-capabilities', projectPath, capabilities)
   },
