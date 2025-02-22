@@ -39,6 +39,11 @@ const api = {
   ): Promise<{ success: boolean; data?: string; fileExt?: string; error?: string }> => {
     return ipcRenderer.invoke('read-file', filePath)
   },
+  readImage: async (
+    filePath: string
+  ): Promise<{ success: boolean; data?: string; fileExt?: string; error?: string }> => {
+    return ipcRenderer.invoke('read-image', filePath)
+  },
   editFile: async (
     filePath: string,
     newContent: string

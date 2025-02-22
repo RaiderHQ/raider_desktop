@@ -5,6 +5,7 @@ import selectFolder from './handlers/selectFolder'
 import readDirectory from './handlers/readDirectory'
 import runRubyRaider from './handlers/runRubyRaider'
 import readFile from './handlers/readFile'
+import readImage from './handlers/readImage'
 import openAllure from './handlers/openAllure'
 import editFile from './handlers/editFile'
 import runTests from './handlers/runTests'
@@ -100,6 +101,7 @@ ipcMain.handle('select-folder', selectFolder)
 ipcMain.handle('read-directory', readDirectory)
 ipcMain.handle('open-allure', openAllure)
 ipcMain.handle('read-file', readFile)
+ipcMain.handle('read-image', readImage)
 ipcMain.handle('edit-file', editFile)
 ipcMain.handle('run-ruby-raider', runRubyRaider)
 ipcMain.handle('is-mobile-project', isMobileProject)

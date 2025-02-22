@@ -1,6 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import toast from 'react-hot-toast'
 import Logo from '@assets/images/logo-with-title.svg'
 import useVersionStore from '@foundation/Stores/versionStore'
 
@@ -8,16 +7,6 @@ const MainTemplate: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const location = useLocation()
   const raiderVersion = useVersionStore((state: { version: string }) => state.version)
-
-  const handleOpenAllure = async (): Promise<void> => {
-    try {
-      const result = await window.api.openAllure()
-      if (result.error) throw new Error(result.error)
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error)
-      toast.error(`${t('overview.error.openAllure')}: ${errorMsg}`)
-    }
-  }
 
   const isCreateProjectView = location.pathname === '/project/new'
 
@@ -33,12 +22,9 @@ const MainTemplate: React.FC = (): JSX.Element => {
             <Link to="/project/overview" className="text-gray-600 hover:text-gray-800">
               {t('menu.tests')}
             </Link>
-            <button
-              onClick={handleOpenAllure}
-              className="text-gray-600 hover:text-gray-800 focus:outline-none"
-            >
+            <Link to="/project/dashboard" className="text-gray-600 hover:text-gray-800">
               {t('menu.dashboard')}
-            </button>
+            </Link>
             <Link to="/project/settings" className="text-gray-600 hover:text-gray-800">
               {t('menu.settings')}
             </Link>
