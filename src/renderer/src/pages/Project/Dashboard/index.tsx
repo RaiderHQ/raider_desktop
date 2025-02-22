@@ -97,10 +97,10 @@ const Dashboard: React.FC = (): JSX.Element => {
   const totalCount = results.length
 
   return (
-    <div className="sm:p-6 md:p-8 min-h w-full flex flex-col">
+    <div className="p-2 min-h-fit sm:p-4 md:p-6 w-full flex flex-col">
       {/* Summary Section */}
       {totalCount > 0 && (
-        <div className="mb-4 sm:mb-6 md:mb-8 p-4 border rounded bg-white">
+        <div className="mb-2 sm:mb-4 md:mb-6 p-4 border rounded bg-white">
           <h2 className="text-2xl font-bold mb-2">Overall Summary</h2>
           <p className="text-lg">Total Tests: <span className="font-semibold">{totalCount}</span></p>
           <p className="text-lg">Passed: <span className="font-semibold text-[#4caf50]">{passedCount}</span></p>
@@ -109,7 +109,7 @@ const Dashboard: React.FC = (): JSX.Element => {
         </div>
       )}
 
-      <div className="flex flex-1 flex-col md:flex-row gap-4 sm:gap-6 md:gap-8 flex-grow">
+      <div className="flex flex-1 flex-col md:flex-row gap-4 sm:gap-6 md:gap-8">
         {/* Pie Chart Widget Column */}
         {totalCount > 0 && (
           <div className="items-center">
