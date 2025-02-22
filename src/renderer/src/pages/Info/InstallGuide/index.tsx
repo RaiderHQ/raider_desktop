@@ -8,9 +8,9 @@ const InstallGuide: React.FC = () => {
   const handleNavigation = (url: string) => window.open(url, '_blank')
 
   return (
-    <div className="min-h-screen w-[80vw] flex items-center justify-center">
+    <div className="min-h-screen flex items-center">
       <ContentArea>
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center">
           <div className="mb-2">
             <img src={Logo} alt="Ruby Raider Logo" className="w-28 h-auto" />
           </div>

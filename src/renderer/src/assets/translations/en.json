@@ -51,7 +51,7 @@
   "version": "Ruby Raider Version: {{version}}",
   "installGuide": {
     "title": "Installation Required",
-    "message": "You need to install both Ruby and Ruby Raider to run this application.",
+    "message": "You need to install Ruby and Allure to run this application.",
     "information": "Check our GitHub page or Website for installation instructions."
   },
   "information": {
@@ -179,5 +179,8 @@
       "parsing": "Error parsing {{file}}",
       "reading": "Error reading {{file}}"
     }
+  },
+  "errorPage": {
+    "title": "Pre-requisites not installed"
   }
 }
