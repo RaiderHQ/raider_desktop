@@ -94,58 +94,81 @@ const Dashboard: React.FC = (): JSX.Element => {
   const passedCount = passedTests.length
   const failedCount = failedTests.length
   const skippedCount = skippedTests.length
+  const totalCount = results.length
 
   return (
-    <div className="p-8">
-      <div className="flex gap-8">
+    <div className="p-8 h-screen">
+      {/* Summary Section */}
+      <div className="mb-8 p-4 border rounded bg-white">
+        <h2 className="text-2xl font-bold mb-2">Overall Summary</h2>
+        <p className="text-lg">
+          Total Tests: <span className="font-semibold">{totalCount}</span>
+        </p>
+        <p className="text-lg">
+          Passed: <span className="font-semibold text-[#4caf50]">{passedCount}</span>
+        </p>
+        <p className="text-lg">
+          Failed: <span className="font-semibold text-[#f44336]">{failedCount}</span>
+        </p>
+        <p className="text-lg">
+          Skipped: <span className="font-semibold text-[#ff9800]">{skippedCount}</span>
+        </p>
+      </div>
+      <div className="flex h-[calc(100%-200px)] gap-8">
         {/* Pie Chart Widget Column */}
-        <div>
-          <PieChartWidget passed={passedCount} failed={failedCount} skipped={skippedCount} />
+        <div className="flex-1 flex justify-center items-center">
+          <div className="h-full overflow-y-auto">
+            <PieChartWidget passed={passedCount} failed={failedCount} skipped={skippedCount} />
+          </div>
         </div>
         {/* Test Results Column */}
-        <div className="flex flex-col gap-6">
-          {passedTests.length > 0 && (
-            <div>
-              <h3 className="text-xl font-semibold mb-2">Passed</h3>
-              {passedTests.map((result, index) => (
-                <TestResultCard
-                  key={`passed-${index}`}
-                  name={result.name}
-                  status={result.status}
-                  screenshot={result.screenshot}
-                  message={result.statusDetails?.message}
-                />
-              ))}
+        <div className="flex-1 flex justify-center items-center">
+          <div className="h-full overflow-y-auto">
+            <div className="flex flex-col gap-6">
+              {passedTests.length > 0 && (
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">Passed</h3>
+                  {passedTests.map((result, index) => (
+                    <TestResultCard
+                      key={`passed-${index}`}
+                      name={result.name}
+                      status={result.status}
+                      screenshot={result.screenshot}
+                      message={result.statusDetails?.message}
+                    />
+                  ))}
+                </div>
+              )}
+              {failedTests.length > 0 && (
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">Failed</h3>
+                  {failedTests.map((result, index) => (
+                    <TestResultCard
+                      key={`failed-${index}`}
+                      name={result.name}
+                      status={result.status}
+                      screenshot={result.screenshot}
+                      message={result.statusDetails?.message}
+                    />
+                  ))}
+                </div>
+              )}
+              {skippedTests.length > 0 && (
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">Skipped</h3>
+                  {skippedTests.map((result, index) => (
+                    <TestResultCard
+                      key={`skipped-${index}`}
+                      name={result.name}
+                      status={result.status}
+                      screenshot={result.screenshot}
+                      message={result.statusDetails?.message}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-          {failedTests.length > 0 && (
-            <div>
-              <h3 className="text-xl font-semibold mb-2">Failed</h3>
-              {failedTests.map((result, index) => (
-                <TestResultCard
-                  key={`failed-${index}`}
-                  name={result.name}
-                  status={result.status}
-                  screenshot={result.screenshot}
-                  message={result.statusDetails?.message}
-                />
-              ))}
-            </div>
-          )}
-          {skippedTests.length > 0 && (
-            <div>
-              <h3 className="text-xl font-semibold mb-2">Skipped</h3>
-              {skippedTests.map((result, index) => (
-                <TestResultCard
-                  key={`skipped-${index}`}
-                  name={result.name}
-                  status={result.status}
-                  screenshot={result.screenshot}
-                  message={result.statusDetails?.message}
-                />
-              ))}
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
