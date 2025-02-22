@@ -13,8 +13,8 @@ import toast from 'react-hot-toast'
 interface TestResultCardProps {
   name: string
   status: string
-  screenshot?: string // expected to be the file path
-  message?: string    // optional message to display when expanded
+  screenshot?: string
+  message?: string
 }
 
 const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screenshot, message }) => {
@@ -83,7 +83,6 @@ const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screensho
       )}
       {showModal && imageData && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          {/* Close button placed at the top-right of the viewport */}
           <button
             onClick={() => setShowModal(false)}
             className="absolute top-4 right-4 text-white text-2xl"

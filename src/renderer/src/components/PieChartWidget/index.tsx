@@ -1,5 +1,5 @@
 import React from 'react'
-import { PieChart, Pie, Cell, Tooltip, Legend } from "recharts"
+import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts'
 
 interface PieChartWidgetProps {
   passed: number
@@ -8,24 +8,22 @@ interface PieChartWidgetProps {
 }
 
 const COLORS = {
-  passed: '#4caf50', // green for passed
-  failed: '#f44336', // red for failed
-  skipped: '#ff9800'  // orange for skipped
+  passed: '#4caf50',
+  failed: '#f44336',
+  skipped: '#ff9800'
 }
 
 const PieChartWidget: React.FC<PieChartWidgetProps> = ({ passed, failed, skipped }) => {
   const total = passed + failed + skipped
 
   const rawData = [
-    { name: "Passed", value: passed },
-    { name: "Failed", value: failed },
-    { name: "Skipped", value: skipped }
+    { name: 'Passed', value: passed },
+    { name: 'Failed', value: failed },
+    { name: 'Skipped', value: skipped }
   ]
 
-  // Filter out statuses with a value of 0
   const data = rawData.filter((item) => item.value > 0)
 
-  // Custom formatter for the Legend. It shows the category and percentage.
   const legendFormatter = (value: string, entry: any, index: number) => {
     const item = data.find((d) => d.name === value)
     const percentage = item && total > 0 ? ((item.value / total) * 100).toFixed(0) + '%' : ''
@@ -49,9 +47,9 @@ const PieChartWidget: React.FC<PieChartWidgetProps> = ({ passed, failed, skipped
             <Cell
               key={`cell-${index}`}
               fill={
-                entry.name === "Passed"
+                entry.name === 'Passed'
                   ? COLORS.passed
-                  : entry.name === "Failed"
+                  : entry.name === 'Failed'
                     ? COLORS.failed
                     : COLORS.skipped
               }
