@@ -97,77 +97,71 @@ const Dashboard: React.FC = (): JSX.Element => {
   const totalCount = results.length
 
   return (
-    <div className="p-8 h-screen w-screen">
+    <div className="sm:p-6 md:p-8 min-h w-full flex flex-col">
       {/* Summary Section */}
-      <div className="mb-8 p-4 border rounded bg-white">
-        <h2 className="text-2xl font-bold mb-2">Overall Summary</h2>
-        <p className="text-lg">
-          Total Tests: <span className="font-semibold">{totalCount}</span>
-        </p>
-        <p className="text-lg">
-          Passed: <span className="font-semibold text-[#4caf50]">{passedCount}</span>
-        </p>
-        <p className="text-lg">
-          Failed: <span className="font-semibold text-[#f44336]">{failedCount}</span>
-        </p>
-        <p className="text-lg">
-          Skipped: <span className="font-semibold text-[#ff9800]">{skippedCount}</span>
-        </p>
-      </div>
-      <div className="flex gap-8">
+      {totalCount > 0 && (
+        <div className="mb-4 sm:mb-6 md:mb-8 p-4 border rounded bg-white">
+          <h2 className="text-2xl font-bold mb-2">Overall Summary</h2>
+          <p className="text-lg">Total Tests: <span className="font-semibold">{totalCount}</span></p>
+          <p className="text-lg">Passed: <span className="font-semibold text-[#4caf50]">{passedCount}</span></p>
+          <p className="text-lg">Failed: <span className="font-semibold text-[#f44336]">{failedCount}</span></p>
+          <p className="text-lg">Skipped: <span className="font-semibold text-[#ff9800]">{skippedCount}</span></p>
+        </div>
+      )}
+
+      <div className="flex flex-1 flex-col md:flex-row gap-4 sm:gap-6 md:gap-8 flex-grow">
         {/* Pie Chart Widget Column */}
-        <div className="flex-1 flex items-center">
-          <div className="h-full w-full">
+        {totalCount > 0 && (
+          <div className="items-center">
             <PieChartWidget passed={passedCount} failed={failedCount} skipped={skippedCount} />
           </div>
-        </div>
+        )}
+
         {/* Test Results Column */}
-        <div className="flex-1 flex items-center border rounded shadow p-4 h-[81%]">
-          <div className="h-full">
-            <div className="flex flex-col gap-6">
-              {passedTests.length > 0 && (
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">Passed</h3>
-                  {passedTests.map((result, index) => (
-                    <TestResultCard
-                      key={`passed-${index}`}
-                      name={result.name}
-                      status={result.status}
-                      screenshot={result.screenshot}
-                      message={result.statusDetails?.message}
-                    />
-                  ))}
-                </div>
-              )}
-              {failedTests.length > 0 && (
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">Failed</h3>
-                  {failedTests.map((result, index) => (
-                    <TestResultCard
-                      key={`failed-${index}`}
-                      name={result.name}
-                      status={result.status}
-                      screenshot={result.screenshot}
-                      message={result.statusDetails?.message}
-                    />
-                  ))}
-                </div>
-              )}
-              {skippedTests.length > 0 && (
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">Skipped</h3>
-                  {skippedTests.map((result, index) => (
-                    <TestResultCard
-                      key={`skipped-${index}`}
-                      name={result.name}
-                      status={result.status}
-                      screenshot={result.screenshot}
-                      message={result.statusDetails?.message}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+        <div className="flex-1 flex flex-col border rounded shadow p-4 h-min">
+          <div className="flex flex-col gap-4">
+            {passedTests.length > 0 && (
+              <div>
+                <h3 className="text-xl font-semibold mb-2">Passed</h3>
+                {passedTests.map((result, index) => (
+                  <TestResultCard
+                    key={`passed-${index}`}
+                    name={result.name}
+                    status={result.status}
+                    screenshot={result.screenshot}
+                    message={result.statusDetails?.message}
+                  />
+                ))}
+              </div>
+            )}
+            {failedTests.length > 0 && (
+              <div>
+                <h3 className="text-xl font-semibold mb-2">Failed</h3>
+                {failedTests.map((result, index) => (
+                  <TestResultCard
+                    key={`failed-${index}`}
+                    name={result.name}
+                    status={result.status}
+                    screenshot={result.screenshot}
+                    message={result.statusDetails?.message}
+                  />
+                ))}
+              </div>
+            )}
+            {skippedTests.length > 0 && (
+              <div>
+                <h3 className="text-xl font-semibold mb-2">Skipped</h3>
+                {skippedTests.map((result, index) => (
+                  <TestResultCard
+                    key={`skipped-${index}`}
+                    name={result.name}
+                    status={result.status}
+                    screenshot={result.screenshot}
+                    message={result.statusDetails?.message}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
