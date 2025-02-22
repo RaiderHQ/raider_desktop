@@ -1,5 +1,5 @@
 import React from 'react'
-import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts'
+import { PieChart, Pie, Cell, Tooltip, Legend } from "recharts"
 
 interface PieChartWidgetProps {
   passed: number
@@ -14,6 +14,8 @@ const COLORS = {
 }
 
 const PieChartWidget: React.FC<PieChartWidgetProps> = ({ passed, failed, skipped }) => {
+  const total = passed + failed + skipped
+
   const rawData = [
     { name: "Passed", value: passed },
     { name: "Failed", value: failed },
@@ -23,10 +25,11 @@ const PieChartWidget: React.FC<PieChartWidgetProps> = ({ passed, failed, skipped
   // Filter out statuses with a value of 0
   const data = rawData.filter((item) => item.value > 0)
 
-  // Custom label function to display the percentage (optional)
-  const renderLabel = (props: any) => {
-    const { percent, name } = props
-    return `${name}: ${(percent * 100).toFixed(0)}%`
+  // Custom formatter for the Legend. It shows the category and percentage.
+  const legendFormatter = (value: string, entry: any, index: number) => {
+    const item = data.find((d) => d.name === value)
+    const percentage = item && total > 0 ? ((item.value / total) * 100).toFixed(0) + '%' : ''
+    return <span className="text-base font-medium">{`${value}: ${percentage}`}</span>
   }
 
   return (
@@ -40,7 +43,7 @@ const PieChartWidget: React.FC<PieChartWidgetProps> = ({ passed, failed, skipped
           cx="50%"
           cy="50%"
           outerRadius={80}
-          label={renderLabel}
+          fill="#8884d8"
         >
           {data.map((entry, index) => (
             <Cell
@@ -56,7 +59,7 @@ const PieChartWidget: React.FC<PieChartWidgetProps> = ({ passed, failed, skipped
           ))}
         </Pie>
         <Tooltip />
-        <Legend />
+        <Legend formatter={legendFormatter} />
       </PieChart>
     </div>
   )
