@@ -173,6 +173,7 @@
     "passed": "Bestået",
     "failed": "Fejlet",
     "skipped": "Sprunget Over",
+    "noResults": "Kør dine tests for at se resultaterne på dashboardet.",
     "error": {
       "fetching": "Fejl ved hentning af dashboard",
       "parsing": "Fejl ved fortolkning af {{file}}",

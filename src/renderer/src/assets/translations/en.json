@@ -173,6 +173,7 @@
     "passed": "Passed",
     "failed": "Failed",
     "skipped": "Skipped",
+    "noResults": "Please run your tests to see the results on the dashboard.",
     "error": {
       "fetching": "Error fetching dashboard",
       "parsing": "Error parsing {{file}}",

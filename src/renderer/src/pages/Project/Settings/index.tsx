@@ -89,6 +89,7 @@ const Settings: React.FC = () => {
     setBrowserUrl(event.target.value)
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   const handleBrowserUpdateClick = async () => {
     setIsUpdatingBrowser(true)
     try {
@@ -106,6 +107,7 @@ const Settings: React.FC = () => {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   const handleUrlUpdateClick = async () => {
     setIsUpdatingUrl(true)
     try {
@@ -123,6 +125,7 @@ const Settings: React.FC = () => {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   const handleMobileSettingsUpdateClick = async () => {
     setIsUpdatingMobile(true)
     try {
@@ -138,7 +141,7 @@ const Settings: React.FC = () => {
         toast.error(t('settings.error.mobileCapabilitiesUpdateFailed'))
         return
       }
-      // Save values in localStorage
+
       localStorage.setItem('mobileAppiumUrl', mobileAppiumUrl)
       localStorage.setItem('mobilePlatformVersion', mobilePlatformVersion)
       localStorage.setItem('mobileAutomationName', mobileAutomationName)
