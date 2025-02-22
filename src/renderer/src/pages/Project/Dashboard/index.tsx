@@ -97,7 +97,7 @@ const Dashboard: React.FC = (): JSX.Element => {
   const totalCount = results.length
 
   return (
-    <div className="p-8 h-screen">
+    <div className="p-8 h-screen w-screen">
       {/* Summary Section */}
       <div className="mb-8 p-4 border rounded bg-white">
         <h2 className="text-2xl font-bold mb-2">Overall Summary</h2>
@@ -114,16 +114,16 @@ const Dashboard: React.FC = (): JSX.Element => {
           Skipped: <span className="font-semibold text-[#ff9800]">{skippedCount}</span>
         </p>
       </div>
-      <div className="flex h-[calc(100%-200px)] gap-8">
+      <div className="flex gap-8">
         {/* Pie Chart Widget Column */}
-        <div className="flex-1 flex justify-center items-center">
-          <div className="h-full overflow-y-auto">
+        <div className="flex-1 flex items-center">
+          <div className="h-full w-full">
             <PieChartWidget passed={passedCount} failed={failedCount} skipped={skippedCount} />
           </div>
         </div>
         {/* Test Results Column */}
-        <div className="flex-1 flex justify-center items-center">
-          <div className="h-full overflow-y-auto">
+        <div className="flex-1 flex items-center border rounded shadow p-4 h-[81%]">
+          <div className="h-full">
             <div className="flex flex-col gap-6">
               {passedTests.length > 0 && (
                 <div>

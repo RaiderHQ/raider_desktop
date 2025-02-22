@@ -62,7 +62,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screensho
           <div className="mr-2">{chevronIcon}</div>
           <h2 className="font-semibold">{name}</h2>
         </div>
-        <div>{statusIcon}</div>
+        <div className="pl-4">{statusIcon}</div>
       </div>
       {open && (
         <div className="mt-2">
