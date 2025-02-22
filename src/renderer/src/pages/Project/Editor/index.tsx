@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useOutletContext } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { sample } from 'lodash'
 import Editor from '@components/Editor'
+import Terminal from '@components/Terminal'
 import { getFileLanguage } from '@foundation/helpers'
 import { FaArrowLeft } from 'react-icons/fa'
 
@@ -12,11 +13,18 @@ interface FileEditorProps {
   filePath: string
 }
 
+interface OutletContextType {
+  showTerminal: boolean
+  setShowTerminal: (value: boolean) => void
+}
+
 const FileEditor: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
+  const { showTerminal } = useOutletContext<OutletContextType>()
 
+  // Destructure fileName and filePath from location.state
   const { fileName, filePath } = location.state as FileEditorProps
 
   const [fileContent, setFileContent] = useState<string>('')
@@ -68,8 +76,10 @@ const FileEditor: React.FC = (): JSX.Element => {
   }
 
   useEffect((): void => {
-    getFileContents()
-  }, [])
+    if (filePath) {
+      getFileContents()
+    }
+  }, [filePath])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
@@ -84,7 +94,7 @@ const FileEditor: React.FC = (): JSX.Element => {
   }, [handleSave])
 
   return (
-    <div className="flex flex-col w-screen p-8">
+    <div className="flex flex-col w-screen p-8 space-y-4">
       <div className="relative w-full">
         <div className="absolute -right-1 -bottom-1 w-full h-full bg-[#c14420] rounded-lg" />
         <div className="relative h-[70vh] border rounded-lg shadow-sm overflow-y-auto bg-white z-10">
@@ -93,7 +103,10 @@ const FileEditor: React.FC = (): JSX.Element => {
           ) : (
             <>
               <div className="flex items-center mb-4">
-                <button onClick={() => navigate('/project/overview')} className="mr-2 ml-2 focus:outline-none">
+                <button
+                  onClick={() => navigate('/project/overview')}
+                  className="mr-2 ml-2 focus:outline-none"
+                >
                   <FaArrowLeft />
                 </button>
                 <h2 className="text-xl font-semibold">{fileName}</h2>
@@ -109,6 +122,11 @@ const FileEditor: React.FC = (): JSX.Element => {
           )}
         </div>
       </div>
+      {showTerminal && (
+        <div className="mt-4">
+          <Terminal />
+        </div>
+      )}
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import React, { useState } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
@@ -17,6 +18,11 @@ const MainTemplate: React.FC = (): JSX.Element => {
       const errorMsg = error instanceof Error ? error.message : String(error)
       toast.error(`${t('overview.error.openAllure')}: ${errorMsg}`)
     }
+  }
+
+  const [showTerminal, setShowTerminal] = useState<boolean>(false)
+  const toggleTerminal = () => {
+    setShowTerminal((prev) => !prev)
   }
 
   const isCreateProjectView = location.pathname === '/project/new'
@@ -42,12 +48,15 @@ const MainTemplate: React.FC = (): JSX.Element => {
             <Link to="/project/settings" className="text-gray-600 hover:text-gray-800">
               {t('menu.settings')}
             </Link>
+            <button onClick={toggleTerminal} className="text-gray-600 hover:text-gray-800">
+              Terminal
+            </button>
           </nav>
         )}
       </header>
 
       <main className="flex flex-col items-center justify-center flex-grow">
-        <Outlet />
+        <Outlet context={{ showTerminal, setShowTerminal }} />
       </main>
 
       <footer className="flex justify-center py-4 bg-white">
