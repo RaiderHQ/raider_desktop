@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   FaCheckCircle,
   FaTimesCircle,
@@ -18,6 +19,7 @@ interface TestResultCardProps {
 }
 
 const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screenshot, message }) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [imageData, setImageData] = useState<string>('')
@@ -39,21 +41,17 @@ const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screensho
         .readImage(screenshot)
         .then((res: { success: boolean; data?: string; error?: string }) => {
           if (res.success && res.data) {
-            // Construct a data URL from the returned base64 string.
             const dataUrl = `data:image/png;base64,${res.data}`
-            console.log('Constructed data URL:', dataUrl.slice(0, 100) + '...')
             setImageData(dataUrl)
           } else {
-            console.error(`Error reading image: ${res.error}`)
-            toast.error(`Error reading image: ${res.error}`)
+            toast.error(`${t('testResults.error.imageRead')}: ${res.error}`)
           }
         })
-        .catch((err: any) => {
-          console.error('Error in readImage IPC call:', err)
-          toast.error('Error accessing image file.')
+        .catch(() => {
+          toast.error(t('testResults.error.imageAccess'))
         })
     }
-  }, [showModal, screenshot])
+  }, [showModal, screenshot, t])
 
   return (
     <div className="p-4 border rounded shadow">
@@ -66,7 +64,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screensho
       </div>
       {open && (
         <div className="mt-2">
-          <p>Status: {status}</p>
+          <p>{t('testResults.status')}: {t(`testResults.${status}`)}</p>
           {message && (
             <p className="mt-2 text-sm text-gray-600">{message}</p>
           )}
@@ -76,7 +74,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screensho
               className="text-blue-500 flex items-center mt-2"
             >
               <FaImage className="mr-1" />
-              <span className="underline">View Screenshot</span>
+              <span className="underline">{t('testResults.viewScreenshot')}</span>
             </button>
           )}
         </div>

@@ -154,5 +154,29 @@
       "unexpectedSaveError": "Uventet fejl opstod under gemning af filen. Prøv venligst igen."
     },
     "loading": "Indlæser..."
+  },
+  "testResults": {
+    "breakdown": "Testresultat Opdeling",
+    "status": "Status",
+    "viewScreenshot": "Se skærmbillede",
+    "passed": "Bestået",
+    "failed": "Fejlet",
+    "skipped": "Sprunget over",
+    "error": {
+      "imageRead": "Fejl ved læsning af billede",
+      "imageAccess": "Fejl ved adgang til billedfil"
+    }
+  },
+  "dashboard": {
+    "overallSummary": "Samlet Oversigt",
+    "totalTests": "Samlede Tests",
+    "passed": "Bestået",
+    "failed": "Fejlet",
+    "skipped": "Sprunget Over",
+    "error": {
+      "fetching": "Fejl ved hentning af dashboard",
+      "parsing": "Fejl ved fortolkning af {{file}}",
+      "reading": "Fejl ved læsning af {{file}}"
+    }
   }
 }

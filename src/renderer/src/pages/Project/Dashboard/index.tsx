@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import useProjectStore from '@foundation/Stores/projectStore'
 import PieChartWidget from '@components/PieChartWidget'
@@ -23,8 +24,8 @@ interface TestResult {
 }
 
 const Dashboard: React.FC = (): JSX.Element => {
+  const { t } = useTranslation()
   const [results, setResults] = useState<TestResult[]>([])
-  const [loading, setLoading] = useState<boolean>(true)
   const projectPath: string = useProjectStore((state) => state.projectPath)
 
   useEffect(() => {
@@ -42,11 +43,11 @@ const Dashboard: React.FC = (): JSX.Element => {
             try {
               return JSON.parse(res.data)
             } catch (e: any) {
-              toast.error(`Error parsing ${file.name}: ${e.message}`)
+              toast.error(`${t('dashboard.error.parsing', { file: file.name })}: ${e.message}`)
               return null
             }
           } else {
-            toast.error(`Error reading ${file.name}: ${res.error}`)
+            toast.error(`${t('dashboard.error.reading', { file: file.name })}: ${res.error}`)
             return null
           }
         })
@@ -73,15 +74,11 @@ const Dashboard: React.FC = (): JSX.Element => {
         )
         setResults(resultsWithScreenshots)
       } catch (error: any) {
-        toast.error('Error fetching dashboard: ' + error.message)
-      } finally {
-        setLoading(false)
+        toast.error(`${t('dashboard.error.fetching')}: ${error.message}`)
       }
     }
     fetchDashboard()
-  }, [projectPath])
-
-  if (loading) return <div>Loading dashboard...</div>
+  }, [projectPath, t])
 
   const passedTests = results.filter((r) => r.status === 'passed')
   const failedTests = results.filter((r) => r.status === 'failed')
@@ -96,18 +93,18 @@ const Dashboard: React.FC = (): JSX.Element => {
     <div className="p-2 min-h-fit sm:p-4 md:p-6 w-full flex flex-col">
       {totalCount > 0 && (
         <div className="mb-2 sm:mb-4 md:mb-6 p-4 border rounded bg-white">
-          <h2 className="text-2xl font-bold mb-2">Overall Summary</h2>
+          <h2 className="text-2xl font-bold mb-2">{t('dashboard.overallSummary')}</h2>
           <p className="text-lg">
-            Total Tests: <span className="font-semibold">{totalCount}</span>
+            {t('dashboard.totalTests')}: <span className="font-semibold">{totalCount}</span>
           </p>
           <p className="text-lg">
-            Passed: <span className="font-semibold text-[#4caf50]">{passedCount}</span>
+            {t('dashboard.passed')}: <span className="font-semibold text-[#4caf50]">{passedCount}</span>
           </p>
           <p className="text-lg">
-            Failed: <span className="font-semibold text-[#f44336]">{failedCount}</span>
+            {t('dashboard.failed')}: <span className="font-semibold text-[#f44336]">{failedCount}</span>
           </p>
           <p className="text-lg">
-            Skipped: <span className="font-semibold text-[#ff9800]">{skippedCount}</span>
+            {t('dashboard.skipped')}: <span className="font-semibold text-[#ff9800]">{skippedCount}</span>
           </p>
         </div>
       )}
@@ -123,7 +120,7 @@ const Dashboard: React.FC = (): JSX.Element => {
           <div className="flex flex-col gap-4">
             {passedTests.length > 0 && (
               <div>
-                <h3 className="text-xl font-semibold mb-2">Passed</h3>
+                <h3 className="text-xl font-semibold mb-2">{t('dashboard.passed')}</h3>
                 {passedTests.map((result, index) => (
                   <TestResultCard
                     key={`passed-${index}`}
@@ -137,7 +134,7 @@ const Dashboard: React.FC = (): JSX.Element => {
             )}
             {failedTests.length > 0 && (
               <div>
-                <h3 className="text-xl font-semibold mb-2">Failed</h3>
+                <h3 className="text-xl font-semibold mb-2">{t('dashboard.failed')}</h3>
                 {failedTests.map((result, index) => (
                   <TestResultCard
                     key={`failed-${index}`}
@@ -151,7 +148,7 @@ const Dashboard: React.FC = (): JSX.Element => {
             )}
             {skippedTests.length > 0 && (
               <div>
-                <h3 className="text-xl font-semibold mb-2">Skipped</h3>
+                <h3 className="text-xl font-semibold mb-2">{t('dashboard.skipped')}</h3>
                 {skippedTests.map((result, index) => (
                   <TestResultCard
                     key={`skipped-${index}`}

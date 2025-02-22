@@ -154,5 +154,29 @@
       "unexpectedSaveError": "Unexpected error occurred while saving the file. Please try again."
     },
     "loading": "Loading..."
+  },
+  "testResults": {
+    "breakdown": "Test Results Breakdown",
+    "status": "Status",
+    "viewScreenshot": "View Screenshot",
+    "passed": "Passed",
+    "failed": "Failed",
+    "skipped": "Skipped",
+    "error": {
+      "imageRead": "Error reading image",
+      "imageAccess": "Error accessing image file"
+    }
+  },
+  "dashboard": {
+    "overallSummary": "Overall Summary",
+    "totalTests": "Total Tests",
+    "passed": "Passed",
+    "failed": "Failed",
+    "skipped": "Skipped",
+    "error": {
+      "fetching": "Error fetching dashboard",
+      "parsing": "Error parsing {{file}}",
+      "reading": "Error reading {{file}}"
+    }
   }
 }
