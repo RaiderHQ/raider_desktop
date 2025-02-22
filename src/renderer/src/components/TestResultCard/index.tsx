@@ -14,9 +14,10 @@ interface TestResultCardProps {
   name: string
   status: string
   screenshot?: string // expected to be the file path
+  message?: string    // optional message to display when expanded
 }
 
-const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screenshot }) => {
+const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screenshot, message }) => {
   const [open, setOpen] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [imageData, setImageData] = useState<string>('')
@@ -55,11 +56,8 @@ const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screensho
   }, [showModal, screenshot])
 
   return (
-    <div className="border p-2 mb-2">
-      <div
-        className="flex items-center justify-between cursor-pointer"
-        onClick={() => setOpen(!open)}
-      >
+    <div className="p-4 border rounded shadow">
+      <div className="flex items-center justify-between cursor-pointer" onClick={() => setOpen(!open)}>
         <div className="flex items-center">
           <div className="mr-2">{chevronIcon}</div>
           <h2 className="font-semibold">{name}</h2>
@@ -69,6 +67,9 @@ const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screensho
       {open && (
         <div className="mt-2">
           <p>Status: {status}</p>
+          {message && (
+            <p className="mt-2 text-sm text-gray-600">{message}</p>
+          )}
           {screenshot && (
             <button
               onClick={() => setShowModal(true)}
