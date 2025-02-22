@@ -10,11 +10,16 @@ interface Attachment {
   source: string
 }
 
+interface StatusDetails {
+  message?: string
+}
+
 interface TestResult {
   name: string
   status: string
   attachments?: Attachment[]
   screenshot?: string
+  statusDetails?: StatusDetails
 }
 
 const Dashboard: React.FC = (): JSX.Element => {
@@ -93,10 +98,12 @@ const Dashboard: React.FC = (): JSX.Element => {
   return (
     <div className="p-8">
       <div className="flex gap-8">
-        <div className="w-1/2">
+        {/* Pie Chart Widget Column */}
+        <div>
           <PieChartWidget passed={passedCount} failed={failedCount} skipped={skippedCount} />
         </div>
-        <div className="w-1/2 flex flex-col gap-6">
+        {/* Test Results Column */}
+        <div className="flex flex-col gap-6">
           {passedTests.length > 0 && (
             <div>
               <h3 className="text-xl font-semibold mb-2">Passed</h3>
@@ -106,6 +113,7 @@ const Dashboard: React.FC = (): JSX.Element => {
                   name={result.name}
                   status={result.status}
                   screenshot={result.screenshot}
+                  message={result.statusDetails?.message}
                 />
               ))}
             </div>
@@ -119,6 +127,7 @@ const Dashboard: React.FC = (): JSX.Element => {
                   name={result.name}
                   status={result.status}
                   screenshot={result.screenshot}
+                  message={result.statusDetails?.message}
                 />
               ))}
             </div>
@@ -132,6 +141,7 @@ const Dashboard: React.FC = (): JSX.Element => {
                   name={result.name}
                   status={result.status}
                   screenshot={result.screenshot}
+                  message={result.statusDetails?.message}
                 />
               ))}
             </div>
