@@ -16,6 +16,7 @@ import runCommand from './handlers/runCommand'
 import installRaider from './handlers/installRaider'
 import updateMobileCapabilities from './handlers/updateMobileCapabilities'
 import getMobileCapabilities from './handlers/getMobileCapabilities'
+import isRubyInstalled from './handlers/isRubyInstalled'
 
 const iconPath = join(
   __dirname,
@@ -112,3 +113,4 @@ ipcMain.handle('run-command', runCommand)
 ipcMain.handle('install-raider', installRaider)
 ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)
 ipcMain.handle('get-mobile-capabilities', getMobileCapabilities)
+ipcMain.handle('is-ruby-installed', isRubyInstalled)

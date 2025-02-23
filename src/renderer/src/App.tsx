@@ -1,48 +1,42 @@
 import { useEffect, useState } from 'react'
-import { Toaster } from 'react-hot-toast'
 import Router from './Router'
 import LoadingScreen from '@components/LoadingScreen'
-import { isVersionValid } from '@foundation/helpers'
 import useVersionStore from '@foundation/Stores/versionStore'
 import InstallGuide from '@pages/Info/InstallGuide'
 
 const App = (): JSX.Element => {
   const [isLoading, setLoading] = useState<boolean>(true)
   const [isValid, setIsValid] = useState<boolean>(false)
+  const [rubyMissing, setRubyMissing] = useState<boolean>(false)
+  const [rubyVersion, setRubyVersion] = useState<string | null>(null)
+  const [allureMissing, setAllureMissing] = useState<boolean>(false)
 
   useEffect((): void => {
     const checkDependencies = async (): Promise<void> => {
-      const result = await window.api.runCommand('ruby -v')
+      let allureOk = false
 
-      if (!result.success) {
-        setLoading(false)
-        setIsValid(false)
-        return
-      }
-
-      const isValid = isVersionValid(result.output, 3, '>=')
-      if (!isValid) {
-        setLoading(false)
-        setIsValid(false)
-        return
-      }
+      const rubyResult = await window.api.isRubyInstalled()
+      const rubyOk = rubyResult.success
+      setRubyVersion(rubyResult.rubyVersion ?? null)
+      setRubyMissing(!rubyResult.success)
 
       const hasRaider = await window.api.runCommand('raider version')
-      useVersionStore.getState().loadVersion()
-      if (hasRaider.success) {
-        setIsValid(true)
-        setLoading(false)
-        return
+      await useVersionStore.getState().loadVersion()
+      if (!hasRaider.success) {
+        const installResult = await window.api.installRaider()
+        if (!installResult.success) {
+          setIsValid(false)
+          setLoading(false)
+          return
+        }
       }
 
-      const installResult = await window.api.installRaider()
-      if (!installResult.success) {
-        setIsValid(false)
-        setLoading(false)
-        return
-      }
+      const allureResult = await window.api.runCommand('allure --version')
+      allureOk = allureResult.success
+      setAllureMissing(!allureOk)
 
-      setIsValid(true)
+      console.log(rubyOk)
+      setIsValid(rubyOk && allureOk)
       setLoading(false)
     }
 
@@ -54,12 +48,17 @@ const App = (): JSX.Element => {
   }
 
   if (!isValid) {
-    return <InstallGuide />
+    return (
+      <InstallGuide
+        rubyMissing={rubyMissing}
+        rubyVersion={rubyVersion}
+        allureMissing={allureMissing}
+      />
+    )
   }
 
   return (
     <>
-      <Toaster position="top-right" reverseOrder={false} />
       <LoadingScreen />
       <Router />
     </>
