@@ -56,30 +56,33 @@ const api = {
   runTests: async (
     folderPath: string
   ): Promise<{ success: boolean; output?: string; error?: string }> => {
-    return ipcRenderer.invoke('run-tests', folderPath) // Pass folderPath to the main process
+    return ipcRenderer.invoke('run-tests', folderPath)
   },
   updateBrowserUrl: async (
     projectPath: string,
     url: string
   ): Promise<{ success: boolean; output?: string; error?: string }> => {
-    return ipcRenderer.invoke('update-browser-url', projectPath, url) // Invoke the update-browser-url handler
+    return ipcRenderer.invoke('update-browser-url', projectPath, url)
   },
   updateBrowserType: async (
     projectPath: string,
     browser: string
   ): Promise<{ success: boolean; output?: string; error?: string }> => {
-    return ipcRenderer.invoke('update-browser-type', projectPath, browser) // Invoke the update-browser-type handler
+    return ipcRenderer.invoke('update-browser-type', projectPath, browser)
   },
   isMobileProject: async (
     projectPath: string
   ): Promise<{ success: boolean; isMobileProject?: boolean; error?: string }> => {
-    return ipcRenderer.invoke('is-mobile-project', projectPath) // Invoke the is-mobile-project handler
+    return ipcRenderer.invoke('is-mobile-project', projectPath)
   },
   runCommand: async (command: string): Promise<CommandType> => {
     return ipcRenderer.invoke('run-command', command)
   },
   installRaider: async (): Promise<CommandType> => {
     return ipcRenderer.invoke('install-raider')
+  },
+  isRubyInstalled: async (): Promise<{ success: boolean; rubyVersion?: string; error?: string }> => {
+    return ipcRenderer.invoke('is-ruby-installed')
   },
   updateMobileCapabilities: async (
     projectPath: string,

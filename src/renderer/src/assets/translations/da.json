@@ -50,9 +50,13 @@
   },
   "version": "Ruby Raider Version: {{version}}",
   "installGuide": {
-    "title": "Installation Påkrævet",
-    "message": "Du skal installere både Ruby og Allure for at køre denne applikation.",
-    "information": "Tjek vores GitHub-side eller hjemmeside for installationsvejledninger."
+    "title": "Installation påkrævet",
+    "rubyMissing": "Ruby mangler. Installer venligst Ruby 3 eller nyere.",
+    "rubyOutdated": "Din Ruby-version ({version}) er forældet. Opgrader venligst til Ruby 3 eller nyere.",
+    "allureMissing": "Allure mangler. Installer venligst Allure for at fortsætte.",
+    "logoAlt": "Ruby Raider Logo",
+    "githubButton": "Gå til GitHub",
+    "websiteButton": "Gå til Hjemmeside"
   },
   "information": {
     "createProject": {

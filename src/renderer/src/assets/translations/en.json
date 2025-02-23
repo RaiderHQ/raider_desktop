@@ -51,8 +51,12 @@
   "version": "Ruby Raider Version: {{version}}",
   "installGuide": {
     "title": "Installation Required",
-    "message": "You need to install Ruby and Allure to run this application.",
-    "information": "Check our GitHub page or Website for installation instructions."
+    "rubyMissing": "Ruby is missing. Please install Ruby 3 or higher.",
+    "rubyOutdated": "Your Ruby version ({version}) is outdated. Please upgrade to Ruby 3 or higher.",
+    "allureMissing": "Allure is missing. Please install Allure to proceed.",
+    "logoAlt": "Ruby Raider Logo",
+    "githubButton": "Go to GitHub",
+    "websiteButton": "Go to Website"
   },
   "information": {
     "createProject": {
