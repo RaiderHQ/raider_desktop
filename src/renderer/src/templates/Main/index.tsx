@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Logo from '@assets/images/logo-with-title.svg'
 import useVersionStore from '@foundation/Stores/versionStore'
+import { Toaster } from 'react-hot-toast'
 
 const MainTemplate: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -39,6 +40,8 @@ const MainTemplate: React.FC = (): JSX.Element => {
       <footer className="flex justify-center py-4 bg-white">
         <p className="text-gray-500">{t('version', { version: raiderVersion })}</p>
       </footer>
+
+      <Toaster />
     </div>
   )
 }
