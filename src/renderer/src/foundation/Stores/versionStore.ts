@@ -8,7 +8,7 @@ export interface VersionStore {
 const useVersionStore = create<VersionStore>((set) => {
   const extractVersion = (input: string): string => {
     const match = input.match(/(\d+\.\d+\.\d+)/)
-    return match ? match[0] : '0.0.0'
+    return match ? match[0] : '1.1.2'
   }
 
   const loadVersion = async (): Promise<void> => {
@@ -17,28 +17,30 @@ const useVersionStore = create<VersionStore>((set) => {
       if (result.success) {
         set({ version: extractVersion(result.output) })
       } else {
-        set({ version: '0.0.0' })
+        set({ version: '1.1.2' })
       }
     } catch (error) {
-      set({ version: '0.0.0' })
+      set({ version: '1.1.2' })
     }
   }
 
-  // A helper to wait until window.api is defined
-  const waitForApi = async (): Promise<void> => {
-    while (!window.api) {
+  // Wait for window.api to be available, trying up to maxRetries times.
+  const waitForApi = async (maxRetries = 20): Promise<void> => {
+    let retries = maxRetries
+    while (!window.api && retries > 0) {
       await new Promise((resolve) => setTimeout(resolve, 50))
+      retries--
     }
   }
 
-  // Delay the version loading until window.api is available.
+  // Delay loading the version until window.api is ready.
   setTimeout(async () => {
     await waitForApi()
     await loadVersion()
-  })
+  }, 0)
 
   return {
-    version: '0.0.0',
+    version: '1.1.2',
     loadVersion
   }
 })
