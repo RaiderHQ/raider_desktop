@@ -81,8 +81,9 @@ const api = {
   installRaider: async (): Promise<CommandType> => {
     return ipcRenderer.invoke('install-raider')
   },
-  isRubyInstalled: async (): Promise<{ success: boolean; rubyVersion?: string; error?: string }> => {
-    return ipcRenderer.invoke('is-ruby-installed')
+  // Modified isRubyInstalled to accept a projectPath.
+  isRubyInstalled: async (projectPath: string): Promise<{ success: boolean; rubyVersion?: string; error?: string }> => {
+    return ipcRenderer.invoke('is-ruby-installed', projectPath)
   },
   updateMobileCapabilities: async (
     projectPath: string,

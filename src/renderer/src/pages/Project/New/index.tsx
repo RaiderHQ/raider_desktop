@@ -7,8 +7,10 @@ import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import InformationModal from '@components/InformationModal'
 import SelectInput from '@components/SelectInput'
+import LoadingScreen from '@components/LoadingScreen'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import InstallGuide from '@pages/Info/InstallGuide'
 
 const options = {
   automation: ['Appium', 'Selenium', 'Watir'],
@@ -19,18 +21,17 @@ const options = {
 const CreateProject: React.FC = () => {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const setLoading: (loading: boolean) => void = useLoadingStore(
-    (state: { setLoading: (loading: boolean) => void }) => state.setLoading
-  )
-  const setProjectPath: (path: string) => void = useProjectStore(
-    (state: { setProjectPath: (path: string) => void }) => state.setProjectPath
-  )
+  const loading = useLoadingStore((state) => state.loading)
+  const setLoading = useLoadingStore((state) => state.setLoading)
+  const setProjectPath = useProjectStore((state) => state.setProjectPath)
 
   const [automationFramework, setAutomationFramework] = useState('Selenium')
   const [testFramework, setTestFramework] = useState('Rspec')
   const [mobilePlatform, setMobilePlatform] = useState('Android')
   const [isModalOpen, setModalOpen] = useState(false)
   const [projectName, setProjectName] = useState('')
+  const [rubyMissing, setRubyMissing] = useState(false)
+  const [rubyError, setRubyError] = useState<string | null>(null)
 
   const showMobile = automationFramework === 'Appium'
 
@@ -40,14 +41,24 @@ const CreateProject: React.FC = () => {
       return
     }
 
+    // First, select the folder
+    const folder = await window.api.selectFolder(t('newProject.alerts.selectFolder'))
+    if (!folder) {
+      return
+    }
+
+    // Now that a folder is selected, show the loader.
     setLoading(true)
     try {
-      const folder = await window.api.selectFolder(t('newProject.alerts.selectFolder'))
-      if (!folder) {
-        setLoading(false)
+      // Check Ruby installation from the context of the selected folder.
+      const rubyResult = await window.api.isRubyInstalled(folder)
+      if (!rubyResult.success) {
+        setRubyMissing(true)
+        setRubyError(rubyResult.error ?? null)
         return
       }
 
+      // Proceed to create the project if Ruby is valid.
       const overviewFolder = `${folder}/${projectName}`
       const automationParam = showMobile
         ? mobilePlatform.toLowerCase()
@@ -70,7 +81,10 @@ const CreateProject: React.FC = () => {
     } catch (error) {
       toast.error(`Unexpected error while creating the project: ${error}`)
     } finally {
-      setLoading(false)
+      // Add an extra second delay before hiding the loader.
+      setTimeout(() => {
+        setLoading(false)
+      }, 1000)
     }
   }
 
@@ -81,15 +95,21 @@ const CreateProject: React.FC = () => {
     setter(value)
   }
 
+  // If Ruby check failed, show the installation guide.
+  if (rubyMissing) {
+    return <InstallGuide rubyMissing={rubyMissing} rubyError={rubyError} allureMissing={false} />
+  }
+
+  // If the global loading state is true, show the LoadingScreen.
+  if (loading) {
+    return <LoadingScreen shouldPersist={true} />
+  }
+
   return (
     <>
       <div className="text-center mb-10">
-        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">
-          {t('newProject.title')}
-        </h1>
-        <p className="text-gray-600 text-base md:text-lg lg:text-xl">
-          {t('newProject.subtitle')}
-        </p>
+        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">{t('newProject.title')}</h1>
+        <p className="text-gray-600 text-base md:text-lg lg:text-xl">{t('newProject.subtitle')}</p>
       </div>
 
       <ContentArea>

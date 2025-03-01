@@ -51,8 +51,6 @@
   "version": "Ruby Raider Version: {{version}}",
   "installGuide": {
     "title": "Installation påkrævet",
-    "rubyMissing": "Ruby mangler. Installer venligst Ruby 3 eller nyere.",
-    "rubyOutdated": "Din Ruby-version ({version}) er forældet. Opgrader venligst til Ruby 3 eller nyere.",
     "allureMissing": "Allure mangler. Installer venligst Allure for at fortsætte.",
     "logoAlt": "Ruby Raider Logo",
     "githubButton": "Gå til GitHub",
@@ -186,5 +184,14 @@
   },
   "errorPage": {
     "title": "Forudsætninger ikke installeret"
+  },
+  "errors": {
+    "ruby": {
+      "commandFailed": "Ruby-kommandoen mislykkedes.\nKommando: {{command}}\nOutput: {{output}}\nFejlinfo:\n{{debugInfo}}",
+      "unexpectedOutput": "Uventet ruby version output: {{output}}\nFejlinfo:\n{{debugInfo}}",
+      "failedToParse": "Kunne ikke fortolke Ruby-version fra output: {{output}}\nFejlinfo:\n{{debugInfo}}",
+      "outdated": "Ruby version {{version}} er forældet. Installer venligst Ruby 3.0.0 eller højere.\nKommando output: {{output}}\nFejlinfo:\n{{debugInfo}}",
+      "unknown": "Der opstod en fejl: {{error}}\nFejlinfo:\n{{debugInfo}}"
+    }
   }
 }

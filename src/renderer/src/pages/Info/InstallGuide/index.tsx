@@ -2,24 +2,28 @@ import { useTranslation } from 'react-i18next'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import Logo from '@assets/images/logo.svg'
+import { FaArrowLeft } from "react-icons/fa";
+import { useNavigate } from "react-router-dom"
+
+interface RubyError {
+  code: string
+  params: { [key: string]: string }
+}
 
 interface InstallGuideProps {
   rubyMissing: boolean
-  rubyVersion: string | null
+  rubyError?: RubyError | null
   allureMissing: boolean
 }
 
-const InstallGuide: React.FC<InstallGuideProps> = ({ rubyMissing, rubyVersion, allureMissing }) => {
+const InstallGuide: React.FC<InstallGuideProps> = ({ rubyMissing, rubyError, allureMissing }) => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const handleNavigation = (url: string) => window.open(url, '_blank')
 
-  let errorMessage = ''
-
-  if (rubyMissing) {
-    errorMessage = t('installGuide.rubyMissing')
-  } else if (rubyVersion && rubyVersion < '3.0.0') {
-    errorMessage = t('installGuide.rubyOutdated', { version: rubyVersion })
-  }
+  let errorMessage = rubyError
+    ? t(rubyError.code, rubyError.params)
+    : (rubyMissing ? t('installGuide.rubyMissing') : '')
 
   if (allureMissing) {
     errorMessage += errorMessage ? ' ' : ''
@@ -27,8 +31,15 @@ const InstallGuide: React.FC<InstallGuideProps> = ({ rubyMissing, rubyVersion, a
   }
 
   return (
-    <div className="min-h-screen flex items-center">
+    <div className="min-w-full items-center">
       <ContentArea>
+        <button
+          onClick={() => navigate('/')}
+          className="absolute top-4 left-4"
+          aria-label="Go Back"
+        >
+          <FaArrowLeft size={24} />
+        </button>
         <div className="flex flex-col items-center">
           <div className="mb-2">
             <img src={Logo} alt={t('installGuide.logoAlt')} className="w-28 h-auto" />
