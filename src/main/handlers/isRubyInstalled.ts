@@ -1,45 +1,110 @@
 import { IpcMainInvokeEvent } from 'electron'
 import runCommand from './runCommand'
-import { execSync } from 'child_process'
+import path from 'path'
+
+interface RubyError {
+  code: string
+  params: { [key: string]: string }
+}
 
 const isRubyInstalled = async (
-  _event: IpcMainInvokeEvent
-): Promise<{ success: boolean; rubyVersion?: string; error?: string }> => {
+  _event: IpcMainInvokeEvent,
+  projectPath: string
+): Promise<{ success: boolean; rubyVersion?: string; error?: RubyError }> => {
+  let debugInfo = ''
   try {
-    // Manually load environment variables for production on macOS
+    // Normalize the project path.
+    const normalizedPath = path.join(projectPath)
+    let command: string
+
     if (process.platform === 'darwin') {
-      process.env.PATH = execSync('/usr/bin/env bash -l -c "echo $PATH"', { encoding: 'utf-8' }).trim()
+      // Determine the user's default shell.
+      const userShell = process.env.SHELL || '/bin/bash'
+      // Run the command in a login shell so that the user's environment is fully loaded.
+      command = `${userShell} -l -c "cd '${normalizedPath}' && ruby -v"`
+
+      // Set up some debug information.
+      debugInfo = `
+User Shell: ${userShell}
+Platform: ${process.platform}
+Normalized Path: ${normalizedPath}
+Chosen Command: ${command}
+      `.trim()
+    } else {
+      command = `cd '${normalizedPath}' && ruby -v`
     }
 
-    // Determine which command to use
-    const rubyPathCommand = process.platform === 'win32' ? 'where ruby' : 'which ruby'
-    const rubyPathResult = await runCommand(_event, rubyPathCommand)
-
-    if (!rubyPathResult.success) {
-      return { success: false, error: 'Ruby is not installed or not found in PATH.' }
-    }
-
-    const rubyPath = rubyPathResult.output.trim()
-
-    // Ignore system Ruby on macOS
-    const isSystemRuby = process.platform === 'darwin' && rubyPath === '/usr/bin/ruby'
-    if (isSystemRuby) {
+    const result = await runCommand(_event, command)
+    if (!result.success) {
       return {
         success: false,
-        error: 'System Ruby detected, but a user-installed Ruby is required.'
+        error: {
+          code: 'errors.ruby.commandFailed',
+          params: {
+            command,
+            output: result.output,
+            debugInfo
+          }
+        }
       }
     }
 
-    // Get Ruby version
-    const rubyVersionResult = await runCommand(_event, `${rubyPath} -v`)
-    if (!rubyVersionResult.success) {
-      return { success: false, error: 'Failed to retrieve Ruby version.' }
+    const output = result.output.trim()
+    const parts = output.split(' ')
+    if (parts.length < 2) {
+      return {
+        success: false,
+        error: {
+          code: 'errors.ruby.unexpectedOutput',
+          params: {
+            output,
+            debugInfo
+          }
+        }
+      }
+    }
+    const version = parts[1]
+    const majorVersion = parseInt(version.split('.')[0], 10)
+    if (isNaN(majorVersion)) {
+      return {
+        success: false,
+        error: {
+          code: 'errors.ruby.failedToParse',
+          params: {
+            output,
+            debugInfo
+          }
+        }
+      }
     }
 
-    const rubyVersion = rubyVersionResult.output.trim().split(' ')[1]
-    return { success: true, rubyVersion }
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    if (majorVersion < 3) {
+      return {
+        success: false,
+        rubyVersion: version,
+        error: {
+          code: 'errors.ruby.outdated',
+          params: {
+            version,
+            output,
+            debugInfo
+          }
+        }
+      }
+    }
+
+    return { success: true, rubyVersion: version }
+  } catch (error: any) {
+    return {
+      success: false,
+      error: {
+        code: 'errors.ruby.unknown',
+        params: {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          debugInfo
+        }
+      }
+    }
   }
 }
 

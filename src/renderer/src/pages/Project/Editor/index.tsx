@@ -105,7 +105,7 @@ const FileEditor: React.FC = (): JSX.Element => {
                   onChange={(value: string | undefined) => setFileContent(value || '')}
                 />
               </div>
-            </>
+              </>
           )}
         </div>
       </div>
