@@ -12,7 +12,7 @@ interface RubyError {
 
 interface InstallGuideProps {
   rubyMissing: boolean
-  rubyError?: RubyError | null
+  rubyError?: RubyError | string | null
   allureMissing: boolean
 }
 
@@ -21,9 +21,17 @@ const InstallGuide: React.FC<InstallGuideProps> = ({ rubyMissing, rubyError, all
   const navigate = useNavigate()
   const handleNavigation = (url: string) => window.open(url, '_blank')
 
-  let errorMessage = rubyError
-    ? t(rubyError.code, rubyError.params)
-    : (rubyMissing ? t('installGuide.rubyMissing') : '')
+  let errorMessage = ''
+
+  if (rubyError) {
+    if (typeof rubyError === 'string') {
+      errorMessage = rubyError
+    } else {
+      errorMessage = t(rubyError.code, rubyError.params)
+    }
+  } else if (rubyMissing) {
+    errorMessage = t('installGuide.rubyMissing')
+  }
 
   if (allureMissing) {
     errorMessage += errorMessage ? ' ' : ''
