@@ -22,13 +22,14 @@ nsis:
   createDesktopShortcut: always
 mac:
   target: mas
+  identity: "Apple Distribution: Augustin Gottlieb Pequeno (FJCVZDVC44)"
   type: distribution
   category: public.app-category.developer-tools
   icon: build/icon.icns
   hardenedRuntime: false
   entitlements: build/entitlements.mas.plist
   entitlementsInherit: build/entitlements.mas.inherit.plist
-  provisioningProfile: build/distributionProfile.provisionprofile
+  provisioningProfile: build/RaiderDistribution.provisionprofile
   extendInfo:
     NSCameraUsageDescription: Application requests access to the device's camera.
     NSMicrophoneUsageDescription: Application requests access to the device's microphone.
