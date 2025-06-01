@@ -5,6 +5,7 @@ import MainTemplate from '@templates/Main'
 import NewProject from '@pages/Project/New'
 import Overview from '@pages/Project/Overview'
 import Settings from '@pages/Project/Settings'
+import Dashboard from '@pages/Project/Dashboard'
 
 const Router = (): JSX.Element => {
   const router = createHashRouter([
@@ -19,7 +20,8 @@ const Router = (): JSX.Element => {
         { path: 'new', element: <NewProject /> },
         { path: 'editor', element: <Editor /> },
         { path: 'overview', element: <Overview /> },
-        { path: 'settings', element: <Settings /> }
+        { path: 'settings', element: <Settings /> },
+        { path: 'dashboard', element: <Dashboard /> }
       ]
     }
   ])

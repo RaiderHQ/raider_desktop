@@ -4,7 +4,7 @@ import File from '@components/Library/File'
 import { FileNode } from '@foundation/Types/fileNode'
 
 interface FolderProps {
-  name: string
+  name?: string
   files?: FileNode[]
   defaultOpen?: boolean
   onFileClick: (filePath: string) => void
