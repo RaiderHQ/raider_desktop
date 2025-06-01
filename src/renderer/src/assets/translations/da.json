@@ -50,9 +50,11 @@
   },
   "version": "Ruby Raider Version: {{version}}",
   "installGuide": {
-    "title": "Installation Påkrævet",
-    "message": "Du skal installere både Ruby og Ruby Raider for at køre denne applikation.",
-    "information": "Tjek vores GitHub-side eller hjemmeside for installationsvejledninger."
+    "title": "Installation påkrævet",
+    "allureMissing": "Allure mangler. Installer venligst Allure for at fortsætte.",
+    "logoAlt": "Ruby Raider Logo",
+    "githubButton": "Gå til GitHub",
+    "websiteButton": "Gå til Hjemmeside"
   },
   "information": {
     "createProject": {
@@ -154,5 +156,42 @@
       "unexpectedSaveError": "Uventet fejl opstod under gemning af filen. Prøv venligst igen."
     },
     "loading": "Indlæser..."
+  },
+  "testResults": {
+    "breakdown": "Testresultat Opdeling",
+    "status": "Status",
+    "viewScreenshot": "Se skærmbillede",
+    "passed": "Bestået",
+    "failed": "Fejlet",
+    "skipped": "Sprunget over",
+    "error": {
+      "imageRead": "Fejl ved læsning af billede",
+      "imageAccess": "Fejl ved adgang til billedfil"
+    }
+  },
+  "dashboard": {
+    "overallSummary": "Samlet Oversigt",
+    "totalTests": "Samlede Tests",
+    "passed": "Bestået",
+    "failed": "Fejlet",
+    "skipped": "Sprunget Over",
+    "noResults": "Kør dine tests for at se resultaterne på dashboardet.",
+    "error": {
+      "fetching": "Fejl ved hentning af dashboard",
+      "parsing": "Fejl ved fortolkning af {{file}}",
+      "reading": "Fejl ved læsning af {{file}}"
+    }
+  },
+  "errorPage": {
+    "title": "Forudsætninger ikke installeret"
+  },
+  "errors": {
+    "ruby": {
+      "commandFailed": "Ruby-kommandoen mislykkedes.\nKommando: {{command}}\nOutput: {{output}}\nFejlinfo:\n{{debugInfo}}",
+      "unexpectedOutput": "Uventet ruby version output: {{output}}\nFejlinfo:\n{{debugInfo}}",
+      "failedToParse": "Kunne ikke fortolke Ruby-version fra output: {{output}}\nFejlinfo:\n{{debugInfo}}",
+      "outdated": "Ruby version {{version}} er forældet. Installer venligst Ruby 3.0.0 eller højere.\nKommando output: {{output}}\nFejlinfo:\n{{debugInfo}}",
+      "unknown": "Der opstod en fejl: {{error}}\nFejlinfo:\n{{debugInfo}}"
+    }
   }
 }

@@ -39,6 +39,11 @@ const api = {
   ): Promise<{ success: boolean; data?: string; fileExt?: string; error?: string }> => {
     return ipcRenderer.invoke('read-file', filePath)
   },
+  readImage: async (
+    filePath: string
+  ): Promise<{ success: boolean; data?: string; fileExt?: string; error?: string }> => {
+    return ipcRenderer.invoke('read-image', filePath)
+  },
   editFile: async (
     filePath: string,
     newContent: string
@@ -51,24 +56,24 @@ const api = {
   runTests: async (
     folderPath: string
   ): Promise<{ success: boolean; output?: string; error?: string }> => {
-    return ipcRenderer.invoke('run-tests', folderPath) // Pass folderPath to the main process
+    return ipcRenderer.invoke('run-tests', folderPath)
   },
   updateBrowserUrl: async (
     projectPath: string,
     url: string
   ): Promise<{ success: boolean; output?: string; error?: string }> => {
-    return ipcRenderer.invoke('update-browser-url', projectPath, url) // Invoke the update-browser-url handler
+    return ipcRenderer.invoke('update-browser-url', projectPath, url)
   },
   updateBrowserType: async (
     projectPath: string,
     browser: string
   ): Promise<{ success: boolean; output?: string; error?: string }> => {
-    return ipcRenderer.invoke('update-browser-type', projectPath, browser) // Invoke the update-browser-type handler
+    return ipcRenderer.invoke('update-browser-type', projectPath, browser)
   },
   isMobileProject: async (
     projectPath: string
   ): Promise<{ success: boolean; isMobileProject?: boolean; error?: string }> => {
-    return ipcRenderer.invoke('is-mobile-project', projectPath) // Invoke the is-mobile-project handler
+    return ipcRenderer.invoke('is-mobile-project', projectPath)
   },
   runCommand: async (command: string): Promise<CommandType> => {
     return ipcRenderer.invoke('run-command', command)
@@ -76,9 +81,18 @@ const api = {
   installRaider: async (): Promise<CommandType> => {
     return ipcRenderer.invoke('install-raider')
   },
+  // Modified isRubyInstalled to accept a projectPath.
+  isRubyInstalled: async (projectPath: string): Promise<{ success: boolean; rubyVersion?: string; error?: string }> => {
+    return ipcRenderer.invoke('is-ruby-installed', projectPath)
+  },
   updateMobileCapabilities: async (
     projectPath: string,
-    capabilities: { platformVersion: string; automationName: string; deviceName: string; app: string }
+    capabilities: {
+      platformVersion: string
+      automationName: string
+      deviceName: string
+      app: string
+    }
   ): Promise<{ success: boolean; output?: string; error?: string }> => {
     return ipcRenderer.invoke('update-mobile-capabilities', projectPath, capabilities)
   },

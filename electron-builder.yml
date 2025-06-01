@@ -1,5 +1,7 @@
-appId: com.electron.app
+appId: com.raiderhq.rubyraider
 productName: Ruby Raider
+copyright: "Copyright © 2022 RaiderHQ"
+
 directories:
   buildResources: build
 files:
@@ -19,15 +21,23 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
-  entitlementsInherit: build/entitlements.mac.plist
+  target: mas
+  identity: "Apple Distribution: Augustin Gottlieb Pequeno (FJCVZDVC44)"
+  type: distribution
+  category: public.app-category.developer-tools
+  icon: build/icon.icns
+  hardenedRuntime: false
+  entitlements: build/entitlements.mas.plist
+  entitlementsInherit: build/entitlements.mas.inherit.plist
+  provisioningProfile: build/RaiderDistribution.provisionprofile
   extendInfo:
-    - NSCameraUsageDescription: Application requests access to the device's camera.
-    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
-    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
-    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+    NSCameraUsageDescription: Application requests access to the device's camera.
+    NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+    NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
+    NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
-dmg:
-  artifactName: ${name}-${version}.${ext}
+pkg:
+  artifactName: ${name}-${version}.pkg
 linux:
   target:
     - AppImage

@@ -60,8 +60,8 @@ const MonacoEditor = ({ value, language, onChange }: EditorProps): JSX.Element =
       theme="vs-light"
       options={{
         automaticLayout: true,
-        scrollBeyondLastLine: false, // Disable extra scrolling space
-        minimap: { enabled: false } // Disable the mini-map
+        scrollBeyondLastLine: false,
+        minimap: { enabled: false }
       }}
     />
   )

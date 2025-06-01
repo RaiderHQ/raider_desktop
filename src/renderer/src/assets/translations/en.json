@@ -51,8 +51,10 @@
   "version": "Ruby Raider Version: {{version}}",
   "installGuide": {
     "title": "Installation Required",
-    "message": "You need to install both Ruby and Ruby Raider to run this application.",
-    "information": "Check our GitHub page or Website for installation instructions."
+    "allureMissing": "Allure is missing. Please install Allure to proceed.",
+    "logoAlt": "Ruby Raider Logo",
+    "githubButton": "Go to GitHub",
+    "websiteButton": "Go to Website"
   },
   "information": {
     "createProject": {
@@ -154,5 +156,42 @@
       "unexpectedSaveError": "Unexpected error occurred while saving the file. Please try again."
     },
     "loading": "Loading..."
+  },
+  "testResults": {
+    "breakdown": "Test Results Breakdown",
+    "status": "Status",
+    "viewScreenshot": "View Screenshot",
+    "passed": "Passed",
+    "failed": "Failed",
+    "skipped": "Skipped",
+    "error": {
+      "imageRead": "Error reading image",
+      "imageAccess": "Error accessing image file"
+    }
+  },
+  "dashboard": {
+    "overallSummary": "Overall Summary",
+    "totalTests": "Total Tests",
+    "passed": "Passed",
+    "failed": "Failed",
+    "skipped": "Skipped",
+    "noResults": "Please run your tests to see the results on the dashboard.",
+    "error": {
+      "fetching": "Error fetching dashboard",
+      "parsing": "Error parsing {{file}}",
+      "reading": "Error reading {{file}}"
+    }
+  },
+  "errorPage": {
+    "title": "Pre-requisites not installed"
+  },
+  "errors": {
+    "ruby": {
+      "commandFailed": "Ruby command failed.\nCommand: {{command}}\nOutput: {{output}}\nDebug Info:\n{{debugInfo}}",
+      "unexpectedOutput": "Unexpected ruby version output: {{output}}\nDebug Info:\n{{debugInfo}}",
+      "failedToParse": "Failed to parse Ruby version from output: {{output}}\nDebug Info:\n{{debugInfo}}",
+      "outdated": "Ruby version {{version}} is outdated. Please install Ruby 3.0.0 or higher.\nCommand output: {{output}}\nDebug Info:\n{{debugInfo}}",
+      "unknown": "An error occurred: {{error}}\nDebug Info:\n{{debugInfo}}"
+    }
   }
 }

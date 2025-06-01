@@ -8,14 +8,14 @@ import { FileNode } from '@foundation/Types/fileNode'
 
 const Overview: React.FC = () => {
   const { t } = useTranslation()
-  const projectPath: string = useProjectStore((state) => state.projectPath)
+  const projectPath: string | null = useProjectStore((state) => state.projectPath);
   const files: FileNode[] = useProjectStore((state) => state.files)
   const navigate = useNavigate()
 
   const handleRunTests = async (): Promise<void> => {
     const toastId = toast.loading(t('overview.running'))
     try {
-      const result = await window.api.runTests(projectPath)
+      const result = await window.api.runTests(projectPath || '')
       toast.dismiss(toastId)
 
       if (!result.success) {
@@ -35,7 +35,7 @@ const Overview: React.FC = () => {
         <div className="absolute -right-1 -bottom-1 w-full h-full bg-[#c14420] rounded-lg" />
         <div className="relative h-[70vh] border rounded-lg shadow-sm overflow-y-auto bg-white z-10">
           <Folder
-            name={projectPath.split('/').pop()}
+            name={projectPath ? projectPath.split('/').pop() : ''}
             files={files}
             defaultOpen={true}
             onFileClick={(filePath: string): void => {

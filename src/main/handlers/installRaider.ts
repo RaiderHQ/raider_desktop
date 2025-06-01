@@ -2,7 +2,7 @@ import { runCommand } from './runRubyRaider'
 import { CommandType } from '@foundation/Types/commandType'
 
 const handler = async (): Promise<CommandType> => {
-  return runCommand('gem', ['install', 'ruby_raider'], {
+  return runCommand('gem', ['install', 'ruby_raider', '-v', '1.1.2'], {
     shell: process.platform === 'win32',
     cwd: process.cwd()
   })

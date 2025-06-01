@@ -5,21 +5,44 @@ export interface VersionStore {
   loadVersion: () => Promise<void>
 }
 
-const useVersionStore = create<VersionStore>((set) => ({
-  version: '0.0.0',
-  loadVersion: async (): Promise<void> => {
-    const extractVersion = (input: string): string => {
-      const match = input.match(/(\d+)\.(\d+)\.(\d+)/)
-      return match ? match[0] : '0.0.0'
-    }
-
-    const result = await window.api.runCommand('raider version')
-    if (!result.success) {
-      return
-    }
-
-    set({ version: extractVersion(result.output) })
+const useVersionStore = create<VersionStore>((set) => {
+  const extractVersion = (input: string): string => {
+    const match = input.match(/(\d+\.\d+\.\d+)/)
+    return match ? match[0] : '1.1.2'
   }
-}))
+
+  const loadVersion = async (): Promise<void> => {
+    try {
+      const result = await window.api.runCommand('raider version')
+      if (result.success) {
+        set({ version: extractVersion(result.output) })
+      } else {
+        set({ version: '1.1.2' })
+      }
+    } catch (error) {
+      set({ version: '1.1.2' })
+    }
+  }
+
+  // Wait for window.api to be available, trying up to maxRetries times.
+  const waitForApi = async (maxRetries = 20): Promise<void> => {
+    let retries = maxRetries
+    while (!window.api && retries > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      retries--
+    }
+  }
+
+  // Delay loading the version until window.api is ready.
+  setTimeout(async () => {
+    await waitForApi()
+    await loadVersion()
+  }, 0)
+
+  return {
+    version: '1.1.2',
+    loadVersion
+  }
+})
 
 export default useVersionStore
