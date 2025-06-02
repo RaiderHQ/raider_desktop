@@ -1,5 +1,7 @@
 import { ipcRenderer } from 'electron';
 
+let isRecordingActive = false;
+
 // Function to generate a basic CSS selector for an element
 function getCssSelector(el: HTMLElement): string {
   if (!el || !(el instanceof HTMLElement)) {
@@ -36,24 +38,38 @@ function getCssSelector(el: HTMLElement): string {
 // Listen for DOMContentLoaded to ensure the document is ready
 window.addEventListener('DOMContentLoaded', () => {
   document.body.addEventListener('click', (event) => {
-    try {
-      const target = event.target as HTMLElement;
-      if (target) {
-        const selector = getCssSelector(target);
-        // Send the selector and target tag name to the host renderer process
-        ipcRenderer.sendToHost('webview-click', {
-          selector: selector,
-          tagName: target.tagName.toLowerCase()
+    if (isRecordingActive) {
+      try {
+        const target = event.target as HTMLElement;
+        if (target) {
+          const selector = getCssSelector(target); // Assuming getCssSelector is defined in this file
+          ipcRenderer.sendToHost('webview-click', {
+            selector: selector,
+            tagName: target.tagName.toLowerCase()
+          });
+        }
+      } catch (error) {
+        ipcRenderer.sendToHost('webview-error', {
+          message: 'Error capturing click in webview',
+          error: error instanceof Error ? error.message : String(error)
         });
       }
-    } catch (error) {
-      // In case of any error during click processing within the webview
-      ipcRenderer.sendToHost('webview-error', {
-        message: 'Error capturing click in webview',
-        error: error instanceof Error ? error.message : String(error)
-      });
     }
   }, true); // Use capture phase to get the click before it might be stopped by other listeners
 });
 
 console.log('Recorder preload script loaded.');
+
+ipcRenderer.on('start-recording-in-webview', () => {
+  console.log('[recorderPreload] Received start-recording-in-webview');
+  isRecordingActive = true;
+  // Optionally send a confirmation back if needed:
+  // ipcRenderer.sendToHost('webview-recording-started');
+});
+
+ipcRenderer.on('stop-recording-in-webview', () => {
+  console.log('[recorderPreload] Received stop-recording-in-webview');
+  isRecordingActive = false;
+  // Optionally send a confirmation back if needed:
+  // ipcRenderer.sendToHost('webview-recording-stopped');
+});

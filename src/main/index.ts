@@ -17,6 +17,7 @@ import installRaider from './handlers/installRaider'
 import updateMobileCapabilities from './handlers/updateMobileCapabilities'
 import getMobileCapabilities from './handlers/getMobileCapabilities'
 import isRubyInstalled from './handlers/isRubyInstalled'
+import { handleStartRecordingMain, handleStopRecordingMain } from './handlers/recordingHandlers'
 
 const iconPath = join(
   __dirname,
@@ -114,3 +115,5 @@ ipcMain.handle('install-raider', installRaider)
 ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)
 ipcMain.handle('get-mobile-capabilities', getMobileCapabilities)
 ipcMain.handle('is-ruby-installed', isRubyInstalled)
+ipcMain.handle('start-recording-main', handleStartRecordingMain)
+ipcMain.handle('stop-recording-main', handleStopRecordingMain)

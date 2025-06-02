@@ -100,7 +100,9 @@ const api = {
     projectPath: string
   ): Promise<{ success: boolean; capabilities?: any; error?: string }> => {
     return ipcRenderer.invoke('get-mobile-capabilities', projectPath)
-  }
+  },
+  startRecordingMain: () => ipcRenderer.invoke('start-recording-main'),
+  stopRecordingMain: () => ipcRenderer.invoke('stop-recording-main')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
