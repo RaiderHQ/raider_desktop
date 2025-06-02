@@ -12,8 +12,7 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/preload/index.ts'),
-          recorderPreload: resolve(__dirname, 'src/preload/recorderPreload.ts')
+          index: resolve(__dirname, 'src/preload/index.ts')
         }
       }
     }

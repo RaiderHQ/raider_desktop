@@ -1,16 +1,72 @@
 import React, { useState, useRef, useEffect } from 'react';
-// We'll need useTranslation later if we add i18n keys
-// import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 
 // Assuming Electron.WebviewTag is available via @types/electron or similar
 // If not, this might need to be 'any' or a more specific React HTML attribute type
 type WebviewTag = Electron.WebviewTag; // Or any if Electron typings are not fully set up for WebviewTag
 
 const Recorder: React.FC = (): JSX.Element => {
-  // const { t } = useTranslation(); // For i18n
+  const { t } = useTranslation();
   const [url, setUrl] = useState<string>('');
   const [recordedSteps, setRecordedSteps] = useState<string[]>([]);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
   const webviewRef = useRef<WebviewTag>(null);
+
+  const handleStartRecording = async () => {
+    if (!webviewRef.current?.src || webviewRef.current.src === 'about:blank') {
+      console.warn('Cannot start recording: Load a URL into the webview first.');
+      // Optionally show a toast: toast.error(t('recorder.error.loadUrlFirst'));
+      return;
+    }
+    // Assuming window.api is exposed by contextBridge in preload/index.ts
+    if ((window as any).api && (window as any).api.startRecordingMain) {
+      await (window as any).api.startRecordingMain();
+      // setIsRecording(true) and webview.send will be triggered by main process signal
+    } else {
+      console.error('window.api.startRecordingMain is not available');
+    }
+  };
+
+  const handleStopRecording = async () => {
+    if ((window as any).api && (window as any).api.stopRecordingMain) {
+      await (window as any).api.stopRecordingMain();
+      // setIsRecording(false) and webview.send will be triggered by main process signal
+    } else {
+      console.error('window.api.stopRecordingMain is not available');
+    }
+  };
+
+  useEffect(() => {
+    const handleStartRecordingSignal = () => {
+      console.log('[Recorder.tsx] Received start-recording-for-renderer from main');
+      setIsRecording(true);
+      if (webviewRef.current) {
+        webviewRef.current.send('start-recording-in-webview');
+      }
+    };
+
+    const handleStopRecordingSignal = () => {
+      console.log('[Recorder.tsx] Received stop-recording-for-renderer from main');
+      setIsRecording(false);
+      if (webviewRef.current) {
+        webviewRef.current.send('stop-recording-in-webview');
+      }
+    };
+
+    // Assuming window.electron.ipcRenderer is exposed by src/preload/index.ts
+    if ((window as any).electron && (window as any).electron.ipcRenderer) {
+      (window as any).electron.ipcRenderer.on('start-recording-for-renderer', handleStartRecordingSignal);
+      (window as any).electron.ipcRenderer.on('stop-recording-for-renderer', handleStopRecordingSignal);
+
+      return () => {
+        (window as any).electron.ipcRenderer.removeListener('start-recording-for-renderer', handleStartRecordingSignal);
+        (window as any).electron.ipcRenderer.removeListener('stop-recording-for-renderer', handleStopRecordingSignal);
+      };
+    } else {
+      console.warn('[Recorder.tsx] window.electron.ipcRenderer not available for main process listeners.');
+    }
+    return () => {}; // Ensure a cleanup function is always returned
+  }, []);
 
   useEffect(() => {
     const webview = webviewRef.current;
@@ -82,14 +138,28 @@ const Recorder: React.FC = (): JSX.Element => {
           type="text"
           value={url}
           onChange={handleUrlChange}
-          placeholder="Enter URL to record"
+          placeholder={t('recorder.placeholder.url')}
           className="flex-grow p-2 border rounded"
         />
         <button
           onClick={handleLoadUrl}
           className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
-          Load URL
+          {t('recorder.button.loadUrl')}
+        </button>
+        <button
+          onClick={handleStartRecording}
+          disabled={isRecording || !url || (webviewRef.current?.src === 'about:blank')}
+          className="p-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400"
+        >
+          {t('recorder.button.startRecording')}
+        </button>
+        <button
+          onClick={handleStopRecording}
+          disabled={!isRecording}
+          className="p-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-400"
+        >
+          {t('recorder.button.stopRecording')}
         </button>
       </div>
 
@@ -104,12 +174,12 @@ const Recorder: React.FC = (): JSX.Element => {
           />
         </div>
         <div className="w-1/3 border rounded p-4 bg-gray-50 flex flex-col"> {/* Added flex flex-col */}
-          <h3 className="text-lg font-semibold mb-2">Recorded Steps</h3>
+          <h3 className="text-lg font-semibold mb-2">{t('recorder.heading.recordedSteps')}</h3>
           <textarea
             readOnly
             value={recordedSteps.join('\n')}
             className="w-full flex-grow p-2 border rounded bg-white resize-none" // Changed h-full to flex-grow
-            placeholder="Recorded Selenium Ruby commands will appear here..."
+            placeholder={t('recorder.placeholder.commands')}
           />
         </div>
       </div>
