@@ -102,7 +102,8 @@ const api = {
     return ipcRenderer.invoke('get-mobile-capabilities', projectPath)
   },
   startRecordingMain: () => ipcRenderer.invoke('start-recording-main'),
-  stopRecordingMain: () => ipcRenderer.invoke('stop-recording-main')
+  stopRecordingMain: () => ipcRenderer.invoke('stop-recording-main'),
+  loadUrlRequest: (url: string) => ipcRenderer.invoke('load-url-request', url)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

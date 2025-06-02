@@ -18,6 +18,7 @@ import updateMobileCapabilities from './handlers/updateMobileCapabilities'
 import getMobileCapabilities from './handlers/getMobileCapabilities'
 import isRubyInstalled from './handlers/isRubyInstalled'
 import { handleStartRecordingMain, handleStopRecordingMain } from './handlers/recordingHandlers'
+import { handleLoadUrlRequest } from './handlers/urlLoadingHandler'
 
 const iconPath = join(
   __dirname,
@@ -117,3 +118,4 @@ ipcMain.handle('get-mobile-capabilities', getMobileCapabilities)
 ipcMain.handle('is-ruby-installed', isRubyInstalled)
 ipcMain.handle('start-recording-main', handleStartRecordingMain)
 ipcMain.handle('stop-recording-main', handleStopRecordingMain)
+ipcMain.handle('load-url-request', handleLoadUrlRequest)
