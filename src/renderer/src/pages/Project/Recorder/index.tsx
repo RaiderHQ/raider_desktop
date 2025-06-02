@@ -72,13 +72,11 @@ const Recorder: React.FC = (): JSX.Element => {
     const webview = webviewRef.current;
 
     const handleDomReady = () => {
-      console.log('Webview DOM ready');
+      console.log('[Webview] Event: dom-ready');
       // Example: webview?.send('host-ready');
     };
 
-    // Define the type for the event if possible, Electron.IpcMessageEvent or similar
     const handleHostMessage = (event: Event) => {
-      // Cast to a more specific type if necessary, e.g., event as Electron.IpcMessageEvent
       const ipcEvent = event as Electron.IpcMessageEvent;
       if (ipcEvent.channel === 'webview-click') {
         const { selector, tagName } = ipcEvent.args[0] as { selector: string; tagName: string };
@@ -97,14 +95,34 @@ const Recorder: React.FC = (): JSX.Element => {
       }
     };
 
+    // Additional Webview Event Listeners
+    const handleDidStartLoading = () => { console.log('[Webview] Event: did-start-loading'); };
+    const handleDidStopLoading = () => { console.log('[Webview] Event: did-stop-loading'); };
+    const handleDidFailLoad = (event: any) => { console.error('[Webview] Event: did-fail-load', { errorCode: event.errorCode, errorDescription: event.errorDescription, validatedURL: event.validatedURL, isMainFrame: event.isMainFrame }); };
+    const handleConsoleMessage = (event: any) => { console.log('[Webview Guest Console]', { level: event.level, message: event.message, line: event.line, sourceId: event.sourceId }); };
+    const handleDidNavigate = (event: any) => { console.log('[Webview] Event: did-navigate', { url: event.url, isMainFrame: event.isMainFrame }); };
+    const handleDidFinishLoad = () => { console.log('[Webview] Event: did-finish-load (main frame finished loading)'); };
+
     if (webview) {
       webview.addEventListener('dom-ready', handleDomReady);
       webview.addEventListener('ipc-message', handleHostMessage);
+      webview.addEventListener('did-start-loading', handleDidStartLoading);
+      webview.addEventListener('did-stop-loading', handleDidStopLoading);
+      webview.addEventListener('did-fail-load', handleDidFailLoad);
+      webview.addEventListener('console-message', handleConsoleMessage);
+      webview.addEventListener('did-navigate', handleDidNavigate);
+      webview.addEventListener('did-finish-load', handleDidFinishLoad);
 
       // Cleanup
       return () => {
         webview.removeEventListener('dom-ready', handleDomReady);
         webview.removeEventListener('ipc-message', handleHostMessage);
+        webview.removeEventListener('did-start-loading', handleDidStartLoading);
+        webview.removeEventListener('did-stop-loading', handleDidStopLoading);
+        webview.removeEventListener('did-fail-load', handleDidFailLoad);
+        webview.removeEventListener('console-message', handleConsoleMessage);
+        webview.removeEventListener('did-navigate', handleDidNavigate);
+        webview.removeEventListener('did-finish-load', handleDidFinishLoad);
       };
     }
   }, [url]); // Re-run if URL changes, or when webviewRef becomes available.
@@ -120,7 +138,7 @@ const Recorder: React.FC = (): JSX.Element => {
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         fullUrl = 'https://' + url;
       }
-      webviewRef.current.src = fullUrl;
+      webviewRef.current.loadURL(fullUrl);
       setRecordedSteps(prevSteps => [...prevSteps, `driver.get("${fullUrl}")`]);
     } else {
       console.warn('Webview ref not available or URL is empty');
@@ -164,6 +182,18 @@ const Recorder: React.FC = (): JSX.Element => {
       </div>
 
       <div className="flex flex-row flex-grow space-x-4">
+        {/* Recorded Steps sidebar div - MOVED TO BE FIRST (LEFT) */}
+        <div className="w-96 border rounded p-4 bg-gray-50 flex flex-col">
+          <h3 className="text-lg font-semibold mb-2">{t('recorder.heading.recordedSteps')}</h3>
+          <textarea
+            readOnly
+            value={recordedSteps.join('\n')}
+            className="w-full flex-grow p-2 border rounded bg-white resize-none"
+            placeholder={t('recorder.placeholder.commands')}
+          />
+        </div>
+
+        {/* Webview container div - NOW SECOND (RIGHT) */}
         <div className="flex-1 border rounded bg-gray-100">
           <webview
             ref={webviewRef}
@@ -171,15 +201,6 @@ const Recorder: React.FC = (): JSX.Element => {
             className="w-full h-full"
             preload="../preload/recorderPreload.js" // Path to the preload script
             // allowpopups // Uncomment if popups are needed
-          />
-        </div>
-        <div className="w-96 border rounded p-4 bg-gray-50 flex flex-col"> {/* Changed w-1/3 to w-96 */}
-          <h3 className="text-lg font-semibold mb-2">{t('recorder.heading.recordedSteps')}</h3>
-          <textarea
-            readOnly
-            value={recordedSteps.join('\n')}
-            className="w-full flex-grow p-2 border rounded bg-white resize-none" // Changed h-full to flex-grow
-            placeholder={t('recorder.placeholder.commands')}
           />
         </div>
       </div>
