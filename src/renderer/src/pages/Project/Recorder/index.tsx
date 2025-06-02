@@ -132,7 +132,7 @@ const Recorder: React.FC = (): JSX.Element => {
   // This is the basic structure.
 
   return (
-    <div className="flex flex-col h-full p-4 space-y-4">
+    <div className="flex flex-col h-full w-full p-4 space-y-4">
       <div className="flex items-center space-x-2">
         <input
           type="text"
@@ -173,7 +173,7 @@ const Recorder: React.FC = (): JSX.Element => {
             // allowpopups // Uncomment if popups are needed
           />
         </div>
-        <div className="w-1/3 border rounded p-4 bg-gray-50 flex flex-col"> {/* Added flex flex-col */}
+        <div className="w-96 border rounded p-4 bg-gray-50 flex flex-col"> {/* Changed w-1/3 to w-96 */}
           <h3 className="text-lg font-semibold mb-2">{t('recorder.heading.recordedSteps')}</h3>
           <textarea
             readOnly
