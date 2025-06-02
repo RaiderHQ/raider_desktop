@@ -5,6 +5,75 @@ import { useTranslation } from 'react-i18next';
 // If not, this might need to be 'any' or a more specific React HTML attribute type
 type WebviewTag = Electron.WebviewTag; // Or any if Electron typings are not fully set up for WebviewTag
 
+const injectedRecorderScript = `
+  (() => {
+    let isRecordingActiveForInjection = true; 
+
+    const { ipcRenderer } = require('electron');
+
+    function getCssSelector(el) {
+      if (!el || !(el instanceof Element)) {
+        return '';
+      }
+      const parts = [];
+      let currentEl = el;
+      while (currentEl && currentEl.nodeType === Node.ELEMENT_NODE) {
+        let part = currentEl.nodeName.toLowerCase();
+        if (currentEl.id) {
+          part += '#' + currentEl.id;
+          parts.unshift(part);
+          break; 
+        } else {
+          let sibling = currentEl;
+          let nth = 1;
+          while ((sibling = sibling.previousElementSibling)) {
+            if (sibling.nodeName.toLowerCase() === part) {
+              nth++;
+            }
+          }
+          if (nth > 1) {
+            part += \`:nth-of-type(\${nth})\`;
+          }
+        }
+        parts.unshift(part);
+        currentEl = currentEl.parentElement;
+      }
+      return parts.join(' > ');
+    }
+
+    const clickListener = (event) => {
+      if (!isRecordingActiveForInjection) return;
+      try {
+        const target = event.target;
+        if (target) {
+          const selector = getCssSelector(target);
+          ipcRenderer.sendToHost('webview-click', {
+            selector: selector,
+            tagName: target.tagName.toLowerCase()
+          });
+        }
+      } catch (error) {
+        ipcRenderer.sendToHost('webview-error', {
+          message: 'Error capturing click in injected script',
+          error: error.message || String(error)
+        });
+      }
+    };
+
+    if (!document.body.hasAttribute('data-click-listener-attached')) {
+        document.body.addEventListener('click', clickListener, true);
+        document.body.setAttribute('data-click-listener-attached', 'true');
+        console.log('[Injected Script] Click listener attached.');
+    }
+    
+    window.__stopRecorderInjection = () => {
+        isRecordingActiveForInjection = false;
+    };
+
+    console.log('[Injected Script] Recorder script injected and running.');
+  })();
+`;
+
 const Recorder: React.FC = (): JSX.Element => {
   const { t } = useTranslation();
   const [url, setUrl] = useState<string>('');
@@ -36,12 +105,32 @@ const Recorder: React.FC = (): JSX.Element => {
     }
   };
 
+  const handleActualLoadUrlInWebview = (receivedUrl: string) => {
+    console.log(`[Recorder.tsx] Received 'load-url-in-webview' for URL: ${receivedUrl}`);
+    if (webviewRef.current && receivedUrl) {
+      let fullUrl = receivedUrl;
+      if (!receivedUrl.startsWith('http://') && !receivedUrl.startsWith('https://')) {
+        fullUrl = 'https://' + receivedUrl;
+      }
+      webviewRef.current.src = fullUrl;
+      setRecordedSteps(prevSteps => [...prevSteps, `driver.get("${fullUrl}")`]);
+    } else {
+      console.warn('[Recorder.tsx] Webview ref not available or received URL is empty when trying to load.');
+    }
+  };
+
   useEffect(() => {
-    const handleStartRecordingSignal = () => {
-      console.log('[Recorder.tsx] Received start-recording-for-renderer from main');
-      setIsRecording(true);
+    const handleInjectRecorderScript = () => {
+      console.log('[Recorder.tsx] Received inject-recorder-script from main');
+      setIsRecording(true); 
       if (webviewRef.current) {
-        webviewRef.current.send('start-recording-in-webview');
+        if (webviewRef.current.isLoading() || webviewRef.current.getURL() === 'about:blank') {
+            console.warn('[Recorder.tsx] Webview is not ready for script injection (still loading or blank page). Deferring.');
+            return; 
+        }
+        webviewRef.current.executeJavaScriptInIsolatedWorld(1, [{ code: injectedRecorderScript }])
+          .then(() => console.log('[Recorder.tsx] Injected recorder script into webview.'))
+          .catch(error => console.error('[Recorder.tsx] Error injecting script:', error));
       }
     };
 
@@ -49,24 +138,35 @@ const Recorder: React.FC = (): JSX.Element => {
       console.log('[Recorder.tsx] Received stop-recording-for-renderer from main');
       setIsRecording(false);
       if (webviewRef.current) {
-        webviewRef.current.send('stop-recording-in-webview');
+        // Logic to stop recording in webview, potentially by injecting another script
+        // that calls window.__stopRecorderInjection() or removes the listener.
+        // For now, the injected script has __stopRecorderInjection, but we need to call it.
+        // This will be handled in a subsequent step.
+        // For now, just log or if the script handles the isRecordingActiveForInjection flag correctly,
+        // this might be enough if the click listener checks it.
+        // However, the current injected script does not have its own 'stop' IPC listener from webview.
+        // It relies on window.__stopRecorderInjection being called.
+         webviewRef.current.executeJavaScriptInIsolatedWorld(1, [{code: "if(window.__stopRecorderInjection) window.__stopRecorderInjection();"}])
+          .then(() => console.log('[Recorder.tsx] Executed stop command in webview.'))
+          .catch(error => console.error('[Recorder.tsx] Error executing stop command in webview:', error));
       }
     };
 
-    // Assuming window.electron.ipcRenderer is exposed by src/preload/index.ts
     if ((window as any).electron && (window as any).electron.ipcRenderer) {
-      (window as any).electron.ipcRenderer.on('start-recording-for-renderer', handleStartRecordingSignal);
+      (window as any).electron.ipcRenderer.on('inject-recorder-script', handleInjectRecorderScript);
       (window as any).electron.ipcRenderer.on('stop-recording-for-renderer', handleStopRecordingSignal);
+      (window as any).electron.ipcRenderer.on('load-url-in-webview', handleActualLoadUrlInWebview);
 
       return () => {
-        (window as any).electron.ipcRenderer.removeListener('start-recording-for-renderer', handleStartRecordingSignal);
+        (window as any).electron.ipcRenderer.removeListener('inject-recorder-script', handleInjectRecorderScript);
         (window as any).electron.ipcRenderer.removeListener('stop-recording-for-renderer', handleStopRecordingSignal);
+        (window as any).electron.ipcRenderer.removeListener('load-url-in-webview', handleActualLoadUrlInWebview);
       };
     } else {
       console.warn('[Recorder.tsx] window.electron.ipcRenderer not available for main process listeners.');
     }
     return () => {}; // Ensure a cleanup function is always returned
-  }, []);
+  }, [handleActualLoadUrlInWebview]);
 
   useEffect(() => {
     const webview = webviewRef.current;
@@ -131,18 +231,18 @@ const Recorder: React.FC = (): JSX.Element => {
     setUrl(event.target.value);
   };
 
-  const handleLoadUrl = () => {
-    if (webviewRef.current && url) {
-      // Ensure the URL has a scheme (e.g., http:// or https://)
-      let fullUrl = url;
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        fullUrl = 'https://' + url;
+  const handleLoadUrlButtonClick = () => {
+    if (url) {
+      if ((window as any).api && (window as any).api.loadUrlRequest) {
+        (window as any).api.loadUrlRequest(url);
+      } else {
+        console.error('window.api.loadUrlRequest is not available');
+        // Fallback or error message to user
       }
-      webviewRef.current.loadURL(fullUrl);
-      setRecordedSteps(prevSteps => [...prevSteps, `driver.get("${fullUrl}")`]);
     } else {
-      console.warn('Webview ref not available or URL is empty');
-      // Optionally, show a toast error to the user
+      console.warn('URL is empty. Please enter a URL.');
+      // Optionally, show a toast to the user
+      // toast.error(t('recorder.error.emptyUrl')); // Example, requires new translation key
     }
   };
 
@@ -160,7 +260,7 @@ const Recorder: React.FC = (): JSX.Element => {
           className="flex-grow p-2 border rounded"
         />
         <button
-          onClick={handleLoadUrl}
+          onClick={handleLoadUrlButtonClick}
           className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
           {t('recorder.button.loadUrl')}

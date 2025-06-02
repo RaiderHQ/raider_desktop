@@ -5,11 +5,11 @@ import { IpcMainInvokeEvent } from 'electron';
  * Signals the calling renderer process to prepare its webview for recording.
  */
 export const handleStartRecordingMain = async (event: IpcMainInvokeEvent): Promise<void> => {
-  console.log('[MainProcess] Received start-recording-main request.');
+  console.log('[MainProcess] Received start-recording-main request. Instructing renderer to inject script.');
   // Add any main process specific logic here if needed (e.g., state tracking)
   
   // Notify the calling renderer to proceed with starting recording in its webview
-  event.sender.send('start-recording-for-renderer');
+  event.sender.send('inject-recorder-script');
   
   // Potentially return a status or data if defined in the ipcMain.handle contract
   // For now, it's void.
@@ -20,11 +20,11 @@ export const handleStartRecordingMain = async (event: IpcMainInvokeEvent): Promi
  * Signals the calling renderer process to stop recording in its webview.
  */
 export const handleStopRecordingMain = async (event: IpcMainInvokeEvent): Promise<void> => {
-  console.log('[MainProcess] Received stop-recording-main request.');
+  console.log('[MainProcess] Received stop-recording-main request. Instructing renderer to eject script.');
   // Add any main process specific logic here if needed
   
   // Notify the calling renderer to proceed with stopping recording in its webview
-  event.sender.send('stop-recording-for-renderer');
+  event.sender.send('eject-recorder-script');
   
   // Potentially return a status or data
 };
