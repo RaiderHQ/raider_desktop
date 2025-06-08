@@ -17,8 +17,8 @@ import installRaider from './handlers/installRaider'
 import updateMobileCapabilities from './handlers/updateMobileCapabilities'
 import getMobileCapabilities from './handlers/getMobileCapabilities'
 import isRubyInstalled from './handlers/isRubyInstalled'
-import { handleStartRecordingMain, handleStopRecordingMain } from './handlers/recordingHandlers'
-import { handleLoadUrlRequest } from './handlers/urlLoadingHandler'
+// We will define the recorder handlers directly in this file to manage window state.
+// So we remove the old imports for startRecording, stopRecording, etc.
 
 const iconPath = join(
   __dirname,
@@ -29,8 +29,16 @@ const iconPath = join(
       : '../../resources/ruby-raider.png' // Linux
 )
 
+// --- Window and State Management ---
+// Keep a reference to the main window and the recorder window
+let mainWindow: BrowserWindow | null = null
+let recorderWindow: BrowserWindow | null = null
+
+// Store the URL for the recording session
+let projectBaseUrl: string = 'https://www.google.com' // A sensible default
+
 function createWindow(): void {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1000,
     height: 750,
     show: false,
@@ -47,7 +55,7 @@ function createWindow(): void {
   }
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+    mainWindow!.show()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -55,8 +63,6 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
-  // HMR for renderer base on electron-vite cli.
-  // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
@@ -64,44 +70,32 @@ function createWindow(): void {
   }
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.ruby-raider') // Set a unique app ID
+  electronApp.setAppUserModelId('com.ruby-raider')
 
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
-
   createWindow()
 
   app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
 
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.
+// --- IPC Handlers ---
+
+// Non-recorder handlers remain the same
 ipcMain.handle('select-folder', selectFolder)
 ipcMain.handle('read-directory', readDirectory)
+// ... register all your other handlers here ...
 ipcMain.handle('open-allure', openAllure)
 ipcMain.handle('read-file', readFile)
 ipcMain.handle('read-image', readImage)
@@ -116,6 +110,62 @@ ipcMain.handle('install-raider', installRaider)
 ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)
 ipcMain.handle('get-mobile-capabilities', getMobileCapabilities)
 ipcMain.handle('is-ruby-installed', isRubyInstalled)
-ipcMain.handle('start-recording-main', handleStartRecordingMain)
-ipcMain.handle('stop-recording-main', handleStopRecordingMain)
-ipcMain.handle('load-url-request', handleLoadUrlRequest)
+
+
+// --- New Recorder IPC Handlers ---
+
+// This handler just updates the URL state. It does not navigate.
+// NOTE: Your preload calls this 'load-url-request'
+ipcMain.handle('load-url-request', (event, url: string) => {
+  projectBaseUrl = url
+  console.log(`[MainProcess] Project base URL set to: ${projectBaseUrl}`)
+  return { success: true }
+})
+
+// This handler creates and shows the new browser window for recording.
+// NOTE: Your preload calls this 'start-recording-main'
+ipcMain.handle('start-recording-main', (event) => {
+  console.log(`[MainProcess] Start recording requested. Target URL: ${projectBaseUrl}`)
+
+  // If the recorder window already exists, just focus it.
+  if (recorderWindow) {
+    recorderWindow.focus()
+    return { success: true }
+  }
+
+  // Create the new recorder window
+  recorderWindow = new BrowserWindow({
+    width: 1280,
+    height: 720,
+    show: true,
+    title: 'Recording Session'
+    // webPreferences will be needed later to inject recorder logic
+  })
+
+  // When the user closes the window, handle cleanup
+  recorderWindow.on('closed', () => {
+    console.log('[MainProcess] Recorder window was closed.')
+    // Notify the main UI that recording has stopped
+    mainWindow?.webContents.send('recording-stopped')
+    recorderWindow = null
+  })
+
+  // Load the URL and focus the window.
+  recorderWindow.loadURL(projectBaseUrl)
+  recorderWindow.focus()
+
+  // Notify the main UI that recording has started
+  mainWindow?.webContents.send('recording-started')
+
+  return { success: true }
+})
+
+// This handler stops the recording by closing the recorder window.
+// NOTE: Your preload calls this 'stop-recording-main'
+ipcMain.handle('stop-recording-main', (event) => {
+  console.log('[MainProcess] Stop recording requested.')
+  if (recorderWindow) {
+    recorderWindow.close() // The 'closed' event handler will do the cleanup
+  }
+  return { success: true }
+})
