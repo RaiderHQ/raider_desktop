@@ -9,10 +9,16 @@ interface AppState {
 
 /**
  * Generates the full Ruby RSpec code from an array of steps.
- * This version now includes a wait object and a helper function for robust element finding.
+ * This version now inserts a 1-second sleep between each command.
  */
 function generateRspecCode(steps: string[]): string {
-  const formattedSteps = steps.map((step) => `    ${step}`).join('\n')
+  // *** FIX IS HERE ***
+  // We map each command to its indented line, then join them together
+  // with a `sleep(1)` command on a new line in between.
+  const formattedSteps = steps
+    .map((step) => `    ${step}`)
+    .join('\n    sleep(1)\n')
+
   return `
 require 'selenium-webdriver'
 require 'rspec'
@@ -20,7 +26,6 @@ require 'rspec'
 describe 'My Recorded Test' do
   before(:each) do
     @driver = Selenium::WebDriver.for :chrome
-    # Create a wait object with a 10-second timeout
     @wait = Selenium::WebDriver::Wait.new(timeout: 10)
     @vars = {}
   end
