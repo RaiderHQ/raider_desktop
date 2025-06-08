@@ -17,6 +17,8 @@ import installRaider from './handlers/installRaider'
 import updateMobileCapabilities from './handlers/updateMobileCapabilities'
 import getMobileCapabilities from './handlers/getMobileCapabilities'
 import isRubyInstalled from './handlers/isRubyInstalled'
+import runRecording from './handlers/runRecording'
+import saveRecording from './handlers/saveRecording'
 
 const iconPath = join(
   __dirname,
@@ -30,7 +32,11 @@ const iconPath = join(
 // --- Window and State Management ---
 let mainWindow: BrowserWindow | null = null
 let recorderWindow: BrowserWindow | null = null
-let projectBaseUrl: string = 'https://www.google.com'
+
+const appState = {
+  projectBaseUrl: 'https://www.google.com',
+  savedTest: null as { steps: string[] } | null
+}
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -107,17 +113,15 @@ ipcMain.handle('is-ruby-installed', isRubyInstalled)
 // --- Recorder IPC Handlers ---
 
 ipcMain.handle('load-url-request', (event, url: string) => {
-  projectBaseUrl = url
-  console.log(`[MainProcess] Project base URL set to: ${projectBaseUrl}`)
+  appState.projectBaseUrl = url
   return { success: true }
 })
 
-ipcMain.handle('start-recording-main', (event) => {
+ipcMain.handle('start-recording-main', () => {
   if (recorderWindow) {
     recorderWindow.focus()
     return { success: true }
   }
-
   recorderWindow = new BrowserWindow({
     width: 1280,
     height: 720,
@@ -133,12 +137,9 @@ ipcMain.handle('start-recording-main', (event) => {
     recorderWindow = null
   })
 
-  recorderWindow.loadURL(projectBaseUrl)
+  recorderWindow.loadURL(appState.projectBaseUrl)
   recorderWindow.focus()
-
-  // *** CHANGE IS HERE ***
-  // Notify the UI that recording has started AND send the URL that was used.
-  mainWindow?.webContents.send('recording-started', projectBaseUrl)
+  mainWindow?.webContents.send('recording-started', appState.projectBaseUrl)
 
   return { success: true }
 })
@@ -150,16 +151,48 @@ ipcMain.handle('stop-recording-main', () => {
   return { success: true }
 })
 
+ipcMain.handle('save-recording', (event, steps) => saveRecording(appState, steps))
+ipcMain.handle('run-recording', () => runRecording(appState))
+
+const keyMap: { [key: string]: string } = {
+  'Enter': ':enter',
+  'Tab': ':tab',
+  'ArrowUp': ':arrow_up',
+  'ArrowDown': ':arrow_down',
+  'ArrowLeft': ':arrow_left',
+  'ArrowRight': ':arrow_right',
+  'Escape': ':escape',
+};
+
+// Find this IPC listener in your main/index.ts file
 ipcMain.on('recorder-event', (event: IpcMainEvent, data: any) => {
-  let commandString = ''
+  console.log('[MainProcess] Received recorder event:', data);
+
+  let commandString = '';
   switch (data.action) {
     case 'click':
-      const escapedSelector = data.selector.replace(/"/g, '\\"')
-      commandString = `driver.find_element(:css, "${escapedSelector}").click # Clicked <${data.tagName.toLowerCase()}>`
-      break
+      const escapedClickSelector = data.selector.replace(/"/g, '\\"');
+      commandString = `@driver.find_element(:css, "${escapedClickSelector}").click # Clicked <${data.tagName.toLowerCase()}>`;
+      break;
+
+    case 'type':
+      const escapedTypeSelector = data.selector.replace(/"/g, '\\"');
+      const escapedValue = data.value.replace(/"/g, '\\"');
+      commandString = `@driver.find_element(:css, "${escapedTypeSelector}").clear\n`;
+      commandString += `    @driver.find_element(:css, "${escapedTypeSelector}").send_keys("${escapedValue}")`;
+      break;
+
+    // *** NEW CASE IS HERE ***
+    case 'sendKeys':
+      const keySymbol = keyMap[data.value];
+      if (keySymbol) {
+        const escapedKeySelector = data.selector.replace(/"/g, '\\"');
+        commandString = `@driver.find_element(:css, "${escapedKeySelector}").send_keys(${keySymbol}) # Pressed ${data.value} on <${data.tagName.toLowerCase()}>`;
+      }
+      break;
   }
 
   if (commandString) {
-    mainWindow?.webContents.send('new-recorded-command', commandString)
+    mainWindow?.webContents.send('new-recorded-command', commandString);
   }
-})
+});

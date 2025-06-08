@@ -31,18 +31,57 @@ function getCssSelector(el: Element): string {
 
 // --- Event Listeners ---
 
-// Listen for all clicks on the document
+// 1. Listen for all clicks on the document
 document.addEventListener('click', (event) => {
-  // We send the raw event data back to the main process for handling
   const target = event.target as HTMLElement;
-  if (target) {
+  if (target.tagName === 'HTML') return; // Basic filter for scrollbar clicks
+
+  ipcRenderer.send('recorder-event', {
+    action: 'click',
+    selector: getCssSelector(target),
+    tagName: target.tagName,
+  });
+}, true);
+
+// 2. Listen for when an input, textarea, or select value changes
+document.addEventListener('change', (event) => {
+  const target = event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
     ipcRenderer.send('recorder-event', {
-      action: 'click',
+      action: 'type',
       selector: getCssSelector(target),
       tagName: target.tagName,
-      value: (target as HTMLInputElement).value, // Include other potential data
+      value: target.value,
     });
   }
-}, true); // Use the capturing phase to get the event early
+}, true);
 
-console.log('[Recorder Preload] Script loaded. Listening for user actions.');
+// 3. NEW: Listen for special key presses on the document
+document.addEventListener('keydown', (event) => {
+  const key = event.key;
+  // We'll focus on a few common, non-character keys for now.
+  const recordableKeys = [
+    'Enter',
+    'Tab',
+    'ArrowUp',
+    'ArrowDown',
+    'ArrowLeft',
+    'ArrowRight',
+    'Escape'
+  ];
+
+  if (recordableKeys.includes(key)) {
+    const target = event.target as HTMLElement;
+    if (target) {
+      ipcRenderer.send('recorder-event', {
+        action: 'sendKeys',
+        selector: getCssSelector(target),
+        tagName: target.tagName,
+        value: key, // e.g., "Enter"
+      });
+    }
+  }
+}, true);
+
+
+console.log('[Recorder Preload] Script loaded. Listening for clicks, changes, and keydown events.');
