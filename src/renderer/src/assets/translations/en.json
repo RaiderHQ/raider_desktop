@@ -200,12 +200,15 @@
       "commands": "Recorded Selenium Ruby commands will appear here..."
     },
     "button": {
-      "loadUrl": "Load URL",
+      "setUrl": "Set URL",
       "startRecording": "Start Recording",
-      "stopRecording": "Stop Recording"
+      "stopRecording": "Stop Recording",
+      "saveTest": "Save Test",
+      "runTest": "Run Test"
     },
     "heading": {
-      "recordedSteps": "Recorded Steps"
+      "recordedSteps": "Recorded Steps",
+      "runOutput": "Run Output"
     }
   }
 }
