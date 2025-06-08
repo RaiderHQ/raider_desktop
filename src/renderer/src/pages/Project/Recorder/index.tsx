@@ -1,19 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-
-// We no longer need WebviewTag or the injected scripts here, as the
-// main process will handle the new window directly.
+import CommandList from '@components/CommandList' // Import the new component
 
 const Recorder: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
 
-  // --- State ---
+  // --- State (No changes here) ---
   const [url, setUrl] = useState<string>('https://www.google.com')
   const [recordedSteps, setRecordedSteps] = useState<string[]>([])
   const [isRecording, setIsRecording] = useState<boolean>(false)
-  // The webviewRef is no longer needed.
 
-  // --- UI Handlers (These remain the same) ---
+  // --- UI Handlers (No changes here) ---
   const handleSetUrl = useCallback((): void => {
     if (url) {
       window.api.loadUrlRequest(url).then(() => {
@@ -30,31 +27,31 @@ const Recorder: React.FC = (): JSX.Element => {
     window.api.stopRecordingMain()
   }, [])
 
-  // --- Side Effects ---
-
-  // This effect now only listens for simple state changes from the Main Process.
+  // --- Side Effects (No changes here) ---
   useEffect(() => {
-    // Main process says the new window is open and recording has begun.
-    const handleRecordingStarted = (): void => {
+    const handleRecordingStarted = (_event: any, loadedUrl: string): void => {
       setIsRecording(true)
-      // We can add the 'open' command as the first step.
-      setRecordedSteps(prev => [`driver.get("${url}")`, ...prev.slice(1)])
+      setRecordedSteps([`driver.get("${loadedUrl}")`])
     }
 
-    // Main process says the recorder window was closed.
     const handleRecordingStopped = (): void => {
       setIsRecording(false)
     }
 
-    // Subscribe to the new events
+    const handleNewCommand = (_event: any, command: string): void => {
+      setRecordedSteps((prevSteps) => [...prevSteps, command])
+    }
+
     const cleanupStart = window.electron.ipcRenderer.on('recording-started', handleRecordingStarted)
     const cleanupStop = window.electron.ipcRenderer.on('recording-stopped', handleRecordingStopped)
+    const cleanupCommand = window.electron.ipcRenderer.on('new-recorded-command', handleNewCommand)
 
     return () => {
       cleanupStart?.()
       cleanupStop?.()
+      cleanupCommand?.()
     }
-  }, [url]) // Depend on URL to ensure the "driver.get" command is up-to-date.
+  }, [])
 
   // --- Rendering ---
   return (
@@ -90,15 +87,13 @@ const Recorder: React.FC = (): JSX.Element => {
         </button>
       </div>
 
-      {/* The main area now ONLY shows the recorded steps. */}
-      <div className="flex-grow border rounded p-4 bg-gray-50 flex flex-col">
+      {/* This container now uses our new CommandList component */}
+      <div className="flex-grow border rounded p-4 bg-gray-50 flex flex-col min-h-0">
         <h3 className="text-lg font-semibold mb-2">{t('recorder.heading.recordedSteps')}</h3>
-        <textarea
-          readOnly
-          value={recordedSteps.join('\n')}
-          className="w-full flex-grow p-2 border rounded bg-white resize-none"
-          placeholder={t('recorder.placeholder.commands')}
-        />
+        {/* The textarea is replaced with our new component */}
+        <div className="flex-grow">
+          <CommandList steps={recordedSteps} />
+        </div>
       </div>
     </div>
   )

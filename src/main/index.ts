@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, IpcMainEvent } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import selectFolder from './handlers/selectFolder'
@@ -17,8 +17,6 @@ import installRaider from './handlers/installRaider'
 import updateMobileCapabilities from './handlers/updateMobileCapabilities'
 import getMobileCapabilities from './handlers/getMobileCapabilities'
 import isRubyInstalled from './handlers/isRubyInstalled'
-// We will define the recorder handlers directly in this file to manage window state.
-// So we remove the old imports for startRecording, stopRecording, etc.
 
 const iconPath = join(
   __dirname,
@@ -30,12 +28,9 @@ const iconPath = join(
 )
 
 // --- Window and State Management ---
-// Keep a reference to the main window and the recorder window
 let mainWindow: BrowserWindow | null = null
 let recorderWindow: BrowserWindow | null = null
-
-// Store the URL for the recording session
-let projectBaseUrl: string = 'https://www.google.com' // A sensible default
+let projectBaseUrl: string = 'https://www.google.com'
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -92,10 +87,8 @@ app.on('window-all-closed', () => {
 
 // --- IPC Handlers ---
 
-// Non-recorder handlers remain the same
 ipcMain.handle('select-folder', selectFolder)
 ipcMain.handle('read-directory', readDirectory)
-// ... register all your other handlers here ...
 ipcMain.handle('open-allure', openAllure)
 ipcMain.handle('read-file', readFile)
 ipcMain.handle('read-image', readImage)
@@ -111,61 +104,62 @@ ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)
 ipcMain.handle('get-mobile-capabilities', getMobileCapabilities)
 ipcMain.handle('is-ruby-installed', isRubyInstalled)
 
+// --- Recorder IPC Handlers ---
 
-// --- New Recorder IPC Handlers ---
-
-// This handler just updates the URL state. It does not navigate.
-// NOTE: Your preload calls this 'load-url-request'
 ipcMain.handle('load-url-request', (event, url: string) => {
   projectBaseUrl = url
   console.log(`[MainProcess] Project base URL set to: ${projectBaseUrl}`)
   return { success: true }
 })
 
-// This handler creates and shows the new browser window for recording.
-// NOTE: Your preload calls this 'start-recording-main'
 ipcMain.handle('start-recording-main', (event) => {
-  console.log(`[MainProcess] Start recording requested. Target URL: ${projectBaseUrl}`)
-
-  // If the recorder window already exists, just focus it.
   if (recorderWindow) {
     recorderWindow.focus()
     return { success: true }
   }
 
-  // Create the new recorder window
   recorderWindow = new BrowserWindow({
     width: 1280,
     height: 720,
     show: true,
-    title: 'Recording Session'
-    // webPreferences will be needed later to inject recorder logic
+    title: 'Recording Session',
+    webPreferences: {
+      preload: join(__dirname, '../preload/recorderPreload.js')
+    }
   })
 
-  // When the user closes the window, handle cleanup
   recorderWindow.on('closed', () => {
-    console.log('[MainProcess] Recorder window was closed.')
-    // Notify the main UI that recording has stopped
     mainWindow?.webContents.send('recording-stopped')
     recorderWindow = null
   })
 
-  // Load the URL and focus the window.
   recorderWindow.loadURL(projectBaseUrl)
   recorderWindow.focus()
 
-  // Notify the main UI that recording has started
-  mainWindow?.webContents.send('recording-started')
+  // *** CHANGE IS HERE ***
+  // Notify the UI that recording has started AND send the URL that was used.
+  mainWindow?.webContents.send('recording-started', projectBaseUrl)
 
   return { success: true }
 })
 
-// This handler stops the recording by closing the recorder window.
-// NOTE: Your preload calls this 'stop-recording-main'
-ipcMain.handle('stop-recording-main', (event) => {
-  console.log('[MainProcess] Stop recording requested.')
+ipcMain.handle('stop-recording-main', () => {
   if (recorderWindow) {
-    recorderWindow.close() // The 'closed' event handler will do the cleanup
+    recorderWindow.close()
   }
   return { success: true }
+})
+
+ipcMain.on('recorder-event', (event: IpcMainEvent, data: any) => {
+  let commandString = ''
+  switch (data.action) {
+    case 'click':
+      const escapedSelector = data.selector.replace(/"/g, '\\"')
+      commandString = `driver.find_element(:css, "${escapedSelector}").click # Clicked <${data.tagName.toLowerCase()}>`
+      break
+  }
+
+  if (commandString) {
+    mainWindow?.webContents.send('new-recorded-command', commandString)
+  }
 })
