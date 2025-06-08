@@ -13,14 +13,6 @@ const Recorder: React.FC = (): JSX.Element => {
   const [isRunning, setIsRunning] = useState<boolean>(false)
 
   // --- UI Handlers ---
-  const handleSetUrl = useCallback((): void => {
-    if (url) {
-      window.api.loadUrlRequest(url).then(() => {
-        console.log(`[Recorder] Project URL has been set to: ${url}`)
-      })
-    }
-  }, [url])
-
   const handleStartRecording = useCallback(async (): Promise<void> => {
     if (url) {
       await window.api.loadUrlRequest(url)
@@ -48,12 +40,16 @@ const Recorder: React.FC = (): JSX.Element => {
     setIsRunning(false)
   }, [])
 
+  // New handler to delete a step from the list
+  const handleDeleteStep = useCallback((indexToDelete: number) => {
+    setRecordedSteps(prev => prev.filter((_, index) => index !== indexToDelete));
+  }, []);
+
+
   // --- Side Effects ---
   useEffect(() => {
     const handleRecordingStarted = (_event: any, loadedUrl: string): void => {
       setIsRecording(true)
-      // *** FIX IS HERE ***
-      // We now correctly use the @driver instance variable for the first command.
       setRecordedSteps([`@driver.get("${loadedUrl}")`])
       setRunOutput('')
     }
@@ -80,6 +76,7 @@ const Recorder: React.FC = (): JSX.Element => {
   // --- Rendering ---
   return (
     <div className="flex flex-col h-full w-full p-4 space-y-4">
+      {/* Control bar */}
       <div className="flex items-center space-x-2 flex-wrap gap-y-2">
         <input
           type="text"
@@ -117,12 +114,16 @@ const Recorder: React.FC = (): JSX.Element => {
           {t('recorder.button.runTest')}
         </button>
       </div>
-
+      {/* Main Content Area */}
       <div className="flex-grow flex flex-row space-x-4 min-h-0">
         <div className="w-1/2 border rounded p-4 bg-gray-50 flex flex-col">
           <h3 className="text-lg font-semibold mb-2">{t('recorder.heading.recordedSteps')}</h3>
           <div className="flex-grow min-h-0">
-            <CommandList steps={recordedSteps} />
+            <CommandList
+              steps={recordedSteps}
+              setSteps={setRecordedSteps}
+              onDeleteStep={handleDeleteStep}
+            />
           </div>
         </div>
 
