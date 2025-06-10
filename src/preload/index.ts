@@ -102,10 +102,14 @@ const api = {
     return ipcRenderer.invoke('get-mobile-capabilities', projectPath)
   },
 
-  saveRecording: async (testName: string, steps: string[]): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke('save-recording', testName, steps),
-  runRecording: async (): Promise<{ success: boolean; output: string }> =>
-    ipcRenderer.invoke('run-recording'),
+  getTestSuite: async (): Promise<{ name: string; url: string; steps: string[] }[]> =>
+    ipcRenderer.invoke('get-test-suite'),
+
+  saveRecording: async (testData: { name: string; url: string; steps: string[] }): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('save-recording', testData),
+
+  runRecording: async (testName: string): Promise<{ success: boolean; output: string }> =>
+    ipcRenderer.invoke('run-recording', testName),
   startRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('start-recording-main'),
   stopRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('stop-recording-main'),
   loadUrlRequest: async (url: string): Promise<CommandType> =>

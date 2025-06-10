@@ -18,7 +18,7 @@ import updateMobileCapabilities from './handlers/updateMobileCapabilities'
 import getMobileCapabilities from './handlers/getMobileCapabilities'
 import isRubyInstalled from './handlers/isRubyInstalled'
 import runRecording from './handlers/runRecording'
-import saveRecording from './handlers/saveRecording'
+// The saveRecording handler is now included directly below to manage suite state
 
 const iconPath = join(
   __dirname,
@@ -33,15 +33,18 @@ const iconPath = join(
 let mainWindow: BrowserWindow | null = null
 let recorderWindow: BrowserWindow | null = null
 
+// This is now the central state for your recorder feature
 const appState = {
-  projectBaseUrl: 'https://www.google.com',
-  savedTest: null as { name: string; steps: string[] } | null // Now includes name
-};
+  // This holds the collection of all saved tests, keyed by test name
+  testSuite: new Map<string, { name: string; url: string; steps: string[] }>(),
+  // This holds the URL for the *next* recording session
+  projectBaseUrl: 'https://www.google.com'
+}
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 1000,
-    height: 750,
+    width: 1200, // Increased width to better accommodate the new layout
+    height: 800,
     show: false,
     autoHideMenuBar: true,
     icon: iconPath,
@@ -93,6 +96,7 @@ app.on('window-all-closed', () => {
 
 // --- IPC Handlers ---
 
+// Your other handlers remain the same
 ipcMain.handle('select-folder', selectFolder)
 ipcMain.handle('read-directory', readDirectory)
 ipcMain.handle('open-allure', openAllure)
@@ -112,11 +116,13 @@ ipcMain.handle('is-ruby-installed', isRubyInstalled)
 
 // --- Recorder IPC Handlers ---
 
+// Sets the base URL for the next recording session
 ipcMain.handle('load-url-request', (event, url: string) => {
   appState.projectBaseUrl = url
   return { success: true }
 })
 
+// Starts a recording session
 ipcMain.handle('start-recording-main', () => {
   if (recorderWindow) {
     recorderWindow.focus()
@@ -144,6 +150,7 @@ ipcMain.handle('start-recording-main', () => {
   return { success: true }
 })
 
+// Stops a recording session
 ipcMain.handle('stop-recording-main', () => {
   if (recorderWindow) {
     recorderWindow.close()
@@ -151,8 +158,30 @@ ipcMain.handle('stop-recording-main', () => {
   return { success: true }
 })
 
-ipcMain.handle('save-recording', (event, testName, steps) => saveRecording(appState, testName, steps));
-ipcMain.handle('run-recording', () => runRecording(appState))
+// NEW: Gets the full test suite for the UI
+ipcMain.handle('get-test-suite', () => {
+  return Array.from(appState.testSuite.values());
+});
+
+// UPDATED: Saves a test to the suite collection
+ipcMain.handle('save-recording', (event, testData: { name: string; url: string; steps: string[] }) => {
+  console.log(`[MainProcess] Saving test: "${testData.name}"`);
+  appState.testSuite.set(testData.name, testData);
+  // Notify the UI that the suite has changed so it can refresh its list
+  mainWindow?.webContents.send('suite-updated', Array.from(appState.testSuite.values()));
+  return { success: true };
+});
+
+// UPDATED: Runs a specific, named test from the suite
+ipcMain.handle('run-recording', (event, testName: string) => {
+  const testToRun = appState.testSuite.get(testName);
+  if (testToRun) {
+    // The external runRecording handler now receives the specific test data
+    return runRecording({ savedTest: testToRun });
+  }
+  return { success: false, output: `Test "${testName}" not found.` };
+});
+
 
 const keyMap: { [key: string]: string } = {
   'Enter': ':enter',
@@ -164,35 +193,32 @@ const keyMap: { [key: string]: string } = {
   'Escape': ':escape',
 };
 
-// Find this IPC listener in your main/index.ts file
+// This handler processes raw events from the recorder window
 ipcMain.on('recorder-event', (event: IpcMainEvent, data: any) => {
-  console.log('[MainProcess] Received recorder event:', data);
-
-  let commandString = '';
+  let commandString = ''
   switch (data.action) {
     case 'click':
-      const escapedClickSelector = data.selector.replace(/"/g, '\\"');
-      commandString = `@driver.find_element(:css, "${escapedClickSelector}").click # Clicked <${data.tagName.toLowerCase()}>`;
-      break;
+      const escapedClickSelector = data.selector.replace(/"/g, '\\"')
+      commandString = `@driver.find_element(:css, "${escapedClickSelector}").click # Clicked <${data.tagName.toLowerCase()}>`
+      break
 
     case 'type':
-      const escapedTypeSelector = data.selector.replace(/"/g, '\\"');
-      const escapedValue = data.value.replace(/"/g, '\\"');
-      commandString = `@driver.find_element(:css, "${escapedTypeSelector}").clear\n`;
-      commandString += `    @driver.find_element(:css, "${escapedTypeSelector}").send_keys("${escapedValue}")`;
-      break;
+      const escapedTypeSelector = data.selector.replace(/"/g, '\\"')
+      const escapedValue = data.value.replace(/"/g, '\\"')
+      commandString = `@driver.find_element(:css, "${escapedTypeSelector}").clear\n`
+      commandString += `    @driver.find_element(:css, "${escapedTypeSelector}").send_keys("${escapedValue}")`
+      break
 
-    // *** NEW CASE IS HERE ***
     case 'sendKeys':
-      const keySymbol = keyMap[data.value];
+      const keySymbol = keyMap[data.value]
       if (keySymbol) {
-        const escapedKeySelector = data.selector.replace(/"/g, '\\"');
-        commandString = `@driver.find_element(:css, "${escapedKeySelector}").send_keys(${keySymbol}) # Pressed ${data.value} on <${data.tagName.toLowerCase()}>`;
+        const escapedKeySelector = data.selector.replace(/"/g, '\\"')
+        commandString = `@driver.find_element(:css, "${escapedKeySelector}").send_keys(${keySymbol}) # Pressed ${data.value} on <${data.tagName.toLowerCase()}>`
       }
-      break;
+      break
   }
 
   if (commandString) {
-    mainWindow?.webContents.send('new-recorded-command', commandString);
+    mainWindow?.webContents.send('new-recorded-command', commandString)
   }
-});
+})
