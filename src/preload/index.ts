@@ -102,8 +102,8 @@ const api = {
     return ipcRenderer.invoke('get-mobile-capabilities', projectPath)
   },
 
-  saveRecording: async (steps: string[]): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke('save-recording', steps),
+  saveRecording: async (testName: string, steps: string[]): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('save-recording', testName, steps),
   runRecording: async (): Promise<{ success: boolean; output: string }> =>
     ipcRenderer.invoke('run-recording'),
   startRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('start-recording-main'),

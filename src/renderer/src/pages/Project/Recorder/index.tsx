@@ -7,6 +7,7 @@ const Recorder: React.FC = (): JSX.Element => {
 
   // --- State ---
   const [url, setUrl] = useState<string>('https://www.google.com')
+  const [testName, setTestName] = useState<string>('My First Test') // State for the test name
   const [recordedSteps, setRecordedSteps] = useState<string[]>([])
   const [isRecording, setIsRecording] = useState<boolean>(false)
   const [runOutput, setRunOutput] = useState<string>('')
@@ -24,27 +25,33 @@ const Recorder: React.FC = (): JSX.Element => {
     window.api.stopRecordingMain()
   }, [])
 
+  // NEW: Handler for the dedicated "Save Test" button
   const handleSaveRecording = useCallback((): void => {
-    window.api.saveRecording(recordedSteps).then((result) => {
+    if (!testName) {
+      // You can also show an error notification to the user
+      console.error("Cannot save test without a name.");
+      return;
+    }
+    // Calls the 'save-recording' IPC channel with the test name and steps
+    window.api.saveRecording(testName, recordedSteps).then((result) => {
       if (result.success) {
-        console.log('[Recorder] Test saved successfully.')
+        console.log(`[Recorder] Test "${testName}" saved successfully.`)
       }
     })
-  }, [recordedSteps])
+  }, [testName, recordedSteps])
 
+  // This handler now only runs the test that was last saved.
   const handleRunTest = useCallback(async (): Promise<void> => {
     setIsRunning(true)
-    setRunOutput('Running test...')
+    setRunOutput('Running last saved test...')
     const result = await window.api.runRecording()
     setRunOutput(result.output)
     setIsRunning(false)
   }, [])
 
-  // New handler to delete a step from the list
   const handleDeleteStep = useCallback((indexToDelete: number) => {
-    setRecordedSteps(prev => prev.filter((_, index) => index !== indexToDelete));
-  }, []);
-
+    setRecordedSteps((prev) => prev.filter((_, index) => index !== indexToDelete))
+  }, [])
 
   // --- Side Effects ---
   useEffect(() => {
@@ -83,7 +90,15 @@ const Recorder: React.FC = (): JSX.Element => {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder={t('recorder.placeholder.url')}
-          className="flex-grow p-2 border rounded"
+          className="w-1/3 flex-grow p-2 border rounded"
+        />
+        {/* Test Name Input Field */}
+        <input
+          type="text"
+          value={testName}
+          onChange={(e) => setTestName(e.target.value)}
+          placeholder="Enter test name"
+          className="w-1/3 flex-grow p-2 border rounded"
         />
         <button
           onClick={handleStartRecording}
@@ -99,6 +114,7 @@ const Recorder: React.FC = (): JSX.Element => {
         >
           {t('recorder.button.stopRecording')}
         </button>
+        {/* Re-introduced Save Test Button */}
         <button
           onClick={handleSaveRecording}
           disabled={isRecording || recordedSteps.length === 0}
