@@ -4,26 +4,23 @@ import os from 'os'
 import path from 'path'
 
 interface AppState {
-  savedTest: { steps: string[] } | null
+  savedTest: { name: string; steps: string[] } | null
 }
 
 /**
  * Generates the full Ruby RSpec code from an array of steps.
- * This version now inserts a 1-second sleep between each command.
+ * @param testName The name for the 'describe' block in RSpec.
+ * @param steps The array of command strings.
  */
-function generateRspecCode(steps: string[]): string {
-  // *** FIX IS HERE ***
-  // We map each command to its indented line, then join them together
-  // with a `sleep(1)` command on a new line in between.
+function generateRspecCode(testName: string, steps: string[]): string {
   const formattedSteps = steps
     .map((step) => `    ${step}`)
     .join('\n    sleep(1)\n')
-
   return `
 require 'selenium-webdriver'
 require 'rspec'
 
-describe 'My Recorded Test' do
+describe '${testName}' do
   before(:each) do
     @driver = Selenium::WebDriver.for :chrome
     @wait = Selenium::WebDriver::Wait.new(timeout: 10)
@@ -34,7 +31,6 @@ describe 'My Recorded Test' do
     @driver.quit
   end
 
-  # This helper function waits for an element to be visible before returning it.
   def find_and_wait(selector)
     @wait.until { @driver.find_element(:css, selector).displayed? }
     return @driver.find_element(:css, selector)
@@ -68,7 +64,15 @@ const runRecording = async (appState: AppState): Promise<{ success: boolean; out
 
     const executionEnv = { ...process.env, PATH: newPath }
 
-    await fs.writeFile(tempFilePath, generateRspecCode(appState.savedTest.steps))
+    // Destructure the name and steps from the saved test
+    const { name, steps } = appState.savedTest
+
+    // Generate the test code using both name and steps
+    const testCode = generateRspecCode(name, steps)
+
+    // *** FIX IS HERE ***
+    // Write the correctly generated 'testCode' variable to the file.
+    await fs.writeFile(tempFilePath, testCode)
     console.log(`[MainProcess] Test file written to: ${tempFilePath}`)
 
     const command = `rspec ${tempFilePath}`

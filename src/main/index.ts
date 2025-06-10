@@ -35,8 +35,8 @@ let recorderWindow: BrowserWindow | null = null
 
 const appState = {
   projectBaseUrl: 'https://www.google.com',
-  savedTest: null as { steps: string[] } | null
-}
+  savedTest: null as { name: string; steps: string[] } | null // Now includes name
+};
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -151,7 +151,7 @@ ipcMain.handle('stop-recording-main', () => {
   return { success: true }
 })
 
-ipcMain.handle('save-recording', (event, steps) => saveRecording(appState, steps))
+ipcMain.handle('save-recording', (event, testName, steps) => saveRecording(appState, testName, steps));
 ipcMain.handle('run-recording', () => runRecording(appState))
 
 const keyMap: { [key: string]: string } = {
