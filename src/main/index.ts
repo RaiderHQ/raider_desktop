@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, IpcMainEvent } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { randomUUID } from 'crypto'
 import selectFolder from './handlers/selectFolder'
 import readDirectory from './handlers/readDirectory'
 import runRubyRaider from './handlers/runRubyRaider'
@@ -18,7 +19,6 @@ import updateMobileCapabilities from './handlers/updateMobileCapabilities'
 import getMobileCapabilities from './handlers/getMobileCapabilities'
 import isRubyInstalled from './handlers/isRubyInstalled'
 import runRecording from './handlers/runRecording'
-// The saveRecording handler is now included directly below to manage suite state
 
 const iconPath = join(
   __dirname,
@@ -29,21 +29,32 @@ const iconPath = join(
       : '../../resources/ruby-raider.png' // Linux
 )
 
+// --- Define Types for our data structure ---
+interface Test {
+  id: string;
+  name: string;
+  url: string;
+  steps: string[];
+}
+interface Suite {
+  id: string;
+  name: string;
+  tests: Test[];
+}
+
 // --- Window and State Management ---
 let mainWindow: BrowserWindow | null = null
 let recorderWindow: BrowserWindow | null = null
 
-// This is now the central state for your recorder feature
 const appState = {
-  // This holds the collection of all saved tests, keyed by test name
-  testSuite: new Map<string, { name: string; url: string; steps: string[] }>(),
-  // This holds the URL for the *next* recording session
+  // Use a Map to store suites, with a unique ID as the key
+  suites: new Map<string, Suite>(),
   projectBaseUrl: 'https://www.google.com'
 }
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 1200, // Increased width to better accommodate the new layout
+    width: 1200,
     height: 800,
     show: false,
     autoHideMenuBar: true,
@@ -114,15 +125,13 @@ ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)
 ipcMain.handle('get-mobile-capabilities', getMobileCapabilities)
 ipcMain.handle('is-ruby-installed', isRubyInstalled)
 
-// --- Recorder IPC Handlers ---
+// --- Recorder and Suite IPC Handlers ---
 
-// Sets the base URL for the next recording session
 ipcMain.handle('load-url-request', (event, url: string) => {
   appState.projectBaseUrl = url
   return { success: true }
 })
 
-// Starts a recording session
 ipcMain.handle('start-recording-main', () => {
   if (recorderWindow) {
     recorderWindow.focus()
@@ -150,7 +159,6 @@ ipcMain.handle('start-recording-main', () => {
   return { success: true }
 })
 
-// Stops a recording session
 ipcMain.handle('stop-recording-main', () => {
   if (recorderWindow) {
     recorderWindow.close()
@@ -158,28 +166,50 @@ ipcMain.handle('stop-recording-main', () => {
   return { success: true }
 })
 
-// NEW: Gets the full test suite for the UI
-ipcMain.handle('get-test-suite', () => {
-  return Array.from(appState.testSuite.values());
+ipcMain.handle('get-suites', () => {
+  return Array.from(appState.suites.values());
 });
 
-// UPDATED: Saves a test to the suite collection
-ipcMain.handle('save-recording', (event, testData: { name: string; url: string; steps: string[] }) => {
-  console.log(`[MainProcess] Saving test: "${testData.name}"`);
-  appState.testSuite.set(testData.name, testData);
-  // Notify the UI that the suite has changed so it can refresh its list
-  mainWindow?.webContents.send('suite-updated', Array.from(appState.testSuite.values()));
+ipcMain.handle('create-suite', (event, suiteName: string) => {
+  if (!suiteName || Array.from(appState.suites.values()).some(s => s.name === suiteName)) {
+    return { success: false, error: 'A suite with this name already exists.' };
+  }
+  const newSuite: Suite = { id: randomUUID(), name: suiteName, tests: [] };
+  appState.suites.set(newSuite.id, newSuite);
+  mainWindow?.webContents.send('suite-updated', Array.from(appState.suites.values()));
+  return { success: true, suite: newSuite };
+});
+
+ipcMain.handle('delete-suite', (event, suiteId: string) => {
+  const success = appState.suites.delete(suiteId);
+  if (success) {
+    mainWindow?.webContents.send('suite-updated', Array.from(appState.suites.values()));
+  }
+  return { success };
+});
+
+ipcMain.handle('save-test', (event, { suiteId, testData }: { suiteId: string, testData: Test }) => {
+  const suite = appState.suites.get(suiteId);
+  if (!suite) {
+    return { success: false, error: 'Suite not found' };
+  }
+  const testIndex = suite.tests.findIndex(t => t.id === testData.id);
+  if (testIndex !== -1) {
+    suite.tests[testIndex] = testData; // Update existing test
+  } else {
+    suite.tests.push({ ...testData, id: randomUUID() }); // Add new test with a new ID
+  }
+  mainWindow?.webContents.send('suite-updated', Array.from(appState.suites.values()));
   return { success: true };
 });
 
-// UPDATED: Runs a specific, named test from the suite
-ipcMain.handle('run-recording', (event, testName: string) => {
-  const testToRun = appState.testSuite.get(testName);
-  if (testToRun) {
-    // The external runRecording handler now receives the specific test data
-    return runRecording({ savedTest: testToRun });
+ipcMain.handle('run-test', (event, { suiteId, testId }: { suiteId: string, testId: string }) => {
+  const suite = appState.suites.get(suiteId);
+  const test = suite?.tests.find(t => t.id === testId);
+  if (test) {
+    return runRecording({ savedTest: test });
   }
-  return { success: false, output: `Test "${testName}" not found.` };
+  return { success: false, output: `Test with ID ${testId} not found in suite ${suiteId}` };
 });
 
 
@@ -193,21 +223,20 @@ const keyMap: { [key: string]: string } = {
   'Escape': ':escape',
 };
 
-// This handler processes raw events from the recorder window
 ipcMain.on('recorder-event', (event: IpcMainEvent, data: any) => {
   let commandString = ''
   switch (data.action) {
     case 'click':
       const escapedClickSelector = data.selector.replace(/"/g, '\\"')
       commandString = `@driver.find_element(:css, "${escapedClickSelector}").click # Clicked <${data.tagName.toLowerCase()}>`
-      break
+      break;
 
     case 'type':
       const escapedTypeSelector = data.selector.replace(/"/g, '\\"')
       const escapedValue = data.value.replace(/"/g, '\\"')
       commandString = `@driver.find_element(:css, "${escapedTypeSelector}").clear\n`
       commandString += `    @driver.find_element(:css, "${escapedTypeSelector}").send_keys("${escapedValue}")`
-      break
+      break;
 
     case 'sendKeys':
       const keySymbol = keyMap[data.value]
@@ -215,7 +244,7 @@ ipcMain.on('recorder-event', (event: IpcMainEvent, data: any) => {
         const escapedKeySelector = data.selector.replace(/"/g, '\\"')
         commandString = `@driver.find_element(:css, "${escapedKeySelector}").send_keys(${keySymbol}) # Pressed ${data.value} on <${data.tagName.toLowerCase()}>`
       }
-      break
+      break;
   }
 
   if (commandString) {
