@@ -17,12 +17,12 @@ interface Suite {
 }
 
 /**
- * Creates a new, blank test object.
+ * Creates a new, blank test object with default values.
  */
 const createNewTest = (): Test => ({
-  id: crypto.randomUUID(), // Uses the browser's built-in crypto
+  id: crypto.randomUUID(),
   name: 'Untitled Test',
-  url: 'https://www.google.com',
+  url: 'https://www.wikipedia.org', // Default URL changed
   steps: [],
 });
 
@@ -40,8 +40,6 @@ const Recorder: React.FC = (): JSX.Element => {
   const [isRunning, setIsRunning] = useState<boolean>(false)
 
   // --- Refs ---
-  // This ref is the key to fixing the unresponsive UI.
-  // It always holds the latest version of activeTest for our IPC listeners.
   const activeTestRef = useRef(activeTest);
   useEffect(() => {
     activeTestRef.current = activeTest;
@@ -59,7 +57,9 @@ const Recorder: React.FC = (): JSX.Element => {
   const handleSuiteChange = (suiteId: string) => {
     setActiveSuiteId(suiteId);
     const suite = suites.find(s => s.id === suiteId);
-    setActiveTest(suite?.tests[0] ?? null);
+    // If the selected suite has no tests, create a new one automatically.
+    // Otherwise, select the first one.
+    setActiveTest(suite?.tests[0] ?? createNewTest());
   };
 
   const handleTestSelect = (testId: string) => {
@@ -69,15 +69,7 @@ const Recorder: React.FC = (): JSX.Element => {
     }
   };
 
-  const handleNewTest = () => {
-    if (activeSuiteId) {
-      const newTest = createNewTest();
-      // Set as active test to begin editing
-      setActiveTest(newTest);
-      // Immediately save it to the backend
-      window.api.saveTest(activeSuiteId, newTest);
-    }
-  };
+  // The separate "handleNewTest" handler is no longer needed.
 
   // --- Backend Communication Handlers ---
   const handleStartRecording = useCallback(async (): Promise<void> => {
@@ -99,7 +91,7 @@ const Recorder: React.FC = (): JSX.Element => {
 
   const handleRunTest = useCallback(async (): Promise<void> => {
     if (activeSuiteId && activeTest?.id) {
-      await handleSaveTest(); // Always save latest changes
+      await handleSaveTest();
       setIsRunning(true);
       setRunOutput(`Running test: ${activeTest.name}...`);
       const result = await window.api.runTest(activeSuiteId, activeTest.id);
@@ -117,7 +109,10 @@ const Recorder: React.FC = (): JSX.Element => {
       if (initialSuites.length > 0) {
         const firstSuite = initialSuites[0];
         setActiveSuiteId(firstSuite.id);
-        setActiveTest(firstSuite.tests[0] ?? null);
+        // On initial load, either select the first test or create a new one
+        setActiveTest(firstSuite.tests[0] ?? createNewTest());
+      } else {
+        setActiveTest(createNewTest());
       }
     });
 
@@ -156,6 +151,7 @@ const Recorder: React.FC = (): JSX.Element => {
 
   return (
     <div className="flex flex-row h-full w-full">
+      {/* --- Left Panel: Test Suite --- */}
       <div className="w-1/4 max-w-xs">
         <TestSuitePanel
           suites={suites}
@@ -167,14 +163,11 @@ const Recorder: React.FC = (): JSX.Element => {
         />
       </div>
 
+      {/* --- Right Panel: Main Recorder View --- */}
       <div className="flex-1 flex flex-col p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">{activeSuite?.name ?? 'No Suite Selected'}</h2>
-          <div>
-            <button onClick={handleNewTest} disabled={!activeSuite} className="p-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 disabled:bg-gray-400">
-              New Test
-            </button>
-          </div>
+          {/* The "New Test" button has been removed for a smoother workflow */}
         </div>
 
         <div className="flex items-center space-x-2 flex-wrap gap-y-2">
