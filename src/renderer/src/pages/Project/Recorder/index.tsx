@@ -17,15 +17,14 @@ interface Suite {
 }
 
 /**
- * Creates a new, blank test object with default values.
+ * Creates a new, blank test object.
  */
 const createNewTest = (): Test => ({
-  id: crypto.randomUUID(),
+  id: crypto.randomUUID(), // Uses the browser's built-in crypto
   name: 'Untitled Test',
-  url: 'https://www.wikipedia.org', // Default URL changed
+  url: 'https://www.wikipedia.org',
   steps: [],
 });
-
 
 const Recorder: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -40,6 +39,8 @@ const Recorder: React.FC = (): JSX.Element => {
   const [isRunning, setIsRunning] = useState<boolean>(false)
 
   // --- Refs ---
+  // This ref is the key to fixing the unresponsive UI.
+  // It will always contain a reference to the latest activeTest object.
   const activeTestRef = useRef(activeTest);
   useEffect(() => {
     activeTestRef.current = activeTest;
@@ -48,18 +49,27 @@ const Recorder: React.FC = (): JSX.Element => {
   const activeSuite = React.useMemo(() => suites.find(s => s.id === activeSuiteId), [suites, activeSuiteId]);
 
   // --- UI and State Handlers ---
+
   const handleCreateSuite = useCallback((suiteName: string) => {
     if (suiteName && !suites.find(s => s.name === suiteName)) {
       window.api.createSuite(suiteName);
     }
   }, [suites]);
 
+  const handleDeleteSuite = useCallback((suiteIdToDelete: string) => {
+    window.api.deleteSuite(suiteIdToDelete).then(() => {
+      if (activeSuiteId === suiteIdToDelete) {
+        setActiveSuiteId(null);
+        setActiveTest(null);
+      }
+    });
+  }, [activeSuiteId]);
+
   const handleSuiteChange = (suiteId: string) => {
     setActiveSuiteId(suiteId);
     const suite = suites.find(s => s.id === suiteId);
-    // If the selected suite has no tests, create a new one automatically.
-    // Otherwise, select the first one.
-    setActiveTest(suite?.tests[0] ?? createNewTest());
+    // When a suite is selected, pick its first test, or null if it's empty
+    setActiveTest(suite?.tests[0] ?? null);
   };
 
   const handleTestSelect = (testId: string) => {
@@ -69,9 +79,16 @@ const Recorder: React.FC = (): JSX.Element => {
     }
   };
 
-  // The separate "handleNewTest" handler is no longer needed.
+  const handleNewTest = () => {
+    if (activeSuiteId) {
+      // Create a new test and set it as active for editing.
+      // The user will then click "Save" to persist it.
+      setActiveTest(createNewTest());
+    }
+  };
 
   // --- Backend Communication Handlers ---
+
   const handleStartRecording = useCallback(async (): Promise<void> => {
     if (activeTest?.url) {
       await window.api.loadUrlRequest(activeTest.url);
@@ -91,7 +108,7 @@ const Recorder: React.FC = (): JSX.Element => {
 
   const handleRunTest = useCallback(async (): Promise<void> => {
     if (activeSuiteId && activeTest?.id) {
-      await handleSaveTest();
+      await handleSaveTest(); // Always save latest changes
       setIsRunning(true);
       setRunOutput(`Running test: ${activeTest.name}...`);
       const result = await window.api.runTest(activeSuiteId, activeTest.id);
@@ -100,19 +117,18 @@ const Recorder: React.FC = (): JSX.Element => {
     }
   }, [activeSuiteId, activeTest, handleSaveTest]);
 
+
   // --- Side Effects ---
   useEffect(() => {
     // This effect runs only ONCE to set up all IPC listeners.
 
+    // Load initial data from the backend
     window.api.getSuites().then((initialSuites) => {
       setSuites(initialSuites);
       if (initialSuites.length > 0) {
         const firstSuite = initialSuites[0];
         setActiveSuiteId(firstSuite.id);
-        // On initial load, either select the first test or create a new one
-        setActiveTest(firstSuite.tests[0] ?? createNewTest());
-      } else {
-        setActiveTest(createNewTest());
+        setActiveTest(firstSuite.tests[0] ?? null);
       }
     });
 
@@ -120,17 +136,17 @@ const Recorder: React.FC = (): JSX.Element => {
       setSuites(updatedSuites);
     });
 
-    const handleRecordingStarted = (_event, loadedUrl) => {
+    const handleRecordingStarted = (_event: any, loadedUrl: string): void => {
       setIsRecording(true);
-      const currentTest = activeTestRef.current;
-      if (currentTest) {
-        setActiveTest({ ...currentTest, steps: [`@driver.get("${loadedUrl}")`] });
-      }
+      // Use the functional form of setState to prevent stale state issues
+      setActiveTest(prev => prev ? { ...prev, steps: [`@driver.get("${loadedUrl}")`] } : null);
       setRunOutput('');
     };
+
     const handleRecordingStopped = () => setIsRecording(false);
 
-    const handleNewCommand = (_event, command) => {
+    const handleNewCommand = (_event: any, command: string): void => {
+      // By using the ref, we get the LATEST activeTest state and append the new command
       const currentTest = activeTestRef.current;
       if (currentTest) {
         setActiveTest({ ...currentTest, steps: [...currentTest.steps, command] });
@@ -147,11 +163,10 @@ const Recorder: React.FC = (): JSX.Element => {
       stopCleanup?.();
       commandCleanup?.();
     };
-  }, []);
+  }, []); // The empty dependency array [] is CRUCIAL to prevent the loop.
 
   return (
     <div className="flex flex-row h-full w-full">
-      {/* --- Left Panel: Test Suite --- */}
       <div className="w-1/4 max-w-xs">
         <TestSuitePanel
           suites={suites}
@@ -160,14 +175,18 @@ const Recorder: React.FC = (): JSX.Element => {
           onSuiteChange={handleSuiteChange}
           onTestSelect={handleTestSelect}
           onCreateSuite={handleCreateSuite}
+          onDeleteSuite={handleDeleteSuite}
         />
       </div>
 
-      {/* --- Right Panel: Main Recorder View --- */}
       <div className="flex-1 flex flex-col p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">{activeSuite?.name ?? 'No Suite Selected'}</h2>
-          {/* The "New Test" button has been removed for a smoother workflow */}
+          <div>
+            <button onClick={handleNewTest} disabled={!activeSuite} className="p-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 disabled:bg-gray-400">
+              New Test
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center space-x-2 flex-wrap gap-y-2">

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-// Define the shape of our data
+// Define the shape of our data with unique IDs
 interface Test {
   id: string;
   name: string;
@@ -19,6 +19,7 @@ interface TestSuitePanelProps {
   onSuiteChange: (suiteId: string) => void;
   onTestSelect: (testId: string) => void;
   onCreateSuite: (suiteName: string) => void;
+  onDeleteSuite: (suiteId: string) => void; // New prop for deleting a suite
 }
 
 const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
@@ -27,7 +28,8 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
                                                          activeTestId,
                                                          onSuiteChange,
                                                          onTestSelect,
-                                                         onCreateSuite
+                                                         onCreateSuite,
+                                                         onDeleteSuite
                                                        }) => {
   const { t } = useTranslation()
   const activeSuite = suites.find((s) => s.id === activeSuiteId)
@@ -36,7 +38,16 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
   const handleCreateClick = () => {
     if (newSuiteName.trim()) {
       onCreateSuite(newSuiteName.trim())
-      setNewSuiteName('') // Clear the input after creation
+      setNewSuiteName('')
+    }
+  }
+
+  const handleDeleteClick = () => {
+    if (activeSuiteId && activeSuite) {
+      // Use a standard confirm dialog before performing a destructive action
+      if (window.confirm(`Are you sure you want to delete the suite "${activeSuite.name}"? This cannot be undone.`)) {
+        onDeleteSuite(activeSuiteId);
+      }
     }
   }
 
@@ -50,13 +61,22 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
           className="flex-grow p-2 border rounded"
           aria-label="Select Test Suite"
         >
-          <option value="">-- Select a Suite --</option>
+          <option value="" disabled>-- Select a Suite --</option>
           {suites.map((suite) => (
             <option key={suite.id} value={suite.id}>
               {suite.name}
             </option>
           ))}
         </select>
+        {/* Delete Suite Button */}
+        <button
+          onClick={handleDeleteClick}
+          disabled={!activeSuiteId}
+          className="p-2 w-10 bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-400"
+          aria-label="Delete Selected Suite"
+        >
+          🗑️
+        </button>
       </div>
 
       {/* Create Suite Input and Button */}
@@ -71,7 +91,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
         />
         <button
           onClick={handleCreateClick}
-          className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-bold"
+          className="p-2 w-10 bg-blue-500 text-white rounded hover:bg-blue-600 font-bold"
           aria-label="Create New Suite"
         >
           +
