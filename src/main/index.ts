@@ -251,3 +251,32 @@ ipcMain.on('recorder-event', (event: IpcMainEvent, data: any) => {
     mainWindow?.webContents.send('new-recorded-command', commandString)
   }
 })
+
+ipcMain.handle('run-suite', async (event, suiteId: string) => {
+  const suite = appState.suites.get(suiteId);
+  if (!suite) {
+    return { success: false, output: `Suite with ID ${suiteId} not found.` };
+  }
+
+  let fullOutput = `Running suite: ${suite.name}\n==========================\n\n`;
+  let overallSuccess = true;
+
+  // Loop through each test in the suite and execute it
+  for (const test of suite.tests) {
+    fullOutput += `--- Running test: ${test.name} ---\n`;
+    const result = await runRecording({ savedTest: test }); // Call the existing runner
+    fullOutput += result.output + '\n';
+
+    // If a test fails, mark the whole suite as failed and stop
+    if (!result.success) {
+      overallSuccess = false;
+      fullOutput += `\n--- TEST FAILED: ${test.name}. Stopping suite run. ---\n`;
+      break;
+    }
+    fullOutput += `--- TEST PASSED: ${test.name} ---\n\n`;
+  }
+
+  fullOutput += `==========================\nSuite run finished.`;
+  return { success: overallSuccess, output: fullOutput };
+});
+
