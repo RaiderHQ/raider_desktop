@@ -83,8 +83,8 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
   }
 
   const handleRunAllClick = () => {
-    if (activeSuiteId) {
-      onRunAllTests(activeSuiteId);
+    if (activeSuite && activeSuite.id) {
+      onRunAllTests(activeSuite.id);
     }
   }
 
