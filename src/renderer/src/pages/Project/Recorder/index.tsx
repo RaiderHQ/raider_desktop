@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@components/Button'
 import CommandList from '@components/CommandList'
 import TestSuitePanel from '@components/TestSuitePanel'
+import OutputPanel from '@components/OutputPanel'
 
 // Define the shape of our data with unique IDs
 interface Test {
@@ -267,9 +268,8 @@ const Recorder: React.FC = (): JSX.Element => {
               />
             </div>
           </div>
-          <div className="rounded p-4 text-black font-mono flex flex-col">
-            <h3 className="text-lg font-semibold mb-2">Run Output</h3>
-            <pre className="w-full flex-grow p-2 border rounded bg-black text-white border-gamma-900 resize-none text-sm overflow-auto whitespace-pre-wrap">{runOutput || 'Test output will appear here...'}</pre>
+          <div className="w-1/2 flex flex-col">
+            <OutputPanel output={runOutput} />
           </div>
         </div>
       </div>
