@@ -259,7 +259,6 @@ const Recorder: React.FC = (): JSX.Element => {
 
         <div className="flex-grow flex flex-row space-x-4 min-h-0">
           <div className="rounded p-4 flex-col">
-            <h3 className="text-lg font-semibold mb-2">Recorded Steps</h3>
             <div className="flex-grow min-h-0">
               <CommandList
                 steps={activeTest?.steps ?? []}
