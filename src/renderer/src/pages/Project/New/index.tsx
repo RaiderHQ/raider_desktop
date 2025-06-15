@@ -6,6 +6,7 @@ import QuestionIcon from '@assets/icons/Question_vector.svg'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import InformationModal from '@components/InformationModal'
+import InputField from '@components/InputField'
 import SelectInput from '@components/SelectInput'
 import LoadingScreen from '@components/LoadingScreen'
 import useLoadingStore from '@foundation/Stores/loadingStore'
@@ -127,9 +128,8 @@ const CreateProject: React.FC = () => {
             <label className="block mb-2 text-sm md:text-base lg:text-lg font-medium text-black-700">
               {t('newProject.input.label')}
             </label>
-            <input
-              type="text"
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm md:text-base lg:text-lg"
+            <InputField
+              label="Project Name"
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
               placeholder={t('newProject.input.placeholder')}

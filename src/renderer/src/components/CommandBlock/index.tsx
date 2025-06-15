@@ -24,7 +24,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
     // This outer container creates the 3D drop-shadow effect
     <div className="relative w-full mb-3">
       {/* This is the orange "shadow" div, positioned behind the main content */}
-      <div className="absolute -right-1 -bottom-1 w-full h-full bg-[#c14420] rounded-lg" />
+      <div className="absolute -right-1 -bottom-1 w-full h-full" />
 
       {/* This is the main content block, now positioned relatively */}
       <div
