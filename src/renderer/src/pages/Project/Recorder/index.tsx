@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import CommandList from '@components/CommandList'
 import TestSuitePanel from '@components/TestSuitePanel'
 
-// Define a common structure for our data
+// Define the shape of our data with unique IDs
 interface Test {
   id: string;
   name: string;
@@ -26,6 +26,7 @@ const createNewTest = (): Test => ({
   steps: [],
 });
 
+
 const Recorder: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
 
@@ -40,11 +41,12 @@ const Recorder: React.FC = (): JSX.Element => {
 
   // --- Refs ---
   // This ref is the key to fixing the unresponsive UI.
-  // It will always contain a reference to the latest activeTest object.
+  // It always holds the latest version of activeTest for our IPC listeners.
   const activeTestRef = useRef(activeTest);
   useEffect(() => {
     activeTestRef.current = activeTest;
   }, [activeTest]);
+
 
   const activeSuite = React.useMemo(() => suites.find(s => s.id === activeSuiteId), [suites, activeSuiteId]);
 
@@ -57,18 +59,21 @@ const Recorder: React.FC = (): JSX.Element => {
   }, [suites]);
 
   const handleDeleteSuite = useCallback((suiteIdToDelete: string) => {
-    window.api.deleteSuite(suiteIdToDelete).then(() => {
-      if (activeSuiteId === suiteIdToDelete) {
-        setActiveSuiteId(null);
-        setActiveTest(null);
-      }
-    });
+    // Add a confirmation dialog for destructive actions
+    if (window.confirm('Are you sure you want to delete this suite and all its tests?')) {
+      window.api.deleteSuite(suiteIdToDelete).then(() => {
+        if (activeSuiteId === suiteIdToDelete) {
+          setActiveSuiteId(null);
+          setActiveTest(null);
+        }
+      });
+    }
   }, [activeSuiteId]);
 
   const handleSuiteChange = (suiteId: string) => {
     setActiveSuiteId(suiteId);
     const suite = suites.find(s => s.id === suiteId);
-    // When a suite is selected, pick its first test, or null if it's empty
+    // When a suite is selected, pick its first test, or set to null if empty
     setActiveTest(suite?.tests[0] ?? null);
   };
 
@@ -81,9 +86,11 @@ const Recorder: React.FC = (): JSX.Element => {
 
   const handleNewTest = () => {
     if (activeSuiteId) {
-      // Create a new test and set it as active for editing.
-      // The user will then click "Save" to persist it.
-      setActiveTest(createNewTest());
+      const newTest = createNewTest();
+      // Set as active test so the user can edit the name and URL
+      setActiveTest(newTest);
+      // Immediately save it to create the entry in the backend. The user can save again later.
+      window.api.saveTest(activeSuiteId, newTest);
     }
   };
 
@@ -91,6 +98,7 @@ const Recorder: React.FC = (): JSX.Element => {
 
   const handleStartRecording = useCallback(async (): Promise<void> => {
     if (activeTest?.url) {
+      // Set the URL in the main process right before opening the window
       await window.api.loadUrlRequest(activeTest.url);
       window.api.startRecordingMain();
     }
@@ -108,7 +116,7 @@ const Recorder: React.FC = (): JSX.Element => {
 
   const handleRunTest = useCallback(async (): Promise<void> => {
     if (activeSuiteId && activeTest?.id) {
-      await handleSaveTest(); // Always save latest changes
+      await handleSaveTest(); // Always save latest changes before running
       setIsRunning(true);
       setRunOutput(`Running test: ${activeTest.name}...`);
       const result = await window.api.runTest(activeSuiteId, activeTest.id);
@@ -118,11 +126,39 @@ const Recorder: React.FC = (): JSX.Element => {
   }, [activeSuiteId, activeTest, handleSaveTest]);
 
 
+  // NEW: Handler to update the order of tests within a suite
+  const handleReorderTests = useCallback((suiteId: string, reorderedTests: Test[]) => {
+    setSuites(prevSuites =>
+      prevSuites.map(suite => {
+        if (suite.id === suiteId) {
+          // Return the suite with the newly ordered tests
+          return { ...suite, tests: reorderedTests };
+        }
+        return suite;
+      })
+    );
+    // Note: To persist this change, you would also make an IPC call here
+    // to update the suite in the main process.
+  }, []);
+
+  const handleRunAllTests = useCallback(async (suiteId: string) => {
+    const suiteToRun = suites.find(s => s.id === suiteId);
+    if (suiteToRun) {
+      // First save any pending changes to the currently active test
+      await handleSaveTest();
+      setIsRunning(true);
+      setRunOutput(`Running suite: ${suiteToRun.name}...`);
+      // Call the new backend API for running a suite
+      const result = await window.api.runSuite(suiteId);
+      setRunOutput(result.output);
+      setIsRunning(false);
+    }
+  }, [suites, handleSaveTest]);
+
   // --- Side Effects ---
   useEffect(() => {
     // This effect runs only ONCE to set up all IPC listeners.
 
-    // Load initial data from the backend
     window.api.getSuites().then((initialSuites) => {
       setSuites(initialSuites);
       if (initialSuites.length > 0) {
@@ -138,15 +174,18 @@ const Recorder: React.FC = (): JSX.Element => {
 
     const handleRecordingStarted = (_event: any, loadedUrl: string): void => {
       setIsRecording(true);
-      // Use the functional form of setState to prevent stale state issues
-      setActiveTest(prev => prev ? { ...prev, steps: [`@driver.get("${loadedUrl}")`] } : null);
+      // Use the ref here to get the current test and reset its steps
+      const currentTest = activeTestRef.current;
+      if (currentTest) {
+        setActiveTest({ ...currentTest, steps: [`@driver.get("${loadedUrl}")`] });
+      }
       setRunOutput('');
     };
-
     const handleRecordingStopped = () => setIsRecording(false);
 
     const handleNewCommand = (_event: any, command: string): void => {
-      // By using the ref, we get the LATEST activeTest state and append the new command
+      // By using the ref, we get the LATEST activeTest state and append the new command,
+      // which prevents the infinite loop.
       const currentTest = activeTestRef.current;
       if (currentTest) {
         setActiveTest({ ...currentTest, steps: [...currentTest.steps, command] });
@@ -163,7 +202,7 @@ const Recorder: React.FC = (): JSX.Element => {
       stopCleanup?.();
       commandCleanup?.();
     };
-  }, []); // The empty dependency array [] is CRUCIAL to prevent the loop.
+  }, []); // The empty dependency array [] is crucial.
 
   return (
     <div className="flex flex-row h-full w-full">
@@ -176,26 +215,51 @@ const Recorder: React.FC = (): JSX.Element => {
           onTestSelect={handleTestSelect}
           onCreateSuite={handleCreateSuite}
           onDeleteSuite={handleDeleteSuite}
+          onReorderTests={handleReorderTests}
+          onRunAllTests={handleRunAllTests}
         />
       </div>
 
       <div className="flex-1 flex flex-col p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">{activeSuite?.name ?? 'No Suite Selected'}</h2>
-          <div>
-            <button onClick={handleNewTest} disabled={!activeSuite} className="p-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 disabled:bg-gray-400">
-              New Test
-            </button>
-          </div>
         </div>
 
+        {/* --- Test Info Inputs --- */}
         <div className="flex items-center space-x-2 flex-wrap gap-y-2">
           <input type="text" value={activeTest?.name ?? ''} onChange={(e) => setActiveTest(p => p ? {...p, name: e.target.value} : null)} placeholder="Test Name" className="w-1/3 flex-grow p-2 border rounded" disabled={!activeTest} />
           <input type="text" value={activeTest?.url ?? ''} onChange={(e) => setActiveTest(p => p ? {...p, url: e.target.value} : null)} placeholder="Test URL" className="w-1/3 flex-grow p-2 border rounded" disabled={!activeTest} />
-          <button onClick={handleStartRecording} disabled={!activeTest || isRecording} className="p-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400">Record</button>
-          <button onClick={handleStopRecording} disabled={!isRecording} className="p-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-400">Stop</button>
-          <button onClick={handleSaveTest} disabled={!activeTest || isRecording} className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400">Save</button>
-          <button onClick={handleRunTest} disabled={!activeTest || isRecording || isRunning} className="p-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400">Run</button>
+        </div>
+
+        {/* --- Grouped Action Buttons --- */}
+        <div className="flex items-center justify-between flex-wrap gap-y-2 border-t border-gray-200 pt-4">
+          {/* Group 1: Process Actions */}
+          <div className="flex items-center space-x-2">
+            <button onClick={handleStartRecording} disabled={!activeTest || isRecording} className="flex items-center justify-center gap-2 p-2 px-4 font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 disabled:bg-gray-400 transition-colors">
+              <span className="text-lg">🔴</span>
+              Record
+            </button>
+            <button onClick={handleStopRecording} disabled={!isRecording} className="flex items-center justify-center gap-2 p-2 px-4 font-semibold text-white bg-gray-700 rounded-md hover:bg-gray-800 disabled:bg-gray-400 transition-colors">
+              <span className="text-lg">⏹️</span>
+              Stop
+            </button>
+            <button onClick={handleRunTest} disabled={!activeTest || isRecording || isRunning} className="flex items-center justify-center gap-2 p-2 px-4 font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-gray-400 transition-colors">
+              <span className="mr-1 text-lg">▶️</span>
+              Run
+            </button>
+          </div>
+
+          {/* Group 2: File/Test Actions */}
+          <div className="flex items-center space-x-2">
+            <button onClick={handleSaveTest} disabled={!activeTest || isRecording} className="flex items-center justify-center gap-2 p-2 px-4 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors">
+              <span className="mr-1 text-lg">💾</span>
+              Save
+            </button>
+            <button onClick={handleNewTest} disabled={!activeSuite} className="flex items-center justify-center gap-2 p-2 px-4 font-semibold text-gray-800 bg-gray-200 rounded-md hover:bg-gray-300 disabled:bg-gray-400 transition-colors">
+              <span className="mr-2 text-lg">✨</span>
+              New Test
+            </button>
+          </div>
         </div>
 
         <div className="flex-grow flex flex-row space-x-4 min-h-0">
