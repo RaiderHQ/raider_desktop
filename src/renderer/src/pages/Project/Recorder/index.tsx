@@ -4,6 +4,7 @@ import Button from '@components/Button'
 import CommandList from '@components/CommandList'
 import TestSuitePanel from '@components/TestSuitePanel'
 import OutputPanel from '@components/OutputPanel'
+import InputField from '@components/InputField'
 
 // Define the shape of our data with unique IDs
 interface Test {
@@ -231,29 +232,43 @@ const Recorder: React.FC = (): JSX.Element => {
         </div>
 
         <div className="flex items-center space-x-2 flex-wrap gap-y-2">
-          <input type="text" value={activeTest?.name ?? ''} onChange={(e) => setActiveTest(p => p ? {...p, name: e.target.value} : null)} placeholder="Test Name" className="flex-grow p-2 border rounded" disabled={!activeTest} />
-          <input type="text" value={activeTest?.url ?? ''} onChange={(e) => setActiveTest(p => p ? {...p, url: e.target.value} : null)} placeholder="Test URL" className="w-1/3 flex-grow p-2 border rounded" disabled={!activeTest} />
+          <div className="flex-1 min-w-[200px]">
+            <InputField
+              value={activeTest?.name ?? ''}
+              onChange={(e) => setActiveTest(p => p ? { ...p, name: e.target.value } : null)}
+              placeholder="Test Name"
+              disabled={!activeTest}
+            />
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <InputField
+              value={activeTest?.url ?? ''}
+              onChange={(e) => setActiveTest(p => p ? { ...p, url: e.target.value } : null)}
+              placeholder="Test URL"
+              disabled={!activeTest}
+            />
+          </div>
         </div>
 
         {/* --- Action Buttons Using Custom Button Component --- */}
         <div className="flex items-center justify-between flex-wrap gap-y-2 border-t border-gray-200 pt-4">
           <div className="flex items-center space-x-2">
             <Button onClick={handleStartRecording} disabled={!activeTest || isRecording} type={isRecording ? 'disabled' : 'primary'}>
-              <span className="mr-2 text-lg">🔴</span> Record
+              <span className="mr-2 text-lg"></span> Record
             </Button>
             <Button onClick={handleStopRecording} disabled={!isRecording} type={!isRecording ? 'disabled' : 'secondary'}>
-              <span className="mr-2 text-lg">⏹️</span> Stop
+              <span className="mr-2 text-lg"></span> Stop
             </Button>
             <Button onClick={handleRunTest} disabled={!activeTest || isRecording || isRunning} type={(!activeTest || isRecording || isRunning) ? 'disabled' : 'success'}>
-              <span className="mr-1 text-lg">▶️</span> Run
+              <span className="mr-1 text-lg"></span> Run
             </Button>
           </div>
           <div className="flex items-center space-x-2">
             <Button onClick={handleSaveTest} disabled={!activeTest || isRecording} type={(!activeTest || isRecording) ? 'disabled' : 'primary'}>
-              <span className="mr-1 text-lg">💾</span> Save
+              <span className="mr-1 text-lg"></span> Save
             </Button>
             <Button onClick={handleNewTest} disabled={!activeSuite} type={!activeSuite ? 'disabled' : 'secondary'}>
-              <span className="mr-2 text-lg">✨</span> New Test
+              <span className="mr-2 text-lg"></span> New Test
             </Button>
           </div>
         </div>
