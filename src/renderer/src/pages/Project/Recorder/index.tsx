@@ -164,20 +164,28 @@ const Recorder: React.FC = (): JSX.Element => {
 
   const handleRunAllTests = useCallback(
     async (suiteId: string) => {
-      const suiteToRun = suites.find((s) => s.id === suiteId)
+      const suiteToRun = suites.find((s) => s.id === suiteId);
       if (suiteToRun) {
         // First save any pending changes to the currently active test
-        await handleSaveTest()
-        setIsRunning(true)
-        setRunOutput(`Running suite: ${suiteToRun.name}...`)
-        // Call the new backend API for running a suite
-        const result = await window.api.runSuite(suiteId)
-        setRunOutput(result.output)
-        setIsRunning(false)
+        await handleSaveTest();
+        setIsRunning(true);
+        setRunOutput(`Running suite: ${suiteToRun.name}...`);
+
+        // FIX: Pass the entire 'suiteToRun' object to the backend API
+        // instead of just the 'suiteId'.
+        const result = await window.api.runSuite(suiteToRun.id);
+
+        setRunOutput(result.output);
+        setIsRunning(false);
+      } else {
+        // This else block is good practice for debugging, in case the suiteId
+        // passed from the child component somehow doesn't exist in the parent's state.
+        console.error(`Error: Suite with ID "${suiteId}" could not be found.`);
+        setRunOutput(`Error: Suite with ID "${suiteId}" could not be found.`);
       }
     },
     [suites, handleSaveTest]
-  )
+  );
 
   // --- Side Effects ---
   useEffect(() => {
@@ -278,7 +286,7 @@ const Recorder: React.FC = (): JSX.Element => {
       {/* --- Bottom Panels --- */}
       <div className="flex-1 flex flex-row space-x-4">
         {/* Panel 1: Test Suites */}
-        <div className="w-1/3 flex flex-col space-y-2">
+        <div className="w-1/4 flex flex-col space-y-2">
           <h3 className="px-1 text-lg font-semibold text-gray-800">Test Suites</h3>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>
@@ -298,7 +306,7 @@ const Recorder: React.FC = (): JSX.Element => {
         </div>
 
         {/* Panel 2: Recorded Steps */}
-        <div className="w-1/3 flex flex-col space-y-2">
+        <div className="w-1/2 flex flex-col space-y-2">
           <h3 className="px-1 text-lg font-semibold text-gray-800">Recorded Steps</h3>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>

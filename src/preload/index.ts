@@ -49,7 +49,7 @@ const api = {
   getSuites: async (): Promise<Suite[]> => ipcRenderer.invoke('get-suites'),
   createSuite: async (suiteName: string): Promise<{ success: boolean, suite?: Suite, error?: string }> => ipcRenderer.invoke('create-suite', suiteName),
   deleteSuite: async (suiteId: string): Promise<{ success: boolean }> => ipcRenderer.invoke('delete-suite', suiteId),
-  runSuite: async (suiteId: string): Promise<{ success: boolean; output: string }> => ipcRenderer.invoke('run-suite'), // New API function
+  runSuite: async (suiteId: string): Promise<{ success: boolean; output: string }> => ipcRenderer.invoke('run-suite', suiteId), // New API function
 
   // Test Management
   saveTest: async (suiteId: string, testData: Test): Promise<{ success: boolean }> => ipcRenderer.invoke('save-test', { suiteId, testData }),
