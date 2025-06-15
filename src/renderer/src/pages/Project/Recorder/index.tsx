@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@components/Button'
 import CommandList from '@components/CommandList'
 import TestSuitePanel from '@components/TestSuitePanel'
 
@@ -206,7 +207,9 @@ const Recorder: React.FC = (): JSX.Element => {
 
   return (
     <div className="flex flex-row h-full w-full">
-      <div className="w-1/4 max-w-xs">
+      {/* --- Left Panel: Test Suite --- */}
+      {/* The width is increased here to prevent overflow */}
+      <div className="w-1/3 max-w-md">
         <TestSuitePanel
           suites={suites}
           activeSuiteId={activeSuiteId}
@@ -220,50 +223,42 @@ const Recorder: React.FC = (): JSX.Element => {
         />
       </div>
 
+      {/* --- Right Panel: Main Recorder View --- */}
       <div className="flex-1 flex flex-col p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">{activeSuite?.name ?? 'No Suite Selected'}</h2>
         </div>
 
-        {/* --- Test Info Inputs --- */}
         <div className="flex items-center space-x-2 flex-wrap gap-y-2">
-          <input type="text" value={activeTest?.name ?? ''} onChange={(e) => setActiveTest(p => p ? {...p, name: e.target.value} : null)} placeholder="Test Name" className="w-1/3 flex-grow p-2 border rounded" disabled={!activeTest} />
+          <input type="text" value={activeTest?.name ?? ''} onChange={(e) => setActiveTest(p => p ? {...p, name: e.target.value} : null)} placeholder="Test Name" className="flex-grow p-2 border rounded" disabled={!activeTest} />
           <input type="text" value={activeTest?.url ?? ''} onChange={(e) => setActiveTest(p => p ? {...p, url: e.target.value} : null)} placeholder="Test URL" className="w-1/3 flex-grow p-2 border rounded" disabled={!activeTest} />
         </div>
 
-        {/* --- Grouped Action Buttons --- */}
+        {/* --- Action Buttons Using Custom Button Component --- */}
         <div className="flex items-center justify-between flex-wrap gap-y-2 border-t border-gray-200 pt-4">
-          {/* Group 1: Process Actions */}
           <div className="flex items-center space-x-2">
-            <button onClick={handleStartRecording} disabled={!activeTest || isRecording} className="flex items-center justify-center gap-2 p-2 px-4 font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 disabled:bg-gray-400 transition-colors">
-              <span className="text-lg">🔴</span>
-              Record
-            </button>
-            <button onClick={handleStopRecording} disabled={!isRecording} className="flex items-center justify-center gap-2 p-2 px-4 font-semibold text-white bg-gray-700 rounded-md hover:bg-gray-800 disabled:bg-gray-400 transition-colors">
-              <span className="text-lg">⏹️</span>
-              Stop
-            </button>
-            <button onClick={handleRunTest} disabled={!activeTest || isRecording || isRunning} className="flex items-center justify-center gap-2 p-2 px-4 font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-gray-400 transition-colors">
-              <span className="mr-1 text-lg">▶️</span>
-              Run
-            </button>
+            <Button onClick={handleStartRecording} disabled={!activeTest || isRecording} type={isRecording ? 'disabled' : 'primary'}>
+              <span className="mr-2 text-lg">🔴</span> Record
+            </Button>
+            <Button onClick={handleStopRecording} disabled={!isRecording} type={!isRecording ? 'disabled' : 'secondary'}>
+              <span className="mr-2 text-lg">⏹️</span> Stop
+            </Button>
+            <Button onClick={handleRunTest} disabled={!activeTest || isRecording || isRunning} type={(!activeTest || isRecording || isRunning) ? 'disabled' : 'success'}>
+              <span className="mr-1 text-lg">▶️</span> Run
+            </Button>
           </div>
-
-          {/* Group 2: File/Test Actions */}
           <div className="flex items-center space-x-2">
-            <button onClick={handleSaveTest} disabled={!activeTest || isRecording} className="flex items-center justify-center gap-2 p-2 px-4 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors">
-              <span className="mr-1 text-lg">💾</span>
-              Save
-            </button>
-            <button onClick={handleNewTest} disabled={!activeSuite} className="flex items-center justify-center gap-2 p-2 px-4 font-semibold text-gray-800 bg-gray-200 rounded-md hover:bg-gray-300 disabled:bg-gray-400 transition-colors">
-              <span className="mr-2 text-lg">✨</span>
-              New Test
-            </button>
+            <Button onClick={handleSaveTest} disabled={!activeTest || isRecording} type={(!activeTest || isRecording) ? 'disabled' : 'primary'}>
+              <span className="mr-1 text-lg">💾</span> Save
+            </Button>
+            <Button onClick={handleNewTest} disabled={!activeSuite} type={!activeSuite ? 'disabled' : 'secondary'}>
+              <span className="mr-2 text-lg">✨</span> New Test
+            </Button>
           </div>
         </div>
 
         <div className="flex-grow flex flex-row space-x-4 min-h-0">
-          <div className="w-1/2 border rounded p-4 bg-gray-50 flex flex-col">
+          <div className="rounded p-4 flex-col">
             <h3 className="text-lg font-semibold mb-2">Recorded Steps</h3>
             <div className="flex-grow min-h-0">
               <CommandList
@@ -273,9 +268,9 @@ const Recorder: React.FC = (): JSX.Element => {
               />
             </div>
           </div>
-          <div className="w-1/2 border rounded p-4 bg-gray-900 text-white font-mono flex flex-col">
+          <div className="rounded p-4 text-black font-mono flex flex-col">
             <h3 className="text-lg font-semibold mb-2">Run Output</h3>
-            <pre className="w-full flex-grow p-2 border rounded bg-black border-gray-700 resize-none text-sm overflow-auto whitespace-pre-wrap">{runOutput || 'Test output will appear here...'}</pre>
+            <pre className="w-full flex-grow p-2 border rounded bg-black text-white border-gamma-900 resize-none text-sm overflow-auto whitespace-pre-wrap">{runOutput || 'Test output will appear here...'}</pre>
           </div>
         </div>
       </div>
