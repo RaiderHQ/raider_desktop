@@ -94,11 +94,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
 
   return (
     <div className="w-full h-full p-2">
-      <ContentArea>
         <div className="h-full flex flex-col">
-          <h2 className="text-xl font-semibold p-2 border-b border-gray-300 text-center flex-shrink-0">
-            Test Suites
-          </h2>
 
           <div className="flex-grow overflow-y-auto flex flex-col">
             <div className="flex items-center justify-between p-3 bg-gray-200 sticky top-0 z-20 border-b">
@@ -145,7 +141,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
                 <button
                   onClick={handleRunAllClick}
                   disabled={!activeSuite || activeSuite.tests.length === 0}
-                  className="p-2 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:bg-gray-400"
+                  className="p-2 text-xs bg-green-600 text-white rounded hover:green-700 disabled:bg-gray-400"
                   title="Run All Tests in Suite"
                 >
                   ▶️ Run All
@@ -174,7 +170,6 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
             </ul>
           </div>
         </div>
-      </ContentArea>
     </div>
   )
 }

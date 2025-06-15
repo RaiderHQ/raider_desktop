@@ -1,6 +1,5 @@
 import React, { useRef } from 'react'
 import CommandBlock from '@components/CommandBlock'
-import ContentArea from '@components/ContentArea' // Import your new ContentArea component
 import { useTranslation } from 'react-i18next'
 
 interface CommandListProps {
@@ -32,10 +31,6 @@ const CommandList: React.FC<CommandListProps> = ({ steps, setSteps, onDeleteStep
   }
 
   return (
-    // Wrap the entire component's output with your ContentArea
-    <ContentArea>
-      {/* This inner div will now hold the list and handle scrolling */}
-      <h3 className="text-lg font-semibold mb-2">Recorded Steps</h3>
       <div className="w-full h-full max-h-[60vh] overflow-y-auto p-1 bg-gray-50 rounded-b-md">
         {steps.length > 0 ? (
           steps.map((step, index) => (
@@ -55,7 +50,6 @@ const CommandList: React.FC<CommandListProps> = ({ steps, setSteps, onDeleteStep
           </div>
         )}
       </div>
-    </ContentArea>
   )
 }
 
