@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import ContentArea from '@components/ContentArea'
+import Button from '@components/Button'
 
 // Define the shape of our data
 interface Test {
@@ -94,82 +94,78 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
 
   return (
     <div className="w-full h-full p-2">
-        <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col">
 
-          <div className="flex-grow overflow-y-auto flex flex-col">
-            <div className="flex items-center justify-between p-3 bg-gray-200 sticky top-0 z-20 border-b">
-              {/* Custom Dropdown Container */}
-              <div className="relative flex-grow" ref={dropdownRef}>
-                <button
-                  // This onClick correctly calls the SETTER function `setIsSuiteDropdownOpen`
-                  onClick={() => setIsSuiteDropdownOpen(prev => !prev)}
-                  className="w-full flex items-center justify-between p-2 border rounded bg-white hover:bg-gray-50 text-left"
-                  aria-label="Select Test Suite"
-                >
-                  <span className="font-semibold truncate">{activeSuite?.name ?? 'Select a Suite'}</span>
-                  {/* This correctly READS the boolean variable `isSuiteDropdownOpen` */}
-                  <span className="text-xs ml-2">{isSuiteDropdownOpen ? '▲' : '▼'}</span>
-                </button>
-                {/* This also correctly READS the boolean variable */}
-                {isSuiteDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-md shadow-lg z-30 border">
-                    <ul>
-                      {suites.map(suite => (
-                        <li key={suite.id}>
-                          <button
-                            onClick={() => { onSuiteChange(suite.id); setIsSuiteDropdownOpen(false); }}
-                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-100"
-                          >
-                            {suite.name}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="border-t border-gray-200">
-                      <button onClick={handleNewSuiteClick} className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100">
-                        + New Suite...
-                      </button>
-                      <button onClick={handleDeleteSuite} disabled={!activeSuiteId} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:text-gray-400">
-                        - Delete Current Suite
-                      </button>
-                    </div>
+        <div className="flex-grow overflow-y-auto flex flex-col">
+          <div className="flex items-center pb-2 sticky top-0 z-20 border-b">
+            {/* Custom Dropdown Container */}
+            <div className="relative w-full" ref={dropdownRef}>
+              <button
+                onClick={() => setIsSuiteDropdownOpen(prev => !prev)}
+                className="w-full flex items-center justify-between px-3 py-2 border rounded bg-white hover:bg-gray-50 text-left"
+                aria-label="Select Test Suite"
+              >
+                <span className="font-semibold truncate">{activeSuite?.name ?? 'Select a Suite'}</span>
+                <span className="text-xs ml-2">{isSuiteDropdownOpen ? '▲' : '▼'}</span>
+              </button>
+              {isSuiteDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-md shadow-lg z-30 border">
+                  <ul>
+                    {suites.map(suite => (
+                      <li key={suite.id}>
+                        <button
+                          onClick={() => { onSuiteChange(suite.id); setIsSuiteDropdownOpen(false); }}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-100"
+                        >
+                          {suite.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="border-t border-gray-200">
+                    <button onClick={handleNewSuiteClick} className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100">
+                      + New Suite...
+                    </button>
+                    <button onClick={handleDeleteSuite} disabled={!activeSuiteId} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:text-gray-400">
+                      - Delete Current Suite
+                    </button>
                   </div>
-                )}
-              </div>
-
-              <div className="pl-2">
-                <button
-                  onClick={handleRunAllClick}
-                  disabled={!activeSuite || activeSuite.tests.length === 0}
-                  className="p-2 text-xs bg-green-600 text-white rounded hover:green-700 disabled:bg-gray-400"
-                  title="Run All Tests in Suite"
-                >
-                  ▶️ Run All
-                </button>
-              </div>
+                </div>
+              )}
             </div>
 
-            {isCreatingSuite && (
-              <div className="p-2 border-b border-gray-300 space-y-2 flex-shrink-0 bg-yellow-50">
-                <input type="text" value={newSuiteName} onChange={(e) => setNewSuiteName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCreateSuiteConfirm()} placeholder="New suite name..." className="w-full flex-grow p-2 border rounded" autoFocus />
-                <div className="flex justify-end space-x-2">
-                  <button onClick={() => setIsCreatingSuite(false)} className="px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300">Cancel</button>
-                  <button onClick={handleCreateSuiteConfirm} className="px-3 py-1 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">Create</button>
-                </div>
-              </div>
-            )}
-
-            <ul className="flex-grow">
-              {activeSuite?.tests.map((test, index) => (
-                <li key={test.id} draggable onDragStart={() => handleDragStart(index)} onDragEnter={() => handleDragEnter(index)} onDragEnd={handleDragEnd} onDragOver={(e) => e.preventDefault()} className="cursor-grab active:cursor-grabbing">
-                  <button onClick={() => onTestSelect(test.id)} draggable={false} className={`w-full text-left p-3 border-b border-gray-200 text-sm ${test.id === activeTestId ? 'bg-blue-200 font-semibold' : 'hover:bg-gray-200'}`}>
-                    {test.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <div className="pl-4">
+              <Button
+                type="success"
+                onClick={handleRunAllClick}
+                disabled={!activeSuite || activeSuite.tests.length === 0}
+              >
+                Run All
+              </Button>
+            </div>
           </div>
+
+          {isCreatingSuite && (
+            <div className="p-2 border-b border-gray-300 flex items-center space-x-2 flex-shrink-0 bg-yellow-50">
+              <input type="text" value={newSuiteName} onChange={(e) => setNewSuiteName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCreateSuiteConfirm()} placeholder="New suite name..." className="flex-grow p-2 border rounded" autoFocus />
+              <div className="flex justify-end space-x-2">
+                <button onClick={() => setIsCreatingSuite(false)} className="px-5 py-2 text-sm rounded bg-gray-200 hover:bg-gray-300">Cancel</button>
+                <button onClick={handleCreateSuiteConfirm} className="px-5 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">Create</button>
+              </div>
+            </div>
+          )}
+
+          <ul className="flex-grow">
+            {activeSuite?.tests.map((test, index) => (
+              <li key={test.id} draggable onDragStart={() => handleDragStart(index)} onDragEnter={() => handleDragEnter(index)} onDragEnd={handleDragEnd} onDragOver={(e) => e.preventDefault()} className="cursor-grab active:cursor-grabbing">
+                <button onClick={() => onTestSelect(test.id)} draggable={false} className={`w-full text-left p-3 border-b border-gray-200 text-sm ${test.id === activeTestId ? 'bg-blue-200 font-semibold' : 'hover:bg-gray-200'}`}>
+                  {test.name}
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
+      </div>
     </div>
   )
 }
