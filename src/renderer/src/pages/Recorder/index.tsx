@@ -187,6 +187,20 @@ const Recorder: React.FC = (): JSX.Element => {
     [suites, handleSaveTest]
   );
 
+  const handleExportTest = useCallback(async (): Promise<void> => {
+    if (activeTest?.steps && activeTest.steps.length > 0) {
+      const result = await window.api.exportTest(activeTest.name, activeTest.steps);
+      if (result.success) {
+        setRunOutput(`Test exported successfully to ${result.path}`);
+        // You could also use a more elegant notification system here
+      } else if (result.error) {
+        setRunOutput(`Export failed: ${result.error}`);
+      }
+    } else {
+      setRunOutput('There are no steps to export.');
+    }
+  }, [activeTest]);
+
   // --- Side Effects ---
   useEffect(() => {
     // This effect runs only ONCE to set up all IPC listeners.
@@ -216,6 +230,7 @@ const Recorder: React.FC = (): JSX.Element => {
       }
       setRunOutput('')
     }
+
     const handleRecordingStopped = () => setIsRecording(false)
 
     const handleNewCommand = (_event: any, command: string): void => {
@@ -226,6 +241,7 @@ const Recorder: React.FC = (): JSX.Element => {
         setActiveTest({ ...currentTest, steps: [...currentTest.steps, command] })
       }
     }
+
 
     const startCleanup = window.electron.ipcRenderer.on('recording-started', handleRecordingStarted)
     const stopCleanup = window.electron.ipcRenderer.on('recording-stopped', handleRecordingStopped)
@@ -277,6 +293,7 @@ const Recorder: React.FC = (): JSX.Element => {
               <div className="flex items-center space-x-2">
                 <Button onClick={handleSaveTest} disabled={!activeTest || isRecording} type={!activeTest || isRecording ? 'disabled' : 'primary'}>Save Test</Button>
                 <Button onClick={handleNewTest} disabled={!activeSuiteId} type={!activeSuiteId ? 'disabled' : 'secondary'}>New Test</Button>
+                <Button onClick={handleExportTest} disabled={!activeTest || isRecording} type={!activeTest || isRecording ? 'disabled' : 'secondary'}>Export Script</Button>
               </div>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, IpcMainEvent } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, IpcMainEvent, dialog } from "electron";
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { randomUUID } from 'crypto'
@@ -19,6 +19,7 @@ import updateMobileCapabilities from './handlers/updateMobileCapabilities'
 import getMobileCapabilities from './handlers/getMobileCapabilities'
 import isRubyInstalled from './handlers/isRubyInstalled'
 import runRecording from './handlers/runRecording'
+import fs from 'fs'
 
 const iconPath = join(
   __dirname,
@@ -280,3 +281,74 @@ ipcMain.handle('run-suite', async (event, suiteId: string) => {
   return { success: overallSuccess, output: fullOutput };
 });
 
+ipcMain.handle('export-test', async (_event, { testName, steps }) => {
+  // Get the currently focused window to attach the dialog to.
+  const window = BrowserWindow.getFocusedWindow();
+  if (!window) {
+    // This can happen if the main window is not in focus.
+    return { success: false, error: 'No focused window available to show the save dialog.' };
+  }
+
+  // Sanitize the test name for use as a file name
+  const defaultFileName = `${testName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.rb`;
+
+  // Use the imported 'dialog' object to show the save dialog.
+  // The 'await' here is crucial as this is an asynchronous operation.
+  const { canceled, filePath } = await dialog.showSaveDialog(window, {
+    title: 'Export Test Script',
+    defaultPath: defaultFileName,
+    buttonLabel: 'Export',
+    filters: [
+      { name: 'Ruby Scripts', extensions: ['rb'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  });
+
+  // If the user cancels the dialog or doesn't provide a path, exit gracefully.
+  if (canceled || !filePath) {
+    return { success: false, error: 'Export cancelled by user.' };
+  }
+
+  // Format the steps into a complete, runnable script
+  const stepsContent = steps.map(step => `  ${step}`).join('\n');
+  const scriptContent = `#!/usr/bin/env ruby
+
+# Test: ${testName}
+# Exported from IDE on ${new Date().toLocaleString()}
+
+require 'selenium-webdriver'
+
+# --- Setup ---
+driver = Selenium::WebDriver.for :chrome
+wait = Selenium::WebDriver::Wait.new(timeout: 10)
+
+puts "Starting test: ${testName}"
+
+# --- Test Steps ---
+begin
+${stepsContent}
+  puts "Test '${testName}' passed successfully!"
+rescue => e
+  puts "Test '${testName}' failed: #{e.message}"
+ensure
+  # --- Teardown ---
+  puts "Closing driver."
+  driver.quit
+end
+`;
+
+  try {
+    // Write the script to the selected file path
+    fs.writeFileSync(filePath, scriptContent, 'utf8');
+
+    // On macOS and Linux, make the script executable
+    if (process.platform !== 'win32') {
+      fs.chmodSync(filePath, '755');
+    }
+
+    return { success: true, path: filePath };
+  } catch (error: any) {
+    console.error('Failed to write or set permissions for the script:', error);
+    return { success: false, error: error.message };
+  }
+});
