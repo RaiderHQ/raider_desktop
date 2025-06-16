@@ -74,6 +74,8 @@ const api = {
   startRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('start-recording-main'),
   stopRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('stop-recording-main'),
   loadUrlRequest: async (url: string): Promise<CommandType> => ipcRenderer.invoke('load-url-request', url),
+  exportTest: (testName: string, steps: string[]): Promise<{ success: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke('export-test', { testName, steps }),
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
