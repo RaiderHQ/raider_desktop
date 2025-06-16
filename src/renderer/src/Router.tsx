@@ -6,6 +6,7 @@ import Overview from '@pages/Overview'
 import Settings from '@pages/Settings'
 import Dashboard from '@pages/Dashboard'
 import Recorder from '@pages/Recorder'
+import Landing from "@pages/Landing";
 
 const Router = (): JSX.Element => {
   const router = createHashRouter([
@@ -20,6 +21,7 @@ const Router = (): JSX.Element => {
           element: <Recorder />
         },
         { path: 'new', element: <NewProject /> },
+        { path: 'start-project', element: <Landing /> },
         { path: 'file-editor', element: <FileEditor /> },
         { path: 'overview', element: <Overview /> },
         { path: 'recorder', element: <Recorder /> },

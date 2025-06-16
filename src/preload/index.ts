@@ -26,7 +26,22 @@ declare global {
 // Custom APIs for renderer
 const api = {
   // --- Your other application APIs ---
-  runRubyRaider: async (folderPath: string, projectName: string, framework: string, automation: string, mobile: string | null = null): Promise<CommandType> => { /* ... */ },
+  runRubyRaider: async (
+    folderPath: string,
+    projectName: string,
+    framework: string,
+    automation: string,
+    mobile: string | null = null
+  ): Promise<CommandType> => {
+    return ipcRenderer.invoke(
+      'run-ruby-raider',
+      folderPath,
+      projectName,
+      framework,
+      automation,
+      mobile // Pass the optional mobile parameter to the main process
+    )
+  },
   selectFolder: async (title: string): Promise<string | null> => ipcRenderer.invoke('select-folder', title),
   readDirectory: async (folderPath: string): Promise<FileNode[]> => ipcRenderer.invoke('read-directory', folderPath),
   readFile: async (filePath: string): Promise<{ success: boolean; data?: string; fileExt?: string; error?: string }> => ipcRenderer.invoke('read-file', filePath),
