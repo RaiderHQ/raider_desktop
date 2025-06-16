@@ -56,7 +56,6 @@ const Recorder: React.FC = (): JSX.Element => {
     activeTestRef.current = activeTest
   }, [activeTest])
 
-  // New ref for activeSuiteId to use in listeners
   const activeSuiteIdRef = useRef(activeSuiteId);
   useEffect(() => {
     activeSuiteIdRef.current = activeSuiteId;
@@ -189,19 +188,30 @@ const Recorder: React.FC = (): JSX.Element => {
 
     const suiteUpdatedCleanup = window.electron.ipcRenderer.on(
       'suite-updated',
-      (_event, updatedSuites) => {
-        setSuites(updatedSuites);
+      (_event, updatedSuites: Suite[]) => {
+        // Use a functional update for `setSuites` to safely access the previous state
+        setSuites(prevSuites => {
+          // Check if a suite has been added
+          if (updatedSuites.length > prevSuites.length) {
+            const newSuite = updatedSuites.find(s => !prevSuites.some(ps => ps.id === s.id));
+            if (newSuite) {
+              // A new suite was added, so select it.
+              setActiveSuiteId(newSuite.id);
+              setActiveTest(newSuite.tests[0] ?? null);
+            }
+          } else {
+            // This is not a new suite creation, so handle other updates like test deletion
+            const currentSuiteId = activeSuiteIdRef.current;
+            const currentTest = activeTestRef.current;
+            const activeSuiteNow = updatedSuites.find(s => s.id === currentSuiteId);
 
-        // Use refs to get the latest state without causing re-renders
-        const currentSuiteId = activeSuiteIdRef.current;
-        const currentTest = activeTestRef.current;
-
-        const activeSuiteNow = updatedSuites.find(s => s.id === currentSuiteId);
-
-        // If the active test was in the suite but is now gone, select the first available test
-        if (activeSuiteNow && currentTest && !activeSuiteNow.tests.find(t => t.id === currentTest.id)) {
-          setActiveTest(activeSuiteNow.tests[0] ?? null);
-        }
+            if (activeSuiteNow && currentTest && !activeSuiteNow.tests.find(t => t.id === currentTest.id)) {
+              setActiveTest(activeSuiteNow.tests[0] ?? null);
+            }
+          }
+          // Return the new state for React to set
+          return updatedSuites;
+        });
       }
     );
 
@@ -219,7 +229,6 @@ const Recorder: React.FC = (): JSX.Element => {
     const handleNewCommand = (_event: any, command: string): void => {
       const currentTest = activeTestRef.current;
       if (currentTest) {
-        // Use functional update to avoid stale state
         setActiveTest(prevTest => prevTest ? { ...prevTest, steps: [...prevTest.steps, command] } : null);
       }
     };
@@ -234,7 +243,7 @@ const Recorder: React.FC = (): JSX.Element => {
       stopCleanup?.();
       commandCleanup?.();
     };
-  }, []); // <-- CRITICAL FIX: The dependency array is now empty.
+  }, []);
 
   return (
     <div className="flex flex-col h-screen w-screen p-4 space-y-4 bg-gray-50">
