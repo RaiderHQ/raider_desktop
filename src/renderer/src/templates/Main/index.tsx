@@ -20,16 +20,16 @@ const MainTemplate: React.FC = (): JSX.Element => {
 
         {!isCreateProjectView && (
           <nav className="flex space-x-8">
-            <Link to="/project/overview" className="text-gray-600 hover:text-gray-800 text-lg">
+            <Link to="/overview" className="text-gray-600 hover:text-gray-800 text-lg">
               {t('menu.tests')}
       </Link>
-      <Link to="/project/recorder" className="text-gray-600 hover:text-gray-800 text-lg">
+      <Link to="/recorder" className="text-gray-600 hover:text-gray-800 text-lg">
         Recorder
             </Link>
-            <Link to="/project/dashboard" className="text-gray-600 hover:text-gray-800 text-lg">
+            <Link to="/dashboard" className="text-gray-600 hover:text-gray-800 text-lg">
               {t('menu.dashboard')}
             </Link>
-            <Link to="/project/settings" className="text-gray-600 hover:text-gray-800 text-lg">
+            <Link to="/settings" className="text-gray-600 hover:text-gray-800 text-lg">
               {t('menu.settings')}
             </Link>
           </nav>
