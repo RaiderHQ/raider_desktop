@@ -69,7 +69,8 @@ const api = {
   // Test Management
   saveTest: async (suiteId: string, testData: Test): Promise<{ success: boolean }> => ipcRenderer.invoke('save-test', { suiteId, testData }),
   runTest: async (suiteId: string, testId: string): Promise<{ success: boolean; output: string }> => ipcRenderer.invoke('run-test', { suiteId, testId }),
-
+  deleteTest: (suiteId: string, testId: string): Promise<void> =>
+    ipcRenderer.invoke('delete-test', { suiteId, testId }),
   // Recording Session Control
   startRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('start-recording-main'),
   stopRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('stop-recording-main'),

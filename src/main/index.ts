@@ -358,3 +358,32 @@ end
     return { success: false, error: error.message };
   }
 });
+
+ipcMain.handle('delete-test', async (_event, { suiteId, testId }: { suiteId: string, testId: string }) => {
+  // 1. Get the specific suite from the in-memory Map
+  const suite = appState.suites.get(suiteId);
+
+  if (!suite) {
+    console.error(`Error: Attempted to delete test from a non-existent suite (ID: ${suiteId}).`);
+    return { success: false, error: `Suite with ID ${suiteId} not found.` };
+  }
+
+  const initialTestCount = suite.tests.length;
+
+  // 2. Filter the tests array to remove the specified test
+  suite.tests = suite.tests.filter(test => test.id !== testId);
+
+  // Optional: Check if a test was actually deleted
+  if (suite.tests.length === initialTestCount) {
+    console.warn(`Warning: Test with ID ${testId} was not found in suite "${suite.name}".`);
+  }
+
+  // The 'appState' object is now updated in memory.
+  // There is no need to save to a file.
+
+  // 3. Notify the renderer process that the suites have been updated.
+  //    This is the same mechanism your 'createSuite' function uses.
+  mainWindow?.webContents.send('suite-updated', Array.from(appState.suites.values()));
+
+  return { success: true };
+});
