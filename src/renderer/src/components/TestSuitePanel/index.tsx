@@ -41,12 +41,25 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
 
   // --- State for this component ---
   const [newSuiteName, setNewSuiteName] = useState('')
-  // `isSuiteDropdownOpen` is the boolean state variable
   const [isSuiteDropdownOpen, setIsSuiteDropdownOpen] = useState(false)
   const [isCreatingSuite, setIsCreatingSuite] = useState(false)
+  // Local state for managing test order during drag-and-drop for instant UI feedback
+  const [displayedTests, setDisplayedTests] = useState<Test[]>([]);
 
+  // --- Refs ---
   const dropdownRef = useRef<HTMLDivElement>(null)
+  // Ref to store the index of the test being dragged
   const dragItemIndex = useRef<number | null>(null)
+  // Ref to store the index of the test being dragged over
+  const dragOverItemIndex = useRef<number | null>(null);
+
+
+  // --- Effects ---
+
+  // Effect to sync the local displayedTests with the tests from the active suite prop
+  useEffect(() => {
+    setDisplayedTests(activeSuite?.tests ?? []);
+  }, [activeSuite?.tests]);
 
   // Effect to close dropdown when clicking outside of it
   useEffect(() => {
@@ -88,9 +101,41 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
     }
   }
 
-  const handleDragStart = (index: number) => { dragItemIndex.current = index; };
-  const handleDragEnter = (index: number) => { /* ... */ };
-  const handleDragEnd = () => { dragItemIndex.current = null; };
+  // --- Drag and Drop Handlers ---
+
+  const handleDragStart = (index: number) => {
+    dragItemIndex.current = index;
+  };
+
+  const handleDragEnter = (index: number) => {
+    // If we're not dragging or are dragging over the same item, do nothing
+    if (dragItemIndex.current === null || dragItemIndex.current === index) {
+      return;
+    }
+
+    // Create a new ordered list for visual feedback
+    const newTests = [...displayedTests];
+    // Remove the dragged item from its original position
+    const [draggedItem] = newTests.splice(dragItemIndex.current, 1);
+    // Insert the dragged item into the new position
+    newTests.splice(index, 0, draggedItem);
+
+    // Update the ref to the new index of the dragged item
+    dragItemIndex.current = index;
+
+    // Update the local state to re-render the list with the new order
+    setDisplayedTests(newTests);
+  };
+
+  const handleDragEnd = () => {
+    // When the drag is finished, persist the new order via the callback prop
+    if (activeSuiteId && displayedTests) {
+      onReorderTests(activeSuiteId, displayedTests);
+    }
+    // Clean up the refs
+    dragItemIndex.current = null;
+    dragOverItemIndex.current = null;
+  };
 
   return (
     <div className="w-full h-full p-2">
@@ -156,9 +201,22 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
           )}
 
           <ul className="flex-grow">
-            {activeSuite?.tests.map((test, index) => (
-              <li key={test.id} draggable onDragStart={() => handleDragStart(index)} onDragEnter={() => handleDragEnter(index)} onDragEnd={handleDragEnd} onDragOver={(e) => e.preventDefault()} className="cursor-grab active:cursor-grabbing">
-                <button onClick={() => onTestSelect(test.id)} draggable={false} className={`w-full text-left p-3 border-b border-gray-200 text-sm ${test.id === activeTestId ? 'bg-blue-200 font-semibold' : 'hover:bg-gray-200'}`}>
+            {/* Map over the local 'displayedTests' state */}
+            {displayedTests.map((test, index) => (
+              <li
+                key={test.id}
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragEnter={() => handleDragEnter(index)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => e.preventDefault()}
+                className="cursor-grab active:cursor-grabbing border-b border-gray-200"
+              >
+                <button
+                  onClick={() => onTestSelect(test.id)}
+                  draggable={false}
+                  className={`w-full text-left p-3 text-sm ${test.id === activeTestId ? 'bg-blue-200 font-semibold' : 'hover:bg-gray-100'}`}
+                >
                   {test.name}
                 </button>
               </li>

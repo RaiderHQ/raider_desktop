@@ -10,7 +10,7 @@ const commandParser = (command: string): string => {
   const patterns = [
     {
       regex: /@driver\.get\("([^"]+)"\)/,
-      template: (matches: string[]) => `Maps to ${matches[1]}`,
+      template: (matches: string[]) => `Visit ${matches[1]}`,
     },
     {
       regex: /@driver\.find_element\(:?(\w+),\s*"([^"]+)"\)\.click/,
