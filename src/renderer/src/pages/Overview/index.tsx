@@ -46,7 +46,7 @@ const Overview: React.FC = () => {
             files={files}
             defaultOpen={true}
             onFileClick={(filePath: string): void => {
-              navigate('/project/editor', {
+              navigate('/file-editor', {
                 state: { fileName: filePath.split('/').pop(), filePath }
               })
             }}
