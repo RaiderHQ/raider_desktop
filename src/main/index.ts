@@ -20,6 +20,7 @@ import getMobileCapabilities from './handlers/getMobileCapabilities'
 import isRubyInstalled from './handlers/isRubyInstalled'
 import runRecording from './handlers/runRecording'
 import fs from 'fs'
+import commandParser from './handlers/commandParser'
 
 const iconPath = join(
   __dirname,
@@ -125,6 +126,11 @@ ipcMain.handle('install-raider', installRaider)
 ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)
 ipcMain.handle('get-mobile-capabilities', getMobileCapabilities)
 ipcMain.handle('is-ruby-installed', isRubyInstalled)
+ipcMain.handle('command-parser', async (_event, command: string) => {
+  // The handler simply calls our utility function and returns the result.
+  const friendlyText = commandParser(command);
+  return friendlyText;
+});
 
 // --- Recorder and Suite IPC Handlers ---
 
