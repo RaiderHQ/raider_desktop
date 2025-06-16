@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from "react";
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -11,6 +11,13 @@ const Overview: React.FC = () => {
   const projectPath: string | null = useProjectStore((state) => state.projectPath);
   const files: FileNode[] = useProjectStore((state) => state.files)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!projectPath) {
+      // If there's no project path, redirect to the landing page.
+      navigate('/start-project')
+    }
+  }, [projectPath, navigate])
 
   const handleRunTests = async (): Promise<void> => {
     const toastId = toast.loading(t('overview.running'))
