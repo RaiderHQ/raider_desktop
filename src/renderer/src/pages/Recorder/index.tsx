@@ -306,9 +306,6 @@ const Recorder: React.FC = (): JSX.Element => {
         <div className="w-1/2 flex flex-col space-y-2">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-lg font-semibold text-gray-800">Recorded Steps</h3>
-            <Button onClick={() => setShowParsedText(!showParsedText)} type="secondary">
-              {showParsedText ? <><FaCode className="mr-2" /> Show Code</> : <><FaEye className="mr-2" /> Show Friendly Text</>}
-            </Button>
           </div>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>
