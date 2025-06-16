@@ -1,27 +1,28 @@
 import { createHashRouter, RouterProvider } from 'react-router-dom'
-import Editor from '@pages/Project/Editor'
-import Landing from '@pages/Landing'
+import FileEditor from '@pages/FileEditor'
 import MainTemplate from '@templates/Main'
-import NewProject from '@pages/Project/New'
-import Overview from '@pages/Project/Overview'
-import Settings from '@pages/Project/Settings'
-import Dashboard from '@pages/Project/Dashboard'
-import Recorder from '@pages/Project/Recorder';
+import NewProject from '@pages/New'
+import Overview from '@pages/Overview'
+import Settings from '@pages/Settings'
+import Dashboard from '@pages/Dashboard'
+import Recorder from '@pages/Recorder'
 
 const Router = (): JSX.Element => {
   const router = createHashRouter([
     {
+      // This is now the main layout route for your entire app.
       path: '/',
-      element: <Landing />
-    },
-    {
-      path: '/project',
       element: <MainTemplate />,
       children: [
+        // By setting 'index: true', Recorder will render at the root path '/'
+        {
+          index: true,
+          element: <Recorder />
+        },
         { path: 'new', element: <NewProject /> },
-        { path: 'editor', element: <Editor /> },
+        { path: 'file-editor', element: <FileEditor /> },
         { path: 'overview', element: <Overview /> },
-      { path: 'recorder', element: <Recorder /> },
+        { path: 'recorder', element: <Recorder /> },
         { path: 'settings', element: <Settings /> },
         { path: 'dashboard', element: <Dashboard /> }
       ]
