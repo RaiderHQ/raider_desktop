@@ -56,7 +56,6 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   const FriendlyView = () => (
     <div className="font-sans text-sm">
       <span className="text-gray-800">{friendlyText}</span>
-      {comment && <span className="text-gray-400 ml-2 italic"># {comment}</span>}
     </div>
   );
 
