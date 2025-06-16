@@ -21,6 +21,8 @@ interface TestSuitePanelProps {
   onTestSelect: (testId: string) => void;
   onCreateSuite: (suiteName: string) => void;
   onDeleteSuite: (suiteId: string) => void;
+  // Add a new callback for deleting a single test
+  onTestDelete: (testId: string) => void;
   onRunAllTests: (suiteId: string) => void;
   onReorderTests: (suiteId: string, tests: Test[]) => void;
 }
@@ -33,6 +35,8 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
                                                          onTestSelect,
                                                          onCreateSuite,
                                                          onDeleteSuite,
+                                                         // Destructure the new prop
+                                                         onTestDelete,
                                                          onRunAllTests,
                                                          onReorderTests
                                                        }) => {
@@ -43,25 +47,19 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
   const [newSuiteName, setNewSuiteName] = useState('')
   const [isSuiteDropdownOpen, setIsSuiteDropdownOpen] = useState(false)
   const [isCreatingSuite, setIsCreatingSuite] = useState(false)
-  // Local state for managing test order during drag-and-drop for instant UI feedback
   const [displayedTests, setDisplayedTests] = useState<Test[]>([]);
 
   // --- Refs ---
   const dropdownRef = useRef<HTMLDivElement>(null)
-  // Ref to store the index of the test being dragged
   const dragItemIndex = useRef<number | null>(null)
-  // Ref to store the index of the test being dragged over
   const dragOverItemIndex = useRef<number | null>(null);
 
 
   // --- Effects ---
-
-  // Effect to sync the local displayedTests with the tests from the active suite prop
   useEffect(() => {
     setDisplayedTests(activeSuite?.tests ?? []);
   }, [activeSuite?.tests]);
 
-  // Effect to close dropdown when clicking outside of it
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -108,31 +106,20 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
   };
 
   const handleDragEnter = (index: number) => {
-    // If we're not dragging or are dragging over the same item, do nothing
     if (dragItemIndex.current === null || dragItemIndex.current === index) {
       return;
     }
-
-    // Create a new ordered list for visual feedback
     const newTests = [...displayedTests];
-    // Remove the dragged item from its original position
     const [draggedItem] = newTests.splice(dragItemIndex.current, 1);
-    // Insert the dragged item into the new position
     newTests.splice(index, 0, draggedItem);
-
-    // Update the ref to the new index of the dragged item
     dragItemIndex.current = index;
-
-    // Update the local state to re-render the list with the new order
     setDisplayedTests(newTests);
   };
 
   const handleDragEnd = () => {
-    // When the drag is finished, persist the new order via the callback prop
     if (activeSuiteId && displayedTests) {
       onReorderTests(activeSuiteId, displayedTests);
     }
-    // Clean up the refs
     dragItemIndex.current = null;
     dragOverItemIndex.current = null;
   };
@@ -201,7 +188,6 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
           )}
 
           <ul className="flex-grow">
-            {/* Map over the local 'displayedTests' state */}
             {displayedTests.map((test, index) => (
               <li
                 key={test.id}
@@ -210,14 +196,31 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
                 onDragEnter={() => handleDragEnter(index)}
                 onDragEnd={handleDragEnd}
                 onDragOver={(e) => e.preventDefault()}
-                className="cursor-grab active:cursor-grabbing border-b border-gray-200"
+                // Added flex and group for styling the delete button on hover
+                className="group flex items-center justify-between cursor-grab active:cursor-grabbing border-b border-gray-200"
               >
                 <button
                   onClick={() => onTestSelect(test.id)}
                   draggable={false}
-                  className={`w-full text-left p-3 text-sm ${test.id === activeTestId ? 'bg-blue-200 font-semibold' : 'hover:bg-gray-100'}`}
+                  className={`w-full text-left p-3 text-sm flex-grow transition-colors ${test.id === activeTestId ? 'bg-blue-200 font-semibold' : 'hover:bg-gray-100'}`}
                 >
                   {test.name}
+                </button>
+                {/* Delete button for each test */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevents selecting the test
+                    if (window.confirm(`Are you sure you want to delete the test "${test.name}"?`)) {
+                      onTestDelete(test.id);
+                    }
+                  }}
+                  className="p-3 text-gray-400 group-hover:opacity-100 hover:text-red-600 hover:bg-red-100 transition-all"
+                  aria-label={`Delete test ${test.name}`}
+                >
+                  {/* A simple cross icon */}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+                  </svg>
                 </button>
               </li>
             ))}
