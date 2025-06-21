@@ -1,5 +1,7 @@
 # ruby-raider-desktop
 
+This project is the UI version for [Raider](https://github.com/RaiderHQ/Raider). It provides a desktop application to interact with Raider's functionalities.
+
 Desktop application for Ruby Raider
 
 ## Project Setup
@@ -11,6 +13,8 @@ $ npm install
 ```
 
 ### Development
+
+To start the project in development mode, run:
 
 ```bash
 $ npm run dev
