@@ -1,8 +1,6 @@
 # ruby-raider-desktop
 
-This project is the UI version for [Raider](https://github.com/RaiderHQ/Raider). It provides a desktop application to interact with Raider's functionalities.
-
-Desktop application for Ruby Raider
+This project is the UI version for [Ruby Raider](https://github.com/RaiderHQ/ruby_raider). It provides recording and editing functionality to make automating easier.
 
 ## Project Setup
 
