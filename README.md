@@ -1,6 +1,6 @@
 # ruby-raider-desktop
 
-Desktop application for Ruby Raider
+This project is the UI version for [Ruby Raider](https://github.com/RaiderHQ/ruby_raider). It provides recording and editing functionality to make automating easier.
 
 ## Project Setup
 
@@ -11,6 +11,8 @@ $ npm install
 ```
 
 ### Development
+
+To start the project in development mode, run:
 
 ```bash
 $ npm run dev
