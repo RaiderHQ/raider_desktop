@@ -1,22 +1,32 @@
-import { IpcMainInvokeEvent } from 'electron'
+import { BrowserWindow } from 'electron'
+import { join } from 'path'
+import { appState } from './appState'
 
-/**
- * Handles the 'start-recording-main' IPC call from the renderer process.
- * It logs the request and signals the renderer to inject the recorder script
- * into the webview, effectively starting the recording session.
- * @param event - The IPC event object.
- * @returns A promise that resolves with an object indicating success.
- */
-const startRecording = async (
-  event: IpcMainInvokeEvent
-): Promise<{ success: boolean }> => {
-  console.log(`[MainProcess] Received 'start-recording-main' request.`);
+let recorderWindow: BrowserWindow | null = null; // Need to manage this state
 
-  // Signal the renderer to inject the recorder script.
-  event.sender.send('inject-recorder-script');
+export default (mainWindow: BrowserWindow | null) => {
+  if (recorderWindow) {
+    recorderWindow.focus()
+    return { success: true }
+  }
+  recorderWindow = new BrowserWindow({
+    width: 1280,
+    height: 720,
+    show: true,
+    title: 'Recording Session',
+    webPreferences: {
+      preload: join(__dirname, '../../preload/recorderPreload.js')
+    }
+  });
 
-  // Confirm to the renderer that the start process has been initiated.
-  return { success: true }
-};
+  recorderWindow.on('closed', () => {
+    mainWindow?.webContents.send('recording-stopped');
+    recorderWindow = null;
+  });
 
-export default  startRecording;
+  recorderWindow.loadURL(appState.projectBaseUrl);
+  recorderWindow.focus();
+  mainWindow?.webContents.send('recording-started', appState.projectBaseUrl);
+
+  return { success: true };
+}
