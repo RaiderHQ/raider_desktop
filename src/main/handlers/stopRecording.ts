@@ -1,4 +1,4 @@
-import { IpcMainInvokeEvent } from 'electron';
+import { IpcMainInvokeEvent } from 'electron'
 
 /**
  * Handles the 'stop-recording-main' IPC call from the renderer process.
@@ -10,13 +10,13 @@ import { IpcMainInvokeEvent } from 'electron';
 const stopRecording = async (
   event: IpcMainInvokeEvent
 ): Promise<{ success: boolean }> => {
-  console.log(`[MainProcess] Received 'stop-recording-main' request.`);
+  console.log(`[MainProcess] Received 'stop-recording-main' request.`)
 
   // Signal the renderer to stop the recording script.
-  event.sender.send('stop-recording-for-renderer');
+  event.sender.send('stop-recording-for-renderer')
 
   // Confirm to the renderer that the stop process has been initiated.
-  return { success: true };
-};
+  return { success: true }
+}
 
 export default stopRecording
