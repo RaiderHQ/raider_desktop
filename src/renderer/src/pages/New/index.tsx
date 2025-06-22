@@ -6,11 +6,11 @@ import QuestionIcon from '@assets/icons/Question_vector.svg'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import InformationModal from '@components/InformationModal'
+import InputField from '@components/InputField'
 import SelectInput from '@components/SelectInput'
 import LoadingScreen from '@components/LoadingScreen'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
-import InstallGuide from '@pages/Info/InstallGuide'
 
 const options = {
   automation: ['Appium', 'Selenium', 'Watir'],
@@ -30,8 +30,6 @@ const CreateProject: React.FC = () => {
   const [mobilePlatform, setMobilePlatform] = useState('Android')
   const [isModalOpen, setModalOpen] = useState(false)
   const [projectName, setProjectName] = useState('')
-  const [rubyMissing, setRubyMissing] = useState(false)
-  const [rubyError, setRubyError] = useState<string | null>(null)
 
   const showMobile = automationFramework === 'Appium'
 
@@ -41,50 +39,47 @@ const CreateProject: React.FC = () => {
       return
     }
 
-    // First, select the folder
-    const folder = await window.api.selectFolder(t('newProject.alerts.selectFolder'))
+    const folder = await window.api.selectFolder(
+      t('newProject.alerts.selectFolder')
+    )
     if (!folder) {
       return
     }
 
-    // Now that a folder is selected, show the loader.
     setLoading(true)
     try {
-      // Check Ruby installation from the context of the selected folder.
-      const rubyResult = await window.api.isRubyInstalled(folder)
-      if (!rubyResult.success) {
-        setRubyMissing(true)
-        setRubyError(rubyResult.error ?? null)
-        return
-      }
-
-      // Proceed to create the project if Ruby is valid.
       const overviewFolder = `${folder}/${projectName}`
       const automationParam = showMobile
         ? mobilePlatform.toLowerCase()
         : automationFramework.toLowerCase()
+
+      // Call the command without checking for success
 
       const raiderResult = await window.api.runRubyRaider(
         folder,
         projectName,
         testFramework.toLowerCase(),
         automationParam
-      )
+      );
 
-      if (!raiderResult.success) {
-        toast.error(`Error running Raider command: ${raiderResult.error}`)
-        return
+      // Add this block back for debugging
+      console.log('Raider result from main process:', raiderResult);
+      if (!raiderResult || !raiderResult.success) {
+        toast.error(`Project creation failed: ${raiderResult?.error }`);
+        setLoading(false);
+        return;
       }
 
       setProjectPath(overviewFolder)
-      navigate('/project/overview')
-    } catch (error) {
-      toast.error(`Unexpected error while creating the project: ${error}`)
-    } finally {
-      // Add an extra second delay before hiding the loader.
+      navigate('/overview')
+
+      // Keep the loader for a short period on success for better UX
       setTimeout(() => {
         setLoading(false)
       }, 1000)
+    } catch (error) {
+      setLoading(false)
+      toast.error(`An unexpected error occurred: ${error}`)
     }
   }
 
@@ -95,12 +90,6 @@ const CreateProject: React.FC = () => {
     setter(value)
   }
 
-  // If Ruby check failed, show the installation guide.
-  if (rubyMissing) {
-    return <InstallGuide rubyMissing={rubyMissing} rubyError={rubyError} allureMissing={false} />
-  }
-
-  // If the global loading state is true, show the LoadingScreen.
   if (loading) {
     return <LoadingScreen shouldPersist={true} />
   }
@@ -108,8 +97,12 @@ const CreateProject: React.FC = () => {
   return (
     <>
       <div className="text-center mb-10">
-        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">{t('newProject.title')}</h1>
-        <p className="text-gray-600 text-base md:text-lg lg:text-xl">{t('newProject.subtitle')}</p>
+        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">
+          {t('newProject.title')}
+        </h1>
+        <p className="text-gray-600 text-base md:text-lg lg:text-xl">
+          {t('newProject.subtitle')}
+        </p>
       </div>
 
       <ContentArea>
@@ -127,16 +120,19 @@ const CreateProject: React.FC = () => {
             <label className="block mb-2 text-sm md:text-base lg:text-lg font-medium text-black-700">
               {t('newProject.input.label')}
             </label>
-            <input
-              type="text"
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm md:text-base lg:text-lg"
+            <InputField
+              label="Project Name"
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
               placeholder={t('newProject.input.placeholder')}
             />
           </div>
 
-          <div className={`grid ${showMobile ? 'grid-cols-2' : 'grid-cols-1'} gap-x-8 mb-6 w-full`}>
+          <div
+            className={`grid ${
+              showMobile ? 'grid-cols-2' : 'grid-cols-1'
+            } gap-x-8 mb-6 w-full`}
+          >
             <div className="flex flex-col space-y-6">
               <SelectInput
                 label={t('newProject.question.automation')}
