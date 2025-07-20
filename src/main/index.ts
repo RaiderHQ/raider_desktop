@@ -1,9 +1,7 @@
-import { app, shell, BrowserWindow, ipcMain, IpcMainEvent, dialog } from "electron";
+import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { randomUUID } from 'crypto'
-import fs from 'fs'
-import { appState, setMainWindow, setRecorderWindow, mainWindow, recorderWindow } from './handlers/appState';
+import { appState, setMainWindow, setRecorderWindow, mainWindow, recorderWindow } from './handlers/appState'
 
 // Import all your existing individual handlers
 import selectFolder from './handlers/selectFolder'
@@ -36,8 +34,7 @@ import saveTest from './handlers/saveTest'
 import runSuite from './handlers/runSuite'
 import exportTest from './handlers/exportTest'
 import deleteTest from './handlers/deleteTest'
-import recorderEvent from './handlers/recorderEvent'
-
+import recorderEvent from './handlers/recorderEvent' // <-- Import the new handler
 
 const iconPath = join(
   __dirname,
@@ -51,7 +48,7 @@ const iconPath = join(
 let projectBaseUrl: string = 'https://www.google.com'
 
 function createWindow(): void {
-  const newMainWindow = new BrowserWindow({ // Use a temporary variable
+  const newMainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     show: false,
@@ -63,7 +60,7 @@ function createWindow(): void {
     }
   })
 
-  setMainWindow(newMainWindow); // Set the global mainWindow
+  setMainWindow(newMainWindow)
 
   if (is.dev) {
     mainWindow!.webContents.openDevTools()
@@ -122,11 +119,10 @@ ipcMain.handle('install-raider', installRaider)
 ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)
 ipcMain.handle('get-mobile-capabilities', getMobileCapabilities)
 ipcMain.handle('is-ruby-installed', isRubyInstalled)
-ipcMain.handle('run-test', (event, args) => runRecording(args)); // runRecording is also now a handler
+ipcMain.handle('run-test', (event, args) => runRecording(args))
 ipcMain.handle('command-parser', async (_event, command: string) => {
-  const friendlyText = commandParser(command);
-  return friendlyText;
-});
+  return commandParser(command)
+})
 // Newly separated handlers
 ipcMain.handle('get-suites', getSuites)
 ipcMain.handle('create-suite', (event, suiteName: string) => createSuite(mainWindow!, event, suiteName))
@@ -168,7 +164,6 @@ ipcMain.handle('start-recording-main', (event) => {
   recorderWindow!.loadURL(projectBaseUrl)
   recorderWindow!.focus()
 
-  // Notify the UI that recording has started AND send the URL that was used.
   mainWindow?.webContents.send('recording-started', projectBaseUrl)
 
   return { success: true }
@@ -181,34 +176,4 @@ ipcMain.handle('stop-recording-main', () => {
   return { success: true }
 })
 
-ipcMain.on('recorder-event', (event: IpcMainEvent, data: any) => {
-  console.log('[MainProcess] Received recorder event:', data);
-
-  let commandString = '';
-  switch (data.action) {
-    case 'click':
-      const escapedClickSelector = data.selector.replace(/"/g, '\\"');
-      commandString = `@driver.find_element(:css, "${escapedClickSelector}").click # Clicked <${data.tagName.toLowerCase()}>`;
-      break;
-
-    case 'type':
-      const escapedTypeSelector = data.selector.replace(/"/g, '\\"');
-      const escapedValue = data.value.replace(/"/g, '\\"');
-      commandString = `@driver.find_element(:css, "${escapedTypeSelector}").clear\n`;
-      commandString += `    @driver.find_element(:css, "${escapedTypeSelector}").send_keys("${escapedValue}")`;
-      break;
-
-    // *** NEW CASE IS HERE ***
-    case 'sendKeys':
-      const keySymbol = keyMap[data.value];
-      if (keySymbol) {
-        const escapedKeySelector = data.selector.replace(/"/g, '\\"');
-        commandString = `@driver.find_element(:css, "${escapedKeySelector}").send_keys(${keySymbol}) # Pressed ${data.value} on <${data.tagName.toLowerCase()}>`;
-      }
-      break;
-  }
-
-  if (commandString) {
-    mainWindow?.webContents.send('new-recorded-command', commandString);
-  }
-});
+ipcMain.on('recorder-event', recorderEvent)
