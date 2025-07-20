@@ -13,24 +13,27 @@ export interface Suite {
 }
 
 interface AppState {
-  suites: Map<string, Suite>
+  mainWindow: BrowserWindow | null
+  recorderWindow: BrowserWindow | null
   projectBaseUrl: string
+  suites: Map<string, Suite>
 }
 
 export const appState: AppState = {
-  suites: new Map<string, Suite>(),
-  projectBaseUrl: 'https://www.google.com'
+  mainWindow: null,
+  recorderWindow: null,
+  projectBaseUrl: 'https://www.google.com',
+  suites: new Map()
 }
 
-export let mainWindow: BrowserWindow | null = null
-export let recorderWindow: BrowserWindow | null = null
-
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export function setMainWindow(window: BrowserWindow | null) {
-  mainWindow = window
+export function setMainWindow(window: BrowserWindow | null): void {
+  appState.mainWindow = window
 }
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export function setRecorderWindow(window: BrowserWindow | null) {
-  recorderWindow = window
+export function setRecorderWindow(window: BrowserWindow | null): void {
+  appState.recorderWindow = window
+}
+
+export function setProjectBaseUrl(url: string): void {
+  appState.projectBaseUrl = url
 }

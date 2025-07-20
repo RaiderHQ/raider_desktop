@@ -1,6 +1,9 @@
-import { appState } from './appState'
+import { setProjectBaseUrl } from './appState'
 
-export default (_event: Electron.IpcMainEvent, url: string) => {
-  appState.projectBaseUrl = url
+function loadUrlRequest(event: Electron.IpcMainEvent, url: string): { success: boolean } {
+  setProjectBaseUrl(url)
+  console.log(`[MainProcess] Project base URL set to: ${url}`)
   return { success: true }
-};
+}
+
+export default loadUrlRequest

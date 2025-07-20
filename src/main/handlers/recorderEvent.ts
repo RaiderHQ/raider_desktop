@@ -1,5 +1,5 @@
 import { IpcMainEvent } from 'electron'
-import { mainWindow } from './appState'
+import { appState } from './appState'
 
 const keyMap: { [key: string]: string } = {
   Enter: ':enter',
@@ -57,7 +57,7 @@ function recorderEvent(event: IpcMainEvent, data: any): void {
   }
 
   if (commandString) {
-    mainWindow?.webContents.send('new-recorded-command', commandString)
+    appState.mainWindow?.webContents.send('new-recorded-command', commandString)
   }
 }
 
