@@ -48,6 +48,8 @@ const iconPath = join(
       : '../../resources/ruby-raider.png' // Linux
 )
 
+let projectBaseUrl: string = 'https://www.google.com'
+
 function createWindow(): void {
   const newMainWindow = new BrowserWindow({ // Use a temporary variable
     width: 1200,
@@ -126,9 +128,6 @@ ipcMain.handle('command-parser', async (_event, command: string) => {
   return friendlyText;
 });
 // Newly separated handlers
-ipcMain.handle('load-url-request', loadUrlRequest)
-ipcMain.handle('start-recording-main', () => startRecording(mainWindow!)) // Pass mainWindow
-ipcMain.handle('stop-recording-main', stopRecording)
 ipcMain.handle('get-suites', getSuites)
 ipcMain.handle('create-suite', (event, suiteName: string) => createSuite(mainWindow!, event, suiteName))
 ipcMain.handle('delete-suite', (event, suiteId: string) => deleteSuite(mainWindow!, event, suiteId))
@@ -136,4 +135,62 @@ ipcMain.handle('save-test', (event, args) => saveTest(mainWindow!, event, args))
 ipcMain.handle('run-suite', runSuite)
 ipcMain.handle('export-test', exportTest)
 ipcMain.handle('delete-test', (event, args) => deleteTest(mainWindow!, event, args))
-ipcMain.on('recorder-event', (event: IpcMainEvent, data: any) => recorderEvent(mainWindow!, event, data));
+
+ipcMain.handle('load-url-request', (event, url: string) => {
+  projectBaseUrl = url
+  console.log(`[MainProcess] Project base URL set to: ${projectBaseUrl}`)
+  return { success: true }
+})
+
+ipcMain.handle('start-recording-main', (event) => {
+  if (recorderWindow) {
+    recorderWindow.focus()
+    return { success: true }
+  }
+
+  const newRecorderWindow = new BrowserWindow({
+    width: 1280,
+    height: 720,
+    show: true,
+    title: 'Recording Session',
+    webPreferences: {
+      preload: join(__dirname, '../preload/recorderPreload.js')
+    }
+  })
+
+  setRecorderWindow(newRecorderWindow)
+
+  recorderWindow!.on('closed', () => {
+    mainWindow?.webContents.send('recording-stopped')
+    setRecorderWindow(null)
+  })
+
+  recorderWindow!.loadURL(projectBaseUrl)
+  recorderWindow!.focus()
+
+  // Notify the UI that recording has started AND send the URL that was used.
+  mainWindow?.webContents.send('recording-started', projectBaseUrl)
+
+  return { success: true }
+})
+
+ipcMain.handle('stop-recording-main', () => {
+  if (recorderWindow) {
+    recorderWindow.close()
+  }
+  return { success: true }
+})
+
+ipcMain.on('recorder-event', (event: IpcMainEvent, data: any) => {
+  let commandString = ''
+  switch (data.action) {
+    case 'click':
+      const escapedSelector = data.selector.replace(/"/g, '\\"')
+      commandString = `driver.find_element(:css, "${escapedSelector}").click # Clicked <${data.tagName.toLowerCase()}>`
+      break
+  }
+
+  if (commandString) {
+    mainWindow?.webContents.send('new-recorded-command', commandString)
+  }
+})
