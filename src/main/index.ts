@@ -11,7 +11,6 @@ import readFile from './handlers/readFile'
 import readImage from './handlers/readImage'
 import openAllure from './handlers/openAllure'
 import editFile from './handlers/editFile'
-import runTests from './handlers/runTests'
 import updateBrowserUrl from './handlers/updateBrowserUrl'
 import updateBrowserType from './handlers/updateBrowserType'
 import isMobileProject from './handlers/isMobileProject'
@@ -107,7 +106,6 @@ ipcMain.handle('read-image', readImage)
 ipcMain.handle('edit-file', editFile)
 ipcMain.handle('run-ruby-raider', runRubyRaider)
 ipcMain.handle('is-mobile-project', isMobileProject)
-ipcMain.handle('run-tests', runTests)
 ipcMain.handle('update-browser-url', updateBrowserUrl)
 ipcMain.handle('update-browser-type', updateBrowserType)
 ipcMain.handle('run-command', runCommand)
@@ -121,8 +119,16 @@ ipcMain.handle('command-parser', async (_event, command: string) => {
 ipcMain.handle('get-suites', getSuites)
 ipcMain.handle('create-suite', (event, suiteName: string) => createSuite(appState.mainWindow!, event, suiteName))
 ipcMain.handle('delete-suite', (event, suiteId: string) => deleteSuite(appState.mainWindow!, event, suiteId))
-ipcMain.handle('save-recording', (event, suiteId: string, test: Test) => {
-  return saveRecording(appState.mainWindow, suiteId, test)
+ipcMain.handle('run-test', async (_event, suiteId: string, testId: string) => {
+  const suite = appState.suites.get(suiteId)
+  const test = suite?.tests.find((t) => t.id === testId)
+
+  if (!test) {
+    return { success: false, output: `Test with ID ${testId} not found.` }
+  }
+
+  // Re-use the existing runRecording logic by passing the found test
+  return runRecording({ savedTest: test })
 })
 ipcMain.handle('run-suite', runSuite)
 ipcMain.handle('export-test', exportTest)
@@ -133,3 +139,6 @@ ipcMain.handle('load-url-request', loadUrlRequest)
 ipcMain.handle('start-recording-main', startRecordingMain)
 ipcMain.handle('stop-recording-main', stopRecordingMain)
 ipcMain.on('recorder-event', recorderEvent)
+ipcMain.handle('save-recording', (event, suiteId: string, test: Test) => {
+  return saveRecording(appState.mainWindow, suiteId, test)
+})

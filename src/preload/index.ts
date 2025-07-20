@@ -79,6 +79,8 @@ const api = {
     ipcRenderer.invoke('command-parser', command),
   exportTest: (testName: string, steps: string[]): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('export-test', { testName, steps }),
+  runTest: async (suiteId: string, testId: string): Promise<{ success: boolean; output: string }> =>
+    ipcRenderer.invoke('run-test', suiteId, testId),
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
