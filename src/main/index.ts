@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { appState, setMainWindow, setRecorderWindow, mainWindow, recorderWindow } from './handlers/appState'
+import { setMainWindow, appState } from './handlers/appState'
 
 // Import all your existing individual handlers
 import selectFolder from './handlers/selectFolder'
@@ -22,11 +22,6 @@ import getMobileCapabilities from './handlers/getMobileCapabilities'
 import isRubyInstalled from './handlers/isRubyInstalled'
 import runRecording from './handlers/runRecording'
 import commandParser from './handlers/commandParser'
-
-// Import the newly separated handlers
-import loadUrlRequest from './handlers/loadUrlRequest'
-import startRecording from './handlers/startRecording'
-import stopRecording from './handlers/stopRecording'
 import getSuites from './handlers/getSuites'
 import createSuite from './handlers/createSuite'
 import deleteSuite from './handlers/deleteSuite'
@@ -34,7 +29,10 @@ import saveTest from './handlers/saveTest'
 import runSuite from './handlers/runSuite'
 import exportTest from './handlers/exportTest'
 import deleteTest from './handlers/deleteTest'
-import recorderEvent from './handlers/recorderEvent' // <-- Import the new handler
+import recorderEvent from './handlers/recorderEvent'
+import loadUrlRequest from './handlers/loadUrlRequest'
+import startRecordingMain from './handlers/startRecordingMain'
+import stopRecordingMain from './handlers/stopRecordingMain'
 
 const iconPath = join(
   __dirname,
@@ -44,8 +42,6 @@ const iconPath = join(
       ? '../../resources/ruby-raider.ico' // Windows
       : '../../resources/ruby-raider.png' // Linux
 )
-
-let projectBaseUrl: string = 'https://www.google.com'
 
 function createWindow(): void {
   const newMainWindow = new BrowserWindow({
@@ -63,22 +59,22 @@ function createWindow(): void {
   setMainWindow(newMainWindow)
 
   if (is.dev) {
-    mainWindow!.webContents.openDevTools()
+    appState.mainWindow!.webContents.openDevTools()
   }
 
-  mainWindow!.on('ready-to-show', () => {
-    mainWindow!.show()
+  appState.mainWindow!.on('ready-to-show', () => {
+    appState.mainWindow!.show()
   })
 
-  mainWindow!.webContents.setWindowOpenHandler((details) => {
+  appState.mainWindow!.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow!.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    appState.mainWindow!.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow!.loadFile(join(__dirname, '../renderer/index.html'))
+    appState.mainWindow!.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
 
@@ -123,57 +119,16 @@ ipcMain.handle('run-test', (event, args) => runRecording(args))
 ipcMain.handle('command-parser', async (_event, command: string) => {
   return commandParser(command)
 })
-// Newly separated handlers
 ipcMain.handle('get-suites', getSuites)
-ipcMain.handle('create-suite', (event, suiteName: string) => createSuite(mainWindow!, event, suiteName))
-ipcMain.handle('delete-suite', (event, suiteId: string) => deleteSuite(mainWindow!, event, suiteId))
-ipcMain.handle('save-test', (event, args) => saveTest(mainWindow!, event, args))
+ipcMain.handle('create-suite', (event, suiteName: string) => createSuite(appState.mainWindow!, event, suiteName))
+ipcMain.handle('delete-suite', (event, suiteId: string) => deleteSuite(appState.mainWindow!, event, suiteId))
+ipcMain.handle('save-test', (event, args) => saveTest(appState.mainWindow!, event, args))
 ipcMain.handle('run-suite', runSuite)
 ipcMain.handle('export-test', exportTest)
-ipcMain.handle('delete-test', (event, args) => deleteTest(mainWindow!, event, args))
+ipcMain.handle('delete-test', (event, args) => deleteTest(appState.mainWindow!, event, args))
 
-ipcMain.handle('load-url-request', (event, url: string) => {
-  projectBaseUrl = url
-  console.log(`[MainProcess] Project base URL set to: ${projectBaseUrl}`)
-  return { success: true }
-})
-
-ipcMain.handle('start-recording-main', (event) => {
-  if (recorderWindow) {
-    recorderWindow.focus()
-    return { success: true }
-  }
-
-  const newRecorderWindow = new BrowserWindow({
-    width: 1280,
-    height: 720,
-    show: true,
-    title: 'Recording Session',
-    webPreferences: {
-      preload: join(__dirname, '../preload/recorderPreload.js')
-    }
-  })
-
-  setRecorderWindow(newRecorderWindow)
-
-  recorderWindow!.on('closed', () => {
-    mainWindow?.webContents.send('recording-stopped')
-    setRecorderWindow(null)
-  })
-
-  recorderWindow!.loadURL(projectBaseUrl)
-  recorderWindow!.focus()
-
-  mainWindow?.webContents.send('recording-started', projectBaseUrl)
-
-  return { success: true }
-})
-
-ipcMain.handle('stop-recording-main', () => {
-  if (recorderWindow) {
-    recorderWindow.close()
-  }
-  return { success: true }
-})
-
+// Refactored Handlers
+ipcMain.handle('load-url-request', loadUrlRequest)
+ipcMain.handle('start-recording-main', startRecordingMain)
+ipcMain.handle('stop-recording-main', stopRecordingMain)
 ipcMain.on('recorder-event', recorderEvent)
