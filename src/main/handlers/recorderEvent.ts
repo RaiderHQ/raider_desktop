@@ -1,16 +1,38 @@
-import { IpcMainEvent, BrowserWindow } from 'electron'
+import { IpcMainEvent } from 'electron'
+import { appState } from './appState'
 
 const keyMap: { [key: string]: string } = {
   Enter: ':enter',
   Tab: ':tab',
+  Space: ':space',
+  Backspace: ':backspace',
+  Delete: ':delete',
+  Escape: ':escape',
   ArrowUp: ':arrow_up',
   ArrowDown: ':arrow_down',
   ArrowLeft: ':arrow_left',
   ArrowRight: ':arrow_right',
-  Escape: ':escape'
+  Home: ':home',
+  End: ':end',
+  PageUp: ':page_up',
+  PageDown: ':page_down',
+  F1: ':f1',
+  F2: ':f2',
+  F3: ':f3',
+  F4: ':f4',
+  F5: ':f5',
+  F6: ':f6',
+  F7: ':f7',
+  F8: ':f8',
+  F9: ':f9',
+  F10: ':f10',
+  F11: ':f11',
+  F12: ':f12'
 }
 
-export default (mainWindow: BrowserWindow | null, event: IpcMainEvent, data: any) => {
+function recorderEvent(event: IpcMainEvent, data: any): void {
+  console.log('[MainProcess] Received recorder event:', data)
+
   let commandString = ''
   switch (data.action) {
     case 'click':
@@ -35,6 +57,8 @@ export default (mainWindow: BrowserWindow | null, event: IpcMainEvent, data: any
   }
 
   if (commandString) {
-    mainWindow?.webContents.send('new-recorded-command', commandString)
+    appState.mainWindow?.webContents.send('new-recorded-command', commandString)
   }
 }
+
+export default recorderEvent

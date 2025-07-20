@@ -67,8 +67,8 @@ const api = {
   runSuite: async (suiteId: string): Promise<{ success: boolean; output: string }> => ipcRenderer.invoke('run-suite', suiteId), // New API function
 
   // Test Management
-  saveTest: async (suiteId: string, testData: Test): Promise<{ success: boolean }> => ipcRenderer.invoke('save-test', { suiteId, testData }),
-  runTest: async (suiteId: string, testId: string): Promise<{ success: boolean; output: string }> => ipcRenderer.invoke('run-test', { suiteId, testId }),
+  saveRecording: async (suiteId: string, testData: Test): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('save-recording', suiteId, testData),
   deleteTest: (suiteId: string, testId: string): Promise<void> =>
     ipcRenderer.invoke('delete-test', { suiteId, testId }),
   // Recording Session Control
@@ -79,6 +79,8 @@ const api = {
     ipcRenderer.invoke('command-parser', command),
   exportTest: (testName: string, steps: string[]): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('export-test', { testName, steps }),
+  runTest: async (suiteId: string, testId: string): Promise<{ success: boolean; output: string }> =>
+    ipcRenderer.invoke('run-test', suiteId, testId),
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
