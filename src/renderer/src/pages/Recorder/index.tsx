@@ -5,8 +5,8 @@ import CommandList from '@components/CommandList'
 import TestSuitePanel from '@components/TestSuitePanel'
 import OutputPanel from '@components/OutputPanel'
 import InputField from '@components/InputField'
-// Assuming your types are correctly located
-import { Suite, Test } from '@main/types'
+// A more standard relative path for types from a renderer file
+import type { Suite, Test } from '../../../main/types'
 
 const createNewTest = (): Test => ({
   id: crypto.randomUUID(),
@@ -26,7 +26,7 @@ const Recorder: React.FC = (): JSX.Element => {
   const [runOutput, setRunOutput] = useState<string>('')
   const [isRunning, setIsRunning] = useState<boolean>(false)
 
-  // --- Refs ---
+  // --- Refs to hold the latest state for listeners ---
   const activeTestRef = useRef(activeTest)
   useEffect(() => {
     activeTestRef.current = activeTest
@@ -42,14 +42,12 @@ const Recorder: React.FC = (): JSX.Element => {
     suitesRef.current = suites
   }, [suites])
 
-
   const activeSuite = React.useMemo(
     () => suites.find((s) => s.id === activeSuiteId),
     [suites, activeSuiteId]
   )
 
   // --- Handlers ---
-
   const handleCreateSuite = useCallback(
     (suiteName: string) => {
       if (suiteName && !suites.find((s) => s.name === suiteName)) {
@@ -59,14 +57,11 @@ const Recorder: React.FC = (): JSX.Element => {
     [suites]
   )
 
-  const handleDeleteSuite = useCallback(
-    (suiteIdToDelete: string) => {
-      if (window.confirm('Are you sure you want to delete this suite?')) {
-        window.api.deleteSuite(suiteIdToDelete)
-      }
-    },
-    []
-  )
+  const handleDeleteSuite = useCallback((suiteIdToDelete: string) => {
+    if (window.confirm('Are you sure you want to delete this suite?')) {
+      window.api.deleteSuite(suiteIdToDelete)
+    }
+  }, [])
 
   const handleTestDelete = useCallback(
     (testIdToDelete: string) => {
@@ -90,8 +85,7 @@ const Recorder: React.FC = (): JSX.Element => {
     }
   }
 
-  // *** UPDATED FUNCTION NAME AND API CALL ***
-  const handleSaveRecording = useCallback((): void => {
+  const handleSaveRecording = useCallback(() => {
     if (activeSuiteId && activeTest) {
       window.api.saveRecording(activeSuiteId, activeTest)
     }
@@ -101,7 +95,6 @@ const Recorder: React.FC = (): JSX.Element => {
     if (activeSuiteId) {
       const newTest = createNewTest()
       setActiveTest(newTest)
-      // Save it immediately to add it to the suite
       window.api.saveRecording(activeSuiteId, newTest)
     }
   }
@@ -119,27 +112,30 @@ const Recorder: React.FC = (): JSX.Element => {
 
   const handleRunTest = useCallback(async (): Promise<void> => {
     if (activeSuiteId && activeTest?.id) {
-      handleSaveRecording() // Use the new save function
+      handleSaveRecording() // Always save before running
       setIsRunning(true)
       setRunOutput(`Running test: ${activeTest.name}...`)
+      // This correctly calls the 'run-test' handler
       const result = await window.api.runTest(activeSuiteId, activeTest.id)
       setRunOutput(result.output)
       setIsRunning(false)
     }
   }, [activeSuiteId, activeTest, handleSaveRecording])
 
-  const handleRunAllTests = useCallback(async (suiteId: string) => {
-    const suiteToRun = suites.find((s) => s.id === suiteId);
-    if (suiteToRun) {
-      handleSaveRecording(); // Use the new save function
-      setIsRunning(true);
-      setRunOutput(`Running suite: ${suiteToRun.name}...`);
-      const result = await window.api.runSuite(suiteToRun.id);
-      setRunOutput(result.output);
-      setIsRunning(false);
-    }
-  }, [suites, handleSaveRecording]);
-
+  const handleRunAllTests = useCallback(
+    async (suiteId: string) => {
+      const suiteToRun = suites.find((s) => s.id === suiteId)
+      if (suiteToRun) {
+        handleSaveRecording() // Save any pending changes first
+        setIsRunning(true)
+        setRunOutput(`Running suite: ${suiteToRun.name}...`)
+        const result = await window.api.runSuite(suiteToRun.id)
+        setRunOutput(result.output)
+        setIsRunning(false)
+      }
+    },
+    [suites, handleSaveRecording]
+  )
 
   const handleExportTest = useCallback(async (): Promise<void> => {
     if (activeTest?.steps && activeTest.steps.length > 0) {
@@ -154,6 +150,7 @@ const Recorder: React.FC = (): JSX.Element => {
     }
   }, [activeTest])
 
+  // This effect runs once to set up all main process listeners
   useEffect(() => {
     window.api.getSuites().then((initialSuites) => {
       setSuites(initialSuites)
@@ -164,40 +161,48 @@ const Recorder: React.FC = (): JSX.Element => {
       }
     })
 
+    // This listener handles all backend data changes to keep the UI in sync
     const suiteUpdatedCleanup = window.electron.ipcRenderer.on(
       'suite-updated',
       (_event, updatedSuites: Suite[]) => {
-        const previousSuites = suitesRef.current;
-        const currentSuiteId = activeSuiteIdRef.current;
-        const currentTestId = activeTestRef.current?.id;
+        const previousSuites = suitesRef.current
+        const currentSuiteId = activeSuiteIdRef.current
+        const currentTestId = activeTestRef.current?.id
 
-        setSuites(updatedSuites);
+        // 1. Update the main suites list
+        setSuites(updatedSuites)
 
+        // 2. Check if a new suite was added to auto-select it
         if (updatedSuites.length > previousSuites.length) {
-          const newSuite = updatedSuites.find(s => !previousSuites.some(ps => ps.id === s.id));
+          const newSuite = updatedSuites.find((s) => !previousSuites.some((ps) => ps.id === s.id))
           if (newSuite) {
-            setActiveSuiteId(newSuite.id);
-            setActiveTest(newSuite.tests[0] ?? null);
-            return;
+            setActiveSuiteId(newSuite.id)
+            setActiveTest(newSuite.tests[0] ?? null)
+            return // Exit early
           }
         }
 
-        const activeSuiteNow = updatedSuites.find(s => s.id === currentSuiteId);
+        // 3. Find the currently active suite in the new data
+        const activeSuiteNow = updatedSuites.find((s) => s.id === currentSuiteId)
 
         if (activeSuiteNow) {
-          const activeTestNow = activeSuiteNow.tests.find(t => t.id === currentTestId);
+          // 4. Find the currently active test to sync any changes
+          const activeTestNow = activeSuiteNow.tests.find((t) => t.id === currentTestId)
           if (activeTestNow) {
-            setActiveTest(activeTestNow);
+            // If the test still exists, update our state to match the saved version
+            setActiveTest(activeTestNow)
           } else {
-            setActiveTest(activeSuiteNow.tests[0] ?? null);
+            // If the test was deleted, select the first test in the suite (or null)
+            setActiveTest(activeSuiteNow.tests[0] ?? null)
           }
         } else if (currentSuiteId) {
-          const firstSuite = updatedSuites[0] ?? null;
-          setActiveSuiteId(firstSuite?.id ?? null);
-          setActiveTest(firstSuite?.tests[0] ?? null);
+          // 5. The active suite was deleted, so select the first available suite
+          const firstSuite = updatedSuites[0] ?? null
+          setActiveSuiteId(firstSuite?.id ?? null)
+          setActiveTest(firstSuite?.tests[0] ?? null)
         }
       }
-    );
+    )
 
     const handleRecordingStarted = (_event: any, loadedUrl: string): void => {
       setIsRecording(true)
@@ -211,8 +216,8 @@ const Recorder: React.FC = (): JSX.Element => {
     const handleRecordingStopped = () => setIsRecording(false)
 
     const handleNewCommand = (_event: any, command: string): void => {
-      setActiveTest(
-        (prevTest) => (prevTest ? { ...prevTest, steps: [...prevTest.steps, command] } : null)
+      setActiveTest((prevTest) =>
+        prevTest ? { ...prevTest, steps: [...prevTest.steps, command] } : null
       )
     }
 
@@ -229,7 +234,7 @@ const Recorder: React.FC = (): JSX.Element => {
       stopCleanup?.()
       commandCleanup?.()
     }
-  }, [])
+  }, []) // Empty dependency array ensures this runs only once
 
   const StyledPanel: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return (
@@ -243,7 +248,7 @@ const Recorder: React.FC = (): JSX.Element => {
 
   return (
     <div className="flex flex-col h-screen w-screen p-4 space-y-4 bg-gray-50">
-      {/* --- Top Section --- */}
+      {/* Top Section */}
       <div className="flex-none pb-1 pr-1">
         <div className="relative">
           <div className="relative flex flex-col border border-black rounded-lg bg-white z-10 p-4 space-y-4">
@@ -277,7 +282,6 @@ const Recorder: React.FC = (): JSX.Element => {
                 <Button onClick={handleStopRecording} disabled={!isRecording} type={!isRecording ? 'disabled' : 'secondary'}>Stop</Button>
               </div>
               <div className="flex items-center space-x-2">
-                {/* *** UPDATED BUTTON ONCLICK *** */}
                 <Button onClick={handleSaveRecording} disabled={!activeTest || isRecording} type={!activeTest || isRecording ? 'disabled' : 'primary'}>Save Test</Button>
                 <Button onClick={handleNewTest} disabled={!activeSuiteId} type={!activeSuiteId ? 'disabled' : 'secondary'}>New Test</Button>
                 <Button onClick={handleExportTest} disabled={!activeTest || isRecording} type={!activeTest || isRecording ? 'disabled' : 'secondary'}>Export Script</Button>
@@ -286,8 +290,9 @@ const Recorder: React.FC = (): JSX.Element => {
           </div>
         </div>
       </div>
-      {/* --- Bottom Panels --- */}
+      {/* Bottom Panels */}
       <div className="flex-1 flex flex-row space-x-4">
+        {/* Panel 1: Test Suites */}
         <div className="w-1/4 flex flex-col space-y-2">
           <h3 className="px-1 text-lg font-semibold text-gray-800">Test Suites</h3>
           <div className="flex-1 pb-1 pr-1">
@@ -307,6 +312,7 @@ const Recorder: React.FC = (): JSX.Element => {
             </StyledPanel>
           </div>
         </div>
+        {/* Panel 2: Recorded Steps */}
         <div className="w-1/2 flex flex-col space-y-2">
           <h3 className="px-1 text-lg font-semibold text-gray-800">Recorded Steps</h3>
           <div className="flex-1 pb-1 pr-1">
@@ -326,6 +332,7 @@ const Recorder: React.FC = (): JSX.Element => {
             </StyledPanel>
           </div>
         </div>
+        {/* Panel 3: Run Output */}
         <div className="w-1/3 flex flex-col space-y-2">
           <h3 className="px-1 text-lg font-semibold text-gray-800">Run Output</h3>
           <div className="flex-1 pb-1 pr-1">
