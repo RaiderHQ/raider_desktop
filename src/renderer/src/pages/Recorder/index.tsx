@@ -5,20 +5,8 @@ import CommandList from '@components/CommandList'
 import TestSuitePanel from '@components/TestSuitePanel'
 import OutputPanel from '@components/OutputPanel'
 import InputField from '@components/InputField'
-import { FaEye, FaCode } from 'react-icons/fa'
-
-// Define the shape of our data with unique IDs
-interface Test {
-  id: string
-  name: string
-  url: string
-  steps: string[]
-}
-interface Suite {
-  id: string
-  name: string
-  tests: Test[]
-}
+// A more standard relative path for types from a renderer file
+import type { Suite, Test } from '../../../main/types'
 
 const createNewTest = (): Test => ({
   id: crypto.randomUUID(),
@@ -37,18 +25,6 @@ const Recorder: React.FC = (): JSX.Element => {
   const [isRecording, setIsRecording] = useState<boolean>(false)
   const [runOutput, setRunOutput] = useState<string>('')
   const [isRunning, setIsRunning] = useState<boolean>(false)
-  const [showParsedText, setShowParsedText] = useState<boolean>(true)
-
-
-  const StyledPanel: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    return (
-      <div className="relative w-full h-full">
-        <div className="relative w-full h-full flex flex-col border border-black rounded-lg bg-white z-10 overflow-y-auto p-4">
-          {children}
-        </div>
-      </div>
-    )
-  }
 
   // --- Refs to hold the latest state for listeners ---
   const activeTestRef = useRef(activeTest)
@@ -56,11 +32,15 @@ const Recorder: React.FC = (): JSX.Element => {
     activeTestRef.current = activeTest
   }, [activeTest])
 
-  const activeSuiteIdRef = useRef(activeSuiteId);
+  const activeSuiteIdRef = useRef(activeSuiteId)
   useEffect(() => {
-    activeSuiteIdRef.current = activeSuiteId;
-  }, [activeSuiteId]);
+    activeSuiteIdRef.current = activeSuiteId
+  }, [activeSuiteId])
 
+  const suitesRef = useRef(suites)
+  useEffect(() => {
+    suitesRef.current = suites
+  }, [suites])
 
   const activeSuite = React.useMemo(
     () => suites.find((s) => s.id === activeSuiteId),
@@ -68,45 +48,54 @@ const Recorder: React.FC = (): JSX.Element => {
   )
 
   // --- Handlers ---
-  const handleCreateSuite = useCallback((suiteName: string) => {
-    if (suiteName && !suites.find((s) => s.name === suiteName)) {
-      window.api.createSuite(suiteName)
-    }
-  }, [suites])
+  const handleCreateSuite = useCallback(
+    (suiteName: string) => {
+      if (suiteName && !suites.find((s) => s.name === suiteName)) {
+        window.api.createSuite(suiteName)
+      }
+    },
+    [suites]
+  )
 
   const handleDeleteSuite = useCallback((suiteIdToDelete: string) => {
-    if (window.confirm('Are you sure you want to delete this suite and all its tests?')) {
-      window.api.deleteSuite(suiteIdToDelete).then(() => {
-        if (activeSuiteId === suiteIdToDelete) {
-          setActiveSuiteId(null)
-          setActiveTest(null)
-        }
-      })
+    if (window.confirm('Are you sure you want to delete this suite?')) {
+      window.api.deleteSuite(suiteIdToDelete)
     }
-  }, [activeSuiteId])
+  }, [])
 
-  const handleTestDelete = useCallback((testIdToDelete: string) => {
-    if (activeSuiteId) {
-      window.api.deleteTest(activeSuiteId, testIdToDelete);
-    }
-  }, [activeSuiteId]);
+  const handleTestDelete = useCallback(
+    (testIdToDelete: string) => {
+      if (activeSuiteId) {
+        window.api.deleteTest(activeSuiteId, testIdToDelete)
+      }
+    },
+    [activeSuiteId]
+  )
 
   const handleSuiteChange = (suiteId: string) => {
     setActiveSuiteId(suiteId)
     const suite = suites.find((s) => s.id === suiteId)
     setActiveTest(suite?.tests[0] ?? null)
   }
+
   const handleTestSelect = (testId: string) => {
     const test = activeSuite?.tests.find((t) => t.id === testId)
     if (test) {
       setActiveTest(test)
     }
   }
+
+  const handleSaveRecording = useCallback(() => {
+    if (activeSuiteId && activeTest) {
+      window.api.saveRecording(activeSuiteId, activeTest)
+    }
+  }, [activeSuiteId, activeTest])
+
   const handleNewTest = () => {
     if (activeSuiteId) {
       const newTest = createNewTest()
       setActiveTest(newTest)
-      window.api.saveTest(activeSuiteId, newTest)
+      window.api.saveRecording(activeSuiteId, newTest)
     }
   }
 
@@ -121,133 +110,145 @@ const Recorder: React.FC = (): JSX.Element => {
     window.api.stopRecordingMain()
   }, [])
 
-  const handleSaveTest = useCallback((): void => {
-    if (activeSuiteId && activeTest?.name) {
-      window.api.saveTest(activeSuiteId, activeTest)
-    }
-  }, [activeSuiteId, activeTest])
-
   const handleRunTest = useCallback(async (): Promise<void> => {
     if (activeSuiteId && activeTest?.id) {
-      await handleSaveTest()
+      handleSaveRecording() // Always save before running
       setIsRunning(true)
       setRunOutput(`Running test: ${activeTest.name}...`)
+      // This correctly calls the 'run-test' handler
       const result = await window.api.runTest(activeSuiteId, activeTest.id)
       setRunOutput(result.output)
       setIsRunning(false)
     }
-  }, [activeSuiteId, activeTest, handleSaveTest])
+  }, [activeSuiteId, activeTest, handleSaveRecording])
 
-  const handleReorderTests = useCallback((suiteId: string, reorderedTests: Test[]) => {
-    setSuites((prevSuites) =>
-      prevSuites.map((suite) => {
-        if (suite.id === suiteId) {
-          return { ...suite, tests: reorderedTests }
-        }
-        return suite
-      })
-    )
-    // window.api.reorderTests(suiteId, reorderedTests);
-  }, [])
-
-  const handleRunAllTests = useCallback(async (suiteId: string) => {
-    const suiteToRun = suites.find((s) => s.id === suiteId);
-    if (suiteToRun) {
-      await handleSaveTest();
-      setIsRunning(true);
-      setRunOutput(`Running suite: ${suiteToRun.name}...`);
-      const result = await window.api.runSuite(suiteToRun.id);
-      setRunOutput(result.output);
-      setIsRunning(false);
-    }
-  }, [suites, handleSaveTest]);
+  const handleRunAllTests = useCallback(
+    async (suiteId: string) => {
+      const suiteToRun = suites.find((s) => s.id === suiteId)
+      if (suiteToRun) {
+        handleSaveRecording() // Save any pending changes first
+        setIsRunning(true)
+        setRunOutput(`Running suite: ${suiteToRun.name}...`)
+        const result = await window.api.runSuite(suiteToRun.id)
+        setRunOutput(result.output)
+        setIsRunning(false)
+      }
+    },
+    [suites, handleSaveRecording]
+  )
 
   const handleExportTest = useCallback(async (): Promise<void> => {
     if (activeTest?.steps && activeTest.steps.length > 0) {
-      const result = await window.api.exportTest(activeTest.name, activeTest.steps);
+      const result = await window.api.exportTest(activeTest.name, activeTest.steps)
       if (result.success) {
-        setRunOutput(`Test exported successfully to ${result.path}`);
+        setRunOutput(`Test exported successfully to ${result.path}`)
       } else if (result.error) {
-        setRunOutput(`Export failed: ${result.error}`);
+        setRunOutput(`Export failed: ${result.error}`)
       }
     } else {
-      setRunOutput('There are no steps to export.');
+      setRunOutput('There are no steps to export.')
     }
-  }, [activeTest]);
+  }, [activeTest])
 
-  // This effect should only run ONCE to set up listeners.
+  // This effect runs once to set up all main process listeners
   useEffect(() => {
     window.api.getSuites().then((initialSuites) => {
-      setSuites(initialSuites);
+      setSuites(initialSuites)
       if (initialSuites.length > 0) {
-        const firstSuite = initialSuites[0];
-        setActiveSuiteId(firstSuite.id);
-        setActiveTest(firstSuite.tests[0] ?? null);
+        const firstSuite = initialSuites[0]
+        setActiveSuiteId(firstSuite.id)
+        setActiveTest(firstSuite.tests[0] ?? null)
       }
-    });
+    })
 
+    // This listener handles all backend data changes to keep the UI in sync
     const suiteUpdatedCleanup = window.electron.ipcRenderer.on(
       'suite-updated',
       (_event, updatedSuites: Suite[]) => {
-        // Use a functional update for `setSuites` to safely access the previous state
-        setSuites(prevSuites => {
-          // Check if a suite has been added
-          if (updatedSuites.length > prevSuites.length) {
-            const newSuite = updatedSuites.find(s => !prevSuites.some(ps => ps.id === s.id));
-            if (newSuite) {
-              // A new suite was added, so select it.
-              setActiveSuiteId(newSuite.id);
-              setActiveTest(newSuite.tests[0] ?? null);
-            }
-          } else {
-            // This is not a new suite creation, so handle other updates like test deletion
-            const currentSuiteId = activeSuiteIdRef.current;
-            const currentTest = activeTestRef.current;
-            const activeSuiteNow = updatedSuites.find(s => s.id === currentSuiteId);
+        const previousSuites = suitesRef.current
+        const currentSuiteId = activeSuiteIdRef.current
+        const currentTestId = activeTestRef.current?.id
 
-            if (activeSuiteNow && currentTest && !activeSuiteNow.tests.find(t => t.id === currentTest.id)) {
-              setActiveTest(activeSuiteNow.tests[0] ?? null);
-            }
+        // 1. Update the main suites list
+        setSuites(updatedSuites)
+
+        // 2. Check if a new suite was added to auto-select it
+        if (updatedSuites.length > previousSuites.length) {
+          const newSuite = updatedSuites.find((s) => !previousSuites.some((ps) => ps.id === s.id))
+          if (newSuite) {
+            setActiveSuiteId(newSuite.id)
+            setActiveTest(newSuite.tests[0] ?? null)
+            return // Exit early
           }
-          // Return the new state for React to set
-          return updatedSuites;
-        });
+        }
+
+        // 3. Find the currently active suite in the new data
+        const activeSuiteNow = updatedSuites.find((s) => s.id === currentSuiteId)
+
+        if (activeSuiteNow) {
+          // 4. Find the currently active test to sync any changes
+          const activeTestNow = activeSuiteNow.tests.find((t) => t.id === currentTestId)
+          if (activeTestNow) {
+            // If the test still exists, update our state to match the saved version
+            setActiveTest(activeTestNow)
+          } else {
+            // If the test was deleted, select the first test in the suite (or null)
+            setActiveTest(activeSuiteNow.tests[0] ?? null)
+          }
+        } else if (currentSuiteId) {
+          // 5. The active suite was deleted, so select the first available suite
+          const firstSuite = updatedSuites[0] ?? null
+          setActiveSuiteId(firstSuite?.id ?? null)
+          setActiveTest(firstSuite?.tests[0] ?? null)
+        }
       }
-    );
+    )
 
     const handleRecordingStarted = (_event: any, loadedUrl: string): void => {
-      setIsRecording(true);
-      const currentTest = activeTestRef.current;
+      setIsRecording(true)
+      const currentTest = activeTestRef.current
       if (currentTest) {
-        setActiveTest({ ...currentTest, steps: [`@driver.get("${loadedUrl}")`] });
+        setActiveTest({ ...currentTest, steps: [`@driver.get("${loadedUrl}")`] })
       }
-      setRunOutput('');
-    };
+      setRunOutput('')
+    }
 
-    const handleRecordingStopped = () => setIsRecording(false);
+    const handleRecordingStopped = () => setIsRecording(false)
 
     const handleNewCommand = (_event: any, command: string): void => {
-      const currentTest = activeTestRef.current;
-      if (currentTest) {
-        setActiveTest(prevTest => prevTest ? { ...prevTest, steps: [...prevTest.steps, command] } : null);
-      }
-    };
+      setActiveTest((prevTest) =>
+        prevTest ? { ...prevTest, steps: [...prevTest.steps, command] } : null
+      )
+    }
 
-    const startCleanup = window.electron.ipcRenderer.on('recording-started', handleRecordingStarted);
-    const stopCleanup = window.electron.ipcRenderer.on('recording-stopped', handleRecordingStopped);
-    const commandCleanup = window.electron.ipcRenderer.on('new-recorded-command', handleNewCommand);
+    const startCleanup = window.electron.ipcRenderer.on('recording-started', handleRecordingStarted)
+    const stopCleanup = window.electron.ipcRenderer.on('recording-stopped', handleRecordingStopped)
+    const commandCleanup = window.electron.ipcRenderer.on(
+      'new-recorded-command',
+      handleNewCommand
+    )
 
     return () => {
-      suiteUpdatedCleanup?.();
-      startCleanup?.();
-      stopCleanup?.();
-      commandCleanup?.();
-    };
-  }, []);
+      suiteUpdatedCleanup?.()
+      startCleanup?.()
+      stopCleanup?.()
+      commandCleanup?.()
+    }
+  }, []) // Empty dependency array ensures this runs only once
+
+  const StyledPanel: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    return (
+      <div className="relative w-full h-full">
+        <div className="relative w-full h-full flex flex-col border border-black rounded-lg bg-white z-10 overflow-y-auto p-4">
+          {children}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-screen w-screen p-4 space-y-4 bg-gray-50">
-      {/* --- Top Section --- */}
+      {/* Top Section */}
       <div className="flex-none pb-1 pr-1">
         <div className="relative">
           <div className="relative flex flex-col border border-black rounded-lg bg-white z-10 p-4 space-y-4">
@@ -281,7 +282,7 @@ const Recorder: React.FC = (): JSX.Element => {
                 <Button onClick={handleStopRecording} disabled={!isRecording} type={!isRecording ? 'disabled' : 'secondary'}>Stop</Button>
               </div>
               <div className="flex items-center space-x-2">
-                <Button onClick={handleSaveTest} disabled={!activeTest || isRecording} type={!activeTest || isRecording ? 'disabled' : 'primary'}>Save Test</Button>
+                <Button onClick={handleSaveRecording} disabled={!activeTest || isRecording} type={!activeTest || isRecording ? 'disabled' : 'primary'}>Save Test</Button>
                 <Button onClick={handleNewTest} disabled={!activeSuiteId} type={!activeSuiteId ? 'disabled' : 'secondary'}>New Test</Button>
                 <Button onClick={handleExportTest} disabled={!activeTest || isRecording} type={!activeTest || isRecording ? 'disabled' : 'secondary'}>Export Script</Button>
               </div>
@@ -289,7 +290,7 @@ const Recorder: React.FC = (): JSX.Element => {
           </div>
         </div>
       </div>
-      {/* --- Bottom Panels --- */}
+      {/* Bottom Panels */}
       <div className="flex-1 flex flex-row space-x-4">
         {/* Panel 1: Test Suites */}
         <div className="w-1/4 flex flex-col space-y-2">
@@ -306,23 +307,27 @@ const Recorder: React.FC = (): JSX.Element => {
                 onDeleteSuite={handleDeleteSuite}
                 onTestDelete={handleTestDelete}
                 onRunAllTests={handleRunAllTests}
-                onReorderTests={handleReorderTests}
+                onReorderTests={() => {}} // Placeholder
               />
             </StyledPanel>
           </div>
         </div>
         {/* Panel 2: Recorded Steps */}
         <div className="w-1/2 flex flex-col space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-lg font-semibold text-gray-800">Recorded Steps</h3>
-          </div>
+          <h3 className="px-1 text-lg font-semibold text-gray-800">Recorded Steps</h3>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>
               <CommandList
                 steps={activeTest?.steps ?? []}
-                setSteps={(newSteps) => setActiveTest((p) => (p ? { ...p, steps: newSteps } : null))}
-                onDeleteStep={(indexToDelete) => setActiveTest((p) => p ? { ...p, steps: p.steps.filter((_, i) => i !== indexToDelete) } : null)}
-                showParsedText={showParsedText}
+                setSteps={(newSteps) =>
+                  setActiveTest((p) => (p ? { ...p, steps: newSteps } : null))
+                }
+                onDeleteStep={(indexToDelete) =>
+                  setActiveTest((p) =>
+                    p ? { ...p, steps: p.steps.filter((_, i) => i !== indexToDelete) } : null
+                  )
+                }
+                showParsedText={true} // Placeholder
               />
             </StyledPanel>
           </div>

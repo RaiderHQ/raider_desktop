@@ -1,10 +1,8 @@
-import { app, shell, BrowserWindow, ipcMain, IpcMainEvent, dialog } from "electron";
+import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { randomUUID } from 'crypto'
-import fs from 'fs'
-import { appState, setMainWindow, setRecorderWindow, mainWindow, recorderWindow } from './handlers/appState';
-
+import { setMainWindow, appState } from './handlers/appState'
+import { Test } from './handlers/appState'
 // Import all your existing individual handlers
 import selectFolder from './handlers/selectFolder'
 import readDirectory from './handlers/readDirectory'
@@ -13,7 +11,6 @@ import readFile from './handlers/readFile'
 import readImage from './handlers/readImage'
 import openAllure from './handlers/openAllure'
 import editFile from './handlers/editFile'
-import runTests from './handlers/runTests'
 import updateBrowserUrl from './handlers/updateBrowserUrl'
 import updateBrowserType from './handlers/updateBrowserType'
 import isMobileProject from './handlers/isMobileProject'
@@ -24,20 +21,17 @@ import getMobileCapabilities from './handlers/getMobileCapabilities'
 import isRubyInstalled from './handlers/isRubyInstalled'
 import runRecording from './handlers/runRecording'
 import commandParser from './handlers/commandParser'
-
-// Import the newly separated handlers
-import loadUrlRequest from './handlers/loadUrlRequest'
-import startRecording from './handlers/startRecording'
-import stopRecording from './handlers/stopRecording'
 import getSuites from './handlers/getSuites'
 import createSuite from './handlers/createSuite'
 import deleteSuite from './handlers/deleteSuite'
-import saveTest from './handlers/saveTest'
 import runSuite from './handlers/runSuite'
 import exportTest from './handlers/exportTest'
 import deleteTest from './handlers/deleteTest'
 import recorderEvent from './handlers/recorderEvent'
-
+import loadUrlRequest from './handlers/loadUrlRequest'
+import startRecordingMain from './handlers/startRecordingMain'
+import stopRecordingMain from './handlers/stopRecordingMain'
+import saveRecording from "./handlers/saveRecording";
 
 const iconPath = join(
   __dirname,
@@ -49,7 +43,7 @@ const iconPath = join(
 )
 
 function createWindow(): void {
-  const newMainWindow = new BrowserWindow({ // Use a temporary variable
+  const newMainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     show: false,
@@ -61,25 +55,25 @@ function createWindow(): void {
     }
   })
 
-  setMainWindow(newMainWindow); // Set the global mainWindow
+  setMainWindow(newMainWindow)
 
   if (is.dev) {
-    mainWindow!.webContents.openDevTools()
+    appState.mainWindow!.webContents.openDevTools()
   }
 
-  mainWindow!.on('ready-to-show', () => {
-    mainWindow!.show()
+  appState.mainWindow!.on('ready-to-show', () => {
+    appState.mainWindow!.show()
   })
 
-  mainWindow!.webContents.setWindowOpenHandler((details) => {
+  appState.mainWindow!.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow!.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    appState.mainWindow!.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow!.loadFile(join(__dirname, '../renderer/index.html'))
+    appState.mainWindow!.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
 
@@ -112,7 +106,6 @@ ipcMain.handle('read-image', readImage)
 ipcMain.handle('edit-file', editFile)
 ipcMain.handle('run-ruby-raider', runRubyRaider)
 ipcMain.handle('is-mobile-project', isMobileProject)
-ipcMain.handle('run-tests', runTests)
 ipcMain.handle('update-browser-url', updateBrowserUrl)
 ipcMain.handle('update-browser-type', updateBrowserType)
 ipcMain.handle('run-command', runCommand)
@@ -120,20 +113,32 @@ ipcMain.handle('install-raider', installRaider)
 ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)
 ipcMain.handle('get-mobile-capabilities', getMobileCapabilities)
 ipcMain.handle('is-ruby-installed', isRubyInstalled)
-ipcMain.handle('run-test', (event, args) => runRecording(args)); // runRecording is also now a handler
 ipcMain.handle('command-parser', async (_event, command: string) => {
-  const friendlyText = commandParser(command);
-  return friendlyText;
-});
-// Newly separated handlers
-ipcMain.handle('load-url-request', loadUrlRequest)
-ipcMain.handle('start-recording-main', () => startRecording(mainWindow!)) // Pass mainWindow
-ipcMain.handle('stop-recording-main', stopRecording)
+  return commandParser(command)
+})
 ipcMain.handle('get-suites', getSuites)
-ipcMain.handle('create-suite', (event, suiteName: string) => createSuite(mainWindow!, event, suiteName))
-ipcMain.handle('delete-suite', (event, suiteId: string) => deleteSuite(mainWindow!, event, suiteId))
-ipcMain.handle('save-test', (event, args) => saveTest(mainWindow!, event, args))
+ipcMain.handle('create-suite', (event, suiteName: string) => createSuite(appState.mainWindow!, event, suiteName))
+ipcMain.handle('delete-suite', (event, suiteId: string) => deleteSuite(appState.mainWindow!, event, suiteId))
+ipcMain.handle('run-test', async (_event, suiteId: string, testId: string) => {
+  const suite = appState.suites.get(suiteId)
+  const test = suite?.tests.find((t) => t.id === testId)
+
+  if (!test) {
+    return { success: false, output: `Test with ID ${testId} not found.` }
+  }
+
+  // Re-use the existing runRecording logic by passing the found test
+  return runRecording({ savedTest: test })
+})
 ipcMain.handle('run-suite', runSuite)
 ipcMain.handle('export-test', exportTest)
-ipcMain.handle('delete-test', (event, args) => deleteTest(mainWindow!, event, args))
-ipcMain.on('recorder-event', (event: IpcMainEvent, data: any) => recorderEvent(mainWindow!, event, data));
+ipcMain.handle('delete-test', (event, args) => deleteTest(appState.mainWindow!, event, args))
+
+// Refactored Handlers
+ipcMain.handle('load-url-request', loadUrlRequest)
+ipcMain.handle('start-recording-main', startRecordingMain)
+ipcMain.handle('stop-recording-main', stopRecordingMain)
+ipcMain.on('recorder-event', recorderEvent)
+ipcMain.handle('save-recording', (event, suiteId: string, test: Test) => {
+  return saveRecording(appState.mainWindow, suiteId, test)
+})
