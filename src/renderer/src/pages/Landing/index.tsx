@@ -33,7 +33,7 @@ const Landing: React.FC = (): JSX.Element => {
       }
 
       setProjectPath(folder)
-      navigate('/project/overview')
+      navigate('/overview')
     } catch (error) {
       toast.error(t('landing.error.openProject'))
     } finally {
@@ -58,7 +58,7 @@ const Landing: React.FC = (): JSX.Element => {
           <ProjectSelector
             icon={OpenFolder}
             description={t('button.create.description')}
-            url="/project/new"
+            url="/new"
             buttonValue={t('button.create.text')}
             modalTitleKey="information.createProject.title"
             modalMessageKey="information.createProject.message"

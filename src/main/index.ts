@@ -1,6 +1,11 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, IpcMainEvent, dialog } from "electron";
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { randomUUID } from 'crypto'
+import fs from 'fs'
+import { appState, setMainWindow, setRecorderWindow, mainWindow, recorderWindow } from './handlers/appState';
+
+// Import all your existing individual handlers
 import selectFolder from './handlers/selectFolder'
 import readDirectory from './handlers/readDirectory'
 import runRubyRaider from './handlers/runRubyRaider'
@@ -17,6 +22,22 @@ import installRaider from './handlers/installRaider'
 import updateMobileCapabilities from './handlers/updateMobileCapabilities'
 import getMobileCapabilities from './handlers/getMobileCapabilities'
 import isRubyInstalled from './handlers/isRubyInstalled'
+import runRecording from './handlers/runRecording'
+import commandParser from './handlers/commandParser'
+
+// Import the newly separated handlers
+import loadUrlRequest from './handlers/loadUrlRequest'
+import startRecording from './handlers/startRecording'
+import stopRecording from './handlers/stopRecording'
+import getSuites from './handlers/getSuites'
+import createSuite from './handlers/createSuite'
+import deleteSuite from './handlers/deleteSuite'
+import saveTest from './handlers/saveTest'
+import runSuite from './handlers/runSuite'
+import exportTest from './handlers/exportTest'
+import deleteTest from './handlers/deleteTest'
+import recorderEvent from './handlers/recorderEvent'
+
 
 const iconPath = join(
   __dirname,
@@ -28,9 +49,9 @@ const iconPath = join(
 )
 
 function createWindow(): void {
-  const mainWindow = new BrowserWindow({
-    width: 1000,
-    height: 750,
+  const newMainWindow = new BrowserWindow({ // Use a temporary variable
+    width: 1200,
+    height: 800,
     show: false,
     autoHideMenuBar: true,
     icon: iconPath,
@@ -40,64 +61,49 @@ function createWindow(): void {
     }
   })
 
+  setMainWindow(newMainWindow); // Set the global mainWindow
+
   if (is.dev) {
-    mainWindow.webContents.openDevTools()
+    mainWindow!.webContents.openDevTools()
   }
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+  mainWindow!.on('ready-to-show', () => {
+    mainWindow!.show()
   })
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
+  mainWindow!.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
 
-  // HMR for renderer base on electron-vite cli.
-  // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    mainWindow!.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    mainWindow!.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.ruby-raider') // Set a unique app ID
+  electronApp.setAppUserModelId('com.ruby-raider')
 
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
-
   createWindow()
 
   app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
 
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.
+// --- IPC Handlers ---
 ipcMain.handle('select-folder', selectFolder)
 ipcMain.handle('read-directory', readDirectory)
 ipcMain.handle('open-allure', openAllure)
@@ -114,3 +120,20 @@ ipcMain.handle('install-raider', installRaider)
 ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)
 ipcMain.handle('get-mobile-capabilities', getMobileCapabilities)
 ipcMain.handle('is-ruby-installed', isRubyInstalled)
+ipcMain.handle('run-test', (event, args) => runRecording(args)); // runRecording is also now a handler
+ipcMain.handle('command-parser', async (_event, command: string) => {
+  const friendlyText = commandParser(command);
+  return friendlyText;
+});
+// Newly separated handlers
+ipcMain.handle('load-url-request', loadUrlRequest)
+ipcMain.handle('start-recording-main', () => startRecording(mainWindow!)) // Pass mainWindow
+ipcMain.handle('stop-recording-main', stopRecording)
+ipcMain.handle('get-suites', getSuites)
+ipcMain.handle('create-suite', (event, suiteName: string) => createSuite(mainWindow!, event, suiteName))
+ipcMain.handle('delete-suite', (event, suiteId: string) => deleteSuite(mainWindow!, event, suiteId))
+ipcMain.handle('save-test', (event, args) => saveTest(mainWindow!, event, args))
+ipcMain.handle('run-suite', runSuite)
+ipcMain.handle('export-test', exportTest)
+ipcMain.handle('delete-test', (event, args) => deleteTest(mainWindow!, event, args))
+ipcMain.on('recorder-event', (event: IpcMainEvent, data: any) => recorderEvent(mainWindow!, event, data));
