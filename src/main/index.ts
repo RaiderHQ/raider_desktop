@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { setMainWindow, appState } from './handlers/appState'
-
+import { Test } from './handlers/appState'
 // Import all your existing individual handlers
 import selectFolder from './handlers/selectFolder'
 import readDirectory from './handlers/readDirectory'
@@ -25,7 +25,6 @@ import commandParser from './handlers/commandParser'
 import getSuites from './handlers/getSuites'
 import createSuite from './handlers/createSuite'
 import deleteSuite from './handlers/deleteSuite'
-import saveTest from './handlers/saveTest'
 import runSuite from './handlers/runSuite'
 import exportTest from './handlers/exportTest'
 import deleteTest from './handlers/deleteTest'
@@ -33,6 +32,7 @@ import recorderEvent from './handlers/recorderEvent'
 import loadUrlRequest from './handlers/loadUrlRequest'
 import startRecordingMain from './handlers/startRecordingMain'
 import stopRecordingMain from './handlers/stopRecordingMain'
+import saveRecording from "./handlers/saveRecording";
 
 const iconPath = join(
   __dirname,
@@ -115,14 +115,15 @@ ipcMain.handle('install-raider', installRaider)
 ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)
 ipcMain.handle('get-mobile-capabilities', getMobileCapabilities)
 ipcMain.handle('is-ruby-installed', isRubyInstalled)
-ipcMain.handle('run-test', (event, args) => runRecording(args))
 ipcMain.handle('command-parser', async (_event, command: string) => {
   return commandParser(command)
 })
 ipcMain.handle('get-suites', getSuites)
 ipcMain.handle('create-suite', (event, suiteName: string) => createSuite(appState.mainWindow!, event, suiteName))
 ipcMain.handle('delete-suite', (event, suiteId: string) => deleteSuite(appState.mainWindow!, event, suiteId))
-ipcMain.handle('save-test', (event, args) => saveTest(appState.mainWindow!, event, args))
+ipcMain.handle('save-recording', (event, suiteId: string, test: Test) => {
+  return saveRecording(appState.mainWindow, suiteId, test)
+})
 ipcMain.handle('run-suite', runSuite)
 ipcMain.handle('export-test', exportTest)
 ipcMain.handle('delete-test', (event, args) => deleteTest(appState.mainWindow!, event, args))
