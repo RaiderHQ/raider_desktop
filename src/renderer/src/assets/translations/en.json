@@ -193,5 +193,22 @@
       "outdated": "Ruby version {{version}} is outdated. Please install Ruby 3.0.0 or higher.\nCommand output: {{output}}\nDebug Info:\n{{debugInfo}}",
       "unknown": "An error occurred: {{error}}\nDebug Info:\n{{debugInfo}}"
     }
+  },
+  "recorder": {
+    "placeholder": {
+      "url": "Enter URL to record",
+      "commands": "Recorded Selenium Ruby commands will appear here..."
+    },
+    "button": {
+      "setUrl": "Set URL",
+      "startRecording": "Start Recording",
+      "stopRecording": "Stop Recording",
+      "saveTest": "Save Test",
+      "runTest": "Run Test"
+    },
+    "heading": {
+      "recordedSteps": "Recorded Steps",
+      "runOutput": "Run Output"
+    }
   }
 }
