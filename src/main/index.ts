@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { setMainWindow, appState } from './handlers/appState'
-import { Test } from './handlers/appState'
+import { Test } from '@foundation/Types/test'
 // Import all your existing individual handlers
 import selectFolder from './handlers/selectFolder'
 import readDirectory from './handlers/readDirectory'
@@ -31,7 +31,7 @@ import recorderEvent from './handlers/recorderEvent'
 import loadUrlRequest from './handlers/loadUrlRequest'
 import startRecordingMain from './handlers/startRecordingMain'
 import stopRecordingMain from './handlers/stopRecordingMain'
-import saveRecording from "./handlers/saveRecording";
+import saveRecording from './handlers/saveRecording'
 
 const iconPath = join(
   __dirname,
@@ -126,15 +126,11 @@ ipcMain.handle('run-test', async (_event, suiteId: string, testId: string) => {
   if (!test) {
     return { success: false, output: `Test with ID ${testId} not found.` }
   }
-
-  // Re-use the existing runRecording logic by passing the found test
   return runRecording({ savedTest: test })
 })
 ipcMain.handle('run-suite', runSuite)
 ipcMain.handle('export-test', exportTest)
 ipcMain.handle('delete-test', (event, args) => deleteTest(appState.mainWindow!, event, args))
-
-// Refactored Handlers
 ipcMain.handle('load-url-request', loadUrlRequest)
 ipcMain.handle('start-recording-main', startRecordingMain)
 ipcMain.handle('stop-recording-main', stopRecordingMain)

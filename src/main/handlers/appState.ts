@@ -1,16 +1,5 @@
 import { BrowserWindow } from 'electron'
-
-export interface Test {
-  id: string
-  name: string
-  url: string
-  steps: string[]
-}
-export interface Suite {
-  id: string
-  name: string
-  tests: Test[]
-}
+import type { Suite } from '@foundation/Types/suite'
 
 interface AppState {
   mainWindow: BrowserWindow | null

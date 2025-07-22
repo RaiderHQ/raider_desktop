@@ -1,17 +1,5 @@
 import { appState } from './appState'
-import runRecording from './runRecording' // Assuming runRecording is a handler
-
-interface Test {
-  id: string
-  name: string
-  url: string
-  steps: string[]
-}
-interface Suite {
-  id: string
-  name: string
-  tests: Test[]
-}
+import runRecording from './runRecording'
 
 export default async (_event: Electron.IpcMainEvent, suiteId: string) => {
   const suite = appState.suites.get(suiteId);
