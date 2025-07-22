@@ -8,7 +8,7 @@ import { FileNode } from '@foundation/Types/fileNode'
 
 const Overview: React.FC = () => {
   const { t } = useTranslation()
-  const projectPath: string | null = useProjectStore((state) => state.projectPath);
+  const projectPath: string | null = useProjectStore((state) => state.projectPath)
   const files: FileNode[] = useProjectStore((state) => state.files)
   const navigate = useNavigate()
 
