@@ -1,11 +1,22 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import useProjectStore from '@foundation/Stores/projectStore'
 import ProjectSettings from '@pages/ProjectSettings'
 import RecordingSettings from '@pages/RecorderSettings'
 
 const Settings: React.FC = () => {
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState('project')
+  const projectPath = useProjectStore((state) => state.projectPath)
+
+  const NoProjectLoadedMessage: React.FC = () => (
+    <div className="flex items-center justify-center h-[60vh]">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold mb-2">{t('settings.noProject.title')}</h1>
+        <p className="text-lg">{t('settings.noProject.description')}</p>
+      </div>
+    </div>
+  )
 
   return (
     <div className="flex flex-col w-screen p-8 font-sans">
@@ -14,20 +25,27 @@ const Settings: React.FC = () => {
         <div className="relative h-[80vh] border rounded-lg shadow-sm overflow-y-auto bg-white z-10 p-4">
           <div className="flex border-b">
             <button
-              className={`py-2 px-4 ${activeTab === 'project' ? 'border-b-2 border-blue-500' : ''}`}
+              className={`py-2 px-4 ${
+                activeTab === 'project' ? 'border-b-2 border-blue-500 font-semibold' : 'text-gray-600'
+              }`}
               onClick={() => setActiveTab('project')}
             >
               {t('settings.tabs.project')}
             </button>
             <button
-              className={`py-2 px-4 ${activeTab === 'recording' ? 'border-b-2 border-blue-500' : ''}`}
+              className={`py-2 px-4 ${
+                activeTab === 'recording'
+                  ? 'border-b-2 border-blue-500 font-semibold'
+                  : 'text-gray-600'
+              }`}
               onClick={() => setActiveTab('recording')}
             >
               {t('settings.tabs.recording')}
             </button>
           </div>
           <div className="pt-4">
-            {activeTab === 'project' && <ProjectSettings />}
+            {activeTab === 'project' &&
+              (projectPath ? <ProjectSettings /> : <NoProjectLoadedMessage />)}
             {activeTab === 'recording' && <RecordingSettings />}
           </div>
         </div>
