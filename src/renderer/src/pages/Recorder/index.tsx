@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef, SetStateAction } from 'react'
-import Button from '@components/Button'
 import CommandList from '@components/CommandList'
 import TestSuitePanel from '@components/TestSuitePanel'
 import OutputPanel from '@components/OutputPanel'
-import InputField from '@components/InputField'
+import MainRecorderPanel from '@components/MainRecorderPanel'
+import StyledPanel from '@components/StyledPanel'
+import { Toaster } from 'react-hot-toast'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 
@@ -130,16 +131,15 @@ const Recorder: React.FC = () => {
     [suites, handleSaveRecording]
   )
 
-  const handleExportTest = useCallback(async (): Promise<void> => {
+  const handleExportTest = useCallback(async (): Promise<{
+    success: boolean
+    path?: string
+    error?: string
+  }> => {
     if (activeTest?.steps && activeTest.steps.length > 0) {
-      const result = await window.api.exportTest(activeTest.name, activeTest.steps)
-      if (result.success) {
-        setRunOutput(`Test exported successfully to ${result.path}`)
-      } else if (result.error) {
-        setRunOutput(`Export failed: ${result.error}`)
-      }
+      return window.api.exportTest(activeTest.name, activeTest.steps)
     } else {
-      setRunOutput('There are no steps to export.')
+      return { success: false, error: 'There are no steps to export.' }
     }
   }, [activeTest])
 
@@ -220,59 +220,24 @@ const Recorder: React.FC = () => {
     }
   }, [])
 
-  const StyledPanel: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    return (
-      <div className="relative w-full h-full">
-        <div className="relative w-full h-full flex flex-col border border-black rounded-lg bg-white z-10 overflow-y-auto p-4">
-          {children}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="flex flex-col h-screen w-screen p-4 space-y-4 bg-gray-50">
-      <div className="flex-none pb-1 pr-1">
-        <div className="relative">
-          <div className="relative flex flex-col border border-black rounded-lg bg-white z-10 p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">
-                {activeSuite ? `Suite: ${activeSuite.name}` : 'No Suite Selected'}
-              </h2>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex-1">
-                <InputField
-                  value={activeTest?.name ?? ''}
-                  onChange={(e) => setActiveTest((p) => (p ? { ...p, name: e.target.value } : null))}
-                  placeholder="Test Name"
-                  disabled={!activeTest}
-                />
-              </div>
-              <div className="flex-1">
-                <InputField
-                  value={activeTest?.url ?? ''}
-                  onChange={(e) => setActiveTest((p) => (p ? { ...p, url: e.target.value } : null))}
-                  placeholder="URL to Record"
-                  disabled={!activeTest}
-                />
-              </div>
-            </div>
-            <div className="flex items-center justify-between border-t border-gray-200 pt-4">
-              <div className="flex items-center space-x-2">
-                <Button onClick={handleStartRecording} disabled={!activeTest || isRecording} type={isRecording ? 'disabled' : 'primary'}>Record</Button>
-                <Button onClick={handleRunTest} disabled={!activeTest || isRecording || isRunning} type={!activeTest || isRecording || isRunning ? 'disabled' : 'success'}>Run</Button>
-                <Button onClick={handleStopRecording} disabled={!isRecording} type={!isRecording ? 'disabled' : 'secondary'}>Stop</Button>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button onClick={handleSaveRecording} disabled={!activeTest || isRecording} type={!activeTest || isRecording ? 'disabled' : 'primary'}>Save Test</Button>
-                <Button onClick={handleNewTest} disabled={!activeSuiteId} type={!activeSuiteId ? 'disabled' : 'secondary'}>New Test</Button>
-                <Button onClick={handleExportTest} disabled={!activeTest || isRecording} type={!activeTest || isRecording ? 'disabled' : 'secondary'}>Export Script</Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Toaster />
+      <MainRecorderPanel
+        activeSuiteName={activeSuite?.name}
+        activeTest={activeTest}
+        isRecording={isRecording}
+        isRunning={isRunning}
+        onTestNameChange={(e) => setActiveTest((p) => (p ? { ...p, name: e.target.value } : null))}
+        onUrlChange={(e) => setActiveTest((p) => (p ? { ...p, url: e.target.value } : null))}
+        onStartRecording={handleStartRecording}
+        onRunTest={handleRunTest}
+        onStopRecording={handleStopRecording}
+        onSaveTest={handleSaveRecording}
+        onNewTest={handleNewTest}
+        onExportTest={handleExportTest}
+        activeSuiteId={activeSuiteId}
+      />
       <div className="flex-1 flex flex-row space-x-4">
         <div className="w-1/4 flex flex-col space-y-2">
           <h3 className="px-1 text-lg font-semibold text-gray-800">Test Suites</h3>
