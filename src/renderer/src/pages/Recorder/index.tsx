@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, SetStateAction } from 'react'
 import Button from '@components/Button'
 import CommandList from '@components/CommandList'
 import TestSuitePanel from '@components/TestSuitePanel'
@@ -15,7 +15,6 @@ const createNewTest = (): Test => ({
 })
 
 const Recorder: React.FC = () => {
-  // --- State ---
   const [suites, setSuites] = useState<Suite[]>([])
   const [activeSuiteId, setActiveSuiteId] = useState<string | null>(null)
   const [activeTest, setActiveTest] = useState<Test | null>(null)
@@ -23,7 +22,6 @@ const Recorder: React.FC = () => {
   const [runOutput, setRunOutput] = useState<string>('')
   const [isRunning, setIsRunning] = useState<boolean>(false)
 
-  // --- Refs to hold the latest state for listeners ---
   const activeTestRef = useRef(activeTest)
   useEffect(() => {
     activeTestRef.current = activeTest
@@ -44,7 +42,6 @@ const Recorder: React.FC = () => {
     [suites, activeSuiteId]
   )
 
-  // --- Handlers ---
   const handleCreateSuite = useCallback(
     (suiteName: string) => {
       if (suiteName && !suites.find((s) => s.name === suiteName)) {
@@ -109,10 +106,9 @@ const Recorder: React.FC = () => {
 
   const handleRunTest = useCallback(async (): Promise<void> => {
     if (activeSuiteId && activeTest?.id) {
-      handleSaveRecording() // Always save before running
+      handleSaveRecording()
       setIsRunning(true)
       setRunOutput(`Running test: ${activeTest.name}...`)
-      // This correctly calls the 'run-test' handler
       const result = await window.api.runTest(activeSuiteId, activeTest.id)
       setRunOutput(result.output)
       setIsRunning(false)
@@ -123,7 +119,7 @@ const Recorder: React.FC = () => {
     async (suiteId: string) => {
       const suiteToRun = suites.find((s) => s.id === suiteId)
       if (suiteToRun) {
-        handleSaveRecording() // Save any pending changes first
+        handleSaveRecording()
         setIsRunning(true)
         setRunOutput(`Running suite: ${suiteToRun.name}...`)
         const result = await window.api.runSuite(suiteToRun.id)
@@ -147,7 +143,6 @@ const Recorder: React.FC = () => {
     }
   }, [activeTest])
 
-  // This effect runs once to set up all main process listeners
   useEffect(() => {
     window.api.getSuites().then((initialSuites) => {
       setSuites(initialSuites)
@@ -158,7 +153,6 @@ const Recorder: React.FC = () => {
       }
     })
 
-    // This listener handles all backend data changes to keep the UI in sync
     const suiteUpdatedCleanup = window.electron.ipcRenderer.on(
       'suite-updated',
       (_event, updatedSuites: Suite[]) => {
@@ -166,34 +160,27 @@ const Recorder: React.FC = () => {
         const currentSuiteId = activeSuiteIdRef.current
         const currentTestId = activeTestRef.current?.id
 
-        // 1. Update the main suites list
         setSuites(updatedSuites)
 
-        // 2. Check if a new suite was added to auto-select it
         if (updatedSuites.length > previousSuites.length) {
           const newSuite = updatedSuites.find((s) => !previousSuites.some((ps) => ps.id === s.id))
           if (newSuite) {
             setActiveSuiteId(newSuite.id)
             setActiveTest(newSuite.tests[0] ?? null)
-            return // Exit early
+            return
           }
         }
 
-        // 3. Find the currently active suite in the new data
         const activeSuiteNow = updatedSuites.find((s) => s.id === currentSuiteId)
 
         if (activeSuiteNow) {
-          // 4. Find the currently active test to sync any changes
           const activeTestNow = activeSuiteNow.tests.find((t) => t.id === currentTestId)
           if (activeTestNow) {
-            // If the test still exists, update our state to match the saved version
             setActiveTest(activeTestNow)
           } else {
-            // If the test was deleted, select the first test in the suite (or null)
             setActiveTest(activeSuiteNow.tests[0] ?? null)
           }
         } else if (currentSuiteId) {
-          // 5. The active suite was deleted, so select the first available suite
           const firstSuite = updatedSuites[0] ?? null
           setActiveSuiteId(firstSuite?.id ?? null)
           setActiveTest(firstSuite?.tests[0] ?? null)
@@ -231,7 +218,7 @@ const Recorder: React.FC = () => {
       stopCleanup?.()
       commandCleanup?.()
     }
-  }, []) // Empty dependency array ensures this runs only once
+  }, [])
 
   const StyledPanel: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return (
@@ -245,7 +232,6 @@ const Recorder: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen p-4 space-y-4 bg-gray-50">
-      {/* Top Section */}
       <div className="flex-none pb-1 pr-1">
         <div className="relative">
           <div className="relative flex flex-col border border-black rounded-lg bg-white z-10 p-4 space-y-4">
@@ -287,9 +273,7 @@ const Recorder: React.FC = () => {
           </div>
         </div>
       </div>
-      {/* Bottom Panels */}
       <div className="flex-1 flex flex-row space-x-4">
-        {/* Panel 1: Test Suites */}
         <div className="w-1/4 flex flex-col space-y-2">
           <h3 className="px-1 text-lg font-semibold text-gray-800">Test Suites</h3>
           <div className="flex-1 pb-1 pr-1">
@@ -304,32 +288,34 @@ const Recorder: React.FC = () => {
                 onDeleteSuite={handleDeleteSuite}
                 onTestDelete={handleTestDelete}
                 onRunAllTests={handleRunAllTests}
-                onReorderTests={() => {}} // Placeholder
+                onReorderTests={() => {}}
               />
             </StyledPanel>
           </div>
         </div>
-        {/* Panel 2: Recorded Steps */}
         <div className="w-1/2 flex flex-col space-y-2">
           <h3 className="px-1 text-lg font-semibold text-gray-800">Recorded Steps</h3>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>
               <CommandList
                 steps={activeTest?.steps ?? []}
-                setSteps={(newSteps) =>
-                  setActiveTest((p) => (p ? { ...p, steps: newSteps } : null))
+                setSteps={(newSteps: SetStateAction<string[]>) =>
+                  setActiveTest((prevTest) => {
+                    if (!prevTest) return null
+                    const updatedSteps =
+                      typeof newSteps === 'function' ? newSteps(prevTest.steps) : newSteps
+                    return { ...prevTest, steps: updatedSteps }
+                  })
                 }
                 onDeleteStep={(indexToDelete) =>
                   setActiveTest((p) =>
                     p ? { ...p, steps: p.steps.filter((_, i) => i !== indexToDelete) } : null
                   )
                 }
-                showParsedText={true} // Placeholder
               />
             </StyledPanel>
           </div>
         </div>
-        {/* Panel 3: Run Output */}
         <div className="w-1/3 flex flex-col space-y-2">
           <h3 className="px-1 text-lg font-semibold text-gray-800">Run Output</h3>
           <div className="flex-1 pb-1 pr-1">

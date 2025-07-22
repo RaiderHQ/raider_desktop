@@ -2,7 +2,7 @@ import { BrowserWindow, dialog } from 'electron'
 import fs from 'fs'
 import type { TestData } from '@foundation/Types/testData'
 
-export default async (_event: Electron.IpcMainEvent, { testName, steps }: TestData) => {
+export default async ({ testName, steps }: TestData) => {
   const window = BrowserWindow.getFocusedWindow()
   if (!window) {
     return { success: false, error: 'No focused window available to show the save dialog.' }
