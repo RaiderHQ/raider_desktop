@@ -68,6 +68,8 @@ const api = {
     ipcRenderer.invoke('export-test', { testName, steps }),
   runTest: async (suiteId: string, testId: string): Promise<{ success: boolean; output: string }> =>
     ipcRenderer.invoke('run-test', suiteId, testId),
+  updateRecordingSettings: (settings: { implicitWait: number }) =>
+    ipcRenderer.invoke('update-recording-settings', settings)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
