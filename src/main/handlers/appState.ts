@@ -8,6 +8,30 @@ interface AppState {
   suites: Map<string, Suite>
 }
 
+interface RecordingSettings {
+  implicitWait: number
+}
+
+let recordingSettings: RecordingSettings = {
+  implicitWait: 30
+}
+
+/**
+ * Updates the global recording settings.
+ * @param newSettings - The new settings object.
+ */
+export function setRecordingSettings(newSettings: RecordingSettings): void {
+  recordingSettings = newSettings
+}
+
+/**
+ * Retrieves the current recording settings.
+ * @returns The current recording settings.
+ */
+export function getRecordingSettings(): RecordingSettings {
+  return recordingSettings
+}
+
 export const appState: AppState = {
   mainWindow: null,
   recorderWindow: null,
