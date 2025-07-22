@@ -131,6 +131,14 @@
         "placeholder": "Enter app name"
       },
       "updateSuccess": "Mobile settings updated successfully!"
+    },
+    "tabs": {
+      "project": "Project Settings",
+      "recording": "Recording Settings"
+    },
+    "recording": {
+      "title": "Recording Settings",
+      "description": "This section is under development."
     }
   },
   "overview": {
