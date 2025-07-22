@@ -1,6 +1,7 @@
-import React, { useRef } from 'react'
+import React, { useRef, useState } from 'react'
 import CommandBlock from '@components/CommandBlock'
 import { useTranslation } from 'react-i18next'
+import Button from '@components/Button'
 
 interface CommandListProps {
   steps: string[]
@@ -11,6 +12,7 @@ interface CommandListProps {
 const CommandList: React.FC<CommandListProps> = ({ steps, setSteps, onDeleteStep }) => {
   const { t } = useTranslation()
   const dragItemIndex = useRef<number | null>(null)
+  const [showCode, setShowCode] = useState(false)
 
   const handleDragStart = (index: number): void => {
     dragItemIndex.current = index
@@ -31,13 +33,20 @@ const CommandList: React.FC<CommandListProps> = ({ steps, setSteps, onDeleteStep
   }
 
   return (
-      <div className="w-full h-full max-h-[60vh] overflow-y-auto p-1 bg-gray-50 rounded-b-md">
+    <div className="flex flex-col h-full">
+      <div className="flex-none p-1 border-b border-gray-200">
+        <Button onClick={() => setShowCode(!showCode)} type="secondary">
+          {showCode ? 'Show Friendly View' : 'Show Code View'}
+        </Button>
+      </div>
+      <div className="w-full flex-grow h-full max-h-[60vh] overflow-y-auto p-1 bg-gray-50 rounded-b-md">
         {steps.length > 0 ? (
           steps.map((step, index) => (
             <CommandBlock
               key={index}
               command={step}
               index={index}
+              showCode={showCode}
               onDragStart={handleDragStart}
               onDragEnter={handleDragEnter}
               onDragEnd={handleDragEnd}
@@ -50,6 +59,7 @@ const CommandList: React.FC<CommandListProps> = ({ steps, setSteps, onDeleteStep
           </div>
         )}
       </div>
+    </div>
   )
 }
 
