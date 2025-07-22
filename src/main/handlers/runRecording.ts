@@ -5,17 +5,17 @@ import path from 'path'
 
 interface AppState {
   savedTest: { name: string; steps: string[] } | null
+  implicitWait: number
 }
 
 /**
  * Generates the full Ruby RSpec code from an array of steps.
  * @param testName The name for the 'describe' block in RSpec.
  * @param steps The array of command strings.
+ * @param implicitWait The implicit wait time in seconds.
  */
-function generateRspecCode(testName: string, steps: string[]): string {
-  const formattedSteps = steps
-    .map((step) => `    ${step}`)
-    .join('\n    sleep(1)\n')
+function generateRspecCode(testName: string, steps: string[], implicitWait: number): string {
+  const formattedSteps = steps.map((step) => `    ${step}`).join('\n    sleep(1)\n')
   return `
 require 'selenium-webdriver'
 require 'rspec'
@@ -23,7 +23,7 @@ require 'rspec'
 describe '${testName}' do
   before(:each) do
     @driver = Selenium::WebDriver.for :chrome
-    @wait = Selenium::WebDriver::Wait.new(timeout: 10)
+    @wait = Selenium::WebDriver::Wait.new(timeout: ${implicitWait})
     @vars = {}
   end
 
@@ -66,9 +66,10 @@ const runRecording = async (appState: AppState): Promise<{ success: boolean; out
 
     // Destructure the name and steps from the saved test
     const { name, steps } = appState.savedTest
+    const { implicitWait } = appState
 
     // Generate the test code using both name and steps
-    const testCode = generateRspecCode(name, steps)
+    const testCode = generateRspecCode(name, steps, implicitWait)
 
     // *** FIX IS HERE ***
     // Write the correctly generated 'testCode' variable to the file.

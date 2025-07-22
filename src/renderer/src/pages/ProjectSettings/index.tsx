@@ -22,7 +22,7 @@ const Settings: React.FC = () => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchSettings = async (): Promise<void> => {
       try {
         const result = await window.api.isMobileProject(projectPath)
         if (result.success) {
@@ -51,8 +51,10 @@ const Settings: React.FC = () => {
               if (capResponse.success && capResponse.capabilities) {
                 const appiumOptions = capResponse.capabilities['appium:options'] || {}
                 if (!storedMobileAppiumUrl) setMobileAppiumUrl(appiumOptions.url || '')
-                if (!storedPlatformVersion) setMobilePlatformVersion(appiumOptions.platformVersion || '')
-                if (!storedAutomationName) setMobileAutomationName(appiumOptions.automationName || '')
+                if (!storedPlatformVersion)
+                  setMobilePlatformVersion(appiumOptions.platformVersion || '')
+                if (!storedAutomationName)
+                  setMobileAutomationName(appiumOptions.automationName || '')
                 if (!storedDeviceName) setMobileDeviceName(appiumOptions.deviceName || '')
                 if (!storedMobileApp) setMobileApp(appiumOptions.app || '')
               }
@@ -78,19 +80,18 @@ const Settings: React.FC = () => {
       }
     }
 
-    fetchSettings()
+    void fetchSettings()
   }, [projectPath, t])
 
-  const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>): void => {
     setSelectedBrowser(event.target.value)
   }
 
-  const handleUrlChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUrlChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     setBrowserUrl(event.target.value)
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  const handleBrowserUpdateClick = async () => {
+  const handleBrowserUpdateClick = async (): Promise<void> => {
     setIsUpdatingBrowser(true)
     try {
       const response = await window.api.updateBrowserType(projectPath, selectedBrowser)
@@ -107,8 +108,7 @@ const Settings: React.FC = () => {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  const handleUrlUpdateClick = async () => {
+  const handleUrlUpdateClick = async (): Promise<void> => {
     setIsUpdatingUrl(true)
     try {
       const response = await window.api.updateBrowserUrl(projectPath, browserUrl)
@@ -125,8 +125,7 @@ const Settings: React.FC = () => {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  const handleMobileSettingsUpdateClick = async () => {
+  const handleMobileSettingsUpdateClick = async (): Promise<void> => {
     setIsUpdatingMobile(true)
     try {
       const capabilities = {
@@ -266,9 +265,7 @@ const Settings: React.FC = () => {
           <div className="border border-gray-300 rounded-lg overflow-hidden w-[60vw] mx-auto">
             {['settings.section.baseUrl', 'settings.section.browser'].map((section, index) => (
               <details key={index} className="border-b border-gray-300 p-4">
-                <summary className="cursor-pointer font-semibold">
-                  {t(section)}
-                </summary>
+                <summary className="cursor-pointer font-semibold">{t(section)}</summary>
                 <div className="pt-2">
                   {section === 'settings.section.baseUrl' ? (
                     <>
@@ -284,7 +281,11 @@ const Settings: React.FC = () => {
                         className="border p-1 rounded mt-2 w-full"
                       />
                       <div className="mt-4">
-                        <Button onClick={handleUrlUpdateClick} type="primary" disabled={isUpdatingUrl}>
+                        <Button
+                          onClick={handleUrlUpdateClick}
+                          type="primary"
+                          disabled={isUpdatingUrl}
+                        >
                           {t('settings.updateUrlButton')}
                         </Button>
                       </div>
