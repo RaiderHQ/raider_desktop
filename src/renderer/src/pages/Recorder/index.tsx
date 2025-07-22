@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
 import Button from '@components/Button'
 import CommandList from '@components/CommandList'
 import TestSuitePanel from '@components/TestSuitePanel'
 import OutputPanel from '@components/OutputPanel'
 import InputField from '@components/InputField'
-// A more standard relative path for types from a renderer file
-import type { Suite, Test } from '../../../main/types'
+import type { Suite } from '@foundation/Types/suite'
+import type { Test } from '@foundation/Types/test'
 
 const createNewTest = (): Test => ({
   id: crypto.randomUUID(),
@@ -15,9 +14,7 @@ const createNewTest = (): Test => ({
   steps: []
 })
 
-const Recorder: React.FC = (): JSX.Element => {
-  const { t } = useTranslation()
-
+const Recorder: React.FC = () => {
   // --- State ---
   const [suites, setSuites] = useState<Suite[]>([])
   const [activeSuiteId, setActiveSuiteId] = useState<string | null>(null)

@@ -1,10 +1,6 @@
 import { BrowserWindow, dialog } from 'electron'
 import fs from 'fs'
-
-interface TestData {
-  testName: string
-  steps: string[]
-}
+import type { TestData } from '@foundation/Types/testData'
 
 export default async (_event: Electron.IpcMainEvent, { testName, steps }: TestData) => {
   const window = BrowserWindow.getFocusedWindow()

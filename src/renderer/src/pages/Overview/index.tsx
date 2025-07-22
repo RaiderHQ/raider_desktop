@@ -14,7 +14,6 @@ const Overview: React.FC = () => {
 
   useEffect(() => {
     if (!projectPath) {
-      // If there's no project path, redirect to the landing page.
       navigate('/start-project')
     }
   }, [projectPath, navigate])

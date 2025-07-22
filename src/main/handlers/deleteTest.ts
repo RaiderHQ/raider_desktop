@@ -1,18 +1,6 @@
 import { appState } from './appState'
 import { BrowserWindow } from 'electron'
 
-interface Test {
-  id: string
-  name: string
-  url: string
-  steps: string[]
-}
-interface Suite {
-  id: string
-  name: string
-  tests: Test[]
-}
-
 export default async (mainWindow: BrowserWindow | null, _event: Electron.IpcMainEvent, { suiteId, testId }: { suiteId: string, testId: string }) => {
   const suite = appState.suites.get(suiteId)
 
