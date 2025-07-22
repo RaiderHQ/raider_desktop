@@ -4,9 +4,3 @@ export interface Test {
   url: string
   steps: string[]
 }
-
-export interface Suite {
-  id: string
-  name: string
-  tests: Test[]
-}
