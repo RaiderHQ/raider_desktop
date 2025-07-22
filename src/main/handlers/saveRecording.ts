@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import type { BrowserWindow } from 'electron'
 import { appState } from './appState'
-import type { Test } from '../types'
+import type { Test } from '@foundation/Types/test'
 
 /**
  * Saves a recording (test) to a specific suite.

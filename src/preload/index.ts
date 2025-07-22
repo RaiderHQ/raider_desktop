@@ -1,20 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import { FileNode } from '@foundation/Types/fileNode'
-import { CommandType } from '@foundation/Types/commandType'
-
-// Define common types to be shared between the UI and backend
-interface Test {
-  id: string;
-  name: string;
-  url: string;
-  steps: string[];
-}
-interface Suite {
-  id: string;
-  name: string;
-  tests: Test[];
-}
+import type { FileNode } from '@foundation/Types/fileNode'
+import type { CommandType } from '@foundation/Types/commandType'
+import type { Suite } from '@foundation/Types/suite'
+import type { Test } from '@foundation/Types/test'
 
 declare global {
   interface Window {
@@ -23,9 +12,7 @@ declare global {
   }
 }
 
-// Custom APIs for renderer
 const api = {
-  // --- Your other application APIs ---
   runRubyRaider: async (
     folderPath: string,
     projectName: string,

@@ -1,4 +1,3 @@
-import { IpcMainEvent } from 'electron'
 import { appState } from './appState'
 
 const keyMap: { [key: string]: string } = {
@@ -30,30 +29,31 @@ const keyMap: { [key: string]: string } = {
   F12: ':f12'
 }
 
-function recorderEvent(event: IpcMainEvent, data: any): void {
-  console.log('[MainProcess] Received recorder event:', data)
-
+function recorderEvent(data: any): void {
   let commandString = ''
   switch (data.action) {
-    case 'click':
+    case 'click': {
       const escapedClickSelector = data.selector.replace(/"/g, '\\"')
       commandString = `@driver.find_element(:css, "${escapedClickSelector}").click # Clicked <${data.tagName.toLowerCase()}>`
       break
+    }
 
-    case 'type':
+    case 'type': {
       const escapedTypeSelector = data.selector.replace(/"/g, '\\"')
       const escapedValue = data.value.replace(/"/g, '\\"')
       commandString = `@driver.find_element(:css, "${escapedTypeSelector}").clear\n`
       commandString += `    @driver.find_element(:css, "${escapedTypeSelector}").send_keys("${escapedValue}")`
       break
+    }
 
-    case 'sendKeys':
+    case 'sendKeys': {
       const keySymbol = keyMap[data.value]
       if (keySymbol) {
         const escapedKeySelector = data.selector.replace(/"/g, '\\"')
         commandString = `@driver.find_element(:css, "${escapedKeySelector}").send_keys(${keySymbol}) # Pressed ${data.value} on <${data.tagName.toLowerCase()}>`
       }
       break
+    }
   }
 
   if (commandString) {

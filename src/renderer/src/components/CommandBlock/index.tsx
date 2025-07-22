@@ -1,63 +1,57 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
 
 interface CommandBlockProps {
-  command: string;
-  index: number;
-  showCode: boolean;
-  onDragStart: (index: number) => void;
-  onDragEnter: (index: number) => void;
-  onDragEnd: () => void;
-  onDelete: (index: number) => void;
+  command: string
+  index: number
+  showCode: boolean
+  onDragStart: (index: number) => void
+  onDragEnter: (index: number) => void
+  onDragEnd: () => void
+  onDelete: (index: number) => void
 }
 
 const CommandBlock: React.FC<CommandBlockProps> = ({
-                                                     command,
-                                                     index,
-                                                     showCode,
-                                                     onDragStart,
-                                                     onDragEnter,
-                                                     onDragEnd,
-                                                     onDelete,
-                                                   }) => {
-  const [mainCommand, comment] = command.split(' # ');
+  command,
+  index,
+  showCode,
+  onDragStart,
+  onDragEnter,
+  onDragEnd,
+  onDelete
+}) => {
+  const [mainCommand, comment] = command.split(' # ')
 
-  // State to hold the asynchronously fetched friendly text
-  const [friendlyText, setFriendlyText] = useState('Loading...');
+  const [friendlyText, setFriendlyText] = useState('Loading...')
 
-  // Effect to fetch the friendly text from the main process
   useEffect(() => {
-    let isMounted = true; // Flag to prevent state updates on unmounted components
+    let isMounted = true
 
-    // Only fetch if we are in "Friendly View" mode
     if (!showCode) {
-      setFriendlyText('Loading...'); // Show loading text while fetching
-      window.api.commandParser(mainCommand).then(text => {
+      setFriendlyText('Loading...')
+      window.api.commandParser(mainCommand).then((text) => {
         if (isMounted) {
-          setFriendlyText(text);
+          setFriendlyText(text)
         }
-      });
+      })
     }
 
-    // Cleanup function to run when the component unmounts or dependencies change
     return () => {
-      isMounted = false;
-    };
-  }, [mainCommand, showCode]); // Re-run this effect if the command or the view mode changes
+      isMounted = false
+    }
+  }, [mainCommand, showCode])
 
-  // Component for the raw code view (no changes needed here)
   const CodeView = () => (
     <div className="font-mono text-sm">
       <span className="text-blue-700">{mainCommand}</span>
       {comment && <span className="text-gray-500 ml-2"># {comment}</span>}
     </div>
-  );
+  )
 
-  // Component for the friendly text view
   const FriendlyView = () => (
     <div className="font-sans text-sm">
       <span className="text-gray-800">{friendlyText}</span>
     </div>
-  );
+  )
 
   return (
     <div className="relative w-full mb-3">
@@ -81,7 +75,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
         </button>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default CommandBlock;
+export default CommandBlock
