@@ -138,7 +138,17 @@
     },
     "recording": {
       "title": "Recording Settings",
-      "description": "This section is under development."
+      "description": "Adjust the settings for test recording and playback.",
+      "error": {
+        "recordingUpdateFailed": "Failed to update recording settings.",
+        "unexpected": "An unexpected error occurred. Please try again."
+      },
+      "implicitWait": {
+        "label": "Implicit Wait (seconds)",
+        "description": "The default time to wait for elements to appear during playback."
+      },
+      "recordingUpdateSuccess": "Recording settings updated successfully!",
+      "updateRecordingSettingsButton": "Update Settings"
     },
     "noProject": {
       "title": "No Project Loaded",

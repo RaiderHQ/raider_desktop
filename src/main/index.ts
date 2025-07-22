@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { setMainWindow, appState } from './handlers/appState'
+import { setMainWindow, appState, getRecordingSettings } from "./handlers/appState";
 import type { Test } from '@foundation/Types/test'
 import type { TestData } from '@foundation/Types/testData'
 import selectFolder from './handlers/selectFolder'
@@ -32,6 +32,7 @@ import loadUrlRequest from './handlers/loadUrlRequest'
 import startRecordingMain from './handlers/startRecordingMain'
 import stopRecordingMain from './handlers/stopRecordingMain'
 import saveRecording from './handlers/saveRecording'
+import updateRecordingSettings  from './handlers/updateRecordingSettings'
 
 const iconPath = join(
   __dirname,
@@ -130,8 +131,22 @@ ipcMain.handle('run-test', (_event, suiteId: string, testId: string) => {
   if (!test) {
     return { success: false, output: `Test with ID ${testId} not found.` }
   }
-  return runRecording({ savedTest: test })
+
+  const { implicitWait } = getRecordingSettings()
+
+  return runRecording({ savedTest: test, implicitWait })
 })
+ipcMain.handle(
+  'update-recording-settings',
+  async (_event, settings: { implicitWait: number }) => {
+    try {
+      return updateRecordingSettings(settings)
+    } catch (error) {
+      console.error('Failed to update recording settings:', error)
+      return { success: false, error: (error as Error).message }
+    }
+  }
+)
 
 ipcMain.handle('run-suite', (_event, suiteId: string) => runSuite(suiteId))
 ipcMain.handle('export-test', (_event, testData: TestData) => exportTest(testData))
