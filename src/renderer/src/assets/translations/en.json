@@ -139,6 +139,10 @@
     "recording": {
       "title": "Recording Settings",
       "description": "This section is under development."
+    },
+    "noProject": {
+      "title": "No Project Loaded",
+      "description": "Please create or open a project to configure its settings."
     }
   },
   "overview": {
