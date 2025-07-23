@@ -51,6 +51,24 @@ const Recorder: React.FC = () => {
     [suites, activeSuiteId]
   )
 
+  /**
+   * Determines the correct locator strategy (:id, :css, :xpath) based on the selector string.
+   * @param selector The selector string from the preload script.
+   * @returns An object with the strategy and the processed selector value.
+   */
+  const formatLocator = (selector: string): { strategy: string; value: string } => {
+    // Check for XPath (starts with / or (//)
+    if (selector.startsWith('/') || selector.startsWith('(')) {
+      return { strategy: 'xpath', value: selector }
+    }
+    // Check for a simple ID selector (e.g., #my-id) that isn't part of a complex path
+    if (selector.startsWith('#') && !/[\s>~+]/.test(selector)) {
+      return { strategy: 'id', value: selector.substring(1) }
+    }
+    // Default to CSS for all other cases
+    return { strategy: 'css', value: selector }
+  }
+
   const handleCreateSuite = useCallback(
     (suiteName: string) => {
       if (suiteName && !suites.find((s) => s.name === suiteName)) {
@@ -153,7 +171,8 @@ const Recorder: React.FC = () => {
 
   const handleSaveAssertionText = (expectedText: string): void => {
     if (assertionInfo) {
-      const newStep = `expect(@driver.find_element(:css, "${assertionInfo.selector}").text).to eq("${expectedText}")`
+      const { strategy, value } = formatLocator(assertionInfo.selector)
+      const newStep = `expect(@driver.find_element(:${strategy}, "${value}").text).to eq("${expectedText}")`
       setActiveTest((prevTest) =>
         prevTest ? { ...prevTest, steps: [...prevTest.steps, newStep] } : null
       )
@@ -232,13 +251,15 @@ const Recorder: React.FC = () => {
       assertion: { type: string; selector: string; text?: string }
     ): void => {
       let newStep = ''
+      const { strategy, value } = formatLocator(assertion.selector)
+
       switch (assertion.type) {
         case 'displayed':
-          newStep = `expect(@driver.find_element(:css, "${assertion.selector}")).to be_displayed`
+          newStep = `expect(@driver.find_element(:${strategy}, "${value}")).to be_displayed`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'enabled':
-          newStep = `expect(@driver.find_element(:css, "${assertion.selector}")).to be_enabled`
+          newStep = `expect(@driver.find_element(:${strategy}, "${value}")).to be_enabled`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'text':

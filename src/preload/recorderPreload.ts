@@ -1,32 +1,65 @@
 import { ipcRenderer } from 'electron'
 
 /**
- * Generates a unique CSS selector for a given HTML element.
+ * Generates the best possible selector for an element using a prioritized strategy.
+ * Priority: Unique ID -> CSS Path -> Absolute XPath.
  * @param el The element to generate a selector for.
- * @returns A CSS selector string.
+ * @returns A single, high-priority selector string.
  */
-function getCssSelector(el: Element): string {
-  if (!el || !(el instanceof Element)) return ''
-  const parts: string[] = []
+function getPrioritizedSelector(el: Element): string {
+  // 1. Priority: Unique ID
+  // A unique ID is the most reliable locator. We'll format it as a CSS selector.
+  if (el.id) {
+    // Verify the ID is unique to avoid ambiguity.
+    if (document.querySelectorAll(`#${el.id}`).length === 1) {
+      return `#${el.id}`
+    }
+  }
+
+  // 2. Priority: CSS Path (if no unique ID is found)
+  // This generates a specific path from the parent to the child element.
+  if (el instanceof HTMLElement) {
+    const parts: string[] = []
+    let currentEl: Element | null = el
+    while (currentEl && currentEl.nodeType === Node.ELEMENT_NODE) {
+      let part = currentEl.nodeName.toLowerCase()
+      if (currentEl.id) {
+        part += `#${currentEl.id}`
+        parts.unshift(part)
+        break // Stop if we hit an element with an ID
+      } else {
+        let sibling = currentEl
+        let nth = 1
+        while ((sibling = sibling.previousElementSibling!)) {
+          if (sibling.nodeName.toLowerCase() === part) nth++
+        }
+        if (nth > 1) part += `:nth-of-type(${nth})`
+      }
+      parts.unshift(part)
+      currentEl = currentEl.parentElement
+    }
+    if (parts.length) {
+      return parts.join(' > ')
+    }
+  }
+
+  // 3. Fallback: Absolute XPath
+  // This is the least preferred method as it's brittle, but it's a reliable last resort.
+  let xpath = ''
   let currentEl: Element | null = el
   while (currentEl && currentEl.nodeType === Node.ELEMENT_NODE) {
-    let part = currentEl.nodeName.toLowerCase()
-    if (currentEl.id) {
-      part += `#${currentEl.id}`
-      parts.unshift(part)
-      break
-    } else {
-      let sibling = currentEl
-      let nth = 1
-      while ((sibling = sibling.previousElementSibling!)) {
-        if (sibling.nodeName.toLowerCase() === part) nth++
+    let index = 1
+    let sibling = currentEl.previousElementSibling
+    while (sibling) {
+      if (sibling.nodeName === currentEl.nodeName) {
+        index++
       }
-      if (nth > 1) part += `:nth-of-type(${nth})`
+      sibling = sibling.previousElementSibling
     }
-    parts.unshift(part)
+    xpath = `/${currentEl.nodeName.toLowerCase()}[${index}]` + xpath
     currentEl = currentEl.parentElement
   }
-  return parts.join(' > ')
+  return xpath
 }
 
 // --- Event Listeners ---
@@ -36,11 +69,11 @@ document.addEventListener(
   'click',
   (event) => {
     const target = event.target as HTMLElement
-    if (target.tagName === 'HTML') return // Basic filter for scrollbar clicks
+    if (target.tagName === 'HTML') return
 
     ipcRenderer.send('recorder-event', {
       action: 'click',
-      selector: getCssSelector(target),
+      selector: getPrioritizedSelector(target),
       tagName: target.tagName
     })
   },
@@ -55,7 +88,7 @@ document.addEventListener(
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
       ipcRenderer.send('recorder-event', {
         action: 'type',
-        selector: getCssSelector(target),
+        selector: getPrioritizedSelector(target),
         tagName: target.tagName,
         value: target.value
       })
@@ -84,7 +117,7 @@ document.addEventListener(
       if (target) {
         ipcRenderer.send('recorder-event', {
           action: 'sendKeys',
-          selector: getCssSelector(target),
+          selector: getPrioritizedSelector(target),
           tagName: target.tagName,
           value: key
         })
@@ -101,15 +134,10 @@ document.addEventListener(
     event.preventDefault() // Prevent the default browser context menu
     const target = event.target as HTMLElement
     if (target) {
-      const selector = getCssSelector(target)
+      const selector = getPrioritizedSelector(target)
       const elementText = target.innerText || ''
-      // Send a different IPC message to trigger the assertion context menu
       ipcRenderer.send('show-assertion-context-menu', { selector, elementText })
     }
   },
-  true // Use capture phase to handle the event before other listeners.
-)
-
-console.log(
-  '[Recorder Preload] Script loaded. Listening for clicks, changes, keydown, and contextmenu events.'
+  true
 )
