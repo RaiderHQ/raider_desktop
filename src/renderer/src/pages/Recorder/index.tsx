@@ -7,6 +7,13 @@ import StyledPanel from '@components/StyledPanel'
 import { Toaster } from 'react-hot-toast'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
+import AssertionTextModal from '@components/AssertionTextModal'
+
+// Defines the structure for the data needed by the assertion modal
+interface AssertionInfo {
+  selector: string
+  text: string
+}
 
 const createNewTest = (): Test => ({
   id: crypto.randomUUID(),
@@ -22,6 +29,8 @@ const Recorder: React.FC = () => {
   const [isRecording, setIsRecording] = useState<boolean>(false)
   const [runOutput, setRunOutput] = useState<string>('')
   const [isRunning, setIsRunning] = useState<boolean>(false)
+  // New state to manage the visibility and data of the assertion modal
+  const [assertionInfo, setAssertionInfo] = useState<AssertionInfo | null>(null)
 
   const activeTestRef = useRef(activeTest)
   useEffect(() => {
@@ -143,6 +152,22 @@ const Recorder: React.FC = () => {
     }
   }, [activeTest])
 
+  // New handler to save the assertion text from the modal
+  const handleSaveAssertionText = (expectedText: string): void => {
+    if (assertionInfo) {
+      const newStep = `assert_text "${assertionInfo.selector}", "${expectedText}"`
+      setActiveTest((prevTest) =>
+        prevTest ? { ...prevTest, steps: [...prevTest.steps, newStep] } : null
+      )
+    }
+    setAssertionInfo(null) // Close the modal after saving
+  }
+
+  // New handler to close the assertion modal without saving
+  const handleCloseAssertionModal = (): void => {
+    setAssertionInfo(null)
+  }
+
   useEffect(() => {
     window.api.getSuites().then((initialSuites) => {
       setSuites(initialSuites)
@@ -205,18 +230,43 @@ const Recorder: React.FC = () => {
       )
     }
 
+    // New handler to process assertion steps from the main process
+    const handleAddAssertion = (
+      _event: any,
+      assertion: { type: string; selector: string; text?: string }
+    ): void => {
+      let newStep = ''
+      switch (assertion.type) {
+        case 'present':
+          newStep = `assert_element "${assertion.selector}"`
+          setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
+          break
+        case 'visible':
+          newStep = `assert_element_visible "${assertion.selector}"`
+          setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
+          break
+        case 'text':
+          // For text assertions, we open the modal to get user input
+          setAssertionInfo({ selector: assertion.selector, text: assertion.text ?? '' })
+          break
+      }
+    }
+
     const startCleanup = window.electron.ipcRenderer.on('recording-started', handleRecordingStarted)
     const stopCleanup = window.electron.ipcRenderer.on('recording-stopped', handleRecordingStopped)
     const commandCleanup = window.electron.ipcRenderer.on(
       'new-recorded-command',
       handleNewCommand
     )
+    // Register the new listener for assertion steps
+    const assertionCleanup = window.electron.ipcRenderer.on('add-assertion-step', handleAddAssertion)
 
     return () => {
       suiteUpdatedCleanup?.()
       startCleanup?.()
       stopCleanup?.()
       commandCleanup?.()
+      assertionCleanup?.() // Clean up the listener on component unmount
     }
   }, [])
 
@@ -290,6 +340,14 @@ const Recorder: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* Conditionally render the modal when assertionInfo is not null */}
+      {assertionInfo && (
+        <AssertionTextModal
+          initialText={assertionInfo.text}
+          onSave={handleSaveAssertionText}
+          onClose={handleCloseAssertionModal}
+        />
+      )}
     </div>
   )
 }

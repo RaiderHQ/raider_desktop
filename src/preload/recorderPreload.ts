@@ -64,6 +64,7 @@ document.addEventListener(
   true
 )
 
+// 3. Listen for specific keydown events
 document.addEventListener(
   'keydown',
   (event) => {
@@ -93,4 +94,22 @@ document.addEventListener(
   true
 )
 
-console.log('[Recorder Preload] Script loaded. Listening for clicks, changes, and keydown events.')
+// 4. Listen for the context menu event (right-click) for assertions
+document.addEventListener(
+  'contextmenu',
+  (event) => {
+    event.preventDefault() // Prevent the default browser context menu
+    const target = event.target as HTMLElement
+    if (target) {
+      const selector = getCssSelector(target)
+      const elementText = target.innerText || ''
+      // Send a different IPC message to trigger the assertion context menu
+      ipcRenderer.send('show-assertion-context-menu', { selector, elementText })
+    }
+  },
+  true // Use capture phase to handle the event before other listeners.
+)
+
+console.log(
+  '[Recorder Preload] Script loaded. Listening for clicks, changes, keydown, and contextmenu events.'
+)
