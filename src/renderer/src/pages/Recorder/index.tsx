@@ -29,7 +29,6 @@ const Recorder: React.FC = () => {
   const [isRecording, setIsRecording] = useState<boolean>(false)
   const [runOutput, setRunOutput] = useState<string>('')
   const [isRunning, setIsRunning] = useState<boolean>(false)
-  // New state for the assertion modal
   const [assertionInfo, setAssertionInfo] = useState<AssertionInfo | null>(null)
 
   const activeTestRef = useRef(activeTest)
@@ -152,19 +151,16 @@ const Recorder: React.FC = () => {
     }
   }, [activeTest])
 
-  // New handler to save the assertion text from the modal
   const handleSaveAssertionText = (expectedText: string): void => {
     if (assertionInfo) {
-      // Corrected format for RSpec text assertion
       const newStep = `expect(@driver.find_element(:css, "${assertionInfo.selector}").text).to eq("${expectedText}")`
       setActiveTest((prevTest) =>
         prevTest ? { ...prevTest, steps: [...prevTest.steps, newStep] } : null
       )
     }
-    setAssertionInfo(null) // Close the modal after saving
+    setAssertionInfo(null)
   }
 
-  // New handler to close the assertion modal without saving
   const handleCloseAssertionModal = (): void => {
     setAssertionInfo(null)
   }
@@ -231,25 +227,21 @@ const Recorder: React.FC = () => {
       )
     }
 
-    // New handler to process assertion steps from the main process
     const handleAddAssertion = (
       _event: any,
       assertion: { type: string; selector: string; text?: string }
     ): void => {
       let newStep = ''
       switch (assertion.type) {
-        case 'present':
-          // Corrected format for RSpec presence assertion
+        case 'displayed':
           newStep = `expect(@driver.find_element(:css, "${assertion.selector}")).to be_displayed`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
-        case 'visible':
-          // Corrected format for RSpec visibility assertion
-          newStep = `expect(@driver.find_element(:css, "${assertion.selector}")).to be_displayed`
+        case 'enabled':
+          newStep = `expect(@driver.find_element(:css, "${assertion.selector}")).to be_enabled`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'text':
-          // For text assertions, we open the modal to get user input
           setAssertionInfo({ selector: assertion.selector, text: assertion.text ?? '' })
           break
       }
@@ -261,7 +253,6 @@ const Recorder: React.FC = () => {
       'new-recorded-command',
       handleNewCommand
     )
-    // Register the new listener for assertion steps
     const assertionCleanup = window.electron.ipcRenderer.on('add-assertion-step', handleAddAssertion)
 
     return () => {
@@ -269,7 +260,7 @@ const Recorder: React.FC = () => {
       startCleanup?.()
       stopCleanup?.()
       commandCleanup?.()
-      assertionCleanup?.() // Clean up the listener on component unmount
+      assertionCleanup?.()
     }
   }, [])
 
@@ -343,7 +334,6 @@ const Recorder: React.FC = () => {
           </div>
         </div>
       </div>
-      {/* Conditionally render the modal when assertionInfo is not null */}
       {assertionInfo && (
         <AssertionTextModal
           initialText={assertionInfo.text}
