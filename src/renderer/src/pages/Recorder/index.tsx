@@ -155,8 +155,8 @@ const Recorder: React.FC = () => {
   // New handler to save the assertion text from the modal
   const handleSaveAssertionText = (expectedText: string): void => {
     if (assertionInfo) {
-      // Format for RSpec text assertion
-      const newStep = `expect(@driver.find_element("${assertionInfo.selector}").text).to eq("${expectedText}")`
+      // Corrected format for RSpec text assertion
+      const newStep = `expect(@driver.find_element(:css, "${assertionInfo.selector}").text).to eq("${expectedText}")`
       setActiveTest((prevTest) =>
         prevTest ? { ...prevTest, steps: [...prevTest.steps, newStep] } : null
       )
@@ -239,13 +239,13 @@ const Recorder: React.FC = () => {
       let newStep = ''
       switch (assertion.type) {
         case 'present':
-          // Format for RSpec presence assertion
-          newStep = `expect(@driver.find_element("${assertion.selector}")).to be_present`
+          // Corrected format for RSpec presence assertion
+          newStep = `expect(@driver.find_element(:css, "${assertion.selector}")).to be_displayed`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'visible':
-          // Format for RSpec visibility assertion
-          newStep = `expect(@driver.find_element("${assertion.selector}")).to be_visible`
+          // Corrected format for RSpec visibility assertion
+          newStep = `expect(@driver.find_element(:css, "${assertion.selector}")).to be_displayed`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'text':
