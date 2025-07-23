@@ -29,7 +29,7 @@ const Recorder: React.FC = () => {
   const [isRecording, setIsRecording] = useState<boolean>(false)
   const [runOutput, setRunOutput] = useState<string>('')
   const [isRunning, setIsRunning] = useState<boolean>(false)
-  // New state to manage the visibility and data of the assertion modal
+  // New state for the assertion modal
   const [assertionInfo, setAssertionInfo] = useState<AssertionInfo | null>(null)
 
   const activeTestRef = useRef(activeTest)
@@ -155,7 +155,8 @@ const Recorder: React.FC = () => {
   // New handler to save the assertion text from the modal
   const handleSaveAssertionText = (expectedText: string): void => {
     if (assertionInfo) {
-      const newStep = `assert_text "${assertionInfo.selector}", "${expectedText}"`
+      // Format for RSpec text assertion
+      const newStep = `expect(@driver.find_element("${assertionInfo.selector}").text).to eq("${expectedText}")`
       setActiveTest((prevTest) =>
         prevTest ? { ...prevTest, steps: [...prevTest.steps, newStep] } : null
       )
@@ -238,11 +239,13 @@ const Recorder: React.FC = () => {
       let newStep = ''
       switch (assertion.type) {
         case 'present':
-          newStep = `assert_element "${assertion.selector}"`
+          // Format for RSpec presence assertion
+          newStep = `expect(@driver.find_element("${assertion.selector}")).to be_present`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'visible':
-          newStep = `assert_element_visible "${assertion.selector}"`
+          // Format for RSpec visibility assertion
+          newStep = `expect(@driver.find_element("${assertion.selector}")).to be_visible`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'text':
