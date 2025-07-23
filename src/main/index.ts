@@ -160,19 +160,19 @@ app.whenReady().then(() => {
       },
       { type: 'separator' },
       {
-        label: 'Assert element is present',
+        label: 'Assert element is displayed',
         click: () => {
           appState.mainWindow!.webContents.send('add-assertion-step', {
-            type: 'present',
+            type: 'displayed',
             selector
           })
         }
       },
       {
-        label: 'Assert element is visible',
+        label: 'Assert element is enabled',
         click: () => {
           appState.mainWindow!.webContents.send('add-assertion-step', {
-            type: 'visible',
+            type: 'enabled',
             selector
           })
         }
