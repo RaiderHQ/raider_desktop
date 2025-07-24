@@ -254,6 +254,14 @@ const Recorder: React.FC = () => {
       const { strategy, value } = formatLocator(assertion.selector)
 
       switch (assertion.type) {
+        case 'wait-displayed':
+          newStep = `@wait.until { @driver.find_element(:${strategy}, "${value}").displayed? }`
+          setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
+          break
+        case 'wait-present':
+          newStep = `@wait.until { @driver.find_element(:${strategy}, "${value}") }`
+          setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
+          break
         case 'displayed':
           newStep = `expect(@driver.find_element(:${strategy}, "${value}")).to be_displayed`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))

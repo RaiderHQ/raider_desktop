@@ -124,17 +124,20 @@ app.whenReady().then(() => {
       return { success: false, output: `Test with ID ${testId} not found.` }
     }
 
-    const { implicitWait } = getRecordingSettings()
-    return runRecording({ savedTest: test, implicitWait })
+    const { implicitWait, explicitWait } = getRecordingSettings()
+    return runRecording({ savedTest: test, implicitWait, explicitWait })
   })
-  ipcMain.handle('update-recording-settings', async (_event, settings: { implicitWait: number }) => {
-    try {
-      return updateRecordingSettings(settings)
-    } catch (error) {
-      console.error('Failed to update recording settings:', error)
-      return { success: false, error: (error as Error).message }
+  ipcMain.handle(
+    'update-recording-settings',
+    async (_event, settings: { implicitWait: number; explicitWait: number }) => {
+      try {
+        return updateRecordingSettings(settings)
+      } catch (error) {
+        console.error('Failed to update recording settings:', error)
+        return { success: false, error: (error as Error).message }
+      }
     }
-  })
+  )
 
   ipcMain.handle('run-suite', (_event, suiteId: string) => runSuite(suiteId))
   ipcMain.handle('export-test', (_event, testData: TestData) => exportTest(testData))
@@ -159,6 +162,30 @@ app.whenReady().then(() => {
         enabled: false
       },
       { type: 'separator' },
+      { type: 'separator' },
+      {
+        label: 'Wait for element',
+        submenu: [
+          {
+            label: 'to be displayed',
+            click: () => {
+              appState.mainWindow!.webContents.send('add-assertion-step', {
+                type: 'wait-displayed',
+                selector
+              })
+            }
+          },
+          {
+            label: 'to be present',
+            click: () => {
+              appState.mainWindow!.webContents.send('add-assertion-step', {
+                type: 'wait-present',
+                selector
+              })
+            }
+          }
+        ]
+      },
       {
         label: 'Assert element is displayed',
         click: () => {
