@@ -14,7 +14,7 @@ interface RecordingSettings {
 }
 
 let recordingSettings: RecordingSettings = {
-  implicitWait: 30,
+  implicitWait: 0,
   explicitWait: 30
 }
 
