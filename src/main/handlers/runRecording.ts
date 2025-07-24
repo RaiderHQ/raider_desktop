@@ -7,6 +7,7 @@ interface AppState {
   savedTest: { name: string; steps: string[] } | null
   implicitWait: number
   explicitWait: number
+  projectPath: string
 }
 
 /**
@@ -15,17 +16,28 @@ interface AppState {
  * @param steps The array of command strings.
  * @param implicitWait The implicit wait time in seconds.
  * @param explicitWait The explicit wait time in seconds.
+ * @param projectPath The path to the project.
  */
 function generateRspecCode(
   testName: string,
   steps: string[],
   implicitWait: number,
-  explicitWait: number
+  explicitWait: number,
+  projectPath: string
 ): string {
   const formattedSteps = steps.map((step) => `    ${step}`).join('\n    sleep(1)\n')
+  // Make sure to escape backslashes in the project path for Windows
+  const allurePath = path.join(projectPath, 'allure-results').replace(/\\/g, '\\\\')
+
   return `
 require 'selenium-webdriver'
 require 'rspec'
+require 'allure-rspec'
+
+AllureRspec.configure do |c|
+  c.results_directory = '${allurePath}'
+  c.clean_results_directory = true
+end
 
 describe '${testName}' do
   before(:each) do
@@ -35,8 +47,15 @@ describe '${testName}' do
     @vars = {}
   end
 
-
-  after(:each) do
+  after(:each) do |example|
+    if example.exception
+      Allure.add_attachment(
+        name: 'screenshot',
+        source: @driver.screenshot_as(:png),
+        type: Allure::ContentType::PNG,
+        test_case: true
+      )
+    end
     @driver.quit
   end
 
@@ -75,14 +94,14 @@ const runRecording = async (appState: AppState): Promise<{ success: boolean; out
 
     // Destructure the name and steps from the saved test
     const { name, steps } = appState.savedTest
-    const { implicitWait, explicitWait } = appState
+    const { implicitWait, explicitWait, projectPath } = appState
 
-    const testCode = generateRspecCode(name, steps, implicitWait, explicitWait)
+    const testCode = generateRspecCode(name, steps, implicitWait, explicitWait, projectPath)
 
     await fs.writeFile(tempFilePath, testCode)
     console.log(`[MainProcess] Test file written to: ${tempFilePath}`)
 
-    const command = `rspec ${tempFilePath}`
+    const command = `rspec ${tempFilePath} --format AllureRspec --format progress`
     console.log(`[MainProcess] Executing command: ${command}`)
 
     return await new Promise((resolve) => {

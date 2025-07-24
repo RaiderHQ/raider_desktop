@@ -98,8 +98,8 @@ const api = {
     ipcRenderer.invoke('create-suite', suiteName),
   deleteSuite: async (suiteId: string): Promise<{ success: boolean }> =>
     ipcRenderer.invoke('delete-suite', suiteId),
-  runSuite: async (suiteId: string): Promise<{ success: boolean; output: string }> =>
-    ipcRenderer.invoke('run-suite', suiteId), // New API function
+  runSuite: async (suiteId: string, projectPath: string): Promise<{ success: boolean; output: string }> =>
+    ipcRenderer.invoke('run-suite', suiteId, projectPath), 
   exportSuite: (suiteId: string): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('export-suite', suiteId),
   exportProject: (): Promise<{ success: boolean; path?: string; error?: string }> =>
@@ -131,8 +131,8 @@ const api = {
     steps: string[]
   ): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('export-test', { testName, steps }),
-  runTest: async (suiteId: string, testId: string): Promise<{ success: boolean; output: string }> =>
-    ipcRenderer.invoke('run-test', suiteId, testId),
+  runTest: async (suiteId: string, testId: string, projectPath: string): Promise<{ success: boolean; output: string }> =>
+    ipcRenderer.invoke('run-test', suiteId, testId, projectPath),
   updateRecordingSettings: (settings: { implicitWait: number, explicitWait: number }) =>
     ipcRenderer.invoke('update-recording-settings', settings),
   getSelectorPriorities: (): Promise<string[]> =>

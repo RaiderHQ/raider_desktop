@@ -8,6 +8,7 @@ import { Toaster } from 'react-hot-toast'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import AssertionTextModal from '@components/AssertionTextModal'
+import useProjectStore from '@foundation/Stores/projectStore'
 
 // Defines the structure for the data needed by the assertion modal
 interface AssertionInfo {
@@ -30,6 +31,7 @@ const Recorder: React.FC = () => {
   const [runOutput, setRunOutput] = useState<string>('')
   const [isRunning, setIsRunning] = useState<boolean>(false)
   const [assertionInfo, setAssertionInfo] = useState<AssertionInfo | null>(null)
+  const projectPath = useProjectStore((state) => state.projectPath)
 
   const activeTestRef = useRef(activeTest)
   useEffect(() => {
@@ -142,29 +144,29 @@ const Recorder: React.FC = () => {
   }, [])
 
   const handleRunTest = useCallback(async (): Promise<void> => {
-    if (activeSuiteId && activeTest?.id) {
+    if (activeSuiteId && activeTest?.id && projectPath) {
       handleAutoSave()
       setIsRunning(true)
       setRunOutput(`Running test: ${activeTest.name}...`)
-      const result = await window.api.runTest(activeSuiteId, activeTest.id)
+      const result = await window.api.runTest(activeSuiteId, activeTest.id, projectPath)
       setRunOutput(result.output)
       setIsRunning(false)
     }
-  }, [activeSuiteId, activeTest, handleAutoSave])
+  }, [activeSuiteId, activeTest, handleAutoSave, projectPath])
 
   const handleRunAllTests = useCallback(
     async (suiteId: string) => {
       const suiteToRun = suites.find((s) => s.id === suiteId)
-      if (suiteToRun) {
+      if (suiteToRun && projectPath) {
         handleAutoSave()
         setIsRunning(true)
         setRunOutput(`Running suite: ${suiteToRun.name}...`)
-        const result = await window.api.runSuite(suiteToRun.id)
+        const result = await window.api.runSuite(suiteToRun.id, projectPath)
         setRunOutput(result.output)
         setIsRunning(false)
       }
     },
-    [suites, handleAutoSave]
+    [suites, handleAutoSave, projectPath]
   )
 
   const handleExportTest = useCallback(async (): Promise<{
