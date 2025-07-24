@@ -18,6 +18,11 @@ interface MainRecorderPanelProps {
   onSaveTest: () => void
   onNewTest: () => void
   onExportTest: () => Promise<{ success: boolean; path?: string; error?: string }>
+  onExportSuite: () => Promise<{ success: boolean; path?: string; error?: string }>
+  onExportProject: () => Promise<{ success: boolean; path?: string; error?: string }>
+  onImportTest: () => Promise<{ success: boolean; test?: Test; error?: string }>
+  onImportSuite: () => Promise<{ success: boolean; suite?: Suite; error?: string }>
+  onImportProject: () => Promise<{ success: boolean; error?: string }>
   activeSuiteId: string | null
 }
 
@@ -34,6 +39,11 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
   onSaveTest,
   onNewTest,
   onExportTest,
+  onExportSuite,
+  onExportProject,
+  onImportTest,
+  onImportSuite,
+  onImportProject,
   activeSuiteId
 }) => {
   const handleSaveClick = (): void => {
@@ -48,11 +58,11 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
         result = await onExportTest()
         break
       case 'Suite':
-        toast.success('Export Suite functionality coming soon!')
-        return
+        result = await onExportSuite()
+        break
       case 'Project':
-        toast.success('Export Project functionality coming soon!')
-        return
+        result = await onExportProject()
+        break
       default:
         return
     }
@@ -64,6 +74,29 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
     }
   }
 
+  const handleImportClick = async (importType: 'Test' | 'Suite' | 'Project'): Promise<void> => {
+    let result
+    switch (importType) {
+      case 'Test':
+        result = await onImportTest()
+        break
+      case 'Suite':
+        result = await onImportSuite()
+        break
+      case 'Project':
+        result = await onImportProject()
+        break
+      default:
+        return
+    }
+
+    if (result.success) {
+      toast.success(`${importType} imported successfully!`)
+    } else {
+      toast.error(`Import failed: ${result.error}`)
+    }
+  }
+
   const exportOptions = [
     { label: 'Export Test', onClick: () => handleExportClick('Test') },
     { label: 'Export Suite', onClick: () => handleExportClick('Suite') },
@@ -71,12 +104,9 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
   ]
 
   const importOptions = [
-    { label: 'Import Test', onClick: () => toast.success('Import Test functionality coming soon!') },
-    { label: 'Import Suite', onClick: () => toast.success('Import Suite functionality coming soon!') },
-    {
-      label: 'Import Project',
-      onClick: () => toast.success('Import Project functionality coming soon!')
-    }
+    { label: 'Import Test', onClick: () => handleImportClick('Test') },
+    { label: 'Import Suite', onClick: () => handleImportClick('Suite') },
+    { label: 'Import Project', onClick: () => handleImportClick('Project') }
   ]
 
   return (

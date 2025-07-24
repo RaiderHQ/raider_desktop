@@ -103,13 +103,16 @@ const Dashboard: React.FC = (): JSX.Element => {
               {t('dashboard.totalTests')}: <span className="font-semibold">{totalCount}</span>
             </p>
             <p className="text-lg">
-              {t('dashboard.passed')}: <span className="font-semibold text-[#4caf50]">{passedCount}</span>
+              {t('dashboard.passed')}:{' '}
+              <span className="font-semibold text-[#4caf50]">{passedCount}</span>
             </p>
             <p className="text-lg">
-              {t('dashboard.failed')}: <span className="font-semibold text-[#f44336]">{failedCount}</span>
+              {t('dashboard.failed')}:{' '}
+              <span className="font-semibold text-[#f44336]">{failedCount}</span>
             </p>
             <p className="text-lg">
-              {t('dashboard.skipped')}: <span className="font-semibold text-[#ff9800]">{skippedCount}</span>
+              {t('dashboard.skipped')}:{' '}
+              <span className="font-semibold text-[#ff9800]">{skippedCount}</span>
             </p>
           </div>
 

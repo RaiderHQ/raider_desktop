@@ -22,9 +22,9 @@ const MainTemplate: React.FC = (): JSX.Element => {
           <nav className="flex space-x-8">
             <Link to="/overview" className="text-gray-600 hover:text-gray-800 text-lg">
               {t('menu.tests')}
-      </Link>
-      <Link to="/recorder" className="text-gray-600 hover:text-gray-800 text-lg">
-        Recorder
+            </Link>
+            <Link to="/recorder" className="text-gray-600 hover:text-gray-800 text-lg">
+              Recorder
             </Link>
             <Link to="/dashboard" className="text-gray-600 hover:text-gray-800 text-lg">
               {t('menu.dashboard')}

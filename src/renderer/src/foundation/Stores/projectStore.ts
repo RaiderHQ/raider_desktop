@@ -52,7 +52,7 @@ const useProjectStore = create(
       const { files } = get()
 
       const getFilePaths = (files: FileNode[]): string[] => {
-        let filePaths: string[] = [];
+        let filePaths: string[] = []
 
         files.forEach((file) => {
           if (file.type === 'file') {

@@ -29,7 +29,14 @@ const keyMap: { [key: string]: string } = {
   F12: ':f12'
 }
 
-function recorderEvent(data: any): void {
+export interface RecorderEventData {
+  action: 'click' | 'type' | 'sendKeys'
+  selector: string
+  tagName: string
+  value?: string
+}
+
+function recorderEvent(data: RecorderEventData): void {
   let commandString = ''
   switch (data.action) {
     case 'click': {
