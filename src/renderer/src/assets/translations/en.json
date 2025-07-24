@@ -147,6 +147,10 @@
         "label": "Implicit Wait (seconds)",
         "description": "The default time to wait for elements to appear during playback."
       },
+      "explicitWait": {
+        "label": "Explicit Wait (seconds)",
+        "description": "The maximum time to wait for a specific condition to be met."
+      },
       "recordingUpdateSuccess": "Recording settings updated successfully!",
       "updateRecordingSettingsButton": "Update Settings"
     },

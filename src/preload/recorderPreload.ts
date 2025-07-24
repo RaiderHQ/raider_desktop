@@ -7,17 +7,12 @@ import { ipcRenderer } from 'electron'
  * @returns A single, high-priority selector string.
  */
 function getPrioritizedSelector(el: Element): string {
-  // 1. Priority: Unique ID
-  // A unique ID is the most reliable locator. We'll format it as a CSS selector.
   if (el.id) {
-    // Verify the ID is unique to avoid ambiguity.
     if (document.querySelectorAll(`#${el.id}`).length === 1) {
       return `#${el.id}`
     }
   }
 
-  // 2. Priority: CSS Path (if no unique ID is found)
-  // This generates a specific path from the parent to the child element.
   if (el instanceof HTMLElement) {
     const parts: string[] = []
     let currentEl: Element | null = el
@@ -43,8 +38,6 @@ function getPrioritizedSelector(el: Element): string {
     }
   }
 
-  // 3. Fallback: Absolute XPath
-  // This is the least preferred method as it's brittle, but it's a reliable last resort.
   let xpath = ''
   let currentEl: Element | null = el
   while (currentEl && currentEl.nodeType === Node.ELEMENT_NODE) {
@@ -62,9 +55,6 @@ function getPrioritizedSelector(el: Element): string {
   return xpath
 }
 
-// --- Event Listeners ---
-
-// 1. Listen for all clicks on the document
 document.addEventListener(
   'click',
   (event) => {
@@ -80,7 +70,6 @@ document.addEventListener(
   true
 )
 
-// 2. Listen for when an input, textarea, or select value changes
 document.addEventListener(
   'change',
   (event) => {
@@ -97,7 +86,6 @@ document.addEventListener(
   true
 )
 
-// 3. Listen for specific keydown events
 document.addEventListener(
   'keydown',
   (event) => {
@@ -127,11 +115,10 @@ document.addEventListener(
   true
 )
 
-// 4. Listen for the context menu event (right-click) for assertions
 document.addEventListener(
   'contextmenu',
   (event) => {
-    event.preventDefault() // Prevent the default browser context menu
+    event.preventDefault()
     const target = event.target as HTMLElement
     if (target) {
       const selector = getPrioritizedSelector(target)

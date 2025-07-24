@@ -9,7 +9,6 @@ const RecordingSettings: React.FC = () => {
   const [explicitWait, setExplicitWait] = useState(30)
   const [isUpdating, setIsUpdating] = useState(false)
 
-  // Load the saved setting when the component mounts
   useEffect(() => {
     const savedImplicitWait = localStorage.getItem('implicitWait')
     if (savedImplicitWait) {
@@ -64,7 +63,9 @@ const RecordingSettings: React.FC = () => {
           className="border p-1 rounded mt-2"
           min="0"
         />
-        <p className="text-sm text-gray-500 mt-1">{t('settings.recording.implicitWait.description')}</p>
+        <p className="text-sm text-gray-500 mt-1">
+          {t('settings.recording.implicitWait.description')}
+        </p>
       </div>
 
       <div className="border border-gray-300 rounded-lg p-4 mt-4">
@@ -79,7 +80,9 @@ const RecordingSettings: React.FC = () => {
           className="border p-1 rounded mt-2"
           min="0"
         />
-        <p className="text-sm text-gray-500 mt-1">{t('settings.recording.explicitWait.description')}</p>
+        <p className="text-sm text-gray-500 mt-1">
+          {t('settings.recording.explicitWait.description')}
+        </p>
       </div>
 
       <div className="mt-4">
