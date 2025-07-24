@@ -133,8 +133,12 @@ const api = {
     ipcRenderer.invoke('export-test', { testName, steps }),
   runTest: async (suiteId: string, testId: string): Promise<{ success: boolean; output: string }> =>
     ipcRenderer.invoke('run-test', suiteId, testId),
-  updateRecordingSettings: (settings: { implicitWait: number }) =>
-    ipcRenderer.invoke('update-recording-settings', settings)
+  updateRecordingSettings: (settings: { implicitWait: number, explicitWait: number }) =>
+    ipcRenderer.invoke('update-recording-settings', settings),
+  getSelectorPriorities: (): Promise<string[]> =>
+    ipcRenderer.invoke('get-selector-priorities'),
+  saveSelectorPriorities: (priorities: string[]): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('save-selector-priorities', priorities)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

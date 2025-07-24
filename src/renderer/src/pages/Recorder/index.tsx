@@ -51,6 +51,22 @@ const Recorder: React.FC = () => {
     [suites, activeSuiteId]
   )
 
+  const handleAutoSave = useCallback(() => {
+    if (activeSuiteIdRef.current && activeTestRef.current) {
+      window.api.saveRecording(activeSuiteIdRef.current, activeTestRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      handleAutoSave()
+    }, 500) // Debounce time
+
+    return () => {
+      clearTimeout(handler)
+    }
+  }, [activeTest, handleAutoSave])
+
   /**
    * Determines the correct locator strategy (:id, :css, :xpath) based on the selector string.
    * @param selector The selector string from the preload script.
@@ -106,12 +122,6 @@ const Recorder: React.FC = () => {
     }
   }
 
-  const handleSaveRecording = useCallback(() => {
-    if (activeSuiteId && activeTest) {
-      window.api.saveRecording(activeSuiteId, activeTest)
-    }
-  }, [activeSuiteId, activeTest])
-
   const handleNewTest = () => {
     if (activeSuiteId) {
       const newTest = createNewTest()
@@ -133,20 +143,20 @@ const Recorder: React.FC = () => {
 
   const handleRunTest = useCallback(async (): Promise<void> => {
     if (activeSuiteId && activeTest?.id) {
-      handleSaveRecording()
+      handleAutoSave()
       setIsRunning(true)
       setRunOutput(`Running test: ${activeTest.name}...`)
       const result = await window.api.runTest(activeSuiteId, activeTest.id)
       setRunOutput(result.output)
       setIsRunning(false)
     }
-  }, [activeSuiteId, activeTest, handleSaveRecording])
+  }, [activeSuiteId, activeTest, handleAutoSave])
 
   const handleRunAllTests = useCallback(
     async (suiteId: string) => {
       const suiteToRun = suites.find((s) => s.id === suiteId)
       if (suiteToRun) {
-        handleSaveRecording()
+        handleAutoSave()
         setIsRunning(true)
         setRunOutput(`Running suite: ${suiteToRun.name}...`)
         const result = await window.api.runSuite(suiteToRun.id)
@@ -154,7 +164,7 @@ const Recorder: React.FC = () => {
         setIsRunning(false)
       }
     },
-    [suites, handleSaveRecording]
+    [suites, handleAutoSave]
   )
 
   const handleExportTest = useCallback(async (): Promise<{
@@ -353,7 +363,6 @@ const Recorder: React.FC = () => {
         onStartRecording={handleStartRecording}
         onRunTest={handleRunTest}
         onStopRecording={handleStopRecording}
-        onSaveTest={handleSaveRecording}
         onNewTest={handleNewTest}
         onExportTest={handleExportTest}
         onExportSuite={handleExportSuite}
