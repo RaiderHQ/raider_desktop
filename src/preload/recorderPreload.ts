@@ -1,58 +1,97 @@
 import { ipcRenderer } from 'electron'
 
-/**
- * Generates the best possible selector for an element using a prioritized strategy.
- * Priority: Unique ID -> CSS Path -> Absolute XPath.
- * @param el The element to generate a selector for.
- * @returns A single, high-priority selector string.
- */
-function getPrioritizedSelector(el: Element): string {
-  if (el.id) {
-    if (document.querySelectorAll(`#${el.id}`).length === 1) {
-      return `#${el.id}`
-    }
-  }
+let selectorPriorities: string[] = ['id', 'css', 'xpath'];
 
-  if (el instanceof HTMLElement) {
-    const parts: string[] = []
-    let currentEl: Element | null = el
-    while (currentEl && currentEl.nodeType === Node.ELEMENT_NODE) {
-      let part = currentEl.nodeName.toLowerCase()
-      if (currentEl.id) {
-        part += `#${currentEl.id}`
-        parts.unshift(part)
-        break // Stop if we hit an element with an ID
-      } else {
-        let sibling = currentEl
-        let nth = 1
-        while ((sibling = sibling.previousElementSibling!)) {
-          if (sibling.nodeName.toLowerCase() === part) nth++
+ipcRenderer.invoke('get-selector-priorities').then(priorities => {
+  selectorPriorities = priorities;
+});
+
+ipcRenderer.on('update-selector-priorities', (_event, priorities: string[]) => {
+  selectorPriorities = priorities;
+});
+
+function getCssPath(el: Element): string {
+    if (!(el instanceof Element)) return '';
+    const path = [];
+    while (el.nodeType === Node.ELEMENT_NODE) {
+        let selector = el.nodeName.toLowerCase();
+        if (el.id) {
+            selector += '#' + el.id;
+            path.unshift(selector);
+            break;
+        } else {
+            let sib = el, nth = 1;
+            while (sib = sib.previousElementSibling!) {
+                if (sib.nodeName.toLowerCase() == selector)
+                    nth++;
+            }
+            if (nth != 1)
+                selector += ":nth-of-type("+nth+")";
         }
-        if (nth > 1) part += `:nth-of-type(${nth})`
-      }
-      parts.unshift(part)
-      currentEl = currentEl.parentElement
+        path.unshift(selector);
+        el = el.parentNode as Element;
     }
-    if (parts.length) {
-      return parts.join(' > ')
-    }
-  }
+    return path.join(" > ");
+}
 
-  let xpath = ''
-  let currentEl: Element | null = el
-  while (currentEl && currentEl.nodeType === Node.ELEMENT_NODE) {
-    let index = 1
-    let sibling = currentEl.previousElementSibling
-    while (sibling) {
-      if (sibling.nodeName === currentEl.nodeName) {
-        index++
-      }
-      sibling = sibling.previousElementSibling
+function getXPath(element: Element): string {
+    if (element.id !== '') {
+        return `id("${element.id}")`
     }
-    xpath = `/${currentEl.nodeName.toLowerCase()}[${index}]` + xpath
-    currentEl = currentEl.parentElement
+    if (element === document.body) {
+        return element.tagName.toLowerCase()
+    }
+
+    let ix = 0
+    const siblings = element.parentNode?.children || new HTMLCollection()
+
+    for (let i = 0; i < siblings.length; i++) {
+        const sibling = siblings[i]
+        if (sibling === element) {
+            return (
+                getXPath(element.parentElement as Element) +
+                '/' +
+                element.tagName.toLowerCase() +
+                '[' +
+                (ix + 1) +
+                ']'
+            )
+        }
+        if (sibling.nodeType === 1 && sibling.tagName === element.tagName) {
+            ix++
+        }
+    }
+    return ''
+}
+
+
+function getPrioritizedSelector(el: Element): string {
+  for (const priority of selectorPriorities) {
+    if (priority === 'id' && el.id) {
+      if (document.querySelectorAll(`#${el.id}`).length === 1) {
+        return `#${el.id}`;
+      }
+    } else if (priority === 'css') {
+        const selector = getCssPath(el);
+        if(selector && document.querySelectorAll(selector).length === 1) {
+            return selector;
+        }
+    } else if (priority === 'xpath') {
+        const selector = getXPath(el);
+        if (selector) return selector;
+    } else {
+      // Handle custom attributes
+      const customSelector = el.getAttribute(priority);
+      if (customSelector) {
+        const selector = `[${priority}="${customSelector}"]`;
+        if (document.querySelectorAll(selector).length === 1) {
+          return selector;
+        }
+      }
+    }
   }
-  return xpath
+  // Fallback to a robust selector if no priority matches
+  return getCssPath(el) || getXPath(el);
 }
 
 document.addEventListener(

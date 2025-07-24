@@ -3,13 +3,15 @@ interface ButtonProps {
   onClick?: () => void
   children: React.ReactNode
   disabled?: boolean
+  className?: string
 }
 
 const Button = ({
   type = 'disabled',
   children,
   onClick,
-  disabled = false
+  disabled = false,
+  className = ''
 }: ButtonProps): JSX.Element => {
   const styles: Record<string, string> = {
     primary: 'bg-blue-500 text-white hover:bg-blue-600',
@@ -18,10 +20,10 @@ const Button = ({
     success: 'bg-green-500 text-white hover:bg-green-600'
   }
 
-  const className = `min-w-[150px] text-base py-2 font-semibold rounded-lg ${styles[type] || styles.disabled}`
+  const baseClassName = `min-w-[150px] text-base py-2 font-semibold rounded-lg ${styles[type] || styles.disabled}`
 
   return (
-    <button onClick={onClick} className={className} disabled={disabled}>
+    <button onClick={onClick} className={`${baseClassName} ${className}`} disabled={disabled}>
       {children}
     </button>
   )
