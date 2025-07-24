@@ -15,7 +15,6 @@ interface MainRecorderPanelProps {
   onStartRecording: () => void
   onRunTest: () => void
   onStopRecording: () => void
-  onSaveTest: () => void
   onNewTest: () => void
   onExportTest: () => Promise<{ success: boolean; path?: string; error?: string }>
   activeSuiteId: string | null
@@ -31,16 +30,10 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
   onStartRecording,
   onRunTest,
   onStopRecording,
-  onSaveTest,
   onNewTest,
   onExportTest,
   activeSuiteId
 }) => {
-  const handleSaveClick = (): void => {
-    onSaveTest()
-    toast.success('Test saved successfully!')
-  }
-
   const handleExportClick = async (exportType: 'Test' | 'Suite' | 'Project'): Promise<void> => {
     let result
     switch (exportType) {
@@ -137,13 +130,6 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
                 type={!activeSuiteId ? 'disabled' : 'secondary'}
               >
                 New Test
-              </Button>
-              <Button
-                onClick={handleSaveClick}
-                disabled={!activeTest || isRecording}
-                type={!activeTest || isRecording ? 'disabled' : 'primary'}
-              >
-                Save Test
               </Button>
               <Dropdown buttonText="Import" options={importOptions} defaultOption={2} />
               <Dropdown
