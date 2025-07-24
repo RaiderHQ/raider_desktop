@@ -67,7 +67,7 @@ const Recorder: React.FC = () => {
     return () => {
       clearTimeout(handler)
     }
-  }, [activeTest, handleAutoSave])
+  }, [activeTest])
 
   /**
    * Determines the correct locator strategy (:id, :css, :xpath) based on the selector string.
@@ -144,29 +144,27 @@ const Recorder: React.FC = () => {
   }, [])
 
   const handleRunTest = useCallback(async (): Promise<void> => {
-    if (activeSuiteId && activeTest?.id && projectPath) {
-      handleAutoSave()
+    if (activeSuiteId && activeTest?.id) {
       setIsRunning(true)
       setRunOutput(`Running test: ${activeTest.name}...`)
-      const result = await window.api.runTest(activeSuiteId, activeTest.id, projectPath)
+      const result = await window.api.runTest(activeSuiteId, activeTest.id, projectPath || '.')
       setRunOutput(result.output)
       setIsRunning(false)
     }
-  }, [activeSuiteId, activeTest, handleAutoSave, projectPath])
+  }, [activeSuiteId, activeTest, projectPath])
 
   const handleRunAllTests = useCallback(
     async (suiteId: string) => {
       const suiteToRun = suites.find((s) => s.id === suiteId)
-      if (suiteToRun && projectPath) {
-        handleAutoSave()
+      if (suiteToRun) {
         setIsRunning(true)
         setRunOutput(`Running suite: ${suiteToRun.name}...`)
-        const result = await window.api.runSuite(suiteToRun.id, projectPath)
+        const result = await window.api.runSuite(suiteToRun.id, projectPath || '.')
         setRunOutput(result.output)
         setIsRunning(false)
       }
     },
-    [suites, handleAutoSave, projectPath]
+    [suites, projectPath]
   )
 
   const handleExportTest = useCallback(async (): Promise<{
@@ -276,7 +274,9 @@ const Recorder: React.FC = () => {
         if (activeSuiteNow) {
           const activeTestNow = activeSuiteNow.tests.find((t) => t.id === currentTestId)
           if (activeTestNow) {
-            setActiveTest(activeTestNow)
+            if (JSON.stringify(activeTestRef.current) !== JSON.stringify(activeTestNow)) {
+              setActiveTest(activeTestNow)
+            }
           } else {
             setActiveTest(activeSuiteNow.tests[0] ?? null)
           }
