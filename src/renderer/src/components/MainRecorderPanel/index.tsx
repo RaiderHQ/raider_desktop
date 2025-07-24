@@ -1,7 +1,7 @@
-// src/renderer/src/components/MainRecorderPanel.tsx
 import React from 'react'
 import Button from '@components/Button'
 import InputField from '@components/InputField'
+import Dropdown from '@components/Dropdown'
 import type { Test } from '@foundation/Types/test'
 import toast from 'react-hot-toast'
 
@@ -41,19 +41,48 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
     toast.success('Test saved successfully!')
   }
 
-  const handleExportClick = async (): Promise<void> => {
-    const result = await onExportTest()
+  const handleExportClick = async (exportType: 'Test' | 'Suite' | 'Project'): Promise<void> => {
+    let result
+    switch (exportType) {
+      case 'Test':
+        result = await onExportTest()
+        break
+      case 'Suite':
+        toast.success('Export Suite functionality coming soon!')
+        return
+      case 'Project':
+        toast.success('Export Project functionality coming soon!')
+        return
+      default:
+        return
+    }
+
     if (result.success) {
-      toast.success(`Test exported to ${result.path}`)
+      toast.success(`${exportType} exported to ${result.path}`)
     } else {
       toast.error(`Export failed: ${result.error}`)
     }
   }
 
+  const exportOptions = [
+    { label: 'Export Test', onClick: () => handleExportClick('Test') },
+    { label: 'Export Suite', onClick: () => handleExportClick('Suite') },
+    { label: 'Export Project', onClick: () => handleExportClick('Project') }
+  ]
+
+  const importOptions = [
+    { label: 'Import Test', onClick: () => toast.success('Import Test functionality coming soon!') },
+    { label: 'Import Suite', onClick: () => toast.success('Import Suite functionality coming soon!') },
+    {
+      label: 'Import Project',
+      onClick: () => toast.success('Import Project functionality coming soon!')
+    }
+  ]
+
   return (
     <div className="flex-none pb-1 pr-1">
       <div className="relative">
-        <div className="relative flex flex-col border border-black rounded-lg bg-white z-10 p-4 space-y-4">
+        <div className="relative flex flex-col border border-black rounded-lg bg-white p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">
               {activeSuiteName ? `Suite: ${activeSuiteName}` : 'No Suite Selected'}
@@ -116,13 +145,13 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
               >
                 Save Test
               </Button>
-              <Button
-                onClick={handleExportClick}
+              <Dropdown buttonText="Import" options={importOptions} defaultOption={2} />
+              <Dropdown
+                buttonText="Export"
+                options={exportOptions}
+                defaultOption={2}
                 disabled={!activeTest || isRecording}
-                type={!activeTest || isRecording ? 'disabled' : 'secondary'}
-              >
-                Export Script
-              </Button>
+              />
             </div>
           </div>
         </div>

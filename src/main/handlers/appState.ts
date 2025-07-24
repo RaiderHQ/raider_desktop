@@ -10,10 +10,12 @@ interface AppState {
 
 interface RecordingSettings {
   implicitWait: number
+  explicitWait: number
 }
 
 let recordingSettings: RecordingSettings = {
-  implicitWait: 30
+  implicitWait: 0,
+  explicitWait: 30
 }
 
 /**
