@@ -7,6 +7,13 @@ import StyledPanel from '@components/StyledPanel'
 import { Toaster } from 'react-hot-toast'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
+import AssertionTextModal from '@components/AssertionTextModal'
+
+// Defines the structure for the data needed by the assertion modal
+interface AssertionInfo {
+  selector: string
+  text: string
+}
 
 const createNewTest = (): Test => ({
   id: crypto.randomUUID(),
@@ -22,6 +29,7 @@ const Recorder: React.FC = () => {
   const [isRecording, setIsRecording] = useState<boolean>(false)
   const [runOutput, setRunOutput] = useState<string>('')
   const [isRunning, setIsRunning] = useState<boolean>(false)
+  const [assertionInfo, setAssertionInfo] = useState<AssertionInfo | null>(null)
 
   const activeTestRef = useRef(activeTest)
   useEffect(() => {
@@ -42,6 +50,24 @@ const Recorder: React.FC = () => {
     () => suites.find((s) => s.id === activeSuiteId),
     [suites, activeSuiteId]
   )
+
+  /**
+   * Determines the correct locator strategy (:id, :css, :xpath) based on the selector string.
+   * @param selector The selector string from the preload script.
+   * @returns An object with the strategy and the processed selector value.
+   */
+  const formatLocator = (selector: string): { strategy: string; value: string } => {
+    // Check for XPath (starts with / or (//)
+    if (selector.startsWith('/') || selector.startsWith('(')) {
+      return { strategy: 'xpath', value: selector }
+    }
+    // Check for a simple ID selector (e.g., #my-id) that isn't part of a complex path
+    if (selector.startsWith('#') && !/[\s>~+]/.test(selector)) {
+      return { strategy: 'id', value: selector.substring(1) }
+    }
+    // Default to CSS for all other cases
+    return { strategy: 'css', value: selector }
+  }
 
   const handleCreateSuite = useCallback(
     (suiteName: string) => {
@@ -143,6 +169,21 @@ const Recorder: React.FC = () => {
     }
   }, [activeTest])
 
+  const handleSaveAssertionText = (expectedText: string): void => {
+    if (assertionInfo) {
+      const { strategy, value } = formatLocator(assertionInfo.selector)
+      const newStep = `expect(@driver.find_element(:${strategy}, "${value}").text).to eq("${expectedText}")`
+      setActiveTest((prevTest) =>
+        prevTest ? { ...prevTest, steps: [...prevTest.steps, newStep] } : null
+      )
+    }
+    setAssertionInfo(null)
+  }
+
+  const handleCloseAssertionModal = (): void => {
+    setAssertionInfo(null)
+  }
+
   useEffect(() => {
     window.api.getSuites().then((initialSuites) => {
       setSuites(initialSuites)
@@ -205,18 +246,50 @@ const Recorder: React.FC = () => {
       )
     }
 
+    const handleAddAssertion = (
+      _event: any,
+      assertion: { type: string; selector: string; text?: string }
+    ): void => {
+      let newStep = ''
+      const { strategy, value } = formatLocator(assertion.selector)
+
+      switch (assertion.type) {
+        case 'wait-displayed':
+          newStep = `@wait.until { @driver.find_element(:${strategy}, "${value}").displayed? }`
+          setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
+          break
+        case 'wait-enabled':
+          newStep = `@wait.until { @driver.find_element(:${strategy}, "${value}").enabled? }`
+          setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
+          break
+        case 'displayed':
+          newStep = `expect(@driver.find_element(:${strategy}, "${value}")).to be_displayed`
+          setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
+          break
+        case 'enabled':
+          newStep = `expect(@driver.find_element(:${strategy}, "${value}")).to be_enabled`
+          setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
+          break
+        case 'text':
+          setAssertionInfo({ selector: assertion.selector, text: assertion.text ?? '' })
+          break
+      }
+    }
+
     const startCleanup = window.electron.ipcRenderer.on('recording-started', handleRecordingStarted)
     const stopCleanup = window.electron.ipcRenderer.on('recording-stopped', handleRecordingStopped)
     const commandCleanup = window.electron.ipcRenderer.on(
       'new-recorded-command',
       handleNewCommand
     )
+    const assertionCleanup = window.electron.ipcRenderer.on('add-assertion-step', handleAddAssertion)
 
     return () => {
       suiteUpdatedCleanup?.()
       startCleanup?.()
       stopCleanup?.()
       commandCleanup?.()
+      assertionCleanup?.()
     }
   }, [])
 
@@ -290,6 +363,13 @@ const Recorder: React.FC = () => {
           </div>
         </div>
       </div>
+      {assertionInfo && (
+        <AssertionTextModal
+          initialText={assertionInfo.text}
+          onSave={handleSaveAssertionText}
+          onClose={handleCloseAssertionModal}
+        />
+      )}
     </div>
   )
 }

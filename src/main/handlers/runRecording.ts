@@ -6,6 +6,7 @@ import path from 'path'
 interface AppState {
   savedTest: { name: string; steps: string[] } | null
   implicitWait: number
+  explicitWait: number
 }
 
 /**
@@ -13,8 +14,14 @@ interface AppState {
  * @param testName The name for the 'describe' block in RSpec.
  * @param steps The array of command strings.
  * @param implicitWait The implicit wait time in seconds.
+ * @param explicitWait The explicit wait time in seconds.
  */
-function generateRspecCode(testName: string, steps: string[], implicitWait: number): string {
+function generateRspecCode(
+  testName: string,
+  steps: string[],
+  implicitWait: number,
+  explicitWait: number
+): string {
   const formattedSteps = steps.map((step) => `    ${step}`).join('\n    sleep(1)\n')
   return `
 require 'selenium-webdriver'
@@ -23,9 +30,11 @@ require 'rspec'
 describe '${testName}' do
   before(:each) do
     @driver = Selenium::WebDriver.for :chrome
-    @wait = Selenium::WebDriver::Wait.new(timeout: ${implicitWait})
+    @driver.manage.timeouts.implicit_wait = ${implicitWait}
+    @wait = Selenium::WebDriver::Wait.new(timeout: ${explicitWait})
     @vars = {}
   end
+
 
   after(:each) do
     @driver.quit
@@ -66,13 +75,10 @@ const runRecording = async (appState: AppState): Promise<{ success: boolean; out
 
     // Destructure the name and steps from the saved test
     const { name, steps } = appState.savedTest
-    const { implicitWait } = appState
+    const { implicitWait, explicitWait } = appState
 
-    // Generate the test code using both name and steps
-    const testCode = generateRspecCode(name, steps, implicitWait)
+    const testCode = generateRspecCode(name, steps, implicitWait, explicitWait)
 
-    // *** FIX IS HERE ***
-    // Write the correctly generated 'testCode' variable to the file.
     await fs.writeFile(tempFilePath, testCode)
     console.log(`[MainProcess] Test file written to: ${tempFilePath}`)
 
