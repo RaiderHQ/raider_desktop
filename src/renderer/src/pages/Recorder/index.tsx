@@ -258,8 +258,8 @@ const Recorder: React.FC = () => {
           newStep = `@wait.until { @driver.find_element(:${strategy}, "${value}").displayed? }`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
-        case 'wait-present':
-          newStep = `@wait.until { @driver.find_element(:${strategy}, "${value}") }`
+        case 'wait-enabled':
+          newStep = `@wait.until { @driver.find_element(:${strategy}, "${value}").enabled? }`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'displayed':
