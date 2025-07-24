@@ -6,7 +6,7 @@ import Overview from '@pages/Overview'
 import Settings from '@pages/Settings'
 import Dashboard from '@pages/Dashboard'
 import Recorder from '@pages/Recorder'
-import Landing from "@pages/Landing";
+import Landing from '@pages/Landing'
 
 const Router = (): JSX.Element => {
   const router = createHashRouter([

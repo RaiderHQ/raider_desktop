@@ -1,6 +1,6 @@
 import { BrowserWindow } from 'electron'
 import { join } from 'path'
-import { appState, setRecorderWindow} from './appState'
+import { appState, setRecorderWindow } from './appState'
 
 function startRecordingMain(): { success: boolean } {
   if (appState.recorderWindow) {

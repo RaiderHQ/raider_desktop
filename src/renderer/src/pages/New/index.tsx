@@ -39,9 +39,7 @@ const CreateProject: React.FC = () => {
       return
     }
 
-    const folder = await window.api.selectFolder(
-      t('newProject.alerts.selectFolder')
-    )
+    const folder = await window.api.selectFolder(t('newProject.alerts.selectFolder'))
     if (!folder) {
       return
     }
@@ -60,14 +58,14 @@ const CreateProject: React.FC = () => {
         projectName,
         testFramework.toLowerCase(),
         automationParam
-      );
+      )
 
       // Add this block back for debugging
-      console.log('Raider result from main process:', raiderResult);
+      console.log('Raider result from main process:', raiderResult)
       if (!raiderResult || !raiderResult.success) {
-        toast.error(`Project creation failed: ${raiderResult?.error }`);
-        setLoading(false);
-        return;
+        toast.error(`Project creation failed: ${raiderResult?.error}`)
+        setLoading(false)
+        return
       }
 
       setProjectPath(overviewFolder)
@@ -97,12 +95,8 @@ const CreateProject: React.FC = () => {
   return (
     <>
       <div className="text-center mb-10">
-        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">
-          {t('newProject.title')}
-        </h1>
-        <p className="text-gray-600 text-base md:text-lg lg:text-xl">
-          {t('newProject.subtitle')}
-        </p>
+        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">{t('newProject.title')}</h1>
+        <p className="text-gray-600 text-base md:text-lg lg:text-xl">{t('newProject.subtitle')}</p>
       </div>
 
       <ContentArea>
@@ -128,11 +122,7 @@ const CreateProject: React.FC = () => {
             />
           </div>
 
-          <div
-            className={`grid ${
-              showMobile ? 'grid-cols-2' : 'grid-cols-1'
-            } gap-x-8 mb-6 w-full`}
-          >
+          <div className={`grid ${showMobile ? 'grid-cols-2' : 'grid-cols-1'} gap-x-8 mb-6 w-full`}>
             <div className="flex flex-col space-y-6">
               <SelectInput
                 label={t('newProject.question.automation')}

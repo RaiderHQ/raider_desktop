@@ -17,9 +17,10 @@ const handler = async (): Promise<{ success: boolean; output?: string; error?: s
       const normalizedFolderPath = path.resolve(localDirectoryPath)
 
       const command = process.platform === 'win32' ? 'cmd.exe' : 'allure'
-      const args = process.platform === 'win32'
-        ? ['/c', 'allure', 'serve', 'allure-results']
-        : ['serve', 'allure-results']
+      const args =
+        process.platform === 'win32'
+          ? ['/c', 'allure', 'serve', 'allure-results']
+          : ['serve', 'allure-results']
       const options = {
         cwd: normalizedFolderPath,
         shell: process.platform === 'win32'

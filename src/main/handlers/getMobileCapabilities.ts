@@ -7,7 +7,7 @@ import yaml from 'js-yaml'
 const getMobileCapabilities = async (
   _event: IpcMainInvokeEvent,
   projectPath: string
-): Promise<{ success: boolean; capabilities?: any; error?: string }> => {
+): Promise<{ success: boolean; capabilities?: Record<string, unknown>; error?: string }> => {
   try {
     if (typeof projectPath !== 'string' || !projectPath.trim()) {
       throw new Error('Invalid projectPath: Must be a non-empty string')
@@ -19,9 +19,7 @@ const getMobileCapabilities = async (
     const fileContent = await fs.readFile(capabilitiesFilePath, 'utf8')
 
     const platformMatch = fileContent.match(/^platformName:\s*.*$/m)
-    const appiumMatch = fileContent.match(
-      /^appium:options:\n(?:[ \t]+.*\n?)+/m
-    )
+    const appiumMatch = fileContent.match(/^appium:options:\n(?:[ \t]+.*\n?)+/m)
 
     if (!platformMatch || !appiumMatch) {
       throw new Error('Required keys not found in capabilities file')
