@@ -190,7 +190,11 @@ app.whenReady().then(() => {
     ]
 
     const menu = Menu.buildFromTemplate(template)
-    menu.popup({ window: appState.mainWindow })
+    if (appState.recorderWindow) {
+      menu.popup({ window: appState.recorderWindow })
+    } else if (appState.mainWindow) {
+      menu.popup({ window: appState.mainWindow })
+    }
   })
 })
 
