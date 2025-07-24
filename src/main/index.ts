@@ -123,7 +123,7 @@ app.whenReady().then(() => {
   ipcMain.handle('delete-suite', (_event, suiteId: string) =>
     deleteSuite(appState.mainWindow!, suiteId)
   )
-  ipcMain.handle('run-test', (_event, suiteId: string, testId: string) => {
+  ipcMain.handle('run-test', (_event, suiteId: string, testId: string, projectPath: string) => {
     const suite = appState.suites.get(suiteId)
     const test = suite?.tests.find((t) => t.id === testId)
 
@@ -132,7 +132,7 @@ app.whenReady().then(() => {
     }
 
     const { implicitWait, explicitWait } = getRecordingSettings()
-    return runRecording({ savedTest: test, implicitWait, explicitWait })
+    return runRecording({ savedTest: test, implicitWait, explicitWait, projectPath })
   })
   ipcMain.handle(
     'update-recording-settings',
@@ -146,7 +146,7 @@ app.whenReady().then(() => {
     }
   )
 
-  ipcMain.handle('run-suite', (_event, suiteId: string) => runSuite(suiteId))
+  ipcMain.handle('run-suite', (_event, suiteId: string, projectPath: string) => runSuite(suiteId, projectPath))
   ipcMain.handle('export-test', (_event, testData: TestData) => exportTest(testData))
   ipcMain.handle('export-suite', (_event, suiteId: string) => exportSuite(suiteId))
   ipcMain.handle('export-project', exportProject)

@@ -164,7 +164,11 @@
       "openAllure": "An issue occurred opening the dashboard"
     },
     "running": "Tests are being executed...",
-    "runTestsSuccess": "Tests completed successfully!"
+    "runTestsSuccess": "Tests completed successfully!",
+    "tabs": {
+      "files": "Files",
+      "dashboard": "Dashboard"
+    }
   },
   "editor": {
     "placeholder": "Start editing file content here...",
@@ -202,6 +206,11 @@
     "failed": "Failed",
     "skipped": "Skipped",
     "noResults": "Please run your tests to see the results on the dashboard.",
+    "noRecordingResults": "Please run a test to see the recording results on the dashboard.",
+    "tabs": {
+      "project": "Project Dashboard",
+      "recording": "Recording Dashboard"
+    },
     "error": {
       "fetching": "Error fetching dashboard",
       "parsing": "Error parsing {{file}}",
