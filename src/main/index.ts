@@ -38,6 +38,8 @@ import startRecordingMain from './handlers/startRecordingMain'
 import stopRecordingMain from './handlers/stopRecordingMain'
 import saveRecording from './handlers/saveRecording'
 import updateRecordingSettings from './handlers/updateRecordingSettings'
+import getSelectorPriorities from './handlers/getSelectorPriorities'
+import saveSelectorPriorities from './handlers/saveSelectorPriorities'
 
 const iconPath = join(
   __dirname,
@@ -157,6 +159,10 @@ app.whenReady().then(() => {
   ipcMain.handle('load-url-request', (_event, url: string) => loadUrlRequest(url))
   ipcMain.handle('start-recording-main', startRecordingMain)
   ipcMain.handle('stop-recording-main', stopRecordingMain)
+  ipcMain.handle('get-selector-priorities', getSelectorPriorities)
+  ipcMain.handle('save-selector-priorities', (_event, priorities: string[]) =>
+    saveSelectorPriorities(priorities)
+  )
 
   ipcMain.on('recorder-event', (_event, data: RecorderEventData) => recorderEvent(data))
 
