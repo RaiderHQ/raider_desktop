@@ -77,11 +77,8 @@ const runRecording = async (appState: AppState): Promise<{ success: boolean; out
     const { name, steps } = appState.savedTest
     const { implicitWait, explicitWait } = appState
 
-    // Generate the test code using both name and steps
     const testCode = generateRspecCode(name, steps, implicitWait, explicitWait)
 
-    // *** FIX IS HERE ***
-    // Write the correctly generated 'testCode' variable to the file.
     await fs.writeFile(tempFilePath, testCode)
     console.log(`[MainProcess] Test file written to: ${tempFilePath}`)
 

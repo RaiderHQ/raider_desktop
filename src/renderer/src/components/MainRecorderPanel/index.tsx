@@ -47,15 +47,10 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
       case 'Test':
         result = await onExportTest()
         break
-      // Add cases for Suite and Project later
       case 'Suite':
-        console.log('Export Suite clicked')
-        // result = await onExportSuite();
         toast.success('Export Suite functionality coming soon!')
         return
       case 'Project':
-        console.log('Export Project clicked')
-        // result = await onExportProject();
         toast.success('Export Project functionality coming soon!')
         return
       default:
