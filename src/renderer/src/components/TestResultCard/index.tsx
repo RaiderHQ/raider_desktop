@@ -7,7 +7,7 @@ import {
   FaChevronRight,
   FaChevronDown,
   FaImage,
-  FaTimes,
+  FaTimes
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 
@@ -24,14 +24,14 @@ const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screensho
   const [showModal, setShowModal] = useState(false)
   const [imageData, setImageData] = useState<string>('')
 
-  let statusIcon: JSX.Element | null = null;
+  let statusIcon: JSX.Element | null = null
 
-  if (status === "passed") {
-    statusIcon = <FaCheckCircle className="text-green-500" />;
-  } else if (status === "failed") {
-    statusIcon = <FaTimesCircle className="text-red-500" />;
-  } else if (status === "skipped") {
-    statusIcon = <FaExclamationCircle className="text-gray-500" />;
+  if (status === 'passed') {
+    statusIcon = <FaCheckCircle className="text-green-500" />
+  } else if (status === 'failed') {
+    statusIcon = <FaTimesCircle className="text-red-500" />
+  } else if (status === 'skipped') {
+    statusIcon = <FaExclamationCircle className="text-gray-500" />
   }
 
   const chevronIcon = open ? <FaChevronDown /> : <FaChevronRight />
@@ -56,7 +56,10 @@ const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screensho
 
   return (
     <div className="p-4 border rounded shadow">
-      <div className="flex items-center justify-between cursor-pointer" onClick={() => setOpen(!open)}>
+      <div
+        className="flex items-center justify-between cursor-pointer"
+        onClick={() => setOpen(!open)}
+      >
         <div className="flex items-center">
           <div className="mr-2">{chevronIcon}</div>
           <h2 className="font-semibold">{name}</h2>
@@ -65,10 +68,10 @@ const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screensho
       </div>
       {open && (
         <div className="mt-2">
-          <p>{t('testResults.status')}: {t(`testResults.${status}`)}</p>
-          {message && (
-            <p className="mt-2 text-sm text-gray-600">{message}</p>
-          )}
+          <p>
+            {t('testResults.status')}: {t(`testResults.${status}`)}
+          </p>
+          {message && <p className="mt-2 text-sm text-gray-600">{message}</p>}
           {screenshot && (
             <button
               onClick={() => setShowModal(true)}

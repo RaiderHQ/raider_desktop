@@ -94,13 +94,14 @@ Chosen Command: ${command}
     }
 
     return { success: true, rubyVersion: version }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
     return {
       success: false,
       error: {
         code: 'errors.ruby.unknown',
         params: {
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: errorMessage,
           debugInfo
         }
       }

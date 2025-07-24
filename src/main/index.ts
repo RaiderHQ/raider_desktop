@@ -26,8 +26,13 @@ import createSuite from './handlers/createSuite'
 import deleteSuite from './handlers/deleteSuite'
 import runSuite from './handlers/runSuite'
 import exportTest from './handlers/exportTest'
+import exportSuite from './handlers/exportSuite'
+import exportProject from './handlers/exportProject'
+import importProject from './handlers/importProject'
+import importSuite from './handlers/importSuite'
+import importTest from './handlers/importTest'
 import deleteTest from './handlers/deleteTest'
-import recorderEvent from './handlers/recorderEvent'
+import recorderEvent, { RecorderEventData } from './handlers/recorderEvent'
 import loadUrlRequest from './handlers/loadUrlRequest'
 import startRecordingMain from './handlers/startRecordingMain'
 import stopRecordingMain from './handlers/stopRecordingMain'
@@ -141,12 +146,19 @@ app.whenReady().then(() => {
 
   ipcMain.handle('run-suite', (_event, suiteId: string) => runSuite(suiteId))
   ipcMain.handle('export-test', (_event, testData: TestData) => exportTest(testData))
+  ipcMain.handle('export-suite', (_event, suiteId: string) => exportSuite(suiteId))
+  ipcMain.handle('export-project', exportProject)
+  ipcMain.handle('import-project', () => importProject(appState.mainWindow!))
+  ipcMain.handle('import-suite', () => importSuite(appState.mainWindow!))
+  ipcMain.handle('import-test', (_event, suiteId: string) =>
+    importTest(appState.mainWindow!, suiteId)
+  )
   ipcMain.handle('delete-test', (_event, args) => deleteTest(appState.mainWindow!, args))
   ipcMain.handle('load-url-request', (_event, url: string) => loadUrlRequest(url))
   ipcMain.handle('start-recording-main', startRecordingMain)
   ipcMain.handle('stop-recording-main', stopRecordingMain)
 
-  ipcMain.on('recorder-event', (_event, data: any) => recorderEvent(data))
+  ipcMain.on('recorder-event', (_event, data: RecorderEventData) => recorderEvent(data))
 
   ipcMain.handle('save-recording', (_event, suiteId: string, test: Test) =>
     saveRecording(appState.mainWindow, suiteId, test)
@@ -225,8 +237,15 @@ app.whenReady().then(() => {
   })
 })
 
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
+
+app.on('ready', async () => {
+  const fixPath = await import('fix-path')
+  fixPath.default()
+})
+

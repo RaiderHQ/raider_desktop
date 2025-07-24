@@ -70,7 +70,7 @@ const Recorder: React.FC = () => {
   }
 
   const handleCreateSuite = useCallback(
-    (suiteName: string) => {
+    (suiteName: string): void => {
       if (suiteName && !suites.find((s) => s.name === suiteName)) {
         window.api.createSuite(suiteName)
       }
@@ -78,14 +78,14 @@ const Recorder: React.FC = () => {
     [suites]
   )
 
-  const handleDeleteSuite = useCallback((suiteIdToDelete: string) => {
+  const handleDeleteSuite = useCallback((suiteIdToDelete: string): void => {
     if (window.confirm('Are you sure you want to delete this suite?')) {
       window.api.deleteSuite(suiteIdToDelete)
     }
   }, [])
 
   const handleTestDelete = useCallback(
-    (testIdToDelete: string) => {
+    (testIdToDelete: string): void => {
       if (activeSuiteId) {
         window.api.deleteTest(activeSuiteId, testIdToDelete)
       }
@@ -93,13 +93,13 @@ const Recorder: React.FC = () => {
     [activeSuiteId]
   )
 
-  const handleSuiteChange = (suiteId: string) => {
+  const handleSuiteChange = (suiteId: string): void => {
     setActiveSuiteId(suiteId)
     const suite = suites.find((s) => s.id === suiteId)
     setActiveTest(suite?.tests[0] ?? null)
   }
 
-  const handleTestSelect = (testId: string) => {
+  const handleTestSelect = (testId: string): void => {
     const test = activeSuite?.tests.find((t) => t.id === testId)
     if (test) {
       setActiveTest(test)
@@ -169,6 +169,53 @@ const Recorder: React.FC = () => {
     }
   }, [activeTest])
 
+  const handleExportSuite = useCallback(async (): Promise<{
+    success: boolean
+    path?: string
+    error?: string
+  }> => {
+    if (activeSuiteId) {
+      return window.api.exportSuite(activeSuiteId)
+    } else {
+      return { success: false, error: 'There is no active suite to export.' }
+    }
+  }, [activeSuiteId])
+
+  const handleExportProject = useCallback(async (): Promise<{
+    success: boolean
+    path?: string
+    error?: string
+  }> => {
+    return window.api.exportProject()
+  }, [])
+
+  const handleImportTest = useCallback(async (): Promise<{
+    success: boolean
+    test?: Test
+    error?: string
+  }> => {
+    if (activeSuiteId) {
+      return window.api.importTest(activeSuiteId)
+    } else {
+      return { success: false, error: 'There is no active suite to import the test into.' }
+    }
+  }, [activeSuiteId])
+
+  const handleImportSuite = useCallback(async (): Promise<{
+    success: boolean
+    suite?: Suite
+    error?: string
+  }> => {
+    return window.api.importSuite()
+  }, [])
+
+  const handleImportProject = useCallback(async (): Promise<{
+    success: boolean
+    error?: string
+  }> => {
+    return window.api.importProject()
+  }, [])
+
   const handleSaveAssertionText = (expectedText: string): void => {
     if (assertionInfo) {
       const { strategy, value } = formatLocator(assertionInfo.selector)
@@ -229,7 +276,7 @@ const Recorder: React.FC = () => {
       }
     )
 
-    const handleRecordingStarted = (_event: any, loadedUrl: string): void => {
+    const handleRecordingStarted = (_event: Electron.IpcRendererEvent, loadedUrl: string): void => {
       setIsRecording(true)
       const currentTest = activeTestRef.current
       if (currentTest) {
@@ -240,14 +287,14 @@ const Recorder: React.FC = () => {
 
     const handleRecordingStopped = () => setIsRecording(false)
 
-    const handleNewCommand = (_event: any, command: string): void => {
+    const handleNewCommand = (_event: Electron.IpcRendererEvent, command: string): void => {
       setActiveTest((prevTest) =>
         prevTest ? { ...prevTest, steps: [...prevTest.steps, command] } : null
       )
     }
 
     const handleAddAssertion = (
-      _event: any,
+      _event: Electron.IpcRendererEvent,
       assertion: { type: string; selector: string; text?: string }
     ): void => {
       let newStep = ''
@@ -278,11 +325,11 @@ const Recorder: React.FC = () => {
 
     const startCleanup = window.electron.ipcRenderer.on('recording-started', handleRecordingStarted)
     const stopCleanup = window.electron.ipcRenderer.on('recording-stopped', handleRecordingStopped)
-    const commandCleanup = window.electron.ipcRenderer.on(
-      'new-recorded-command',
-      handleNewCommand
+    const commandCleanup = window.electron.ipcRenderer.on('new-recorded-command', handleNewCommand)
+    const assertionCleanup = window.electron.ipcRenderer.on(
+      'add-assertion-step',
+      handleAddAssertion
     )
-    const assertionCleanup = window.electron.ipcRenderer.on('add-assertion-step', handleAddAssertion)
 
     return () => {
       suiteUpdatedCleanup?.()
@@ -309,6 +356,11 @@ const Recorder: React.FC = () => {
         onSaveTest={handleSaveRecording}
         onNewTest={handleNewTest}
         onExportTest={handleExportTest}
+        onExportSuite={handleExportSuite}
+        onExportProject={handleExportProject}
+        onImportTest={handleImportTest}
+        onImportSuite={handleImportSuite}
+        onImportProject={handleImportProject}
         activeSuiteId={activeSuiteId}
       />
       <div className="flex-1 flex flex-row space-x-4">

@@ -26,7 +26,9 @@ const Settings: React.FC = () => {
           <div className="flex border-b">
             <button
               className={`py-2 px-4 ${
-                activeTab === 'project' ? 'border-b-2 border-blue-500 font-semibold' : 'text-gray-600'
+                activeTab === 'project'
+                  ? 'border-b-2 border-blue-500 font-semibold'
+                  : 'text-gray-600'
               }`}
               onClick={() => setActiveTab('project')}
             >

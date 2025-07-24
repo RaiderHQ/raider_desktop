@@ -2,8 +2,8 @@ import { useTranslation } from 'react-i18next'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import Logo from '@assets/images/logo.svg'
-import { FaArrowLeft } from "react-icons/fa";
-import { useNavigate } from "react-router-dom"
+import { FaArrowLeft } from 'react-icons/fa'
+import { useNavigate } from 'react-router-dom'
 
 interface RubyError {
   code: string
@@ -58,7 +58,10 @@ const InstallGuide: React.FC<InstallGuideProps> = ({ rubyMissing, rubyError, all
               <p>{errorMessage}</p>
             </div>
             <div className="flex justify-between space-x-4">
-              <Button onClick={() => handleNavigation('https://github.com/RaiderHQ/ruby_raider')} type="secondary">
+              <Button
+                onClick={() => handleNavigation('https://github.com/RaiderHQ/ruby_raider')}
+                type="secondary"
+              >
                 {t('installGuide.githubButton')}
               </Button>
               <Button onClick={() => handleNavigation('https://ruby-raider.com/')} type="primary">
