@@ -26,6 +26,8 @@ import createSuite from './handlers/createSuite'
 import deleteSuite from './handlers/deleteSuite'
 import runSuite from './handlers/runSuite'
 import exportTest from './handlers/exportTest'
+import exportSuite from './handlers/exportSuite'
+import exportProject from './handlers/exportProject'
 import deleteTest from './handlers/deleteTest'
 import recorderEvent from './handlers/recorderEvent'
 import loadUrlRequest from './handlers/loadUrlRequest'
@@ -141,6 +143,8 @@ app.whenReady().then(() => {
 
   ipcMain.handle('run-suite', (_event, suiteId: string) => runSuite(suiteId))
   ipcMain.handle('export-test', (_event, testData: TestData) => exportTest(testData))
+  ipcMain.handle('export-suite', (_event, suiteId: string) => exportSuite(suiteId))
+  ipcMain.handle('export-project', exportProject)
   ipcMain.handle('delete-test', (_event, args) => deleteTest(appState.mainWindow!, args))
   ipcMain.handle('load-url-request', (_event, url: string) => loadUrlRequest(url))
   ipcMain.handle('start-recording-main', startRecordingMain)

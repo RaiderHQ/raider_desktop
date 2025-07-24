@@ -169,6 +169,26 @@ const Recorder: React.FC = () => {
     }
   }, [activeTest])
 
+  const handleExportSuite = useCallback(async (): Promise<{
+    success: boolean
+    path?: string
+    error?: string
+  }> => {
+    if (activeSuiteId) {
+      return window.api.exportSuite(activeSuiteId)
+    } else {
+      return { success: false, error: 'There is no active suite to export.' }
+    }
+  }, [activeSuiteId])
+
+  const handleExportProject = useCallback(async (): Promise<{
+    success: boolean
+    path?: string
+    error?: string
+  }> => {
+    return window.api.exportProject()
+  }, [])
+
   const handleSaveAssertionText = (expectedText: string): void => {
     if (assertionInfo) {
       const { strategy, value } = formatLocator(assertionInfo.selector)
@@ -309,6 +329,8 @@ const Recorder: React.FC = () => {
         onSaveTest={handleSaveRecording}
         onNewTest={handleNewTest}
         onExportTest={handleExportTest}
+        onExportSuite={handleExportSuite}
+        onExportProject={handleExportProject}
         activeSuiteId={activeSuiteId}
       />
       <div className="flex-1 flex flex-row space-x-4">
