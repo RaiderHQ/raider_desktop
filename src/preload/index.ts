@@ -52,6 +52,10 @@ const api = {
   createSuite: async (suiteName: string): Promise<{ success: boolean, suite?: Suite, error?: string }> => ipcRenderer.invoke('create-suite', suiteName),
   deleteSuite: async (suiteId: string): Promise<{ success: boolean }> => ipcRenderer.invoke('delete-suite', suiteId),
   runSuite: async (suiteId: string): Promise<{ success: boolean; output: string }> => ipcRenderer.invoke('run-suite', suiteId), // New API function
+  exportSuite: (suiteId: string): Promise<{ success: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke('export-suite', suiteId),
+  exportProject: (): Promise<{ success: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke('export-project'),
 
   // Test Management
   saveRecording: async (suiteId: string, testData: Test): Promise<{ success: boolean; error?: string }> =>

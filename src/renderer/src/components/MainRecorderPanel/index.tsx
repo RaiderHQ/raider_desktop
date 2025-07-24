@@ -18,6 +18,8 @@ interface MainRecorderPanelProps {
   onSaveTest: () => void
   onNewTest: () => void
   onExportTest: () => Promise<{ success: boolean; path?: string; error?: string }>
+  onExportSuite: () => Promise<{ success: boolean; path?: string; error?: string }>
+  onExportProject: () => Promise<{ success: boolean; path?: string; error?: string }>
   activeSuiteId: string | null
 }
 
@@ -34,6 +36,8 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
   onSaveTest,
   onNewTest,
   onExportTest,
+  onExportSuite,
+  onExportProject,
   activeSuiteId
 }) => {
   const handleSaveClick = (): void => {
@@ -48,11 +52,11 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
         result = await onExportTest()
         break
       case 'Suite':
-        toast.success('Export Suite functionality coming soon!')
-        return
+        result = await onExportSuite()
+        break
       case 'Project':
-        toast.success('Export Project functionality coming soon!')
-        return
+        result = await onExportProject()
+        break
       default:
         return
     }
