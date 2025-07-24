@@ -15,9 +15,9 @@ const commandParser = (command: string): string => {
         `Wait for element with ${matches[1]} "${matches[2]}" to be displayed`
     },
     {
-      regex: /wait\.until { @driver\.find_element\(:?(\w+),\s*"([^"]+)"\) }/,
+      regex: /wait\.until { @driver\.find_element\(:?(\w+),\s*"([^"]+)"\)\.enabled\? }/,
       template: (matches: string[]) =>
-        `Wait for element with ${matches[1]} "${matches[2]}" to be present`
+        `Wait for element with ${matches[1]} "${matches[2]}" to be enabled`
     },
     {
       regex: /@driver\.find_element\(:?(\w+),\s*"([^"]+)"\)\.click/,

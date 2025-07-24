@@ -5,7 +5,7 @@ import Button from '@components/Button'
 
 const RecordingSettings: React.FC = () => {
   const { t } = useTranslation()
-  const [implicitWait, setImplicitWait] = useState(30)
+  const [implicitWait, setImplicitWait] = useState(0)
   const [explicitWait, setExplicitWait] = useState(30)
   const [isUpdating, setIsUpdating] = useState(false)
 
