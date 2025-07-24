@@ -176,10 +176,10 @@ app.whenReady().then(() => {
             }
           },
           {
-            label: 'to be present',
+            label: 'to be enabled',
             click: () => {
               appState.mainWindow!.webContents.send('add-assertion-step', {
-                type: 'wait-present',
+                type: 'wait-enabled',
                 selector
               })
             }
