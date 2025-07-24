@@ -13,9 +13,7 @@ export default async (
   const suite = appState.suites.get(suiteId)
 
   if (!suite) {
-    console.error(
-      `Error: Attempted to delete test from a non-existent suite (ID: ${suiteId}).`
-    )
+    console.error(`Error: Attempted to delete test from a non-existent suite (ID: ${suiteId}).`)
     return { success: false, error: `Suite with ID ${suiteId} not found.` }
   }
 
@@ -23,15 +21,10 @@ export default async (
   suite.tests = suite.tests.filter((test) => test.id !== testId)
 
   if (suite.tests.length === initialTestCount) {
-    console.warn(
-      `Warning: Test with ID ${testId} was not found in suite "${suite.name}".`
-    )
+    console.warn(`Warning: Test with ID ${testId} was not found in suite "${suite.name}".`)
   }
 
-  mainWindow?.webContents.send(
-    'suite-updated',
-    Array.from(appState.suites.values())
-  )
+  mainWindow?.webContents.send('suite-updated', Array.from(appState.suites.values()))
 
   return { success: true }
 }

@@ -98,9 +98,10 @@ const runRecording = async (appState: AppState): Promise<{ success: boolean; out
         resolve({ success: true, output: stdout })
       })
     })
-  } catch (e: any) {
-    console.error(`[MainProcess] A critical error occurred: ${e.message}`)
-    return { success: false, output: e.message }
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : String(e)
+    console.error(`[MainProcess] A critical error occurred: ${errorMessage}`)
+    return { success: false, output: errorMessage }
   } finally {
     try {
       await fs.unlink(tempFilePath)

@@ -2,7 +2,10 @@ import { BrowserWindow, dialog } from 'electron'
 import fs from 'fs'
 import type { TestData } from '@foundation/Types/testData'
 
-export default async ({ testName, steps }: TestData) => {
+export default async ({
+  testName,
+  steps
+}: TestData): Promise<{ success: boolean; path?: string; error?: string }> => {
   const window = BrowserWindow.getFocusedWindow()
   if (!window) {
     return { success: false, error: 'No focused window available to show the save dialog.' }
@@ -18,13 +21,13 @@ export default async ({ testName, steps }: TestData) => {
       { name: 'Ruby Scripts', extensions: ['rb'] },
       { name: 'All Files', extensions: ['*'] }
     ]
-  });
+  })
 
   if (canceled || !filePath) {
     return { success: false, error: 'Export cancelled by user.' }
   }
 
-  const stepsContent = steps.map(step => `  ${step}`).join('\n');
+  const stepsContent = steps.map((step) => `  ${step}`).join('\n')
   const scriptContent = `#!/usr/bin/env ruby
 
 # Test: ${testName}
@@ -43,7 +46,7 @@ begin
 ${stepsContent}
   puts "Test '${testName}' passed successfully!"
 rescue => e
-  puts "Test '${testName}' failed: \#{e.message}"
+  puts "Test '${testName}' failed: #{e.message}"
 ensure
   # --- Teardown ---
   puts "Closing driver."
@@ -52,15 +55,16 @@ end
 `
 
   try {
-    fs.writeFileSync(filePath, scriptContent, 'utf8');
+    fs.writeFileSync(filePath, scriptContent, 'utf8')
 
     if (process.platform !== 'win32') {
-      fs.chmodSync(filePath, '755');
+      fs.chmodSync(filePath, '755')
     }
 
-    return { success: true, path: filePath };
-  } catch (error: any) {
-    console.error('Failed to write or set permissions for the script:', error);
-    return { success: false, error: error.message };
+    return { success: true, path: filePath }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    console.error('Failed to write or set permissions for the script:', error)
+    return { success: false, error: errorMessage }
   }
 }

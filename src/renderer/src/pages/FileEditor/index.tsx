@@ -93,7 +93,10 @@ const FileEditor: React.FC = (): JSX.Element => {
           ) : (
             <>
               <div className="flex items-center mb-4">
-                <button onClick={() => navigate('/overview')} className="mr-2 ml-2 focus:outline-none">
+                <button
+                  onClick={() => navigate('/overview')}
+                  className="mr-2 ml-2 focus:outline-none"
+                >
                   <FaArrowLeft />
                 </button>
                 <h2 className="text-xl font-semibold">{fileName}</h2>
@@ -105,7 +108,7 @@ const FileEditor: React.FC = (): JSX.Element => {
                   onChange={(value: string | undefined) => setFileContent(value || '')}
                 />
               </div>
-              </>
+            </>
           )}
         </div>
       </div>

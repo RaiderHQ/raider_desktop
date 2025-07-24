@@ -8,7 +8,11 @@ interface AssertionTextModalProps {
   onClose: () => void
 }
 
-const AssertionTextModal: React.FC<AssertionTextModalProps> = ({ initialText, onSave, onClose }) => {
+const AssertionTextModal: React.FC<AssertionTextModalProps> = ({
+  initialText,
+  onSave,
+  onClose
+}) => {
   const [text, setText] = useState(initialText)
 
   const handleSave = (): void => {
