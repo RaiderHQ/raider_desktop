@@ -69,10 +69,35 @@ const api = {
   runCommand: async (command: string): Promise<CommandType> =>
     ipcRenderer.invoke('run-command', command),
   installRaider: async (): Promise<CommandType> => ipcRenderer.invoke('install-raider'),
-  isRubyInstalled: async (
-    projectPath: string
-  ): Promise<{ success: boolean; rubyVersion?: string; error?: string }> =>
-    ipcRenderer.invoke('is-ruby-installed', projectPath),
+  installGems: async (rubyCommand: string, gems: string[]): Promise<CommandType> =>
+    ipcRenderer.invoke('install-gems', rubyCommand, gems),
+  isRubyInstalled: async (): Promise<{
+    success: boolean
+    rubyVersion?: string
+    error?: string
+    missingGems?: string[]
+    rubyCommand?: string
+  }> => ipcRenderer.invoke('is-ruby-installed'),
+  isRbenvRubyInstalled: async (): Promise<{
+    success: boolean
+    rubyVersion?: string
+    error?: string
+  }> => ipcRenderer.invoke('is-rbenv-ruby-installed'),
+  isRvmRubyInstalled: async (): Promise<{
+    success: boolean
+    rubyVersion?: string
+    error?: string
+  }> => ipcRenderer.invoke('is-rvm-ruby-installed'),
+  isSystemRubyInstalled: async (): Promise<{
+    success: boolean
+    rubyVersion?: string
+    error?: string
+  }> => ipcRenderer.invoke('is-system-ruby-installed'),
+  installRbenvAndRuby: async (): Promise<{
+    success: boolean
+    output?: string
+    error?: string
+  }> => ipcRenderer.invoke('install-rbenv-and-ruby'),
   updateMobileCapabilities: async (
     projectPath: string,
     capabilities: {
@@ -98,8 +123,12 @@ const api = {
     ipcRenderer.invoke('create-suite', suiteName),
   deleteSuite: async (suiteId: string): Promise<{ success: boolean }> =>
     ipcRenderer.invoke('delete-suite', suiteId),
-  runSuite: async (suiteId: string): Promise<{ success: boolean; output: string }> =>
-    ipcRenderer.invoke('run-suite', suiteId), // New API function
+  runSuite: async (
+    suiteId: string,
+    projectPath: string,
+    rubyCommand: string
+  ): Promise<{ success: boolean; output: string }> =>
+    ipcRenderer.invoke('run-suite', suiteId, projectPath, rubyCommand),
   exportSuite: (suiteId: string): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('export-suite', suiteId),
   exportProject: (): Promise<{ success: boolean; path?: string; error?: string }> =>
@@ -131,12 +160,16 @@ const api = {
     steps: string[]
   ): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('export-test', { testName, steps }),
-  runTest: async (suiteId: string, testId: string): Promise<{ success: boolean; output: string }> =>
-    ipcRenderer.invoke('run-test', suiteId, testId),
-  updateRecordingSettings: (settings: { implicitWait: number, explicitWait: number }) =>
+  runTest: async (
+    suiteId: string,
+    testId: string,
+    projectPath: string,
+    rubyCommand: string
+  ): Promise<{ success: boolean; output: string }> =>
+    ipcRenderer.invoke('run-test', suiteId, testId, projectPath, rubyCommand),
+  updateRecordingSettings: (settings: { implicitWait: number; explicitWait: number }) =>
     ipcRenderer.invoke('update-recording-settings', settings),
-  getSelectorPriorities: (): Promise<string[]> =>
-    ipcRenderer.invoke('get-selector-priorities'),
+  getSelectorPriorities: (): Promise<string[]> => ipcRenderer.invoke('get-selector-priorities'),
   saveSelectorPriorities: (priorities: string[]): Promise<{ success: boolean }> =>
     ipcRenderer.invoke('save-selector-priorities', priorities)
 }

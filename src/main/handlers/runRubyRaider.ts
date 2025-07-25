@@ -1,7 +1,7 @@
 import { IpcMainInvokeEvent } from 'electron'
 import { spawn } from 'child_process'
 import path from 'path'
-import { CommandType, CommandOptions } from '@foundation/Types/commandType'
+import { CommandType, CommandOptions } from '@renderer/src/foundation/Types/commandType'
 
 // Cross-platform runCommand
 export const runCommand = (

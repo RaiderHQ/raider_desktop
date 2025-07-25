@@ -4,10 +4,17 @@ import TestSuitePanel from '@components/TestSuitePanel'
 import OutputPanel from '@components/OutputPanel'
 import MainRecorderPanel from '@components/MainRecorderPanel'
 import StyledPanel from '@components/StyledPanel'
-import { Toaster } from 'react-hot-toast'
+import { Toaster, toast } from 'react-hot-toast'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import AssertionTextModal from '@components/AssertionTextModal'
+import RubyInstallModal from '@components/RubyInstallModal'
+import useProjectStore from '@foundation/Stores/projectStore'
+import useRubyStore from '@foundation/Stores/rubyStore'
+import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import Button from '@components/Button'
+
+import DeleteModal from '@components/DeleteModal'
 
 // Defines the structure for the data needed by the assertion modal
 interface AssertionInfo {
@@ -27,9 +34,17 @@ const Recorder: React.FC = () => {
   const [activeSuiteId, setActiveSuiteId] = useState<string | null>(null)
   const [activeTest, setActiveTest] = useState<Test | null>(null)
   const [isRecording, setIsRecording] = useState<boolean>(false)
-  const [runOutput, setRunOutput] = useState<string>('')
+  const { runOutput, setRunOutput } = useRunOutputStore()
   const [isRunning, setIsRunning] = useState<boolean>(false)
   const [assertionInfo, setAssertionInfo] = useState<AssertionInfo | null>(null)
+  const [isRubyInstallModalOpen, setIsRubyInstallModalOpen] = useState<boolean>(false)
+  const [missingGems, setMissingGems] = useState<string[] | undefined>(undefined)
+  const { rubyCommand, setRubyCommand } = useRubyStore()
+  const projectPath = useProjectStore((state) => state.projectPath)
+  const [isOutputVisible, setIsOutputVisible] = useState<boolean>(false)
+  const [showCode, setShowCode] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false)
+  const [testToDelete, setTestToDelete] = useState<Test | null>(null)
 
   const activeTestRef = useRef(activeTest)
   useEffect(() => {
@@ -65,7 +80,7 @@ const Recorder: React.FC = () => {
     return () => {
       clearTimeout(handler)
     }
-  }, [activeTest, handleAutoSave])
+  }, [activeTest])
 
   /**
    * Determines the correct locator strategy (:id, :css, :xpath) based on the selector string.
@@ -95,19 +110,21 @@ const Recorder: React.FC = () => {
   )
 
   const handleDeleteSuite = useCallback((suiteIdToDelete: string): void => {
-    if (window.confirm('Are you sure you want to delete this suite?')) {
-      window.api.deleteSuite(suiteIdToDelete)
-    }
+    window.api.deleteSuite(suiteIdToDelete)
   }, [])
 
-  const handleTestDelete = useCallback(
-    (testIdToDelete: string): void => {
-      if (activeSuiteId) {
-        window.api.deleteTest(activeSuiteId, testIdToDelete)
-      }
-    },
-    [activeSuiteId]
-  )
+  const handleTestDeleteRequest = useCallback((test: Test) => {
+    setTestToDelete(test)
+    setIsDeleteModalOpen(true)
+  }, [])
+
+  const handleConfirmDelete = useCallback(() => {
+    if (activeSuiteId && testToDelete) {
+      window.api.deleteTest(activeSuiteId, testToDelete.id)
+    }
+    setIsDeleteModalOpen(false)
+    setTestToDelete(null)
+  }, [activeSuiteId, testToDelete])
 
   const handleSuiteChange = (suiteId: string): void => {
     setActiveSuiteId(suiteId)
@@ -142,29 +159,54 @@ const Recorder: React.FC = () => {
   }, [])
 
   const handleRunTest = useCallback(async (): Promise<void> => {
-    if (activeSuiteId && activeTest?.id) {
-      handleAutoSave()
+    console.log('handleRunTest called')
+    if (activeSuiteId && activeTest?.id && rubyCommand) {
+      console.log('Running test with:', {
+        activeSuiteId,
+        activeTestId: activeTest.id,
+        projectPath,
+        rubyCommand
+      })
       setIsRunning(true)
       setRunOutput(`Running test: ${activeTest.name}...`)
-      const result = await window.api.runTest(activeSuiteId, activeTest.id)
+      const result = await window.api.runTest(
+        activeSuiteId,
+        activeTest.id,
+        projectPath || '.',
+        rubyCommand
+      )
       setRunOutput(result.output)
       setIsRunning(false)
+    } else {
+      console.log('handleRunTest conditions not met:', {
+        activeSuiteId,
+        activeTest,
+        projectPath,
+        rubyCommand
+      })
     }
-  }, [activeSuiteId, activeTest, handleAutoSave])
+  }, [activeSuiteId, activeTest, projectPath, rubyCommand])
 
   const handleRunAllTests = useCallback(
     async (suiteId: string) => {
+      console.log('handleRunAllTests called')
       const suiteToRun = suites.find((s) => s.id === suiteId)
-      if (suiteToRun) {
-        handleAutoSave()
+      if (suiteToRun && rubyCommand) {
+        console.log('Running suite with:', { suiteId, projectPath, rubyCommand })
         setIsRunning(true)
         setRunOutput(`Running suite: ${suiteToRun.name}...`)
-        const result = await window.api.runSuite(suiteToRun.id)
+        const result = await window.api.runSuite(suiteToRun.id, projectPath || '.', rubyCommand)
         setRunOutput(result.output)
         setIsRunning(false)
+      } else {
+        console.log('handleRunAllTests conditions not met:', {
+          suiteToRun,
+          projectPath,
+          rubyCommand
+        })
       }
     },
-    [suites, handleAutoSave]
+    [suites, projectPath, rubyCommand, setRunOutput]
   )
 
   const handleExportTest = useCallback(async (): Promise<{
@@ -241,7 +283,70 @@ const Recorder: React.FC = () => {
     setAssertionInfo(null)
   }
 
+  const handleInstallRuby = async () => {
+    console.log('handleInstallRuby called')
+    setIsRubyInstallModalOpen(false)
+    // Show a toast notification that the installation is in progress
+    const toastId = toast.loading('Installing Ruby and dependencies...')
+
+    try {
+      const result = await window.api.installRbenvAndRuby()
+      console.log('installRbenvAndRuby result:', result)
+      if (result.success) {
+        const rubyCheck = await window.api.isRubyInstalled()
+        if (rubyCheck.success && rubyCheck.rubyCommand) {
+          setRubyCommand(rubyCheck.rubyCommand)
+          await window.api.installGems(rubyCheck.rubyCommand, ['ruby_raider'])
+          await window.api.installGems(rubyCheck.rubyCommand, [
+            'selenium-webdriver',
+            'rspec',
+            'allure-rspec'
+          ])
+          toast.success('Installation successful!', { id: toastId })
+        } else {
+          toast.error(`Installation failed: ${rubyCheck.error}`, { id: toastId })
+        }
+      } else {
+        toast.error(`Installation failed: ${result.error}`, { id: toastId })
+      }
+    } catch (error) {
+      toast.error(`An error occurred during installation: ${error}`, { id: toastId })
+    }
+  }
+
+  const handleInstallGems = async () => {
+    console.log('handleInstallGems called')
+    setIsRubyInstallModalOpen(false)
+    const toastId = toast.loading(`Installing missing gems: ${missingGems?.join(', ')}...`)
+
+    try {
+      const result = await window.api.installGems(rubyCommand!, missingGems!)
+      console.log('installGems result:', result)
+      if (result.success) {
+        toast.success('Gems installed successfully!', { id: toastId })
+      } else {
+        toast.error(`Gem installation failed: ${result.error}`, { id: toastId })
+      }
+    } catch (error) {
+      toast.error(`An error occurred during gem installation: ${error}`, { id: toastId })
+    }
+  }
+
   useEffect(() => {
+    const checkRuby = async () => {
+      console.log('Checking for Ruby...')
+      const result = await window.api.isRubyInstalled()
+      console.log('Ruby check result:', result)
+      if (!result.success) {
+        setMissingGems(result.missingGems)
+        setRubyCommand(result.rubyCommand)
+        setIsRubyInstallModalOpen(true)
+      } else {
+        setRubyCommand(result.rubyCommand)
+      }
+    }
+    checkRuby()
+
     window.api.getSuites().then((initialSuites) => {
       setSuites(initialSuites)
       if (initialSuites.length > 0) {
@@ -274,7 +379,9 @@ const Recorder: React.FC = () => {
         if (activeSuiteNow) {
           const activeTestNow = activeSuiteNow.tests.find((t) => t.id === currentTestId)
           if (activeTestNow) {
-            setActiveTest(activeTestNow)
+            if (JSON.stringify(activeTestRef.current) !== JSON.stringify(activeTestNow)) {
+              setActiveTest(activeTestNow)
+            }
           } else {
             setActiveTest(activeSuiteNow.tests[0] ?? null)
           }
@@ -352,6 +459,13 @@ const Recorder: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen p-4 space-y-4 bg-gray-50">
+      {isRubyInstallModalOpen && (
+        <RubyInstallModal
+          onInstall={missingGems ? handleInstallGems : handleInstallRuby}
+          onClose={() => setIsRubyInstallModalOpen(false)}
+          missingGems={missingGems}
+        />
+      )}
       <Toaster />
       <MainRecorderPanel
         activeSuiteName={activeSuite?.name}
@@ -373,7 +487,7 @@ const Recorder: React.FC = () => {
         activeSuiteId={activeSuiteId}
       />
       <div className="flex-1 flex flex-row space-x-4">
-        <div className="w-1/4 flex flex-col space-y-2">
+        <div className={`${isOutputVisible ? 'w-1/4' : 'w-1/3'} flex flex-col space-y-2 transition-all duration-300`}>
           <h3 className="px-1 text-lg font-semibold text-gray-800">Test Suites</h3>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>
@@ -385,17 +499,25 @@ const Recorder: React.FC = () => {
                 onTestSelect={handleTestSelect}
                 onCreateSuite={handleCreateSuite}
                 onDeleteSuite={handleDeleteSuite}
-                onTestDelete={handleTestDelete}
+                onTestDeleteRequest={handleTestDeleteRequest}
                 onRunAllTests={handleRunAllTests}
                 onReorderTests={() => {}}
               />
             </StyledPanel>
           </div>
         </div>
-        <div className="w-1/2 flex flex-col space-y-2">
+        <div className={`${isOutputVisible ? 'w-1/2' : 'w-2/3'} flex flex-col space-y-2 transition-all duration-300`}>
           <h3 className="px-1 text-lg font-semibold text-gray-800">Recorded Steps</h3>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>
+              <div className="flex justify-between items-center p-1 border-b border-gray-200">
+                <Button onClick={() => setShowCode(!showCode)} type="secondary">
+                  {showCode ? 'Friendly View' : 'Code View'}
+                </Button>
+                <Button onClick={() => setIsOutputVisible(!isOutputVisible)} type="secondary">
+                  {isOutputVisible ? 'Hide Output' : 'Test Output'}
+                </Button>
+              </div>
               <CommandList
                 steps={activeTest?.steps ?? []}
                 setSteps={(newSteps: SetStateAction<string[]>) =>
@@ -411,24 +533,34 @@ const Recorder: React.FC = () => {
                     p ? { ...p, steps: p.steps.filter((_, i) => i !== indexToDelete) } : null
                   )
                 }
+                showCode={showCode}
               />
             </StyledPanel>
           </div>
         </div>
-        <div className="w-1/3 flex flex-col space-y-2">
-          <h3 className="px-1 text-lg font-semibold text-gray-800">Run Output</h3>
-          <div className="flex-1 pb-1 pr-1">
-            <StyledPanel>
-              <OutputPanel output={runOutput} />
-            </StyledPanel>
+        {isOutputVisible && (
+          <div className="w-1/3 flex flex-col space-y-2 transition-all duration-300">
+            <h3 className="px-1 text-lg font-semibold text-gray-800">Run Output</h3>
+            <div className="flex-1 pb-1 pr-1">
+              <StyledPanel>
+                <OutputPanel output={runOutput} />
+              </StyledPanel>
+            </div>
           </div>
-        </div>
+        )}
       </div>
       {assertionInfo && (
         <AssertionTextModal
           initialText={assertionInfo.text}
           onSave={handleSaveAssertionText}
           onClose={handleCloseAssertionModal}
+        />
+      )}
+      {isDeleteModalOpen && testToDelete && (
+        <DeleteModal
+          testName={testToDelete.name}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setIsDeleteModalOpen(false)}
         />
       )}
     </div>
