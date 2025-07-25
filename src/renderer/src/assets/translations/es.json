@@ -1,0 +1,257 @@
+{
+  "landing": {
+    "title": "¡Bienvenido a Ruby Raider!",
+    "subtitle": "Es una gema que proporciona un generador y andamiaje para simplificar la automatización de pruebas de UI.",
+    "error": {
+      "selectFolder": "Seleccione una carpeta de proyecto",
+      "folderNotFound": "La carpeta no existe.",
+      "openProject": "Ocurrió un error al abrir el proyecto. Por favor, inténtelo de nuevo."
+    }
+  },
+  "newProject": {
+    "alerts": {
+      "invalidName": "Por favor, ingrese un nombre de proyecto válido.",
+      "selectFolder": "Seleccione una carpeta para guardar su proyecto"
+    },
+    "title": "Crear un nuevo proyecto",
+    "subtitle": "Para crear un proyecto, primero debe seleccionar lo siguiente:",
+    "input": {
+      "label": "Nombre del proyecto",
+      "placeholder": "Ingrese el nombre del proyecto"
+    },
+    "question": {
+      "automation": "Seleccione su marco de automatización",
+      "mobile": "Seleccione su plataforma móvil",
+      "test": "Seleccione su marco de prueba"
+    }
+  },
+  "button": {
+    "create": {
+      "text": "Crear",
+      "description": "Crear un nuevo proyecto"
+    },
+    "open": {
+      "text": "Abrir",
+      "description": "Abrir proyecto existente"
+    },
+    "back": {
+      "text": "Atrás",
+      "description": "Volver al paso anterior"
+    },
+    "goTo": {
+      "text": "Ir a {{location}}",
+      "description": "Ir a la {{location}} de Ruby Raider"
+    }
+  },
+  "menu": {
+    "dashboard": "Tablero",
+    "tests": "Pruebas",
+    "settings": "Configuración"
+  },
+  "version": "Versión de Ruby Raider: {{version}}",
+  "installGuide": {
+    "title": "Instalación requerida",
+    "allureMissing": "Falta Allure. Por favor, instale Allure para continuar.",
+    "logoAlt": "Logo de Ruby Raider",
+    "githubButton": "Ir a GitHub",
+    "websiteButton": "Ir al sitio web"
+  },
+  "information": {
+    "createProject": {
+      "title": "Creando un nuevo proyecto",
+      "message": "Aquí puede crear un nuevo proyecto y comenzar a automatizar sus pruebas."
+    },
+    "openProject": {
+      "title": "Abriendo un proyecto existente",
+      "message": "Aquí puede abrir un proyecto existente y continuar automatizando sus pruebas."
+    },
+    "new": {
+      "title": "Iniciar un nuevo proyecto",
+      "message": "Elija las diferentes opciones en los selectores y cree un marco de automatización."
+    }
+  },
+  "settings": {
+    "loading": "Cargando configuración...",
+    "mobileProject": {
+      "title": "Proyecto móvil",
+      "description": "Por ahora, la configuración móvil no es compatible. Vendrán en versiones más recientes de la aplicación."
+    },
+    "header": {
+      "title": "Archivos de configuración",
+      "description": "Hemos agregado los siguientes archivos a su proyecto"
+    },
+    "section": {
+      "baseUrl": "URL base",
+      "browser": "Navegador",
+      "appiumSettings": "Configuración de Appium"
+    },
+    "baseUrl": {
+      "label": "URL del navegador:",
+      "placeholder": "Ingrese la URL del navegador"
+    },
+    "browser": {
+      "label": "Elija el navegador:",
+      "chrome": "Chrome",
+      "safari": "Safari",
+      "firefox": "Firefox",
+      "edge": "Edge"
+    },
+    "updateUrlButton": "Actualizar URL",
+    "updateBrowserButton": "Actualizar navegador",
+    "updateMobileSettingsButton": "Actualizar configuración",
+    "updating": "Actualizando...",
+    "error": {
+      "browserUpdateFailed": "Error al actualizar el navegador. Por favor, inténtelo de nuevo.",
+      "urlUpdateFailed": "Error al actualizar la URL del navegador. Por favor, inténtelo de nuevo.",
+      "unexpected": "Ocurrió un error inesperado. Por favor, inténtelo de nuevo.",
+      "mobileUrlUpdateFailed": "Error al actualizar la URL de Appium. Por favor, inténtelo de nuevo.",
+      "mobileCapabilitiesUpdateFailed": "Error al actualizar la configuración móvil. Por favor, inténtelo de nuevo."
+    },
+    "urlUpdateSuccess": "¡URL actualizada correctamente!",
+    "browserUpdateSuccess": "¡Navegador actualizado correctamente!",
+    "mobile": {
+      "appiumUrl": {
+        "label": "URL de Appium:",
+        "placeholder": "Ingrese la URL de Appium"
+      },
+      "platformVersion": {
+        "label": "Versión de la plataforma:",
+        "placeholder": "Ingrese la versión de la plataforma"
+      },
+      "automationName": {
+        "label": "Nombre de la automatización:",
+        "placeholder": "Ingrese el nombre de la automatización"
+      },
+      "deviceName": {
+        "label": "Nombre del dispositivo:",
+        "placeholder": "Ingrese el nombre del dispositivo"
+      },
+      "app": {
+        "label": "Aplicación:",
+        "placeholder": "Ingrese el nombre de la aplicación"
+      },
+      "updateSuccess": "¡Configuración móvil actualizada correctamente!"
+    },
+    "tabs": {
+      "project": "Configuración del proyecto",
+      "recording": "Configuración de grabación",
+      "general": "Configuración general"
+    },
+    "general": {
+      "title": "Configuración general",
+      "description": "Ajustar la configuración general de la aplicación.",
+      "language": {
+        "label": "Idioma"
+      }
+    },
+    "recording": {
+      "title": "Configuración de grabación",
+      "description": "Ajuste la configuración para la grabación y reproducción de pruebas.",
+      "error": {
+        "recordingUpdateFailed": "Error al actualizar la configuración de grabación.",
+        "unexpected": "Ocurrió un error inesperado. Por favor, inténtelo de nuevo."
+      },
+      "implicitWait": {
+        "label": "Espera implícita (segundos)",
+        "description": "El tiempo predeterminado para esperar a que aparezcan los elementos durante la reproducción."
+      },
+      "explicitWait": {
+        "label": "Espera explícita (segundos)",
+        "description": "El tiempo máximo para esperar a que se cumpla una condición específica."
+      },
+      "recordingUpdateSuccess": "¡Configuración de grabación actualizada correctamente!",
+      "updateRecordingSettingsButton": "Actualizar configuración"
+    },
+    "noProject": {
+      "title": "No hay proyecto cargado",
+      "description": "Por favor, cree o abra un proyecto para configurar su configuración."
+    }
+  },
+  "overview": {
+    "error": {
+      "openAllure": "Ocurrió un problema al abrir el tablero"
+    },
+    "running": "Se están ejecutando las pruebas...",
+    "runTestsSuccess": "¡Pruebas completadas con éxito!",
+    "tabs": {
+      "files": "Archivos",
+      "dashboard": "Tablero"
+    }
+  },
+  "editor": {
+    "placeholder": "Comience a editar el contenido del archivo aquí...",
+    "success": "Archivo guardado correctamente.",
+    "save": {
+      "stashing": "Guardando su tesoro...",
+      "securing": "Asegurando el rubí...",
+      "engraving": "Grabando la gema...",
+      "prize": "Salvaguardando el premio del asaltante...",
+      "ruby": "Afilando los bordes del rubí..."
+    },
+    "error": {
+      "invalidFilePath": "Ruta de archivo no válida.",
+      "saveFailed": "Error al guardar el archivo \"{{fileName}}\". Por favor, inténtelo de nuevo.",
+      "unexpectedSaveError": "Ocurrió un error inesperado al guardar el archivo. Por favor, inténtelo de nuevo."
+    },
+    "loading": "Cargando..."
+  },
+  "testResults": {
+    "breakdown": "Desglose de resultados de pruebas",
+    "status": "Estado",
+    "viewScreenshot": "Ver captura de pantalla",
+    "passed": "Aprobado",
+    "failed": "Fallido",
+    "skipped": "Omitido",
+    "error": {
+      "imageRead": "Error al leer la imagen",
+      "imageAccess": "Error al acceder al archivo de imagen"
+    }
+  },
+  "dashboard": {
+    "overallSummary": "Resumen general",
+    "totalTests": "Pruebas totales",
+    "passed": "Aprobado",
+    "failed": "Fallido",
+    "skipped": "Omitido",
+    "noResults": "Por favor, ejecute sus pruebas para ver los resultados en el tablero.",
+    "noRecordingResults": "Por favor, ejecute una prueba para ver los resultados de la grabación en el tablero.",
+    "tabs": {
+      "project": "Tablero del proyecto",
+      "recording": "Tablero de grabación"
+    },
+    "error": {
+      "fetching": "Error al obtener el tablero",
+      "parsing": "Error al analizar {{file}}",
+      "reading": "Error al leer {{file}}"
+    }
+  },
+  "errorPage": {
+    "title": "Requisitos previos no instalados"
+  },
+  "errors": {
+    "ruby": {
+      "commandFailed": "El comando de Ruby falló.\nComando: {{command}}\nSalida: {{output}}\nInformación de depuración:\n{{debugInfo}}",
+      "unexpectedOutput": "Salida de versión de Ruby inesperada: {{output}}\nInformación de depuración:\n{{debugInfo}}",
+      "failedToParse": "Error al analizar la versión de Ruby desde la salida: {{output}}\nInformación de depuración:\n{{debugInfo}}",
+      "outdated": "La versión de Ruby {{version}} está desactualizada. Por favor, instale Ruby 3.0.0 o superior.\nSalida del comando: {{output}}\nInformación de depuración:\n{{debugInfo}}",
+      "unknown": "Ocurrió un error: {{error}}\nInformación de depuración:\n{{debugInfo}}"
+    }
+  },
+  "recorder": {
+    "placeholder": {
+      "url": "Ingrese la URL para grabar",
+      "commands": "Los comandos de Selenium Ruby grabados aparecerán aquí..."
+    },
+    "button": {
+      "setUrl": "Establecer URL",
+      "startRecording": "Comenzar a grabar",
+      "stopRecording": "Detener grabación",
+      "saveTest": "Guardar prueba",
+      "runTest": "Ejecutar prueba"
+    },
+    "heading": {
+      "recordedSteps": "Pasos grabados",
+      "runOutput": "Salida de ejecución"
+    }
+  }
+}

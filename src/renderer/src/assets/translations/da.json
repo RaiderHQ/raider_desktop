@@ -131,6 +131,18 @@
         "placeholder": "Indtast app navn"
       },
       "updateSuccess": "Opdatering af mobile indstillinger lykkedes!"
+    },
+    "tabs": {
+      "project": "Projektindstillinger",
+      "recording": "Optagelsesindstillinger",
+      "general": "Generelle indstillinger"
+    },
+    "general": {
+      "title": "Generelle indstillinger",
+      "description": "Juster generelle applikationsindstillinger.",
+      "language": {
+        "label": "Sprog"
+      }
     }
   },
   "overview": {
