@@ -134,7 +134,15 @@
     },
     "tabs": {
       "project": "Project Settings",
-      "recording": "Recording Settings"
+      "recording": "Recording Settings",
+      "general": "General Settings"
+    },
+    "general": {
+      "title": "General Settings",
+      "description": "Adjust general application settings.",
+      "language": {
+        "label": "Language"
+      }
     },
     "recording": {
       "title": "Recording Settings",
