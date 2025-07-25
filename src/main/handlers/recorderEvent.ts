@@ -1,4 +1,5 @@
 import { appState } from './appState'
+import xpathConverter from './xpathConverter'
 
 const keyMap: { [key: string]: string } = {
   Enter: ':enter',
@@ -32,42 +33,39 @@ const keyMap: { [key: string]: string } = {
 export interface RecorderEventData {
   action: 'click' | 'type' | 'sendKeys'
   selector: string
+  strategy: string
   tagName: string
   value?: string
 }
 
-const formatLocator = (selector: string): { strategy: string; value: string } => {
-  if (selector.startsWith('/') || selector.startsWith('(')) {
-    return { strategy: 'xpath', value: selector }
-  }
-  if (selector.startsWith('#') && !/[\s>~+]/.test(selector)) {
-    return { strategy: 'id', value: selector.substring(1) }
-  }
-  return { strategy: 'css', value: selector }
-}
-
 function recorderEvent(data: RecorderEventData): void {
   let commandString = ''
-  const { strategy, value } = formatLocator(data.selector)
-  const escapedValue = value.replace(/"/g, '\"')
+  const { strategy, selector } = data
+
+  let escapedValue: string
+  if (strategy === 'xpath') {
+    escapedValue = xpathConverter(selector)
+  } else {
+    escapedValue = `"${selector.replace(/"/g, '\"')}"`
+  }
 
   switch (data.action) {
     case 'click': {
-      commandString = `@driver.find_element(:${strategy}, "${escapedValue}").click # Clicked <${data.tagName.toLowerCase()}>`
+      commandString = `@driver.find_element(:${strategy}, ${escapedValue}).click # Clicked <${data.tagName.toLowerCase()}>`
       break
     }
 
     case 'type': {
       const escapedDataValue = data.value!.replace(/"/g, '\"')
-      commandString = `@driver.find_element(:${strategy}, "${escapedValue}").clear\n`
-      commandString += `    @driver.find_element(:${strategy}, "${escapedValue}").send_keys("${escapedDataValue}")`
+      commandString = `@driver.find_element(:${strategy}, ${escapedValue}).clear\n`
+      commandString += `    @driver.find_element(:${strategy}, ${escapedValue}).send_keys("${escapedDataValue}")`
       break
     }
 
     case 'sendKeys': {
       const keySymbol = keyMap[data.value!]
       if (keySymbol) {
-        commandString = `@driver.find_element(:${strategy}, "${escapedValue}").send_keys(${keySymbol}) # Pressed ${data.value} on <${data.tagName.toLowerCase()}>`
+        commandString = `@driver.find_element(:${strategy}, ${escapedValue}).send_keys(${keySymbol}) # Pressed ${data.value} on <${data.tagName.toLowerCase()}>`
       }
       break
     }
