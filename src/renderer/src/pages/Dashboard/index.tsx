@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ProjectDashboard from './ProjectDashboard'
-import RecordingDashboard from './RecordingDashboard'
+import ProjectDashboard from '@components/ProjectDashboard'
+import RecordingDashboard from '@components/RecordingDashboard'
+import useRunOutputStore from '@foundation/Stores/runOutputStore'
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState('project')
+  const { runOutput } = useRunOutputStore()
 
   return (
     <div className="flex flex-col w-screen p-8 font-sans">
@@ -36,7 +38,7 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="pt-4">
             {activeTab === 'project' && <ProjectDashboard />}
-            {activeTab === 'recording' && <RecordingDashboard />}
+            {activeTab === 'recording' && <RecordingDashboard runOutput={runOutput} />}
           </div>
         </div>
       </div>
