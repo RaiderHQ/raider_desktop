@@ -13,6 +13,7 @@ import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import Button from '@components/Button'
+import { useTranslation } from 'react-i18next'
 
 import DeleteModal from '@components/DeleteModal'
 
@@ -30,6 +31,7 @@ const createNewTest = (): Test => ({
 })
 
 const Recorder: React.FC = () => {
+  const { t } = useTranslation()
   const [suites, setSuites] = useState<Suite[]>([])
   const [activeSuiteId, setActiveSuiteId] = useState<string | null>(null)
   const [activeTest, setActiveTest] = useState<Test | null>(null)
@@ -488,7 +490,7 @@ const Recorder: React.FC = () => {
       />
       <div className="flex-1 flex flex-row space-x-4">
         <div className={`${isOutputVisible ? 'w-1/4' : 'w-1/3'} flex flex-col space-y-2 transition-all duration-300`}>
-          <h3 className="px-1 text-lg font-semibold text-gray-800">Test Suites</h3>
+          <h3 className="px-1 text-lg font-semibold text-gray-800">{t('recorder.recorderPage.testSuites')}</h3>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>
               <TestSuitePanel
@@ -507,15 +509,15 @@ const Recorder: React.FC = () => {
           </div>
         </div>
         <div className={`${isOutputVisible ? 'w-1/2' : 'w-2/3'} flex flex-col space-y-2 transition-all duration-300`}>
-          <h3 className="px-1 text-lg font-semibold text-gray-800">Recorded Steps</h3>
+          <h3 className="px-1 text-lg font-semibold text-gray-800">{t('recorder.recorderPage.recordedSteps')}</h3>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>
               <div className="flex justify-between items-center p-1 border-b border-gray-200">
                 <Button onClick={() => setShowCode(!showCode)} type="secondary">
-                  {showCode ? 'Friendly View' : 'Code View'}
+                  {showCode ? t('recorder.recorderPage.friendlyView') : t('recorder.recorderPage.codeView')}
                 </Button>
                 <Button onClick={() => setIsOutputVisible(!isOutputVisible)} type="secondary">
-                  {isOutputVisible ? 'Hide Output' : 'Test Output'}
+                  {isOutputVisible ? t('recorder.recorderPage.hideOutput') : t('recorder.recorderPage.testOutput')}
                 </Button>
               </div>
               <CommandList
@@ -540,7 +542,7 @@ const Recorder: React.FC = () => {
         </div>
         {isOutputVisible && (
           <div className="w-1/3 flex flex-col space-y-2 transition-all duration-300">
-            <h3 className="px-1 text-lg font-semibold text-gray-800">Run Output</h3>
+            <h3 className="px-1 text-lg font-semibold text-gray-800">{t('recorder.recorderPage.runOutput')}</h3>
             <div className="flex-1 pb-1 pr-1">
               <StyledPanel>
                 <OutputPanel output={runOutput} />

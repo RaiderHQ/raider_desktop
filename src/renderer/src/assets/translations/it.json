@@ -142,7 +142,8 @@
       "description": "Regola le impostazioni generali dell'applicazione.",
       "language": {
         "label": "Lingua"
-      }
+      },
+      "save": "Salva"
     },
     "recording": {
       "title": "Impostazioni di registrazione",
@@ -252,6 +253,77 @@
     "heading": {
       "recordedSteps": "Passaggi registrati",
       "runOutput": "Output dell'esecuzione"
+    },
+    "assertionTextModal": {
+      "title": "Asserzione del testo dell'elemento",
+      "message": "Inserisci il testo esatto che ti aspetti che l'elemento contenga.",
+      "label": "Testo previsto",
+      "cancel": "Annulla",
+      "save": "Salva asserzione"
+    },
+    "deleteModal": {
+      "title": "Conferma eliminazione",
+      "message": "Sei sicuro di voler eliminare il test",
+      "cancel": "Annulla",
+      "delete": "Elimina"
+    },
+    "rubyInstallModal": {
+      "title": {
+        "missing": "Dipendenze mancanti",
+        "required": "Installazione di Ruby richiesta"
+      },
+      "message": {
+        "missing": "Le seguenti gemme sono mancanti: {{missingGems}}. Vuoi installarle?",
+        "required": "Per utilizzare tutte le funzionalità dell'app desktop Raider, è necessario Ruby nel sistema. Vuoi installare rbenv, Ruby e tutte le dipendenze?"
+      },
+      "yes": "Sì",
+      "no": "No"
+    },
+    "mainRecorderPanel": {
+      "suite": "Suite: {{activeSuiteName}}",
+      "noSuite": "Nessuna suite selezionata",
+      "testName": "Nome del test",
+      "url": "URL da registrare",
+      "newTest": "Nuovo test",
+      "import": "Importa",
+      "export": "Esporta",
+      "record": "Registra",
+      "run": "Esegui",
+      "stop": "Ferma",
+      "exportTest": "Esporta test",
+      "exportSuite": "Esporta suite",
+      "exportProject": "Esporta progetto",
+      "importTest": "Importa test",
+      "importSuite": "Importa suite",
+      "importProject": "Importa progetto",
+      "exportSuccess": "{{exportType}} esportato in {{path}}",
+      "exportError": "Esportazione non riuscita: {{error}}",
+      "importSuccess": "{{importType}} importato con successo!",
+      "importError": "Importazione non riuscita: {{error}}"
+    },
+    "outputPanel": {
+      "title": "Risultati del test:",
+      "error": "Errore:",
+      "placeholder": "L'output del test apparirà qui..."
+    },
+    "testSuitePanel": {
+      "selectSuite": "Seleziona una suite",
+      "newSuite": "+ Nuova suite...",
+      "deleteSuite": "- Elimina suite corrente",
+      "runAll": "Esegui tutto",
+      "newSuiteName": "Nuovo nome della suite...",
+      "cancel": "Annulla",
+      "create": "Crea",
+      "deleteConfirmation": "Sei sicuro di voler eliminare la suite \"{{suiteName}}\"? Questa azione non può essere annullata."
+    },
+    "recorderPage": {
+      "testSuites": "Suite di test",
+      "recordedSteps": "Passaggi registrati",
+      "runOutput": "Output di esecuzione",
+      "codeView": "Visualizzazione codice",
+      "friendlyView": "Visualizzazione amichevole",
+      "hideOutput": "Nascondi output",
+      "testOutput": "Output del test"
     }
   }
 }

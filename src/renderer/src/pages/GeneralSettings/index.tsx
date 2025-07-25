@@ -1,11 +1,20 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import useLanguageStore from '@foundation/Stores/languageStore'
+import Button from '@components/Button'
 
 const GeneralSettings: React.FC = () => {
   const { t, i18n } = useTranslation()
+  const { language, setLanguage } = useLanguageStore()
+  const [selectedLanguage, setSelectedLanguage] = useState(language)
 
-  const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng)
+  useEffect(() => {
+    setSelectedLanguage(language)
+  }, [language])
+
+  const handleSave = () => {
+    setLanguage(selectedLanguage)
+    i18n.changeLanguage(selectedLanguage)
   }
 
   return (
@@ -19,16 +28,21 @@ const GeneralSettings: React.FC = () => {
         <select
           id="language-select"
           className="p-2 border rounded"
-          value={i18n.language}
-          onChange={(e) => changeLanguage(e.target.value)}
+          value={selectedLanguage}
+          onChange={(e) => setSelectedLanguage(e.target.value)}
         >
           <option value="en">English</option>
-          <option value="da">Danish</option>
-          <option value="es">Spanish</option>
-          <option value="it">Italian</option>
-          <option value="ro">Romanian</option>
-          <option value="lt">Lithuanian</option>
+          <option value="da">Dansk</option>
+          <option value="es">Español</option>
+          <option value="it">Italiano</option>
+          <option value="ro">Română</option>
+          <option value="lt">Lietuvių</option>
         </select>
+      </div>
+      <div className="mt-4">
+        <Button onClick={handleSave} variant="primary">
+          {t('settings.general.save')}
+        </Button>
       </div>
     </div>
   )
