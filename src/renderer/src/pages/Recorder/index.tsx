@@ -509,7 +509,7 @@ const Recorder: React.FC = () => {
                   {showCode ? 'Friendly View' : 'Code View'}
                 </Button>
                 <Button onClick={() => setIsOutputVisible(!isOutputVisible)} type="secondary">
-                  {isOutputVisible ? 'Hide Test Output' : 'Show Test Output'}
+                  {isOutputVisible ? 'Hide Output' : 'Test Output'}
                 </Button>
               </div>
               <CommandList
