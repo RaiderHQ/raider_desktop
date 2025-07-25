@@ -64,6 +64,7 @@ export interface WindowApi {
   startRecordingMain: () => Promise<CommandType>
   stopRecordingMain: () => Promise<CommandType>
   loadUrlRequest: (url: string) => Promise<CommandType>
+  xpathParser: (command: string) => Promise<string>
   commandParser: (command: string) => Promise<string>
   exportTest: (
     testName: string,

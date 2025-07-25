@@ -1,3 +1,4 @@
+import xpathParser from './xpathParser'
 export interface ParsedCommand {
   key: string
   values: Record<string, string>
@@ -9,6 +10,11 @@ export interface ParsedCommand {
  * @returns A friendly, plain English string.
  */
 const commandParser = (command: string): ParsedCommand | string => {
+  console.log('[commandParser.ts] Executing with command:', command)
+  if (command.includes(':xpath,')) {
+    console.log('[commandParser.ts] Handing off to xpathParser.')
+    return xpathParser(command)
+  }
   const patterns: {
     regex: RegExp
     template: (matches: string[]) => ParsedCommand
@@ -109,10 +115,12 @@ const commandParser = (command: string): ParsedCommand | string => {
   for (const pattern of patterns) {
     const match = command.match(pattern.regex)
     if (match) {
+      console.log('[commandParser.ts] Found a match!', match)
       return pattern.template(match)
     }
   }
 
+  console.log('[commandParser.ts] No match found, returning original command.')
   return command
 }
 
