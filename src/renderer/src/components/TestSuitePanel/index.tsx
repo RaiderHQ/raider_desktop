@@ -212,7 +212,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
               <button
                 onClick={() => onTestSelect(test.id)}
                 draggable={false}
-                className={`w-full text-left p-3 text-sm flex-grow transition-colors ${test.id === activeTestId ? 'bg-blue-200 font-semibold' : 'hover:bg-gray-100'}`}
+                className={`w-full text-left p-3 text-sm flex-grow transition-colors ${test.id === activeTestId ? 'font-semibold' : 'hover:bg-gray-100'}`}
               >
                 {test.name}
               </button>
@@ -221,7 +221,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
                   e.stopPropagation()
                   onTestDeleteRequest(test)
                 }}
-                className="p-3 text-gray-400 group-hover:opacity-100 hover:text-white hover:bg-red-600 transition-all"
+                className="p-4 h-full w-12 flex items-center justify-center text-gray-400 group-hover:opacity-100 hover:text-white hover:bg-red-200 transition-all"
                 aria-label={`Delete test ${test.name}`}
               >
                 <svg
