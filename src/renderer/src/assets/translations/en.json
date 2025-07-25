@@ -324,6 +324,21 @@
       "friendlyView": "Friendly View",
       "hideOutput": "Hide Output",
       "testOutput": "Test Output"
+    },
+    "commandParser": {
+      "visit": "Visit {{url}}",
+      "waitForElementDisplayed": "Wait for element with {{strategy}} \"{{value}}\" to be displayed",
+      "waitForElementEnabled": "Wait for element with {{strategy}} \"{{value}}\" to be enabled",
+      "clickElement": "Click element with {{strategy}} \"{{value}}\"",
+      "pressKey": "Press the {{key}} key on element with {{strategy}} \"{{value}}\"",
+      "typeText": "Type \"{{text}}\" into element with {{strategy}} \"{{value}}\"",
+      "wait": "Wait for {{seconds}} seconds",
+      "executeScript": "Execute script: {{script}}",
+      "switchToFrame": "Switch to frame identified by {{frame}}",
+      "switchToDefaultContent": "Switch back to main content",
+      "assertElementDisplayed": "Assert that element with {{strategy}} \"{{value}}\" is displayed",
+      "assertElementEnabled": "Assert that element with {{strategy}} \"{{value}}\" is enabled",
+      "assertElementTextEquals": "Assert that element with {{strategy}} \"{{value}}\" has text equal to \"{{text}}\""
     }
   }
 }

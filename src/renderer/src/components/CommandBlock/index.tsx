@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ParsedCommand } from '@main/handlers/commandParser'
 
 interface CommandBlockProps {
   command: string
@@ -19,18 +21,18 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   onDragEnd,
   onDelete
 }) => {
+  const { t } = useTranslation()
   const [mainCommand, comment] = command.split(' # ')
-
-  const [friendlyText, setFriendlyText] = useState('Loading...')
+  const [parsedCommand, setParsedCommand] = useState<string | ParsedCommand>('Loading...')
 
   useEffect(() => {
     let isMounted = true
 
     if (!showCode) {
-      setFriendlyText('Loading...')
-      window.api.commandParser(mainCommand).then((text) => {
+      setParsedCommand('Loading...')
+      window.api.commandParser(mainCommand).then((result) => {
         if (isMounted) {
-          setFriendlyText(text)
+          setParsedCommand(result)
         }
       })
     }
@@ -47,11 +49,13 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
     </div>
   )
 
-  const FriendlyView = () => (
-    <div className="font-sans text-sm">
-      <span className="text-gray-800">{friendlyText}</span>
-    </div>
-  )
+  const FriendlyView = () => {
+    if (typeof parsedCommand === 'string') {
+      return <span className="text-gray-800">{parsedCommand}</span>
+    }
+    const { key, values } = parsedCommand
+    return <span className="text-gray-800">{t(key, values)}</span>
+  }
 
   return (
     <div className="relative w-full mb-3">

@@ -322,6 +322,21 @@
       "friendlyView": "Vizualizare prietenoasă",
       "hideOutput": "Ascunde ieșirea",
       "testOutput": "Ieșire test"
+    },
+    "commandParser": {
+      "visit": "Vizitați {{url}}",
+      "waitForElementDisplayed": "Așteptați ca elementul cu {{strategy}} \"{{value}}\" să fie afișat",
+      "waitForElementEnabled": "Așteptați ca elementul cu {{strategy}} \"{{value}}\" să fie activat",
+      "clickElement": "Faceți clic pe elementul cu {{strategy}} \"{{value}}\"",
+      "pressKey": "Apăsați tasta {{key}} pe elementul cu {{strategy}} \"{{value}}\"",
+      "typeText": "Introduceți \"{{text}}\" în elementul cu {{strategy}} \"{{value}}\"",
+      "wait": "Așteptați {{seconds}} secunde",
+      "executeScript": "Executați scriptul: {{script}}",
+      "switchToFrame": "Comutați la cadrul identificat prin {{frame}}",
+      "switchToDefaultContent": "Comutați înapoi la conținutul principal",
+      "assertElementDisplayed": "Asigurați-vă că elementul cu {{strategy}} \"{{value}}\" este afișat",
+      "assertElementEnabled": "Asigurați-vă că elementul cu {{strategy}} \"{{value}}\" este activat",
+      "assertElementTextEquals": "Asigurați-vă că elementul cu {{strategy}} \"{{value}}\" are textul egal cu \"{{text}}\""
     }
   }
 }
