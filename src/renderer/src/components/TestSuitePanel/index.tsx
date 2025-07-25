@@ -108,7 +108,6 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
 
   return (
     <div className="w-full h-full p-2 flex flex-col">
-      {/* Non-scrolling part */}
       <div className="flex-shrink-0">
         <div className="flex items-center pb-2 border-b">
           <div className="relative w-full" ref={dropdownRef}>
