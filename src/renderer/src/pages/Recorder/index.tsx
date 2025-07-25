@@ -84,6 +84,16 @@ const Recorder: React.FC = () => {
     }
   }, [activeTest])
 
+  const formatXpath = (xpath: string): string => {
+    if (xpath.includes("'") && xpath.includes('"')) {
+      return `concat(${xpath.split("'").map((part) => `'${part}'`).join(`,"'",`)})`
+    }
+    if (xpath.includes("'")) {
+      return `"${xpath}"`
+    }
+    return `'${xpath}'`
+  }
+
   /**
    * Determines the correct locator strategy (:id, :css, :xpath) based on the selector string.
    * @param selector The selector string from the preload script.
@@ -92,14 +102,14 @@ const Recorder: React.FC = () => {
   const formatLocator = (selector: string): { strategy: string; value: string } => {
     // Check for XPath (starts with / or (//)
     if (selector.startsWith('/') || selector.startsWith('(')) {
-      return { strategy: 'xpath', value: selector }
+      return { strategy: 'xpath', value: formatXpath(selector) }
     }
     // Check for a simple ID selector (e.g., #my-id) that isn't part of a complex path
     if (selector.startsWith('#') && !/[\s>~+]/.test(selector)) {
-      return { strategy: 'id', value: selector.substring(1) }
+      return { strategy: 'id', value: `"${selector.substring(1)}"` }
     }
     // Default to CSS for all other cases
-    return { strategy: 'css', value: selector }
+    return { strategy: 'css', value: `"${selector}"` }
   }
 
   const handleCreateSuite = useCallback(
@@ -273,7 +283,7 @@ const Recorder: React.FC = () => {
   const handleSaveAssertionText = (expectedText: string): void => {
     if (assertionInfo) {
       const { strategy, value } = formatLocator(assertionInfo.selector)
-      const newStep = `expect(@driver.find_element(:${strategy}, "${value}").text).to eq("${expectedText}")`
+      const newStep = `expect(@driver.find_element(:${strategy}, ${value}).text).to eq("${expectedText}")`
       setActiveTest((prevTest) =>
         prevTest ? { ...prevTest, steps: [...prevTest.steps, newStep] } : null
       )
@@ -421,19 +431,19 @@ const Recorder: React.FC = () => {
 
       switch (assertion.type) {
         case 'wait-displayed':
-          newStep = `@wait.until { @driver.find_element(:${strategy}, "${value}").displayed? }`
+          newStep = `@wait.until { @driver.find_element(:${strategy}, ${value}).displayed? }`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'wait-enabled':
-          newStep = `@wait.until { @driver.find_element(:${strategy}, "${value}").enabled? }`
+          newStep = `@wait.until { @driver.find_element(:${strategy}, ${value}).enabled? }`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'displayed':
-          newStep = `expect(@driver.find_element(:${strategy}, "${value}")).to be_displayed`
+          newStep = `expect(@driver.find_element(:${strategy}, ${value})).to be_displayed`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'enabled':
-          newStep = `expect(@driver.find_element(:${strategy}, "${value}")).to be_enabled`
+          newStep = `expect(@driver.find_element(:${strategy}, ${value})).to be_enabled`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'text':
