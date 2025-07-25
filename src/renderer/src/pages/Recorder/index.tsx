@@ -40,6 +40,7 @@ const Recorder: React.FC = () => {
   const { rubyCommand, setRubyCommand } = useRubyStore()
   const projectPath = useProjectStore((state) => state.projectPath)
   const [isOutputVisible, setIsOutputVisible] = useState<boolean>(false)
+  const [showCode, setShowCode] = useState(false)
 
   const activeTestRef = useRef(activeTest)
   useEffect(() => {
@@ -503,6 +504,14 @@ const Recorder: React.FC = () => {
           <h3 className="px-1 text-lg font-semibold text-gray-800">Recorded Steps</h3>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>
+              <div className="flex justify-between items-center p-1 border-b border-gray-200">
+                <Button onClick={() => setShowCode(!showCode)} type="secondary">
+                  {showCode ? 'Friendly View' : 'Code View'}
+                </Button>
+                <Button onClick={() => setIsOutputVisible(!isOutputVisible)} type="secondary">
+                  {isOutputVisible ? 'Hide Test Output' : 'Show Test Output'}
+                </Button>
+              </div>
               <CommandList
                 steps={activeTest?.steps ?? []}
                 setSteps={(newSteps: SetStateAction<string[]>) =>
@@ -518,6 +527,7 @@ const Recorder: React.FC = () => {
                     p ? { ...p, steps: p.steps.filter((_, i) => i !== indexToDelete) } : null
                   )
                 }
+                showCode={showCode}
               />
             </StyledPanel>
           </div>
@@ -532,11 +542,6 @@ const Recorder: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
-      <div className="flex justify-end">
-        <Button onClick={() => setIsOutputVisible(!isOutputVisible)} type="secondary">
-          {isOutputVisible ? 'Hide Test Output' : 'Show Test Output'}
-        </Button>
       </div>
       {assertionInfo && (
         <AssertionTextModal
