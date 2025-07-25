@@ -6,7 +6,9 @@ import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
 
-export default async function importProject(mainWindow: BrowserWindow) {
+export default async function importProject(
+  mainWindow: BrowserWindow
+): Promise<{ success: boolean; error?: string }> {
   if (!mainWindow) {
     return { success: false, error: 'Main window not found' }
   }
@@ -20,9 +22,10 @@ export default async function importProject(mainWindow: BrowserWindow) {
     }
 
     const projectPath = result.filePaths[0]
-    const subdirectories = fs.readdirSync(projectPath, { withFileTypes: true })
-      .filter(dirent => dirent.isDirectory())
-      .map(dirent => dirent.name)
+    const subdirectories = fs
+      .readdirSync(projectPath, { withFileTypes: true })
+      .filter((dirent) => dirent.isDirectory())
+      .map((dirent) => dirent.name)
 
     appState.suites.clear()
 
@@ -45,13 +48,20 @@ export default async function importProject(mainWindow: BrowserWindow) {
           const testNameMatch = fileContent.match(/# Test: (.*)/)
           const testName = testNameMatch ? testNameMatch[1] : path.basename(file, '.rb')
 
-          const stepsMatch = fileContent.match(/begin\n([\s\S]*?)\n  puts "Test '.*' passed successfully!"/)
-          const steps = stepsMatch ? stepsMatch[1].trim().split('\n').map(step => step.trim()) : []
+          const stepsMatch = fileContent.match(
+            /begin\n([\s\S]*?)\n {2}puts "Test '.*' passed successfully!"/
+          )
+          const steps = stepsMatch
+            ? stepsMatch[1]
+                .trim()
+                .split('\n')
+                .map((step) => step.trim())
+            : []
 
           const newTest: Test = {
             id: randomUUID(),
             name: testName,
-            steps: steps,
+            steps: steps
           }
           newSuite.tests.push(newTest)
         }

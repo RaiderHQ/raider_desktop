@@ -19,6 +19,11 @@ import installRaider from './handlers/installRaider'
 import updateMobileCapabilities from './handlers/updateMobileCapabilities'
 import getMobileCapabilities from './handlers/getMobileCapabilities'
 import isRubyInstalled from './handlers/isRubyInstalled'
+import isRbenvRubyInstalled from './handlers/isRbenvRubyInstalled'
+import isRvmRubyInstalled from './handlers/isRvmRubyInstalled'
+import isSystemRubyInstalled from './handlers/isSystemRubyInstalled'
+import installRbenvAndRuby from './handlers/installRbenvAndRuby'
+import installGems from './handlers/installGems'
 import runRecording from './handlers/runRecording'
 import commandParser from './handlers/commandParser'
 import getSuites from './handlers/getSuites'
@@ -115,6 +120,13 @@ app.whenReady().then(() => {
   ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)
   ipcMain.handle('get-mobile-capabilities', getMobileCapabilities)
   ipcMain.handle('is-ruby-installed', isRubyInstalled)
+  ipcMain.handle('is-rbenv-ruby-installed', isRbenvRubyInstalled)
+  ipcMain.handle('is-rvm-ruby-installed', isRvmRubyInstalled)
+  ipcMain.handle('is-system-ruby-installed', isSystemRubyInstalled)
+  ipcMain.handle('install-rbenv-and-ruby', installRbenvAndRuby)
+  ipcMain.handle('install-gems', (_event, rubyCommand: string, gems: string[]) =>
+    installGems(rubyCommand, gems)
+  )
   ipcMain.handle('command-parser', (_event, command: string) => commandParser(command))
   ipcMain.handle('get-suites', getSuites)
   ipcMain.handle('create-suite', (_event, suiteName: string) =>
@@ -123,17 +135,20 @@ app.whenReady().then(() => {
   ipcMain.handle('delete-suite', (_event, suiteId: string) =>
     deleteSuite(appState.mainWindow!, suiteId)
   )
-  ipcMain.handle('run-test', (_event, suiteId: string, testId: string) => {
-    const suite = appState.suites.get(suiteId)
-    const test = suite?.tests.find((t) => t.id === testId)
+  ipcMain.handle(
+    'run-test',
+    (_event, suiteId: string, testId: string, projectPath: string, rubyCommand: string) => {
+      const suite = appState.suites.get(suiteId)
+      const test = suite?.tests.find((t) => t.id === testId)
 
-    if (!test) {
-      return { success: false, output: `Test with ID ${testId} not found.` }
+      if (!test) {
+        return { success: false, output: `Test with ID ${testId} not found.` }
+      }
+
+      const { implicitWait, explicitWait } = getRecordingSettings()
+      return runRecording({ savedTest: test, implicitWait, explicitWait, projectPath, rubyCommand })
     }
-
-    const { implicitWait, explicitWait } = getRecordingSettings()
-    return runRecording({ savedTest: test, implicitWait, explicitWait })
-  })
+  )
   ipcMain.handle(
     'update-recording-settings',
     async (_event, settings: { implicitWait: number; explicitWait: number }) => {
@@ -146,7 +161,9 @@ app.whenReady().then(() => {
     }
   )
 
-  ipcMain.handle('run-suite', (_event, suiteId: string) => runSuite(suiteId))
+  ipcMain.handle('run-suite', (_event, suiteId: string, projectPath: string, rubyCommand: string) =>
+    runSuite(suiteId, projectPath, rubyCommand)
+  )
   ipcMain.handle('export-test', (_event, testData: TestData) => exportTest(testData))
   ipcMain.handle('export-suite', (_event, suiteId: string) => exportSuite(suiteId))
   ipcMain.handle('export-project', exportProject)
@@ -171,7 +188,7 @@ app.whenReady().then(() => {
   )
 
   // --- Assertion Context Menu Handler ---
-  ipcMain.on('show-assertion-context-menu', (_event, { selector, elementText }) => {
+  ipcMain.on('show-assertion-context-menu', (_event, { selector, elementText }): void => {
     if (!appState.mainWindow) return
 
     const template: (Electron.MenuItemConstructorOptions | Electron.MenuItem)[] = [
@@ -186,7 +203,7 @@ app.whenReady().then(() => {
         submenu: [
           {
             label: 'to be displayed',
-            click: () => {
+            click: (): void => {
               appState.mainWindow!.webContents.send('add-assertion-step', {
                 type: 'wait-displayed',
                 selector
@@ -243,7 +260,6 @@ app.whenReady().then(() => {
   })
 })
 
-
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
@@ -254,4 +270,3 @@ app.on('ready', async () => {
   const fixPath = await import('fix-path')
   fixPath.default()
 })
-

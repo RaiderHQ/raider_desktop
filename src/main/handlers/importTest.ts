@@ -4,7 +4,10 @@ import { appState } from './appState'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
 
-export default async function importTest(mainWindow: BrowserWindow, suiteId: string) {
+export default async function importTest(
+  mainWindow: BrowserWindow,
+  suiteId: string
+): Promise<{ success: boolean; test?: Test; error?: string }> {
   if (!mainWindow) {
     return { success: false, error: 'Main window not found' }
   }
@@ -28,8 +31,15 @@ export default async function importTest(mainWindow: BrowserWindow, suiteId: str
     const testNameMatch = fileContent.match(/# Test: (.*)/)
     const testName = testNameMatch ? testNameMatch[1] : 'Unnamed Test'
 
-    const stepsMatch = fileContent.match(/begin\n([\s\S]*?)\n  puts "Test '.*' passed successfully!"/)
-    const steps = stepsMatch ? stepsMatch[1].trim().split('\n').map(step => step.trim()) : []
+    const stepsMatch = fileContent.match(
+      /begin\n([\s\S]*?)\n {2}puts "Test '.*' passed successfully!"/
+    )
+    const steps = stepsMatch
+      ? stepsMatch[1]
+          .trim()
+          .split('\n')
+          .map((step) => step.trim())
+      : []
 
     const suite = appState.suites.get(suiteId)
     if (!suite) {
@@ -39,7 +49,7 @@ export default async function importTest(mainWindow: BrowserWindow, suiteId: str
     const newTest: Test = {
       id: randomUUID(),
       name: testName,
-      steps: steps,
+      steps: steps
     }
 
     if (suite.tests.some((t) => t.name === newTest.name)) {

@@ -1,112 +1,77 @@
-import { IpcMainInvokeEvent } from 'electron'
-import runCommand from './runCommand'
-import path from 'path'
+import isRbenvRubyInstalled from './isRbenvRubyInstalled'
+import isRvmRubyInstalled from './isRvmRubyInstalled'
+import isSystemRubyInstalled from './isSystemRubyInstalled'
+import checkRubyDependencies from './checkRubyDependencies'
 
-interface RubyError {
-  code: string
-  params: { [key: string]: string }
-}
-
-const isRubyInstalled = async (
-  _event: IpcMainInvokeEvent,
-  projectPath: string
-): Promise<{ success: boolean; rubyVersion?: string; error?: RubyError }> => {
-  let debugInfo = ''
-  try {
-    // Normalize the project path.
-    const normalizedPath = path.join(projectPath)
-    let command: string
-
-    if (process.platform === 'darwin') {
-      // Determine the user's default shell.
-      const userShell = process.env.SHELL || '/bin/bash'
-      // Run the command in a login shell so that the user's environment is fully loaded.
-      command = `${userShell} -l -c "cd '${normalizedPath}' && ruby -v"`
-
-      // Set up some debug information.
-      debugInfo = `
-User Shell: ${userShell}
-Platform: ${process.platform}
-Normalized Path: ${normalizedPath}
-Chosen Command: ${command}
-      `.trim()
-    } else {
-      command = `cd '${normalizedPath}' && ruby -v`
+const handler = async (): Promise<{
+  success: boolean
+  version?: string
+  error?: string
+  missingGems?: string[]
+  rubyCommand?: string
+}> => {
+  console.log('Checking for rbenv Ruby...')
+  const rbenvResult = await isRbenvRubyInstalled()
+  console.log('rbenv result:', rbenvResult)
+  if (rbenvResult.success && rbenvResult.version) {
+    const rubyCommandPrefix = `eval "$(rbenv init -)" && rbenv shell ${rbenvResult.version} &&`
+    console.log(`Checking dependencies with rbenv command: ${rubyCommandPrefix}`)
+    const depsResult = await checkRubyDependencies(rubyCommandPrefix)
+    console.log('rbenv deps result:', depsResult)
+    if (depsResult.success) {
+      return { ...rbenvResult, rubyCommand: `${rubyCommandPrefix} ruby` }
     }
-
-    const result = await runCommand(_event, command)
-    if (!result.success) {
-      return {
-        success: false,
-        error: {
-          code: 'errors.ruby.commandFailed',
-          params: {
-            command,
-            output: result.output,
-            debugInfo
-          }
-        }
-      }
-    }
-
-    const output = result.output.trim()
-    const parts = output.split(' ')
-    if (parts.length < 2) {
-      return {
-        success: false,
-        error: {
-          code: 'errors.ruby.unexpectedOutput',
-          params: {
-            output,
-            debugInfo
-          }
-        }
-      }
-    }
-    const version = parts[1]
-    const majorVersion = parseInt(version.split('.')[0], 10)
-    if (isNaN(majorVersion)) {
-      return {
-        success: false,
-        error: {
-          code: 'errors.ruby.failedToParse',
-          params: {
-            output,
-            debugInfo
-          }
-        }
-      }
-    }
-
-    if (majorVersion < 3) {
-      return {
-        success: false,
-        rubyVersion: version,
-        error: {
-          code: 'errors.ruby.outdated',
-          params: {
-            version,
-            output,
-            debugInfo
-          }
-        }
-      }
-    }
-
-    return { success: true, rubyVersion: version }
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error)
     return {
+      ...rbenvResult,
       success: false,
-      error: {
-        code: 'errors.ruby.unknown',
-        params: {
-          error: errorMessage,
-          debugInfo
-        }
-      }
+      missingGems: depsResult.missingGems,
+      rubyCommand: rubyCommandPrefix
     }
+  }
+
+  console.log('Checking for rvm Ruby...')
+  const rvmResult = await isRvmRubyInstalled()
+  console.log('rvm result:', rvmResult)
+  if (rvmResult.success && rvmResult.version) {
+    const rubyCommandPrefix = `source $(brew --prefix rvm)/scripts/rvm && rvm ${rvmResult.version} do`
+    console.log(`Checking dependencies with rvm command: ${rubyCommandPrefix}`)
+    const depsResult = await checkRubyDependencies(rubyCommandPrefix)
+    console.log('rvm deps result:', depsResult)
+    if (depsResult.success) {
+      return { ...rvmResult, rubyCommand: `${rubyCommandPrefix} ruby` }
+    }
+    return {
+      ...rvmResult,
+      success: false,
+      missingGems: depsResult.missingGems,
+      rubyCommand: rubyCommandPrefix
+    }
+  }
+
+  console.log('Checking for system Ruby...')
+  const systemResult = await isSystemRubyInstalled()
+  console.log('system result:', systemResult)
+  if (systemResult.success) {
+    const rubyCommandPrefix = ''
+    console.log('Checking dependencies with system ruby.')
+    const depsResult = await checkRubyDependencies(rubyCommandPrefix)
+    console.log('system deps result:', depsResult)
+    if (depsResult.success) {
+      return { ...systemResult, rubyCommand: 'ruby' }
+    }
+    return {
+      ...systemResult,
+      success: false,
+      missingGems: depsResult.missingGems,
+      rubyCommand: rubyCommandPrefix
+    }
+  }
+
+  console.log('No suitable Ruby version found.')
+  return {
+    success: false,
+    error: 'No suitable Ruby version found.'
   }
 }
 
-export default isRubyInstalled
+export default handler

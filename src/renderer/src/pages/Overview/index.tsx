@@ -21,13 +21,17 @@ const Overview: React.FC = () => {
   const handleRunTests = async (): Promise<void> => {
     const toastId = toast.loading(t('overview.running'))
     try {
-      const result = await window.api.runTests(projectPath || '')
-      toast.dismiss(toastId)
-
-      if (!result.success) {
-        throw new Error(result.error || 'Test execution failed')
+      const suites = await window.api.getSuites()
+      if (!suites || suites.length === 0) {
+        throw new Error('No suites found to run.')
       }
-
+      for (const suite of suites) {
+        const result = await window.api.runSuite(suite.id, projectPath || '')
+        if (!result.success) {
+          throw new Error(result.output || 'Test execution failed')
+        }
+      }
+      toast.dismiss(toastId)
       toast.success(t('overview.runTestsSuccess'))
     } catch (error) {
       toast.dismiss(toastId)

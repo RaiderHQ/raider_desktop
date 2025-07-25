@@ -132,6 +132,22 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
           <div className="flex items-center justify-between border-t border-gray-200 pt-4">
             <div className="flex items-center space-x-2">
               <Button
+                onClick={onNewTest}
+                disabled={!activeSuiteId}
+                type={!activeSuiteId ? 'disabled' : 'secondary'}
+              >
+                New Test
+              </Button>
+              <Dropdown buttonText="Import" options={importOptions} defaultOption={2} />
+              <Dropdown
+                buttonText="Export"
+                options={exportOptions}
+                defaultOption={2}
+                disabled={!activeTest || isRecording}
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
                 onClick={onStartRecording}
                 disabled={!activeTest || isRecording}
                 type={isRecording ? 'disabled' : 'primary'}
@@ -152,22 +168,6 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
               >
                 Stop
               </Button>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                onClick={onNewTest}
-                disabled={!activeSuiteId}
-                type={!activeSuiteId ? 'disabled' : 'secondary'}
-              >
-                New Test
-              </Button>
-              <Dropdown buttonText="Import" options={importOptions} defaultOption={2} />
-              <Dropdown
-                buttonText="Export"
-                options={exportOptions}
-                defaultOption={2}
-                disabled={!activeTest || isRecording}
-              />
             </div>
           </div>
         </div>
