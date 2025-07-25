@@ -10,7 +10,7 @@ const commandParser = (command: string): string => {
       template: (matches: string[]): string => `Visit ${matches[1]}`
     },
     {
-      regex: /wait\.until { @driver\.find_element\(:?(\w+),\s*"([^"]+)"\)\.displayed\? }/,
+      regex: /wait\.until { @driver\.find_element\(:?(\w+),\s*"([^"]+)"\)\.displayed\? }$/,
       template: (matches: string[]): string =>
         `Wait for element with ${matches[1]} "${matches[2]}" to be displayed`
     },
@@ -50,7 +50,7 @@ const commandParser = (command: string): string => {
       template: (): string => 'Switch back to main content'
     },
     {
-      regex: /expect\(@driver\.find_element\(:?(\w+),\s*"([^"]+)"\)\)\.to be_displayed/,
+      regex: /expect\(@driver\.find_element\(:?(\w+),\s*"([^"]+)"\)\)\.to be_displayed$/,
       template: (matches: string[]): string =>
         `Assert that element with ${matches[1]} "${matches[2]}" is displayed`
     },
