@@ -11,7 +11,7 @@ interface TestSuitePanelProps {
   onTestSelect: (testId: string) => void
   onCreateSuite: (suiteName: string) => void
   onDeleteSuite: (suiteId: string) => void
-  onTestDelete: (testId: string) => void
+  onTestDeleteRequest: (test: Test) => void
   onRunAllTests: (suiteId: string) => void
   onReorderTests: (suiteId: string, tests: Test[]) => void
 }
@@ -24,7 +24,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
   onTestSelect,
   onCreateSuite,
   onDeleteSuite,
-  onTestDelete,
+  onTestDeleteRequest,
   onRunAllTests,
   onReorderTests
 }) => {
@@ -219,11 +219,9 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  if (window.confirm(`Are you sure you want to delete the test "${test.name}"?`)) {
-                    onTestDelete(test.id)
-                  }
+                  onTestDeleteRequest(test)
                 }}
-                className="p-3 text-gray-400 group-hover:opacity-100 hover:text-red-600 hover:bg-red-100 transition-all"
+                className="p-3 text-gray-400 group-hover:opacity-100 hover:text-white hover:bg-red-600 transition-all"
                 aria-label={`Delete test ${test.name}`}
               >
                 <svg

@@ -14,6 +14,8 @@ import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import Button from '@components/Button'
 
+import DeleteModal from '@components/DeleteModal'
+
 // Defines the structure for the data needed by the assertion modal
 interface AssertionInfo {
   selector: string
@@ -41,6 +43,8 @@ const Recorder: React.FC = () => {
   const projectPath = useProjectStore((state) => state.projectPath)
   const [isOutputVisible, setIsOutputVisible] = useState<boolean>(false)
   const [showCode, setShowCode] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false)
+  const [testToDelete, setTestToDelete] = useState<Test | null>(null)
 
   const activeTestRef = useRef(activeTest)
   useEffect(() => {
@@ -106,19 +110,21 @@ const Recorder: React.FC = () => {
   )
 
   const handleDeleteSuite = useCallback((suiteIdToDelete: string): void => {
-    if (window.confirm('Are you sure you want to delete this suite?')) {
-      window.api.deleteSuite(suiteIdToDelete)
-    }
+    window.api.deleteSuite(suiteIdToDelete)
   }, [])
 
-  const handleTestDelete = useCallback(
-    (testIdToDelete: string): void => {
-      if (activeSuiteId) {
-        window.api.deleteTest(activeSuiteId, testIdToDelete)
-      }
-    },
-    [activeSuiteId]
-  )
+  const handleTestDeleteRequest = useCallback((test: Test) => {
+    setTestToDelete(test)
+    setIsDeleteModalOpen(true)
+  }, [])
+
+  const handleConfirmDelete = useCallback(() => {
+    if (activeSuiteId && testToDelete) {
+      window.api.deleteTest(activeSuiteId, testToDelete.id)
+    }
+    setIsDeleteModalOpen(false)
+    setTestToDelete(null)
+  }, [activeSuiteId, testToDelete])
 
   const handleSuiteChange = (suiteId: string): void => {
     setActiveSuiteId(suiteId)
@@ -493,7 +499,7 @@ const Recorder: React.FC = () => {
                 onTestSelect={handleTestSelect}
                 onCreateSuite={handleCreateSuite}
                 onDeleteSuite={handleDeleteSuite}
-                onTestDelete={handleTestDelete}
+                onTestDeleteRequest={handleTestDeleteRequest}
                 onRunAllTests={handleRunAllTests}
                 onReorderTests={() => {}}
               />
@@ -548,6 +554,13 @@ const Recorder: React.FC = () => {
           initialText={assertionInfo.text}
           onSave={handleSaveAssertionText}
           onClose={handleCloseAssertionModal}
+        />
+      )}
+      {isDeleteModalOpen && testToDelete && (
+        <DeleteModal
+          testName={testToDelete.name}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setIsDeleteModalOpen(false)}
         />
       )}
     </div>
