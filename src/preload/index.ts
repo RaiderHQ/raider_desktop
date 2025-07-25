@@ -153,8 +153,14 @@ const api = {
   stopRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('stop-recording-main'),
   loadUrlRequest: async (url: string): Promise<CommandType> =>
     ipcRenderer.invoke('load-url-request', url),
-  commandParser: (command: string): Promise<string> =>
-    ipcRenderer.invoke('command-parser', command),
+  xpathParser: (command: string): Promise<string> => {
+    console.log('[preload/index.ts] Invoking "xpath-parser" for command:', command)
+    return ipcRenderer.invoke('xpath-parser', command)
+  },
+  commandParser: (command: string): Promise<string> => {
+    console.log('[preload/index.ts] Invoking "command-parser" for command:', command)
+    return ipcRenderer.invoke('command-parser', command)
+  },
   exportTest: (
     testName: string,
     steps: string[]

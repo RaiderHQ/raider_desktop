@@ -25,6 +25,7 @@ import isSystemRubyInstalled from './handlers/isSystemRubyInstalled'
 import installRbenvAndRuby from './handlers/installRbenvAndRuby'
 import installGems from './handlers/installGems'
 import runRecording from './handlers/runRecording'
+import xpathParser from './handlers/xpathParser'
 import commandParser from './handlers/commandParser'
 import getSuites from './handlers/getSuites'
 import createSuite from './handlers/createSuite'
@@ -127,7 +128,14 @@ app.whenReady().then(() => {
   ipcMain.handle('install-gems', (_event, rubyCommand: string, gems: string[]) =>
     installGems(rubyCommand, gems)
   )
-  ipcMain.handle('command-parser', (_event, command: string) => commandParser(command))
+  ipcMain.handle('xpath-parser', (_event, command: string) => {
+    console.log('[main/index.ts] Handling "xpath-parser" for command:', command)
+    return xpathParser(command)
+  })
+  ipcMain.handle('command-parser', (_event, command: string) => {
+    console.log('[main/index.ts] Handling "command-parser" for command:', command)
+    return commandParser(command)
+  })
   ipcMain.handle('get-suites', getSuites)
   ipcMain.handle('create-suite', (_event, suiteName: string) =>
     createSuite(appState.mainWindow!, suiteName)
