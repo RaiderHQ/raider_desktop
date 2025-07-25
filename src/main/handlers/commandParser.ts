@@ -21,35 +21,35 @@ const commandParser = (command: string): ParsedCommand | string => {
       })
     },
     {
-      regex: /wait\.until { @driver\.find_element\(:?(\w+),\s*"([^"]+)"\)\.displayed\? }$/,
+      regex: /wait\.until { @driver\.find_element\(:?(\w+),\s*"(.+?)"\)\.displayed\? }$/,
       template: (matches: string[]): ParsedCommand => ({
         key: 'recorder.commandParser.waitForElementDisplayed',
         values: { strategy: matches[1], value: matches[2] }
       })
     },
     {
-      regex: /wait\.until { @driver\.find_element\(:?(\w+),\s*"([^"]+)"\)\.enabled\? }/,
+      regex: /wait\.until { @driver\.find_element\(:?(\w+),\s*"(.+?)"\)\.enabled\? }/,
       template: (matches: string[]): ParsedCommand => ({
         key: 'recorder.commandParser.waitForElementEnabled',
         values: { strategy: matches[1], value: matches[2] }
       })
     },
     {
-      regex: /@driver\.find_element\(:?(\w+),\s*"([^"]+)"\)\.click/,
+      regex: /@driver\.find_element\(:?(\w+),\s*"(.+?)"\)\.click/,
       template: (matches: string[]): ParsedCommand => ({
         key: 'recorder.commandParser.clickElement',
         values: { strategy: matches[1], value: matches[2] }
       })
     },
     {
-      regex: /@driver\.find_element\(:?(\w+),\s*"([^"]+)"\)\.send_keys\(:(\w+)\)/,
+      regex: /@driver\.find_element\(:?(\w+),\s*"(.+?)"\)\.send_keys\(:(\w+)\)/,
       template: (matches: string[]): ParsedCommand => ({
         key: 'recorder.commandParser.pressKey',
         values: { key: matches[3], strategy: matches[1], value: matches[2] }
       })
     },
     {
-      regex: /@driver\.find_element\(:?(\w+),\s*"([^"]+)"\)\.send_keys\("([^"]*)"\)/,
+      regex: /@driver\.find_element\(:?(\w+),\s*"(.+?)"\)\.send_keys\("([^"]*)"\)/,
       template: (matches: string[]): ParsedCommand => ({
         key: 'recorder.commandParser.typeText',
         values: { text: matches[3], strategy: matches[1], value: matches[2] }
