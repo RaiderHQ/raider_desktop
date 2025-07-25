@@ -7,18 +7,10 @@ interface RubyInstallModalProps {
   missingGems?: string[]
 }
 
-const RubyInstallModal: React.FC<RubyInstallModalProps> = ({
-  onInstall,
-  onClose,
-  missingGems
-}) => {
-  const title = missingGems
-    ? 'Missing Dependencies'
-    : 'Ruby Installation Required'
+const RubyInstallModal: React.FC<RubyInstallModalProps> = ({ onInstall, onClose, missingGems }) => {
+  const title = missingGems ? 'Missing Dependencies' : 'Ruby Installation Required'
   const message = missingGems
-    ? `The following gems are missing: ${missingGems.join(
-        ', '
-      )}. Would you like to install them?`
+    ? `The following gems are missing: ${missingGems.join(', ')}. Would you like to install them?`
     : 'In order to use all the features of the Raider Desktop App, you need Ruby in your system. Would you like to install rbenv, Ruby, and all the dependencies?'
 
   return (

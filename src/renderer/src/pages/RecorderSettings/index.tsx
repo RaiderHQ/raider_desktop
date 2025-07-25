@@ -58,7 +58,7 @@ const RecordingSettings: React.FC = () => {
   }
 
   const handleDeleteSelector = (selectorToDelete: string) => {
-    setSelectorPriorities(selectorPriorities.filter(s => s !== selectorToDelete))
+    setSelectorPriorities(selectorPriorities.filter((s) => s !== selectorToDelete))
   }
 
   const handleDragStart = (index: number) => {
@@ -122,7 +122,8 @@ const RecordingSettings: React.FC = () => {
       <div className="border border-gray-300 rounded-lg p-4 mt-4">
         <h3 className="text-lg font-bold mb-2">Selector Priorities</h3>
         <p className="text-sm text-gray-500 mb-4">
-          Drag and drop to reorder selector priorities. The recorder will try to find elements using this order.
+          Drag and drop to reorder selector priorities. The recorder will try to find elements using
+          this order.
         </p>
         <div className="flex items-center mb-4">
           <InputField

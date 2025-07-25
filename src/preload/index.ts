@@ -167,10 +167,9 @@ const api = {
     rubyCommand: string
   ): Promise<{ success: boolean; output: string }> =>
     ipcRenderer.invoke('run-test', suiteId, testId, projectPath, rubyCommand),
-  updateRecordingSettings: (settings: { implicitWait: number, explicitWait: number }) =>
+  updateRecordingSettings: (settings: { implicitWait: number; explicitWait: number }) =>
     ipcRenderer.invoke('update-recording-settings', settings),
-  getSelectorPriorities: (): Promise<string[]> =>
-    ipcRenderer.invoke('get-selector-priorities'),
+  getSelectorPriorities: (): Promise<string[]> => ipcRenderer.invoke('get-selector-priorities'),
   saveSelectorPriorities: (priorities: string[]): Promise<{ success: boolean }> =>
     ipcRenderer.invoke('save-selector-priorities', priorities)
 }

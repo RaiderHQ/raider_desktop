@@ -161,10 +161,8 @@ app.whenReady().then(() => {
     }
   )
 
-  ipcMain.handle(
-    'run-suite',
-    (_event, suiteId: string, projectPath: string, rubyCommand: string) =>
-      runSuite(suiteId, projectPath, rubyCommand)
+  ipcMain.handle('run-suite', (_event, suiteId: string, projectPath: string, rubyCommand: string) =>
+    runSuite(suiteId, projectPath, rubyCommand)
   )
   ipcMain.handle('export-test', (_event, testData: TestData) => exportTest(testData))
   ipcMain.handle('export-suite', (_event, suiteId: string) => exportSuite(suiteId))
@@ -190,7 +188,7 @@ app.whenReady().then(() => {
   )
 
   // --- Assertion Context Menu Handler ---
-  ipcMain.on('show-assertion-context-menu', (_event, { selector, elementText }) => {
+  ipcMain.on('show-assertion-context-menu', (_event, { selector, elementText }): void => {
     if (!appState.mainWindow) return
 
     const template: (Electron.MenuItemConstructorOptions | Electron.MenuItem)[] = [
@@ -205,7 +203,7 @@ app.whenReady().then(() => {
         submenu: [
           {
             label: 'to be displayed',
-            click: () => {
+            click: (): void => {
               appState.mainWindow!.webContents.send('add-assertion-step', {
                 type: 'wait-displayed',
                 selector
@@ -262,7 +260,6 @@ app.whenReady().then(() => {
   })
 })
 
-
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
@@ -273,4 +270,3 @@ app.on('ready', async () => {
   const fixPath = await import('fix-path')
   fixPath.default()
 })
-
