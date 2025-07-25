@@ -8,6 +8,7 @@ interface AppState {
   implicitWait: number
   explicitWait: number
   projectPath: string
+  rubyCommand: string
 }
 
 /**
@@ -22,22 +23,13 @@ function generateRspecCode(
   testName: string,
   steps: string[],
   implicitWait: number,
-  explicitWait: number,
-  projectPath: string
+  explicitWait: number
 ): string {
   const formattedSteps = steps.map((step) => `    ${step}`).join('\n    sleep(1)\n')
-  // Make sure to escape backslashes in the project path for Windows
-  const allurePath = path.join(projectPath, 'allure-results').replace(/\\/g, '\\\\')
 
   return `
 require 'selenium-webdriver'
 require 'rspec'
-require 'allure-rspec'
-
-AllureRspec.configure do |c|
-  c.results_directory = '${allurePath}'
-  c.clean_results_directory = true
-end
 
 describe '${testName}' do
   before(:each) do
@@ -49,12 +41,7 @@ describe '${testName}' do
 
   after(:each) do |example|
     if example.exception
-      Allure.add_attachment(
-        name: 'screenshot',
-        source: @driver.screenshot_as(:png),
-        type: Allure::ContentType::PNG,
-        test_case: true
-      )
+      # You can add custom screenshot logic here if needed
     end
     @driver.quit
   end
@@ -94,21 +81,22 @@ const runRecording = async (appState: AppState): Promise<{ success: boolean; out
 
     // Destructure the name and steps from the saved test
     const { name, steps } = appState.savedTest
-    const { implicitWait, explicitWait, projectPath } = appState
+    const { implicitWait, explicitWait, rubyCommand } = appState
 
-    const testCode = generateRspecCode(name, steps, implicitWait, explicitWait, projectPath)
+    const testCode = generateRspecCode(name, steps, implicitWait, explicitWait)
 
     await fs.writeFile(tempFilePath, testCode)
     console.log(`[MainProcess] Test file written to: ${tempFilePath}`)
 
-    const command = `rspec ${tempFilePath} --format AllureRspec --format progress`
+    const command = `${rubyCommand} -S rspec ${tempFilePath} --format json`
     console.log(`[MainProcess] Executing command: ${command}`)
 
     return await new Promise((resolve) => {
       exec(command, { env: executionEnv }, (error, stdout, stderr) => {
         if (stdout) console.log('[MainProcess] Test stdout:\n', stdout)
         if (stderr) console.error('[MainProcess] Test stderr:\n', stderr)
-        if (error) {
+        // RSpec with --format json outputs to stdout even on failure, so we check stderr for errors
+        if (error && stderr) {
           console.error('[MainProcess] Test execution failed with error object:', error)
           const fullErrorOutput = `RSpec execution failed.\n\n--- STDERR ---\n${stderr}\n\n--- STDOUT ---\n${stdout}\n\n--- ERROR --- \n${error.message}`
           resolve({ success: false, output: fullErrorOutput })

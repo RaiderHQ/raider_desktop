@@ -3,7 +3,8 @@ import runRecording from './runRecording'
 
 export default async (
   suiteId: string,
-  projectPath: string
+  projectPath: string,
+  rubyCommand: string
 ): Promise<{ success: boolean; output: string }> => {
   const suite = appState.suites.get(suiteId)
   if (!suite) {
@@ -17,7 +18,13 @@ export default async (
 
   for (const test of suite.tests) {
     fullOutput += `--- Running test: ${test.name} ---\n`
-    const result = await runRecording({ savedTest: test, implicitWait, explicitWait, projectPath })
+    const result = await runRecording({
+      savedTest: test,
+      implicitWait,
+      explicitWait,
+      projectPath,
+      rubyCommand
+    })
     fullOutput += `${result.output}\n`
 
     if (!result.success) {
