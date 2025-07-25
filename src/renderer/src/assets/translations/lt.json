@@ -142,7 +142,8 @@
       "description": "Koreguokite bendruosius programos nustatymus.",
       "language": {
         "label": "Kalba"
-      }
+      },
+      "save": "Išsaugoti"
     },
     "recording": {
       "title": "Įrašymo nustatymai",
@@ -252,6 +253,77 @@
     "heading": {
       "recordedSteps": "Įrašyti veiksmai",
       "runOutput": "Vykdymo išvestis"
+    },
+    "assertionTextModal": {
+      "title": "Elemento teksto tvirtinimas",
+      "message": "Įveskite tikslų tekstą, kurį tikitės, kad elementas turės.",
+      "label": "Laukiamas tekstas",
+      "cancel": "Atšaukti",
+      "save": "Išsaugoti tvirtinimą"
+    },
+    "deleteModal": {
+      "title": "Patvirtinti ištrynimą",
+      "message": "Ar tikrai norite ištrinti testą?",
+      "cancel": "Atšaukti",
+      "delete": "Ištrinti"
+    },
+    "rubyInstallModal": {
+      "title": {
+        "missing": "Trūkstamos priklausomybės",
+        "required": "Reikalingas Ruby diegimas"
+      },
+      "message": {
+        "missing": "Trūksta šių perlų: {{missingGems}}. Ar norite juos įdiegti?",
+        "required": "Norint naudoti visas „Raider Desktop App“ funkcijas, jūsų sistemoje reikalingas „Ruby“. Ar norite įdiegti „rbenv“, „Ruby“ ir visas priklausomybes?"
+      },
+      "yes": "Taip",
+      "no": "Ne"
+    },
+    "mainRecorderPanel": {
+      "suite": "Rinkinys: {{activeSuiteName}}",
+      "noSuite": "Nepasirinktas joks rinkinys",
+      "testName": "Testo pavadinimas",
+      "url": "URL įrašymui",
+      "newTest": "Naujas testas",
+      "import": "Importuoti",
+      "export": "Eksportuoti",
+      "record": "Įrašyti",
+      "run": "Vykdyti",
+      "stop": "Sustabdyti",
+      "exportTest": "Eksportuoti testą",
+      "exportSuite": "Eksportuoti rinkinį",
+      "exportProject": "Eksportuoti projektą",
+      "importTest": "Importuoti testą",
+      "importSuite": "Importuoti rinkinį",
+      "importProject": "Importuoti projektą",
+      "exportSuccess": "{{exportType}} eksportuotas į {{path}}",
+      "exportError": "Eksportuoti nepavyko: {{error}}",
+      "importSuccess": "{{importType}} sėkmingai importuotas!",
+      "importError": "Importuoti nepavyko: {{error}}"
+    },
+    "outputPanel": {
+      "title": "Testo rezultatai:",
+      "error": "Klaida:",
+      "placeholder": "Testo išvestis pasirodys čia..."
+    },
+    "testSuitePanel": {
+      "selectSuite": "Pasirinkite rinkinį",
+      "newSuite": "+ Naujas rinkinys...",
+      "deleteSuite": "- Ištrinti dabartinį rinkinį",
+      "runAll": "Vykdyti visus",
+      "newSuiteName": "Naujo rinkinio pavadinimas...",
+      "cancel": "Atšaukti",
+      "create": "Sukurti",
+      "deleteConfirmation": "Ar tikrai norite ištrinti rinkinį \"{{suiteName}}\"? Šio veiksmo negalima anuliuoti."
+    },
+    "recorderPage": {
+      "testSuites": "Testų rinkiniai",
+      "recordedSteps": "Įrašyti žingsniai",
+      "runOutput": "Vykdymo išvestis",
+      "codeView": "Kodo rodinys",
+      "friendlyView": "Draugiškas rodinys",
+      "hideOutput": "Slėpti išvestį",
+      "testOutput": "Testo išvestis"
     }
   }
 }

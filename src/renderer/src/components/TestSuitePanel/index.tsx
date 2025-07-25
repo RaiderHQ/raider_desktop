@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import Button from '@components/Button'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
+import { useTranslation } from 'react-i18next'
 
 interface TestSuitePanelProps {
   suites: Suite[]
@@ -26,8 +27,9 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
   onDeleteSuite,
   onTestDeleteRequest,
   onRunAllTests,
-  onReorderTests
+  onReorderTests,
 }) => {
+  const { t } = useTranslation()
   const activeSuite = suites.find((s) => s.id === activeSuiteId)
 
   const [newSuiteName, setNewSuiteName] = useState('')
@@ -64,7 +66,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
     if (activeSuiteId && activeSuite) {
       if (
         window.confirm(
-          `Are you sure you want to delete the suite "${activeSuite.name}"? This cannot be undone.`
+          t('recorder.testSuitePanel.deleteConfirmation', { suiteName: activeSuite.name }),
         )
       ) {
         onDeleteSuite(activeSuiteId)
@@ -114,10 +116,10 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
             <button
               onClick={() => setIsSuiteDropdownOpen((prev) => !prev)}
               className="w-full flex items-center justify-between px-3 py-2 border rounded bg-white hover:bg-gray-50 text-left"
-              aria-label="Select Test Suite"
+              aria-label={t('recorder.testSuitePanel.selectSuite')}
             >
               <span className="font-semibold truncate">
-                {activeSuite?.name ?? 'Select a Suite'}
+                {activeSuite?.name ?? t('recorder.testSuitePanel.selectSuite')}
               </span>
               <span className="text-xs ml-2">{isSuiteDropdownOpen ? '▲' : '▼'}</span>
             </button>
@@ -143,14 +145,14 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
                     onClick={handleNewSuiteClick}
                     className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100"
                   >
-                    + New Suite...
+                    {t('recorder.testSuitePanel.newSuite')}
                   </button>
                   <button
                     onClick={handleDeleteSuite}
                     disabled={!activeSuiteId}
                     className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:text-gray-400"
                   >
-                    - Delete Current Suite
+                    {t('recorder.testSuitePanel.deleteSuite')}
                   </button>
                 </div>
               </div>
@@ -162,7 +164,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
               onClick={handleRunAllClick}
               disabled={!activeSuite || activeSuite.tests.length === 0}
             >
-              Run All
+              {t('recorder.testSuitePanel.runAll')}
             </Button>
           </div>
         </div>
@@ -174,7 +176,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
               value={newSuiteName}
               onChange={(e) => setNewSuiteName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreateSuiteConfirm()}
-              placeholder="New suite name..."
+              placeholder={t('recorder.testSuitePanel.newSuiteName')}
               className="flex-grow p-2 border rounded"
               autoFocus
             />
@@ -183,13 +185,13 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
                 onClick={() => setIsCreatingSuite(false)}
                 className="px-5 py-2 text-sm rounded bg-gray-200 hover:bg-gray-300"
               >
-                Cancel
+                {t('recorder.testSuitePanel.cancel')}
               </button>
               <button
                 onClick={handleCreateSuiteConfirm}
                 className="px-5 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
               >
-                Create
+                {t('recorder.testSuitePanel.create')}
               </button>
             </div>
           </div>
@@ -212,7 +214,9 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
               <button
                 onClick={() => onTestSelect(test.id)}
                 draggable={false}
-                className={`w-full text-left p-3 text-sm flex-grow transition-colors ${test.id === activeTestId ? 'font-semibold' : 'hover:bg-gray-100'}`}
+                className={`w-full text-left p-3 text-sm flex-grow transition-colors ${
+                  test.id === activeTestId ? 'font-semibold' : 'hover:bg-gray-100'
+                }`}
               >
                 {test.name}
               </button>
