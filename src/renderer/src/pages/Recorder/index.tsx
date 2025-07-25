@@ -12,6 +12,7 @@ import RubyInstallModal from '@components/RubyInstallModal'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import Button from '@components/Button'
 
 // Defines the structure for the data needed by the assertion modal
 interface AssertionInfo {
@@ -38,6 +39,7 @@ const Recorder: React.FC = () => {
   const [missingGems, setMissingGems] = useState<string[] | undefined>(undefined)
   const { rubyCommand, setRubyCommand } = useRubyStore()
   const projectPath = useProjectStore((state) => state.projectPath)
+  const [isOutputVisible, setIsOutputVisible] = useState<boolean>(false)
 
   const activeTestRef = useRef(activeTest)
   useEffect(() => {
@@ -478,7 +480,7 @@ const Recorder: React.FC = () => {
         activeSuiteId={activeSuiteId}
       />
       <div className="flex-1 flex flex-row space-x-4">
-        <div className="w-1/4 flex flex-col space-y-2">
+        <div className={`${isOutputVisible ? 'w-1/4' : 'w-1/3'} flex flex-col space-y-2 transition-all duration-300`}>
           <h3 className="px-1 text-lg font-semibold text-gray-800">Test Suites</h3>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>
@@ -497,7 +499,7 @@ const Recorder: React.FC = () => {
             </StyledPanel>
           </div>
         </div>
-        <div className="w-1/2 flex flex-col space-y-2">
+        <div className={`${isOutputVisible ? 'w-1/2' : 'w-2/3'} flex flex-col space-y-2 transition-all duration-300`}>
           <h3 className="px-1 text-lg font-semibold text-gray-800">Recorded Steps</h3>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>
@@ -520,14 +522,21 @@ const Recorder: React.FC = () => {
             </StyledPanel>
           </div>
         </div>
-        <div className="w-1/3 flex flex-col space-y-2">
-          <h3 className="px-1 text-lg font-semibold text-gray-800">Run Output</h3>
-          <div className="flex-1 pb-1 pr-1">
-            <StyledPanel>
-              <OutputPanel output={runOutput} />
-            </StyledPanel>
+        {isOutputVisible && (
+          <div className="w-1/3 flex flex-col space-y-2 transition-all duration-300">
+            <h3 className="px-1 text-lg font-semibold text-gray-800">Run Output</h3>
+            <div className="flex-1 pb-1 pr-1">
+              <StyledPanel>
+                <OutputPanel output={runOutput} />
+              </StyledPanel>
+            </div>
           </div>
-        </div>
+        )}
+      </div>
+      <div className="flex justify-end">
+        <Button onClick={() => setIsOutputVisible(!isOutputVisible)} type="secondary">
+          {isOutputVisible ? 'Hide Test Output' : 'Show Test Output'}
+        </Button>
       </div>
       {assertionInfo && (
         <AssertionTextModal
