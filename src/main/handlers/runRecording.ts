@@ -19,7 +19,7 @@ interface AppState {
  * @param explicitWait The explicit wait time in seconds.
  * @param projectPath The path to the project.
  */
-function generateRspecCode(
+export function generateRspecCode(
   testName: string,
   steps: string[],
   implicitWait: number,

@@ -190,10 +190,14 @@ const Recorder: React.FC = () => {
         setRunOutput(result.output)
         setIsRunning(false)
       } else {
-        console.log('handleRunAllTests conditions not met:', { suiteToRun, projectPath, rubyCommand })
+        console.log('handleRunAllTests conditions not met:', {
+          suiteToRun,
+          projectPath,
+          rubyCommand
+        })
       }
     },
-    [suites, projectPath, rubyCommand]
+    [suites, projectPath, rubyCommand, setRunOutput]
   )
 
   const handleExportTest = useCallback(async (): Promise<{

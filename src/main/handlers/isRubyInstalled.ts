@@ -21,7 +21,12 @@ const handler = async (): Promise<{
     if (depsResult.success) {
       return { ...rbenvResult, rubyCommand: `${rubyCommandPrefix} ruby` }
     }
-    return { ...rbenvResult, success: false, missingGems: depsResult.missingGems, rubyCommand: rubyCommandPrefix }
+    return {
+      ...rbenvResult,
+      success: false,
+      missingGems: depsResult.missingGems,
+      rubyCommand: rubyCommandPrefix
+    }
   }
 
   console.log('Checking for rvm Ruby...')
@@ -35,7 +40,12 @@ const handler = async (): Promise<{
     if (depsResult.success) {
       return { ...rvmResult, rubyCommand: `${rubyCommandPrefix} ruby` }
     }
-    return { ...rvmResult, success: false, missingGems: depsResult.missingGems, rubyCommand: rubyCommandPrefix }
+    return {
+      ...rvmResult,
+      success: false,
+      missingGems: depsResult.missingGems,
+      rubyCommand: rubyCommandPrefix
+    }
   }
 
   console.log('Checking for system Ruby...')
@@ -49,7 +59,12 @@ const handler = async (): Promise<{
     if (depsResult.success) {
       return { ...systemResult, rubyCommand: 'ruby' }
     }
-    return { ...systemResult, success: false, missingGems: depsResult.missingGems, rubyCommand: rubyCommandPrefix }
+    return {
+      ...systemResult,
+      success: false,
+      missingGems: depsResult.missingGems,
+      rubyCommand: rubyCommandPrefix
+    }
   }
 
   console.log('No suitable Ruby version found.')
@@ -60,4 +75,3 @@ const handler = async (): Promise<{
 }
 
 export default handler
-

@@ -1,5 +1,9 @@
+import { exec } from 'child_process'
+import { promises as fs } from 'fs'
+import os from 'os'
+import path from 'path'
 import { appState, getRecordingSettings } from './appState'
-import runRecording from './runRecording'
+import { generateRspecCode } from './runRecording'
 
 export default async (
   suiteId: string,
@@ -12,29 +16,43 @@ export default async (
   }
 
   const { implicitWait, explicitWait } = getRecordingSettings()
+  const tempFilePaths: string[] = []
 
-  let fullOutput = `Running suite: ${suite.name}\n==========================\n\n`
-  let overallSuccess = true
-
-  for (const test of suite.tests) {
-    fullOutput += `--- Running test: ${test.name} ---\n`
-    const result = await runRecording({
-      savedTest: test,
-      implicitWait,
-      explicitWait,
-      projectPath,
-      rubyCommand
-    })
-    fullOutput += `${result.output}\n`
-
-    if (!result.success) {
-      overallSuccess = false
-      fullOutput += `\n--- TEST FAILED: ${test.name}. Stopping suite run. ---\n`
-      break
+  try {
+    for (const test of suite.tests) {
+      const testCode = generateRspecCode(test.name, test.steps, implicitWait, explicitWait)
+      const tempFilePath = path.join(os.tmpdir(), `test_${Date.now()}_${Math.random()}.rb`)
+      await fs.writeFile(tempFilePath, testCode)
+      tempFilePaths.push(tempFilePath)
     }
-    fullOutput += `--- TEST PASSED: ${test.name} ---\n\n`
-  }
 
-  fullOutput += `==========================\nSuite run finished.`
-  return { success: overallSuccess, output: fullOutput }
+    const newPath = (process.env.PATH || '')
+      .split(path.delimiter)
+      .filter((p) => !p.includes(path.join('node_modules', '.bin')))
+      .join(path.delimiter)
+
+    const executionEnv = { ...process.env, PATH: newPath }
+    const command = `${rubyCommand} -S rspec ${tempFilePaths.join(' ')} --format json`
+
+    return await new Promise((resolve) => {
+      exec(command, { env: executionEnv }, (error, stdout, stderr) => {
+        if (stdout) {
+          resolve({ success: true, output: stdout })
+        } else {
+          resolve({ success: false, output: stderr })
+        }
+      })
+    })
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : String(e)
+    return { success: false, output: errorMessage }
+  } finally {
+    for (const tempFilePath of tempFilePaths) {
+      try {
+        await fs.unlink(tempFilePath)
+      } catch (cleanupError) {
+        console.warn(`Could not clean up temp file: ${cleanupError}`)
+      }
+    }
+  }
 }
