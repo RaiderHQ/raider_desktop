@@ -293,6 +293,21 @@
       "friendlyView": "Venlig visning",
       "hideOutput": "Skjul output",
       "testOutput": "Testoutput"
+    },
+    "commandParser": {
+      "visit": "Besøg {{url}}",
+      "waitForElementDisplayed": "Vent på, at element med {{strategy}} \"{{value}}\" bliver vist",
+      "waitForElementEnabled": "Vent på, at element med {{strategy}} \"{{value}}\" bliver aktiveret",
+      "clickElement": "Klik på element med {{strategy}} \"{{value}}\"",
+      "pressKey": "Tryk på tasten {{key}} på element med {{strategy}} \"{{value}}\"",
+      "typeText": "Skriv \"{{text}}\" i element med {{strategy}} \"{{value}}\"",
+      "wait": "Vent i {{seconds}} sekunder",
+      "executeScript": "Udfør script: {{script}}",
+      "switchToFrame": "Skift til ramme identificeret ved {{frame}}",
+      "switchToDefaultContent": "Skift tilbage til hovedindhold",
+      "assertElementDisplayed": "Hævd, at element med {{strategy}} \"{{value}}\" vises",
+      "assertElementEnabled": "Hævd, at element med {{strategy}} \"{{value}}\" er aktiveret",
+      "assertElementTextEquals": "Hævd, at element med {{strategy}} \"{{value}}\" har tekst lig med \"{{text}}\""
     }
   }
 }

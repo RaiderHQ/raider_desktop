@@ -324,6 +324,21 @@
       "friendlyView": "Visualizzazione amichevole",
       "hideOutput": "Nascondi output",
       "testOutput": "Output del test"
+    },
+    "commandParser": {
+      "visit": "Visita {{url}}",
+      "waitForElementDisplayed": "Attendi che l'elemento con {{strategy}} \"{{value}}\" venga visualizzato",
+      "waitForElementEnabled": "Attendi che l'elemento con {{strategy}} \"{{value}}\" sia abilitato",
+      "clickElement": "Fai clic sull'elemento con {{strategy}} \"{{value}}\"",
+      "pressKey": "Premi il tasto {{key}} sull'elemento con {{strategy}} \"{{value}}\"",
+      "typeText": "Digita \"{{text}}\" nell'elemento con {{strategy}} \"{{value}}\"",
+      "wait": "Attendi {{seconds}} secondi",
+      "executeScript": "Esegui script: {{script}}",
+      "switchToFrame": "Passa al frame identificato da {{frame}}",
+      "switchToDefaultContent": "Torna al contenuto principale",
+      "assertElementDisplayed": "Asserisci che l'elemento con {{strategy}} \"{{value}}\" sia visualizzato",
+      "assertElementEnabled": "Asserisci che l'elemento con {{strategy}} \"{{value}}\" sia abilitato",
+      "assertElementTextEquals": "Asserisci che l'elemento con {{strategy}} \"{{value}}\" ha un testo uguale a \"{{text}}\""
     }
   }
 }

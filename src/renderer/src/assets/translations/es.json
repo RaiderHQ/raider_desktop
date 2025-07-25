@@ -324,6 +324,21 @@
       "friendlyView": "Vista amigable",
       "hideOutput": "Ocultar salida",
       "testOutput": "Salida de prueba"
+    },
+    "commandParser": {
+      "visit": "Visitar {{url}}",
+      "waitForElementDisplayed": "Esperar a que el elemento con {{strategy}} \"{{value}}\" se muestre",
+      "waitForElementEnabled": "Esperar a que el elemento con {{strategy}} \"{{value}}\" esté habilitado",
+      "clickElement": "Hacer clic en el elemento con {{strategy}} \"{{value}}\"",
+      "pressKey": "Pulsar la tecla {{key}} en el elemento con {{strategy}} \"{{value}}\"",
+      "typeText": "Escribir \"{{text}}\" en el elemento con {{strategy}} \"{{value}}\"",
+      "wait": "Esperar {{seconds}} segundos",
+      "executeScript": "Ejecutar script: {{script}}",
+      "switchToFrame": "Cambiar al marco identificado por {{frame}}",
+      "switchToDefaultContent": "Volver al contenido principal",
+      "assertElementDisplayed": "Asegurar que el elemento con {{strategy}} \"{{value}}\" se muestre",
+      "assertElementEnabled": "Asegurar que el elemento con {{strategy}} \"{{value}}\" esté habilitado",
+      "assertElementTextEquals": "Asegurar que el elemento con {{strategy}} \"{{value}}\" tenga el texto igual a \"{{text}}\""
     }
   }
 }

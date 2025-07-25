@@ -324,6 +324,21 @@
       "friendlyView": "Draugiškas rodinys",
       "hideOutput": "Slėpti išvestį",
       "testOutput": "Testo išvestis"
+    },
+    "commandParser": {
+      "visit": "Apsilankyti {{url}}",
+      "waitForElementDisplayed": "Laukti, kol bus rodomas elementas su {{strategy}} \"{{value}}\"",
+      "waitForElementEnabled": "Laukti, kol bus įjungtas elementas su {{strategy}} \"{{value}}\"",
+      "clickElement": "Spustelėti elementą su {{strategy}} \"{{value}}\"",
+      "pressKey": "Paspausti klavišą {{key}} ant elemento su {{strategy}} \"{{value}}\"",
+      "typeText": "Įvesti \"{{text}}\" į elementą su {{strategy}} \"{{value}}\"",
+      "wait": "Laukti {{seconds}} sekundes",
+      "executeScript": "Vykdyti scenarijų: {{script}}",
+      "switchToFrame": "Perjungti į rėmelį, identifikuotą pagal {{frame}}",
+      "switchToDefaultContent": "Grįžti į pagrindinį turinį",
+      "assertElementDisplayed": "Patvirtinti, kad rodomas elementas su {{strategy}} \"{{value}}\"",
+      "assertElementEnabled": "Patvirtinti, kad įjungtas elementas su {{strategy}} \"{{value}}\"",
+      "assertElementTextEquals": "Patvirtinti, kad elemento su {{strategy}} \"{{value}}\" tekstas yra lygus \"{{text}}\""
     }
   }
 }
