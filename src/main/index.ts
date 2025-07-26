@@ -123,23 +123,18 @@ app.whenReady().then(() => {
       automation: string,
       rubyCommand: string,
       mobile: string | null
-    ) =>
-      runRubyRaider(
-        event,
-        folderPath,
-        projectName,
-        framework,
-        automation,
-        rubyCommand,
-        mobile
-      )
+    ) => runRubyRaider(event, folderPath, projectName, framework, automation, rubyCommand, mobile)
   )
   ipcMain.handle('run-raider-tests', (_event, folderPath: string, rubyCommand: string) =>
     runRaiderTests(appState.mainWindow!, folderPath, rubyCommand)
   )
   ipcMain.handle('is-mobile-project', isMobileProject)
-  ipcMain.handle('update-browser-url', updateBrowserUrl)
-  ipcMain.handle('update-browser-type', updateBrowserType)
+  ipcMain.handle('update-browser-url', (_event, projectPath: string, url: string) =>
+    updateBrowserUrl(projectPath, url)
+  )
+  ipcMain.handle('update-browser-type', (_event, projectPath: string, browser: string) =>
+    updateBrowserType(projectPath, browser)
+  )
   ipcMain.handle('run-command', runCommand)
   ipcMain.handle('install-raider', installRaider)
   ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)

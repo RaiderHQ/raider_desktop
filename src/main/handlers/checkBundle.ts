@@ -18,21 +18,16 @@ const handler = async (projectPath: string, rubyCommand: string): Promise<Comman
       const normalizedPath = path.resolve(projectPath)
       const command = `${rubyCommand} -S bundle check`
 
-      console.log(`[MainProcess] Executing command: ${command}`)
-
       exec(command, { cwd: normalizedPath }, (error, stdout, stderr) => {
         if (error) {
           // 'bundle check' returns a non-zero exit code if gems are missing.
           // This is an expected failure, not a critical error.
-          console.warn(`[STDERR] bundle check: ${stderr}`)
           resolve({ success: false, error: stderr.trim(), output: stdout.trim() })
           return
         }
-        console.log(`[STDOUT] bundle check: ${stdout}`)
         resolve({ success: true, output: stdout.trim() })
       })
     } catch (e) {
-      console.error('Error checking bundle:', e)
       resolve({
         success: false,
         output: '',

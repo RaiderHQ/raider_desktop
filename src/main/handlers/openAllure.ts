@@ -1,56 +1,51 @@
 import { spawn } from 'child_process'
 import path from 'path'
+import { appState } from './appState'
 
-const handler = async (): Promise<{ success: boolean; output?: string; error?: string }> => {
-  const fixPath = (await import('fix-path')).default
-
+const handler = (): Promise<{ success: boolean; output?: string; error?: string }> => {
   return new Promise((resolve) => {
-    try {
-      fixPath()
-
-      const localDirectoryPath = process.cwd()
-
-      if (typeof localDirectoryPath !== 'string' || localDirectoryPath.trim() === '') {
-        throw new Error('Invalid local directory path: Must be a non-empty string')
-      }
-
-      const normalizedFolderPath = path.resolve(localDirectoryPath)
-
-      const command = process.platform === 'win32' ? 'cmd.exe' : 'allure'
-      const args =
-        process.platform === 'win32'
-          ? ['/c', 'allure', 'serve', 'allure-results']
-          : ['serve', 'allure-results']
-      const options = {
-        cwd: normalizedFolderPath,
-        shell: process.platform === 'win32'
-      }
-
-      const childProcess = spawn(command, args, options)
-
-      if (childProcess.pid) {
-        resolve({ success: true, output: `Allure server started with PID ${childProcess.pid}` })
-      } else {
-        resolve({ success: false, error: 'Failed to spawn Allure process' })
-      }
-
-      childProcess.on('error', (error) => {
-        resolve({ success: false, error: error instanceof Error ? error.message : String(error) })
-      })
-
-      childProcess.stdout.on('data', (data) => {
-        console.log(`[STDOUT] Allure: ${data.toString()}`)
-      })
-      childProcess.stderr.on('data', (data) => {
-        console.error(`[STDERR] Allure: ${data.toString()}`)
-      })
-    } catch (error) {
-      console.error('Error running Allure command:', error)
-      resolve({
-        success: false,
-        error: error instanceof Error ? error.message : String(error)
-      })
+    if (!appState.projectPath) {
+      resolve({ success: false, error: 'Project path not set' })
+      return
     }
+
+    const allureResultsDir = path.join(appState.projectPath, 'allure-results')
+    const command = 'allure'
+    const args = ['generate', allureResultsDir, '--clean', '-o', 'allure-report']
+
+    const child = spawn(command, args, {
+      cwd: appState.projectPath,
+      shell: true
+    })
+
+    let stderr = ''
+
+    child.stdout.on('data', () => {})
+
+    child.stderr.on('data', (data) => {
+      stderr += data.toString()
+    })
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        const openCommand = 'allure'
+        const openArgs = ['open', 'allure-report']
+        const openChild = spawn(openCommand, openArgs, {
+          cwd: appState.projectPath!,
+          shell: true
+        })
+
+        openChild.on('close', (openCode) => {
+          if (openCode === 0) {
+            resolve({ success: true, output: 'Allure report opened' })
+          } else {
+            resolve({ success: false, error: 'Failed to open Allure report' })
+          }
+        })
+      } else {
+        resolve({ success: false, error: stderr })
+      }
+    })
   })
 }
 

@@ -2,6 +2,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import Recorder from '@pages/Recorder'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
+import { IpcRendererEvent } from 'electron'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
@@ -51,17 +52,71 @@ const mockApi = {
   installRbenvAndRuby: vi.fn(),
   installGems: vi.fn(),
   isRubyInstalled: vi.fn().mockResolvedValue({ success: true, rubyCommand: '/usr/bin/ruby' }),
-  getSuites: vi.fn().mockResolvedValue([])
+  getSuites: vi.fn().mockResolvedValue([]),
+  runRubyRaider: vi.fn(),
+  selectFolder: vi.fn(),
+  readDirectory: vi.fn(),
+  readFile: vi.fn(),
+  readImage: vi.fn(),
+  editFile: vi.fn(),
+  openAllure: vi.fn(),
+  runRaiderTests: vi.fn(),
+  updateBrowserUrl: vi.fn(),
+  updateBrowserType: vi.fn(),
+  isMobileProject: vi.fn(),
+  runCommand: vi.fn(),
+  installRaider: vi.fn(),
+  updateMobileCapabilities: vi.fn(),
+  getMobileCapabilities: vi.fn(),
+  isRbenvRubyInstalled: vi.fn(),
+  isRvmRubyInstalled: vi.fn(),
+  isSystemRubyInstalled: vi.fn(),
+  xpathParser: vi.fn(),
+  commandParser: vi.fn(),
+  updateRecordingSettings: vi.fn(),
+  getSelectorPriorities: vi.fn(),
+  saveSelectorPriorities: vi.fn(),
+  onTestRunStatus: vi.fn(),
+  removeTestRunStatusListener: vi.fn()
 }
 
+let suiteUpdatedCallback: (event: IpcRendererEvent, updatedSuites: unknown) => void = () => {}
+
 beforeEach(() => {
-  // @ts-expect-error - Mocking window.api
   window.api = mockApi
   window.electron = {
-    // @ts-expect-error - Mocking window.electron
     ipcRenderer: {
-      on: vi.fn(() => vi.fn()),
-      send: vi.fn()
+      on: (
+        channel: string,
+        callback: (event: IpcRendererEvent, ...args: unknown[]) => void
+      ): (() => void) => {
+        if (channel === 'suite-updated') {
+          suiteUpdatedCallback = callback
+        }
+        return () => {}
+      },
+      send: vi.fn(),
+      invoke: vi.fn(),
+      once: vi.fn(),
+      removeListener: vi.fn(),
+      removeAllListeners: vi.fn(),
+      postMessage: vi.fn(),
+      sendSync: vi.fn(),
+      sendTo: vi.fn(),
+      sendToHost: vi.fn()
+    },
+    webFrame: {
+      setZoomFactor: vi.fn(),
+      insertCSS: vi.fn(),
+      setZoomLevel: vi.fn()
+    },
+    process: {
+      platform: 'darwin',
+      versions: {},
+      env: {}
+    },
+    webUtils: {
+      getPathForFile: vi.fn()
     }
   }
 })
@@ -122,5 +177,40 @@ describe('Recorder Page', (): void => {
       fireEvent.click(toggleButton)
     })
     expect(screen.getByText('recorder.recorderPage.codeView')).toBeInTheDocument()
+  })
+
+  it('creates a new test and displays it', async () => {
+    const initialSuites = [{ id: 'suite-1', name: 'My Suite', tests: [] }]
+    mockApi.getSuites.mockResolvedValue(initialSuites)
+
+    await act(async () => {
+      render(<Recorder />)
+    })
+
+    const newTestButton = screen.getByText('recorder.mainRecorderPanel.newTest')
+    await act(async () => {
+      fireEvent.click(newTestButton)
+    })
+
+    const newTest = {
+      id: expect.any(String),
+      name: 'Untitled Test',
+      url: 'https://www.wikipedia.org',
+      steps: []
+    }
+
+    const updatedSuites = [
+      {
+        id: 'suite-1',
+        name: 'My Suite',
+        tests: [newTest]
+      }
+    ]
+
+    await act(async () => {
+      suiteUpdatedCallback({} as IpcRendererEvent, updatedSuites)
+    })
+
+    expect(screen.getByText('Untitled Test')).toBeInTheDocument()
   })
 })
