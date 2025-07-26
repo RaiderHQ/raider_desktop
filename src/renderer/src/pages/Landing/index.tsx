@@ -23,7 +23,7 @@ const Landing: React.FC = (): JSX.Element => {
 
   const raiderVersion = useVersionStore((state: { version: string }) => state.version)
 
-  const handleOpenProject = async () => {
+  const handleOpenProject = async (): Promise<void> => {
     try {
       setLoading(true)
       const folder = await window.api.selectFolder(t('landing.error.selectFolder'))

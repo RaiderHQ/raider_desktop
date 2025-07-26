@@ -1,4 +1,3 @@
-import xpathParser from './xpathParser'
 export interface ParsedCommand {
   key: string
   values: Record<string, string>
@@ -10,7 +9,6 @@ export interface ParsedCommand {
  * @returns A friendly, plain English string.
  */
 const commandParser = (command: string): ParsedCommand | string => {
-  
   const patterns: {
     regex: RegExp
     template: (matches: string[]) => ParsedCommand
@@ -23,14 +21,16 @@ const commandParser = (command: string): ParsedCommand | string => {
       })
     },
     {
-      regex: /wait\.until { @driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\.displayed\? }$/,
+      regex:
+        /wait\.until { @driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\.displayed\? }$/,
       template: (matches: string[]): ParsedCommand => ({
         key: 'recorder.commandParser.waitForElementDisplayed',
         values: { strategy: matches[1], value: matches[2] || matches[3] }
       })
     },
     {
-      regex: /wait\.until { @driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\.enabled\? }/,
+      regex:
+        /wait\.until { @driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\.enabled\? }/,
       template: (matches: string[]): ParsedCommand => ({
         key: 'recorder.commandParser.waitForElementEnabled',
         values: { strategy: matches[1], value: matches[2] || matches[3] }
@@ -44,14 +44,16 @@ const commandParser = (command: string): ParsedCommand | string => {
       })
     },
     {
-      regex: /@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\.send_keys\(:(\w+)\)/,
+      regex:
+        /@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\.send_keys\(:(\w+)\)/,
       template: (matches: string[]): ParsedCommand => ({
         key: 'recorder.commandParser.pressKey',
         values: { key: matches[4], strategy: matches[1], value: matches[2] || matches[3] }
       })
     },
     {
-      regex: /@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\.send_keys\("([^"]*)"\)/,
+      regex:
+        /@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\.send_keys\("([^"]*)"\)/,
       template: (matches: string[]): ParsedCommand => ({
         key: 'recorder.commandParser.typeText',
         values: { text: matches[4], strategy: matches[1], value: matches[2] || matches[3] }
@@ -86,21 +88,24 @@ const commandParser = (command: string): ParsedCommand | string => {
       })
     },
     {
-      regex: /expect\(@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\)\.to be_displayed$/,
+      regex:
+        /expect\(@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\)\.to be_displayed$/,
       template: (matches: string[]): ParsedCommand => ({
         key: 'recorder.commandParser.assertElementDisplayed',
         values: { strategy: matches[1], value: matches[2] || matches[3] }
       })
     },
     {
-      regex: /expect\(@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\)\.to be_enabled/,
+      regex:
+        /expect\(@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\)\.to be_enabled/,
       template: (matches: string[]): ParsedCommand => ({
         key: 'recorder.commandParser.assertElementEnabled',
         values: { strategy: matches[1], value: matches[2] || matches[3] }
       })
     },
     {
-      regex: /expect\(@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\.text\)\.to eq\("([^"]+)"\)/,
+      regex:
+        /expect\(@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\.text\)\.to eq\("([^"]+)"\)/,
       template: (matches: string[]): ParsedCommand => ({
         key: 'recorder.commandParser.assertElementTextEquals',
         values: { strategy: matches[1], value: matches[2] || matches[3], text: matches[4] }

@@ -162,7 +162,8 @@ const xpathParser = (command: string): ParsedCommand | string => {
       })
     },
     {
-      regex: /expect\(@driver\.find_element\(:xpath,\s*concat\((.+?)\)\)\.text\)\.to eq\("([^"]+)"\)/,
+      regex:
+        /expect\(@driver\.find_element\(:xpath,\s*concat\((.+?)\)\)\.text\)\.to eq\("([^"]+)"\)/,
       template: (matches: string[]): ParsedCommand => ({
         key: 'recorder.commandParser.assertElementTextEquals',
         values: { strategy: 'xpath', value: matches[1], text: matches[2] }

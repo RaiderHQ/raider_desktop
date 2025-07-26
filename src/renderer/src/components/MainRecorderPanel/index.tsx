@@ -2,6 +2,7 @@ import React from 'react'
 import Button from '@components/Button'
 import InputField from '@components/InputField'
 import Dropdown from '@components/Dropdown'
+import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import toast from 'react-hot-toast'
 import { useTranslation } from 'react-i18next'
@@ -43,7 +44,7 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
   onImportTest,
   onImportSuite,
   onImportProject,
-  activeSuiteId,
+  activeSuiteId
 }) => {
   const { t } = useTranslation()
 
@@ -64,7 +65,9 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
     }
 
     if (result.success) {
-      toast.success(t('recorder.mainRecorderPanel.exportSuccess', { exportType, path: result.path }))
+      toast.success(
+        t('recorder.mainRecorderPanel.exportSuccess', { exportType, path: result.path })
+      )
     } else {
       toast.error(t('recorder.mainRecorderPanel.exportError', { error: result.error }))
     }
@@ -94,27 +97,33 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
   }
 
   const exportOptions = [
-    { label: t('recorder.mainRecorderPanel.exportTest'), onClick: () => handleExportClick('Test') },
+    {
+      label: t('recorder.mainRecorderPanel.exportTest'),
+      onClick: (): Promise<void> => handleExportClick('Test')
+    },
     {
       label: t('recorder.mainRecorderPanel.exportSuite'),
-      onClick: () => handleExportClick('Suite'),
+      onClick: (): Promise<void> => handleExportClick('Suite')
     },
     {
       label: t('recorder.mainRecorderPanel.exportProject'),
-      onClick: () => handleExportClick('Project'),
-    },
+      onClick: (): Promise<void> => handleExportClick('Project')
+    }
   ]
 
   const importOptions = [
-    { label: t('recorder.mainRecorderPanel.importTest'), onClick: () => handleImportClick('Test') },
+    {
+      label: t('recorder.mainRecorderPanel.importTest'),
+      onClick: (): Promise<void> => handleImportClick('Test')
+    },
     {
       label: t('recorder.mainRecorderPanel.importSuite'),
-      onClick: () => handleImportClick('Suite'),
+      onClick: (): Promise<void> => handleImportClick('Suite')
     },
     {
       label: t('recorder.mainRecorderPanel.importProject'),
-      onClick: () => handleImportClick('Project'),
-    },
+      onClick: (): Promise<void> => handleImportClick('Project')
+    }
   ]
 
   return (

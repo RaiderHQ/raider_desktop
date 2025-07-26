@@ -3,21 +3,25 @@ import React from 'react'
 interface InputFieldProps {
   value: string
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
   placeholder?: string
   type?: string
   className?: string
   label?: string // Added an optional label for better accessibility
   disabled?: boolean
+  autoFocus?: boolean
 }
 
 const InputField: React.FC<InputFieldProps> = ({
   value,
   onChange,
+  onKeyDown,
   placeholder = '',
   type = 'text',
   className = '',
   label,
-  disabled = false
+  disabled = false,
+  autoFocus = false
 }) => {
   // Combine base styles with any custom classes passed in as props
   const baseStyles =
@@ -34,8 +38,10 @@ const InputField: React.FC<InputFieldProps> = ({
         className={combinedClassName}
         value={value}
         onChange={onChange}
+        onKeyDown={onKeyDown}
         placeholder={placeholder}
         disabled={disabled}
+        autoFocus={autoFocus}
       />
     </div>
   )

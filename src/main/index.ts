@@ -7,6 +7,7 @@ import type { TestData } from '@foundation/Types/testData'
 import selectFolder from './handlers/selectFolder'
 import readDirectory from './handlers/readDirectory'
 import runRubyRaider from './handlers/runRubyRaider'
+import runRaiderTests from './handlers/runRaiderTests'
 import readFile from './handlers/readFile'
 import readImage from './handlers/readImage'
 import openAllure from './handlers/openAllure'
@@ -113,6 +114,9 @@ app.whenReady().then(() => {
   ipcMain.handle('read-image', readImage)
   ipcMain.handle('edit-file', editFile)
   ipcMain.handle('run-ruby-raider', runRubyRaider)
+  ipcMain.handle('run-raider-tests', (_event, folderPath: string, rubyCommand: string) =>
+    runRaiderTests(_event, folderPath, rubyCommand)
+  )
   ipcMain.handle('is-mobile-project', isMobileProject)
   ipcMain.handle('update-browser-url', updateBrowserUrl)
   ipcMain.handle('update-browser-type', updateBrowserType)
@@ -166,8 +170,8 @@ app.whenReady().then(() => {
     }
   )
 
-  ipcMain.handle('run-suite', (_event, suiteId: string, projectPath: string, rubyCommand: string) =>
-    runSuite(suiteId, projectPath, rubyCommand)
+  ipcMain.handle('run-suite', (_event, suiteId: string, rubyCommand: string) =>
+    runSuite(suiteId, rubyCommand)
   )
   ipcMain.handle('export-test', (_event, testData: TestData) => exportTest(testData))
   ipcMain.handle('export-suite', (_event, suiteId: string) => exportSuite(suiteId))
@@ -217,7 +221,7 @@ app.whenReady().then(() => {
           },
           {
             label: 'to be enabled',
-            click: () => {
+            click: (): void => {
               appState.mainWindow!.webContents.send('add-assertion-step', {
                 type: 'wait-enabled',
                 selector
@@ -228,7 +232,7 @@ app.whenReady().then(() => {
       },
       {
         label: 'Assert element is displayed',
-        click: () => {
+        click: (): void => {
           appState.mainWindow!.webContents.send('add-assertion-step', {
             type: 'displayed',
             selector
@@ -237,7 +241,7 @@ app.whenReady().then(() => {
       },
       {
         label: 'Assert element is enabled',
-        click: () => {
+        click: (): void => {
           appState.mainWindow!.webContents.send('add-assertion-step', {
             type: 'enabled',
             selector
@@ -246,7 +250,7 @@ app.whenReady().then(() => {
       },
       {
         label: 'Assert element contains text',
-        click: () => {
+        click: (): void => {
           appState.mainWindow!.webContents.send('add-assertion-step', {
             type: 'text',
             selector,

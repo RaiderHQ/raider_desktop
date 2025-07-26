@@ -16,14 +16,17 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ testName, onConfirm, onCancel
       <div className="bg-white p-6 rounded-lg shadow-lg w-1/3">
         <h2 className="text-lg font-semibold mb-4">{t('recorder.deleteModal.title')}</h2>
         <p className="mb-4">
-          {t('recorder.deleteModal.message')}{' '}
-          <span className="font-bold">{testName}</span>?
+          {t('recorder.deleteModal.message')} <span className="font-bold">{testName}</span>?
         </p>
         <div className="flex justify-end space-x-2">
           <Button onClick={onCancel} type="secondary">
             {t('recorder.deleteModal.cancel')}
           </Button>
-          <Button onClick={onConfirm} type="danger">
+          <Button
+            onClick={onConfirm}
+            type="secondary"
+            className="bg-red-500 hover:bg-red-600 text-white"
+          >
             {t('recorder.deleteModal.delete')}
           </Button>
         </div>

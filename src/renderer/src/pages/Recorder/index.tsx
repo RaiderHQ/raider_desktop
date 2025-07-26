@@ -29,7 +29,7 @@ const createNewTest = (): Test => ({
   steps: []
 })
 
-const Recorder: React.FC = () => {
+const Recorder: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const [suites, setSuites] = useState<Suite[]>([])
   const [activeSuiteId, setActiveSuiteId] = useState<string | null>(null)
@@ -67,25 +67,28 @@ const Recorder: React.FC = () => {
     [suites, activeSuiteId]
   )
 
-  const handleAutoSave = useCallback(() => {
+  const handleAutoSave = useCallback((): void => {
     if (activeSuiteIdRef.current && activeTestRef.current) {
       window.api.saveRecording(activeSuiteIdRef.current, activeTestRef.current)
     }
   }, [])
 
-  useEffect(() => {
+  useEffect((): (() => void) => {
     const handler = setTimeout(() => {
       handleAutoSave()
     }, 500)
 
-    return () => {
+    return (): void => {
       clearTimeout(handler)
     }
   }, [activeTest])
 
   const formatXpath = (xpath: string): string => {
     if (xpath.includes("'") && xpath.includes('"')) {
-      return `concat(${xpath.split("'").map((part) => `'${part}'`).join(`,"'",`)})`
+      return `concat(${xpath
+        .split("'")
+        .map((part) => `'${part}'`)
+        .join(`,"'",`)})`
     }
     if (xpath.includes("'")) {
       return `"${xpath}"`
@@ -116,12 +119,12 @@ const Recorder: React.FC = () => {
     window.api.deleteSuite(suiteIdToDelete)
   }, [])
 
-  const handleTestDeleteRequest = useCallback((test: Test) => {
+  const handleTestDeleteRequest = useCallback((test: Test): void => {
     setTestToDelete(test)
     setIsDeleteModalOpen(true)
   }, [])
 
-  const handleConfirmDelete = useCallback(() => {
+  const handleConfirmDelete = useCallback((): void => {
     if (activeSuiteId && testToDelete) {
       window.api.deleteTest(activeSuiteId, testToDelete.id)
     }
@@ -142,7 +145,7 @@ const Recorder: React.FC = () => {
     }
   }
 
-  const handleNewTest = () => {
+  const handleNewTest = (): void => {
     if (activeSuiteId) {
       const newTest = createNewTest()
       setActiveTest(newTest)
@@ -177,12 +180,12 @@ const Recorder: React.FC = () => {
   }, [activeSuiteId, activeTest, projectPath, rubyCommand])
 
   const handleRunAllTests = useCallback(
-    async (suiteId: string) => {
+    async (suiteId: string): Promise<void> => {
       const suiteToRun = suites.find((s) => s.id === suiteId)
       if (suiteToRun && rubyCommand) {
         setIsRunning(true)
         setRunOutput(`Running suite: ${suiteToRun.name}...`)
-        const result = await window.api.runSuite(suiteToRun.id, projectPath || '.', rubyCommand)
+        const result = await window.api.runSuite(suiteToRun.id, projectPath || '', rubyCommand)
         setRunOutput(result.output)
         setIsRunning(false)
       }
@@ -264,7 +267,7 @@ const Recorder: React.FC = () => {
     setAssertionInfo(null)
   }
 
-  const handleInstallRuby = async () => {
+  const handleInstallRuby = async (): Promise<void> => {
     setIsRubyInstallModalOpen(false)
     const toastId = toast.loading('Installing Ruby and dependencies...')
 
@@ -292,7 +295,7 @@ const Recorder: React.FC = () => {
     }
   }
 
-  const handleInstallGems = async () => {
+  const handleInstallGems = async (): Promise<void> => {
     setIsRubyInstallModalOpen(false)
     const toastId = toast.loading(`Installing missing gems: ${missingGems?.join(', ')}...`)
 
@@ -308,20 +311,20 @@ const Recorder: React.FC = () => {
     }
   }
 
-  useEffect(() => {
-    const checkRuby = async () => {
+  useEffect((): (() => void) => {
+    const checkRuby = async (): Promise<void> => {
       const result = await window.api.isRubyInstalled()
       if (!result.success) {
         setMissingGems(result.missingGems)
-        setRubyCommand(result.rubyCommand)
+        setRubyCommand(result.rubyCommand || null)
         setIsRubyInstallModalOpen(true)
       } else {
-        setRubyCommand(result.rubyCommand)
+        setRubyCommand(result.rubyCommand || null)
       }
     }
     checkRuby()
 
-    window.api.getSuites().then((initialSuites) => {
+    window.api.getSuites().then((initialSuites: Suite[]) => {
       setSuites(initialSuites)
       if (initialSuites.length > 0) {
         const firstSuite = initialSuites[0]
@@ -376,7 +379,7 @@ const Recorder: React.FC = () => {
       setRunOutput('')
     }
 
-    const handleRecordingStopped = () => setIsRecording(false)
+    const handleRecordingStopped = (): void => setIsRecording(false)
 
     const handleNewCommand = (_event: Electron.IpcRendererEvent, command: string): void => {
       setActiveTest((prevTest) =>
@@ -422,7 +425,7 @@ const Recorder: React.FC = () => {
       handleAddAssertion
     )
 
-    return () => {
+    return (): void => {
       suiteUpdatedCleanup?.()
       startCleanup?.()
       stopCleanup?.()
@@ -461,8 +464,12 @@ const Recorder: React.FC = () => {
         activeSuiteId={activeSuiteId}
       />
       <div className="flex-1 flex flex-row space-x-4">
-        <div className={`${isOutputVisible ? 'w-1/4' : 'w-1/3'} flex flex-col space-y-2 transition-all duration-300`}>
-          <h3 className="px-1 text-lg font-semibold text-gray-800">{t('recorder.recorderPage.testSuites')}</h3>
+        <div
+          className={`${isOutputVisible ? 'w-1/4' : 'w-1/3'} flex flex-col space-y-2 transition-all duration-300`}
+        >
+          <h3 className="px-1 text-lg font-semibold text-gray-800">
+            {t('recorder.recorderPage.testSuites')}
+          </h3>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>
               <TestSuitePanel
@@ -480,16 +487,24 @@ const Recorder: React.FC = () => {
             </StyledPanel>
           </div>
         </div>
-        <div className={`${isOutputVisible ? 'w-1/2' : 'w-2/3'} flex flex-col space-y-2 transition-all duration-300`}>
-          <h3 className="px-1 text-lg font-semibold text-gray-800">{t('recorder.recorderPage.recordedSteps')}</h3>
+        <div
+          className={`${isOutputVisible ? 'w-1/2' : 'w-2/3'} flex flex-col space-y-2 transition-all duration-300`}
+        >
+          <h3 className="px-1 text-lg font-semibold text-gray-800">
+            {t('recorder.recorderPage.recordedSteps')}
+          </h3>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>
               <div className="flex justify-between items-center p-1 border-b border-gray-200">
                 <Button onClick={() => setShowCode(!showCode)} type="secondary">
-                  {showCode ? t('recorder.recorderPage.friendlyView') : t('recorder.recorderPage.codeView')}
+                  {showCode
+                    ? t('recorder.recorderPage.friendlyView')
+                    : t('recorder.recorderPage.codeView')}
                 </Button>
                 <Button onClick={() => setIsOutputVisible(!isOutputVisible)} type="secondary">
-                  {isOutputVisible ? t('recorder.recorderPage.hideOutput') : t('recorder.recorderPage.testOutput')}
+                  {isOutputVisible
+                    ? t('recorder.recorderPage.hideOutput')
+                    : t('recorder.recorderPage.testOutput')}
                 </Button>
               </div>
               <CommandList
@@ -514,7 +529,9 @@ const Recorder: React.FC = () => {
         </div>
         {isOutputVisible && (
           <div className="w-1/3 flex flex-col space-y-2 transition-all duration-300">
-            <h3 className="px-1 text-lg font-semibold text-gray-800">{t('recorder.recorderPage.runOutput')}</h3>
+            <h3 className="px-1 text-lg font-semibold text-gray-800">
+              {t('recorder.recorderPage.runOutput')}
+            </h3>
             <div className="flex-1 pb-1 pr-1">
               <StyledPanel>
                 <OutputPanel output={runOutput} />

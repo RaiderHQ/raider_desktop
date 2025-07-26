@@ -23,7 +23,7 @@ const Folder: React.FC<FolderProps> = ({
   // If root, force the folder to always be open.
   const [isOpen, setOpen] = useState(isRoot ? true : defaultOpen)
 
-  const handleToggle = () => {
+  const handleToggle = (): void => {
     if (!isRoot) {
       setOpen(!isOpen)
     }

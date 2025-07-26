@@ -49,14 +49,24 @@ const Settings: React.FC = () => {
             ) {
               const capResponse = await window.api.getMobileCapabilities(projectPath)
               if (capResponse.success && capResponse.capabilities) {
-                const appiumOptions = capResponse.capabilities['appium:options'] || {}
-                if (!storedMobileAppiumUrl) setMobileAppiumUrl(appiumOptions.url || '')
-                if (!storedPlatformVersion)
-                  setMobilePlatformVersion(appiumOptions.platformVersion || '')
-                if (!storedAutomationName)
-                  setMobileAutomationName(appiumOptions.automationName || '')
-                if (!storedDeviceName) setMobileDeviceName(appiumOptions.deviceName || '')
-                if (!storedMobileApp) setMobileApp(appiumOptions.app || '')
+                const appiumOptions = capResponse.capabilities['appium:options'] as
+                  | {
+                      url?: string
+                      platformVersion?: string
+                      automationName?: string
+                      deviceName?: string
+                      app?: string
+                    }
+                  | undefined
+                if (appiumOptions) {
+                  if (!storedMobileAppiumUrl) setMobileAppiumUrl(appiumOptions.url || '')
+                  if (!storedPlatformVersion)
+                    setMobilePlatformVersion(appiumOptions.platformVersion || '')
+                  if (!storedAutomationName)
+                    setMobileAutomationName(appiumOptions.automationName || '')
+                  if (!storedDeviceName) setMobileDeviceName(appiumOptions.deviceName || '')
+                  if (!storedMobileApp) setMobileApp(appiumOptions.app || '')
+                }
               }
             }
           } else {

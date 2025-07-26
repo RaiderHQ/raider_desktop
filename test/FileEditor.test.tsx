@@ -1,4 +1,3 @@
-import React from 'react'
 import { render, screen, act } from '@testing-library/react'
 import FileEditor from '@pages/FileEditor'
 import '@testing-library/jest-dom'
@@ -7,30 +6,40 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key, // Simple translation mock
-  }),
+  useTranslation: (): { t: (key: string) => string } => ({
+    t: (key: string): string => key // Simple translation mock
+  })
 }))
 
 vi.mock('@components/Editor', () => ({
-  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
+  default: ({
+    value,
+    onChange
+  }: {
+    value: string
+    onChange: (value: string) => void
+  }): JSX.Element => (
     <textarea data-testid="editor" value={value} onChange={(e) => onChange(e.target.value)} />
-  ),
+  )
 }))
 
 const mockApi = {
   editFile: vi.fn(),
-  readFile: vi.fn().mockResolvedValue({ success: true, data: 'file content' }),
+  readFile: vi.fn().mockResolvedValue({ success: true, data: 'file content' })
 }
 
-beforeEach(() => {
-  // @ts-ignore
+beforeEach((): void => {
+  // @ts-ignore - Mocking the window.api object for testing purposes.
   window.api = mockApi
 })
 
-const renderComponent = () => {
+const renderComponent = (): void => {
   render(
-    <MemoryRouter initialEntries={[{ pathname: '/file-editor', state: { fileName: 'test.txt', filePath: '/fake/path' } }]}>
+    <MemoryRouter
+      initialEntries={[
+        { pathname: '/file-editor', state: { fileName: 'test.txt', filePath: '/fake/path' } }
+      ]}
+    >
       <Routes>
         <Route path="/file-editor" element={<FileEditor />} />
       </Routes>
