@@ -1,66 +1,313 @@
 {
   "landing": {
-    "title": "Velkommen til Ruby Raider",
-    "subtitle": "Din one-stop-shop til at oprette og administrere dine testautomatiseringsprojekter.",
-    "version": "version"
-  },
-  "button": {
-    "create": {
-      "text": "Opret Projekt",
-      "description": "Start et nyt projekt fra bunden"
-    },
-    "open": {
-      "text": "Åbn Projekt",
-      "description": "Åbn et eksisterende projekt"
-    },
-    "back": {
-      "text": "Tilbage"
+    "title": "Velkommen til Ruby Raider!",
+    "subtitle": "Det er en gem, der giver en generator og stillads til at forenkle UI-testautomatisering.",
+    "error": {
+      "selectFolder": "Vælg en projektmappe",
+      "folderNotFound": "Mappen findes ikke.",
+      "openProject": "Der opstod en fejl under åbning af projektet. Prøv venligst igen."
     }
   },
   "newProject": {
-    "title": "Opret et Nyt Projekt",
+    "alerts": {
+      "invalidName": "Indtast venligst et gyldigt projektnavn.",
+      "selectFolder": "Vælg en mappe til at gemme dit projekt"
+    },
+    "title": "Opret et nyt projekt",
+    "subtitle": "For at oprette et projekt skal du først vælge følgende:",
     "input": {
-      "label": "Projektnavn:",
-      "placeholder": "Indtast projektsnavn"
+      "label": "Projektnavn",
+      "placeholder": "Indtast projektnavn"
     },
     "question": {
-      "automation": "Hvilken type automatisering vil du lave?",
-      "test": "Hvilket test-framework vil du bruge?",
-      "mobile": "Hvilken mobilplatform målretter du mod?"
+      "automation": "Vælg dit automatiseringsrammeværk",
+      "mobile": "Vælg din mobile platform",
+      "test": "Vælg dit testrammeværk"
+    }
+  },
+  "button": {
+    "create": {
+      "text": "Opret",
+      "description": "Opret et nyt projekt"
+    },
+    "open": {
+      "text": "Åbn",
+      "description": "Åbn eksisterende projekt"
+    },
+    "back": {
+      "text": "Tilbage",
+      "description": "Gå tilbage til det forrige trin"
+    },
+    "goTo": {
+      "text": "Gå til {{location}}",
+      "description": "Gå til Ruby Raider {{location}}"
+    }
+  },
+  "menu": {
+    "dashboard": "Dashboard",
+    "tests": "Tests",
+    "settings": "Indstillinger"
+  },
+  "version": "Ruby Raider Version: {{version}}",
+  "installGuide": {
+    "title": "Installation påkrævet",
+    "allureMissing": "Allure mangler. Installer venligst Allure for at fortsætte.",
+    "logoAlt": "Ruby Raider Logo",
+    "githubButton": "Gå til GitHub",
+    "websiteButton": "Gå til Hjemmeside"
+  },
+  "information": {
+    "createProject": {
+      "title": "Opret et nyt projekt",
+      "message": "Her kan du oprette et nyt projekt og begynde at automatisere dine tests."
+    },
+    "openProject": {
+      "title": "Åbn et eksisterende projekt",
+      "message": "Her kan du åbne et eksisterende projekt og fortsætte med at automatisere dine tests."
+    },
+    "new": {
+      "title": "Start et nyt projekt",
+      "message": "Vælg de forskellige muligheder i vælgerne og opret et automatiseringsframework."
+    }
+  },
+  "settings": {
+    "loading": "Indlæser indstillinger...",
+    "mobileProject": {
+      "title": "Mobilprojekt",
+      "description": "For nu understøttes mobilindstillinger ikke. De vil komme i nyere versioner af appen."
+    },
+    "header": {
+      "title": "Konfigurationsfiler",
+      "description": "Vi har tilføjet følgende filer til dit projekt"
+    },
+    "section": {
+      "baseUrl": "Basis-URL",
+      "browser": "Browser",
+      "appiumSettings": "Appium-indstillinger"
+    },
+    "baseUrl": {
+      "label": "Browser-URL:",
+      "placeholder": "Indtast browser-URL"
+    },
+    "browser": {
+      "label": "Vælg browser:",
+      "chrome": "Chrome",
+      "safari": "Safari",
+      "firefox": "Firefox",
+      "edge": "Edge"
+    },
+    "updateUrlButton": "Opdater URL",
+    "updateBrowserButton": "Opdater browser",
+    "updateMobileSettingsButton": "Opdater indstillinger",
+    "updating": "Opdaterer...",
+    "error": {
+      "browserUpdateFailed": "Kunne ikke opdatere browser. Prøv venligst igen.",
+      "urlUpdateFailed": "Kunne ikke opdatere browser-URL. Prøv venligst igen.",
+      "unexpected": "En uventet fejl opstod. Prøv venligst igen.",
+      "mobileUrlUpdateFailed": "Kunne ikke opdatere Appium URL. Prøv venligst igen.",
+      "mobileCapabilitiesUpdateFailed": "Kunne ikke opdatere mobile indstillinger. Prøv venligst igen."
+    },
+    "urlUpdateSuccess": "Browser-URL opdateret med succes!",
+    "browserUpdateSuccess": "Browser opdateret med succes!",
+    "mobile": {
+      "appiumUrl": {
+        "label": "Appium URL:",
+        "placeholder": "Indtast Appium URL"
+      },
+      "platformVersion": {
+        "label": "Platformversion:",
+        "placeholder": "Indtast platformversion"
+      },
+      "automationName": {
+        "label": "Automatiseringsnavn:",
+        "placeholder": "Indtast automatiseringsnavn"
+      },
+      "deviceName": {
+        "label": "Enhedsnavn:",
+        "placeholder": "Indtast enhedsnavn"
+      },
+      "app": {
+        "label": "App:",
+        "placeholder": "Indtast app navn"
+      },
+      "updateSuccess": "Opdatering af mobile indstillinger lykkedes!"
+    },
+    "tabs": {
+      "project": "Projektindstillinger",
+      "recording": "Optagelsesindstillinger",
+      "general": "Generelle indstillinger"
+    },
+    "general": {
+      "title": "Generelle indstillinger",
+      "description": "Juster generelle applikationsindstillinger.",
+      "language": {
+        "label": "Sprog"
+      },
+      "save": "Gem"
     }
   },
   "overview": {
-    "running": "Kører tests...",
-    "runTestsSuccess": "Tests kørte succesfuldt!",
     "error": {
-      "runTests": "Fejl under kørsel af tests"
+      "openAllure": "Der opstod et problem under åbning af dashboardet"
     },
-    "installingDependencies": "Installerer afhængigheder...",
-    "starting": "Starter testkørsel..."
+    "running": "Tests udføres...",
+    "runTestsSuccess": "Tests fuldført med succes!"
   },
   "editor": {
-    "loading": "Indlæser fil...",
-    "saveSuccess": "Filen blev gemt!",
-    "saveError": "Fejl ved lagring af fil"
+    "placeholder": "Begynd at redigere filindholdet her...",
+    "success": "Fil gemt med succes.",
+    "save": {
+      "stashing": "Gemmer din skat...",
+      "securing": "Sikrer rubinen...",
+      "engraving": "Graverer gemmen...",
+      "prize": "Beskytter røverens præmie...",
+      "ruby": "Gemmer rubinen..."
+    },
+    "error": {
+      "invalidFilePath": "Ugyldig filsti.",
+      "saveFailed": "Fejl ved gemning af fil \"{{fileName}}\". Prøv venligst igen.",
+      "unexpectedSaveError": "Uventet fejl opstod under gemning af filen. Prøv venligst igen."
+    },
+    "loading": "Indlæser..."
   },
-  "settings": {
-    "general": {
-      "title": "Generelle Indstillinger",
-      "language": {
-        "label": "Sprog:"
+  "testResults": {
+    "breakdown": "Testresultat Opdeling",
+    "status": "Status",
+    "viewScreenshot": "Se skærmbillede",
+    "passed": "Bestået",
+    "failed": "Fejlet",
+    "skipped": "Sprunget over",
+    "error": {
+      "imageRead": "Fejl ved læsning af billede",
+      "imageAccess": "Fejl ved adgang til billedfil"
+    }
+  },
+  "dashboard": {
+    "overallSummary": "Samlet Oversigt",
+    "totalTests": "Samlede Tests",
+    "passed": "Bestået",
+    "failed": "Fejlet",
+    "skipped": "Sprunget Over",
+    "noResults": "Kør dine tests for at se resultaterne på dashboardet.",
+    "error": {
+      "fetching": "Fejl ved hentning af dashboard",
+      "parsing": "Fejl ved fortolkning af {{file}}",
+      "reading": "Fejl ved læsning af {{file}}"
+    }
+  },
+  "errorPage": {
+    "title": "Forudsætninger ikke installeret"
+  },
+  "errors": {
+    "ruby": {
+      "commandFailed": "Ruby-kommandoen mislykkedes.\nKommando: {{command}}\nOutput: {{output}}\nFejlinfo:\n{{debugInfo}}",
+      "unexpectedOutput": "Uventet ruby version output: {{output}}\nFejlinfo:\n{{debugInfo}}",
+      "failedToParse": "Kunne ikke fortolke Ruby-version fra output: {{output}}\nFejlinfo:\n{{debugInfo}}",
+      "outdated": "Ruby version {{version}} er forældet. Installer venligst Ruby 3.0.0 eller højere.\nKommando output: {{output}}\nFejlinfo:\n{{debugInfo}}",
+      "unknown": "Der opstod en fejl: {{error}}\nFejlinfo:\n{{debugInfo}}"
+    }
+  },
+  "recorder": {
+    "placeholder": {
+      "url": "Indtast URL til optagelse",
+      "commands": "Optagede Selenium Ruby-kommandoer vises her..."
+    },
+    "button": {
+      "setUrl": "Indstil URL",
+      "startRecording": "Start optagelse",
+      "stopRecording": "Stop optagelse",
+      "saveTest": "Gem test",
+      "runTest": "Kør test"
+    },
+    "heading": {
+      "recordedSteps": "Optagede trin",
+      "runOutput": "Kørselsoutput"
+    },
+    "assertionTextModal": {
+      "title": "Hævd elementtekst",
+      "message": "Indtast den nøjagtige tekst, du forventer, at elementet indeholder.",
+      "label": "Forventet tekst",
+      "cancel": "Annuller",
+      "save": "Gem hævdelse"
+    },
+    "deleteModal": {
+      "title": "Bekræft sletning",
+      "message": "Er du sikker på, at du vil slette testen",
+      "cancel": "Annuller",
+      "delete": "Slet"
+    },
+    "rubyInstallModal": {
+      "title": {
+        "missing": "Manglende afhængigheder",
+        "required": "Ruby-installation påkrævet"
       },
-      "save": "Gem"
+      "message": {
+        "missing": "Følgende gems mangler: {{missingGems}}. Vil du installere dem?",
+        "required": "For at bruge alle funktionerne i Raider Desktop App skal du have Ruby på dit system. Vil du installere rbenv, Ruby og alle afhængighederne?"
+      },
+      "yes": "Ja",
+      "no": "Nej"
     },
-    "project": {
-      "title": "Projektindstillinger"
+    "mainRecorderPanel": {
+      "suite": "Suite: {{activeSuiteName}}",
+      "noSuite": "Ingen suite valgt",
+      "testName": "Testnavn",
+      "url": "URL til optagelse",
+      "newTest": "Ny test",
+      "import": "Importer",
+      "export": "Eksporter",
+      "record": "Optag",
+      "run": "Kør",
+      "stop": "Stop",
+      "exportTest": "Eksporter test",
+      "exportSuite": "Eksporter suite",
+      "exportProject": "Eksporter projekt",
+      "importTest": "Importer test",
+      "importSuite": "Importer suite",
+      "importProject": "Importer projekt",
+      "exportSuccess": "{{exportType}} eksporteret til {{path}}",
+      "exportError": "Eksport mislykkedes: {{error}}",
+      "importSuccess": "{{importType}} importeret succesfuldt!",
+      "importError": "Import mislykkedes: {{error}}"
     },
-    "recording": {
-      "title": "Optagelsesindstillinger"
+    "outputPanel": {
+      "title": "Testresultater:",
+      "error": "Fejl:",
+      "placeholder": "Testoutput vises her..."
     },
-    "tabs": {
-      "general": "Generelt",
-      "project": "Projekt",
-      "recording": "Optagelse"
+    "testSuitePanel": {
+      "selectSuite": "Vælg en suite",
+      "newSuite": "+ Ny suite...",
+      "deleteSuite": "- Slet nuværende suite",
+      "runAll": "Kør alle",
+      "newSuiteName": "Nyt suite-navn...",
+      "cancel": "Annuller",
+      "create": "Opret",
+      "deleteConfirmation": "Er du sikker på, at du vil slette suiten \"{{suiteName}}\"? Dette kan ikke fortrydes."
+    },
+    "recorderPage": {
+      "testSuites": "Test Suites",
+      "recordedSteps": "Optagede trin",
+      "runOutput": "Kørselsoutput",
+      "codeView": "Kodevisning",
+      "friendlyView": "Venlig visning",
+      "hideOutput": "Skjul output",
+      "testOutput": "Testoutput"
+    },
+    "commandParser": {
+      "visit": "Besøg {{url}}",
+      "waitForElementDisplayed": "Vent på, at element med {{strategy}} \"{{value}}\" bliver vist",
+      "waitForElementEnabled": "Vent på, at element med {{strategy}} \"{{value}}\" bliver aktiveret",
+      "clickElement": "Klik på element med {{strategy}} \"{{value}}\"",
+      "pressKey": "Tryk på tasten {{key}} på element med {{strategy}} \"{{value}}\"",
+      "typeText": "Skriv \"{{text}}\" i element med {{strategy}} \"{{value}}\"",
+      "wait": "Vent i {{seconds}} sekunder",
+      "executeScript": "Udfør script: {{script}}",
+      "switchToFrame": "Skift til ramme identificeret ved {{frame}}",
+      "switchToDefaultContent": "Skift tilbage til hovedindhold",
+      "assertElementDisplayed": "Hævd, at element med {{strategy}} \"{{value}}\" vises",
+      "assertElementEnabled": "Hævd, at element med {{strategy}} \"{{value}}\" er aktiveret",
+      "assertElementTextEquals": "Hævd, at element med {{strategy}} \"{{value}}\" har tekst lig med \"{{text}}\""
     }
   }
 }
