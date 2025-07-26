@@ -33,11 +33,6 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
       const parser = mainCommand.includes(':xpath,')
         ? window.api.xpathParser
         : window.api.commandParser
-      console.log(
-        `[CommandBlock/index.tsx] For command "${mainCommand}", using parser: ${
-          mainCommand.includes(':xpath,') ? 'xpathParser' : 'commandParser'
-        }`
-      )
       parser(mainCommand).then((result) => {
         if (isMounted) {
           setParsedCommand(result)

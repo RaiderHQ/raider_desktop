@@ -154,11 +154,9 @@ const api = {
   loadUrlRequest: async (url: string): Promise<CommandType> =>
     ipcRenderer.invoke('load-url-request', url),
   xpathParser: (command: string): Promise<string> => {
-    console.log('[preload/index.ts] Invoking "xpath-parser" for command:', command)
     return ipcRenderer.invoke('xpath-parser', command)
   },
   commandParser: (command: string): Promise<string> => {
-    console.log('[preload/index.ts] Invoking "command-parser" for command:', command)
     return ipcRenderer.invoke('command-parser', command)
   },
   exportTest: (
@@ -188,7 +186,6 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
   } catch (error) {
-    console.error('Error exposing APIs:', error)
   }
 } else {
   // @ts-ignore (define in dts)

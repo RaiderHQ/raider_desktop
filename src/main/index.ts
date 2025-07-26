@@ -129,11 +129,9 @@ app.whenReady().then(() => {
     installGems(rubyCommand, gems)
   )
   ipcMain.handle('xpath-parser', (_event, command: string) => {
-    console.log('[main/index.ts] Handling "xpath-parser" for command:', command)
     return xpathParser(command)
   })
   ipcMain.handle('command-parser', (_event, command: string) => {
-    console.log('[main/index.ts] Handling "command-parser" for command:', command)
     return commandParser(command)
   })
   ipcMain.handle('get-suites', getSuites)
@@ -163,7 +161,6 @@ app.whenReady().then(() => {
       try {
         return updateRecordingSettings(settings)
       } catch (error) {
-        console.error('Failed to update recording settings:', error)
         return { success: false, error: (error as Error).message }
       }
     }

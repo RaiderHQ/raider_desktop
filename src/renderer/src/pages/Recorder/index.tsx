@@ -17,7 +17,6 @@ import { useTranslation } from 'react-i18next'
 
 import DeleteModal from '@components/DeleteModal'
 
-// Defines the structure for the data needed by the assertion modal
 interface AssertionInfo {
   selector: string
   text: string
@@ -77,7 +76,7 @@ const Recorder: React.FC = () => {
   useEffect(() => {
     const handler = setTimeout(() => {
       handleAutoSave()
-    }, 500) // Debounce time
+    }, 500)
 
     return () => {
       clearTimeout(handler)
@@ -94,21 +93,13 @@ const Recorder: React.FC = () => {
     return `'${xpath}'`
   }
 
-  /**
-   * Determines the correct locator strategy (:id, :css, :xpath) based on the selector string.
-   * @param selector The selector string from the preload script.
-   * @returns An object with the strategy and the processed selector value.
-   */
   const formatLocator = (selector: string): { strategy: string; value: string } => {
-    // Check for XPath (starts with / or (//)
     if (selector.startsWith('/') || selector.startsWith('(')) {
       return { strategy: 'xpath', value: formatXpath(selector) }
     }
-    // Check for a simple ID selector (e.g., #my-id) that isn't part of a complex path
     if (selector.startsWith('#') && !/[\s>~+]/.test(selector)) {
       return { strategy: 'id', value: `"${selector.substring(1)}"` }
     }
-    // Default to CSS for all other cases
     return { strategy: 'css', value: `"${selector}"` }
   }
 
@@ -171,14 +162,7 @@ const Recorder: React.FC = () => {
   }, [])
 
   const handleRunTest = useCallback(async (): Promise<void> => {
-    console.log('handleRunTest called')
     if (activeSuiteId && activeTest?.id && rubyCommand) {
-      console.log('Running test with:', {
-        activeSuiteId,
-        activeTestId: activeTest.id,
-        projectPath,
-        rubyCommand
-      })
       setIsRunning(true)
       setRunOutput(`Running test: ${activeTest.name}...`)
       const result = await window.api.runTest(
@@ -189,33 +173,18 @@ const Recorder: React.FC = () => {
       )
       setRunOutput(result.output)
       setIsRunning(false)
-    } else {
-      console.log('handleRunTest conditions not met:', {
-        activeSuiteId,
-        activeTest,
-        projectPath,
-        rubyCommand
-      })
     }
   }, [activeSuiteId, activeTest, projectPath, rubyCommand])
 
   const handleRunAllTests = useCallback(
     async (suiteId: string) => {
-      console.log('handleRunAllTests called')
       const suiteToRun = suites.find((s) => s.id === suiteId)
       if (suiteToRun && rubyCommand) {
-        console.log('Running suite with:', { suiteId, projectPath, rubyCommand })
         setIsRunning(true)
         setRunOutput(`Running suite: ${suiteToRun.name}...`)
         const result = await window.api.runSuite(suiteToRun.id, projectPath || '.', rubyCommand)
         setRunOutput(result.output)
         setIsRunning(false)
-      } else {
-        console.log('handleRunAllTests conditions not met:', {
-          suiteToRun,
-          projectPath,
-          rubyCommand
-        })
       }
     },
     [suites, projectPath, rubyCommand, setRunOutput]
@@ -296,14 +265,11 @@ const Recorder: React.FC = () => {
   }
 
   const handleInstallRuby = async () => {
-    console.log('handleInstallRuby called')
     setIsRubyInstallModalOpen(false)
-    // Show a toast notification that the installation is in progress
     const toastId = toast.loading('Installing Ruby and dependencies...')
 
     try {
       const result = await window.api.installRbenvAndRuby()
-      console.log('installRbenvAndRuby result:', result)
       if (result.success) {
         const rubyCheck = await window.api.isRubyInstalled()
         if (rubyCheck.success && rubyCheck.rubyCommand) {
@@ -327,13 +293,11 @@ const Recorder: React.FC = () => {
   }
 
   const handleInstallGems = async () => {
-    console.log('handleInstallGems called')
     setIsRubyInstallModalOpen(false)
     const toastId = toast.loading(`Installing missing gems: ${missingGems?.join(', ')}...`)
 
     try {
       const result = await window.api.installGems(rubyCommand!, missingGems!)
-      console.log('installGems result:', result)
       if (result.success) {
         toast.success('Gems installed successfully!', { id: toastId })
       } else {
@@ -346,9 +310,7 @@ const Recorder: React.FC = () => {
 
   useEffect(() => {
     const checkRuby = async () => {
-      console.log('Checking for Ruby...')
       const result = await window.api.isRubyInstalled()
-      console.log('Ruby check result:', result)
       if (!result.success) {
         setMissingGems(result.missingGems)
         setRubyCommand(result.rubyCommand)
