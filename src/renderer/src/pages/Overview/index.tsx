@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -13,19 +13,43 @@ const Overview: React.FC = () => {
   const files: FileNode[] = useProjectStore((state) => state.files)
   const { rubyCommand } = useRubyStore()
   const navigate = useNavigate()
+  const [currentToastId, setCurrentToastId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!projectPath) {
-      // If there's no project path, redirect to the landing page.
       navigate('/start-project')
     }
   }, [projectPath, navigate])
 
+  useEffect(() => {
+    const handleStatusUpdate = (
+      _event: Electron.IpcRendererEvent,
+      { status }: { status: string }
+    ): void => {
+      if (currentToastId) {
+        if (status === 'installing') {
+          toast.loading(t('overview.installingDependencies'), { id: currentToastId })
+        } else if (status === 'running') {
+          toast.loading(t('overview.running'), { id: currentToastId })
+        }
+      }
+    }
+
+    window.api.onTestRunStatus(handleStatusUpdate)
+
+    return (): void => {
+      window.api.removeTestRunStatusListener(handleStatusUpdate)
+    }
+  }, [currentToastId, t])
+
   const handleRunRaiderTests = async (): Promise<void> => {
-    const toastId = toast.loading(t('overview.running'))
+    const toastId = toast.loading(t('overview.starting'))
+    setCurrentToastId(toastId)
+
     try {
       const result = await window.api.runRaiderTests(projectPath || '', rubyCommand || '')
       toast.dismiss(toastId)
+      setCurrentToastId(null)
 
       if (!result.success) {
         throw new Error(result.error || 'Test execution failed')
@@ -33,8 +57,9 @@ const Overview: React.FC = () => {
 
       toast.success(t('overview.runTestsSuccess'))
     } catch (error) {
-      toast.dismiss(toastId)
-      toast.error(`${t('overview.error.runTests')}: ${error}`)
+      if (toastId) toast.dismiss(toastId)
+      setCurrentToastId(null)
+      toast.error(`${t('overview.error.runTests')}: ${(error as Error).message}`)
     }
   }
 

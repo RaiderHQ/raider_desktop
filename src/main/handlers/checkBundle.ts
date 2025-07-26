@@ -2,10 +2,7 @@ import { exec } from 'child_process'
 import path from 'path'
 import { CommandType } from '@foundation/Types/commandType'
 
-const handler = async (
-  projectPath: string,
-  rubyCommand: string
-): Promise<CommandType> => {
+const handler = async (projectPath: string, rubyCommand: string): Promise<CommandType> => {
   const fixPath = (await import('fix-path')).default
   fixPath()
 
@@ -38,6 +35,7 @@ const handler = async (
       console.error('Error checking bundle:', e)
       resolve({
         success: false,
+        output: '',
         error: e instanceof Error ? e.message : String(e)
       })
     }

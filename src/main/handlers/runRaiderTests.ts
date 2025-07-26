@@ -1,12 +1,12 @@
 import { exec } from 'child_process'
 import path from 'path'
-import { IpcMainInvokeEvent } from 'electron'
+import { BrowserWindow } from 'electron'
 import { CommandType } from '@foundation/Types/commandType'
 import checkBundle from './checkBundle'
 import bundleInstall from './bundleInstall'
 
 const handler = async (
-  _event: IpcMainInvokeEvent,
+  mainWindow: BrowserWindow,
   folderPath: string,
   rubyCommand: string
 ): Promise<CommandType> => {
@@ -16,7 +16,10 @@ const handler = async (
     const checkResult = await checkBundle(folderPath, rubyCommand)
 
     if (!checkResult.success) {
-      console.log('[runRaiderTests] Bundle check failed. Dependencies are missing. Running bundle install...')
+      console.log(
+        '[runRaiderTests] Bundle check failed. Dependencies are missing. Running bundle install...'
+      )
+      mainWindow.webContents.send('test-run-status', { status: 'installing' })
       // 2. If check fails, run bundle install
       const installResult = await bundleInstall(folderPath, rubyCommand)
 
@@ -25,6 +28,7 @@ const handler = async (
         console.error('[runRaiderTests] Bundle install failed.')
         return {
           success: false,
+          output: '',
           error: `Failed to install gems: ${installResult.error}`
         }
       }
@@ -35,6 +39,7 @@ const handler = async (
 
     // 3. Proceed with running the tests
     console.log('[runRaiderTests] Proceeding to run Raider tests...')
+    mainWindow.webContents.send('test-run-status', { status: 'running' })
     const normalizedFolderPath = path.resolve(folderPath)
     const commandToExecute = `${rubyCommand} -S bundle exec raider u raid`
 
@@ -55,6 +60,7 @@ const handler = async (
     console.error(`[FATAL] runRaiderTests: An unexpected error occurred: ${errorMessage}`)
     return {
       success: false,
+      output: '',
       error: errorMessage
     }
   }

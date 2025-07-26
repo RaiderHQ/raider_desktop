@@ -115,7 +115,7 @@ app.whenReady().then(() => {
   ipcMain.handle('edit-file', editFile)
   ipcMain.handle('run-ruby-raider', runRubyRaider)
   ipcMain.handle('run-raider-tests', (_event, folderPath: string, rubyCommand: string) =>
-    runRaiderTests(_event, folderPath, rubyCommand)
+    runRaiderTests(appState.mainWindow!, folderPath, rubyCommand)
   )
   ipcMain.handle('is-mobile-project', isMobileProject)
   ipcMain.handle('update-browser-url', updateBrowserUrl)

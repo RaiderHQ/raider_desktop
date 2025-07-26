@@ -1,344 +1,66 @@
 {
   "landing": {
-    "title": "Welcome to Ruby Raider!",
-    "subtitle": "It is a gem that provides a generator and scaffolding to simplify UI test automation.",
-    "error": {
-      "selectFolder": "Select a project folder",
-      "folderNotFound": "The folder does not exist.",
-      "openProject": "An error occurred while opening the project. Please try again."
-    }
-  },
-  "newProject": {
-    "alerts": {
-      "invalidName": "Please enter a valid project name.",
-      "selectFolder": "Select a folder to save your project"
-    },
-    "title": "Create a new project",
-    "subtitle": "To create a project, first you need to select the following:",
-    "input": {
-      "label": "Project Name",
-      "placeholder": "Enter project name"
-    },
-    "question": {
-      "automation": "Select your automation framework",
-      "mobile": "Select your mobile platform",
-      "test": "Select your test framework"
-    }
+    "title": "Welcome to Ruby Raider",
+    "subtitle": "Your one-stop shop for creating and managing your test automation projects.",
+    "version": "version"
   },
   "button": {
     "create": {
-      "text": "Create",
-      "description": "Create a new project"
+      "text": "Create Project",
+      "description": "Start a new project from scratch"
     },
     "open": {
-      "text": "Open",
-      "description": "Open existing project"
+      "text": "Open Project",
+      "description": "Open an existing project"
     },
     "back": {
-      "text": "Back",
-      "description": "Go back to the previous step"
-    },
-    "goTo": {
-      "text": "Go to {{location}}",
-      "description": "Go to the Ruby Raider {{location}}"
+      "text": "Back"
     }
   },
-  "menu": {
-    "dashboard": "Dashboard",
-    "tests": "Tests",
-    "settings": "Settings"
-  },
-  "version": "Ruby Raider Version: {{version}}",
-  "installGuide": {
-    "title": "Installation Required",
-    "allureMissing": "Allure is missing. Please install Allure to proceed.",
-    "logoAlt": "Ruby Raider Logo",
-    "githubButton": "Go to GitHub",
-    "websiteButton": "Go to Website"
-  },
-  "information": {
-    "createProject": {
-      "title": "Creating a New Project",
-      "message": "Here you can create a new project and start automating your tests."
+  "newProject": {
+    "title": "Create a New Project",
+    "input": {
+      "label": "Project Name:",
+      "placeholder": "Enter project name"
     },
-    "openProject": {
-      "title": "Opening an Existing Project",
-      "message": "Here you can open an existing project and continue automating your tests."
-    },
-    "new": {
-      "title": "Start a New Project",
-      "message": "Choose the different options in the selectors and create an automation framework."
-    }
-  },
-  "settings": {
-    "loading": "Loading settings...",
-    "mobileProject": {
-      "title": "Mobile Project",
-      "description": "For now, mobile settings are not supported. They will come in newer versions of the app."
-    },
-    "header": {
-      "title": "Configuration files",
-      "description": "We added the following files to your project"
-    },
-    "section": {
-      "baseUrl": "Base Url",
-      "browser": "Browser",
-      "appiumSettings": "Appium Settings"
-    },
-    "baseUrl": {
-      "label": "Browser URL:",
-      "placeholder": "Enter browser URL"
-    },
-    "browser": {
-      "label": "Choose Browser:",
-      "chrome": "Chrome",
-      "safari": "Safari",
-      "firefox": "Firefox",
-      "edge": "Edge"
-    },
-    "updateUrlButton": "Update URL",
-    "updateBrowserButton": "Update Browser",
-    "updateMobileSettingsButton": "Update Settings",
-    "updating": "Updating...",
-    "error": {
-      "browserUpdateFailed": "Failed to update browser. Please try again.",
-      "urlUpdateFailed": "Failed to update browser URL. Please try again.",
-      "unexpected": "An unexpected error occurred. Please try again.",
-      "mobileUrlUpdateFailed": "Failed to update Appium URL. Please try again.",
-      "mobileCapabilitiesUpdateFailed": "Failed to update mobile settings. Please try again."
-    },
-    "urlUpdateSuccess": "URL successfully updated!",
-    "browserUpdateSuccess": "Browser successfully updated!",
-    "mobile": {
-      "appiumUrl": {
-        "label": "Appium URL:",
-        "placeholder": "Enter Appium URL"
-      },
-      "platformVersion": {
-        "label": "Platform Version:",
-        "placeholder": "Enter platform version"
-      },
-      "automationName": {
-        "label": "Automation Name:",
-        "placeholder": "Enter automation name"
-      },
-      "deviceName": {
-        "label": "Device Name:",
-        "placeholder": "Enter device name"
-      },
-      "app": {
-        "label": "App:",
-        "placeholder": "Enter app name"
-      },
-      "updateSuccess": "Mobile settings updated successfully!"
-    },
-    "tabs": {
-      "project": "Project Settings",
-      "recording": "Recording Settings",
-      "general": "General Settings"
-    },
-    "general": {
-      "title": "General Settings",
-      "description": "Adjust general application settings.",
-      "language": {
-        "label": "Language"
-      },
-      "save": "Save"
-    },
-    "recording": {
-      "title": "Recording Settings",
-      "description": "Adjust the settings for test recording and playback.",
-      "error": {
-        "recordingUpdateFailed": "Failed to update recording settings.",
-        "unexpected": "An unexpected error occurred. Please try again."
-      },
-      "implicitWait": {
-        "label": "Implicit Wait (seconds)",
-        "description": "The default time to wait for elements to appear during playback."
-      },
-      "explicitWait": {
-        "label": "Explicit Wait (seconds)",
-        "description": "The maximum time to wait for a specific condition to be met."
-      },
-      "recordingUpdateSuccess": "Recording settings updated successfully!",
-      "updateRecordingSettingsButton": "Update Settings"
-    },
-    "noProject": {
-      "title": "No Project Loaded",
-      "description": "Please create or open a project to configure its settings."
+    "question": {
+      "automation": "What type of automation do you want to do?",
+      "test": "What test framework do you want to use?",
+      "mobile": "What mobile platform are you targeting?"
     }
   },
   "overview": {
+    "running": "Running tests...",
+    "runTestsSuccess": "Tests ran successfully!",
     "error": {
-      "openAllure": "An issue occurred opening the dashboard"
+      "runTests": "Error running tests"
     },
-    "running": "Tests are being executed...",
-    "runTestsSuccess": "Tests completed successfully!",
-    "tabs": {
-      "files": "Files",
-      "dashboard": "Dashboard"
-    }
+    "installingDependencies": "Installing dependencies...",
+    "starting": "Starting test run..."
   },
   "editor": {
-    "placeholder": "Start editing file content here...",
-    "success": "File saved successfully.",
-    "save": {
-      "stashing": "Stashing your treasure...",
-      "securing": "Securing the ruby...",
-      "engraving": "Engraving the gem...",
-      "prize": "Safeguarding the raider's prize...",
-      "ruby": "Sharpening the edges of the ruby..."
-    },
-    "error": {
-      "invalidFilePath": "Invalid file path.",
-      "saveFailed": "Error saving file \"{{fileName}}\". Please try again.",
-      "unexpectedSaveError": "Unexpected error occurred while saving the file. Please try again."
-    },
-    "loading": "Loading..."
+    "loading": "Loading file...",
+    "saveSuccess": "File saved successfully!",
+    "saveError": "Error saving file"
   },
-  "testResults": {
-    "breakdown": "Test Results Breakdown",
-    "status": "Status",
-    "viewScreenshot": "View Screenshot",
-    "passed": "Passed",
-    "failed": "Failed",
-    "skipped": "Skipped",
-    "error": {
-      "imageRead": "Error reading image",
-      "imageAccess": "Error accessing image file"
-    }
-  },
-  "dashboard": {
-    "overallSummary": "Overall Summary",
-    "totalTests": "Total Tests",
-    "passed": "Passed",
-    "failed": "Failed",
-    "skipped": "Skipped",
-    "noResults": "Please run your tests to see the results on the dashboard.",
-    "noRecordingResults": "Please run a test to see the recording results on the dashboard.",
+  "settings": {
+    "general": {
+      "title": "General Settings",
+      "language": {
+        "label": "Language:"
+      },
+      "save": "Save"
+    },
+    "project": {
+      "title": "Project Settings"
+    },
+    "recording": {
+      "title": "Recording Settings"
+    },
     "tabs": {
-      "project": "Project Dashboard",
-      "recording": "Recording Dashboard"
-    },
-    "error": {
-      "fetching": "Error fetching dashboard",
-      "parsing": "Error parsing {{file}}",
-      "reading": "Error reading {{file}}"
-    }
-  },
-  "errorPage": {
-    "title": "Pre-requisites not installed"
-  },
-  "errors": {
-    "ruby": {
-      "commandFailed": "Ruby command failed.\nCommand: {{command}}\nOutput: {{output}}\nDebug Info:\n{{debugInfo}}",
-      "unexpectedOutput": "Unexpected ruby version output: {{output}}\nDebug Info:\n{{debugInfo}}",
-      "failedToParse": "Failed to parse Ruby version from output: {{output}}\nDebug Info:\n{{debugInfo}}",
-      "outdated": "Ruby version {{version}} is outdated. Please install Ruby 3.0.0 or higher.\nCommand output: {{output}}\nDebug Info:\n{{debugInfo}}",
-      "unknown": "An error occurred: {{error}}\nDebug Info:\n{{debugInfo}}"
-    }
-  },
-  "recorder": {
-    "placeholder": {
-      "url": "Enter URL to record",
-      "commands": "Recorded Selenium Ruby commands will appear here..."
-    },
-    "button": {
-      "setUrl": "Set URL",
-      "startRecording": "Start Recording",
-      "stopRecording": "Stop Recording",
-      "saveTest": "Save Test",
-      "runTest": "Run Test"
-    },
-    "heading": {
-      "recordedSteps": "Recorded Steps",
-      "runOutput": "Run Output"
-    },
-    "assertionTextModal": {
-      "title": "Assert Element Text",
-      "message": "Enter the exact text you expect the element to contain.",
-      "label": "Expected Text",
-      "cancel": "Cancel",
-      "save": "Save Assertion"
-    },
-    "deleteModal": {
-      "title": "Confirm Deletion",
-      "message": "Are you sure you want to delete the test",
-      "cancel": "Cancel",
-      "delete": "Delete"
-    },
-    "rubyInstallModal": {
-      "title": {
-        "missing": "Missing Dependencies",
-        "required": "Ruby Installation Required"
-      },
-      "message": {
-        "missing": "The following gems are missing: {{missingGems}}. Would you like to install them?",
-        "required": "In order to use all the features of the Raider Desktop App, you need Ruby in your system. Would you like to install rbenv, Ruby, and all the dependencies?"
-      },
-      "yes": "Yes",
-      "no": "No"
-    },
-    "mainRecorderPanel": {
-      "suite": "Suite: {{activeSuiteName}}",
-      "noSuite": "No Suite Selected",
-      "testName": "Test Name",
-      "url": "URL to Record",
-      "newTest": "New Test",
-      "import": "Import",
-      "export": "Export",
-      "record": "Record",
-      "run": "Run",
-      "stop": "Stop",
-      "exportTest": "Export Test",
-      "exportSuite": "Export Suite",
-      "exportProject": "Export Project",
-      "importTest": "Import Test",
-      "importSuite": "Import Suite",
-      "importProject": "Import Project",
-      "exportSuccess": "{{exportType}} exported to {{path}}",
-      "exportError": "Export failed: {{error}}",
-      "importSuccess": "{{importType}} imported successfully!",
-      "importError": "Import failed: {{error}}"
-    },
-    "outputPanel": {
-      "title": "Test Results:",
-      "error": "Error:",
-          "placeholder": "Test output will appear here..."
-    },
-    "testSuitePanel": {
-      "selectSuite": "Select a Suite",
-      "newSuite": "+ New Suite...",
-      "deleteSuite": "- Delete Current Suite",
-      "runAll": "Run All",
-      "newSuiteName": "New suite name...",
-      "cancel": "Cancel",
-      "create": "Create",
-      "deleteConfirmation": "Are you sure you want to delete the suite \"{{suiteName}}\"? This cannot be undone."
-    },
-    "recorderPage": {
-      "testSuites": "Test Suites",
-      "recordedSteps": "Recorded Steps",
-      "runOutput": "Run Output",
-      "codeView": "Code View",
-      "friendlyView": "Friendly View",
-      "hideOutput": "Hide Output",
-      "testOutput": "Test Output"
-    },
-    "commandParser": {
-      "visit": "Visit {{url}}",
-      "waitForElementDisplayed": "Wait for element with {{strategy}} \"{{value}}\" to be displayed",
-      "waitForElementEnabled": "Wait for element with {{strategy}} \"{{value}}\" to be enabled",
-      "clickElement": "Click element with {{strategy}} \"{{value}}\"",
-      "pressKey": "Press the {{key}} key on element with {{strategy}} \"{{value}}\"",
-      "typeText": "Type \"{{text}}\" into element with {{strategy}} \"{{value}}\"",
-      "wait": "Wait for {{seconds}} seconds",
-      "executeScript": "Execute script: {{script}}",
-      "switchToFrame": "Switch to frame identified by {{frame}}",
-      "switchToDefaultContent": "Switch back to main content",
-      "assertElementDisplayed": "Assert that element with {{strategy}} \"{{value}}\" is displayed",
-      "assertElementEnabled": "Assert that element with {{strategy}} \"{{value}}\" is enabled",
-      "assertElementTextEquals": "Assert that element with {{strategy}} \"{{value}}\" has text equal to \"{{text}}\""
+      "general": "General",
+      "project": "Project",
+      "recording": "Recording"
     }
   }
 }
