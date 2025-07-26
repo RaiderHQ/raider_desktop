@@ -151,7 +151,9 @@
       "openAllure": "Der opstod et problem under åbning af dashboardet"
     },
     "running": "Tests udføres...",
-    "runTestsSuccess": "Tests fuldført med succes!"
+    "runTestsSuccess": "Tests fuldført med succes!",
+    "installingDependencies": "Installerer afhængigheder...",
+    "starting": "Starter testkørsel..."
   },
   "editor": {
     "placeholder": "Begynd at redigere filindholdet her...",
