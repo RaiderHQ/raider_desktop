@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { FileNode } from '@foundation/Types/fileNode'
 import type { CommandType } from '@foundation/Types/commandType'
@@ -179,7 +179,13 @@ const api = {
     ipcRenderer.invoke('update-recording-settings', settings),
   getSelectorPriorities: (): Promise<string[]> => ipcRenderer.invoke('get-selector-priorities'),
   saveSelectorPriorities: (priorities: string[]): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke('save-selector-priorities', priorities)
+    ipcRenderer.invoke('save-selector-priorities', priorities),
+  onTestRunStatus: (
+    callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
+  ): Electron.IpcRenderer => ipcRenderer.on('test-run-status', callback),
+  removeTestRunStatusListener: (
+    callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
+  ): Electron.IpcRenderer => ipcRenderer.removeListener('test-run-status', callback)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
