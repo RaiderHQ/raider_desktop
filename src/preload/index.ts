@@ -18,6 +18,7 @@ const api = {
     projectName: string,
     framework: string,
     automation: string,
+    rubyCommand: string,
     mobile: string | null = null
   ): Promise<CommandType> => {
     return ipcRenderer.invoke(
@@ -26,7 +27,8 @@ const api = {
       projectName,
       framework,
       automation,
-      mobile // Pass the optional mobile parameter to the main process
+      rubyCommand,
+      mobile
     )
   },
   selectFolder: async (title: string): Promise<string | null> =>

@@ -113,7 +113,27 @@ app.whenReady().then(() => {
   ipcMain.handle('read-file', readFile)
   ipcMain.handle('read-image', readImage)
   ipcMain.handle('edit-file', editFile)
-  ipcMain.handle('run-ruby-raider', runRubyRaider)
+  ipcMain.handle(
+    'run-ruby-raider',
+    (
+      event,
+      folderPath: string,
+      projectName: string,
+      framework: string,
+      automation: string,
+      rubyCommand: string,
+      mobile: string | null
+    ) =>
+      runRubyRaider(
+        event,
+        folderPath,
+        projectName,
+        framework,
+        automation,
+        rubyCommand,
+        mobile
+      )
+  )
   ipcMain.handle('run-raider-tests', (_event, folderPath: string, rubyCommand: string) =>
     runRaiderTests(appState.mainWindow!, folderPath, rubyCommand)
   )

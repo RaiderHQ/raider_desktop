@@ -1,4 +1,4 @@
-import { runCommand } from './runRubyRaider'
+import runCommand from './runCommand'
 import { CommandType } from '@foundation/Types/commandType'
 
 const handler = async (): Promise<CommandType> => {

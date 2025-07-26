@@ -28,7 +28,9 @@ vi.mock('react-router-dom', async () => {
 })
 
 const mockApi = {
-  readDirectory: vi.fn().mockResolvedValue([])
+  readDirectory: vi.fn().mockResolvedValue([]),
+  onTestRunStatus: vi.fn(),
+  removeTestRunStatusListener: vi.fn()
 }
 
 beforeEach(() => {
