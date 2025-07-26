@@ -177,7 +177,9 @@
     "tabs": {
       "files": "Fișiere",
       "dashboard": "Tablou de bord"
-    }
+    },
+    "installingDependencies": "Se instalează dependențele...",
+    "starting": "Se pornește rularea testelor..."
   },
   "editor": {
     "placeholder": "Începeți să editați conținutul fișierului aici...",

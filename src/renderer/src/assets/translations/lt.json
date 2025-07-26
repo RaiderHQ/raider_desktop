@@ -177,7 +177,9 @@
     "tabs": {
       "files": "Failai",
       "dashboard": "Prietaisų skydelis"
-    }
+    },
+    "installingDependencies": "Diegiamos priklausomybės...",
+    "starting": "Pradedamas testų vykdymas..."
   },
   "editor": {
     "placeholder": "Pradėkite redaguoti failo turinį čia...",

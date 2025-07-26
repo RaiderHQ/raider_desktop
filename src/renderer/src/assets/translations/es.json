@@ -177,7 +177,9 @@
     "tabs": {
       "files": "Archivos",
       "dashboard": "Tablero"
-    }
+    },
+    "installingDependencies": "Instalando dependencias...",
+    "starting": "Iniciando la ejecución de la prueba..."
   },
   "editor": {
     "placeholder": "Comience a editar el contenido del archivo aquí...",
