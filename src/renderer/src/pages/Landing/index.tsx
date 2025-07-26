@@ -74,9 +74,6 @@ const Landing: React.FC = (): JSX.Element => {
           />
         </div>
       </main>
-      <footer className="flex justify-center py-4 bg-white">
-        <p className="text-gray-500">{t('version', { version: raiderVersion })}</p>
-      </footer>
     </div>
   )
 }
