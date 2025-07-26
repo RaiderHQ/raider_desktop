@@ -1,3 +1,5 @@
+import React from 'react'
+
 interface ButtonProps {
   type?: 'primary' | 'secondary' | 'disabled' | 'success'
   onClick?: () => void

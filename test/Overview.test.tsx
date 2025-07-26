@@ -1,0 +1,68 @@
+import React from 'react'
+import { render, screen, act } from '@testing-library/react'
+import Overview from '@pages/Overview'
+import '@testing-library/jest-dom'
+import { vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
+import useProjectStore from '@foundation/Stores/projectStore'
+
+// Mocking necessary modules and hooks
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}))
+
+vi.mock('@components/Library/Folder', () => ({
+  default: ({ name }: { name: string | undefined }) => <div data-testid="folder">{name}</div>,
+}))
+
+const mockNavigate = vi.fn()
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom')
+  return {
+    // @ts-ignore
+    ...actual,
+    useNavigate: () => mockNavigate,
+  }
+})
+
+const mockApi = {
+  readDirectory: vi.fn().mockResolvedValue([]),
+}
+
+beforeEach(() => {
+  // @ts-ignore
+  window.api = mockApi
+})
+
+
+describe('Overview Page', () => {
+  it('renders correctly with a project path', async () => {
+    // @ts-ignore
+    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+
+    expect(screen.getByTestId('folder')).toHaveTextContent('project')
+  })
+
+  it('navigates to /start-project if no project path is set', async () => {
+    // @ts-ignore
+    useProjectStore.setState({ projectPath: null, files: [] })
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+
+    expect(mockNavigate).toHaveBeenCalledWith('/start-project')
+  })
+})
