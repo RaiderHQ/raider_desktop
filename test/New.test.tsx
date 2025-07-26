@@ -1,4 +1,3 @@
-import React from 'react'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import CreateProject from '@pages/New'
 import '@testing-library/jest-dom'
@@ -7,35 +6,37 @@ import { MemoryRouter } from 'react-router-dom'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
+  useTranslation: (): { t: (key: string) => string } => ({
+    t: (key: string): string => key
+  })
 }))
 
 vi.mock('@foundation/Stores/loadingStore', () => ({
   __esModule: true,
-  default: (selector: (state: any) => any) => {
+  default: (
+    selector: (state: { loading: boolean; setLoading: () => void }) => unknown
+  ): unknown => {
     const state = {
       loading: false,
-      setLoading: vi.fn(),
+      setLoading: vi.fn()
     }
     return selector(state)
-  },
+  }
 }))
 
 vi.mock('@foundation/Stores/projectStore', () => ({
   __esModule: true,
-  default: (selector: (state: any) => any) => {
+  default: (selector: (state: { setProjectPath: () => void }) => unknown): unknown => {
     const state = {
-      setProjectPath: vi.fn(),
+      setProjectPath: vi.fn()
     }
     return selector(state)
-  },
+  }
 }))
 
-describe('CreateProject Page', () => {
-  it('renders correctly', async () => {
-    await act(async () => {
+describe('CreateProject Page', (): void => {
+  it('renders correctly', async (): Promise<void> => {
+    await act(async (): Promise<void> => {
       render(
         <MemoryRouter>
           <CreateProject />
@@ -51,8 +52,8 @@ describe('CreateProject Page', () => {
     expect(screen.getByText('button.create.text')).toBeInTheDocument()
   })
 
-  it('shows mobile platform select when Appium is selected', async () => {
-    await act(async () => {
+  it('shows mobile platform select when Appium is selected', async (): Promise<void> => {
+    await act(async (): Promise<void> => {
       render(
         <MemoryRouter>
           <CreateProject />
