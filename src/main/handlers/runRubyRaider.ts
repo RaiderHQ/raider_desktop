@@ -51,20 +51,15 @@ const handler = async (
         cwd: normalizedFolderPath
       }
 
-      console.log(`[MainProcess] Executing command: ${commandToExecute}`)
-
       exec(commandToExecute, options, (error, stdout, stderr) => {
         if (error) {
           const errorMessage = `Error: ${error.message}\n--- STDERR ---\n${stderr.trim()}\n--- STDOUT ---\n${stdout.trim()}`
-          console.error(`[ERROR] runRubyRaider: ${errorMessage}`)
           resolve({ success: false, error: errorMessage, output: stdout.trim() })
           return
         }
-        console.log(`[SUCCESS] runRubyRaider: ${stdout}`)
         resolve({ success: true, output: stdout.trim() })
       })
     } catch (e) {
-      console.error('Error creating project:', e)
       resolve({
         success: false,
         output: '',

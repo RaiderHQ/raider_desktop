@@ -63,8 +63,6 @@ const CreateProject: React.FC = () => {
         rubyCommand || ''
       )
 
-      // Add this block back for debugging
-      console.log('Raider result from main process:', raiderResult)
       if (!raiderResult || !raiderResult.success) {
         toast.error(`Project creation failed: ${raiderResult?.error}`)
         setLoading(false)

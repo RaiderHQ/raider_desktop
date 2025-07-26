@@ -1,9 +1,7 @@
 import { setProjectBaseUrl } from './appState'
 
-function loadUrlRequest(url: string): { success: boolean } {
+const handler = (url: string): void => {
   setProjectBaseUrl(url)
-  console.log(`[MainProcess] Project base URL set to: ${url}`)
-  return { success: true }
 }
 
-export default loadUrlRequest
+export default handler
