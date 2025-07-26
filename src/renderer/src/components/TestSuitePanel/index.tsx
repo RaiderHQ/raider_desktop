@@ -27,7 +27,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
   onDeleteSuite,
   onTestDeleteRequest,
   onRunAllTests,
-  onReorderTests,
+  onReorderTests
 }) => {
   const { t } = useTranslation()
   const activeSuite = suites.find((s) => s.id === activeSuiteId)
@@ -44,17 +44,17 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
     setDisplayedTests(activeSuite?.tests ?? [])
   }, [activeSuite?.tests])
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+  useEffect((): (() => void) => {
+    const handleClickOutside = (event: MouseEvent): void => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsSuiteDropdownOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    return (): void => document.removeEventListener('mousedown', handleClickOutside)
   }, [dropdownRef])
 
-  const handleCreateSuiteConfirm = () => {
+  const handleCreateSuiteConfirm = (): void => {
     if (newSuiteName.trim()) {
       onCreateSuite(newSuiteName.trim())
       setNewSuiteName('')
@@ -62,11 +62,11 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
     }
   }
 
-  const handleDeleteSuite = () => {
+  const handleDeleteSuite = (): void => {
     if (activeSuiteId && activeSuite) {
       if (
         window.confirm(
-          t('recorder.testSuitePanel.deleteConfirmation', { suiteName: activeSuite.name }),
+          t('recorder.testSuitePanel.deleteConfirmation', { suiteName: activeSuite.name })
         )
       ) {
         onDeleteSuite(activeSuiteId)
@@ -75,22 +75,22 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
     setIsSuiteDropdownOpen(false)
   }
 
-  const handleNewSuiteClick = () => {
+  const handleNewSuiteClick = (): void => {
     setIsCreatingSuite(true)
     setIsSuiteDropdownOpen(false)
   }
 
-  const handleRunAllClick = () => {
+  const handleRunAllClick = (): void => {
     if (activeSuite && activeSuite.id) {
       onRunAllTests(activeSuite.id)
     }
   }
 
-  const handleDragStart = (index: number) => {
+  const handleDragStart = (index: number): void => {
     dragItemIndex.current = index
   }
 
-  const handleDragEnter = (index: number) => {
+  const handleDragEnter = (index: number): void => {
     if (dragItemIndex.current === null || dragItemIndex.current === index) {
       return
     }
@@ -101,7 +101,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
     setDisplayedTests(newTests)
   }
 
-  const handleDragEnd = () => {
+  const handleDragEnd = (): void => {
     if (activeSuiteId && displayedTests) {
       onReorderTests(activeSuiteId, displayedTests)
     }

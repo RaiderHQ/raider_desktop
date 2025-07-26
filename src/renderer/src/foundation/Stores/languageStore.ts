@@ -8,14 +8,14 @@ interface LanguageState {
 
 const useLanguageStore = create<LanguageState>()(
   persist(
-    (set) => ({
+    (set): LanguageState => ({
       language: 'en',
-      setLanguage: (language) => set({ language }),
+      setLanguage: (language: string): void => set({ language })
     }),
     {
-      name: 'language-storage',
-    },
-  ),
+      name: 'language-storage'
+    }
+  )
 )
 
 export default useLanguageStore

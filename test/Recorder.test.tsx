@@ -1,4 +1,3 @@
-import React from 'react'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import Recorder from '@pages/Recorder'
 import '@testing-library/jest-dom'
@@ -6,30 +5,30 @@ import { vi } from 'vitest'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key, // Simple translation mock
-  }),
+  useTranslation: (): { t: (key: string) => string } => ({
+    t: (key: string): string => key // Simple translation mock
+  })
 }))
 
 vi.mock('@foundation/Stores/projectStore', () => ({
   __esModule: true,
-  default: vi.fn(() => '/fake/project/path'),
+  default: vi.fn(() => '/fake/project/path')
 }))
 
 vi.mock('@foundation/Stores/rubyStore', () => ({
   __esModule: true,
   default: vi.fn(() => ({
     rubyCommand: '/usr/bin/ruby',
-    setRubyCommand: vi.fn(),
-  })),
+    setRubyCommand: vi.fn()
+  }))
 }))
 
 vi.mock('@foundation/Stores/runOutputStore', () => ({
   __esModule: true,
   default: vi.fn(() => ({
     runOutput: '',
-    setRunOutput: vi.fn(),
-  })),
+    setRunOutput: vi.fn()
+  }))
 }))
 
 // Mocking electron API
@@ -52,23 +51,23 @@ const mockApi = {
   installRbenvAndRuby: vi.fn(),
   installGems: vi.fn(),
   isRubyInstalled: vi.fn().mockResolvedValue({ success: true, rubyCommand: '/usr/bin/ruby' }),
-  getSuites: vi.fn().mockResolvedValue([]),
+  getSuites: vi.fn().mockResolvedValue([])
 }
 
 beforeEach(() => {
-  // @ts-ignore
+  // @ts-expect-error - Mocking window.api
   window.api = mockApi
   window.electron = {
-    // @ts-ignore
+    // @ts-expect-error - Mocking window.electron
     ipcRenderer: {
       on: vi.fn(() => vi.fn()),
-      send: vi.fn(),
-    },
+      send: vi.fn()
+    }
   }
 })
 
-describe('Recorder Page', () => {
-  it('renders all main components correctly', async () => {
+describe('Recorder Page', (): void => {
+  it('renders all main components correctly', async (): Promise<void> => {
     await act(async () => {
       render(<Recorder />)
     })
@@ -80,7 +79,7 @@ describe('Recorder Page', () => {
     expect(screen.getByText('recorder.recorderPage.testOutput')).toBeInTheDocument()
   })
 
-  it('toggles output panel visibility', async () => {
+  it('toggles output panel visibility', async (): Promise<void> => {
     await act(async () => {
       render(<Recorder />)
     })
@@ -103,7 +102,7 @@ describe('Recorder Page', () => {
     expect(screen.queryByText('recorder.recorderPage.runOutput')).not.toBeInTheDocument()
   })
 
-  it('toggles between friendly view and code view', async () => {
+  it('toggles between friendly view and code view', async (): Promise<void> => {
     await act(async () => {
       render(<Recorder />)
     })

@@ -4,34 +4,33 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import Folder from '@components/Library/Folder'
 import useProjectStore from '@foundation/Stores/projectStore'
+import useRubyStore from '@foundation/Stores/rubyStore'
 import { FileNode } from '@foundation/Types/fileNode'
 
 const Overview: React.FC = () => {
   const { t } = useTranslation()
   const projectPath: string | null = useProjectStore((state) => state.projectPath)
   const files: FileNode[] = useProjectStore((state) => state.files)
+  const { rubyCommand } = useRubyStore()
   const navigate = useNavigate()
 
   useEffect(() => {
     if (!projectPath) {
+      // If there's no project path, redirect to the landing page.
       navigate('/start-project')
     }
   }, [projectPath, navigate])
 
-  const handleRunTests = async (): Promise<void> => {
+  const handleRunRaiderTests = async (): Promise<void> => {
     const toastId = toast.loading(t('overview.running'))
     try {
-      const suites = await window.api.getSuites()
-      if (!suites || suites.length === 0) {
-        throw new Error('No suites found to run.')
-      }
-      for (const suite of suites) {
-        const result = await window.api.runSuite(suite.id, projectPath || '')
-        if (!result.success) {
-          throw new Error(result.output || 'Test execution failed')
-        }
-      }
+      const result = await window.api.runRaiderTests(projectPath || '', rubyCommand || '')
       toast.dismiss(toastId)
+
+      if (!result.success) {
+        throw new Error(result.error || 'Test execution failed')
+      }
+
       toast.success(t('overview.runTestsSuccess'))
     } catch (error) {
       toast.dismiss(toastId)
@@ -54,7 +53,7 @@ const Overview: React.FC = () => {
               })
             }}
             isRoot={true}
-            onRunTests={handleRunTests}
+            onRunTests={handleRunRaiderTests}
           />
         </div>
       </div>

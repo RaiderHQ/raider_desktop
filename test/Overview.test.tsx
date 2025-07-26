@@ -1,4 +1,3 @@
-import React from 'react'
 import { render, screen, act } from '@testing-library/react'
 import Overview from '@pages/Overview'
 import '@testing-library/jest-dom'
@@ -8,38 +7,37 @@ import useProjectStore from '@foundation/Stores/projectStore'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
+  useTranslation: (): { t: (key: string) => string } => ({
+    t: (key: string): string => key
+  })
 }))
 
 vi.mock('@components/Library/Folder', () => ({
-  default: ({ name }: { name: string | undefined }) => <div data-testid="folder">{name}</div>,
+  default: ({ name }: { name: string | undefined }): JSX.Element => (
+    <div data-testid="folder">{name}</div>
+  )
 }))
 
 const mockNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom')
+  const original = await vi.importActual('react-router-dom')
   return {
-    // @ts-ignore
-    ...actual,
-    useNavigate: () => mockNavigate,
+    ...original,
+    useNavigate: (): (() => void) => mockNavigate
   }
 })
 
 const mockApi = {
-  readDirectory: vi.fn().mockResolvedValue([]),
+  readDirectory: vi.fn().mockResolvedValue([])
 }
 
 beforeEach(() => {
-  // @ts-ignore
+  // @ts-expect-error - Mocking window.api
   window.api = mockApi
 })
 
-
-describe('Overview Page', () => {
-  it('renders correctly with a project path', async () => {
-    // @ts-ignore
+describe('Overview Page', (): void => {
+  it('renders correctly with a project path', async (): Promise<void> => {
     useProjectStore.setState({ projectPath: '/fake/project', files: [] })
     await act(async () => {
       render(
@@ -52,8 +50,7 @@ describe('Overview Page', () => {
     expect(screen.getByTestId('folder')).toHaveTextContent('project')
   })
 
-  it('navigates to /start-project if no project path is set', async () => {
-    // @ts-ignore
+  it('navigates to /start-project if no project path is set', async (): Promise<void> => {
     useProjectStore.setState({ projectPath: null, files: [] })
     await act(async () => {
       render(

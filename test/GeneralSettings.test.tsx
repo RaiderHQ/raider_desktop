@@ -1,4 +1,3 @@
-import React from 'react'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import GeneralSettings from '@pages/GeneralSettings'
 import '@testing-library/jest-dom'
@@ -7,16 +6,16 @@ import useLanguageStore from '@foundation/Stores/languageStore'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
+  useTranslation: (): { t: (key: string) => string; i18n: { changeLanguage: () => void } } => ({
+    t: (key: string): string => key,
     i18n: {
-      changeLanguage: vi.fn(),
-    },
-  }),
+      changeLanguage: vi.fn()
+    }
+  })
 }))
 
 const setLanguage = vi.fn()
-// @ts-ignore
+// @ts-ignore - Mocking the zustand store for testing purposes.
 useLanguageStore.setState({ language: 'en', setLanguage })
 
 describe('GeneralSettings Page', () => {

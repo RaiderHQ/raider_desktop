@@ -12,7 +12,7 @@ ipcRenderer.on('update-selector-priorities', (_event, priorities: string[]) => {
 
 function getCssPath(el: Element): string {
   if (!(el instanceof Element)) return ''
-  const path = []
+  const path: string[] = []
   while (el.nodeType === Node.ELEMENT_NODE) {
     let selector = el.nodeName.toLowerCase()
     if (el.id) {

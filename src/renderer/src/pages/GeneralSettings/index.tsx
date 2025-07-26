@@ -12,7 +12,7 @@ const GeneralSettings: React.FC = () => {
     setSelectedLanguage(language)
   }, [language])
 
-  const handleSave = () => {
+  const handleSave = (): void => {
     setLanguage(selectedLanguage)
     i18n.changeLanguage(selectedLanguage)
   }
@@ -40,7 +40,7 @@ const GeneralSettings: React.FC = () => {
         </select>
       </div>
       <div className="mt-4">
-        <Button onClick={handleSave} variant="primary">
+        <Button onClick={handleSave} type="primary">
           {t('settings.general.save')}
         </Button>
       </div>

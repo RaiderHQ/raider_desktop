@@ -1,4 +1,3 @@
-import React from 'react'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import Dashboard from '@pages/Dashboard'
 import '@testing-library/jest-dom'
@@ -6,24 +5,24 @@ import { vi } from 'vitest'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key, // Simple translation mock
-  }),
+  useTranslation: (): { t: (key: string) => string } => ({
+    t: (key: string): string => key // Simple translation mock
+  })
 }))
 
 vi.mock('@components/ProjectDashboard', () => ({
-  default: () => <div>Project Dashboard</div>,
+  default: (): JSX.Element => <div>Project Dashboard</div>
 }))
 
 vi.mock('@components/RecordingDashboard', () => ({
-  default: () => <div>Recording Dashboard</div>,
+  default: (): JSX.Element => <div>Recording Dashboard</div>
 }))
 
 vi.mock('@foundation/Stores/runOutputStore', () => ({
   __esModule: true,
   default: vi.fn(() => ({
-    runOutput: '',
-  })),
+    runOutput: ''
+  }))
 }))
 
 describe('Dashboard Page', () => {

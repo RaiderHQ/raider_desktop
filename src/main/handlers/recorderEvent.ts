@@ -46,7 +46,7 @@ function recorderEvent(data: RecorderEventData): void {
   if (strategy === 'xpath') {
     escapedValue = xpathConverter(selector)
   } else {
-    escapedValue = `"${selector.replace(/"/g, '\"')}"`
+    escapedValue = `"${selector.replace(/"/g, '"')}"`
   }
 
   switch (data.action) {
@@ -56,7 +56,7 @@ function recorderEvent(data: RecorderEventData): void {
     }
 
     case 'type': {
-      const escapedDataValue = data.value!.replace(/"/g, '\"')
+      const escapedDataValue = data.value!.replace(/"/g, '"')
       commandString = `@driver.find_element(:${strategy}, ${escapedValue}).clear\n`
       commandString += `    @driver.find_element(:${strategy}, ${escapedValue}).send_keys("${escapedDataValue}")`
       break

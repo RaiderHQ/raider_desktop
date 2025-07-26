@@ -16,7 +16,11 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ message, onConfir
           <Button onClick={onCancel} type="secondary">
             Cancel
           </Button>
-          <Button onClick={onConfirm} type="danger">
+          <Button
+            onClick={onConfirm}
+            type="secondary"
+            className="bg-red-500 hover:bg-red-600 text-white"
+          >
             Confirm
           </Button>
         </div>

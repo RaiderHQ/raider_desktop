@@ -2,6 +2,7 @@ import { setRecordingSettings } from './appState'
 
 interface RecordingSettings {
   implicitWait: number
+  explicitWait: number
 }
 
 /**

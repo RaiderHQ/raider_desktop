@@ -48,10 +48,11 @@ const api = {
     ipcRenderer.invoke('edit-file', filePath, newContent),
   openAllure: async (): Promise<{ success: boolean; output?: string; error?: string }> =>
     ipcRenderer.invoke('open-allure'),
-  runTests: async (
-    folderPath: string
+  runRaiderTests: async (
+    folderPath: string,
+    rubyCommand: string
   ): Promise<{ success: boolean; output?: string; error?: string }> =>
-    ipcRenderer.invoke('run-tests', folderPath),
+    ipcRenderer.invoke('run-raider-tests', folderPath, rubyCommand),
   updateBrowserUrl: async (
     projectPath: string,
     url: string
@@ -171,7 +172,10 @@ const api = {
     rubyCommand: string
   ): Promise<{ success: boolean; output: string }> =>
     ipcRenderer.invoke('run-test', suiteId, testId, projectPath, rubyCommand),
-  updateRecordingSettings: (settings: { implicitWait: number; explicitWait: number }) =>
+  updateRecordingSettings: (settings: {
+    implicitWait: number
+    explicitWait: number
+  }): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('update-recording-settings', settings),
   getSelectorPriorities: (): Promise<string[]> => ipcRenderer.invoke('get-selector-priorities'),
   saveSelectorPriorities: (priorities: string[]): Promise<{ success: boolean }> =>
@@ -186,6 +190,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
   } catch (error) {
+    // Deliberately empty
   }
 } else {
   // @ts-ignore (define in dts)

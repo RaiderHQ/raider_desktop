@@ -53,7 +53,11 @@ export interface WindowApi {
   getSuites: () => Promise<Suite[]>
   createSuite: (suiteName: string) => Promise<{ success: boolean; suite?: Suite; error?: string }>
   deleteSuite: (suiteId: string) => Promise<{ success: boolean }>
-  runSuite: (suiteId: string) => Promise<{ success: boolean; output: string }>
+  runSuite: (
+    suiteId: string,
+    projectPath: string,
+    rubyCommand: string
+  ) => Promise<{ success: boolean; output: string }>
   exportSuite: (suiteId: string) => Promise<{ success: boolean; path?: string; error?: string }>
   exportProject: () => Promise<{ success: boolean; path?: string; error?: string }>
   importProject: () => Promise<{ success: boolean; error?: string }>

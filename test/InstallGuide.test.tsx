@@ -1,4 +1,3 @@
-import React from 'react'
 import { render, screen, act } from '@testing-library/react'
 import InstallGuide from '@pages/Info/InstallGuide'
 import '@testing-library/jest-dom'
@@ -7,9 +6,9 @@ import { MemoryRouter } from 'react-router-dom'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key, // Simple translation mock
-  }),
+  useTranslation: (): { t: (key: string) => string } => ({
+    t: (key: string): string => key // Simple translation mock
+  })
 }))
 
 describe('InstallGuide Page', () => {
@@ -43,7 +42,9 @@ describe('InstallGuide Page', () => {
         </MemoryRouter>
       )
     })
-    expect(screen.getByText('installGuide.rubyMissing installGuide.allureMissing')).toBeInTheDocument()
+    expect(
+      screen.getByText('installGuide.rubyMissing installGuide.allureMissing')
+    ).toBeInTheDocument()
   })
 
   it('renders with a custom error message', async () => {

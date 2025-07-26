@@ -5,9 +5,11 @@ interface RunOutputStore {
   setRunOutput: (output: string) => void
 }
 
-const useRunOutputStore = create<RunOutputStore>((set) => ({
-  runOutput: '',
-  setRunOutput: (output) => set({ runOutput: output })
-}))
+const useRunOutputStore = create<RunOutputStore>(
+  (set): RunOutputStore => ({
+    runOutput: '',
+    setRunOutput: (output: string): void => set({ runOutput: output })
+  })
+)
 
 export default useRunOutputStore

@@ -8,11 +8,7 @@ interface RubyInstallModalProps {
   missingGems?: string[]
 }
 
-const RubyInstallModal: React.FC<RubyInstallModalProps> = ({
-  onInstall,
-  onClose,
-  missingGems,
-}) => {
+const RubyInstallModal: React.FC<RubyInstallModalProps> = ({ onInstall, onClose, missingGems }) => {
   const { t } = useTranslation()
   const title = missingGems
     ? t('recorder.rubyInstallModal.title.missing')

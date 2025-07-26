@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ParsedCommand } from '@main/handlers/commandParser'
+import { ParsedCommand } from '@foundation/Types/command'
 
 interface CommandBlockProps {
   command: string
@@ -25,7 +25,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   const [mainCommand, comment] = command.split(' # ')
   const [parsedCommand, setParsedCommand] = useState<string | ParsedCommand>('Loading...')
 
-  useEffect(() => {
+  useEffect((): (() => void) => {
     let isMounted = true
 
     if (!showCode) {
@@ -33,26 +33,26 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
       const parser = mainCommand.includes(':xpath,')
         ? window.api.xpathParser
         : window.api.commandParser
-      parser(mainCommand).then((result) => {
+      parser(mainCommand).then((result: string | ParsedCommand) => {
         if (isMounted) {
           setParsedCommand(result)
         }
       })
     }
 
-    return () => {
+    return (): void => {
       isMounted = false
     }
   }, [mainCommand, showCode])
 
-  const CodeView = () => (
+  const CodeView = (): JSX.Element => (
     <div className="font-mono text-sm">
       <span className="text-blue-700">{mainCommand}</span>
       {comment && <span className="text-gray-500 ml-2"># {comment}</span>}
     </div>
   )
 
-  const FriendlyView = () => {
+  const FriendlyView = (): JSX.Element => {
     if (typeof parsedCommand === 'string') {
       return <span className="text-gray-800">{parsedCommand}</span>
     }

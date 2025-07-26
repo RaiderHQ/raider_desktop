@@ -1,4 +1,3 @@
-import React from 'react'
 import { render, screen, act } from '@testing-library/react'
 import Landing from '@pages/Landing'
 import '@testing-library/jest-dom'
@@ -7,37 +6,44 @@ import { MemoryRouter } from 'react-router-dom'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { version: string }) => (options ? `${key} ${options.version}` : key),
-  }),
+  useTranslation: (): { t: (key: string, options?: { version: string }) => string } => ({
+    t: (key: string, options?: { version: string }): string =>
+      options ? `${key} ${options.version}` : key
+  })
 }))
 
 vi.mock('@foundation/Stores/loadingStore', () => ({
   __esModule: true,
-  default: vi.fn(() => vi.fn()),
+  default: vi.fn(() => vi.fn())
 }))
 
 vi.mock('@foundation/Stores/projectStore', () => ({
   __esModule: true,
-  default: vi.fn(() => vi.fn()),
+  default: vi.fn(() => vi.fn())
 }))
 
 vi.mock('@foundation/Stores/versionStore', () => ({
   __esModule: true,
-  default: vi.fn(() => '1.0.0'),
+  default: vi.fn(() => '1.0.0')
 }))
 
 vi.mock('@components/ProjectSelector', () => ({
-  default: ({ description, buttonValue }: { description: string; buttonValue: string }) => (
+  default: ({
+    description,
+    buttonValue
+  }: {
+    description: string
+    buttonValue: string
+  }): JSX.Element => (
     <div>
       <p>{description}</p>
       <button>{buttonValue}</button>
     </div>
-  ),
+  )
 }))
 
-describe('Landing Page', () => {
-  it('renders correctly', async () => {
+describe('Landing Page', (): void => {
+  it('renders correctly', async (): Promise<void> => {
     await act(async () => {
       render(
         <MemoryRouter>
