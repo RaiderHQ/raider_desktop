@@ -9,7 +9,7 @@ interface ButtonProps {
 }
 
 const Button = ({
-  type = 'disabled',
+  type = 'primary',
   children,
   onClick,
   disabled = false,
@@ -18,11 +18,13 @@ const Button = ({
   const styles: Record<string, string> = {
     primary: 'bg-blue-500 text-white hover:bg-blue-600',
     secondary: 'bg-blue-100 text-blue-600 hover:bg-blue-200',
-    disabled: 'bg-gray-300 text-blue-600 hover:bg-gray-400',
+    disabled: 'bg-gray-300 text-gray-500 cursor-not-allowed',
     success: 'bg-green-500 text-white hover:bg-green-600'
   }
 
-  const baseClassName = `min-w-[150px] text-base py-2 font-semibold rounded-lg ${styles[type] || styles.disabled}`
+  const baseClassName = `min-w-[150px] text-base py-2 font-semibold rounded-lg ${
+    styles[disabled ? 'disabled' : type]
+  }`
 
   return (
     <button onClick={onClick} className={`${baseClassName} ${className}`} disabled={disabled}>
