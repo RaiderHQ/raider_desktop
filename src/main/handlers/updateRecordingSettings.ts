@@ -1,18 +1,18 @@
-import { setRecordingSettings } from './appState'
+import { appState } from './appState'
 
 interface RecordingSettings {
   implicitWait: number
+  explicitWait: number
 }
 
-/**
- * Receives recording settings from the renderer process and updates the app state.
- * @param settings - An object containing recording settings.
- * @returns An object indicating the success of the operation.
- */
-function updateRecordingSettings(settings: RecordingSettings): { success: boolean } {
-  setRecordingSettings(settings)
-  console.log(`[MainProcess] Recording settings updated:`, settings)
-  return { success: true }
+const handler = (settings: RecordingSettings): { success: boolean; error?: string } => {
+  try {
+    appState.recordingSettings.implicitWait = settings.implicitWait
+    appState.recordingSettings.explicitWait = settings.explicitWait
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
+  }
 }
 
-export default updateRecordingSettings
+export default handler

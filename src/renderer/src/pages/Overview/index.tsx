@@ -1,16 +1,19 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import Folder from '@components/Library/Folder'
 import useProjectStore from '@foundation/Stores/projectStore'
+import useRubyStore from '@foundation/Stores/rubyStore'
 import { FileNode } from '@foundation/Types/fileNode'
 
 const Overview: React.FC = () => {
   const { t } = useTranslation()
   const projectPath: string | null = useProjectStore((state) => state.projectPath)
   const files: FileNode[] = useProjectStore((state) => state.files)
+  const { rubyCommand } = useRubyStore()
   const navigate = useNavigate()
+  const [currentToastId, setCurrentToastId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!projectPath) {
@@ -18,24 +21,45 @@ const Overview: React.FC = () => {
     }
   }, [projectPath, navigate])
 
-  const handleRunTests = async (): Promise<void> => {
-    const toastId = toast.loading(t('overview.running'))
-    try {
-      const suites = await window.api.getSuites()
-      if (!suites || suites.length === 0) {
-        throw new Error('No suites found to run.')
-      }
-      for (const suite of suites) {
-        const result = await window.api.runSuite(suite.id, projectPath || '')
-        if (!result.success) {
-          throw new Error(result.output || 'Test execution failed')
+  useEffect(() => {
+    const handleStatusUpdate = (
+      _event: Electron.IpcRendererEvent,
+      { status }: { status: string }
+    ): void => {
+      if (currentToastId) {
+        if (status === 'installing') {
+          toast.loading(t('overview.installingDependencies'), { id: currentToastId })
+        } else if (status === 'running') {
+          toast.loading(t('overview.running'), { id: currentToastId })
         }
       }
+    }
+
+    window.api.onTestRunStatus(handleStatusUpdate)
+
+    return (): void => {
+      window.api.removeTestRunStatusListener(handleStatusUpdate)
+    }
+  }, [currentToastId, t])
+
+  const handleRunRaiderTests = async (): Promise<void> => {
+    const toastId = toast.loading(t('overview.starting'))
+    setCurrentToastId(toastId)
+
+    try {
+      const result = await window.api.runRaiderTests(projectPath || '', rubyCommand || '')
       toast.dismiss(toastId)
+      setCurrentToastId(null)
+
+      if (!result.success) {
+        throw new Error(result.error || 'Test execution failed')
+      }
+
       toast.success(t('overview.runTestsSuccess'))
     } catch (error) {
-      toast.dismiss(toastId)
-      toast.error(`${t('overview.error.runTests')}: ${error}`)
+      if (toastId) toast.dismiss(toastId)
+      setCurrentToastId(null)
+      toast.error(`${t('overview.error.runTests')}: ${(error as Error).message}`)
     }
   }
 
@@ -54,7 +78,7 @@ const Overview: React.FC = () => {
               })
             }}
             isRoot={true}
-            onRunTests={handleRunTests}
+            onRunTests={handleRunRaiderTests}
           />
         </div>
       </div>

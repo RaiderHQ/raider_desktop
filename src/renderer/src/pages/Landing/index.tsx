@@ -1,3 +1,4 @@
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -7,7 +8,6 @@ import OpenFolder from '@assets/icons/open-folder.svg'
 import AddIcon from '@assets/icons/add.svg'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
-import useVersionStore from '@foundation/Stores/versionStore'
 
 const Landing: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -20,9 +20,7 @@ const Landing: React.FC = (): JSX.Element => {
     (state: { setProjectPath: (path: string) => void }) => state.setProjectPath
   )
 
-  const raiderVersion = useVersionStore((state: { version: string }) => state.version)
-
-  const handleOpenProject = async () => {
+  const handleOpenProject = async (): Promise<void> => {
     try {
       setLoading(true)
       const folder = await window.api.selectFolder(t('landing.error.selectFolder'))
@@ -73,9 +71,6 @@ const Landing: React.FC = (): JSX.Element => {
           />
         </div>
       </main>
-      <footer className="flex justify-center py-4 bg-white">
-        <p className="text-gray-500">{t('version', { version: raiderVersion })}</p>
-      </footer>
     </div>
   )
 }

@@ -50,26 +50,26 @@ const RecordingSettings: React.FC = () => {
     }
   }
 
-  const handleAddSelector = () => {
+  const handleAddSelector = (): void => {
     if (newSelector && !selectorPriorities.includes(newSelector)) {
       setSelectorPriorities([...selectorPriorities, newSelector])
       setNewSelector('')
     }
   }
 
-  const handleDeleteSelector = (selectorToDelete: string) => {
+  const handleDeleteSelector = (selectorToDelete: string): void => {
     setSelectorPriorities(selectorPriorities.filter((s) => s !== selectorToDelete))
   }
 
-  const handleDragStart = (index: number) => {
+  const handleDragStart = (index: number): void => {
     dragItem.current = index
   }
 
-  const handleDragEnter = (index: number) => {
+  const handleDragEnter = (index: number): void => {
     dragOverItem.current = index
   }
 
-  const handleDragEnd = () => {
+  const handleDragEnd = (): void => {
     if (dragItem.current !== null && dragOverItem.current !== null) {
       const newPriorities = [...selectorPriorities]
       const draggedItemContent = newPriorities.splice(dragItem.current, 1)[0]

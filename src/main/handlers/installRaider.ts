@@ -1,11 +1,9 @@
-import { runCommand } from './runRubyRaider'
+import runCommand from './runCommand'
 import { CommandType } from '@foundation/Types/commandType'
+import { IpcMainInvokeEvent } from 'electron'
 
-const handler = async (): Promise<CommandType> => {
-  return runCommand('gem', ['install', 'ruby_raider', '-v', '1.1.2'], {
-    shell: process.platform === 'win32',
-    cwd: process.cwd()
-  })
+const handler = async (_event: IpcMainInvokeEvent): Promise<CommandType> => {
+  return runCommand(_event, 'gem install ruby_raider -v 1.1.2')
 }
 
 export default handler

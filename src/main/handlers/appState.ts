@@ -5,8 +5,10 @@ interface AppState {
   mainWindow: BrowserWindow | null
   recorderWindow: BrowserWindow | null
   projectBaseUrl: string
+  projectPath: string | null
   suites: Map<string, Suite>
   selectorPriorities: string[]
+  recordingSettings: RecordingSettings
 }
 
 interface RecordingSettings {
@@ -39,8 +41,13 @@ export const appState: AppState = {
   mainWindow: null,
   recorderWindow: null,
   projectBaseUrl: 'https://www.google.com',
+  projectPath: null,
   suites: new Map(),
-  selectorPriorities: ['id', 'css', 'xpath']
+  selectorPriorities: ['id', 'css', 'xpath'],
+  recordingSettings: {
+    implicitWait: 0,
+    explicitWait: 30
+  }
 }
 
 export function setMainWindow(window: BrowserWindow | null): void {

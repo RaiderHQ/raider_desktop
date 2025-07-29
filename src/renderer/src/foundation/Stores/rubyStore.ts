@@ -5,9 +5,11 @@ interface RubyStore {
   setRubyCommand: (command: string | null) => void
 }
 
-const useRubyStore = create<RubyStore>((set) => ({
-  rubyCommand: null,
-  setRubyCommand: (command) => set({ rubyCommand: command })
-}))
+const useRubyStore = create<RubyStore>(
+  (set): RubyStore => ({
+    rubyCommand: null,
+    setRubyCommand: (command: string | null): void => set({ rubyCommand: command })
+  })
+)
 
 export default useRubyStore

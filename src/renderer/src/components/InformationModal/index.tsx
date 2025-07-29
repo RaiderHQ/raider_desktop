@@ -6,8 +6,8 @@ interface ModalProps {
   onClose: () => void
 }
 
-const InformationModal: React.FC<ModalProps> = ({ title, message, onClose }) => {
-  const handleOutsideClick = (e: React.MouseEvent) => {
+const InformationModal: React.FC<ModalProps> = ({ title, message, onClose }): JSX.Element => {
+  const handleOutsideClick = (e: React.MouseEvent): void => {
     if ((e.target as HTMLElement).id === 'modal-overlay') {
       onClose()
     }

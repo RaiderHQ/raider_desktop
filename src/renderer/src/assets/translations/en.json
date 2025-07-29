@@ -134,7 +134,16 @@
     },
     "tabs": {
       "project": "Project Settings",
-      "recording": "Recording Settings"
+      "recording": "Recording Settings",
+      "general": "General Settings"
+    },
+    "general": {
+      "title": "General Settings",
+      "description": "Adjust general application settings.",
+      "language": {
+        "label": "Language"
+      },
+      "save": "Save"
     },
     "recording": {
       "title": "Recording Settings",
@@ -168,7 +177,9 @@
     "tabs": {
       "files": "Files",
       "dashboard": "Dashboard"
-    }
+    },
+    "installingDependencies": "Installing dependencies...",
+    "starting": "Starting test run..."
   },
   "editor": {
     "placeholder": "Start editing file content here...",
@@ -244,6 +255,92 @@
     "heading": {
       "recordedSteps": "Recorded Steps",
       "runOutput": "Run Output"
+    },
+    "assertionTextModal": {
+      "title": "Assert Element Text",
+      "message": "Enter the exact text you expect the element to contain.",
+      "label": "Expected Text",
+      "cancel": "Cancel",
+      "save": "Save Assertion"
+    },
+    "deleteModal": {
+      "title": "Confirm Deletion",
+      "message": "Are you sure you want to delete the test",
+      "cancel": "Cancel",
+      "delete": "Delete"
+    },
+    "rubyInstallModal": {
+      "title": {
+        "missing": "Missing Dependencies",
+        "required": "Ruby Installation Required"
+      },
+      "message": {
+        "missing": "The following gems are missing: {{missingGems}}. Would you like to install them?",
+        "required": "In order to use all the features of the Raider Desktop App, you need Ruby in your system. Would you like to install rbenv, Ruby, and all the dependencies?"
+      },
+      "yes": "Yes",
+      "no": "No"
+    },
+    "mainRecorderPanel": {
+      "suite": "Suite: {{activeSuiteName}}",
+      "noSuite": "No Suite Selected",
+      "testName": "Test Name",
+      "url": "URL to Record",
+      "newTest": "New Test",
+      "import": "Import",
+      "export": "Export",
+      "record": "Record",
+      "run": "Run",
+      "stop": "Stop",
+      "exportTest": "Export Test",
+      "exportSuite": "Export Suite",
+      "exportProject": "Export Project",
+      "importTest": "Import Test",
+      "importSuite": "Import Suite",
+      "importProject": "Import Project",
+      "exportSuccess": "{{exportType}} exported to {{path}}",
+      "exportError": "Export failed: {{error}}",
+      "importSuccess": "{{importType}} imported successfully!",
+      "importError": "Import failed: {{error}}"
+    },
+    "outputPanel": {
+      "title": "Test Results:",
+      "error": "Error:",
+      "placeholder": "Test output will appear here..."
+    },
+    "testSuitePanel": {
+      "selectSuite": "Select a Suite",
+      "newSuite": "+ New Suite...",
+      "deleteSuite": "- Delete Current Suite",
+      "runAll": "Run All",
+      "newSuiteName": "New suite name...",
+      "cancel": "Cancel",
+      "create": "Create",
+      "deleteConfirmation": "Are you sure you want to delete the suite \"{{suiteName}}\"? This cannot be undone."
+    },
+    "recorderPage": {
+      "testSuites": "Test Suites",
+      "recordedSteps": "Recorded Steps",
+      "runOutput": "Run Output",
+      "codeView": "Code View",
+      "friendlyView": "Friendly View",
+      "hideOutput": "Hide Output",
+      "testOutput": "Test Output"
+    },
+    "commandParser": {
+      "visit": "Visit {{url}}",
+      "waitForElementDisplayed": "Wait for element with {{strategy}} \"{{value}}\" to be displayed",
+      "waitForElementEnabled": "Wait for element with {{strategy}} \"{{value}}\" to be enabled",
+      "clickElement": "Click element with {{strategy}} \"{{value}}\"",
+      "pressKey": "Press the {{key}} key on element with {{strategy}} \"{{value}}\"",
+      "typeText": "Type \"{{text}}\" into element with {{strategy}} \"{{value}}\"",
+      "wait": "Wait for {{seconds}} seconds",
+      "executeScript": "Execute script: {{script}}",
+      "switchToFrame": "Switch to frame identified by {{frame}}",
+      "switchToDefaultContent": "Switch back to main content",
+      "assertElementDisplayed": "Assert that element with {{strategy}} \"{{value}}\" is displayed",
+      "assertElementEnabled": "Assert that element with {{strategy}} \"{{value}}\" is enabled",
+      "assertElementTextEquals": "Assert that element with {{strategy}} \"{{value}}\" has text equal to \"{{text}}\""
     }
   }
 }

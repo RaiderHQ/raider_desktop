@@ -1,5 +1,6 @@
 import React from 'react'
 import Button from '@components/Button'
+import { useTranslation } from 'react-i18next'
 
 interface RubyInstallModalProps {
   onInstall: () => void
@@ -8,10 +9,13 @@ interface RubyInstallModalProps {
 }
 
 const RubyInstallModal: React.FC<RubyInstallModalProps> = ({ onInstall, onClose, missingGems }) => {
-  const title = missingGems ? 'Missing Dependencies' : 'Ruby Installation Required'
+  const { t } = useTranslation()
+  const title = missingGems
+    ? t('recorder.rubyInstallModal.title.missing')
+    : t('recorder.rubyInstallModal.title.required')
   const message = missingGems
-    ? `The following gems are missing: ${missingGems.join(', ')}. Would you like to install them?`
-    : 'In order to use all the features of the Raider Desktop App, you need Ruby in your system. Would you like to install rbenv, Ruby, and all the dependencies?'
+    ? t('recorder.rubyInstallModal.message.missing', { missingGems: missingGems.join(', ') })
+    : t('recorder.rubyInstallModal.message.required')
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -20,10 +24,10 @@ const RubyInstallModal: React.FC<RubyInstallModalProps> = ({ onInstall, onClose,
         <p className="text-lg mb-6">{message}</p>
         <div className="flex justify-center space-x-4">
           <Button onClick={onInstall} type="success">
-            Yes
+            {t('recorder.rubyInstallModal.yes')}
           </Button>
           <Button onClick={onClose} type="secondary">
-            No
+            {t('recorder.rubyInstallModal.no')}
           </Button>
         </div>
       </div>

@@ -70,8 +70,6 @@ const runRecording = async (appState: AppState): Promise<{ success: boolean; out
   const tempFilePath = path.join(os.tmpdir(), `test_${Date.now()}.rb`)
 
   try {
-    console.log('[MainProcess] Generating and running test...')
-
     const newPath = (process.env.PATH || '')
       .split(path.delimiter)
       .filter((p) => !p.includes(path.join('node_modules', '.bin')))
@@ -86,18 +84,13 @@ const runRecording = async (appState: AppState): Promise<{ success: boolean; out
     const testCode = generateRspecCode(name, steps, implicitWait, explicitWait)
 
     await fs.writeFile(tempFilePath, testCode)
-    console.log(`[MainProcess] Test file written to: ${tempFilePath}`)
 
     const command = `${rubyCommand} -S rspec ${tempFilePath} --format json`
-    console.log(`[MainProcess] Executing command: ${command}`)
 
     return await new Promise((resolve) => {
       exec(command, { env: executionEnv }, (error, stdout, stderr) => {
-        if (stdout) console.log('[MainProcess] Test stdout:\n', stdout)
-        if (stderr) console.error('[MainProcess] Test stderr:\n', stderr)
         // RSpec with --format json outputs to stdout even on failure, so we check stderr for errors
         if (error && stderr) {
-          console.error('[MainProcess] Test execution failed with error object:', error)
           const fullErrorOutput = `RSpec execution failed.\n\n--- STDERR ---\n${stderr}\n\n--- STDOUT ---\n${stdout}\n\n--- ERROR --- \n${error.message}`
           resolve({ success: false, output: fullErrorOutput })
           return
@@ -107,14 +100,12 @@ const runRecording = async (appState: AppState): Promise<{ success: boolean; out
     })
   } catch (e: unknown) {
     const errorMessage = e instanceof Error ? e.message : String(e)
-    console.error(`[MainProcess] A critical error occurred: ${errorMessage}`)
     return { success: false, output: errorMessage }
   } finally {
     try {
       await fs.unlink(tempFilePath)
-      console.log(`[MainProcess] Cleaned up temp file: ${tempFilePath}`)
     } catch (cleanupError) {
-      console.warn(`[MainProcess] Could not clean up temp file: ${cleanupError}`)
+      // Deliberately empty
     }
   }
 }

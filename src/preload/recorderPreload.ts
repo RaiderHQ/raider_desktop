@@ -12,7 +12,7 @@ ipcRenderer.on('update-selector-priorities', (_event, priorities: string[]) => {
 
 function getCssPath(el: Element): string {
   if (!(el instanceof Element)) return ''
-  const path = []
+  const path: string[] = []
   while (el.nodeType === Node.ELEMENT_NODE) {
     let selector = el.nodeName.toLowerCase()
     if (el.id) {
@@ -35,7 +35,7 @@ function getCssPath(el: Element): string {
 
 function getXPath(element: Element): string {
   if (element.id !== '') {
-    return `id("${element.id}")`
+    return `//*[@id="${element.id}"]`
   }
   if (element === document.body) {
     return element.tagName.toLowerCase()
@@ -63,33 +63,39 @@ function getXPath(element: Element): string {
   return ''
 }
 
-function getPrioritizedSelector(el: Element): string {
+function getPrioritizedSelector(el: Element): { selector: string; strategy: string } {
   for (const priority of selectorPriorities) {
     if (priority === 'id' && el.id) {
       if (document.querySelectorAll(`#${el.id}`).length === 1) {
-        return `#${el.id}`
+        return { selector: el.id, strategy: 'id' }
       }
     } else if (priority === 'css') {
       const selector = getCssPath(el)
       if (selector && document.querySelectorAll(selector).length === 1) {
-        return selector
+        return { selector, strategy: 'css' }
       }
     } else if (priority === 'xpath') {
       const selector = getXPath(el)
-      if (selector) return selector
+      if (selector) return { selector, strategy: 'xpath' }
     } else {
       // Handle custom attributes
       const customSelector = el.getAttribute(priority)
       if (customSelector) {
         const selector = `[${priority}="${customSelector}"]`
         if (document.querySelectorAll(selector).length === 1) {
-          return selector
+          return { selector, strategy: 'css' }
         }
       }
     }
   }
   // Fallback to a robust selector if no priority matches
-  return getCssPath(el) || getXPath(el)
+  const cssPath = getCssPath(el)
+  if (cssPath) return { selector: cssPath, strategy: 'css' }
+
+  const xpath = getXPath(el)
+  if (xpath) return { selector: xpath, strategy: 'xpath' }
+
+  return { selector: '', strategy: '' }
 }
 
 document.addEventListener(
@@ -98,9 +104,11 @@ document.addEventListener(
     const target = event.target as HTMLElement
     if (target.tagName === 'HTML') return
 
+    const { selector, strategy } = getPrioritizedSelector(target)
     ipcRenderer.send('recorder-event', {
       action: 'click',
-      selector: getPrioritizedSelector(target),
+      selector,
+      strategy,
       tagName: target.tagName
     })
   },
@@ -112,9 +120,11 @@ document.addEventListener(
   (event) => {
     const target = event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
+      const { selector, strategy } = getPrioritizedSelector(target)
       ipcRenderer.send('recorder-event', {
         action: 'type',
-        selector: getPrioritizedSelector(target),
+        selector,
+        strategy,
         tagName: target.tagName,
         value: target.value
       })
@@ -140,9 +150,11 @@ document.addEventListener(
     if (recordableKeys.includes(key)) {
       const target = event.target as HTMLElement
       if (target) {
+        const { selector, strategy } = getPrioritizedSelector(target)
         ipcRenderer.send('recorder-event', {
           action: 'sendKeys',
-          selector: getPrioritizedSelector(target),
+          selector,
+          strategy,
           tagName: target.tagName,
           value: key
         })
@@ -158,9 +170,9 @@ document.addEventListener(
     event.preventDefault()
     const target = event.target as HTMLElement
     if (target) {
-      const selector = getPrioritizedSelector(target)
+      const { selector, strategy } = getPrioritizedSelector(target)
       const elementText = target.innerText || ''
-      ipcRenderer.send('show-assertion-context-menu', { selector, elementText })
+      ipcRenderer.send('show-assertion-context-menu', { selector, strategy, elementText })
     }
   },
   true

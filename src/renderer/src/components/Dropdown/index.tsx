@@ -35,14 +35,14 @@ const Dropdown: React.FC<DropdownProps> = ({
     options[index].onClick()
   }
 
-  useEffect(() => {
+  useEffect((): (() => void) => {
     const handleClickOutside = (event: MouseEvent): void => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
-    return () => {
+    return (): void => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
@@ -70,7 +70,7 @@ const Dropdown: React.FC<DropdownProps> = ({
               <a
                 href="#"
                 key={index}
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent<HTMLAnchorElement, MouseEvent>): void => {
                   e.preventDefault()
                   handleOptionClick(index)
                 }}

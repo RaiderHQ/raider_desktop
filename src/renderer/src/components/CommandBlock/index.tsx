@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ParsedCommand } from '@foundation/Types/command'
 
 interface CommandBlockProps {
   command: string
@@ -19,39 +21,44 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   onDragEnd,
   onDelete
 }) => {
+  const { t } = useTranslation()
   const [mainCommand, comment] = command.split(' # ')
+  const [parsedCommand, setParsedCommand] = useState<string | ParsedCommand>('Loading...')
 
-  const [friendlyText, setFriendlyText] = useState('Loading...')
-
-  useEffect(() => {
+  useEffect((): (() => void) => {
     let isMounted = true
 
     if (!showCode) {
-      setFriendlyText('Loading...')
-      window.api.commandParser(mainCommand).then((text) => {
+      setParsedCommand('Loading...')
+      const parser = mainCommand.includes(':xpath,')
+        ? window.api.xpathParser
+        : window.api.commandParser
+      parser(mainCommand).then((result: string | ParsedCommand) => {
         if (isMounted) {
-          setFriendlyText(text)
+          setParsedCommand(result)
         }
       })
     }
 
-    return () => {
+    return (): void => {
       isMounted = false
     }
   }, [mainCommand, showCode])
 
-  const CodeView = () => (
+  const CodeView = (): JSX.Element => (
     <div className="font-mono text-sm">
       <span className="text-blue-700">{mainCommand}</span>
       {comment && <span className="text-gray-500 ml-2"># {comment}</span>}
     </div>
   )
 
-  const FriendlyView = () => (
-    <div className="font-sans text-sm">
-      <span className="text-gray-800">{friendlyText}</span>
-    </div>
-  )
+  const FriendlyView = (): JSX.Element => {
+    if (typeof parsedCommand === 'string') {
+      return <span className="text-gray-800">{parsedCommand}</span>
+    }
+    const { key, values } = parsedCommand
+    return <span className="text-gray-800">{t(key, values)}</span>
+  }
 
   return (
     <div className="relative w-full mb-3">

@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { FileNode } from '@foundation/Types/fileNode'
 import type { CommandType } from '@foundation/Types/commandType'
@@ -18,6 +18,7 @@ const api = {
     projectName: string,
     framework: string,
     automation: string,
+    rubyCommand: string,
     mobile: string | null = null
   ): Promise<CommandType> => {
     return ipcRenderer.invoke(
@@ -26,7 +27,8 @@ const api = {
       projectName,
       framework,
       automation,
-      mobile // Pass the optional mobile parameter to the main process
+      rubyCommand,
+      mobile
     )
   },
   selectFolder: async (title: string): Promise<string | null> =>
@@ -48,10 +50,11 @@ const api = {
     ipcRenderer.invoke('edit-file', filePath, newContent),
   openAllure: async (): Promise<{ success: boolean; output?: string; error?: string }> =>
     ipcRenderer.invoke('open-allure'),
-  runTests: async (
-    folderPath: string
+  runRaiderTests: async (
+    folderPath: string,
+    rubyCommand: string
   ): Promise<{ success: boolean; output?: string; error?: string }> =>
-    ipcRenderer.invoke('run-tests', folderPath),
+    ipcRenderer.invoke('run-raider-tests', folderPath, rubyCommand),
   updateBrowserUrl: async (
     projectPath: string,
     url: string
@@ -153,8 +156,12 @@ const api = {
   stopRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('stop-recording-main'),
   loadUrlRequest: async (url: string): Promise<CommandType> =>
     ipcRenderer.invoke('load-url-request', url),
-  commandParser: (command: string): Promise<string> =>
-    ipcRenderer.invoke('command-parser', command),
+  xpathParser: (command: string): Promise<string> => {
+    return ipcRenderer.invoke('xpath-parser', command)
+  },
+  commandParser: (command: string): Promise<string> => {
+    return ipcRenderer.invoke('command-parser', command)
+  },
   exportTest: (
     testName: string,
     steps: string[]
@@ -167,11 +174,20 @@ const api = {
     rubyCommand: string
   ): Promise<{ success: boolean; output: string }> =>
     ipcRenderer.invoke('run-test', suiteId, testId, projectPath, rubyCommand),
-  updateRecordingSettings: (settings: { implicitWait: number; explicitWait: number }) =>
+  updateRecordingSettings: (settings: {
+    implicitWait: number
+    explicitWait: number
+  }): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('update-recording-settings', settings),
   getSelectorPriorities: (): Promise<string[]> => ipcRenderer.invoke('get-selector-priorities'),
   saveSelectorPriorities: (priorities: string[]): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke('save-selector-priorities', priorities)
+    ipcRenderer.invoke('save-selector-priorities', priorities),
+  onTestRunStatus: (
+    callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
+  ): Electron.IpcRenderer => ipcRenderer.on('test-run-status', callback),
+  removeTestRunStatusListener: (
+    callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
+  ): Electron.IpcRenderer => ipcRenderer.removeListener('test-run-status', callback)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
@@ -182,7 +198,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
   } catch (error) {
-    console.error('Error exposing APIs:', error)
+    // Deliberately empty
   }
 } else {
   // @ts-ignore (define in dts)

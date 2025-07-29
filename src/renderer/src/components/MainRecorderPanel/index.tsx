@@ -2,8 +2,10 @@ import React from 'react'
 import Button from '@components/Button'
 import InputField from '@components/InputField'
 import Dropdown from '@components/Dropdown'
+import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 
 interface MainRecorderPanelProps {
   activeSuiteName: string | undefined
@@ -44,6 +46,8 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
   onImportProject,
   activeSuiteId
 }) => {
+  const { t } = useTranslation()
+
   const handleExportClick = async (exportType: 'Test' | 'Suite' | 'Project'): Promise<void> => {
     let result
     switch (exportType) {
@@ -61,9 +65,11 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
     }
 
     if (result.success) {
-      toast.success(`${exportType} exported to ${result.path}`)
+      toast.success(
+        t('recorder.mainRecorderPanel.exportSuccess', { exportType, path: result.path })
+      )
     } else {
-      toast.error(`Export failed: ${result.error}`)
+      toast.error(t('recorder.mainRecorderPanel.exportError', { error: result.error }))
     }
   }
 
@@ -84,22 +90,40 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
     }
 
     if (result.success) {
-      toast.success(`${importType} imported successfully!`)
+      toast.success(t('recorder.mainRecorderPanel.importSuccess', { importType }))
     } else {
-      toast.error(`Import failed: ${result.error}`)
+      toast.error(t('recorder.mainRecorderPanel.importError', { error: result.error }))
     }
   }
 
   const exportOptions = [
-    { label: 'Export Test', onClick: () => handleExportClick('Test') },
-    { label: 'Export Suite', onClick: () => handleExportClick('Suite') },
-    { label: 'Export Project', onClick: () => handleExportClick('Project') }
+    {
+      label: t('recorder.mainRecorderPanel.exportTest'),
+      onClick: (): Promise<void> => handleExportClick('Test')
+    },
+    {
+      label: t('recorder.mainRecorderPanel.exportSuite'),
+      onClick: (): Promise<void> => handleExportClick('Suite')
+    },
+    {
+      label: t('recorder.mainRecorderPanel.exportProject'),
+      onClick: (): Promise<void> => handleExportClick('Project')
+    }
   ]
 
   const importOptions = [
-    { label: 'Import Test', onClick: () => handleImportClick('Test') },
-    { label: 'Import Suite', onClick: () => handleImportClick('Suite') },
-    { label: 'Import Project', onClick: () => handleImportClick('Project') }
+    {
+      label: t('recorder.mainRecorderPanel.importTest'),
+      onClick: (): Promise<void> => handleImportClick('Test')
+    },
+    {
+      label: t('recorder.mainRecorderPanel.importSuite'),
+      onClick: (): Promise<void> => handleImportClick('Suite')
+    },
+    {
+      label: t('recorder.mainRecorderPanel.importProject'),
+      onClick: (): Promise<void> => handleImportClick('Project')
+    }
   ]
 
   return (
@@ -108,7 +132,9 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
         <div className="relative flex flex-col border border-black rounded-lg bg-white p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">
-              {activeSuiteName ? `Suite: ${activeSuiteName}` : 'No Suite Selected'}
+              {activeSuiteName
+                ? t('recorder.mainRecorderPanel.suite', { activeSuiteName })
+                : t('recorder.mainRecorderPanel.noSuite')}
             </h2>
           </div>
           <div className="flex items-center space-x-4">
@@ -116,7 +142,7 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
               <InputField
                 value={activeTest?.name ?? ''}
                 onChange={onTestNameChange}
-                placeholder="Test Name"
+                placeholder={t('recorder.mainRecorderPanel.testName')}
                 disabled={!activeTest}
               />
             </div>
@@ -124,7 +150,7 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
               <InputField
                 value={activeTest?.url ?? ''}
                 onChange={onUrlChange}
-                placeholder="URL to Record"
+                placeholder={t('recorder.mainRecorderPanel.url')}
                 disabled={!activeTest}
               />
             </div>
@@ -136,11 +162,15 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
                 disabled={!activeSuiteId}
                 type={!activeSuiteId ? 'disabled' : 'secondary'}
               >
-                New Test
+                {t('recorder.mainRecorderPanel.newTest')}
               </Button>
-              <Dropdown buttonText="Import" options={importOptions} defaultOption={2} />
               <Dropdown
-                buttonText="Export"
+                buttonText={t('recorder.mainRecorderPanel.import')}
+                options={importOptions}
+                defaultOption={2}
+              />
+              <Dropdown
+                buttonText={t('recorder.mainRecorderPanel.export')}
                 options={exportOptions}
                 defaultOption={2}
                 disabled={!activeTest || isRecording}
@@ -152,21 +182,21 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
                 disabled={!activeTest || isRecording}
                 type={isRecording ? 'disabled' : 'primary'}
               >
-                Record
+                {t('recorder.mainRecorderPanel.record')}
               </Button>
               <Button
                 onClick={onRunTest}
                 disabled={!activeTest || isRecording || isRunning}
                 type={!activeTest || isRecording || isRunning ? 'disabled' : 'success'}
               >
-                Run
+                {t('recorder.mainRecorderPanel.run')}
               </Button>
               <Button
                 onClick={onStopRecording}
                 disabled={!isRecording}
                 type={!isRecording ? 'disabled' : 'secondary'}
               >
-                Stop
+                {t('recorder.mainRecorderPanel.stop')}
               </Button>
             </div>
           </div>

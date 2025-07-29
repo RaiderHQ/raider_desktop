@@ -7,6 +7,7 @@ import type { TestData } from '@foundation/Types/testData'
 import selectFolder from './handlers/selectFolder'
 import readDirectory from './handlers/readDirectory'
 import runRubyRaider from './handlers/runRubyRaider'
+import runRaiderTests from './handlers/runRaiderTests'
 import readFile from './handlers/readFile'
 import readImage from './handlers/readImage'
 import openAllure from './handlers/openAllure'
@@ -25,6 +26,7 @@ import isSystemRubyInstalled from './handlers/isSystemRubyInstalled'
 import installRbenvAndRuby from './handlers/installRbenvAndRuby'
 import installGems from './handlers/installGems'
 import runRecording from './handlers/runRecording'
+import xpathParser from './handlers/xpathParser'
 import commandParser from './handlers/commandParser'
 import getSuites from './handlers/getSuites'
 import createSuite from './handlers/createSuite'
@@ -111,10 +113,28 @@ app.whenReady().then(() => {
   ipcMain.handle('read-file', readFile)
   ipcMain.handle('read-image', readImage)
   ipcMain.handle('edit-file', editFile)
-  ipcMain.handle('run-ruby-raider', runRubyRaider)
+  ipcMain.handle(
+    'run-ruby-raider',
+    (
+      event,
+      folderPath: string,
+      projectName: string,
+      framework: string,
+      automation: string,
+      rubyCommand: string,
+      mobile: string | null
+    ) => runRubyRaider(event, folderPath, projectName, framework, automation, rubyCommand, mobile)
+  )
+  ipcMain.handle('run-raider-tests', (_event, folderPath: string, rubyCommand: string) =>
+    runRaiderTests(appState.mainWindow!, folderPath, rubyCommand)
+  )
   ipcMain.handle('is-mobile-project', isMobileProject)
-  ipcMain.handle('update-browser-url', updateBrowserUrl)
-  ipcMain.handle('update-browser-type', updateBrowserType)
+  ipcMain.handle('update-browser-url', (_event, projectPath: string, url: string) =>
+    updateBrowserUrl(projectPath, url)
+  )
+  ipcMain.handle('update-browser-type', (_event, projectPath: string, browser: string) =>
+    updateBrowserType(projectPath, browser)
+  )
   ipcMain.handle('run-command', runCommand)
   ipcMain.handle('install-raider', installRaider)
   ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)
@@ -127,7 +147,12 @@ app.whenReady().then(() => {
   ipcMain.handle('install-gems', (_event, rubyCommand: string, gems: string[]) =>
     installGems(rubyCommand, gems)
   )
-  ipcMain.handle('command-parser', (_event, command: string) => commandParser(command))
+  ipcMain.handle('xpath-parser', (_event, command: string) => {
+    return xpathParser(command)
+  })
+  ipcMain.handle('command-parser', (_event, command: string) => {
+    return commandParser(command)
+  })
   ipcMain.handle('get-suites', getSuites)
   ipcMain.handle('create-suite', (_event, suiteName: string) =>
     createSuite(appState.mainWindow!, suiteName)
@@ -155,14 +180,13 @@ app.whenReady().then(() => {
       try {
         return updateRecordingSettings(settings)
       } catch (error) {
-        console.error('Failed to update recording settings:', error)
         return { success: false, error: (error as Error).message }
       }
     }
   )
 
-  ipcMain.handle('run-suite', (_event, suiteId: string, projectPath: string, rubyCommand: string) =>
-    runSuite(suiteId, projectPath, rubyCommand)
+  ipcMain.handle('run-suite', (_event, suiteId: string, rubyCommand: string) =>
+    runSuite(suiteId, rubyCommand)
   )
   ipcMain.handle('export-test', (_event, testData: TestData) => exportTest(testData))
   ipcMain.handle('export-suite', (_event, suiteId: string) => exportSuite(suiteId))
@@ -212,7 +236,7 @@ app.whenReady().then(() => {
           },
           {
             label: 'to be enabled',
-            click: () => {
+            click: (): void => {
               appState.mainWindow!.webContents.send('add-assertion-step', {
                 type: 'wait-enabled',
                 selector
@@ -223,7 +247,7 @@ app.whenReady().then(() => {
       },
       {
         label: 'Assert element is displayed',
-        click: () => {
+        click: (): void => {
           appState.mainWindow!.webContents.send('add-assertion-step', {
             type: 'displayed',
             selector
@@ -232,7 +256,7 @@ app.whenReady().then(() => {
       },
       {
         label: 'Assert element is enabled',
-        click: () => {
+        click: (): void => {
           appState.mainWindow!.webContents.send('add-assertion-step', {
             type: 'enabled',
             selector
@@ -241,7 +265,7 @@ app.whenReady().then(() => {
       },
       {
         label: 'Assert element contains text',
-        click: () => {
+        click: (): void => {
           appState.mainWindow!.webContents.send('add-assertion-step', {
             type: 'text',
             selector,

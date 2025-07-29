@@ -1,3 +1,4 @@
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
@@ -16,10 +17,16 @@ interface InstallGuideProps {
   allureMissing: boolean
 }
 
-const InstallGuide: React.FC<InstallGuideProps> = ({ rubyMissing, rubyError, allureMissing }) => {
+const InstallGuide: React.FC<InstallGuideProps> = ({
+  rubyMissing,
+  rubyError,
+  allureMissing
+}): JSX.Element => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const handleNavigation = (url: string) => window.open(url, '_blank')
+  const handleNavigation = (url: string): void => {
+    window.open(url, '_blank')
+  }
 
   let errorMessage = ''
 

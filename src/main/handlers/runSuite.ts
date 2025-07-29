@@ -7,7 +7,6 @@ import { generateRspecCode } from './runRecording'
 
 export default async (
   suiteId: string,
-  projectPath: string,
   rubyCommand: string
 ): Promise<{ success: boolean; output: string }> => {
   const suite = appState.suites.get(suiteId)
@@ -35,7 +34,7 @@ export default async (
     const command = `${rubyCommand} -S rspec ${tempFilePaths.join(' ')} --format json`
 
     return await new Promise((resolve) => {
-      exec(command, { env: executionEnv }, (error, stdout, stderr) => {
+      exec(command, { env: executionEnv }, (_error, stdout, stderr) => {
         if (stdout) {
           resolve({ success: true, output: stdout })
         } else {

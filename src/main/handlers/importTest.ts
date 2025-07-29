@@ -49,6 +49,7 @@ export default async function importTest(
     const newTest: Test = {
       id: randomUUID(),
       name: testName,
+      url: '',
       steps: steps
     }
 
