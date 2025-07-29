@@ -13,10 +13,10 @@ import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import Button from '@components/Button'
+import { useTranslation } from 'react-i18next'
 
 import DeleteModal from '@components/DeleteModal'
 
-// Defines the structure for the data needed by the assertion modal
 interface AssertionInfo {
   selector: string
   text: string
@@ -29,7 +29,8 @@ const createNewTest = (): Test => ({
   steps: []
 })
 
-const Recorder: React.FC = () => {
+const Recorder: React.FC = (): JSX.Element => {
+  const { t } = useTranslation()
   const [suites, setSuites] = useState<Suite[]>([])
   const [activeSuiteId, setActiveSuiteId] = useState<string | null>(null)
   const [activeTest, setActiveTest] = useState<Test | null>(null)
@@ -66,38 +67,43 @@ const Recorder: React.FC = () => {
     [suites, activeSuiteId]
   )
 
-  const handleAutoSave = useCallback(() => {
+  const handleAutoSave = useCallback((): void => {
     if (activeSuiteIdRef.current && activeTestRef.current) {
       window.api.saveRecording(activeSuiteIdRef.current, activeTestRef.current)
     }
   }, [])
 
-  useEffect(() => {
+  useEffect((): (() => void) => {
     const handler = setTimeout(() => {
       handleAutoSave()
-    }, 500) // Debounce time
+    }, 500)
 
-    return () => {
+    return (): void => {
       clearTimeout(handler)
     }
   }, [activeTest])
 
-  /**
-   * Determines the correct locator strategy (:id, :css, :xpath) based on the selector string.
-   * @param selector The selector string from the preload script.
-   * @returns An object with the strategy and the processed selector value.
-   */
+  const formatXpath = (xpath: string): string => {
+    if (xpath.includes("'") && xpath.includes('"')) {
+      return `concat(${xpath
+        .split("'")
+        .map((part) => `'${part}'`)
+        .join(`,"'",`)})`
+    }
+    if (xpath.includes("'")) {
+      return `"${xpath}"`
+    }
+    return `'${xpath}'`
+  }
+
   const formatLocator = (selector: string): { strategy: string; value: string } => {
-    // Check for XPath (starts with / or (//)
     if (selector.startsWith('/') || selector.startsWith('(')) {
-      return { strategy: 'xpath', value: selector }
+      return { strategy: 'xpath', value: formatXpath(selector) }
     }
-    // Check for a simple ID selector (e.g., #my-id) that isn't part of a complex path
     if (selector.startsWith('#') && !/[\s>~+]/.test(selector)) {
-      return { strategy: 'id', value: selector.substring(1) }
+      return { strategy: 'id', value: `"${selector.substring(1)}"` }
     }
-    // Default to CSS for all other cases
-    return { strategy: 'css', value: selector }
+    return { strategy: 'css', value: `"${selector}"` }
   }
 
   const handleCreateSuite = useCallback(
@@ -113,12 +119,12 @@ const Recorder: React.FC = () => {
     window.api.deleteSuite(suiteIdToDelete)
   }, [])
 
-  const handleTestDeleteRequest = useCallback((test: Test) => {
+  const handleTestDeleteRequest = useCallback((test: Test): void => {
     setTestToDelete(test)
     setIsDeleteModalOpen(true)
   }, [])
 
-  const handleConfirmDelete = useCallback(() => {
+  const handleConfirmDelete = useCallback((): void => {
     if (activeSuiteId && testToDelete) {
       window.api.deleteTest(activeSuiteId, testToDelete.id)
     }
@@ -139,7 +145,7 @@ const Recorder: React.FC = () => {
     }
   }
 
-  const handleNewTest = () => {
+  const handleNewTest = (): void => {
     if (activeSuiteId) {
       const newTest = createNewTest()
       setActiveTest(newTest)
@@ -159,14 +165,7 @@ const Recorder: React.FC = () => {
   }, [])
 
   const handleRunTest = useCallback(async (): Promise<void> => {
-    console.log('handleRunTest called')
     if (activeSuiteId && activeTest?.id && rubyCommand) {
-      console.log('Running test with:', {
-        activeSuiteId,
-        activeTestId: activeTest.id,
-        projectPath,
-        rubyCommand
-      })
       setIsRunning(true)
       setRunOutput(`Running test: ${activeTest.name}...`)
       const result = await window.api.runTest(
@@ -177,33 +176,18 @@ const Recorder: React.FC = () => {
       )
       setRunOutput(result.output)
       setIsRunning(false)
-    } else {
-      console.log('handleRunTest conditions not met:', {
-        activeSuiteId,
-        activeTest,
-        projectPath,
-        rubyCommand
-      })
     }
   }, [activeSuiteId, activeTest, projectPath, rubyCommand])
 
   const handleRunAllTests = useCallback(
-    async (suiteId: string) => {
-      console.log('handleRunAllTests called')
+    async (suiteId: string): Promise<void> => {
       const suiteToRun = suites.find((s) => s.id === suiteId)
       if (suiteToRun && rubyCommand) {
-        console.log('Running suite with:', { suiteId, projectPath, rubyCommand })
         setIsRunning(true)
         setRunOutput(`Running suite: ${suiteToRun.name}...`)
-        const result = await window.api.runSuite(suiteToRun.id, projectPath || '.', rubyCommand)
+        const result = await window.api.runSuite(suiteToRun.id, projectPath || '', rubyCommand)
         setRunOutput(result.output)
         setIsRunning(false)
-      } else {
-        console.log('handleRunAllTests conditions not met:', {
-          suiteToRun,
-          projectPath,
-          rubyCommand
-        })
       }
     },
     [suites, projectPath, rubyCommand, setRunOutput]
@@ -271,7 +255,7 @@ const Recorder: React.FC = () => {
   const handleSaveAssertionText = (expectedText: string): void => {
     if (assertionInfo) {
       const { strategy, value } = formatLocator(assertionInfo.selector)
-      const newStep = `expect(@driver.find_element(:${strategy}, "${value}").text).to eq("${expectedText}")`
+      const newStep = `expect(@driver.find_element(:${strategy}, ${value}).text).to eq("${expectedText}")`
       setActiveTest((prevTest) =>
         prevTest ? { ...prevTest, steps: [...prevTest.steps, newStep] } : null
       )
@@ -283,15 +267,12 @@ const Recorder: React.FC = () => {
     setAssertionInfo(null)
   }
 
-  const handleInstallRuby = async () => {
-    console.log('handleInstallRuby called')
+  const handleInstallRuby = async (): Promise<void> => {
     setIsRubyInstallModalOpen(false)
-    // Show a toast notification that the installation is in progress
     const toastId = toast.loading('Installing Ruby and dependencies...')
 
     try {
       const result = await window.api.installRbenvAndRuby()
-      console.log('installRbenvAndRuby result:', result)
       if (result.success) {
         const rubyCheck = await window.api.isRubyInstalled()
         if (rubyCheck.success && rubyCheck.rubyCommand) {
@@ -314,14 +295,12 @@ const Recorder: React.FC = () => {
     }
   }
 
-  const handleInstallGems = async () => {
-    console.log('handleInstallGems called')
+  const handleInstallGems = async (): Promise<void> => {
     setIsRubyInstallModalOpen(false)
     const toastId = toast.loading(`Installing missing gems: ${missingGems?.join(', ')}...`)
 
     try {
       const result = await window.api.installGems(rubyCommand!, missingGems!)
-      console.log('installGems result:', result)
       if (result.success) {
         toast.success('Gems installed successfully!', { id: toastId })
       } else {
@@ -332,22 +311,20 @@ const Recorder: React.FC = () => {
     }
   }
 
-  useEffect(() => {
-    const checkRuby = async () => {
-      console.log('Checking for Ruby...')
+  useEffect((): (() => void) => {
+    const checkRuby = async (): Promise<void> => {
       const result = await window.api.isRubyInstalled()
-      console.log('Ruby check result:', result)
       if (!result.success) {
         setMissingGems(result.missingGems)
-        setRubyCommand(result.rubyCommand)
+        setRubyCommand(result.rubyCommand || null)
         setIsRubyInstallModalOpen(true)
       } else {
-        setRubyCommand(result.rubyCommand)
+        setRubyCommand(result.rubyCommand || null)
       }
     }
     checkRuby()
 
-    window.api.getSuites().then((initialSuites) => {
+    window.api.getSuites().then((initialSuites: Suite[]) => {
       setSuites(initialSuites)
       if (initialSuites.length > 0) {
         const firstSuite = initialSuites[0]
@@ -402,7 +379,7 @@ const Recorder: React.FC = () => {
       setRunOutput('')
     }
 
-    const handleRecordingStopped = () => setIsRecording(false)
+    const handleRecordingStopped = (): void => setIsRecording(false)
 
     const handleNewCommand = (_event: Electron.IpcRendererEvent, command: string): void => {
       setActiveTest((prevTest) =>
@@ -419,19 +396,19 @@ const Recorder: React.FC = () => {
 
       switch (assertion.type) {
         case 'wait-displayed':
-          newStep = `@wait.until { @driver.find_element(:${strategy}, "${value}").displayed? }`
+          newStep = `@wait.until { @driver.find_element(:${strategy}, ${value}).displayed? }`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'wait-enabled':
-          newStep = `@wait.until { @driver.find_element(:${strategy}, "${value}").enabled? }`
+          newStep = `@wait.until { @driver.find_element(:${strategy}, ${value}).enabled? }`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'displayed':
-          newStep = `expect(@driver.find_element(:${strategy}, "${value}")).to be_displayed`
+          newStep = `expect(@driver.find_element(:${strategy}, ${value})).to be_displayed`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'enabled':
-          newStep = `expect(@driver.find_element(:${strategy}, "${value}")).to be_enabled`
+          newStep = `expect(@driver.find_element(:${strategy}, ${value})).to be_enabled`
           setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
           break
         case 'text':
@@ -448,7 +425,7 @@ const Recorder: React.FC = () => {
       handleAddAssertion
     )
 
-    return () => {
+    return (): void => {
       suiteUpdatedCleanup?.()
       startCleanup?.()
       stopCleanup?.()
@@ -487,8 +464,12 @@ const Recorder: React.FC = () => {
         activeSuiteId={activeSuiteId}
       />
       <div className="flex-1 flex flex-row space-x-4">
-        <div className={`${isOutputVisible ? 'w-1/4' : 'w-1/3'} flex flex-col space-y-2 transition-all duration-300`}>
-          <h3 className="px-1 text-lg font-semibold text-gray-800">Test Suites</h3>
+        <div
+          className={`${isOutputVisible ? 'w-1/4' : 'w-1/3'} flex flex-col space-y-2 transition-all duration-300`}
+        >
+          <h3 className="px-1 text-lg font-semibold text-gray-800">
+            {t('recorder.recorderPage.testSuites')}
+          </h3>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>
               <TestSuitePanel
@@ -506,16 +487,24 @@ const Recorder: React.FC = () => {
             </StyledPanel>
           </div>
         </div>
-        <div className={`${isOutputVisible ? 'w-1/2' : 'w-2/3'} flex flex-col space-y-2 transition-all duration-300`}>
-          <h3 className="px-1 text-lg font-semibold text-gray-800">Recorded Steps</h3>
+        <div
+          className={`${isOutputVisible ? 'w-1/2' : 'w-2/3'} flex flex-col space-y-2 transition-all duration-300`}
+        >
+          <h3 className="px-1 text-lg font-semibold text-gray-800">
+            {t('recorder.recorderPage.recordedSteps')}
+          </h3>
           <div className="flex-1 pb-1 pr-1">
             <StyledPanel>
               <div className="flex justify-between items-center p-1 border-b border-gray-200">
                 <Button onClick={() => setShowCode(!showCode)} type="secondary">
-                  {showCode ? 'Friendly View' : 'Code View'}
+                  {showCode
+                    ? t('recorder.recorderPage.friendlyView')
+                    : t('recorder.recorderPage.codeView')}
                 </Button>
                 <Button onClick={() => setIsOutputVisible(!isOutputVisible)} type="secondary">
-                  {isOutputVisible ? 'Hide Output' : 'Test Output'}
+                  {isOutputVisible
+                    ? t('recorder.recorderPage.hideOutput')
+                    : t('recorder.recorderPage.testOutput')}
                 </Button>
               </div>
               <CommandList
@@ -540,7 +529,9 @@ const Recorder: React.FC = () => {
         </div>
         {isOutputVisible && (
           <div className="w-1/3 flex flex-col space-y-2 transition-all duration-300">
-            <h3 className="px-1 text-lg font-semibold text-gray-800">Run Output</h3>
+            <h3 className="px-1 text-lg font-semibold text-gray-800">
+              {t('recorder.recorderPage.runOutput')}
+            </h3>
             <div className="flex-1 pb-1 pr-1">
               <StyledPanel>
                 <OutputPanel output={runOutput} />

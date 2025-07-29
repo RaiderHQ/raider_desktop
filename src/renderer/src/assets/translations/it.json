@@ -1,0 +1,346 @@
+{
+  "landing": {
+    "title": "Benvenuti in Ruby Raider!",
+    "subtitle": "È una gemma che fornisce un generatore e uno scaffolding per semplificare l'automazione dei test dell'interfaccia utente.",
+    "error": {
+      "selectFolder": "Seleziona una cartella di progetto",
+      "folderNotFound": "La cartella non esiste.",
+      "openProject": "Si è verificato un errore durante l'apertura del progetto. Per favore, riprova."
+    }
+  },
+  "newProject": {
+    "alerts": {
+      "invalidName": "Inserisci un nome di progetto valido.",
+      "selectFolder": "Seleziona una cartella per salvare il tuo progetto"
+    },
+    "title": "Crea un nuovo progetto",
+    "subtitle": "Per creare un progetto, devi prima selezionare quanto segue:",
+    "input": {
+      "label": "Nome del progetto",
+      "placeholder": "Inserisci il nome del progetto"
+    },
+    "question": {
+      "automation": "Seleziona il tuo framework di automazione",
+      "mobile": "Seleziona la tua piattaforma mobile",
+      "test": "Seleziona il tuo framework di test"
+    }
+  },
+  "button": {
+    "create": {
+      "text": "Crea",
+      "description": "Crea un nuovo progetto"
+    },
+    "open": {
+      "text": "Apri",
+      "description": "Apri un progetto esistente"
+    },
+    "back": {
+      "text": "Indietro",
+      "description": "Torna al passaggio precedente"
+    },
+    "goTo": {
+      "text": "Vai a {{location}}",
+      "description": "Vai alla {{location}} di Ruby Raider"
+    }
+  },
+  "menu": {
+    "dashboard": "Dashboard",
+    "tests": "Test",
+    "settings": "Impostazioni"
+  },
+  "version": "Versione Ruby Raider: {{version}}",
+  "installGuide": {
+    "title": "Installazione richiesta",
+    "allureMissing": "Allure non è presente. Per favore, installa Allure per procedere.",
+    "logoAlt": "Logo Ruby Raider",
+    "githubButton": "Vai a GitHub",
+    "websiteButton": "Vai al sito web"
+  },
+  "information": {
+    "createProject": {
+      "title": "Creazione di un nuovo progetto",
+      "message": "Qui puoi creare un nuovo progetto e iniziare ad automatizzare i tuoi test."
+    },
+    "openProject": {
+      "title": "Apertura di un progetto esistente",
+      "message": "Qui puoi aprire un progetto esistente e continuare ad automatizzare i tuoi test."
+    },
+    "new": {
+      "title": "Inizia un nuovo progetto",
+      "message": "Scegli le diverse opzioni nei selettori e crea un framework di automazione."
+    }
+  },
+  "settings": {
+    "loading": "Caricamento impostazioni...",
+    "mobileProject": {
+      "title": "Progetto mobile",
+      "description": "Per ora, le impostazioni mobili non sono supportate. Saranno disponibili nelle versioni più recenti dell'app."
+    },
+    "header": {
+      "title": "File di configurazione",
+      "description": "Abbiamo aggiunto i seguenti file al tuo progetto"
+    },
+    "section": {
+      "baseUrl": "URL di base",
+      "browser": "Browser",
+      "appiumSettings": "Impostazioni di Appium"
+    },
+    "baseUrl": {
+      "label": "URL del browser:",
+      "placeholder": "Inserisci l'URL del browser"
+    },
+    "browser": {
+      "label": "Scegli il browser:",
+      "chrome": "Chrome",
+      "safari": "Safari",
+      "firefox": "Firefox",
+      "edge": "Edge"
+    },
+    "updateUrlButton": "Aggiorna URL",
+    "updateBrowserButton": "Aggiorna browser",
+    "updateMobileSettingsButton": "Aggiorna impostazioni",
+    "updating": "Aggiornamento...",
+    "error": {
+      "browserUpdateFailed": "Impossibile aggiornare il browser. Per favore, riprova.",
+      "urlUpdateFailed": "Impossibile aggiornare l'URL del browser. Per favore, riprova.",
+      "unexpected": "Si è verificato un errore imprevisto. Per favore, riprova.",
+      "mobileUrlUpdateFailed": "Impossibile aggiornare l'URL di Appium. Per favore, riprova.",
+      "mobileCapabilitiesUpdateFailed": "Impossibile aggiornare le impostazioni mobili. Per favore, riprova."
+    },
+    "urlUpdateSuccess": "URL aggiornato con successo!",
+    "browserUpdateSuccess": "Browser aggiornato con successo!",
+    "mobile": {
+      "appiumUrl": {
+        "label": "URL di Appium:",
+        "placeholder": "Inserisci l'URL di Appium"
+      },
+      "platformVersion": {
+        "label": "Versione della piattaforma:",
+        "placeholder": "Inserisci la versione della piattaforma"
+      },
+      "automationName": {
+        "label": "Nome dell'automazione:",
+        "placeholder": "Inserisci il nome dell'automazione"
+      },
+      "deviceName": {
+        "label": "Nome del dispositivo:",
+        "placeholder": "Inserisci il nome del dispositivo"
+      },
+      "app": {
+        "label": "App:",
+        "placeholder": "Inserisci il nome dell'app"
+      },
+      "updateSuccess": "Impostazioni mobili aggiornate con successo!"
+    },
+    "tabs": {
+      "project": "Impostazioni del progetto",
+      "recording": "Impostazioni di registrazione",
+      "general": "Impostazioni generali"
+    },
+    "general": {
+      "title": "Impostazioni generali",
+      "description": "Regola le impostazioni generali dell'applicazione.",
+      "language": {
+        "label": "Lingua"
+      },
+      "save": "Salva"
+    },
+    "recording": {
+      "title": "Impostazioni di registrazione",
+      "description": "Regola le impostazioni per la registrazione e la riproduzione dei test.",
+      "error": {
+        "recordingUpdateFailed": "Impossibile aggiornare le impostazioni di registrazione.",
+        "unexpected": "Si è verificato un errore imprevisto. Per favore, riprova."
+      },
+      "implicitWait": {
+        "label": "Attesa implicita (secondi)",
+        "description": "Il tempo predefinito di attesa per la comparsa degli elementi durante la riproduzione."
+      },
+      "explicitWait": {
+        "label": "Attesa esplicita (secondi)",
+        "description": "Il tempo massimo di attesa per il verificarsi di una condizione specifica."
+      },
+      "recordingUpdateSuccess": "Impostazioni di registrazione aggiornate con successo!",
+      "updateRecordingSettingsButton": "Aggiorna impostazioni"
+    },
+    "noProject": {
+      "title": "Nessun progetto caricato",
+      "description": "Per favore, crea o apri un progetto per configurarne le impostazioni."
+    }
+  },
+  "overview": {
+    "error": {
+      "openAllure": "Si è verificato un problema durante l'apertura della dashboard"
+    },
+    "running": "I test sono in esecuzione...",
+    "runTestsSuccess": "Test completati con successo!",
+    "tabs": {
+      "files": "File",
+      "dashboard": "Dashboard"
+    },
+    "installingDependencies": "Installazione delle dipendenze in corso...",
+    "starting": "Avvio dell'esecuzione dei test..."
+  },
+  "editor": {
+    "placeholder": "Inizia a modificare il contenuto del file qui...",
+    "success": "File salvato con successo.",
+    "save": {
+      "stashing": "Nascondendo il tuo tesoro...",
+      "securing": "Mettendo al sicuro il rubino...",
+      "engraving": "Incidendo la gemma...",
+      "prize": "Salvaguardando il premio del predone...",
+      "ruby": "Affilando i bordi del rubino..."
+    },
+    "error": {
+      "invalidFilePath": "Percorso del file non valido.",
+      "saveFailed": "Errore durante il salvataggio del file \"{{fileName}}\". Per favore, riprova.",
+      "unexpectedSaveError": "Si è verificato un errore imprevisto durante il salvataggio del file. Per favore, riprova."
+    },
+    "loading": "Caricamento..."
+  },
+  "testResults": {
+    "breakdown": "Dettaglio dei risultati dei test",
+    "status": "Stato",
+    "viewScreenshot": "Visualizza screenshot",
+    "passed": "Superato",
+    "failed": "Fallito",
+    "skipped": "Saltato",
+    "error": {
+      "imageRead": "Errore durante la lettura dell'immagine",
+      "imageAccess": "Errore durante l'accesso al file immagine"
+    }
+  },
+  "dashboard": {
+    "overallSummary": "Riepilogo generale",
+    "totalTests": "Test totali",
+    "passed": "Superati",
+    "failed": "Falliti",
+    "skipped": "Saltati",
+    "noResults": "Per favore, esegui i tuoi test per vedere i risultati sulla dashboard.",
+    "noRecordingResults": "Per favore, esegui un test per vedere i risultati della registrazione sulla dashboard.",
+    "tabs": {
+      "project": "Dashboard del progetto",
+      "recording": "Dashboard di registrazione"
+    },
+    "error": {
+      "fetching": "Errore durante il recupero della dashboard",
+      "parsing": "Errore durante l'analisi di {{file}}",
+      "reading": "Errore durante la lettura di {{file}}"
+    }
+  },
+  "errorPage": {
+    "title": "Prerequisiti non installati"
+  },
+  "errors": {
+    "ruby": {
+      "commandFailed": "Comando Ruby fallito.\nComando: {{command}}\nOutput: {{output}}\nInfo di debug:\n{{debugInfo}}",
+      "unexpectedOutput": "Output della versione di Ruby imprevisto: {{output}}\nInfo di debug:\n{{debugInfo}}",
+      "failedToParse": "Impossibile analizzare la versione di Ruby dall'output: {{output}}\nInfo di debug:\n{{debugInfo}}",
+      "outdated": "La versione di Ruby {{version}} è obsoleta. Per favore, installa Ruby 3.0.0 o superiore.\nOutput del comando: {{output}}\nInfo di debug:\n{{debugInfo}}",
+      "unknown": "Si è verificato un errore: {{error}}\nInfo di debug:\n{{debugInfo}}"
+    }
+  },
+  "recorder": {
+    "placeholder": {
+      "url": "Inserisci l'URL da registrare",
+      "commands": "I comandi Selenium Ruby registrati appariranno qui..."
+    },
+    "button": {
+      "setUrl": "Imposta URL",
+      "startRecording": "Inizia a registrare",
+      "stopRecording": "Interrompi la registrazione",
+      "saveTest": "Salva test",
+      "runTest": "Esegui test"
+    },
+    "heading": {
+      "recordedSteps": "Passaggi registrati",
+      "runOutput": "Output dell'esecuzione"
+    },
+    "assertionTextModal": {
+      "title": "Asserzione del testo dell'elemento",
+      "message": "Inserisci il testo esatto che ti aspetti che l'elemento contenga.",
+      "label": "Testo previsto",
+      "cancel": "Annulla",
+      "save": "Salva asserzione"
+    },
+    "deleteModal": {
+      "title": "Conferma eliminazione",
+      "message": "Sei sicuro di voler eliminare il test",
+      "cancel": "Annulla",
+      "delete": "Elimina"
+    },
+    "rubyInstallModal": {
+      "title": {
+        "missing": "Dipendenze mancanti",
+        "required": "Installazione di Ruby richiesta"
+      },
+      "message": {
+        "missing": "Le seguenti gemme sono mancanti: {{missingGems}}. Vuoi installarle?",
+        "required": "Per utilizzare tutte le funzionalità dell'app desktop Raider, è necessario Ruby nel sistema. Vuoi installare rbenv, Ruby e tutte le dipendenze?"
+      },
+      "yes": "Sì",
+      "no": "No"
+    },
+    "mainRecorderPanel": {
+      "suite": "Suite: {{activeSuiteName}}",
+      "noSuite": "Nessuna suite selezionata",
+      "testName": "Nome del test",
+      "url": "URL da registrare",
+      "newTest": "Nuovo test",
+      "import": "Importa",
+      "export": "Esporta",
+      "record": "Registra",
+      "run": "Esegui",
+      "stop": "Ferma",
+      "exportTest": "Esporta test",
+      "exportSuite": "Esporta suite",
+      "exportProject": "Esporta progetto",
+      "importTest": "Importa test",
+      "importSuite": "Importa suite",
+      "importProject": "Importa progetto",
+      "exportSuccess": "{{exportType}} esportato in {{path}}",
+      "exportError": "Esportazione non riuscita: {{error}}",
+      "importSuccess": "{{importType}} importato con successo!",
+      "importError": "Importazione non riuscita: {{error}}"
+    },
+    "outputPanel": {
+      "title": "Risultati del test:",
+      "error": "Errore:",
+      "placeholder": "L'output del test apparirà qui..."
+    },
+    "testSuitePanel": {
+      "selectSuite": "Seleziona una suite",
+      "newSuite": "+ Nuova suite...",
+      "deleteSuite": "- Elimina suite corrente",
+      "runAll": "Esegui tutto",
+      "newSuiteName": "Nuovo nome della suite...",
+      "cancel": "Annulla",
+      "create": "Crea",
+      "deleteConfirmation": "Sei sicuro di voler eliminare la suite \"{{suiteName}}\"? Questa azione non può essere annullata."
+    },
+    "recorderPage": {
+      "testSuites": "Suite di test",
+      "recordedSteps": "Passaggi registrati",
+      "runOutput": "Output di esecuzione",
+      "codeView": "Visualizzazione codice",
+      "friendlyView": "Visualizzazione amichevole",
+      "hideOutput": "Nascondi output",
+      "testOutput": "Output del test"
+    },
+    "commandParser": {
+      "visit": "Visita {{url}}",
+      "waitForElementDisplayed": "Attendi che l'elemento con {{strategy}} \"{{value}}\" venga visualizzato",
+      "waitForElementEnabled": "Attendi che l'elemento con {{strategy}} \"{{value}}\" sia abilitato",
+      "clickElement": "Fai clic sull'elemento con {{strategy}} \"{{value}}\"",
+      "pressKey": "Premi il tasto {{key}} sull'elemento con {{strategy}} \"{{value}}\"",
+      "typeText": "Digita \"{{text}}\" nell'elemento con {{strategy}} \"{{value}}\"",
+      "wait": "Attendi {{seconds}} secondi",
+      "executeScript": "Esegui script: {{script}}",
+      "switchToFrame": "Passa al frame identificato da {{frame}}",
+      "switchToDefaultContent": "Torna al contenuto principale",
+      "assertElementDisplayed": "Asserisci che l'elemento con {{strategy}} \"{{value}}\" sia visualizzato",
+      "assertElementEnabled": "Asserisci che l'elemento con {{strategy}} \"{{value}}\" sia abilitato",
+      "assertElementTextEquals": "Asserisci che l'elemento con {{strategy}} \"{{value}}\" ha un testo uguale a \"{{text}}\""
+    }
+  }
+}

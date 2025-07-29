@@ -1,0 +1,344 @@
+{
+  "landing": {
+    "title": "Bun venit la Ruby Raider!",
+    "subtitle": "Este o bijuterie care oferă un generator și schele pentru a simplifica automatizarea testelor UI.",
+    "error": {
+      "selectFolder": "Selectați un folder de proiect",
+      "folderNotFound": "Folderul nu există.",
+      "openProject": "A apărut o eroare la deschiderea proiectului. Vă rugăm să încercați din nou."
+    }
+  },
+  "newProject": {
+    "alerts": {
+      "invalidName": "Vă rugăm să introduceți un nume de proiect valid.",
+      "selectFolder": "Selectați un folder pentru a salva proiectul"
+    },
+    "title": "Creați un proiect nou",
+    "subtitle": "Pentru a crea un proiect, mai întâi trebuie să selectați următoarele:",
+    "input": {
+      "label": "Numele proiectului",
+      "placeholder": "Introduceți numele proiectului"
+    },
+    "question": {
+      "automation": "Selectați cadrul dvs. de automatizare",
+      "mobile": "Selectați platforma dvs. mobilă",
+      "test": "Selectați cadrul dvs. de testare"
+    }
+  },
+  "button": {
+    "create": {
+      "text": "Creați",
+      "description": "Creați un proiect nou"
+    },
+    "open": {
+      "text": "Deschideți",
+      "description": "Deschideți un proiect existent"
+    },
+    "back": {
+      "text": "Înapoi",
+      "description": "Mergeți înapoi la pasul anterior"
+    },
+    "goTo": {
+      "text": "Mergeți la {{location}}",
+      "description": "Mergeți la {{location}} Ruby Raider"
+    }
+  },
+  "menu": {
+    "dashboard": "Tablou de bord",
+    "tests": "Teste",
+    "settings": "Setări"
+  },
+  "version": "Versiunea Ruby Raider: {{version}}",
+  "installGuide": {
+    "title": "Instalare necesară",
+    "allureMissing": "Allure lipsește. Vă rugăm să instalați Allure pentru a continua.",
+    "logoAlt": "Logo Ruby Raider",
+    "githubButton": "Mergeți la GitHub",
+    "websiteButton": "Mergeți la site-ul web"
+  },
+  "information": {
+    "createProject": {
+      "title": "Crearea unui proiect nou",
+      "message": "Aici puteți crea un proiect nou și puteți începe automatizarea testelor."
+    },
+    "openProject": {
+      "title": "Deschiderea unui proiect existent",
+      "message": "Aici puteți deschide un proiect existent și puteți continua automatizarea testelor."
+    },
+    "new": {
+      "title": "Începeți un proiect nou",
+      "message": "Alegeți diferitele opțiuni din selectori și creați un cadru de automatizare."
+    }
+  },
+  "settings": {
+    "loading": "Se încarcă setările...",
+    "mobileProject": {
+      "title": "Proiect mobil",
+      "description": "Deocamdată, setările mobile nu sunt acceptate. Acestea vor veni în versiuni mai noi ale aplicației."
+    },
+    "header": {
+      "title": "Fișiere de configurare",
+      "description": "Am adăugat următoarele fișiere la proiectul dvs."
+    },
+    "section": {
+      "baseUrl": "URL de bază",
+      "browser": "Browser",
+      "appiumSettings": "Setări Appium"
+    },
+    "baseUrl": {
+      "label": "URL browser:",
+      "placeholder": "Introduceți URL-ul browserului"
+    },
+    "browser": {
+      "label": "Alegeți browserul:",
+      "chrome": "Chrome",
+      "safari": "Safari",
+      "firefox": "Firefox",
+      "edge": "Edge"
+    },
+    "updateUrlButton": "Actualizați URL-ul",
+    "updateBrowserButton": "Actualizați browserul",
+    "updateMobileSettingsButton": "Actualizați setările",
+    "updating": "Se actualizează...",
+    "error": {
+      "browserUpdateFailed": "Actualizarea browserului a eșuat. Vă rugăm să încercați din nou.",
+      "urlUpdateFailed": "Actualizarea URL-ului browserului a eșuat. Vă rugăm să încercați din nou.",
+      "unexpected": "A apărut o eroare neașteptată. Vă rugăm să încercați din nou.",
+      "mobileUrlUpdateFailed": "Actualizarea URL-ului Appium a eșuat. Vă rugăm să încercați din nou.",
+      "mobileCapabilitiesUpdateFailed": "Actualizarea setărilor mobile a eșuat. Vă rugăm să încercați din nou."
+    },
+    "urlUpdateSuccess": "URL-ul a fost actualizat cu succes!",
+    "browserUpdateSuccess": "Browserul a fost actualizat cu succes!",
+    "mobile": {
+      "appiumUrl": {
+        "label": "URL Appium:",
+        "placeholder": "Introduceți URL-ul Appium"
+      },
+      "platformVersion": {
+        "label": "Versiunea platformei:",
+        "placeholder": "Introduceți versiunea platformei"
+      },
+      "automationName": {
+        "label": "Numele automatizării:",
+        "placeholder": "Introduceți numele automatizării"
+      },
+      "deviceName": {
+        "label": "Numele dispozitivului:",
+        "placeholder": "Introduceți numele dispozitivului"
+      },
+      "app": {
+        "label": "Aplicație:",
+        "placeholder": "Introduceți numele aplicației"
+      },
+      "updateSuccess": "Setările mobile au fost actualizate cu succes!"
+    },
+    "tabs": {
+      "project": "Setări proiect",
+      "recording": "Setări înregistrare",
+      "general": "Setări generale"
+    },
+    "general": {
+      "title": "Setări generale",
+      "description": "Ajustați setările generale ale aplicației.",
+      "language": {
+        "label": "Limbă"
+      },
+      "save": "Salvați"
+    },
+    "recording": {
+      "title": "Setări înregistrare",
+      "description": "Ajustați setările pentru înregistrarea și redarea testelor.",
+      "error": {
+        "recordingUpdateFailed": "Actualizarea setărilor de înregistrare a eșuat.",
+        "unexpected": "A apărut o eroare neașteptată. Vă rugăm să încercați din nou."
+      },
+      "implicitWait": {
+        "label": "Așteptare implicită (secunde)",
+        "description": "Timpul implicit de așteptare pentru apariția elementelor în timpul redării."
+      },
+      "explicitWait": {
+        "label": "Așteptare explicită (secunde)",
+        "description": "Timpul maxim de așteptare pentru îndeplinirea unei anumite condiții."
+      },
+      "recordingUpdateSuccess": "Setările de înregistrare au fost actualizate cu succes!",
+      "updateRecordingSettingsButton": "Actualizați setările"
+    },
+    "noProject": {
+      "title": "Niciun proiect încărcat",
+      "description": "Vă rugăm să creați sau să deschideți un proiect pentru a-i configura setările."
+    }
+  },
+  "overview": {
+    "error": {
+      "openAllure": "A apărut o problemă la deschiderea tabloului de bord"
+    },
+    "running": "Testele se execută...",
+    "runTestsSuccess": "Testele s-au finalizat cu succes!",
+    "tabs": {
+      "files": "Fișiere",
+      "dashboard": "Tablou de bord"
+    },
+    "installingDependencies": "Se instalează dependențele...",
+    "starting": "Se pornește rularea testelor..."
+  },
+  "editor": {
+    "placeholder": "Începeți să editați conținutul fișierului aici...",
+    "success": "Fișierul a fost salvat cu succes.",
+    "save": {
+      "stashing": "Se ascunde comoara...",
+      "securing": "Se securizează rubinul...",
+      "engraving": "Se gravează bijuteria...",
+      "prize": "Se protejează premiul jefuitorului...",
+      "ruby": "Se ascut marginile rubinului..."
+    },
+    "error": {
+      "invalidFilePath": "Cale de fișier nevalidă.",
+      "saveFailed": "Eroare la salvarea fișierului \"{{fileName}}\". Vă rugăm să încercați din nou.",
+      "unexpectedSaveError": "A apărut o eroare neașteptată la salvarea fișierului. Vă rugăm să încercați din nou."
+    },
+    "loading": "Se încarcă..."
+  },
+  "testResults": {
+    "breakdown": "Detalierea rezultatelor testelor",
+    "status": "Stare",
+    "viewScreenshot": "Vizualizați captura de ecran",
+    "passed": "Trecut",
+    "failed": "Eșuat",
+    "skipped": "Omis",
+    "error": {
+      "imageRead": "Eroare la citirea imaginii",
+      "imageAccess": "Eroare la accesarea fișierului imagine"
+    }
+  },
+  "dashboard": {
+    "overallSummary": "Rezumat general",
+    "totalTests": "Total teste",
+    "passed": "Trecute",
+    "failed": "Eșuate",
+    "skipped": "Omise",
+    "noResults": "Vă rugăm să rulați testele pentru a vedea rezultatele pe tabloul de bord.",
+    "noRecordingResults": "Vă rugăm să rulați un test pentru a vedea rezultatele înregistrării pe tabloul de bord.",
+    "tabs": {
+      "project": "Tabloul de bord al proiectului",
+      "recording": "Tabloul de bord al înregistrării"
+    },
+    "error": {
+      "fetching": "Eroare la preluarea tabloului de bord",
+      "parsing": "Eroare la analizarea {{file}}",
+      "reading": "Eroare la citirea {{file}}"
+    }
+  },
+  "errorPage": {
+    "title": "Cerințe preliminare neinstalate"
+  },
+  "errors": {
+    "ruby": {
+      "commandFailed": "Comanda Ruby a eșuat.\nComandă: {{command}}\nIeșire: {{output}}\nInformații de depanare:\n{{debugInfo}}",
+      "unexpectedOutput": "Ieșire neașteptată a versiunii Ruby: {{output}}\nInformații de depanare:\n{{debugInfo}}",
+      "failedToParse": "Nu s-a putut analiza versiunea Ruby din ieșire: {{output}}\nInformații de depanare:\n{{debugInfo}}",
+      "outdated": "Versiunea Ruby {{version}} este învechită. Vă rugăm să instalați Ruby 3.0.0 sau o versiune superioară.\nIeșirea comenzii: {{output}}\nInformații de depanare:\n{{debugInfo}}",
+      "unknown": "A apărut o eroare: {{error}}\nInformații de depanare:\n{{debugInfo}}"
+    }
+  },
+  "recorder": {
+    "placeholder": {
+      "url": "Introduceți URL-ul de înregistrat",
+      "commands": "Comenzile Selenium Ruby înregistrate vor apărea aici..."
+    },
+    "button": {
+      "setUrl": "Setați URL-ul",
+      "startRecording": "Începeți înregistrarea",
+      "stopRecording": "Opriți înregistrarea",
+      "saveTest": "Salvați testul",
+      "runTest": "Rulați testul"
+    },
+    "heading": {
+      "recordedSteps": "Pași înregistrați",
+      "runOutput": "Ieșirea rulării"
+    },
+    "assertionTextModal": {
+      "title": "Aserțiunea textului elementului",
+      "message": "Introduceți textul exact pe care vă așteptați să îl conțină elementul.",
+      "label": "Text așteptat",
+      "cancel": "Anulare",
+      "save": "Salvare aserțiune"
+    },
+    "deleteModal": {
+      "title": "Confirmare ștergere",
+      "message": "Sunteți sigur că doriți să ștergeți testul",
+      "cancel": "Anulare",
+      "delete": "Șterge"
+    },
+    "rubyInstallModal": {
+      "title": {
+        "missing": "Dependințe lipsă",
+        "required": "Instalare Ruby necesară"
+      },
+      "message": {
+        "missing": "Următoarele geme lipsesc: {{missingGems}}. Doriți să le instalați?",
+        "required": "Pentru a utiliza toate funcționalitățile aplicației Raider Desktop, aveți nevoie de Ruby în sistemul dumneavoastră. Doriți să instalați rbenv, Ruby și toate dependențele?"
+      },
+      "yes": "Da",
+      "no": "Nu"
+    },
+    "mainRecorderPanel": {
+      "suite": "Suită: {{activeSuiteName}}",
+      "noSuite": "Nicio suită selectată",
+      "testName": "Nume test",
+      "url": "URL de înregistrat",
+      "newTest": "Test nou",
+      "import": "Import",
+      "export": "Export",
+      "record": "Înregistrare",
+      "run": "Rulare",
+      "stop": "Oprire",
+      "exportTest": "Export test",
+      "exportSuite": "Export suită",
+      "exportProject": "Export proiect",
+      "importTest": "Import test",
+      "importSuite": "Import suită",
+      "importProject": "Import proiect",
+      "exportSuccess": "{{exportType}} exportat la {{path}}",
+      "exportError": "Export eșuat: {{error}}",
+      "importSuccess": "{{importType}} importat cu succes!",
+      "importError": "Import eșuat: {{error}}"
+    },
+    "outputPanel": {
+      "title": "Rezultatele testului:",
+      "error": "Eroare:",
+          "placeholder": "Rezultatul testului va apărea aici..."
+    },
+    "testSuitePanel": {
+      "selectSuite": "Selectați o suită",
+      "newSuite": "+ Suită nouă...",
+      "deleteSuite": "- Ștergeți suita curentă",
+      "runAll": "Rulați tot",
+      "newSuiteName": "Nume suită nouă...",
+      "cancel": "Anulare",
+      "create": "Creați",      "deleteConfirmation": "Sunteți sigur că doriți să ștergeți suita \"{{suiteName}}\"? Această acțiune nu poate fi anulată."    },
+    "recorderPage": {
+      "testSuites": "Suite de teste",
+      "recordedSteps": "Pași înregistrați",
+      "runOutput": "Ieșire rulare",
+      "codeView": "Vizualizare cod",
+      "friendlyView": "Vizualizare prietenoasă",
+      "hideOutput": "Ascunde ieșirea",
+      "testOutput": "Ieșire test"
+    },
+    "commandParser": {
+      "visit": "Vizitați {{url}}",
+      "waitForElementDisplayed": "Așteptați ca elementul cu {{strategy}} \"{{value}}\" să fie afișat",
+      "waitForElementEnabled": "Așteptați ca elementul cu {{strategy}} \"{{value}}\" să fie activat",
+      "clickElement": "Faceți clic pe elementul cu {{strategy}} \"{{value}}\"",
+      "pressKey": "Apăsați tasta {{key}} pe elementul cu {{strategy}} \"{{value}}\"",
+      "typeText": "Introduceți \"{{text}}\" în elementul cu {{strategy}} \"{{value}}\"",
+      "wait": "Așteptați {{seconds}} secunde",
+      "executeScript": "Executați scriptul: {{script}}",
+      "switchToFrame": "Comutați la cadrul identificat prin {{frame}}",
+      "switchToDefaultContent": "Comutați înapoi la conținutul principal",
+      "assertElementDisplayed": "Asigurați-vă că elementul cu {{strategy}} \"{{value}}\" este afișat",
+      "assertElementEnabled": "Asigurați-vă că elementul cu {{strategy}} \"{{value}}\" este activat",
+      "assertElementTextEquals": "Asigurați-vă că elementul cu {{strategy}} \"{{value}}\" are textul egal cu \"{{text}}\""
+    }
+  }
+}

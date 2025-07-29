@@ -30,7 +30,7 @@ const Index: React.FC = (): JSX.Element => {
   const projectPath: string | null = useProjectStore((state) => state.projectPath)
 
   useEffect(() => {
-    const fetchDashboard = async () => {
+    const fetchDashboard = async (): Promise<void> => {
       try {
         const folderPath = `${projectPath}/allure-results`
         const fileNodes = await window.api.readDirectory(folderPath)
@@ -43,8 +43,9 @@ const Index: React.FC = (): JSX.Element => {
           if (res.success && res.data) {
             try {
               return JSON.parse(res.data)
-            } catch (e: any) {
-              toast.error(`${t('dashboard.error.parsing', { file: file.name })}: ${e.message}`)
+            } catch (e: unknown) {
+              const error = e as Error
+              toast.error(`${t('dashboard.error.parsing', { file: file.name })}: ${error.message}`)
               return null
             }
           } else {
@@ -74,8 +75,9 @@ const Index: React.FC = (): JSX.Element => {
           })
         )
         setResults(resultsWithScreenshots)
-      } catch (error: any) {
-        // toast.error(`${t('dashboard.error.fetching')}: ${error.message}`)
+      } catch (error: unknown) {
+        // const e = error as Error
+        // toast.error(`${t('dashboard.error.fetching')}: ${e.message}`)
       }
     }
     if (projectPath) {

@@ -11,6 +11,7 @@ import SelectInput from '@components/SelectInput'
 import LoadingScreen from '@components/LoadingScreen'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import useRubyStore from '@foundation/Stores/rubyStore'
 
 const options = {
   automation: ['Appium', 'Selenium', 'Watir'],
@@ -24,6 +25,7 @@ const CreateProject: React.FC = () => {
   const loading = useLoadingStore((state) => state.loading)
   const setLoading = useLoadingStore((state) => state.setLoading)
   const setProjectPath = useProjectStore((state) => state.setProjectPath)
+  const { rubyCommand } = useRubyStore()
 
   const [automationFramework, setAutomationFramework] = useState('Selenium')
   const [testFramework, setTestFramework] = useState('Rspec')
@@ -57,11 +59,10 @@ const CreateProject: React.FC = () => {
         folder,
         projectName,
         testFramework.toLowerCase(),
-        automationParam
+        automationParam,
+        rubyCommand || ''
       )
 
-      // Add this block back for debugging
-      console.log('Raider result from main process:', raiderResult)
       if (!raiderResult || !raiderResult.success) {
         toast.error(`Project creation failed: ${raiderResult?.error}`)
         setLoading(false)

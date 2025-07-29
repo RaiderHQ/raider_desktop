@@ -1,3 +1,4 @@
+import React from 'react'
 import { map } from 'lodash'
 import ArrowDown from '@assets/icons/arrow-down.svg'
 

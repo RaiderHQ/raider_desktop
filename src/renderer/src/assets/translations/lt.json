@@ -1,0 +1,346 @@
+{
+  "landing": {
+    "title": "Sveiki atvykę į „Ruby Raider“!",
+    "subtitle": "Tai perlas, kuris suteikia generatorių ir pastolius, kad supaprastintų vartotojo sąsajos testų automatizavimą.",
+    "error": {
+      "selectFolder": "Pasirinkite projekto aplanką",
+      "folderNotFound": "Aplankas neegzistuoja.",
+      "openProject": "Atidarant projektą įvyko klaida. Bandykite dar kartą."
+    }
+  },
+  "newProject": {
+    "alerts": {
+      "invalidName": "Įveskite galiojantį projekto pavadinimą.",
+      "selectFolder": "Pasirinkite aplanką, kuriame norite išsaugoti projektą"
+    },
+    "title": "Sukurti naują projektą",
+    "subtitle": "Norėdami sukurti projektą, pirmiausia turite pasirinkti šiuos dalykus:",
+    "input": {
+      "label": "Projekto pavadinimas",
+      "placeholder": "Įveskite projekto pavadinimą"
+    },
+    "question": {
+      "automation": "Pasirinkite savo automatizavimo sistemą",
+      "mobile": "Pasirinkite savo mobiliąją platformą",
+      "test": "Pasirinkite savo testavimo sistemą"
+    }
+  },
+  "button": {
+    "create": {
+      "text": "Sukurti",
+      "description": "Sukurti naują projektą"
+    },
+    "open": {
+      "text": "Atidaryti",
+      "description": "Atidaryti esamą projektą"
+    },
+    "back": {
+      "text": "Atgal",
+      "description": "Grįžti į ankstesnį veiksmą"
+    },
+    "goTo": {
+      "text": "Eiti į {{location}}",
+      "description": "Eiti į „Ruby Raider“ {{location}}"
+    }
+  },
+  "menu": {
+    "dashboard": "Prietaisų skydelis",
+    "tests": "Testai",
+    "settings": "Nustatymai"
+  },
+  "version": "„Ruby Raider“ versija: {{version}}",
+  "installGuide": {
+    "title": "Reikalingas diegimas",
+    "allureMissing": "Trūksta „Allure“. Norėdami tęsti, įdiekite „Allure“.",
+    "logoAlt": "„Ruby Raider“ logotipas",
+    "githubButton": "Eiti į „GitHub“",
+    "websiteButton": "Eiti į svetainę"
+  },
+  "information": {
+    "createProject": {
+      "title": "Naujo projekto kūrimas",
+      "message": "Čia galite sukurti naują projektą ir pradėti automatizuoti testus."
+    },
+    "openProject": {
+      "title": "Esamo projekto atidarymas",
+      "message": "Čia galite atidaryti esamą projektą ir tęsti testų automatizavimą."
+    },
+    "new": {
+      "title": "Pradėti naują projektą",
+      "message": "Pasirinkite skirtingas parinktis parinkikliuose ir sukurkite automatizavimo sistemą."
+    }
+  },
+  "settings": {
+    "loading": "Įkeliami nustatymai...",
+    "mobileProject": {
+      "title": "Mobilusis projektas",
+      "description": "Kol kas mobilieji nustatymai nepalaikomi. Jie bus pasiekiami naujesnėse programos versijose."
+    },
+    "header": {
+      "title": "Konfigūracijos failai",
+      "description": "Prie jūsų projekto pridėjome šiuos failus"
+    },
+    "section": {
+      "baseUrl": "Pagrindinis URL",
+      "browser": "Naršyklė",
+      "appiumSettings": "„Appium“ nustatymai"
+    },
+    "baseUrl": {
+      "label": "Naršyklės URL:",
+      "placeholder": "Įveskite naršyklės URL"
+    },
+    "browser": {
+      "label": "Pasirinkite naršyklę:",
+      "chrome": "Chrome",
+      "safari": "Safari",
+      "firefox": "Firefox",
+      "edge": "Edge"
+    },
+    "updateUrlButton": "Atnaujinti URL",
+    "updateBrowserButton": "Atnaujinti naršyklę",
+    "updateMobileSettingsButton": "Atnaujinti nustatymus",
+    "updating": "Atnaujinama...",
+    "error": {
+      "browserUpdateFailed": "Nepavyko atnaujinti naršyklės. Bandykite dar kartą.",
+      "urlUpdateFailed": "Nepavyko atnaujinti naršyklės URL. Bandykite dar kartą.",
+      "unexpected": "Įvyko netikėta klaida. Bandykite dar kartą.",
+      "mobileUrlUpdateFailed": "Nepavyko atnaujinti „Appium“ URL. Bandykite dar kartą.",
+      "mobileCapabilitiesUpdateFailed": "Nepavyko atnaujinti mobiliųjų nustatymų. Bandykite dar kartą."
+    },
+    "urlUpdateSuccess": "URL sėkmingai atnaujintas!",
+    "browserUpdateSuccess": "Naršyklė sėkmingai atnaujinta!",
+    "mobile": {
+      "appiumUrl": {
+        "label": "„Appium“ URL:",
+        "placeholder": "Įveskite „Appium“ URL"
+      },
+      "platformVersion": {
+        "label": "Platformos versija:",
+        "placeholder": "Įveskite platformos versiją"
+      },
+      "automationName": {
+        "label": "Automatizavimo pavadinimas:",
+        "placeholder": "Įveskite automatizavimo pavadinimą"
+      },
+      "deviceName": {
+        "label": "Įrenginio pavadinimas:",
+        "placeholder": "Įveskite įrenginio pavadinimą"
+      },
+      "app": {
+        "label": "Programa:",
+        "placeholder": "Įveskite programos pavadinimą"
+      },
+      "updateSuccess": "Mobilieji nustatymai sėkmingai atnaujinti!"
+    },
+    "tabs": {
+      "project": "Projekto nustatymai",
+      "recording": "Įrašymo nustatymai",
+      "general": "Bendrieji nustatymai"
+    },
+    "general": {
+      "title": "Bendrieji nustatymai",
+      "description": "Koreguokite bendruosius programos nustatymus.",
+      "language": {
+        "label": "Kalba"
+      },
+      "save": "Išsaugoti"
+    },
+    "recording": {
+      "title": "Įrašymo nustatymai",
+      "description": "Koreguokite testų įrašymo ir atkūrimo nustatymus.",
+      "error": {
+        "recordingUpdateFailed": "Nepavyko atnaujinti įrašymo nustatymų.",
+        "unexpected": "Įvyko netikėta klaida. Bandykite dar kartą."
+      },
+      "implicitWait": {
+        "label": "Numatytasis laukimas (sekundės)",
+        "description": "Numatytasis laikas laukti, kol atkūrimo metu pasirodys elementai."
+      },
+      "explicitWait": {
+        "label": "Aiškus laukimas (sekundės)",
+        "description": "Maksimalus laikas laukti, kol bus įvykdyta konkreti sąlyga."
+      },
+      "recordingUpdateSuccess": "Įrašymo nustatymai sėkmingai atnaujinti!",
+      "updateRecordingSettingsButton": "Atnaujinti nustatymus"
+    },
+    "noProject": {
+      "title": "Projektas neįkeltas",
+      "description": "Norėdami konfigūruoti projekto nustatymus, sukurkite arba atidarykite projektą."
+    }
+  },
+  "overview": {
+    "error": {
+      "openAllure": "Atidarant prietaisų skydelį įvyko problema"
+    },
+    "running": "Vykdomi testai...",
+    "runTestsSuccess": "Testai sėkmingai baigti!",
+    "tabs": {
+      "files": "Failai",
+      "dashboard": "Prietaisų skydelis"
+    },
+    "installingDependencies": "Diegiamos priklausomybės...",
+    "starting": "Pradedamas testų vykdymas..."
+  },
+  "editor": {
+    "placeholder": "Pradėkite redaguoti failo turinį čia...",
+    "success": "Failas sėkmingai išsaugotas.",
+    "save": {
+      "stashing": "Slepiamas jūsų lobis...",
+      "securing": "Apsaugomas rubinas...",
+      "engraving": "Graviruojamas perlas...",
+      "prize": "Saugomas plėšiko prizas...",
+      "ruby": "Aštrinami rubino kraštai..."
+    },
+    "error": {
+      "invalidFilePath": "Netinkamas failo kelias.",
+      "saveFailed": "Klaida išsaugant failą „{{fileName}}“. Bandykite dar kartą.",
+      "unexpectedSaveError": "Išsaugant failą įvyko netikėta klaida. Bandykite dar kartą."
+    },
+    "loading": "Įkeliama..."
+  },
+  "testResults": {
+    "breakdown": "Testų rezultatų suskirstymas",
+    "status": "Būsena",
+    "viewScreenshot": "Peržiūrėti ekrano kopiją",
+    "passed": "Išlaikyta",
+    "failed": "Neišlaikyta",
+    "skipped": "Praleista",
+    "error": {
+      "imageRead": "Klaida skaitant vaizdą",
+      "imageAccess": "Klaida pasiekiant vaizdo failą"
+    }
+  },
+  "dashboard": {
+    "overallSummary": "Bendra suvestinė",
+    "totalTests": "Iš viso testų",
+    "passed": "Išlaikyta",
+    "failed": "Neišlaikyta",
+    "skipped": "Praleista",
+    "noResults": "Norėdami pamatyti rezultatus prietaisų skydelyje, paleiskite testus.",
+    "noRecordingResults": "Norėdami pamatyti įrašymo rezultatus prietaisų skydelyje, paleiskite testą.",
+    "tabs": {
+      "project": "Projekto prietaisų skydelis",
+      "recording": "Įrašymo prietaisų skydelis"
+    },
+    "error": {
+      "fetching": "Klaida gaunant prietaisų skydelį",
+      "parsing": "Klaida analizuojant {{file}}",
+      "reading": "Klaida skaitant {{file}}"
+    }
+  },
+  "errorPage": {
+    "title": "Būtinosios sąlygos neįdiegtos"
+  },
+  "errors": {
+    "ruby": {
+      "commandFailed": "„Ruby“ komanda nepavyko.\nKomanda: {{command}}\nIšvestis: {{output}}\nDerinimo informacija:\n{{debugInfo}}",
+      "unexpectedOutput": "Netikėta „Ruby“ versijos išvestis: {{output}}\nDerinimo informacija:\n{{debugInfo}}",
+      "failedToParse": "Nepavyko išanalizuoti „Ruby“ versijos iš išvesties: {{output}}\nDerinimo informacija:\n{{debugInfo}}",
+      "outdated": "„Ruby“ versija {{version}} yra pasenusi. Įdiekite „Ruby 3.0.0“ ar naujesnę versiją.\nKomandos išvestis: {{output}}\nDerinimo informacija:\n{{debugInfo}}",
+      "unknown": "Įvyko klaida: {{error}}\nDerinimo informacija:\n{{debugInfo}}"
+    }
+  },
+  "recorder": {
+    "placeholder": {
+      "url": "Įveskite URL, kurį norite įrašyti",
+      "commands": "Įrašytos „Selenium Ruby“ komandos bus rodomos čia..."
+    },
+    "button": {
+      "setUrl": "Nustatyti URL",
+      "startRecording": "Pradėti įrašymą",
+      "stopRecording": "Sustabdyti įrašymą",
+      "saveTest": "Išsaugoti testą",
+      "runTest": "Paleisti testą"
+    },
+    "heading": {
+      "recordedSteps": "Įrašyti veiksmai",
+      "runOutput": "Vykdymo išvestis"
+    },
+    "assertionTextModal": {
+      "title": "Elemento teksto tvirtinimas",
+      "message": "Įveskite tikslų tekstą, kurį tikitės, kad elementas turės.",
+      "label": "Laukiamas tekstas",
+      "cancel": "Atšaukti",
+      "save": "Išsaugoti tvirtinimą"
+    },
+    "deleteModal": {
+      "title": "Patvirtinti ištrynimą",
+      "message": "Ar tikrai norite ištrinti testą?",
+      "cancel": "Atšaukti",
+      "delete": "Ištrinti"
+    },
+    "rubyInstallModal": {
+      "title": {
+        "missing": "Trūkstamos priklausomybės",
+        "required": "Reikalingas Ruby diegimas"
+      },
+      "message": {
+        "missing": "Trūksta šių perlų: {{missingGems}}. Ar norite juos įdiegti?",
+        "required": "Norint naudoti visas „Raider Desktop App“ funkcijas, jūsų sistemoje reikalingas „Ruby“. Ar norite įdiegti „rbenv“, „Ruby“ ir visas priklausomybes?"
+      },
+      "yes": "Taip",
+      "no": "Ne"
+    },
+    "mainRecorderPanel": {
+      "suite": "Rinkinys: {{activeSuiteName}}",
+      "noSuite": "Nepasirinktas joks rinkinys",
+      "testName": "Testo pavadinimas",
+      "url": "URL įrašymui",
+      "newTest": "Naujas testas",
+      "import": "Importuoti",
+      "export": "Eksportuoti",
+      "record": "Įrašyti",
+      "run": "Vykdyti",
+      "stop": "Sustabdyti",
+      "exportTest": "Eksportuoti testą",
+      "exportSuite": "Eksportuoti rinkinį",
+      "exportProject": "Eksportuoti projektą",
+      "importTest": "Importuoti testą",
+      "importSuite": "Importuoti rinkinį",
+      "importProject": "Importuoti projektą",
+      "exportSuccess": "{{exportType}} eksportuotas į {{path}}",
+      "exportError": "Eksportuoti nepavyko: {{error}}",
+      "importSuccess": "{{importType}} sėkmingai importuotas!",
+      "importError": "Importuoti nepavyko: {{error}}"
+    },
+    "outputPanel": {
+      "title": "Testo rezultatai:",
+      "error": "Klaida:",
+      "placeholder": "Testo išvestis pasirodys čia..."
+    },
+    "testSuitePanel": {
+      "selectSuite": "Pasirinkite rinkinį",
+      "newSuite": "+ Naujas rinkinys...",
+      "deleteSuite": "- Ištrinti dabartinį rinkinį",
+      "runAll": "Vykdyti visus",
+      "newSuiteName": "Naujo rinkinio pavadinimas...",
+      "cancel": "Atšaukti",
+      "create": "Sukurti",
+      "deleteConfirmation": "Ar tikrai norite ištrinti rinkinį \"{{suiteName}}\"? Šio veiksmo negalima anuliuoti."
+    },
+    "recorderPage": {
+      "testSuites": "Testų rinkiniai",
+      "recordedSteps": "Įrašyti žingsniai",
+      "runOutput": "Vykdymo išvestis",
+      "codeView": "Kodo rodinys",
+      "friendlyView": "Draugiškas rodinys",
+      "hideOutput": "Slėpti išvestį",
+      "testOutput": "Testo išvestis"
+    },
+    "commandParser": {
+      "visit": "Apsilankyti {{url}}",
+      "waitForElementDisplayed": "Laukti, kol bus rodomas elementas su {{strategy}} \"{{value}}\"",
+      "waitForElementEnabled": "Laukti, kol bus įjungtas elementas su {{strategy}} \"{{value}}\"",
+      "clickElement": "Spustelėti elementą su {{strategy}} \"{{value}}\"",
+      "pressKey": "Paspausti klavišą {{key}} ant elemento su {{strategy}} \"{{value}}\"",
+      "typeText": "Įvesti \"{{text}}\" į elementą su {{strategy}} \"{{value}}\"",
+      "wait": "Laukti {{seconds}} sekundes",
+      "executeScript": "Vykdyti scenarijų: {{script}}",
+      "switchToFrame": "Perjungti į rėmelį, identifikuotą pagal {{frame}}",
+      "switchToDefaultContent": "Grįžti į pagrindinį turinį",
+      "assertElementDisplayed": "Patvirtinti, kad rodomas elementas su {{strategy}} \"{{value}}\"",
+      "assertElementEnabled": "Patvirtinti, kad įjungtas elementas su {{strategy}} \"{{value}}\"",
+      "assertElementTextEquals": "Patvirtinti, kad elemento su {{strategy}} \"{{value}}\" tekstas yra lygus \"{{text}}\""
+    }
+  }
+}

@@ -15,7 +15,7 @@ interface TestResultCardProps {
   name: string
   status: string
   screenshot?: string
-  message?: string
+  message?: string | null
 }
 
 const TestResultCard: React.FC<TestResultCardProps> = ({ name, status, screenshot, message }) => {

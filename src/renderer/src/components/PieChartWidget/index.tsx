@@ -27,7 +27,7 @@ const PieChartWidget: React.FC<PieChartWidgetProps> = ({ passed, failed, skipped
 
   const data = rawData.filter((item) => item.value > 0)
 
-  const legendFormatter = (value: string) => {
+  const legendFormatter = (value: string): JSX.Element => {
     const item = data.find((d) => d.name === value)
     const percentage = item && total > 0 ? ((item.value / total) * 100).toFixed(0) + '%' : ''
     return <span className="text-base font-medium">{`${value}: ${percentage}`}</span>

@@ -56,6 +56,7 @@ export default async function importSuite(
         const newTest: Test = {
           id: randomUUID(),
           name: testName,
+          url: '',
           steps: steps
         }
         newSuite.tests.push(newTest)
