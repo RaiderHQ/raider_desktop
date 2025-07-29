@@ -8,7 +8,6 @@ import OpenFolder from '@assets/icons/open-folder.svg'
 import AddIcon from '@assets/icons/add.svg'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
-import useVersionStore from '@foundation/Stores/versionStore'
 
 const Landing: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -20,8 +19,6 @@ const Landing: React.FC = (): JSX.Element => {
   const setProjectPath: (path: string) => void = useProjectStore(
     (state: { setProjectPath: (path: string) => void }) => state.setProjectPath
   )
-
-  const raiderVersion = useVersionStore((state: { version: string }) => state.version)
 
   const handleOpenProject = async (): Promise<void> => {
     try {
