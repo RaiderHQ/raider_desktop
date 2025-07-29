@@ -47,6 +47,7 @@ import saveRecording from './handlers/saveRecording'
 import updateRecordingSettings from './handlers/updateRecordingSettings'
 import getSelectorPriorities from './handlers/getSelectorPriorities'
 import saveSelectorPriorities from './handlers/saveSelectorPriorities'
+import { closeApp } from './handlers/closeApp'
 
 const iconPath = join(
   __dirname,
@@ -210,6 +211,7 @@ app.whenReady().then(() => {
   ipcMain.handle('save-recording', (_event, suiteId: string, test: Test) =>
     saveRecording(appState.mainWindow, suiteId, test)
   )
+  ipcMain.handle('close-app', closeApp)
 
   // --- Assertion Context Menu Handler ---
   ipcMain.on('show-assertion-context-menu', (_event, { selector, elementText }): void => {

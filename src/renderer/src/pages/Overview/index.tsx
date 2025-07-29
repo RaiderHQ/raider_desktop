@@ -6,6 +6,7 @@ import Folder from '@components/Library/Folder'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { FileNode } from '@foundation/Types/fileNode'
+import ConfirmationModal from '@components/ConfirmationModal'
 
 const Overview: React.FC = () => {
   const { t } = useTranslation()
@@ -14,6 +15,8 @@ const Overview: React.FC = () => {
   const { rubyCommand } = useRubyStore()
   const navigate = useNavigate()
   const [currentToastId, setCurrentToastId] = useState<string | null>(null)
+  const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false)
+  const [permissionErrorPath, setPermissionErrorPath] = useState('')
 
   useEffect(() => {
     if (!projectPath) {
@@ -59,8 +62,19 @@ const Overview: React.FC = () => {
     } catch (error) {
       if (toastId) toast.dismiss(toastId)
       setCurrentToastId(null)
-      toast.error(`${t('overview.error.runTests')}: ${(error as Error).message}`)
+      const errorMessage = (error as Error).message
+      if (errorMessage.includes('grant write permissions')) {
+        setPermissionErrorPath(errorMessage.split('`')[1] || errorMessage.split('\n')[2])
+        setIsPermissionModalOpen(true)
+      } else {
+        toast.error(`${t('overview.error.runTests')}: ${errorMessage}`)
+      }
     }
+  }
+
+  const handleGrantPermission = (): void => {
+    window.api.openFinder(permissionErrorPath)
+    setIsPermissionModalOpen(false)
   }
 
   return (
@@ -82,6 +96,13 @@ const Overview: React.FC = () => {
           />
         </div>
       </div>
+      {isPermissionModalOpen && (
+        <ConfirmationModal
+          message={t('overview.error.permission.message', { path: permissionErrorPath })}
+          onConfirm={handleGrantPermission}
+          onCancel={() => setIsPermissionModalOpen(false)}
+        />
+      )}
     </div>
   )
 }
