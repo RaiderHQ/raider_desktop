@@ -73,7 +73,9 @@ const Overview: React.FC = () => {
   }
 
   const handleGrantPermission = (): void => {
-    window.api.openFinder(permissionErrorPath)
+    const command = `chmod +w "${permissionErrorPath}"`
+    navigator.clipboard.writeText(command)
+    toast.success('Command copied to clipboard!')
     setIsPermissionModalOpen(false)
   }
 
@@ -100,7 +102,10 @@ const Overview: React.FC = () => {
         <ConfirmationModal
           message={t('overview.error.permission.message', { path: permissionErrorPath })}
           onConfirm={handleGrantPermission}
-          onCancel={() => setIsPermissionModalOpen(false)}
+          onCancel={() => {
+            window.api.openFinder(permissionErrorPath)
+            setIsPermissionModalOpen(false)
+          }}
         />
       )}
     </div>
@@ -108,3 +113,4 @@ const Overview: React.FC = () => {
 }
 
 export default Overview
+
