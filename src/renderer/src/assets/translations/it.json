@@ -170,7 +170,14 @@
   },
   "overview": {
     "error": {
-      "openAllure": "Si è verificato un problema durante l'apertura della dashboard"
+      "openAllure": "Si è verificato un problema during l'apertura della dashboard",
+      "runTests": "Failed to run tests",
+      "permission": {
+        "title": "Errore di autorizzazione",
+        "message": "L'applicazione necessita delle autorizzazioni di scrittura per modificare i file nella directory del progetto. Concedi le autorizzazioni alla cartella che contiene il percorso: {{path}}.",
+        "confirm": "Concedi autorizzazione",
+        "cancel": "Annulla"
+      }
     },
     "running": "I test sono in esecuzione...",
     "runTestsSuccess": "Test completati con successo!",
@@ -270,14 +277,14 @@
       "delete": "Elimina"
     },
     "rubyInstallModal": {
-      "title": {
-        "missing": "Dipendenze mancanti",
-        "required": "Installazione di Ruby richiesta"
-      },
-      "message": {
-        "missing": "Le seguenti gemme sono mancanti: {{missingGems}}. Vuoi installarle?",
-        "required": "Per utilizzare tutte le funzionalità dell'app desktop Raider, è necessario Ruby nel sistema. Vuoi installare rbenv, Ruby e tutte le dipendenze?"
-      },
+      "title": "Installazione di Ruby richiesta",
+      "message": "Per utilizzare tutte le funzionalità dell'app, è necessario installare Ruby utilizzando rbenv con una versione successiva alla 3.0.0",
+      "continue": "Continua",
+      "close": "Chiudi app"
+    },
+    "rubyGemsInstallModal": {
+      "title": "Dipendenze mancanti",
+      "message": "Le seguenti gemme sono mancanti: {{missingGems}}. Vuoi installarle?",
       "yes": "Sì",
       "no": "No"
     },

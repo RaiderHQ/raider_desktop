@@ -78,4 +78,5 @@ export interface WindowApi {
   updateRecordingSettings: (settings: {
     implicitWait: number
   }) => Promise<{ success: boolean; error?: string }>
+  openFinder: (folderPath: string) => void
 }

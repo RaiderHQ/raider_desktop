@@ -4,6 +4,7 @@ import { BrowserWindow } from 'electron'
 import { CommandType } from '@foundation/Types/commandType'
 import checkBundle from './checkBundle'
 import bundleInstall from './bundleInstall'
+import checkWritePermissions from './checkWritePermissions'
 
 const handler = async (
   mainWindow: BrowserWindow,
@@ -11,6 +12,16 @@ const handler = async (
   rubyCommand: string
 ): Promise<CommandType> => {
   try {
+    const gemfileLockPath = path.join(folderPath, 'Gemfile.lock')
+    const hasWritePermissions = await checkWritePermissions(gemfileLockPath)
+
+    if (!hasWritePermissions) {
+      return {
+        success: false,
+        output: '',
+        error: `There was an error while trying to write to\n\`${gemfileLockPath}\`. It is likely that you need to\ngrant write permissions for that path.`
+      }
+    }
     // 1. Check if the bundle is up to date
     const checkResult = await checkBundle(folderPath, rubyCommand)
 

@@ -8,7 +8,7 @@ export interface VersionStore {
 const useVersionStore = create<VersionStore>((set) => {
   const extractVersion = (input: string): string => {
     const match = input.match(/(\d+\.\d+\.\d+)/)
-    return match ? match[0] : '1.1.2'
+    return match ? match[0] : '1.1.4'
   }
 
   const loadVersion = async (): Promise<void> => {
@@ -17,10 +17,10 @@ const useVersionStore = create<VersionStore>((set) => {
       if (result.success) {
         set({ version: extractVersion(result.output) })
       } else {
-        set({ version: '1.1.2' })
+        set({ version: '1.1.4' })
       }
     } catch (error) {
-      set({ version: '1.1.2' })
+      set({ version: '1.1.4' })
     }
   }
 
@@ -40,7 +40,7 @@ const useVersionStore = create<VersionStore>((set) => {
   }, 0)
 
   return {
-    version: '1.1.2',
+    version: '1.1.4',
     loadVersion
   }
 })
