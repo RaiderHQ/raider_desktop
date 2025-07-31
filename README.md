@@ -18,6 +18,23 @@
 
 Raider Desktop is the UI desktop companion for [Ruby Raider](https://github.com/RaiderHQ/ruby_raider), designed to simplify and accelerate your automation workflow. It provides recording, editing, and the ability to manage your ruby raider projects, in order to make test automation easier and more efficient.
 
+## Table of Contents
+
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation (for Development)](#installation-for-development)
+  - [Running the Application](#running-the-application)
+- [Core Features](#core-features)
+  - [Creating a New Ruby Raider Project](#creating-a-new-ruby-raider-project)
+  - [The Recorder Page](#the-recorder-page)
+  - [The Dashboard Page](#the-dashboard-page)
+  - [The Settings Page](#the-settings-page)
+- [Building the Application](#building-the-application)
+- [Common Errors](#common-errors)
+  - ["rbenv not found"](#rbenv-not-found)
+  - [Permission Denied](#permission-denied)
+  - [macOS: "App cannot be opened because the developer cannot be verified."](#macos-app-cannot-be-opened-because-the-developer-cannot-be-verified)
+
 ## Getting Started
 
 Follow these instructions to get the project up and running on your local machine for development and testing purposes.
@@ -33,7 +50,7 @@ Additionally, for the application to function correctly, you must have the `ruby
 gem install ruby_raider
 ```
 
-### Installation
+### Installation (for Development)
 
 1. Clone the repository to your local machine:
    ```bash
