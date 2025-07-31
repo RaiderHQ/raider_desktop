@@ -188,8 +188,7 @@ const api = {
   removeTestRunStatusListener: (
     callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
   ): Electron.IpcRenderer => ipcRenderer.removeListener('test-run-status', callback),
-  closeApp: (): Promise<void> => ipcRenderer.invoke('close-app'),
-  openFinder: (folderPath: string): void => ipcRenderer.send('open-finder', folderPath)
+  closeApp: (): Promise<void> => ipcRenderer.invoke('close-app')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
