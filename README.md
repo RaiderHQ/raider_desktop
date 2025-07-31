@@ -39,10 +39,12 @@ gem install ruby_raider
    ```bash
    git clone https://github.com/your-username/raider_desktop.git
    ```
+2. Navigate into the project directory:
+    ```bash
    cd raider_desktop
    ```
 
-2. Install the project dependencies using npm:
+3. Install the project dependencies using npm:
    ```bash
    npm install
    ```
@@ -147,3 +149,17 @@ sudo chown -R $(whoami) /path/to/your/project/folder
 ```
 
 Replace `/path/to/your/project/folder` with the actual path to your project directory. This command changes the owner of the folder to the current user, ensuring you have full read, write, and execute permissions.
+
+### macOS: "App cannot be opened because the developer cannot be verified."
+
+When you first open RaiderUI on macOS, you might see a warning that the application cannot be opened because it is from an unidentified developer. This is a standard security feature in macOS for applications downloaded from outside the App Store.
+
+To resolve this, you need to grant an exception for the app:
+
+1.  Open **System Settings**.
+2.  Go to **Privacy & Security**.
+3.  Scroll down to the "Security" section.
+4.  You will see a message about "RaiderUI" being blocked. Click the **"Open Anyway"** button next to it.
+5.  A confirmation dialog will appear. Click **"Open"** to launch the application.
+
+You will only need to do this once. After that, you can open the app normally.
