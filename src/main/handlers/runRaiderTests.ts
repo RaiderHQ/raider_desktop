@@ -4,7 +4,6 @@ import { BrowserWindow } from 'electron'
 import { CommandType } from '@foundation/Types/commandType'
 import checkBundle from './checkBundle'
 import bundleInstall from './bundleInstall'
-import checkWritePermissions from './checkWritePermissions'
 
 const handler = async (
   mainWindow: BrowserWindow,
@@ -12,26 +11,13 @@ const handler = async (
   rubyCommand: string
 ): Promise<CommandType> => {
   try {
-    const gemfileLockPath = path.join(folderPath, 'Gemfile.lock')
-    const hasWritePermissions = await checkWritePermissions(gemfileLockPath)
-
-    if (!hasWritePermissions) {
-      return {
-        success: false,
-        output: '',
-        error: `There was an error while trying to write to\n\`${gemfileLockPath}\`. It is likely that you need to\ngrant write permissions for that path.`
-      }
-    }
-    // 1. Check if the bundle is up to date
     const checkResult = await checkBundle(folderPath, rubyCommand)
 
     if (!checkResult.success) {
       mainWindow.webContents.send('test-run-status', { status: 'installing' })
-      // 2. If check fails, run bundle install
       const installResult = await bundleInstall(folderPath, rubyCommand)
 
       if (!installResult.success) {
-        // If bundle install fails, return the error
         return {
           success: false,
           output: '',
@@ -40,7 +26,6 @@ const handler = async (
       }
     }
 
-    // 3. Proceed with running the tests
     mainWindow.webContents.send('test-run-status', { status: 'running' })
     const normalizedFolderPath = path.resolve(folderPath)
     const commandToExecute = `${rubyCommand} -S bundle exec raider u raid`
