@@ -170,7 +170,14 @@
   },
   "overview": {
     "error": {
-      "openAllure": "A apărut o problemă la deschiderea tabloului de bord"
+      "openAllure": "A apărut o problemă la deschiderea tabloului de bord",
+      "runTests": "Failed to run tests",
+      "permission": {
+        "title": "Eroare de permisiune",
+        "message": "Aplicația are nevoie de permisiuni de scriere pentru a modifica fișierele din directorul proiectului. Vă rugăm să acordați permisiuni folderului care conține calea: {{path}}.",
+        "confirm": "Acordă permisiunea",
+        "cancel": "Anulare"
+      }
     },
     "running": "Testele se execută...",
     "runTestsSuccess": "Testele s-au finalizat cu succes!",
@@ -270,14 +277,14 @@
       "delete": "Șterge"
     },
     "rubyInstallModal": {
-      "title": {
-        "missing": "Dependințe lipsă",
-        "required": "Instalare Ruby necesară"
-      },
-      "message": {
-        "missing": "Următoarele geme lipsesc: {{missingGems}}. Doriți să le instalați?",
-        "required": "Pentru a utiliza toate funcționalitățile aplicației Raider Desktop, aveți nevoie de Ruby în sistemul dumneavoastră. Doriți să instalați rbenv, Ruby și toate dependențele?"
-      },
+      "title": "Instalare Ruby necesară",
+      "message": "Pentru a utiliza toate funcționalitățile aplicației, trebuie să instalați Ruby folosind rbenv cu o versiune mai mare de 3.0.0",
+      "continue": "Continuă",
+      "close": "Închide aplicația"
+    },
+    "rubyGemsInstallModal": {
+      "title": "Dependințe lipsă",
+      "message": "Următoarele geme lipsesc: {{missingGems}}. Doriți să le instalați?",
       "yes": "Da",
       "no": "Nu"
     },
@@ -315,7 +322,9 @@
       "runAll": "Rulați tot",
       "newSuiteName": "Nume suită nouă...",
       "cancel": "Anulare",
-      "create": "Creați",      "deleteConfirmation": "Sunteți sigur că doriți să ștergeți suita \"{{suiteName}}\"? Această acțiune nu poate fi anulată."    },
+      "create": "Creați",
+      "deleteConfirmation": "Sunteți sigur că doriți să ștergeți suita \"{{suiteName}}\"? Această acțiune nu poate fi anulată."
+    },
     "recorderPage": {
       "testSuites": "Suite de teste",
       "recordedSteps": "Pași înregistrați",

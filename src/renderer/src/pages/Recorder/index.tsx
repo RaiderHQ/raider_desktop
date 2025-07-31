@@ -9,6 +9,7 @@ import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import AssertionTextModal from '@components/AssertionTextModal'
 import RubyInstallModal from '@components/RubyInstallModal'
+import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
@@ -39,6 +40,7 @@ const Recorder: React.FC = (): JSX.Element => {
   const [isRunning, setIsRunning] = useState<boolean>(false)
   const [assertionInfo, setAssertionInfo] = useState<AssertionInfo | null>(null)
   const [isRubyInstallModalOpen, setIsRubyInstallModalOpen] = useState<boolean>(false)
+  const [isGemsInstallModalOpen, setIsGemsInstallModalOpen] = useState<boolean>(false)
   const [missingGems, setMissingGems] = useState<string[] | undefined>(undefined)
   const { rubyCommand, setRubyCommand } = useRubyStore()
   const projectPath = useProjectStore((state) => state.projectPath)
@@ -267,36 +269,12 @@ const Recorder: React.FC = (): JSX.Element => {
     setAssertionInfo(null)
   }
 
-  const handleInstallRuby = async (): Promise<void> => {
-    setIsRubyInstallModalOpen(false)
-    const toastId = toast.loading('Installing Ruby and dependencies...')
-
-    try {
-      const result = await window.api.installRbenvAndRuby()
-      if (result.success) {
-        const rubyCheck = await window.api.isRubyInstalled()
-        if (rubyCheck.success && rubyCheck.rubyCommand) {
-          setRubyCommand(rubyCheck.rubyCommand)
-          await window.api.installGems(rubyCheck.rubyCommand, ['ruby_raider'])
-          await window.api.installGems(rubyCheck.rubyCommand, [
-            'selenium-webdriver',
-            'rspec',
-            'allure-rspec'
-          ])
-          toast.success('Installation successful!', { id: toastId })
-        } else {
-          toast.error(`Installation failed: ${rubyCheck.error}`, { id: toastId })
-        }
-      } else {
-        toast.error(`Installation failed: ${result.error}`, { id: toastId })
-      }
-    } catch (error) {
-      toast.error(`An error occurred during installation: ${error}`, { id: toastId })
-    }
+  const handleCloseApp = (): void => {
+    window.api.closeApp()
   }
 
   const handleInstallGems = async (): Promise<void> => {
-    setIsRubyInstallModalOpen(false)
+    setIsGemsInstallModalOpen(false)
     const toastId = toast.loading(`Installing missing gems: ${missingGems?.join(', ')}...`)
 
     try {
@@ -314,12 +292,16 @@ const Recorder: React.FC = (): JSX.Element => {
   useEffect((): (() => void) => {
     const checkRuby = async (): Promise<void> => {
       const result = await window.api.isRubyInstalled()
+      setRubyCommand(result.rubyCommand || null)
       if (!result.success) {
         setMissingGems(result.missingGems)
-        setRubyCommand(result.rubyCommand || null)
-        setIsRubyInstallModalOpen(true)
-      } else {
-        setRubyCommand(result.rubyCommand || null)
+        if (result.rubyCommand) {
+          // Ruby is installed, but gems are missing
+          setIsGemsInstallModalOpen(true)
+        } else {
+          // Ruby is not installed
+          setIsRubyInstallModalOpen(true)
+        }
       }
     }
     checkRuby()
@@ -438,8 +420,14 @@ const Recorder: React.FC = (): JSX.Element => {
     <div className="flex flex-col h-screen w-screen p-4 space-y-4 bg-gray-50">
       {isRubyInstallModalOpen && (
         <RubyInstallModal
-          onInstall={missingGems ? handleInstallGems : handleInstallRuby}
           onClose={() => setIsRubyInstallModalOpen(false)}
+          onCloseApp={handleCloseApp}
+        />
+      )}
+      {isGemsInstallModalOpen && missingGems && (
+        <RubyGemsInstallModal
+          onInstall={handleInstallGems}
+          onClose={() => setIsGemsInstallModalOpen(false)}
           missingGems={missingGems}
         />
       )}

@@ -148,7 +148,14 @@
   },
   "overview": {
     "error": {
-      "openAllure": "Der opstod et problem under åbning af dashboardet"
+      "openAllure": "Der opstod et problem under åbning af dashboardet",
+      "runTests": "Failed to run tests",
+      "permission": {
+        "title": "Tilladelsesfejl",
+        "message": "Applikationen har brug for skrivetilladelser for at ændre filer i projektmappen. Giv venligst tilladelser til mappen, der indeholder stien: {{path}}.",
+        "confirm": "Giv tilladelse",
+        "cancel": "Annuller"
+      }
     },
     "running": "Tests udføres...",
     "runTestsSuccess": "Tests fuldført med succes!",
@@ -239,14 +246,14 @@
       "delete": "Slet"
     },
     "rubyInstallModal": {
-      "title": {
-        "missing": "Manglende afhængigheder",
-        "required": "Ruby-installation påkrævet"
-      },
-      "message": {
-        "missing": "Følgende gems mangler: {{missingGems}}. Vil du installere dem?",
-        "required": "For at bruge alle funktionerne i Raider Desktop App skal du have Ruby på dit system. Vil du installere rbenv, Ruby og alle afhængighederne?"
-      },
+      "title": "Ruby-installation påkrævet",
+      "message": "For at bruge alle funktionerne i appen skal du installere Ruby ved hjælp af rbenv med en version højere end 3.0.0",
+      "continue": "Fortsæt",
+      "close": "Luk app"
+    },
+    "rubyGemsInstallModal": {
+      "title": "Manglende afhængigheder",
+      "message": "Følgende gems mangler: {{missingGems}}. Vil du installere dem?",
       "yes": "Ja",
       "no": "Nej"
     },
