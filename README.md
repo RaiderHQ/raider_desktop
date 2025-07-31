@@ -1,6 +1,22 @@
 # Raider Desktop
 
-Raider Desktop is the official desktop application for [Ruby Raider](https://github.com/RaiderHQ/ruby_raider), designed to simplify and accelerate your automation workflow. It provides powerful recording, editing, and the ability to manage your ruby raider projects, in order to make test automation easier and more efficient.
+<!-- PROJECT LOGO -->
+<br />
+<div align="center">
+   <a href="https://github.com/RubyRaider/ruby_raider">
+   <img src="https://www.ruby-raider.com/assets/icon-DYY74ofR.png" alt="Logo" style="width:200px;">
+   </a>
+   <p align="center">
+      <a href="https://ruby-raider.com/">Website</a>
+      ·
+      <a href="https://github.com/RaiderHQ/raider_desktop/issues">Report Bug</a>
+      ·
+      <a href="https://github.com/RaiderHQ/raider_desktop/issues">Request Feature</a>
+   </p>
+   <p align="center"> For more information and updates on releases, see <a href="https://ruby-raider.com">https://ruby-raider.com</a></p>
+</div>
+
+Raider Desktop is the UI desktop companion for [Ruby Raider](https://github.com/RaiderHQ/ruby_raider), designed to simplify and accelerate your automation workflow. It provides recording, editing, and the ability to manage your ruby raider projects, in order to make test automation easier and more efficient.
 
 ## Getting Started
 
@@ -23,7 +39,7 @@ gem install ruby_raider
    ```bash
    git clone https://github.com/your-username/raider_desktop.git
    ```
-   cd RaiderUI
+   cd raider_desktop
    ```
 
 2. Install the project dependencies using npm:
@@ -56,7 +72,7 @@ npm run dev
 
 ### The Recorder Page
 
-The Recorder is the heart of RaiderUI, allowing you to record user interactions and automatically generate test scripts.
+The Recorder is the heart of Raider Desktop, allowing you to record user interactions and automatically generate test scripts.
 
 -   **Test Suites Panel**: On the left, you can create, delete, and manage your test suites. Each suite can contain multiple tests.
 -   **Recording Controls**: At the top of the screen, you can set the initial URL for your test, start/stop the recording, and run tests.
@@ -97,3 +113,37 @@ npm run build:mac
 # For Linux
 npm run build:linux
 ```
+
+## Common Errors
+
+### "rbenv not found"
+
+This error indicates that `rbenv` is not installed or not properly configured in your shell. `rbenv` is a tool that helps you manage multiple Ruby versions.
+
+**Installation:**
+
+*   **macOS (using Homebrew):**
+    ```bash
+    brew install rbenv
+    ```
+
+*   **Other platforms:**
+    Please refer to the official [rbenv installation guide](https://github.com/rbenv/rbenv#installation).
+
+After installation, make sure to initialize `rbenv` in your shell by running:
+```bash
+rbenv init
+```
+Follow the instructions provided by the command to set up `rbenv` in your shell configuration file (e.g., `.zshrc`, `.bash_profile`).
+
+### Permission Denied
+
+If you encounter a "Permission Denied" error when running tests or saving files, it means the application does not have the necessary write permissions for the project folder.
+
+You can grant the required permissions by running the following command in your terminal:
+
+```bash
+sudo chown -R $(whoami) /path/to/your/project/folder
+```
+
+Replace `/path/to/your/project/folder` with the actual path to your project directory. This command changes the owner of the folder to the current user, ensuring you have full read, write, and execute permissions.
