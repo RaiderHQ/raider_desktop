@@ -170,7 +170,14 @@
   },
   "overview": {
     "error": {
-      "openAllure": "An issue occurred opening the dashboard"
+      "openAllure": "An issue occurred opening the dashboard",
+      "runTests": "Failed to run tests",
+      "permission": {
+        "title": "Permission Error",
+        "message": "The application needs write permissions to modify files in the project directory. Please grant permissions to the folder containing the path: {{path}}.",
+        "confirm": "Grant Permission",
+        "cancel": "Cancel"
+      }
     },
     "running": "Tests are being executed...",
     "runTestsSuccess": "Tests completed successfully!",
@@ -270,14 +277,14 @@
       "delete": "Delete"
     },
     "rubyInstallModal": {
-      "title": {
-        "missing": "Missing Dependencies",
-        "required": "Ruby Installation Required"
-      },
-      "message": {
-        "missing": "The following gems are missing: {{missingGems}}. Would you like to install them?",
-        "required": "In order to use all the features of the Raider Desktop App, you need Ruby in your system. Would you like to install rbenv, Ruby, and all the dependencies?"
-      },
+      "title": "Ruby Installation Required",
+      "message": "To use all features of the app, you need to install Ruby using rbenv with a version higher than 3.0.0",
+      "continue": "Continue",
+      "close": "Close App"
+    },
+    "rubyGemsInstallModal": {
+      "title": "Missing Dependencies",
+      "message": "The following gems are missing: {{missingGems}}. Would you like to install them?",
       "yes": "Yes",
       "no": "No"
     },

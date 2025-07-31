@@ -21,7 +21,15 @@ const handler = async (projectPath: string, rubyCommand: string): Promise<Comman
       const child = exec(command, { cwd: normalizedPath }, (error, stdout, stderr) => {
         if (error) {
           const errorMessage = `Error: ${error.message}\n--- STDERR ---\n${stderr.trim()}\n--- STDOUT ---\n${stdout.trim()}`
-          resolve({ success: false, error: errorMessage, output: stdout.trim() })
+          if (stderr.includes('permission denied')) {
+            resolve({
+              success: false,
+              error: 'permission.denied',
+              output: `sudo chown -R $(whoami) ${projectPath}`
+            })
+          } else {
+            resolve({ success: false, error: errorMessage, output: stdout.trim() })
+          }
           return
         }
         resolve({ success: true, output: stdout.trim() })

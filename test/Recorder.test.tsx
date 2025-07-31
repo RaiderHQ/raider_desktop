@@ -77,7 +77,8 @@ const mockApi = {
   getSelectorPriorities: vi.fn(),
   saveSelectorPriorities: vi.fn(),
   onTestRunStatus: vi.fn(),
-  removeTestRunStatusListener: vi.fn()
+  removeTestRunStatusListener: vi.fn(),
+  closeApp: vi.fn()
 }
 
 let suiteUpdatedCallback: (event: IpcRendererEvent, updatedSuites: unknown) => void = () => {}

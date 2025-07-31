@@ -170,7 +170,14 @@
   },
   "overview": {
     "error": {
-      "openAllure": "Atidarant prietaisų skydelį įvyko problema"
+      "openAllure": "Atidarant prietaisų skydelį įvyko problema",
+      "runTests": "Failed to run tests",
+      "permission": {
+        "title": "Leidimo klaida",
+        "message": "Programai reikia rašymo teisių, kad galėtų keisti failus projekto kataloge. Suteikite leidimus aplankui, kuriame yra kelias: {{path}}.",
+        "confirm": "Suteikti leidimą",
+        "cancel": "Atšaukti"
+      }
     },
     "running": "Vykdomi testai...",
     "runTestsSuccess": "Testai sėkmingai baigti!",
@@ -270,14 +277,14 @@
       "delete": "Ištrinti"
     },
     "rubyInstallModal": {
-      "title": {
-        "missing": "Trūkstamos priklausomybės",
-        "required": "Reikalingas Ruby diegimas"
-      },
-      "message": {
-        "missing": "Trūksta šių perlų: {{missingGems}}. Ar norite juos įdiegti?",
-        "required": "Norint naudoti visas „Raider Desktop App“ funkcijas, jūsų sistemoje reikalingas „Ruby“. Ar norite įdiegti „rbenv“, „Ruby“ ir visas priklausomybes?"
-      },
+      "title": "Reikalingas Ruby diegimas",
+      "message": "Norėdami naudoti visas programos funkcijas, turite įdiegti Ruby naudodami rbenv su versija, aukštesne nei 3.0.0",
+      "continue": "Tęsti",
+      "close": "Uždaryti programą"
+    },
+    "rubyGemsInstallModal": {
+      "title": "Trūkstamos priklausomybės",
+      "message": "Trūksta šių perlų: {{missingGems}}. Ar norite juos įdiegti?",
       "yes": "Taip",
       "no": "Ne"
     },
