@@ -5,7 +5,7 @@ const handler = async (
   _event: IpcMainInvokeEvent,
   filePath: string,
   newContent: string
-): Promise<{ success: boolean; error?: string }> => {
+): Promise<{ success: boolean; error?: string; output?: string }> => {
   try {
     // Validate the file path
     if (typeof filePath !== 'string' || !filePath.trim()) {
@@ -29,6 +29,13 @@ const handler = async (
   } catch (error) {
     console.error('Error editing file:', error)
     if (error instanceof Error) {
+      if (error.message.includes('EACCES')) {
+        return {
+          success: false,
+          error: 'permission.denied.save',
+          output: `sudo chown -R $(whoami) ${filePath}`
+        }
+      }
       return { success: false, error: error.message }
     }
 
