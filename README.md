@@ -16,63 +16,36 @@
    <p align="center"> For more information and updates on releases, see <a href="https://ruby-raider.com">https://ruby-raider.com</a></p>
 </div>
 
+You can download the latest release of the app [here](https://github.com/RaiderHQ/raider_desktop/releases/tag/1.1.4).
+
+> [!WARNING]
+> Raider Desktop is currently available for **macOS only**. Windows and Linux versions are planned for future releases.
+
 Raider Desktop is the UI desktop companion for [Ruby Raider](https://github.com/RaiderHQ/ruby_raider), designed to simplify and accelerate your automation workflow. It provides recording, editing, and the ability to manage your ruby raider projects, in order to make test automation easier and more efficient.
 
 ## Table of Contents
 
-- [Getting Started](#getting-started)
+- [For Users](#for-users)
   - [Prerequisites](#prerequisites)
+  - [Core Features](#core-features)
+    - [Creating a New Ruby Raider Project](#creating-a-new-ruby-raider-project)
+    - [The Recorder Page](#the-recorder-page)
+    - [The Dashboard Page](#the-dashboard-page)
+    - [The Settings Page](#the-settings-page)
+    - [Common Errors](#common-errors)
+- [For Developers](#for-developers)
+  - [Getting Started](#getting-started)
   - [Installation (for Development)](#installation-for-development)
   - [Running the Application](#running-the-application)
-- [Core Features](#core-features)
-  - [Creating a New Ruby Raider Project](#creating-a-new-ruby-raider-project)
-  - [The Recorder Page](#the-recorder-page)
-  - [The Dashboard Page](#the-dashboard-page)
-  - [The Settings Page](#the-settings-page)
 - [Building the Application](#building-the-application)
-- [Common Errors](#common-errors)
-  - ["rbenv not found"](#rbenv-not-found)
-  - [Permission Denied](#permission-denied)
-  - [macOS: "App cannot be opened because the developer cannot be verified."](#macos-app-cannot-be-opened-because-the-developer-cannot-be-verified)
 
-## Getting Started
+## For Users
 
-Follow these instructions to get the project up and running on your local machine for development and testing purposes.
+This section provides information for users of the Raider Desktop application.
 
 ### Prerequisites
 
-Before you begin, ensure you have the following installed:
-- [Node.js](https://nodejs.org/) (which includes npm)
-- [Ruby](https://www.ruby-lang.org/en/documentation/installation/)
-
-Additionally, for the application to function correctly, you must have the `ruby_raider` gem installed:
-```bash
-gem install ruby_raider
-```
-
-### Installation (for Development)
-
-1. Clone the repository to your local machine:
-   ```bash
-   git clone https://github.com/your-username/raider_desktop.git
-   ```
-2. Navigate into the project directory:
-    ```bash
-   cd raider_desktop
-   ```
-
-3. Install the project dependencies using npm:
-   ```bash
-   npm install
-   ```
-
-### Running the Application
-
-To start the application in development mode, run the following command. This will launch the Electron app.
-
-```bash
-npm run dev
-```
+For the application to work correctly, you must have [**rbenv**](https://github.com/rbenv/rbenv) installed with a **Ruby version higher than 3.0.0**. If you do not meet these requirements, you will see a modal on the app, and not all functionality will be available.
 
 ## Core Features
 
@@ -118,24 +91,9 @@ The Settings page allows you to configure various aspects of the application and
     -   **Waits**: Adjust implicit and explicit wait times to control how the recorder waits for elements to appear on the page.
     -   **Selector Priorities**: Define the order of attributes the recorder should prioritize when generating selectors for elements (e.g., `id`, `name`, `data-testid`, `css`). You can add, remove, and reorder the priorities.
 
-## Building the Application
+### Common Errors
 
-To build the application for your specific operating system, use one of the following commands:
-
-```bash
-# For Windows
-npm run build:win
-
-# For macOS
-npm run build:mac
-
-# For Linux
-npm run build:linux
-```
-
-## Common Errors
-
-### "rbenv not found"
+#### "rbenv not found"
 
 This error indicates that `rbenv` is not installed or not properly configured in your shell. `rbenv` is a tool that helps you manage multiple Ruby versions.
 
@@ -155,7 +113,7 @@ rbenv init
 ```
 Follow the instructions provided by the command to set up `rbenv` in your shell configuration file (e.g., `.zshrc`, `.bash_profile`).
 
-### Permission Denied
+#### Permission Denied
 
 If you encounter a "Permission Denied" error when running tests or saving files, it means the application does not have the necessary write permissions for the project folder.
 
@@ -167,7 +125,7 @@ sudo chown -R $(whoami) /path/to/your/project/folder
 
 Replace `/path/to/your/project/folder` with the actual path to your project directory. This command changes the owner of the folder to the current user, ensuring you have full read, write, and execute permissions.
 
-### macOS: "App cannot be opened because the developer cannot be verified."
+#### macOS: "App cannot be opened because the developer cannot be verified."
 
 When you first open RaiderUI on macOS, you might see a warning that the application cannot be opened because it is from an unidentified developer. This is a standard security feature in macOS for applications downloaded from outside the App Store.
 
@@ -180,3 +138,59 @@ To resolve this, you need to grant an exception for the app:
 5.  A confirmation dialog will appear. Click **"Open"** to launch the application.
 
 You will only need to do this once. After that, you can open the app normally.
+
+## For Developers
+
+This section is for developers who want to contribute to the Raider Desktop project.
+
+### Getting Started
+
+Follow these instructions to get the project up and running on your local machine for development and testing purposes.
+
+Before you begin, ensure you have the following installed:
+- [Node.js](https://nodejs.org/) (which includes npm)
+- [Ruby](https://www.ruby-lang.org/en/documentation/installation/)
+
+Additionally, for the application to function correctly, you must have the `ruby_raider` gem installed:
+```bash
+gem install ruby_raider
+```
+
+### Installation (for Development)
+
+1. Clone the repository to your local machine:
+   ```bash
+   git clone https://github.com/your-username/raider_desktop.git
+   ```
+2. Navigate into the project directory:
+    ```bash
+   cd raider_desktop
+   ```
+
+3. Install the project dependencies using npm:
+   ```bash
+   npm install
+   ```
+
+### Running the Application
+
+To start the application in development mode, run the following command. This will launch the Electron app.
+
+```bash
+npm run dev
+```
+
+## Building the Application
+
+To build the application for your specific operating system, use one of the following commands:
+
+```bash
+# For Windows
+npm run build:win
+
+# For macOS
+npm run build:mac
+
+# For Linux
+npm run build:linux
+```
