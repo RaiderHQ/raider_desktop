@@ -1,6 +1,29 @@
 import { spawn } from 'child_process'
+import { isWindows } from '../utils/platformDetection'
 
 const handler = (): Promise<{ success: boolean; output?: string; error?: string }> => {
+  // Windows: Provide installation guidance instead of attempting to install rbenv
+  if (isWindows()) {
+    return Promise.resolve({
+      success: false,
+      error: `Ruby installation required for Windows.
+
+Please install Ruby using one of these methods:
+
+1. RubyInstaller (Recommended):
+   - Visit: https://rubyinstaller.org/downloads/
+   - Download: Ruby 3.1.6 with DevKit
+   - Run installer and select "Add Ruby to PATH"
+
+2. Chocolatey:
+   - Open PowerShell as Administrator
+   - Run: choco install ruby
+
+After installation, restart Raider Desktop to detect Ruby.`
+    })
+  }
+
+  // Unix (macOS/Linux): Proceed with rbenv installation
   return new Promise((resolve) => {
     const command = `
       if ! command -v rbenv &> /dev/null; then

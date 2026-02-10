@@ -2,6 +2,8 @@ import isRbenvRubyInstalled from './isRbenvRubyInstalled'
 import isRvmRubyInstalled from './isRvmRubyInstalled'
 import isSystemRubyInstalled from './isSystemRubyInstalled'
 import checkRubyDependencies from './checkRubyDependencies'
+import { isWindows } from '../utils/platformDetection'
+import { isWindowsRubyInstalled } from './windows/isWindowsRubyInstalled'
 
 const handler = async (): Promise<{
   success: boolean
@@ -10,6 +12,26 @@ const handler = async (): Promise<{
   missingGems?: string[]
   rubyCommand?: string
 }> => {
+  // Windows: Use Windows-specific Ruby detection
+  if (isWindows()) {
+    const windowsResult = await isWindowsRubyInstalled()
+    if (windowsResult.success && windowsResult.rubyCommand) {
+      // Check for required gems (selenium-webdriver, rspec, ruby_raider)
+      const rubyPrefix = windowsResult.rubyCommand.replace(' ruby', '').trim()
+      const depsResult = await checkRubyDependencies(rubyPrefix)
+      return {
+        ...windowsResult,
+        success: depsResult.success,
+        missingGems: depsResult.missingGems
+      }
+    }
+    return {
+      success: false,
+      error: windowsResult.error || 'No Ruby 3.x installation found. Please install RubyInstaller or Chocolatey Ruby.'
+    }
+  }
+
+  // Unix (macOS/Linux): Use existing rbenv → RVM → system detection
   const rbenvResult = await isRbenvRubyInstalled()
   if (rbenvResult.success && rbenvResult.version) {
     const rubyCommandPrefix = `eval "$(rbenv init -)" && rbenv shell ${rbenvResult.version} &&`

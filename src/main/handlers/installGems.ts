@@ -1,32 +1,20 @@
-import { spawn } from 'child_process'
+import { ShellExecutor } from '../shell/ShellExecutor'
 
-const handler = (
+const handler = async (
   rubyCommand: string,
   gems: string[]
 ): Promise<{ success: boolean; output?: string; error?: string }> => {
-  return new Promise((resolve) => {
-    const command = `${rubyCommand} gem install ${gems.join(' ')}`
-    const process = spawn(command, {
-      shell: true
-    })
+  const command = `${rubyCommand} gem install ${gems.join(' ')}`
 
-    let output = ''
-    process.stdout.on('data', (data) => {
-      output += data.toString()
-    })
+  // Use ShellExecutor for cross-platform command execution
+  const executor = ShellExecutor.create()
+  const result = await executor.execute(command)
 
-    process.stderr.on('data', (data) => {
-      output += data.toString()
-    })
-
-    process.on('close', (code) => {
-      if (code === 0) {
-        resolve({ success: true, output })
-      } else {
-        resolve({ success: false, error: output })
-      }
-    })
-  })
+  if (result.success) {
+    return { success: true, output: result.output }
+  } else {
+    return { success: false, error: result.error || 'Gem installation failed', output: result.output }
+  }
 }
 
 export default handler

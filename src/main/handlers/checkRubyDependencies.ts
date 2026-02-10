@@ -1,33 +1,30 @@
-import { exec } from 'child_process'
+import { ShellExecutor } from '../shell/ShellExecutor'
 
-const handler = (
+const handler = async (
   rubyCommandPrefix: string
 ): Promise<{ success: boolean; missingGems: string[] }> => {
-  return new Promise((resolve) => {
-    const gems = ['selenium-webdriver', 'ruby_raider', 'rspec']
-    const checks = gems.map(
-      (gem) =>
-        new Promise((resolveCheck) => {
-          const command = `${rubyCommandPrefix} gem list -i ${gem}`
-          exec(command, (error, stdout) => {
-            if (error || !stdout.includes('true')) {
-              resolveCheck(gem)
-            } else {
-              resolveCheck(null)
-            }
-          })
-        })
-    )
+  const gems = ['selenium-webdriver', 'ruby_raider', 'rspec']
+  const executor = ShellExecutor.create()
 
-    Promise.all(checks).then((results) => {
-      const missingGems = results.filter((gem) => gem !== null) as string[]
-      if (missingGems.length > 0) {
-        resolve({ success: false, missingGems })
-      } else {
-        resolve({ success: true, missingGems: [] })
-      }
-    })
+  // Check each gem using ShellExecutor
+  const checks = gems.map(async (gem) => {
+    const command = `${rubyCommandPrefix} gem list -i ${gem}`
+    const result = await executor.execute(command)
+
+    if (!result.success || !result.output.includes('true')) {
+      return gem // Gem is missing
+    }
+    return null // Gem is installed
   })
+
+  const results = await Promise.all(checks)
+  const missingGems = results.filter((gem) => gem !== null) as string[]
+
+  if (missingGems.length > 0) {
+    return { success: false, missingGems }
+  } else {
+    return { success: true, missingGems: [] }
+  }
 }
 
 export default handler

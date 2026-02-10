@@ -1,7 +1,7 @@
-import { exec } from 'child_process'
 import { promises as fs } from 'fs'
 import os from 'os'
 import path from 'path'
+import { ShellExecutor } from '../shell/ShellExecutor'
 
 interface AppState {
   savedTest: { name: string; steps: string[] } | null
@@ -87,17 +87,16 @@ const runRecording = async (appState: AppState): Promise<{ success: boolean; out
 
     const command = `${rubyCommand} -S rspec ${tempFilePath} --format json`
 
-    return await new Promise((resolve) => {
-      exec(command, { env: executionEnv }, (error, stdout, stderr) => {
-        // RSpec with --format json outputs to stdout even on failure, so we check stderr for errors
-        if (error && stderr) {
-          const fullErrorOutput = `RSpec execution failed.\n\n--- STDERR ---\n${stderr}\n\n--- STDOUT ---\n${stdout}\n\n--- ERROR --- \n${error.message}`
-          resolve({ success: false, output: fullErrorOutput })
-          return
-        }
-        resolve({ success: true, output: stdout })
-      })
-    })
+    // Use ShellExecutor for cross-platform command execution
+    const executor = ShellExecutor.create()
+    const result = await executor.execute(command, { env: executionEnv })
+
+    // RSpec with --format json outputs to stdout even on failure
+    if (!result.success && result.error) {
+      const fullErrorOutput = `RSpec execution failed.\n\n--- ERROR ---\n${result.error}\n\n--- OUTPUT ---\n${result.output}`
+      return { success: false, output: fullErrorOutput }
+    }
+    return { success: true, output: result.output }
   } catch (e: unknown) {
     const errorMessage = e instanceof Error ? e.message : String(e)
     return { success: false, output: errorMessage }

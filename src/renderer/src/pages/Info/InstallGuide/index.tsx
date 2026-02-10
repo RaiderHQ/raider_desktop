@@ -28,6 +28,10 @@ const InstallGuide: React.FC<InstallGuideProps> = ({
     window.open(url, '_blank')
   }
 
+  // Detect platform for installation instructions
+  const isWindows = navigator.platform.toLowerCase().includes('win')
+  const isMac = navigator.platform.toLowerCase().includes('mac')
+
   let errorMessage = ''
 
   if (rubyError) {
@@ -62,7 +66,68 @@ const InstallGuide: React.FC<InstallGuideProps> = ({
           <div className="bg-white p-4 text-center">
             <h1 className="text-3xl font-bold mb-3 text-gray-900">{t('installGuide.title')}</h1>
             <div className="bg-gray-100 text-gray-700 p-3 mb-4 rounded-md">
-              <p>{errorMessage}</p>
+              <p className="mb-2">{errorMessage}</p>
+
+              {/* Platform-specific installation instructions */}
+              {rubyMissing && (
+                <div className="mt-4 text-left text-sm">
+                  {isWindows && (
+                    <>
+                      <p className="font-semibold mb-2">Windows Installation Options:</p>
+                      <ol className="list-decimal ml-6 space-y-1">
+                        <li>
+                          <strong>RubyInstaller</strong> (Recommended):{' '}
+                          <a
+                            href="https://rubyinstaller.org/downloads/"
+                            className="text-blue-600 hover:underline"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              handleNavigation('https://rubyinstaller.org/downloads/')
+                            }}
+                          >
+                            Download Ruby 3.1.6 with DevKit
+                          </a>
+                        </li>
+                        <li>
+                          <strong>Chocolatey</strong>: Run <code className="bg-gray-200 px-1">choco install ruby</code> in PowerShell
+                        </li>
+                      </ol>
+                      <p className="mt-2 text-xs text-gray-600">
+                        After installation, ensure "Add Ruby to PATH" is selected, then restart Raider Desktop.
+                      </p>
+                    </>
+                  )}
+                  {isMac && (
+                    <>
+                      <p className="font-semibold mb-2">macOS Installation:</p>
+                      <ol className="list-decimal ml-6 space-y-1">
+                        <li>
+                          Install rbenv: <code className="bg-gray-200 px-1">brew install rbenv ruby-build</code>
+                        </li>
+                        <li>
+                          Install Ruby 3.1.6: <code className="bg-gray-200 px-1">rbenv install 3.1.6</code>
+                        </li>
+                        <li>
+                          Set global version: <code className="bg-gray-200 px-1">rbenv global 3.1.6</code>
+                        </li>
+                      </ol>
+                    </>
+                  )}
+                  {!isWindows && !isMac && (
+                    <>
+                      <p className="font-semibold mb-2">Linux Installation:</p>
+                      <ol className="list-decimal ml-6 space-y-1">
+                        <li>
+                          Install rbenv: <code className="bg-gray-200 px-1">curl -fsSL https://github.com/rbenv/rbenv-installer/raw/HEAD/bin/rbenv-installer | bash</code>
+                        </li>
+                        <li>
+                          Install Ruby 3.1.6: <code className="bg-gray-200 px-1">rbenv install 3.1.6</code>
+                        </li>
+                      </ol>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex justify-between space-x-4">
               <Button

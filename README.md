@@ -18,8 +18,8 @@
 
 You can download the latest release of the app [here](https://github.com/RaiderHQ/raider_desktop/releases/tag/1.1.4).
 
-> [!WARNING]
-> Raider Desktop is currently available for **macOS only**. Windows and Linux versions are planned for future releases.
+> [!NOTE]
+> Raider Desktop is available for **macOS, Windows, and Linux**. Download the latest release for your platform [here](https://github.com/RaiderHQ/raider_desktop/releases).
 
 Raider Desktop is the UI desktop companion for [Ruby Raider](https://github.com/RaiderHQ/ruby_raider), designed to simplify and accelerate your automation workflow. It provides recording, editing, and the ability to manage your ruby raider projects, in order to make test automation easier and more efficient.
 
@@ -45,7 +45,37 @@ This section provides information for users of the Raider Desktop application.
 
 ### Prerequisites
 
-For the application to work correctly, you must have [**rbenv**](https://github.com/rbenv/rbenv) installed with a **Ruby version higher than 3.0.0**. If you do not meet these requirements, you will see a modal on the app, and not all functionality will be available.
+Raider Desktop requires **Ruby 3.0.0 or higher** to function correctly. Installation methods vary by platform:
+
+#### macOS / Linux
+Install [**rbenv**](https://github.com/rbenv/rbenv) with Ruby 3.0.0+:
+```bash
+# macOS (using Homebrew)
+brew install rbenv ruby-build
+rbenv install 3.1.6
+rbenv global 3.1.6
+
+# Linux
+curl -fsSL https://github.com/rbenv/rbenv-installer/raw/HEAD/bin/rbenv-installer | bash
+rbenv install 3.1.6
+rbenv global 3.1.6
+```
+
+#### Windows
+Install Ruby 3.0.0+ using one of these methods:
+
+**Option 1: RubyInstaller (Recommended)**
+1. Download [Ruby 3.1.6 with DevKit](https://rubyinstaller.org/downloads/)
+2. Run the installer and select **"Add Ruby to PATH"**
+3. Verify installation: Open PowerShell and run `ruby -v`
+
+**Option 2: Chocolatey**
+```powershell
+# Run in PowerShell as Administrator
+choco install ruby
+```
+
+After installation, restart Raider Desktop to detect Ruby. If you do not meet these requirements, you will see a modal in the app with installation guidance.
 
 ## Core Features
 
@@ -93,19 +123,27 @@ The Settings page allows you to configure various aspects of the application and
 
 ### Common Errors
 
-#### "rbenv not found"
+#### "rbenv not found" (macOS/Linux)
 
 This error indicates that `rbenv` is not installed or not properly configured in your shell. `rbenv` is a tool that helps you manage multiple Ruby versions.
+
+> **Note**: On Windows, rbenv is not available. Use [RubyInstaller](https://rubyinstaller.org/) or [Chocolatey](https://chocolatey.org/) instead (see Windows errors below).
 
 **Installation:**
 
 *   **macOS (using Homebrew):**
     ```bash
-    brew install rbenv
+    brew install rbenv ruby-build
+    rbenv install 3.1.6
+    rbenv global 3.1.6
     ```
 
-*   **Other platforms:**
-    Please refer to the official [rbenv installation guide](https://github.com/rbenv/rbenv#installation).
+*   **Linux:**
+    ```bash
+    curl -fsSL https://github.com/rbenv/rbenv-installer/raw/HEAD/bin/rbenv-installer | bash
+    rbenv install 3.1.6
+    rbenv global 3.1.6
+    ```
 
 After installation, make sure to initialize `rbenv` in your shell by running:
 ```bash
@@ -138,6 +176,55 @@ To resolve this, you need to grant an exception for the app:
 5.  A confirmation dialog will appear. Click **"Open"** to launch the application.
 
 You will only need to do this once. After that, you can open the app normally.
+
+#### Windows: "No Ruby installation found"
+
+On Windows, Raider Desktop looks for Ruby installed via RubyInstaller or Chocolatey. If you see this error:
+
+1. **Install Ruby using RubyInstaller** (Recommended):
+   - Visit [rubyinstaller.org/downloads](https://rubyinstaller.org/downloads/)
+   - Download Ruby 3.1.6 with DevKit
+   - During installation, ensure **"Add Ruby to PATH"** is checked
+   - Restart Raider Desktop after installation
+
+2. **Or install via Chocolatey**:
+   ```powershell
+   # Run in PowerShell as Administrator
+   choco install ruby
+   ```
+
+After installation, verify Ruby is accessible:
+```powershell
+ruby -v
+# Should output: ruby 3.1.6...
+```
+
+If Ruby is installed but not detected, restart your computer to refresh environment variables.
+
+#### Windows: "PowerShell execution policy error"
+
+If you encounter PowerShell script execution errors:
+
+1. Open **PowerShell as Administrator**
+2. Run:
+   ```powershell
+   Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+   ```
+3. Restart Raider Desktop
+
+#### Windows: Permission Denied
+
+If you encounter a "Permission Denied" error on Windows:
+
+1. Right-click the project folder
+2. Select **Properties** → **Security**
+3. Click **Edit** → **Add** → Enter your username → **OK**
+4. Grant **Full Control** permissions
+
+Or use PowerShell:
+```powershell
+icacls "C:\path\to\project" /grant:r ${env:USERNAME}:F /T
+```
 
 ## For Developers
 

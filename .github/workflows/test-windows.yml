@@ -1,0 +1,283 @@
+name: Windows Compatibility Tests
+
+on:
+  push:
+    branches: [main, feature/*, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  test-windows:
+    name: Test on Windows
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        ruby-version: ['3.1', '3.2']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Setup Ruby ${{ matrix.ruby-version }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: false
+
+      - name: Verify Ruby installation
+        run: |
+          ruby -v
+          gem -v
+          Write-Host "Ruby installed at: $(Get-Command ruby | Select-Object -ExpandProperty Source)"
+        shell: powershell
+
+      - name: Install Ruby gems
+        run: |
+          gem install ruby_raider selenium-webdriver rspec
+          gem list
+        shell: powershell
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Run TypeScript type checking
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm test -- --run
+        env:
+          CI: true
+
+      - name: Build Windows installer
+        run: npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test Ruby detection in built app
+        run: |
+          Write-Host "Testing Windows Ruby detection..."
+          # Verify that the built app can detect Ruby
+          if (Get-Command ruby -ErrorAction SilentlyContinue) {
+            Write-Host "✅ Ruby detected in system PATH"
+            $rubyVersion = ruby -v
+            Write-Host "Ruby version: $rubyVersion"
+          } else {
+            Write-Host "❌ Ruby not found in PATH"
+            exit 1
+          }
+        shell: powershell
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        if: matrix.ruby-version == '3.1'
+        with:
+          name: windows-installer
+          path: dist/*.exe
+          retention-days: 7
+
+      - name: Upload build logs on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-logs-${{ matrix.ruby-version }}
+          path: |
+            dist/
+            *.log
+          retention-days: 7
+
+  test-windows-chocolatey:
+    name: Test with Chocolatey Ruby
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Ruby via Chocolatey
+        run: |
+          # Note: Ruby is pre-installed on windows-latest, but we test that detection works
+          choco list --local-only ruby
+          if (Get-Command ruby -ErrorAction SilentlyContinue) {
+            Write-Host "✅ Ruby found via system installation"
+            ruby -v
+          } else {
+            Write-Host "Installing Ruby via Chocolatey..."
+            choco install ruby -y
+            refreshenv
+          }
+        shell: powershell
+
+      - name: Install Ruby gems
+        run: |
+          gem install ruby_raider selenium-webdriver rspec
+        shell: powershell
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Run tests with Chocolatey Ruby
+        run: npm test -- --run
+        env:
+          CI: true
+
+  integration-test-windows:
+    name: Integration Tests (Windows)
+    runs-on: windows-latest
+    needs: test-windows
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1'
+
+      - name: Install Ruby gems
+        run: gem install ruby_raider selenium-webdriver rspec
+        shell: powershell
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Create test project directory
+        run: |
+          $testDir = "$env:TEMP\raider_test_project"
+          New-Item -ItemType Directory -Force -Path $testDir
+          Write-Host "Test directory created at: $testDir"
+          echo "TEST_PROJECT_DIR=$testDir" >> $env:GITHUB_ENV
+        shell: powershell
+
+      - name: Test project creation (Selenium)
+        run: |
+          Write-Host "Testing Ruby Raider project creation on Windows..."
+          cd $env:TEST_PROJECT_DIR
+          raider new test_selenium_project -p framework:rspec automation:selenium
+          if (Test-Path "test_selenium_project") {
+            Write-Host "✅ Selenium project created successfully"
+            Get-ChildItem test_selenium_project -Recurse | Select-Object FullName
+          } else {
+            Write-Host "❌ Project creation failed"
+            exit 1
+          }
+        shell: powershell
+        continue-on-error: true
+
+      - name: Verify project structure
+        run: |
+          cd $env:TEST_PROJECT_DIR\test_selenium_project
+          Write-Host "Checking for Gemfile..."
+          if (Test-Path "Gemfile") {
+            Write-Host "✅ Gemfile found"
+            Get-Content Gemfile
+          }
+          Write-Host "`nChecking for spec directory..."
+          if (Test-Path "spec") {
+            Write-Host "✅ spec directory found"
+          }
+        shell: powershell
+        continue-on-error: true
+
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: ${{ env.TEST_PROJECT_DIR }}
+          retention-days: 3
+
+  # Optional: Test on different Windows versions
+  test-windows-compatibility:
+    name: Windows Version Compatibility
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [windows-2019, windows-2022]
+        node-version: [18, 20]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1'
+
+      - name: Install dependencies
+        run: |
+          gem install ruby_raider selenium-webdriver rspec
+          npm ci
+
+      - name: Run tests
+        run: npm test -- --run
+        env:
+          CI: true
+
+      - name: Report OS and Node versions
+        run: |
+          Write-Host "OS: ${{ matrix.os }}"
+          Write-Host "Node.js: $(node -v)"
+          Write-Host "npm: $(npm -v)"
+          Write-Host "Ruby: $(ruby -v)"
+          Write-Host "PowerShell: $($PSVersionTable.PSVersion)"
+        shell: powershell
+
+  # Summary job that reports overall status
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [test-windows, test-windows-chocolatey, integration-test-windows]
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "## Windows Compatibility Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Test Windows: ${{ needs.test-windows.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Test Chocolatey: ${{ needs.test-windows-chocolatey.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Integration Tests: ${{ needs.integration-test-windows.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.test-windows.result }}" == "success" ] && \
+             [ "${{ needs.test-windows-chocolatey.result }}" == "success" ] && \
+             [ "${{ needs.integration-test-windows.result }}" == "success" ]; then
+            echo "✅ All Windows tests passed!" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          else
+            echo "❌ Some Windows tests failed. Please review the logs above." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi

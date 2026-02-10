@@ -1,9 +1,9 @@
-import { exec } from 'child_process'
 import path from 'path'
 import { BrowserWindow } from 'electron'
 import { CommandType } from '@foundation/Types/commandType'
 import checkBundle from './checkBundle'
 import bundleInstall from './bundleInstall'
+import { ShellExecutor } from '../shell/ShellExecutor'
 
 const handler = async (
   mainWindow: BrowserWindow,
@@ -30,16 +30,16 @@ const handler = async (
     const normalizedFolderPath = path.resolve(folderPath)
     const commandToExecute = `${rubyCommand} -S bundle exec raider u raid`
 
-    return new Promise((resolve) => {
-      exec(commandToExecute, { cwd: normalizedFolderPath }, (error, stdout, stderr) => {
-        if (error) {
-          const errorMessage = `Test execution failed: ${error.message}\n--- STDERR ---\n${stderr.trim()}\n--- STDOUT ---\n${stdout.trim()}`
-          resolve({ success: false, error: errorMessage, output: stdout.trim() })
-          return
-        }
-        resolve({ success: true, output: stdout.trim() })
-      })
-    })
+    // Use ShellExecutor for cross-platform command execution
+    const executor = ShellExecutor.create()
+    const result = await executor.execute(commandToExecute, { cwd: normalizedFolderPath })
+
+    if (result.success) {
+      return { success: true, output: result.output }
+    } else {
+      const errorMessage = `Test execution failed: ${result.error || 'Unknown error'}\n--- OUTPUT ---\n${result.output}`
+      return { success: false, error: errorMessage, output: result.output }
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     return {

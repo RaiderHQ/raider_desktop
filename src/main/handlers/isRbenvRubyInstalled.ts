@@ -1,6 +1,15 @@
 import { exec } from 'child_process'
+import { isWindows } from '../utils/platformDetection'
 
 const handler = (): Promise<{ success: boolean; version?: string; error?: string }> => {
+  // rbenv is Unix-only (bash script), skip on Windows
+  if (isWindows()) {
+    return Promise.resolve({
+      success: false,
+      error: 'rbenv is not available on Windows. Use RubyInstaller or Chocolatey instead.'
+    })
+  }
+
   return new Promise((resolve) => {
     exec('rbenv versions --bare', (error, stdout, stderr) => {
       if (error) {
