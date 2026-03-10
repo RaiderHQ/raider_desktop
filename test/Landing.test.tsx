@@ -22,11 +22,6 @@ vi.mock('@foundation/Stores/projectStore', () => ({
   default: vi.fn(() => vi.fn())
 }))
 
-vi.mock('@foundation/Stores/versionStore', () => ({
-  __esModule: true,
-  default: vi.fn(() => '1.0.0')
-}))
-
 vi.mock('@components/ProjectSelector', () => ({
   default: ({
     description,
@@ -56,6 +51,5 @@ describe('Landing Page', (): void => {
     expect(screen.getByText('landing.subtitle')).toBeInTheDocument()
     expect(screen.getByText('button.create.description')).toBeInTheDocument()
     expect(screen.getByText('button.open.description')).toBeInTheDocument()
-    expect(screen.getByText('version 1.0.0')).toBeInTheDocument()
   })
 })
