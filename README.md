@@ -174,11 +174,19 @@ npm run typecheck
 
 ### CI/CD
 
-GitHub Actions runs on every push/PR to `main`:
+GitHub Actions runs automatically:
 
-1. **Typecheck & unit tests** on Ubuntu
-2. **Cross-platform builds** (macOS, Windows, Linux) in parallel
-3. **GitHub Release** with artifacts when a `v*` tag is pushed
+- **On PRs to `main`**: Unit tests + typecheck + smoke builds (`test.yml`, `build-test.yml`)
+- **On tag push (`v*`)**: Full cross-platform builds (macOS ARM + Intel, Windows, Linux) → GitHub Release with downloadable artifacts (`release.yml`)
+
+To create a release, tag a commit and push:
+
+```bash
+git tag v3.0.0
+git push origin v3.0.0
+```
+
+The pipeline will build all platforms and create a GitHub Release at `https://github.com/RaiderHQ/raider_desktop/releases/tag/v3.0.0` with direct download links for each artifact.
 
 ### Building
 
