@@ -105,7 +105,16 @@ const mockApi = {
   getProjectConfig: vi.fn().mockResolvedValue({ success: true, config: {} }),
   deleteFile: vi.fn().mockResolvedValue({ success: true }),
   renameFile: vi.fn().mockResolvedValue({ success: true, newPath: '' }),
-  duplicateFile: vi.fn().mockResolvedValue({ success: true, newPath: '' })
+  duplicateFile: vi.fn().mockResolvedValue({ success: true, newPath: '' }),
+  registerRecorderWebContents: vi.fn().mockResolvedValue(undefined),
+  terminalSpawn: vi.fn().mockResolvedValue(undefined),
+  terminalWrite: vi.fn().mockResolvedValue(undefined),
+  terminalResize: vi.fn().mockResolvedValue(undefined),
+  terminalKill: vi.fn().mockResolvedValue(undefined),
+  onTerminalData: vi.fn().mockReturnValue({ on: vi.fn() }),
+  removeTerminalDataListener: vi.fn().mockReturnValue({ on: vi.fn() }),
+  onTerminalExit: vi.fn().mockReturnValue({ on: vi.fn() }),
+  removeTerminalExitListener: vi.fn().mockReturnValue({ on: vi.fn() })
 }
 
 let suiteUpdatedCallback: (event: IpcRendererEvent, updatedSuites: unknown) => void = () => {}
