@@ -3,8 +3,8 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-   <a href="https://github.com/RaiderHQ/ruby_raider">
-   <img src="build/icon.png" alt="Ruby Raider Logo" width="200">
+    <a href="https://github.com/RubyRaider/ruby_raider">
+   <img src="assets/ruby_raider_logo.svg" alt="Logo" style="width:200px;">
    </a>
 
    <h3>The Desktop Companion for Ruby Raider</h3>
