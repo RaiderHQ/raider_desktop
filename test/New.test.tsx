@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import CreateProject from '@pages/New'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
@@ -34,6 +34,14 @@ vi.mock('@foundation/Stores/projectStore', () => ({
   }
 }))
 
+vi.mock('@foundation/Stores/rubyStore', () => ({
+  __esModule: true,
+  default: vi.fn(() => ({
+    rubyCommand: '/usr/bin/ruby',
+    setRubyCommand: vi.fn()
+  }))
+}))
+
 describe('CreateProject Page', (): void => {
   it('renders correctly', async (): Promise<void> => {
     await act(async (): Promise<void> => {
@@ -52,7 +60,7 @@ describe('CreateProject Page', (): void => {
     expect(screen.getByText('button.create.text')).toBeInTheDocument()
   })
 
-  it('shows mobile platform select when Appium is selected', async (): Promise<void> => {
+  it('shows add-ons section', async (): Promise<void> => {
     await act(async (): Promise<void> => {
       render(
         <MemoryRouter>
@@ -61,11 +69,7 @@ describe('CreateProject Page', (): void => {
       )
     })
 
-    const automationSelect = screen.getAllByRole('combobox')[0]
-    await act(async () => {
-      fireEvent.change(automationSelect, { target: { value: 'Appium' } })
-    })
-
-    expect(screen.getByText('newProject.question.mobile')).toBeInTheDocument()
+    expect(screen.getByText('newProject.addons.title')).toBeInTheDocument()
+    expect(screen.getByText('newProject.addons.accessibility')).toBeInTheDocument()
   })
 })

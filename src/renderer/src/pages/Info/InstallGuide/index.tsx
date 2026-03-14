@@ -60,8 +60,8 @@ const InstallGuide: React.FC<InstallGuideProps> = ({
             <img src={Logo} alt={t('installGuide.logoAlt')} className="w-28 h-auto" />
           </div>
           <div className="bg-white p-4 text-center">
-            <h1 className="text-3xl font-bold mb-3 text-gray-900">{t('installGuide.title')}</h1>
-            <div className="bg-gray-100 text-gray-700 p-3 mb-4 rounded-md">
+            <h1 className="text-3xl font-bold mb-3 text-neutral-dark">{t('installGuide.title')}</h1>
+            <div className="bg-neutral-lt text-neutral-dk p-3 mb-4 rounded-md">
               <p>{errorMessage}</p>
             </div>
             <div className="flex justify-between space-x-4">

@@ -1,4 +1,1 @@
-export interface TestData {
-  testName: string
-  steps: string[]
-}
+export type { TestData } from '../../../../shared/types/testData'

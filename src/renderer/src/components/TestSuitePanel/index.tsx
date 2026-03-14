@@ -108,6 +108,82 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
     dragItemIndex.current = null
   }
 
+  if (suites.length === 0) {
+    return (
+      <div className="w-full h-full p-2 flex flex-col items-center justify-center text-center">
+        {isCreatingSuite ? (
+          <div className="w-full max-w-xs space-y-3">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="48"
+              height="48"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              className="mx-auto text-neutral-mid"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5v6m3-3H9m4.06-7.19l-2.12-2.12a1.5 1.5 0 00-1.06-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V8.25a2.25 2.25 0 00-2.25-2.25h-5.38a1.5 1.5 0 01-1.06-.44z" />
+            </svg>
+            <h3 className="text-lg font-semibold text-neutral-dk">
+              {t('recorder.testSuitePanel.emptyTitle')}
+            </h3>
+            <input
+              type="text"
+              value={newSuiteName}
+              onChange={(e) => setNewSuiteName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateSuiteConfirm()}
+              placeholder={t('recorder.testSuitePanel.newSuiteName')}
+              className="w-full p-2 border rounded"
+              autoFocus
+            />
+            <div className="flex justify-center space-x-2">
+              <button
+                onClick={() => setIsCreatingSuite(false)}
+                className="px-5 py-2 text-sm rounded bg-neutral-bdr hover:bg-neutral-bdr"
+              >
+                {t('recorder.testSuitePanel.cancel')}
+              </button>
+              <button
+                onClick={handleCreateSuiteConfirm}
+                className="px-5 py-2 text-sm rounded bg-ruby text-white"
+              >
+                {t('recorder.testSuitePanel.create')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="48"
+              height="48"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              className="mx-auto text-neutral-mid"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5v6m3-3H9m4.06-7.19l-2.12-2.12a1.5 1.5 0 00-1.06-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V8.25a2.25 2.25 0 00-2.25-2.25h-5.38a1.5 1.5 0 01-1.06-.44z" />
+            </svg>
+            <h3 className="text-lg font-semibold text-neutral-dk">
+              {t('recorder.testSuitePanel.emptyTitle')}
+            </h3>
+            <p className="text-sm text-neutral-mid">
+              {t('recorder.testSuitePanel.emptyDescription')}
+            </p>
+            <button
+              onClick={() => setIsCreatingSuite(true)}
+              className="px-6 py-2 text-sm rounded bg-ruby text-white font-medium"
+            >
+              {t('recorder.testSuitePanel.createFirst')}
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="w-full h-full p-2 flex flex-col">
       <div className="flex-shrink-0">
@@ -115,7 +191,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
           <div className="relative w-full" ref={dropdownRef}>
             <button
               onClick={() => setIsSuiteDropdownOpen((prev) => !prev)}
-              className="w-full flex items-center justify-between px-3 py-2 border rounded bg-white hover:bg-gray-50 text-left"
+              className="w-full flex items-center justify-between px-3 py-2 border rounded bg-white hover:bg-neutral-lt text-left"
               aria-label={t('recorder.testSuitePanel.selectSuite')}
             >
               <span className="font-semibold truncate">
@@ -133,24 +209,24 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
                           onSuiteChange(suite.id)
                           setIsSuiteDropdownOpen(false)
                         }}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-100"
+                        className="block w-full text-left px-4 py-2 text-sm text-neutral-dk hover:bg-ruby-sub"
                       >
                         {suite.name}
                       </button>
                     </li>
                   ))}
                 </ul>
-                <div className="border-t border-gray-200">
+                <div className="border-t border-neutral-bdr">
                   <button
                     onClick={handleNewSuiteClick}
-                    className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100"
+                    className="block w-full text-left px-4 py-2 text-sm text-ruby hover:bg-neutral-lt"
                   >
                     {t('recorder.testSuitePanel.newSuite')}
                   </button>
                   <button
                     onClick={handleDeleteSuite}
                     disabled={!activeSuiteId}
-                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:text-gray-400"
+                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-status-err-bg disabled:text-neutral-mid"
                   >
                     {t('recorder.testSuitePanel.deleteSuite')}
                   </button>
@@ -170,7 +246,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
         </div>
 
         {isCreatingSuite && (
-          <div className="p-2 border-b border-gray-300 flex items-center space-x-2 bg-yellow-50">
+          <div className="p-2 border-b border-neutral-bdr flex items-center space-x-2 bg-yellow-50">
             <input
               type="text"
               value={newSuiteName}
@@ -183,13 +259,13 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
             <div className="flex justify-end space-x-2">
               <button
                 onClick={() => setIsCreatingSuite(false)}
-                className="px-5 py-2 text-sm rounded bg-gray-200 hover:bg-gray-300"
+                className="px-5 py-2 text-sm rounded bg-neutral-bdr hover:bg-neutral-bdr"
               >
                 {t('recorder.testSuitePanel.cancel')}
               </button>
               <button
                 onClick={handleCreateSuiteConfirm}
-                className="px-5 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
+                className="px-5 py-2 text-sm rounded bg-ruby text-white"
               >
                 {t('recorder.testSuitePanel.create')}
               </button>
@@ -209,13 +285,13 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
               onDragEnter={() => handleDragEnter(index)}
               onDragEnd={handleDragEnd}
               onDragOver={(e) => e.preventDefault()}
-              className="group flex items-center justify-between cursor-grab active:cursor-grabbing border-b border-gray-200"
+              className="group flex items-center justify-between cursor-grab active:cursor-grabbing border-b border-neutral-bdr"
             >
               <button
                 onClick={() => onTestSelect(test.id)}
                 draggable={false}
                 className={`w-full text-left p-3 text-sm flex-grow transition-colors ${
-                  test.id === activeTestId ? 'font-semibold' : 'hover:bg-gray-100'
+                  test.id === activeTestId ? 'font-semibold' : 'hover:bg-neutral-lt'
                 }`}
               >
                 {test.name}
@@ -225,7 +301,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
                   e.stopPropagation()
                   onTestDeleteRequest(test)
                 }}
-                className="p-4 h-full w-12 flex items-center justify-center text-gray-400 group-hover:opacity-100 hover:text-white hover:bg-red-200 transition-all"
+                className="p-4 h-full w-12 flex items-center justify-center text-neutral-mid group-hover:opacity-100 hover:text-white hover:bg-red-200 transition-all"
                 aria-label={`Delete test ${test.name}`}
               >
                 <svg

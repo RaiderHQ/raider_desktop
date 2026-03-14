@@ -1,14 +1,6 @@
 import { ipcRenderer } from 'electron'
 
-let selectorPriorities: string[] = ['id', 'css', 'xpath']
-
-ipcRenderer.invoke('get-selector-priorities').then((priorities) => {
-  selectorPriorities = priorities
-})
-
-ipcRenderer.on('update-selector-priorities', (_event, priorities: string[]) => {
-  selectorPriorities = priorities
-})
+const selectorPriorities: string[] = ['id', 'css', 'xpath']
 
 function getCssPath(el: Element): string {
   if (!(el instanceof Element)) return ''
@@ -105,11 +97,15 @@ document.addEventListener(
     if (target.tagName === 'HTML') return
 
     const { selector, strategy } = getPrioritizedSelector(target)
+    const rect = target.getBoundingClientRect()
     ipcRenderer.send('recorder-event', {
       action: 'click',
       selector,
       strategy,
-      tagName: target.tagName
+      tagName: target.tagName,
+      pageUrl: window.location.href,
+      innerText: (target.innerText || '').slice(0, 200),
+      boundingRect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
     })
   },
   true
@@ -121,12 +117,16 @@ document.addEventListener(
     const target = event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
       const { selector, strategy } = getPrioritizedSelector(target)
+      const rect = target.getBoundingClientRect()
       ipcRenderer.send('recorder-event', {
         action: 'type',
         selector,
         strategy,
         tagName: target.tagName,
-        value: target.value
+        value: target.value,
+        pageUrl: window.location.href,
+        innerText: (target.innerText || '').slice(0, 200),
+        boundingRect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
       })
     }
   },
@@ -151,12 +151,16 @@ document.addEventListener(
       const target = event.target as HTMLElement
       if (target) {
         const { selector, strategy } = getPrioritizedSelector(target)
+        const rect = target.getBoundingClientRect()
         ipcRenderer.send('recorder-event', {
           action: 'sendKeys',
           selector,
           strategy,
           tagName: target.tagName,
-          value: key
+          value: key,
+          pageUrl: window.location.href,
+          innerText: (target.innerText || '').slice(0, 200),
+          boundingRect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
         })
       }
     }

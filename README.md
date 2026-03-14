@@ -16,7 +16,7 @@
    <p align="center"> For more information and updates on releases, see <a href="https://ruby-raider.com">https://ruby-raider.com</a></p>
 </div>
 
-You can download the latest release of the app [here](https://github.com/RaiderHQ/raider_desktop/releases/tag/1.1.4).
+You can download the latest release of the app [here](https://github.com/RaiderHQ/raider_desktop/releases/tag/2.0.0).
 
 > [!WARNING]
 > Raider Desktop is currently available for **macOS only**. Windows and Linux versions are planned for future releases.

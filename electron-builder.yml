@@ -1,7 +1,6 @@
 appId: com.raiderhq.rubyraider
 productName: Ruby Raider
 copyright: "Copyright © 2022 RaiderHQ"
-afterSign: 'scripts/notarize.ts'
 directories:
   buildResources: build
 files:
@@ -15,6 +14,9 @@ asarUnpack:
   - resources/**
 win:
   executableName: Ruby Raider
+  icon: build/icon.ico
+  target:
+    - nsis
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -23,14 +25,11 @@ nsis:
 mac:
   target:
     - dmg
-  identity: "Augustin Gottlieb Pequeno (FJCVZDVC44)"
   category: public.app-category.developer-tools
   icon: build/icon.icns
   hardenedRuntime: true
   notarize: false
   gatekeeperAssess: false
-  entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.inherit.plist
   extendInfo:
     NSCameraUsageDescription: Application requests access to the device's camera.
     NSMicrophoneUsageDescription: Application requests access to the device's microphone.
@@ -42,15 +41,13 @@ pkg:
 linux:
   target:
     - AppImage
-    - snap
     - deb
-  maintainer: electronjs.org
+  maintainer: RaiderHQ
   category: Utility
 appImage:
   artifactName: ${name}-${version}.${ext}
-npmRebuild: false
+npmRebuild: true
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
-electronDownload:
-  mirror: https://npmmirror.com/mirrors/electron/
+  provider: github
+  owner: RaiderHQ
+  repo: raider_desktop

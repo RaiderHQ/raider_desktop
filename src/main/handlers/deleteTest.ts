@@ -1,5 +1,6 @@
 import { appState } from './appState'
 import { BrowserWindow } from 'electron'
+import { safeError, safeWarn } from '../utils/safeLog'
 
 type DeletionResult = {
   success: boolean
@@ -13,7 +14,7 @@ export default async (
   const suite = appState.suites.get(suiteId)
 
   if (!suite) {
-    console.error(`Error: Attempted to delete test from a non-existent suite (ID: ${suiteId}).`)
+    safeError(`Error: Attempted to delete test from a non-existent suite (ID: ${suiteId}).`)
     return { success: false, error: `Suite with ID ${suiteId} not found.` }
   }
 
@@ -21,7 +22,7 @@ export default async (
   suite.tests = suite.tests.filter((test) => test.id !== testId)
 
   if (suite.tests.length === initialTestCount) {
-    console.warn(`Warning: Test with ID ${testId} was not found in suite "${suite.name}".`)
+    safeWarn(`Warning: Test with ID ${testId} was not found in suite "${suite.name}".`)
   }
 
   mainWindow?.webContents.send('suite-updated', Array.from(appState.suites.values()))

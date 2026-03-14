@@ -74,8 +74,8 @@ const Dropdown: React.FC<DropdownProps> = ({
                   e.preventDefault()
                   handleOptionClick(index)
                 }}
-                className={`block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${
-                  index === selected ? 'bg-gray-200' : ''
+                className={`block px-4 py-2 text-sm text-neutral-dk hover:bg-neutral-lt ${
+                  index === selected ? 'bg-neutral-bdr' : ''
                 }`}
                 role="menuitem"
               >
