@@ -3,198 +3,187 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-   <a href="https://github.com/RubyRaider/ruby_raider">
-   <img src="https://www.ruby-raider.com/assets/icon-DYY74ofR.png" alt="Logo" style="width:200px;">
+   <a href="https://github.com/RaiderHQ/ruby_raider">
+   <img src="build/icon.png" alt="Ruby Raider Logo" width="200">
    </a>
+
+   <h3>The Desktop Companion for Ruby Raider</h3>
+
    <p align="center">
       <a href="https://ruby-raider.com/">Website</a>
+      ·
+      <a href="https://github.com/RaiderHQ/raider_desktop/releases">Downloads</a>
       ·
       <a href="https://github.com/RaiderHQ/raider_desktop/issues">Report Bug</a>
       ·
       <a href="https://github.com/RaiderHQ/raider_desktop/issues">Request Feature</a>
    </p>
-   <p align="center"> For more information and updates on releases, see <a href="https://ruby-raider.com">https://ruby-raider.com</a></p>
 </div>
 
-You can download the latest release of the app [here](https://github.com/RaiderHQ/raider_desktop/releases).
+<br />
 
 > [!WARNING]
 > Raider Desktop is currently available for **macOS only**. Windows and Linux builds are generated via CI but are not yet fully tested.
 
-Raider Desktop is the UI desktop companion for [Ruby Raider](https://github.com/RaiderHQ/ruby_raider), designed to simplify and accelerate your automation workflow. It provides recording, editing, and the ability to manage your Ruby Raider projects, making test automation easier and more efficient.
+Raider Desktop is the UI companion for [Ruby Raider](https://github.com/RaiderHQ/ruby_raider) — a Ruby test automation framework. It provides an intuitive interface for creating projects, recording tests, editing code, running suites, and viewing results, all without needing to touch the command line.
 
 ## Table of Contents
 
 - [For Users](#for-users)
   - [Prerequisites](#prerequisites)
-  - [Core Features](#core-features)
-    - [Creating a New Ruby Raider Project](#creating-a-new-ruby-raider-project)
-    - [The Test Screen](#the-test-screen)
-    - [The Recorder Page](#the-recorder-page)
-    - [Common Errors](#common-errors)
+  - [Features](#features)
+  - [Common Errors](#common-errors)
 - [For Developers](#for-developers)
+  - [Tech Stack](#tech-stack)
   - [Getting Started](#getting-started)
-  - [Installation (for Development)](#installation-for-development)
-  - [Running the Application](#running-the-application)
   - [Testing](#testing)
   - [CI/CD](#cicd)
-- [Building the Application](#building-the-application)
+  - [Building](#building)
+
+---
 
 ## For Users
 
-This section provides information for users of the Raider Desktop application.
-
 ### Prerequisites
 
-For the application to work correctly, you must have [**rbenv**](https://github.com/rbenv/rbenv) installed with a **Ruby version higher than 3.0.0**. If you do not meet these requirements, you will see a modal on the app, and not all functionality will be available.
+- [**rbenv**](https://github.com/rbenv/rbenv) with **Ruby 3.0.0+** installed
+- The [**ruby_raider**](https://github.com/RaiderHQ/ruby_raider) gem (`gem install ruby_raider`)
 
-## Core Features
+If these are missing, the app will show a setup guide on launch.
 
-### Creating a New Ruby Raider Project
-1.  From the landing page, click on **"Create New Project"**.
-2.  On the "New Project" screen, provide a **Project Name**.
-3.  Select your desired **Automation Framework** (e.g., Selenium, Watir) and **Test Framework** (e.g., Rspec, Cucumber).
-4.  Click **"Create Project"** and select a directory where the project will be saved.
-5.  The application will generate a complete Ruby Raider project structure for you.
+### Features
 
-#### Opening an Existing Project
-1.  From the landing page, click on **"Open Existing Project"**.
-2.  Use the file dialog to navigate to and select the root folder of your existing Ruby Raider project.
-3.  The project will be loaded into the application, and you can view its file structure on the **Overview** page.
+#### Project Management
 
-### The Test Screen
+- **Create new projects** — Pick your automation framework (Selenium, Watir, Capybara) and test framework (RSpec, Cucumber, Minitest), and a full project structure is generated for you
+- **Open existing projects** — Load any Ruby Raider project and browse its file tree
+- **Adopt non-Raider projects** — Convert an existing Ruby test project into a Ruby Raider project
 
-The Test Screen is the main hub for managing and running your tests. It includes several tabs:
+#### Test Screen
 
--   **Files**: Browse and edit your project files with the built-in Monaco editor. The toolbar at the top lets you configure:
-    -   **URL**: The base URL for your tests
-    -   **Browser**: Choose between Chrome, Safari, Firefox, or Edge
-    -   **Headless**: Toggle headless mode on/off
-    -   **Viewport**: Quick presets for Desktop (1920x1080), Tablet (768x1024), or Mobile (375x812)
-    -   **Run Mode**: Run all tests, smoke tests, regression tests, or custom tagged tests
--   **Scaffolding**: Generate new specs, page objects, and helpers using Ruby Raider's scaffolding commands.
--   **Dashboard**: View test results with pass/fail statistics, pie charts, and accessibility violation reports.
--   **Settings**: Configure project settings including browser options, timeouts, viewport dimensions, mobile capabilities, and file paths.
--   **Terminal**: An integrated terminal for running commands directly within the app.
+The main hub for working with your project, organized into tabs:
 
-### The Recorder Page
+| Tab | What it does |
+|-----|-------------|
+| **Files** | Browse and edit project files with the built-in Monaco editor |
+| **Scaffolding** | Generate new specs, page objects, and helpers |
+| **Dashboard** | View test results with pass/fail stats, pie charts, and accessibility violation reports |
+| **Settings** | Configure browser options, timeouts, viewport, mobile capabilities, and file paths |
 
-The Recorder allows you to record user interactions and automatically generate test scripts.
+The **toolbar** at the top of the Files tab gives you quick access to:
+- **Base URL** — Set the URL your tests navigate to
+- **Browser** — Chrome, Safari, Firefox, or Edge
+- **Headless mode** — Toggle on/off
+- **Viewport presets** — Desktop (1920×1080), Tablet (768×1024), Mobile (375×812)
+- **Run mode** — All tests, smoke, regression, or custom tags
+- **Integrated terminal** — Run commands without leaving the app
 
--   **Test Suites Panel**: On the left, you can create, delete, and manage your test suites. Each suite can contain multiple tests.
--   **Recording Controls**: At the top of the screen, you can set the initial URL for your test, start/stop the recording, and run tests.
--   **Recorded Steps**: The central panel displays the steps of your test as they are recorded. You can toggle between a human-readable "Friendly View" and the actual "Code View".
--   **Trace Timeline**: After recording, view a visual timeline of each step with screenshot thumbnails.
--   **Running Tests**: You can run a single test or an entire suite. The output of the test run will be displayed in the "Test Output" panel.
--   **Import/Export**: You can import and export individual tests, entire suites, or the whole project for easy sharing and backup.
+#### Recorder
+
+Record user interactions in an embedded browser and generate test scripts automatically:
+
+- **Embedded browser** — Records clicks, navigation, and form inputs directly inside the app
+- **Dual view** — Toggle between human-readable "Friendly View" and generated "Code View"
+- **Trace timeline** — Visual timeline of each recorded step with screenshot thumbnails
+- **Suite management** — Create, delete, and organize test suites and individual tests
+- **Import/Export** — Share tests, suites, or entire projects
+
+#### Test Execution
+
+- Run individual tests, full suites, or re-run only failed tests
+- View structured output with pass/fail indicators
+- Accessibility violation reports parsed from axe-core output with severity badges and fix suggestions
 
 ### Common Errors
 
-#### "rbenv not found"
+<details>
+<summary><strong>"rbenv not found"</strong></summary>
 
-This error indicates that `rbenv` is not installed or not properly configured in your shell.
+Install rbenv:
 
-**Installation:**
-
-*   **macOS (using Homebrew):**
-    ```bash
-    brew install rbenv
-    ```
-
-*   **Other platforms:**
-    Please refer to the official [rbenv installation guide](https://github.com/rbenv/rbenv#installation).
-
-After installation, make sure to initialize `rbenv` in your shell:
 ```bash
+# macOS
+brew install rbenv
+
+# Then initialize
 rbenv init
 ```
-Follow the instructions provided to set up `rbenv` in your shell configuration file (e.g., `.zshrc`, `.bash_profile`).
 
-#### Permission Denied
+Follow the instructions to add rbenv to your shell config (`.zshrc`, `.bash_profile`).
+</details>
 
-If you encounter a "Permission Denied" error, grant the required permissions:
+<details>
+<summary><strong>Permission Denied</strong></summary>
 
 ```bash
 sudo chown -R $(whoami) /path/to/your/project/folder
 ```
+</details>
 
-#### macOS: "App cannot be opened because the developer cannot be verified."
+<details>
+<summary><strong>macOS: "App cannot be opened because the developer cannot be verified"</strong></summary>
 
-1.  Open **System Settings** > **Privacy & Security**.
-2.  Scroll down to the "Security" section.
-3.  Click **"Open Anyway"** next to the message about "Ruby Raider" being blocked.
-4.  Click **"Open"** in the confirmation dialog.
+1. Open **System Settings** → **Privacy & Security**
+2. Click **"Open Anyway"** next to the Ruby Raider message
+3. Click **"Open"** in the confirmation dialog
 
-You will only need to do this once.
+You only need to do this once.
+</details>
+
+---
 
 ## For Developers
 
-This section is for developers who want to contribute to the Raider Desktop project.
+### Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Electron + electron-vite |
+| Language | TypeScript (strict) |
+| Frontend | React 18 + Tailwind CSS |
+| Editor | Monaco Editor |
+| Terminal | xterm.js + node-pty |
+| State | Zustand |
+| Testing | Vitest (unit) + Playwright (E2E) |
+| Build | electron-builder |
+| CI/CD | GitHub Actions |
 
 ### Getting Started
 
-Before you begin, ensure you have the following installed:
-- [Node.js](https://nodejs.org/) v20+
-- [Ruby](https://www.ruby-lang.org/en/documentation/installation/) 3.0.0+ via rbenv
-
-Additionally, install the `ruby_raider` gem:
-```bash
-gem install ruby_raider
-```
-
-### Installation (for Development)
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/RaiderHQ/raider_desktop.git
-   ```
-2. Navigate into the project directory:
-    ```bash
-   cd raider_desktop
-   ```
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-### Running the Application
-
-To start the application in development mode with hot reload:
+**Requirements:** Node.js 20+, Ruby 3.0.0+ via rbenv, `ruby_raider` gem
 
 ```bash
+git clone https://github.com/RaiderHQ/raider_desktop.git
+cd raider_desktop
+npm install
 npm run dev
 ```
 
 ### Testing
 
 ```bash
-# Unit tests (Vitest)
+# Unit tests
 npm test
 
-# E2E tests (Playwright)
+# E2E tests
 npm run test:e2e
+
+# Type checking
+npm run typecheck
 ```
 
 ### CI/CD
 
-The project uses GitHub Actions for continuous integration:
+GitHub Actions runs on every push/PR to `main`:
 
-- **On push/PR to main**: Runs unit tests, then builds for macOS, Windows, and Linux
-- **On tag push (`v*`)**: Creates a GitHub Release with build artifacts for all platforms
+1. **Typecheck & unit tests** on Ubuntu
+2. **Cross-platform builds** (macOS, Windows, Linux) in parallel
+3. **GitHub Release** with artifacts when a `v*` tag is pushed
 
-See `.github/workflows/build.yml` for the full pipeline configuration.
-
-## Building the Application
-
-To build the application for your specific operating system:
+### Building
 
 ```bash
-# For macOS
-npm run build:mac
-
-# For Windows
-npm run build:win
-
-# For Linux
-npm run build:linux
+npm run build:mac     # macOS (.dmg)
+npm run build:win     # Windows (.exe)
+npm run build:linux   # Linux (.AppImage, .deb)
 ```
