@@ -2,6 +2,8 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import PieChartWidget from '@components/PieChartWidget'
 import TestResultCard from '@components/TestResultCard'
+import TraceViewer from '@components/TraceViewer'
+import { useTraceViewer } from '../../hooks/useTraceViewer'
 
 interface RSpecExample {
   id: string
@@ -12,6 +14,7 @@ interface RSpecExample {
   line_number: number
   run_time: number
   pending_message: string | null
+  exception?: { class: string; message: string; backtrace: string[] }
 }
 
 interface RSpecSummary {
@@ -36,6 +39,16 @@ interface RecordingDashboardProps {
 const RecordingDashboard: React.FC<RecordingDashboardProps> = ({ runOutput }) => {
   const { t } = useTranslation()
 
+  const {
+    viewingTraceTestId,
+    traceSteps,
+    selectedTraceStepId,
+    testByName,
+    handleViewTrace,
+    handleBackToResults,
+    setSelectedTraceStepId
+  } = useTraceViewer()
+
   let data: RSpecOutput | null = null
   try {
     data = JSON.parse(runOutput)
@@ -45,7 +58,7 @@ const RecordingDashboard: React.FC<RecordingDashboardProps> = ({ runOutput }) =>
 
   if (!data) {
     return (
-      <div className="text-center text-gray-600 text-lg font-semibold p-6 border rounded bg-white shadow">
+      <div className="text-center text-neutral-dk text-lg font-semibold p-6 border rounded bg-white shadow">
         {t('dashboard.noRecordingResults')}
       </div>
     )
@@ -57,6 +70,17 @@ const RecordingDashboard: React.FC<RecordingDashboardProps> = ({ runOutput }) =>
   const skippedCount = summary.pending_count
   const totalCount = summary.example_count
 
+  if (viewingTraceTestId) {
+    return (
+      <TraceViewer
+        traceSteps={traceSteps}
+        selectedTraceStepId={selectedTraceStepId}
+        onSelectStep={setSelectedTraceStepId}
+        onBack={handleBackToResults}
+      />
+    )
+  }
+
   return (
     <div className="p-2 min-h-fit sm:p-4 md:p-6 w-full flex flex-col">
       <div className="mb-2 sm:mb-4 md:mb-6 p-4 border rounded bg-white">
@@ -66,15 +90,15 @@ const RecordingDashboard: React.FC<RecordingDashboardProps> = ({ runOutput }) =>
         </p>
         <p className="text-lg">
           {t('dashboard.passed')}:{' '}
-          <span className="font-semibold text-[#4caf50]">{passedCount}</span>
+          <span className="font-semibold text-status-ok">{passedCount}</span>
         </p>
         <p className="text-lg">
           {t('dashboard.failed')}:{' '}
-          <span className="font-semibold text-[#f44336]">{failedCount}</span>
+          <span className="font-semibold text-status-err">{failedCount}</span>
         </p>
         <p className="text-lg">
           {t('dashboard.skipped')}:{' '}
-          <span className="font-semibold text-[#ff9800]">{skippedCount}</span>
+          <span className="font-semibold text-amber-500">{skippedCount}</span>
         </p>
       </div>
 
@@ -85,14 +109,19 @@ const RecordingDashboard: React.FC<RecordingDashboardProps> = ({ runOutput }) =>
 
         <div className="flex-1 flex flex-col border rounded shadow p-4 h-min">
           <div className="flex flex-col gap-4">
-            {examples.map((example) => (
-              <TestResultCard
-                key={example.id}
-                name={example.description}
-                status={example.status}
-                message={example.pending_message}
-              />
-            ))}
+            {examples.map((example) => {
+              const testInfo = testByName.get(example.description)
+              return (
+                <TestResultCard
+                  key={example.id}
+                  name={example.description}
+                  status={example.status}
+                  message={example.exception?.message ?? example.pending_message}
+                  hasTrace={testInfo?.hasTrace}
+                  onViewTrace={() => handleViewTrace(example.description)}
+                />
+              )
+            })}
           </div>
         </div>
       </div>

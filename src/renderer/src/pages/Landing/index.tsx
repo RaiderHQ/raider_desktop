@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import ProjectSelector from '@components/ProjectSelector'
-import Logo from '@assets/images/logo.svg'
+import Logo from '@components/Logo'
 import OpenFolder from '@assets/icons/open-folder.svg'
 import AddIcon from '@assets/icons/add.svg'
 import useLoadingStore from '@foundation/Stores/loadingStore'
@@ -26,7 +26,7 @@ const Landing: React.FC = (): JSX.Element => {
       const folder = await window.api.selectFolder(t('landing.error.selectFolder'))
 
       if (!folder) {
-        toast.error(t('landing.error.folderNotFound'))
+        toast(t('landing.error.noFolderSelected'), { icon: 'ℹ️' })
         return
       }
 
@@ -43,12 +43,12 @@ const Landing: React.FC = (): JSX.Element => {
     <div className="min-h-screen flex flex-col">
       <main className="flex flex-col items-center justify-center flex-grow">
         <div className="mb-8">
-          <img src={Logo} alt="Ruby Raider Logo" className="w-28 md:w-36 lg:w-48 h-auto" />
+          <Logo size={120} />
         </div>
 
-        <h1 className="text-[2.5rem] font-bold text-gray-900 mb-4">{t('landing.title')}</h1>
+        <h1 className="text-[2.5rem] font-bold text-neutral-dark mb-4">{t('landing.title')}</h1>
 
-        <p className="text-center text-lg md:text-xl lg:text-2xl text-gray-600 mb-8">
+        <p className="text-center text-lg md:text-xl lg:text-2xl text-neutral-mid mb-8">
           {t('landing.subtitle')}
         </p>
 

@@ -4,11 +4,15 @@ import type { Suite } from '@foundation/Types/suite'
 interface AppState {
   mainWindow: BrowserWindow | null
   recorderWindow: BrowserWindow | null
+  recorderWebContentsId: number | null
   projectBaseUrl: string
   projectPath: string | null
+  projectAutomation: string | null
+  projectFramework: string | null
+  rubyVersion: string | null
   suites: Map<string, Suite>
-  selectorPriorities: string[]
   recordingSettings: RecordingSettings
+  activeTraceDir: string | null
 }
 
 interface RecordingSettings {
@@ -40,14 +44,26 @@ export function getRecordingSettings(): RecordingSettings {
 export const appState: AppState = {
   mainWindow: null,
   recorderWindow: null,
-  projectBaseUrl: 'https://www.google.com',
+  recorderWebContentsId: null,
+  projectBaseUrl: 'https://raider-test-site.onrender.com/',
   projectPath: null,
+  projectAutomation: null,
+  projectFramework: null,
+  rubyVersion: null,
   suites: new Map(),
-  selectorPriorities: ['id', 'css', 'xpath'],
   recordingSettings: {
     implicitWait: 0,
     explicitWait: 30
-  }
+  },
+  activeTraceDir: null
+}
+
+export function setProjectAutomation(automation: string | null): void {
+  appState.projectAutomation = automation
+}
+
+export function setProjectFramework(framework: string | null): void {
+  appState.projectFramework = framework
 }
 
 export function setMainWindow(window: BrowserWindow | null): void {
@@ -56,6 +72,10 @@ export function setMainWindow(window: BrowserWindow | null): void {
 
 export function setRecorderWindow(window: BrowserWindow | null): void {
   appState.recorderWindow = window
+}
+
+export function setRubyVersion(version: string | null): void {
+  appState.rubyVersion = version
 }
 
 export function setProjectBaseUrl(url: string): void {

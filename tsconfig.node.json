@@ -5,6 +5,7 @@
     "vitest.config.ts",
     "src/main/**/*",
     "src/preload/**/*",
+    "src/shared/**/*",
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.tsx"
   ],
@@ -21,6 +22,7 @@
       "@foundation/*": ["./src/renderer/src/foundation/*"],
       "@pages/*": ["./src/renderer/src/pages/*"],
       "@templates/*": ["./src/renderer/src/templates/*"],
+      "@shared/*": ["./src/shared/*"]
     }
   }
 }

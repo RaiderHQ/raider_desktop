@@ -4,7 +4,9 @@ import toast from 'react-hot-toast'
 import useProjectStore from '@foundation/Stores/projectStore'
 import PieChartWidget from '@components/PieChartWidget'
 import TestResultCard from '@components/TestResultCard'
+import TraceViewer from '@components/TraceViewer'
 import NoProjectLoadedMessage from '@components/NoProjectLoadedMessage'
+import { useTraceViewer } from '../../hooks/useTraceViewer'
 
 interface Attachment {
   name: string
@@ -14,6 +16,7 @@ interface Attachment {
 
 interface StatusDetails {
   message?: string
+  trace?: string
 }
 
 interface TestResult {
@@ -28,6 +31,16 @@ const Index: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const [results, setResults] = useState<TestResult[]>([])
   const projectPath: string | null = useProjectStore((state) => state.projectPath)
+
+  const {
+    viewingTraceTestId,
+    traceSteps,
+    selectedTraceStepId,
+    testByName,
+    handleViewTrace,
+    handleBackToResults,
+    setSelectedTraceStepId
+  } = useTraceViewer()
 
   useEffect(() => {
     const fetchDashboard = async (): Promise<void> => {
@@ -65,19 +78,16 @@ const Index: React.FC = (): JSX.Element => {
           }
         })
 
-        const resultsWithScreenshots = await Promise.all(
-          aggregated.map(async (result) => {
-            if (result.attachments && result.attachments.length > 0) {
-              const attachment = result.attachments[0]
-              result.screenshot = `${projectPath}/allure-results/${attachment.source}`
-            }
-            return result
-          })
-        )
-        setResults(resultsWithScreenshots)
+        const resultsWithMedia = aggregated.map((result) => {
+          if (result.attachments && result.attachments.length > 0) {
+            const attachment = result.attachments[0]
+            result.screenshot = `${projectPath}/allure-results/${attachment.source}`
+          }
+          return result
+        })
+        setResults(resultsWithMedia)
       } catch (error: unknown) {
-        // const e = error as Error
-        // toast.error(`${t('dashboard.error.fetching')}: ${e.message}`)
+        // silently ignore missing allure-results
       }
     }
     if (projectPath) {
@@ -98,10 +108,21 @@ const Index: React.FC = (): JSX.Element => {
     return <NoProjectLoadedMessage />
   }
 
+  if (viewingTraceTestId) {
+    return (
+      <TraceViewer
+        traceSteps={traceSteps}
+        selectedTraceStepId={selectedTraceStepId}
+        onSelectStep={setSelectedTraceStepId}
+        onBack={handleBackToResults}
+      />
+    )
+  }
+
   return (
     <div className="p-2 min-h-fit sm:p-4 md:p-6 w-full flex flex-col">
       {totalCount === 0 ? (
-        <div className="text-center text-gray-600 text-lg font-semibold p-6 border rounded bg-white shadow">
+        <div className="text-center text-neutral-dk text-lg font-semibold p-6 border rounded bg-white shadow">
           {t('dashboard.noResults')}
         </div>
       ) : (
@@ -113,15 +134,15 @@ const Index: React.FC = (): JSX.Element => {
             </p>
             <p className="text-lg">
               {t('dashboard.passed')}:{' '}
-              <span className="font-semibold text-[#4caf50]">{passedCount}</span>
+              <span className="font-semibold text-status-ok">{passedCount}</span>
             </p>
             <p className="text-lg">
               {t('dashboard.failed')}:{' '}
-              <span className="font-semibold text-[#f44336]">{failedCount}</span>
+              <span className="font-semibold text-status-err">{failedCount}</span>
             </p>
             <p className="text-lg">
               {t('dashboard.skipped')}:{' '}
-              <span className="font-semibold text-[#ff9800]">{skippedCount}</span>
+              <span className="font-semibold text-amber-500">{skippedCount}</span>
             </p>
           </div>
 
@@ -135,29 +156,41 @@ const Index: React.FC = (): JSX.Element => {
                 {passedTests.length > 0 && (
                   <div>
                     <h3 className="text-xl font-semibold mb-2">{t('dashboard.passed')}</h3>
-                    {passedTests.map((result, index) => (
-                      <TestResultCard
-                        key={`passed-${index}`}
-                        name={result.name}
-                        status={result.status}
-                        screenshot={result.screenshot}
-                        message={result.statusDetails?.message}
-                      />
-                    ))}
+                    {passedTests.map((result, index) => {
+                      const testInfo = testByName.get(result.name)
+                      return (
+                        <TestResultCard
+                          key={`passed-${index}`}
+                          name={result.name}
+                          status={result.status}
+                          screenshot={result.screenshot}
+
+                          message={result.statusDetails?.message}
+                          hasTrace={testInfo?.hasTrace}
+                          onViewTrace={() => handleViewTrace(result.name)}
+                        />
+                      )
+                    })}
                   </div>
                 )}
                 {failedTests.length > 0 && (
                   <div>
                     <h3 className="text-xl font-semibold mb-2">{t('dashboard.failed')}</h3>
-                    {failedTests.map((result, index) => (
-                      <TestResultCard
-                        key={`failed-${index}`}
-                        name={result.name}
-                        status={result.status}
-                        screenshot={result.screenshot}
-                        message={result.statusDetails?.message}
-                      />
-                    ))}
+                    {failedTests.map((result, index) => {
+                      const testInfo = testByName.get(result.name)
+                      return (
+                        <TestResultCard
+                          key={`failed-${index}`}
+                          name={result.name}
+                          status={result.status}
+                          screenshot={result.screenshot}
+
+                          message={result.statusDetails?.message}
+                          hasTrace={testInfo?.hasTrace}
+                          onViewTrace={() => handleViewTrace(result.name)}
+                        />
+                      )
+                    })}
                   </div>
                 )}
                 {skippedTests.length > 0 && (

@@ -4,10 +4,22 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    resolve: {
+      alias: {
+        '@shared': resolve('src/shared'),
+        '@foundation': resolve('src/renderer/src/foundation')
+      }
+    }
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
+    resolve: {
+      alias: {
+        '@shared': resolve('src/shared'),
+        '@foundation': resolve('src/renderer/src/foundation')
+      }
+    },
     build: {
       rollupOptions: {
         input: {
@@ -25,7 +37,8 @@ export default defineConfig({
         '@components': resolve('src/renderer/src/components'),
         '@pages': resolve('src/renderer/src/pages'),
         '@templates': resolve('src/renderer/src/templates'),
-        '@foundation': resolve('src/renderer/src/foundation')
+        '@foundation': resolve('src/renderer/src/foundation'),
+        '@shared': resolve('src/shared')
       }
     },
     plugins: [react()]

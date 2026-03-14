@@ -1,7 +1,1 @@
-import { Test } from './test'
-
-export interface Suite {
-  id: string
-  name: string
-  tests: Test[]
-}
+export type { Suite } from '../../../../shared/types/suite'
