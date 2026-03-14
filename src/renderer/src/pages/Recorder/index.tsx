@@ -261,11 +261,12 @@ const Recorder: React.FC = (): JSX.Element => {
               <div className="w-[60%] flex flex-col min-h-0">
                 <div className="flex-1 border border-neutral-bdr rounded-lg overflow-hidden bg-white">
                   <webview
-                    ref={(el) => {
-                      if (el && el !== webviewRef.current) {
-                        webviewRef.current = el
-                        el.addEventListener('dom-ready', () => {
-                          const wcId = (el as unknown as { getWebContentsId: () => number }).getWebContentsId()
+                    ref={(el: HTMLElement | null) => {
+                      const wv = el as unknown as Electron.WebviewTag | null
+                      if (wv && wv !== webviewRef.current) {
+                        webviewRef.current = wv
+                        wv.addEventListener('dom-ready', () => {
+                          const wcId = wv.getWebContentsId()
                           window.api.registerRecorderWebContents(wcId)
                         })
                       }
