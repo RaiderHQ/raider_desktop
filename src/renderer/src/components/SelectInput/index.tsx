@@ -1,6 +1,5 @@
 import React from 'react'
 import { map } from 'lodash'
-import ArrowDown from '@assets/icons/arrow-down.svg'
 
 interface SelectInputProps {
   label: string
@@ -12,10 +11,12 @@ interface SelectInputProps {
 const SelectInput: React.FC<SelectInputProps> = ({ options, onChange, selected, label }) => {
   return (
     <div>
-      <label className="block mb-1 font-medium text-[14px]">{label}</label>
+      <label className="block mb-1 text-xs font-semibold uppercase tracking-wider text-neutral-dk">
+        {label}
+      </label>
       <div className="relative">
         <select
-          className="block w-full p-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 appearance-none focus:outline-none focus:ring-2 focus:ring-[rgb(229,151,0)] focus:border-[rgb(229,151,0)]"
+          className="block w-full p-3 border border-neutral-bdr rounded-md bg-white text-neutral-dk appearance-none focus:outline-none focus:ring-2 focus:ring-ruby focus:border-ruby transition-colors"
           value={selected}
           onChange={onChange}
         >
@@ -26,7 +27,19 @@ const SelectInput: React.FC<SelectInputProps> = ({ options, onChange, selected, 
           ))}
         </select>
         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-          <img src={ArrowDown} className="w-4 h-auto" />
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-neutral-mid"
+          >
+            <polyline points="6,9 12,15 18,9" />
+          </svg>
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 {
   "files": [],
   "references": [{ "path": "./tsconfig.node.json" }, { "path": "./tsconfig.web.json" }],
-  "include": ["./test", "./src"],
+  "include": ["./test", "./src", "./src/shared"],
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
@@ -13,6 +13,7 @@
       "@foundation/*": ["./src/renderer/src/foundation/*"],
       "@pages/*": ["./src/renderer/src/pages/*"],
       "@templates/*": ["./src/renderer/src/templates/*"],
+      "@shared/*": ["./src/shared/*"]
     }
   }
 }

@@ -19,7 +19,8 @@ export default defineConfig({
       '@components': path.resolve(__dirname, './src/renderer/src/components'),
       '@foundation': path.resolve(__dirname, './src/renderer/src/foundation'),
       '@pages': path.resolve(__dirname, './src/renderer/src/pages'),
-      '@templates': path.resolve(__dirname, './src/renderer/src/templates')
+      '@templates': path.resolve(__dirname, './src/renderer/src/templates'),
+      '@shared': path.resolve(__dirname, './src/shared')
     }
   }
 })

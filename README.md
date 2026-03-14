@@ -16,12 +16,12 @@
    <p align="center"> For more information and updates on releases, see <a href="https://ruby-raider.com">https://ruby-raider.com</a></p>
 </div>
 
-You can download the latest release of the app [here](https://github.com/RaiderHQ/raider_desktop/releases/tag/1.1.4).
+You can download the latest release of the app [here](https://github.com/RaiderHQ/raider_desktop/releases).
 
 > [!WARNING]
-> Raider Desktop is currently available for **macOS only**. Windows and Linux versions are planned for future releases.
+> Raider Desktop is currently available for **macOS only**. Windows and Linux builds are generated via CI but are not yet fully tested.
 
-Raider Desktop is the UI desktop companion for [Ruby Raider](https://github.com/RaiderHQ/ruby_raider), designed to simplify and accelerate your automation workflow. It provides recording, editing, and the ability to manage your ruby raider projects, in order to make test automation easier and more efficient.
+Raider Desktop is the UI desktop companion for [Ruby Raider](https://github.com/RaiderHQ/ruby_raider), designed to simplify and accelerate your automation workflow. It provides recording, editing, and the ability to manage your Ruby Raider projects, making test automation easier and more efficient.
 
 ## Table of Contents
 
@@ -29,14 +29,15 @@ Raider Desktop is the UI desktop companion for [Ruby Raider](https://github.com/
   - [Prerequisites](#prerequisites)
   - [Core Features](#core-features)
     - [Creating a New Ruby Raider Project](#creating-a-new-ruby-raider-project)
+    - [The Test Screen](#the-test-screen)
     - [The Recorder Page](#the-recorder-page)
-    - [The Dashboard Page](#the-dashboard-page)
-    - [The Settings Page](#the-settings-page)
     - [Common Errors](#common-errors)
 - [For Developers](#for-developers)
   - [Getting Started](#getting-started)
   - [Installation (for Development)](#installation-for-development)
   - [Running the Application](#running-the-application)
+  - [Testing](#testing)
+  - [CI/CD](#cicd)
 - [Building the Application](#building-the-application)
 
 ## For Users
@@ -52,50 +53,46 @@ For the application to work correctly, you must have [**rbenv**](https://github.
 ### Creating a New Ruby Raider Project
 1.  From the landing page, click on **"Create New Project"**.
 2.  On the "New Project" screen, provide a **Project Name**.
-3.  Select your desired **Automation Framework** (e.g., Selenium, Appium) and **Test Framework** (e.g., Rspec, Cucumber).
-4.  If you select **Appium**, you will also need to specify the **Mobile Platform** (Android or iOS).
-5.  Click **"Create Project"** and select a directory where the project will be saved.
-6.  The application will generate a complete Ruby Raider project structure for you.
+3.  Select your desired **Automation Framework** (e.g., Selenium, Watir) and **Test Framework** (e.g., Rspec, Cucumber).
+4.  Click **"Create Project"** and select a directory where the project will be saved.
+5.  The application will generate a complete Ruby Raider project structure for you.
 
 #### Opening an Existing Project
 1.  From the landing page, click on **"Open Existing Project"**.
 2.  Use the file dialog to navigate to and select the root folder of your existing Ruby Raider project.
 3.  The project will be loaded into the application, and you can view its file structure on the **Overview** page.
 
+### The Test Screen
+
+The Test Screen is the main hub for managing and running your tests. It includes several tabs:
+
+-   **Files**: Browse and edit your project files with the built-in Monaco editor. The toolbar at the top lets you configure:
+    -   **URL**: The base URL for your tests
+    -   **Browser**: Choose between Chrome, Safari, Firefox, or Edge
+    -   **Headless**: Toggle headless mode on/off
+    -   **Viewport**: Quick presets for Desktop (1920x1080), Tablet (768x1024), or Mobile (375x812)
+    -   **Run Mode**: Run all tests, smoke tests, regression tests, or custom tagged tests
+-   **Scaffolding**: Generate new specs, page objects, and helpers using Ruby Raider's scaffolding commands.
+-   **Dashboard**: View test results with pass/fail statistics, pie charts, and accessibility violation reports.
+-   **Settings**: Configure project settings including browser options, timeouts, viewport dimensions, mobile capabilities, and file paths.
+-   **Terminal**: An integrated terminal for running commands directly within the app.
+
 ### The Recorder Page
 
-The Recorder is the heart of Raider Desktop, allowing you to record user interactions and automatically generate test scripts.
+The Recorder allows you to record user interactions and automatically generate test scripts.
 
 -   **Test Suites Panel**: On the left, you can create, delete, and manage your test suites. Each suite can contain multiple tests.
 -   **Recording Controls**: At the top of the screen, you can set the initial URL for your test, start/stop the recording, and run tests.
 -   **Recorded Steps**: The central panel displays the steps of your test as they are recorded. You can toggle between a human-readable "Friendly View" and the actual "Code View".
+-   **Trace Timeline**: After recording, view a visual timeline of each step with screenshot thumbnails.
 -   **Running Tests**: You can run a single test or an entire suite. The output of the test run will be displayed in the "Test Output" panel.
 -   **Import/Export**: You can import and export individual tests, entire suites, or the whole project for easy sharing and backup.
-
-### The Dashboard Page
-
-The Dashboard provides a high-level overview of your project.
-
--   **Project Dashboard**: This tab displays key statistics about your project, such as the number of test suites and tests.
--   **Recording Dashboard**: This tab shows information related to your recording sessions and test runs.
-
-### The Settings Page
-
-The Settings page allows you to configure various aspects of the application and your projects.
-
--   **General Settings**: Configure application-wide settings, such as the display language.
--   **Project Settings**:
-    -   For **web projects**, you can set the default browser and the base URL for your tests.
-    -   For **mobile projects** (Appium), you can configure mobile capabilities such as platform version, device name, and app path.
--   **Recording Settings**:
-    -   **Waits**: Adjust implicit and explicit wait times to control how the recorder waits for elements to appear on the page.
-    -   **Selector Priorities**: Define the order of attributes the recorder should prioritize when generating selectors for elements (e.g., `id`, `name`, `data-testid`, `css`). You can add, remove, and reorder the priorities.
 
 ### Common Errors
 
 #### "rbenv not found"
 
-This error indicates that `rbenv` is not installed or not properly configured in your shell. `rbenv` is a tool that helps you manage multiple Ruby versions.
+This error indicates that `rbenv` is not installed or not properly configured in your shell.
 
 **Installation:**
 
@@ -107,37 +104,28 @@ This error indicates that `rbenv` is not installed or not properly configured in
 *   **Other platforms:**
     Please refer to the official [rbenv installation guide](https://github.com/rbenv/rbenv#installation).
 
-After installation, make sure to initialize `rbenv` in your shell by running:
+After installation, make sure to initialize `rbenv` in your shell:
 ```bash
 rbenv init
 ```
-Follow the instructions provided by the command to set up `rbenv` in your shell configuration file (e.g., `.zshrc`, `.bash_profile`).
+Follow the instructions provided to set up `rbenv` in your shell configuration file (e.g., `.zshrc`, `.bash_profile`).
 
 #### Permission Denied
 
-If you encounter a "Permission Denied" error when running tests or saving files, it means the application does not have the necessary write permissions for the project folder.
-
-You can grant the required permissions by running the following command in your terminal:
+If you encounter a "Permission Denied" error, grant the required permissions:
 
 ```bash
 sudo chown -R $(whoami) /path/to/your/project/folder
 ```
 
-Replace `/path/to/your/project/folder` with the actual path to your project directory. This command changes the owner of the folder to the current user, ensuring you have full read, write, and execute permissions.
-
 #### macOS: "App cannot be opened because the developer cannot be verified."
 
-When you first open RaiderUI on macOS, you might see a warning that the application cannot be opened because it is from an unidentified developer. This is a standard security feature in macOS for applications downloaded from outside the App Store.
+1.  Open **System Settings** > **Privacy & Security**.
+2.  Scroll down to the "Security" section.
+3.  Click **"Open Anyway"** next to the message about "Ruby Raider" being blocked.
+4.  Click **"Open"** in the confirmation dialog.
 
-To resolve this, you need to grant an exception for the app:
-
-1.  Open **System Settings**.
-2.  Go to **Privacy & Security**.
-3.  Scroll down to the "Security" section.
-4.  You will see a message about "RaiderUI" being blocked. Click the **"Open Anyway"** button next to it.
-5.  A confirmation dialog will appear. Click **"Open"** to launch the application.
-
-You will only need to do this once. After that, you can open the app normally.
+You will only need to do this once.
 
 ## For Developers
 
@@ -145,51 +133,67 @@ This section is for developers who want to contribute to the Raider Desktop proj
 
 ### Getting Started
 
-Follow these instructions to get the project up and running on your local machine for development and testing purposes.
-
 Before you begin, ensure you have the following installed:
-- [Node.js](https://nodejs.org/) (which includes npm)
-- [Ruby](https://www.ruby-lang.org/en/documentation/installation/)
+- [Node.js](https://nodejs.org/) v20+
+- [Ruby](https://www.ruby-lang.org/en/documentation/installation/) 3.0.0+ via rbenv
 
-Additionally, for the application to function correctly, you must have the `ruby_raider` gem installed:
+Additionally, install the `ruby_raider` gem:
 ```bash
 gem install ruby_raider
 ```
 
 ### Installation (for Development)
 
-1. Clone the repository to your local machine:
+1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/raider_desktop.git
+   git clone https://github.com/RaiderHQ/raider_desktop.git
    ```
 2. Navigate into the project directory:
     ```bash
    cd raider_desktop
    ```
-
-3. Install the project dependencies using npm:
+3. Install dependencies:
    ```bash
    npm install
    ```
 
 ### Running the Application
 
-To start the application in development mode, run the following command. This will launch the Electron app.
+To start the application in development mode with hot reload:
 
 ```bash
 npm run dev
 ```
 
-## Building the Application
-
-To build the application for your specific operating system, use one of the following commands:
+### Testing
 
 ```bash
-# For Windows
-npm run build:win
+# Unit tests (Vitest)
+npm test
 
+# E2E tests (Playwright)
+npm run test:e2e
+```
+
+### CI/CD
+
+The project uses GitHub Actions for continuous integration:
+
+- **On push/PR to main**: Runs unit tests, then builds for macOS, Windows, and Linux
+- **On tag push (`v*`)**: Creates a GitHub Release with build artifacts for all platforms
+
+See `.github/workflows/build.yml` for the full pipeline configuration.
+
+## Building the Application
+
+To build the application for your specific operating system:
+
+```bash
 # For macOS
 npm run build:mac
+
+# For Windows
+npm run build:win
 
 # For Linux
 npm run build:linux

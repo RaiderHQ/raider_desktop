@@ -1,0 +1,77 @@
+<svg width="240" height="240" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Option F: Bearded Viking Axe (vertical) with Elder Futhark runes on the handle -->
+
+  <!-- Axe handle (vertical wooden shaft) -->
+  <rect x="112" y="30" width="16" height="190" rx="4" fill="#2C2D30"/>
+
+  <!-- Wood grain texture lines on handle -->
+  <line x1="117" y1="100" x2="117" y2="220" stroke="#4A4B50" stroke-width="0.8" opacity="0.5"/>
+  <line x1="123" y1="100" x2="123" y2="220" stroke="#4A4B50" stroke-width="0.8" opacity="0.4"/>
+
+  <!-- Handle wrap detail (leather binding at grip) -->
+  <line x1="110" y1="170" x2="130" y2="165" stroke="#5C3D2E" stroke-width="2.5"/>
+  <line x1="110" y1="178" x2="130" y2="173" stroke="#5C3D2E" stroke-width="2.5"/>
+  <line x1="110" y1="186" x2="130" y2="181" stroke="#5C3D2E" stroke-width="2.5"/>
+  <line x1="110" y1="194" x2="130" y2="189" stroke="#5C3D2E" stroke-width="2.5"/>
+  <line x1="110" y1="202" x2="130" y2="197" stroke="#5C3D2E" stroke-width="2.5"/>
+
+  <!-- Bearded axe head (asymmetric, flowing Viking style) -->
+  <path d="M120 28
+           L138 20
+           Q168 12 178 35
+           L185 55
+           Q190 72 182 88
+           L160 120
+           Q145 138 130 130
+           L128 100
+           L128 38 Z"
+        fill="#C14420"/>
+
+  <!-- Axe head left cheek (smaller) -->
+  <path d="M120 28
+           L108 22
+           Q96 18 92 32
+           L90 42
+           Q88 52 94 58
+           L112 65
+           L112 38 Z"
+        fill="#C14420"/>
+
+  <!-- Axe blade edge highlight -->
+  <path d="M178 35 L185 55 Q190 72 182 88 L160 120 Q155 128 148 132"
+        stroke="#DA917B" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Axe head bevel line -->
+  <path d="M135 25 L140 50 L138 85 L132 110 L130 125"
+        stroke="#2C2D30" stroke-width="1.5" fill="none" opacity="0.3"/>
+
+  <!-- Socket ring -->
+  <ellipse cx="120" cy="65" rx="14" ry="5" stroke="#2C2D30" stroke-width="2" fill="none" opacity="0.6"/>
+
+  <!-- ═══ Elder Futhark Runes on handle ═══ -->
+  <!-- ᚱ Raido (R - journey/raid) -->
+  <g transform="translate(120, 112)" stroke="#C14420" stroke-width="2" stroke-linecap="round">
+    <line x1="0" y1="-10" x2="0" y2="10"/>
+    <line x1="0" y1="-10" x2="7" y2="-3"/>
+    <line x1="7" y1="-3" x2="0" y2="2"/>
+  </g>
+
+  <!-- ᚢ Uruz (U - strength/aurochs) -->
+  <g transform="translate(120, 132)" stroke="#C14420" stroke-width="2" stroke-linecap="round">
+    <line x1="-4" y1="-10" x2="-4" y2="10"/>
+    <line x1="-4" y1="-10" x2="5" y2="-5"/>
+    <line x1="5" y1="-5" x2="5" y2="10"/>
+  </g>
+
+  <!-- ᛒ Berkano (B - birch/new beginnings) -->
+  <g transform="translate(120, 152)" stroke="#C14420" stroke-width="2" stroke-linecap="round">
+    <line x1="0" y1="-10" x2="0" y2="10"/>
+    <line x1="0" y1="-10" x2="7" y2="-5"/>
+    <line x1="7" y1="-5" x2="0" y2="0"/>
+    <line x1="0" y1="0" x2="7" y2="5"/>
+    <line x1="7" y1="5" x2="0" y2="10"/>
+  </g>
+
+  <!-- Pommel (bottom cap) -->
+  <ellipse cx="120" cy="222" rx="12" ry="4" fill="#2C2D30"/>
+</svg>

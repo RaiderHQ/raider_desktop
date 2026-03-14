@@ -27,7 +27,7 @@ vi.mock('../../src/main/handlers/appState', () => {
   }
 })
 
-import runSuite from '../../src/main/handlers/runSuite'
+import runSuite from '../../src/main/handlers/testing/runSuite'
 import { appState, getRecordingSettings } from '../../src/main/handlers/appState'
 
 const mockExec = exec as ReturnType<typeof vi.fn>

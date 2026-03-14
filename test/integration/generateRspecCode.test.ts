@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateRspecCode } from '../../src/main/handlers/runRecording'
+import { generateRspecCode } from '../../src/main/handlers/testing/runRecording'
 
 describe('generateRspecCode (integration)', () => {
   it('includes the test name in the describe block', () => {
@@ -44,6 +44,6 @@ describe('generateRspecCode (integration)', () => {
   it('works with an empty steps array', () => {
     const code = generateRspecCode('empty test', [], 0, 30)
     expect(code).toContain("describe 'empty test' do")
-    expect(code).toContain("it 'plays back the recorded steps' do")
+    expect(code).toContain("it 'empty test' do")
   })
 })

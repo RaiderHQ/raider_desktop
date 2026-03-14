@@ -6,10 +6,17 @@ interface CommandListProps {
   steps: string[]
   setSteps: React.Dispatch<React.SetStateAction<string[]>>
   onDeleteStep: (index: number) => void
+  onEditStep?: (index: number, newCommand: string) => void
   showCode: boolean
 }
 
-const CommandList: React.FC<CommandListProps> = ({ steps, setSteps, onDeleteStep, showCode }) => {
+const CommandList: React.FC<CommandListProps> = ({
+  steps,
+  setSteps,
+  onDeleteStep,
+  onEditStep,
+  showCode
+}) => {
   const { t } = useTranslation()
   const dragItemIndex = useRef<number | null>(null)
 
@@ -33,7 +40,7 @@ const CommandList: React.FC<CommandListProps> = ({ steps, setSteps, onDeleteStep
 
   return (
     <div className="flex flex-col h-full">
-      <div className="w-full flex-grow h-full max-h-[60vh] overflow-y-auto p-1 bg-gray-50 rounded-b-md">
+      <div className="w-full flex-grow h-full max-h-[60vh] overflow-y-auto p-1 bg-neutral-lt rounded-b-md">
         {steps.length > 0 ? (
           steps.map((step, index) => (
             <CommandBlock
@@ -45,11 +52,12 @@ const CommandList: React.FC<CommandListProps> = ({ steps, setSteps, onDeleteStep
               onDragEnter={handleDragEnter}
               onDragEnd={handleDragEnd}
               onDelete={onDeleteStep}
+              onEdit={onEditStep}
             />
           ))
         ) : (
           <div className="flex items-center justify-center h-full">
-            <p className="text-gray-400">{t('recorder.placeholder.commands')}</p>
+            <p className="text-neutral-mid">{t('recorder.placeholder.commands')}</p>
           </div>
         )}
       </div>

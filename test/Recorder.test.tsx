@@ -3,6 +3,7 @@ import Recorder from '@pages/Recorder'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 import { IpcRendererEvent } from 'electron'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
@@ -11,26 +12,37 @@ vi.mock('react-i18next', () => ({
   })
 }))
 
-vi.mock('@foundation/Stores/projectStore', () => ({
-  __esModule: true,
-  default: vi.fn(() => '/fake/project/path')
+vi.mock('react-hot-toast', () => ({
+  default: { success: vi.fn(), error: vi.fn(), loading: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), loading: vi.fn() },
+  Toaster: () => null
 }))
 
-vi.mock('@foundation/Stores/rubyStore', () => ({
-  __esModule: true,
-  default: vi.fn(() => ({
-    rubyCommand: '/usr/bin/ruby',
-    setRubyCommand: vi.fn()
-  }))
-}))
+vi.mock('@foundation/Stores/projectStore', () => {
+  const store = { projectPath: '/fake/project/path' }
+  const useProjectStore = (selector?: (s: typeof store) => unknown) =>
+    selector ? selector(store) : store
+  useProjectStore.getState = () => store
+  return { __esModule: true, default: useProjectStore }
+})
 
-vi.mock('@foundation/Stores/runOutputStore', () => ({
-  __esModule: true,
-  default: vi.fn(() => ({
-    runOutput: '',
-    setRunOutput: vi.fn()
-  }))
-}))
+vi.mock('@foundation/Stores/rubyStore', () => {
+  const store = { rubyCommand: '/usr/bin/ruby', setRubyCommand: vi.fn(), rubyVersion: '3.2.0', versionWarning: null, setRubyVersion: vi.fn(), setVersionWarning: vi.fn() }
+  const useRubyStore = (selector?: (s: typeof store) => unknown) =>
+    selector ? selector(store) : store
+  useRubyStore.getState = () => store
+  return { __esModule: true, default: useRubyStore }
+})
+
+vi.mock('@foundation/Stores/runOutputStore', () => {
+  const store = { runOutput: '', setRunOutput: vi.fn() }
+  const useRunOutputStore = (selector?: (s: typeof store) => unknown) =>
+    selector ? selector(store) : store
+  useRunOutputStore.getState = () => store
+  return { __esModule: true, default: useRunOutputStore }
+})
+
+// Use the real recorderStore — it's a Zustand store that triggers React re-renders
 
 // Mocking electron API
 const mockApi = {
@@ -61,6 +73,8 @@ const mockApi = {
   editFile: vi.fn(),
   openAllure: vi.fn(),
   runRaiderTests: vi.fn(),
+  runRakeTask: vi.fn(),
+  rerunFailedTests: vi.fn(),
   updateBrowserUrl: vi.fn(),
   updateBrowserType: vi.fn(),
   isMobileProject: vi.fn(),
@@ -71,14 +85,36 @@ const mockApi = {
   isRbenvRubyInstalled: vi.fn(),
   isRvmRubyInstalled: vi.fn(),
   isSystemRubyInstalled: vi.fn(),
-  xpathParser: vi.fn(),
-  commandParser: vi.fn(),
+  xpathParser: vi.fn().mockResolvedValue(''),
+  commandParser: vi.fn().mockResolvedValue(''),
   updateRecordingSettings: vi.fn(),
-  getSelectorPriorities: vi.fn(),
-  saveSelectorPriorities: vi.fn(),
   onTestRunStatus: vi.fn(),
   removeTestRunStatusListener: vi.fn(),
-  closeApp: vi.fn()
+  closeApp: vi.fn(),
+  scaffoldGenerate: vi.fn().mockResolvedValue({ success: true, output: 'Generated successfully' }),
+  saveTrace: vi.fn().mockResolvedValue({ success: true }),
+  loadTrace: vi.fn().mockResolvedValue({ success: false }),
+  deleteTrace: vi.fn().mockResolvedValue(undefined),
+  updateTimeout: vi.fn().mockResolvedValue({ success: true, output: '' }),
+  updateViewport: vi.fn().mockResolvedValue({ success: true, output: '' }),
+  updateDebugMode: vi.fn().mockResolvedValue({ success: true, output: '' }),
+  updateBrowserOptions: vi.fn().mockResolvedValue({ success: true, output: '' }),
+  startAppium: vi.fn().mockResolvedValue({ success: true, output: '' }),
+  updatePaths: vi.fn().mockResolvedValue({ success: true, output: '' }),
+  updateHeadlessMode: vi.fn().mockResolvedValue({ success: true }),
+  getProjectConfig: vi.fn().mockResolvedValue({ success: true, config: {} }),
+  deleteFile: vi.fn().mockResolvedValue({ success: true }),
+  renameFile: vi.fn().mockResolvedValue({ success: true, newPath: '' }),
+  duplicateFile: vi.fn().mockResolvedValue({ success: true, newPath: '' }),
+  registerRecorderWebContents: vi.fn().mockResolvedValue(undefined),
+  terminalSpawn: vi.fn().mockResolvedValue(undefined),
+  terminalWrite: vi.fn().mockResolvedValue(undefined),
+  terminalResize: vi.fn().mockResolvedValue(undefined),
+  terminalKill: vi.fn().mockResolvedValue(undefined),
+  onTerminalData: vi.fn().mockReturnValue({ on: vi.fn() }),
+  removeTerminalDataListener: vi.fn().mockReturnValue({ on: vi.fn() }),
+  onTerminalExit: vi.fn().mockReturnValue({ on: vi.fn() }),
+  removeTerminalExitListener: vi.fn().mockReturnValue({ on: vi.fn() })
 }
 
 let suiteUpdatedCallback: (event: IpcRendererEvent, updatedSuites: unknown) => void = () => {}
@@ -120,45 +156,99 @@ beforeEach(() => {
       getPathForFile: vi.fn()
     }
   }
+
+  // Reset the real store state before each test
+  useRecorderStore.setState({
+    suites: [],
+    activeSuiteId: null,
+    activeTest: null,
+    isRecording: false,
+    isRunning: false,
+    showCode: false,
+    isOutputVisible: false
+  })
 })
 
 describe('Recorder Page', (): void => {
-  it('renders all main components correctly', async (): Promise<void> => {
+  it('renders tab navigation and default recording tab', async (): Promise<void> => {
     await act(async () => {
       render(<Recorder />)
     })
 
-    // Check for main panels and buttons
+    // Check tab buttons are rendered
+    expect(screen.getByText('recorder.tabs.recording')).toBeInTheDocument()
+    expect(screen.getByText('recorder.tabs.dashboard')).toBeInTheDocument()
+    expect(screen.getByText('recorder.tabs.settings')).toBeInTheDocument()
+
+    // Recording tab content is shown by default
     expect(screen.getByText('recorder.recorderPage.testSuites')).toBeInTheDocument()
-    expect(screen.getByText('recorder.recorderPage.recordedSteps')).toBeInTheDocument()
-    expect(screen.getByText('recorder.recorderPage.codeView')).toBeInTheDocument()
-    expect(screen.getByText('recorder.recorderPage.testOutput')).toBeInTheDocument()
+    expect(screen.getByText('recorder.recorderPage.noSuiteSteps')).toBeInTheDocument()
+  })
+
+  it('switches to dashboard tab', async (): Promise<void> => {
+    await act(async () => {
+      render(<Recorder />)
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('recorder.tabs.dashboard'))
+    })
+
+    // Recording content should be hidden
+    expect(screen.queryByText('recorder.recorderPage.testSuites')).not.toBeInTheDocument()
+  })
+
+  it('switches to settings tab', async (): Promise<void> => {
+    await act(async () => {
+      render(<Recorder />)
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('recorder.tabs.settings'))
+    })
+
+    // Settings content should be visible
+    expect(screen.getByText('settings.recording.title')).toBeInTheDocument()
+    // Recording content should be hidden
+    expect(screen.queryByText('recorder.recorderPage.testSuites')).not.toBeInTheDocument()
   })
 
   it('toggles output panel visibility', async (): Promise<void> => {
+    // Need an active suite and test for toolbar buttons to render
+    useRecorderStore.setState({
+      suites: [{ id: 's1', name: 'Suite', tests: [{ id: 't1', name: 'Test', url: '', steps: [] }] }],
+      activeSuiteId: 's1',
+      activeTest: { id: 't1', name: 'Test', url: '', steps: [] }
+    })
+
     await act(async () => {
       render(<Recorder />)
     })
-    const toggleButton = screen.getByText('recorder.recorderPage.testOutput')
 
-    // Initially, the output panel is hidden
-    expect(screen.queryByText('recorder.recorderPage.runOutput')).not.toBeInTheDocument()
+    // Initially shows "Test Output" button (drawer is collapsed)
+    expect(screen.getByText('recorder.recorderPage.testOutput')).toBeInTheDocument()
 
     // Click to show the output panel
     await act(async () => {
-      fireEvent.click(toggleButton)
+      fireEvent.click(screen.getByText('recorder.recorderPage.testOutput'))
     })
-    expect(screen.getByText('recorder.recorderPage.runOutput')).toBeInTheDocument()
     expect(screen.getByText('recorder.recorderPage.hideOutput')).toBeInTheDocument()
 
     // Click to hide the output panel again
     await act(async () => {
-      fireEvent.click(toggleButton)
+      fireEvent.click(screen.getByText('recorder.recorderPage.hideOutput'))
     })
-    expect(screen.queryByText('recorder.recorderPage.runOutput')).not.toBeInTheDocument()
+    expect(screen.getByText('recorder.recorderPage.testOutput')).toBeInTheDocument()
   })
 
   it('toggles between friendly view and code view', async (): Promise<void> => {
+    // Need an active suite and test for toolbar buttons to render
+    useRecorderStore.setState({
+      suites: [{ id: 's1', name: 'Suite', tests: [{ id: 't1', name: 'Test', url: '', steps: [] }] }],
+      activeSuiteId: 's1',
+      activeTest: { id: 't1', name: 'Test', url: '', steps: [] }
+    })
+
     await act(async () => {
       render(<Recorder />)
     })

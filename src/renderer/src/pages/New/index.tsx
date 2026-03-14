@@ -2,21 +2,20 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
-import QuestionIcon from '@assets/icons/Question_vector.svg'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import InformationModal from '@components/InformationModal'
 import InputField from '@components/InputField'
 import SelectInput from '@components/SelectInput'
+import Checkbox from '@components/Checkbox'
 import LoadingScreen from '@components/LoadingScreen'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 
 const options = {
-  automation: ['Appium', 'Selenium', 'Watir'],
-  test: ['Rspec', 'Cucumber'],
-  mobile: ['Android', 'iOS']
+  automation: ['Selenium', 'Watir'],
+  test: ['Rspec', 'Cucumber']
 }
 
 const CreateProject: React.FC = () => {
@@ -29,11 +28,11 @@ const CreateProject: React.FC = () => {
 
   const [automationFramework, setAutomationFramework] = useState('Selenium')
   const [testFramework, setTestFramework] = useState('Rspec')
-  const [mobilePlatform, setMobilePlatform] = useState('Android')
   const [isModalOpen, setModalOpen] = useState(false)
   const [projectName, setProjectName] = useState('')
 
-  const showMobile = automationFramework === 'Appium'
+  // Add-ons state
+  const [accessibility, setAccessibility] = useState(false)
 
   const handleCreateProject = async (): Promise<void> => {
     if (!projectName.trim()) {
@@ -49,18 +48,16 @@ const CreateProject: React.FC = () => {
     setLoading(true)
     try {
       const overviewFolder = `${folder}/${projectName}`
-      const automationParam = showMobile
-        ? mobilePlatform.toLowerCase()
-        : automationFramework.toLowerCase()
-
-      // Call the command without checking for success
+      const automationParam = automationFramework.toLowerCase()
 
       const raiderResult = await window.api.runRubyRaider(
         folder,
         projectName,
         testFramework.toLowerCase(),
         automationParam,
-        rubyCommand || ''
+        rubyCommand || '',
+        null,
+        { accessibility }
       )
 
       if (!raiderResult || !raiderResult.success) {
@@ -72,7 +69,6 @@ const CreateProject: React.FC = () => {
       setProjectPath(overviewFolder)
       navigate('/overview')
 
-      // Keep the loader for a short period on success for better UX
       setTimeout(() => {
         setLoading(false)
       }, 1000)
@@ -95,65 +91,64 @@ const CreateProject: React.FC = () => {
 
   return (
     <>
-      <div className="text-center mb-10">
-        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">{t('newProject.title')}</h1>
-        <p className="text-gray-600 text-base md:text-lg lg:text-xl">{t('newProject.subtitle')}</p>
+      <div className="text-center mb-10 mt-10">
+        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-neutral-dark mb-2">{t('newProject.title')}</h1>
+        <p className="text-neutral-mid text-base md:text-lg lg:text-xl">{t('newProject.subtitle')}</p>
       </div>
 
       <ContentArea>
-        <div className="absolute top-2 right-4">
-          <img
-            src={QuestionIcon}
-            className="w-5 md:w-6 lg:w-8 h-auto cursor-pointer"
-            onClick={() => setModalOpen(true)}
-            alt="Help"
-          />
-        </div>
+        <button
+          className="absolute top-2 right-4 w-8 h-8 flex items-center justify-center rounded-full text-neutral-mid hover:text-ruby hover:bg-ruby-sub transition-colors"
+          onClick={() => setModalOpen(true)}
+          aria-label="Help"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+        </button>
 
         <div className="bg-white p-4">
           <div className="mb-6">
-            <label className="block mb-2 text-sm md:text-base lg:text-lg font-medium text-black-700">
-              {t('newProject.input.label')}
-            </label>
             <InputField
-              label="Project Name"
+              label={t('newProject.input.label')}
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
               placeholder={t('newProject.input.placeholder')}
             />
           </div>
 
-          <div className={`grid ${showMobile ? 'grid-cols-2' : 'grid-cols-1'} gap-x-8 mb-6 w-full`}>
-            <div className="flex flex-col space-y-6">
-              <SelectInput
-                label={t('newProject.question.automation')}
-                options={options.automation}
-                selected={automationFramework}
-                onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
-                  handleOptionChange(setAutomationFramework, target.value)
-                }
-              />
-              <SelectInput
-                label={t('newProject.question.test')}
-                options={options.test}
-                selected={testFramework}
-                onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
-                  handleOptionChange(setTestFramework, target.value)
-                }
+          <div className="flex flex-col space-y-6 mb-6 w-full">
+            <SelectInput
+              label={t('newProject.question.automation')}
+              options={options.automation}
+              selected={automationFramework}
+              onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
+                handleOptionChange(setAutomationFramework, target.value)
+              }
+            />
+            <SelectInput
+              label={t('newProject.question.test')}
+              options={options.test}
+              selected={testFramework}
+              onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
+                handleOptionChange(setTestFramework, target.value)
+              }
+            />
+          </div>
+
+          {/* Add-ons section */}
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-neutral-dark mb-3 border-b border-neutral-bdr pb-1">
+              {t('newProject.addons.title')}
+            </h3>
+            <div className="space-y-2">
+              <Checkbox
+                label={t('newProject.addons.accessibility')}
+                checked={accessibility}
+                onChange={setAccessibility}
+                helpText={t('newProject.addons.accessibilityHelp')}
               />
             </div>
-            {showMobile && (
-              <div className="flex flex-col space-y-6">
-                <SelectInput
-                  label={t('newProject.question.mobile')}
-                  options={options.mobile}
-                  selected={mobilePlatform}
-                  onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
-                    handleOptionChange(setMobilePlatform, target.value)
-                  }
-                />
-              </div>
-            )}
           </div>
 
           <div className="flex">

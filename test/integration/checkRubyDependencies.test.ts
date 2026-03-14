@@ -1,14 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { exec } from 'child_process'
 
-vi.mock('child_process', () => {
-  const exec = vi.fn()
-  return { exec, default: { exec } }
-})
+const mockSafeExec = vi.fn()
+vi.mock('../../src/main/utils/safeExec', () => ({
+  safeExec: (...args: unknown[]) => mockSafeExec(...args)
+}))
 
-import handler from '../../src/main/handlers/checkRubyDependencies'
-
-const mockExec = exec as ReturnType<typeof vi.fn>
+import handler from '../../src/main/handlers/ruby/checkRubyDependencies'
 
 describe('checkRubyDependencies handler (integration)', () => {
   beforeEach(() => {
@@ -16,22 +13,18 @@ describe('checkRubyDependencies handler (integration)', () => {
   })
 
   it('returns success when all required gems are present', async () => {
-    // gem list -i returns "true" for each gem
-    mockExec.mockImplementation((_cmd: string, cb: Function) => {
-      cb(null, 'true', '')
-    })
+    mockSafeExec.mockResolvedValue({ stdout: 'true', stderr: '', exitCode: 0 })
     const result = await handler('ruby')
     expect(result.success).toBe(true)
     expect(result.missingGems).toEqual([])
   })
 
   it('reports missing gems when gem list returns false', async () => {
-    mockExec.mockImplementation((cmd: string, cb: Function) => {
+    mockSafeExec.mockImplementation((cmd: string) => {
       if (cmd.includes('selenium-webdriver')) {
-        cb(null, 'false', '')
-      } else {
-        cb(null, 'true', '')
+        return Promise.resolve({ stdout: 'false', stderr: '', exitCode: 0 })
       }
+      return Promise.resolve({ stdout: 'true', stderr: '', exitCode: 0 })
     })
     const result = await handler('ruby')
     expect(result.success).toBe(false)
@@ -39,12 +32,11 @@ describe('checkRubyDependencies handler (integration)', () => {
   })
 
   it('reports gem as missing when exec returns an error', async () => {
-    mockExec.mockImplementation((cmd: string, cb: Function) => {
+    mockSafeExec.mockImplementation((cmd: string) => {
       if (cmd.includes('rspec')) {
-        cb(new Error('not found'), '', 'not found')
-      } else {
-        cb(null, 'true', '')
+        return Promise.resolve({ stdout: '', stderr: 'not found', exitCode: 1 })
       }
+      return Promise.resolve({ stdout: 'true', stderr: '', exitCode: 0 })
     })
     const result = await handler('ruby')
     expect(result.success).toBe(false)
@@ -52,18 +44,16 @@ describe('checkRubyDependencies handler (integration)', () => {
   })
 
   it('reports all gems as missing when exec always errors', async () => {
-    mockExec.mockImplementation((_cmd: string, cb: Function) => {
-      cb(new Error('no ruby'), '', '')
-    })
+    mockSafeExec.mockResolvedValue({ stdout: '', stderr: 'no ruby', exitCode: 1 })
     const result = await handler('ruby')
     expect(result.success).toBe(false)
     expect(result.missingGems.length).toBe(3)
   })
 
   it('uses the provided rubyCommandPrefix in the gem check command', async () => {
-    mockExec.mockImplementation((_cmd: string, cb: Function) => cb(null, 'true', ''))
+    mockSafeExec.mockResolvedValue({ stdout: 'true', stderr: '', exitCode: 0 })
     await handler('eval "$(rbenv init -)" && ruby')
-    const firstCall = mockExec.mock.calls[0][0] as string
+    const firstCall = mockSafeExec.mock.calls[0][0] as string
     expect(firstCall).toContain('eval "$(rbenv init -)"')
   })
 })

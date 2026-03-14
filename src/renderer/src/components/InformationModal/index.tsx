@@ -1,4 +1,5 @@
 import ReactDOM from 'react-dom'
+import Logo from '@components/Logo'
 
 interface ModalProps {
   title: string
@@ -16,26 +17,38 @@ const InformationModal: React.FC<ModalProps> = ({ title, message, onClose }): JS
   return ReactDOM.createPortal(
     <div
       id="modal-overlay"
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
       onClick={handleOutsideClick}
     >
       <div
-        className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6 relative"
+        className="bg-white rounded-xl shadow-elevated max-w-lg w-full p-8 relative"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b pb-2 mb-4">
-          <h2 className="text-lg font-semibold">{title}</h2>
+        <div className="flex items-center gap-3 border-b border-neutral-bdr pb-3 mb-4">
+          <Logo size={28} />
+          <h2 className="text-lg font-semibold text-neutral-dark">{title}</h2>
         </div>
 
         <div className="mb-4">
-          <p className="text-gray-700">{message}</p>
+          <p className="text-neutral-dk">{message}</p>
         </div>
         <button
-          className="absolute top-2 right-3 text-gray-600 hover:text-black text-3xl"
+          className="absolute top-3 right-4 text-neutral-mid hover:text-neutral-dark transition-colors"
           onClick={onClose}
           aria-label="Close"
         >
-          ×
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
         </button>
       </div>
     </div>,

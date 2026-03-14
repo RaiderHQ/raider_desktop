@@ -4,109 +4,117 @@ import TestSuitePanel from '@components/TestSuitePanel'
 import OutputPanel from '@components/OutputPanel'
 import MainRecorderPanel from '@components/MainRecorderPanel'
 import StyledPanel from '@components/StyledPanel'
-import { Toaster, toast } from 'react-hot-toast'
-import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import AssertionTextModal from '@components/AssertionTextModal'
-import RubyInstallModal from '@components/RubyInstallModal'
-import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import useRecorderStore from '@foundation/Stores/recorderStore'
+import { formatLocator } from '@foundation/recorderUtils'
+import { useSuiteSync, useRecordingIPC } from '../../hooks/useRecorderIPC'
 import Button from '@components/Button'
 import { useTranslation } from 'react-i18next'
-
+import toast from 'react-hot-toast'
 import DeleteModal from '@components/DeleteModal'
+import RecordingDashboard from '@components/RecordingDashboard'
+
 
 interface AssertionInfo {
   selector: string
   text: string
 }
 
-const createNewTest = (): Test => ({
-  id: crypto.randomUUID(),
-  name: 'Untitled Test',
-  url: 'https://www.wikipedia.org',
-  steps: []
-})
+type RecorderTab = 'recording' | 'dashboard' | 'settings'
 
 const Recorder: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
-  const [suites, setSuites] = useState<Suite[]>([])
-  const [activeSuiteId, setActiveSuiteId] = useState<string | null>(null)
-  const [activeTest, setActiveTest] = useState<Test | null>(null)
-  const [isRecording, setIsRecording] = useState<boolean>(false)
+
+  // Store state
+  const suites = useRecorderStore((s) => s.suites)
+  const activeSuiteId = useRecorderStore((s) => s.activeSuiteId)
+  const activeTest = useRecorderStore((s) => s.activeTest)
+  const showCode = useRecorderStore((s) => s.showCode)
+  const isOutputVisible = useRecorderStore((s) => s.isOutputVisible)
+  const {
+    setActiveSuiteId,
+    setActiveTest,
+    updateActiveTest,
+    setIsRunning,
+    setShowCode,
+    setIsOutputVisible
+  } = useRecorderStore.getState()
+
   const { runOutput, setRunOutput } = useRunOutputStore()
-  const [isRunning, setIsRunning] = useState<boolean>(false)
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<RecorderTab>('recording')
+
+  // Local modal state
   const [assertionInfo, setAssertionInfo] = useState<AssertionInfo | null>(null)
-  const [isRubyInstallModalOpen, setIsRubyInstallModalOpen] = useState<boolean>(false)
-  const [isGemsInstallModalOpen, setIsGemsInstallModalOpen] = useState<boolean>(false)
-  const [missingGems, setMissingGems] = useState<string[] | undefined>(undefined)
-  const { rubyCommand, setRubyCommand } = useRubyStore()
-  const projectPath = useProjectStore((state) => state.projectPath)
-  const [isOutputVisible, setIsOutputVisible] = useState<boolean>(false)
-  const [showCode, setShowCode] = useState(false)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [testToDelete, setTestToDelete] = useState<Test | null>(null)
 
-  const activeTestRef = useRef(activeTest)
+  // Embedded browser state
+  const [recordingUrl, setRecordingUrl] = useState<string | null>(null)
+  const [preloadPath, setPreloadPath] = useState<string | null>(null)
+  const webviewRef = useRef<Electron.WebviewTag | null>(null)
+
+  // Recording settings state
+  const [implicitWait, setImplicitWait] = useState(0)
+  const [explicitWait, setExplicitWait] = useState(30)
+  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false)
+
+  // IPC hooks
+  useSuiteSync()
+  useRecordingIPC({ setAssertionInfo })
+
+  // Load recording settings on mount
   useEffect(() => {
-    activeTestRef.current = activeTest
+    const savedImplicitWait = localStorage.getItem('implicitWait')
+    if (savedImplicitWait) setImplicitWait(Number(savedImplicitWait))
+    const savedExplicitWait = localStorage.getItem('explicitWait')
+    if (savedExplicitWait) setExplicitWait(Number(savedExplicitWait))
+  }, [])
+
+  const handleImplicitWaitChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    const val = Number(event.target.value)
+    if (val >= 0) setImplicitWait(val)
+  }
+
+  const handleExplicitWaitChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    const val = Number(event.target.value)
+    if (val >= 0) setExplicitWait(val)
+  }
+
+  const handleUpdateSettings = async (): Promise<void> => {
+    setIsUpdatingSettings(true)
+    try {
+      await window.api.updateRecordingSettings({ implicitWait, explicitWait })
+      localStorage.setItem('implicitWait', implicitWait.toString())
+      localStorage.setItem('explicitWait', explicitWait.toString())
+      toast.success(t('settings.recording.recordingUpdateSuccess'))
+    } catch (error) {
+      toast.error(`${t('settings.recording.error.unexpected')} : ${error}`)
+    } finally {
+      setIsUpdatingSettings(false)
+    }
+  }
+
+  // Auto-save debounce
+  useEffect((): (() => void) => {
+    const handler = setTimeout(() => {
+      const { activeSuiteId: suiteId, activeTest: test } = useRecorderStore.getState()
+      if (suiteId && test) {
+        window.api.saveRecording(suiteId, test)
+      }
+    }, 500)
+    return () => clearTimeout(handler)
   }, [activeTest])
-
-  const activeSuiteIdRef = useRef(activeSuiteId)
-  useEffect(() => {
-    activeSuiteIdRef.current = activeSuiteId
-  }, [activeSuiteId])
-
-  const suitesRef = useRef(suites)
-  useEffect(() => {
-    suitesRef.current = suites
-  }, [suites])
 
   const activeSuite = React.useMemo(
     () => suites.find((s) => s.id === activeSuiteId),
     [suites, activeSuiteId]
   )
-
-  const handleAutoSave = useCallback((): void => {
-    if (activeSuiteIdRef.current && activeTestRef.current) {
-      window.api.saveRecording(activeSuiteIdRef.current, activeTestRef.current)
-    }
-  }, [])
-
-  useEffect((): (() => void) => {
-    const handler = setTimeout(() => {
-      handleAutoSave()
-    }, 500)
-
-    return (): void => {
-      clearTimeout(handler)
-    }
-  }, [activeTest])
-
-  const formatXpath = (xpath: string): string => {
-    if (xpath.includes("'") && xpath.includes('"')) {
-      return `concat(${xpath
-        .split("'")
-        .map((part) => `'${part}'`)
-        .join(`,"'",`)})`
-    }
-    if (xpath.includes("'")) {
-      return `"${xpath}"`
-    }
-    return `'${xpath}'`
-  }
-
-  const formatLocator = (selector: string): { strategy: string; value: string } => {
-    if (selector.startsWith('/') || selector.startsWith('(')) {
-      return { strategy: 'xpath', value: formatXpath(selector) }
-    }
-    if (selector.startsWith('#') && !/[\s>~+]/.test(selector)) {
-      return { strategy: 'id', value: `"${selector.substring(1)}"` }
-    }
-    return { strategy: 'css', value: `"${selector}"` }
-  }
 
   const handleCreateSuite = useCallback(
     (suiteName: string): void => {
@@ -147,392 +155,364 @@ const Recorder: React.FC = (): JSX.Element => {
     }
   }
 
-  const handleNewTest = (): void => {
-    if (activeSuiteId) {
-      const newTest = createNewTest()
-      setActiveTest(newTest)
-      window.api.saveRecording(activeSuiteId, newTest)
-    }
-  }
-
   const handleStartRecording = useCallback(async (): Promise<void> => {
-    if (activeTest?.url) {
-      await window.api.loadUrlRequest(activeTest.url)
-      window.api.startRecordingMain()
+    const test = useRecorderStore.getState().activeTest
+    if (test?.url) {
+      await window.api.loadUrlRequest(test.url)
+      const result = await window.api.startRecordingMain()
+      if (result.success) {
+        setRecordingUrl(result.url)
+        setPreloadPath(result.preloadPath)
+      }
     }
-  }, [activeTest])
+  }, [])
 
   const handleStopRecording = useCallback((): void => {
+    setRecordingUrl(null)
+    setPreloadPath(null)
     window.api.stopRecordingMain()
   }, [])
 
   const handleRunTest = useCallback(async (): Promise<void> => {
-    if (activeSuiteId && activeTest?.id && rubyCommand) {
+    const { activeSuiteId: suiteId, activeTest: test } = useRecorderStore.getState()
+    const cmd = useRubyStore.getState().rubyCommand
+    const path = useProjectStore.getState().projectPath
+    if (suiteId && test?.id && cmd) {
       setIsRunning(true)
-      setRunOutput(`Running test: ${activeTest.name}...`)
-      const result = await window.api.runTest(
-        activeSuiteId,
-        activeTest.id,
-        projectPath || '.',
-        rubyCommand
-      )
+      setRunOutput(`Running test: ${test.name}...`)
+      const result = await window.api.runTest(suiteId, test.id, path || '.', cmd)
       setRunOutput(result.output)
       setIsRunning(false)
     }
-  }, [activeSuiteId, activeTest, projectPath, rubyCommand])
-
-  const handleRunAllTests = useCallback(
-    async (suiteId: string): Promise<void> => {
-      const suiteToRun = suites.find((s) => s.id === suiteId)
-      if (suiteToRun && rubyCommand) {
-        setIsRunning(true)
-        setRunOutput(`Running suite: ${suiteToRun.name}...`)
-        const result = await window.api.runSuite(suiteToRun.id, projectPath || '', rubyCommand)
-        setRunOutput(result.output)
-        setIsRunning(false)
-      }
-    },
-    [suites, projectPath, rubyCommand, setRunOutput]
-  )
-
-  const handleExportTest = useCallback(async (): Promise<{
-    success: boolean
-    path?: string
-    error?: string
-  }> => {
-    if (activeTest?.steps && activeTest.steps.length > 0) {
-      return window.api.exportTest(activeTest.name, activeTest.steps)
-    } else {
-      return { success: false, error: 'There are no steps to export.' }
-    }
-  }, [activeTest])
-
-  const handleExportSuite = useCallback(async (): Promise<{
-    success: boolean
-    path?: string
-    error?: string
-  }> => {
-    if (activeSuiteId) {
-      return window.api.exportSuite(activeSuiteId)
-    } else {
-      return { success: false, error: 'There is no active suite to export.' }
-    }
-  }, [activeSuiteId])
-
-  const handleExportProject = useCallback(async (): Promise<{
-    success: boolean
-    path?: string
-    error?: string
-  }> => {
-    return window.api.exportProject()
   }, [])
 
-  const handleImportTest = useCallback(async (): Promise<{
-    success: boolean
-    test?: Test
-    error?: string
-  }> => {
-    if (activeSuiteId) {
-      return window.api.importTest(activeSuiteId)
-    } else {
-      return { success: false, error: 'There is no active suite to import the test into.' }
+  const handleRunAllTests = useCallback(async (suiteId: string): Promise<void> => {
+    const { suites: allSuites } = useRecorderStore.getState()
+    const cmd = useRubyStore.getState().rubyCommand
+    const path = useProjectStore.getState().projectPath
+    const suiteToRun = allSuites.find((s) => s.id === suiteId)
+    if (suiteToRun && cmd) {
+      setIsRunning(true)
+      setRunOutput(`Running suite: ${suiteToRun.name}...`)
+      const result = await window.api.runSuite(suiteToRun.id, path || '', cmd)
+      setRunOutput(result.output)
+      setIsRunning(false)
     }
-  }, [activeSuiteId])
-
-  const handleImportSuite = useCallback(async (): Promise<{
-    success: boolean
-    suite?: Suite
-    error?: string
-  }> => {
-    return window.api.importSuite()
-  }, [])
-
-  const handleImportProject = useCallback(async (): Promise<{
-    success: boolean
-    error?: string
-  }> => {
-    return window.api.importProject()
   }, [])
 
   const handleSaveAssertionText = (expectedText: string): void => {
     if (assertionInfo) {
       const { strategy, value } = formatLocator(assertionInfo.selector)
       const newStep = `expect(@driver.find_element(:${strategy}, ${value}).text).to eq("${expectedText}")`
-      setActiveTest((prevTest) =>
-        prevTest ? { ...prevTest, steps: [...prevTest.steps, newStep] } : null
-      )
+      updateActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
     }
     setAssertionInfo(null)
   }
-
-  const handleCloseAssertionModal = (): void => {
-    setAssertionInfo(null)
-  }
-
-  const handleCloseApp = (): void => {
-    window.api.closeApp()
-  }
-
-  const handleInstallGems = async (): Promise<void> => {
-    setIsGemsInstallModalOpen(false)
-    const toastId = toast.loading(`Installing missing gems: ${missingGems?.join(', ')}...`)
-
-    try {
-      const result = await window.api.installGems(rubyCommand!, missingGems!)
-      if (result.success) {
-        toast.success('Gems installed successfully!', { id: toastId })
-      } else {
-        toast.error(`Gem installation failed: ${result.error}`, { id: toastId })
-      }
-    } catch (error) {
-      toast.error(`An error occurred during gem installation: ${error}`, { id: toastId })
-    }
-  }
-
-  useEffect((): (() => void) => {
-    const checkRuby = async (): Promise<void> => {
-      const result = await window.api.isRubyInstalled()
-      setRubyCommand(result.rubyCommand || null)
-      if (!result.success) {
-        setMissingGems(result.missingGems)
-        if (result.rubyCommand) {
-          // Ruby is installed, but gems are missing
-          setIsGemsInstallModalOpen(true)
-        } else {
-          // Ruby is not installed
-          setIsRubyInstallModalOpen(true)
-        }
-      }
-    }
-    checkRuby()
-
-    window.api.getSuites().then((initialSuites: Suite[]) => {
-      setSuites(initialSuites)
-      if (initialSuites.length > 0) {
-        const firstSuite = initialSuites[0]
-        setActiveSuiteId(firstSuite.id)
-        setActiveTest(firstSuite.tests[0] ?? null)
-      }
-    })
-
-    const suiteUpdatedCleanup = window.electron.ipcRenderer.on(
-      'suite-updated',
-      (_event, updatedSuites: Suite[]) => {
-        const previousSuites = suitesRef.current
-        const currentSuiteId = activeSuiteIdRef.current
-        const currentTestId = activeTestRef.current?.id
-
-        setSuites(updatedSuites)
-
-        if (updatedSuites.length > previousSuites.length) {
-          const newSuite = updatedSuites.find((s) => !previousSuites.some((ps) => ps.id === s.id))
-          if (newSuite) {
-            setActiveSuiteId(newSuite.id)
-            setActiveTest(newSuite.tests[0] ?? null)
-            return
-          }
-        }
-
-        const activeSuiteNow = updatedSuites.find((s) => s.id === currentSuiteId)
-
-        if (activeSuiteNow) {
-          const activeTestNow = activeSuiteNow.tests.find((t) => t.id === currentTestId)
-          if (activeTestNow) {
-            if (JSON.stringify(activeTestRef.current) !== JSON.stringify(activeTestNow)) {
-              setActiveTest(activeTestNow)
-            }
-          } else {
-            setActiveTest(activeSuiteNow.tests[0] ?? null)
-          }
-        } else if (currentSuiteId) {
-          const firstSuite = updatedSuites[0] ?? null
-          setActiveSuiteId(firstSuite?.id ?? null)
-          setActiveTest(firstSuite?.tests[0] ?? null)
-        }
-      }
-    )
-
-    const handleRecordingStarted = (_event: Electron.IpcRendererEvent, loadedUrl: string): void => {
-      setIsRecording(true)
-      const currentTest = activeTestRef.current
-      if (currentTest) {
-        setActiveTest({ ...currentTest, steps: [`@driver.get("${loadedUrl}")`] })
-      }
-      setRunOutput('')
-    }
-
-    const handleRecordingStopped = (): void => setIsRecording(false)
-
-    const handleNewCommand = (_event: Electron.IpcRendererEvent, command: string): void => {
-      setActiveTest((prevTest) =>
-        prevTest ? { ...prevTest, steps: [...prevTest.steps, command] } : null
-      )
-    }
-
-    const handleAddAssertion = (
-      _event: Electron.IpcRendererEvent,
-      assertion: { type: string; selector: string; text?: string }
-    ): void => {
-      let newStep = ''
-      const { strategy, value } = formatLocator(assertion.selector)
-
-      switch (assertion.type) {
-        case 'wait-displayed':
-          newStep = `@wait.until { @driver.find_element(:${strategy}, ${value}).displayed? }`
-          setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
-          break
-        case 'wait-enabled':
-          newStep = `@wait.until { @driver.find_element(:${strategy}, ${value}).enabled? }`
-          setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
-          break
-        case 'displayed':
-          newStep = `expect(@driver.find_element(:${strategy}, ${value})).to be_displayed`
-          setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
-          break
-        case 'enabled':
-          newStep = `expect(@driver.find_element(:${strategy}, ${value})).to be_enabled`
-          setActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
-          break
-        case 'text':
-          setAssertionInfo({ selector: assertion.selector, text: assertion.text ?? '' })
-          break
-      }
-    }
-
-    const startCleanup = window.electron.ipcRenderer.on('recording-started', handleRecordingStarted)
-    const stopCleanup = window.electron.ipcRenderer.on('recording-stopped', handleRecordingStopped)
-    const commandCleanup = window.electron.ipcRenderer.on('new-recorded-command', handleNewCommand)
-    const assertionCleanup = window.electron.ipcRenderer.on(
-      'add-assertion-step',
-      handleAddAssertion
-    )
-
-    return (): void => {
-      suiteUpdatedCleanup?.()
-      startCleanup?.()
-      stopCleanup?.()
-      commandCleanup?.()
-      assertionCleanup?.()
-    }
-  }, [])
 
   return (
-    <div className="flex flex-col h-screen w-screen p-4 space-y-4 bg-gray-50">
-      {isRubyInstallModalOpen && (
-        <RubyInstallModal
-          onClose={() => setIsRubyInstallModalOpen(false)}
-          onCloseApp={handleCloseApp}
-        />
-      )}
-      {isGemsInstallModalOpen && missingGems && (
-        <RubyGemsInstallModal
-          onInstall={handleInstallGems}
-          onClose={() => setIsGemsInstallModalOpen(false)}
-          missingGems={missingGems}
-        />
-      )}
-      <Toaster />
-      <MainRecorderPanel
-        activeSuiteName={activeSuite?.name}
-        activeTest={activeTest}
-        isRecording={isRecording}
-        isRunning={isRunning}
-        onTestNameChange={(e) => setActiveTest((p) => (p ? { ...p, name: e.target.value } : null))}
-        onUrlChange={(e) => setActiveTest((p) => (p ? { ...p, url: e.target.value } : null))}
-        onStartRecording={handleStartRecording}
-        onRunTest={handleRunTest}
-        onStopRecording={handleStopRecording}
-        onNewTest={handleNewTest}
-        onExportTest={handleExportTest}
-        onExportSuite={handleExportSuite}
-        onExportProject={handleExportProject}
-        onImportTest={handleImportTest}
-        onImportSuite={handleImportSuite}
-        onImportProject={handleImportProject}
-        activeSuiteId={activeSuiteId}
-      />
-      <div className="flex-1 flex flex-row space-x-4">
-        <div
-          className={`${isOutputVisible ? 'w-1/4' : 'w-1/3'} flex flex-col space-y-2 transition-all duration-300`}
+    <div className="flex flex-col h-screen w-screen p-4 space-y-4 bg-neutral-lt">
+      {/* Tab bar */}
+      <div className="flex items-center border-b border-neutral-bdr">
+        <button
+          onClick={() => setActiveTab('recording')}
+          className={`px-5 py-2 text-sm font-semibold transition-colors ${
+            activeTab === 'recording'
+              ? 'text-neutral-dark border-b-2 border-ruby'
+              : 'text-neutral-mid hover:text-neutral-dk'
+          }`}
         >
-          <h3 className="px-1 text-lg font-semibold text-gray-800">
-            {t('recorder.recorderPage.testSuites')}
-          </h3>
-          <div className="flex-1 pb-1 pr-1">
-            <StyledPanel>
-              <TestSuitePanel
-                suites={suites}
-                activeSuiteId={activeSuiteId}
-                activeTestId={activeTest?.id ?? null}
-                onSuiteChange={handleSuiteChange}
-                onTestSelect={handleTestSelect}
-                onCreateSuite={handleCreateSuite}
-                onDeleteSuite={handleDeleteSuite}
-                onTestDeleteRequest={handleTestDeleteRequest}
-                onRunAllTests={handleRunAllTests}
-                onReorderTests={() => {}}
-              />
-            </StyledPanel>
-          </div>
-        </div>
-        <div
-          className={`${isOutputVisible ? 'w-1/2' : 'w-2/3'} flex flex-col space-y-2 transition-all duration-300`}
+          {t('recorder.tabs.recording')}
+        </button>
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          className={`px-5 py-2 text-sm font-semibold transition-colors ${
+            activeTab === 'dashboard'
+              ? 'text-neutral-dark border-b-2 border-ruby'
+              : 'text-neutral-mid hover:text-neutral-dk'
+          }`}
         >
-          <h3 className="px-1 text-lg font-semibold text-gray-800">
-            {t('recorder.recorderPage.recordedSteps')}
-          </h3>
-          <div className="flex-1 pb-1 pr-1">
-            <StyledPanel>
-              <div className="flex justify-between items-center p-1 border-b border-gray-200">
-                <Button onClick={() => setShowCode(!showCode)} type="secondary">
-                  {showCode
-                    ? t('recorder.recorderPage.friendlyView')
-                    : t('recorder.recorderPage.codeView')}
-                </Button>
-                <Button onClick={() => setIsOutputVisible(!isOutputVisible)} type="secondary">
-                  {isOutputVisible
-                    ? t('recorder.recorderPage.hideOutput')
-                    : t('recorder.recorderPage.testOutput')}
-                </Button>
+          {t('recorder.tabs.dashboard')}
+        </button>
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={`px-5 py-2 text-sm font-semibold transition-colors ${
+            activeTab === 'settings'
+              ? 'text-neutral-dark border-b-2 border-ruby'
+              : 'text-neutral-mid hover:text-neutral-dk'
+          }`}
+        >
+          {t('recorder.tabs.settings')}
+        </button>
+      </div>
+
+      {/* Recording tab */}
+      {activeTab === 'recording' && (
+        <div className="flex-1 flex flex-col min-h-0 space-y-4">
+          <MainRecorderPanel
+            onStartRecording={handleStartRecording}
+            onRunTest={handleRunTest}
+            onStopRecording={handleStopRecording}
+          />
+
+          {/* When recording: embedded browser + steps side by side */}
+          {recordingUrl && preloadPath ? (
+            <div className="flex-1 flex flex-row space-x-4 min-h-0">
+              {/* Embedded browser */}
+              <div className="w-[60%] flex flex-col min-h-0">
+                <div className="flex-1 border border-neutral-bdr rounded-lg overflow-hidden bg-white">
+                  <webview
+                    ref={(el: HTMLElement | null) => {
+                      const wv = el as unknown as Electron.WebviewTag | null
+                      if (wv && wv !== webviewRef.current) {
+                        webviewRef.current = wv
+                        wv.addEventListener('dom-ready', () => {
+                          const wcId = wv.getWebContentsId()
+                          window.api.registerRecorderWebContents(wcId)
+                        })
+                      }
+                    }}
+                    src={recordingUrl}
+                    preload={`file://${preloadPath}`}
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                </div>
               </div>
-              <CommandList
-                steps={activeTest?.steps ?? []}
-                setSteps={(newSteps: SetStateAction<string[]>) =>
-                  setActiveTest((prevTest) => {
-                    if (!prevTest) return null
-                    const updatedSteps =
-                      typeof newSteps === 'function' ? newSteps(prevTest.steps) : newSteps
-                    return { ...prevTest, steps: updatedSteps }
-                  })
-                }
-                onDeleteStep={(indexToDelete) =>
-                  setActiveTest((p) =>
-                    p ? { ...p, steps: p.steps.filter((_, i) => i !== indexToDelete) } : null
-                  )
-                }
-                showCode={showCode}
-              />
-            </StyledPanel>
+              {/* Recorded steps panel */}
+              <div className="w-[40%] flex flex-col space-y-2">
+                <h3 className="px-1 text-lg font-semibold text-neutral-dark">
+                  {t('recorder.recorderPage.recordedSteps')}
+                </h3>
+                <div className="flex-1 pb-1 pr-1 min-h-0">
+                  <StyledPanel>
+                    <>
+                      <div className="flex justify-between items-center p-1 border-b border-neutral-bdr">
+                        <div className="flex gap-1">
+                          <Button onClick={() => setShowCode(!showCode)} type="secondary">
+                            {showCode
+                              ? t('recorder.recorderPage.friendlyView')
+                              : t('recorder.recorderPage.codeView')}
+                          </Button>
+                        </div>
+                      </div>
+                      <CommandList
+                        steps={activeTest?.steps ?? []}
+                        setSteps={(newSteps: SetStateAction<string[]>) =>
+                          updateActiveTest((prevTest) => {
+                            if (!prevTest) return null
+                            const updatedSteps =
+                              typeof newSteps === 'function' ? newSteps(prevTest.steps) : newSteps
+                            return { ...prevTest, steps: updatedSteps }
+                          })
+                        }
+                        onDeleteStep={(indexToDelete) =>
+                          updateActiveTest((p) =>
+                            p
+                              ? { ...p, steps: p.steps.filter((_, i) => i !== indexToDelete) }
+                              : null
+                          )
+                        }
+                        onEditStep={(editIndex, newCommand) =>
+                          updateActiveTest((p) =>
+                            p
+                              ? {
+                                  ...p,
+                                  steps: p.steps.map((s, i) => (i === editIndex ? newCommand : s))
+                                }
+                              : null
+                          )
+                        }
+                        showCode={showCode}
+                      />
+                    </>
+                  </StyledPanel>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Normal view: suites + steps */
+            <>
+              <div className="flex-1 flex flex-row space-x-4 min-h-0">
+                <div className="w-[30%] flex flex-col space-y-2">
+                  <h3 className="px-1 text-lg font-semibold text-neutral-dark">
+                    {t('recorder.recorderPage.testSuites')}
+                  </h3>
+                  <div className="flex-1 pb-1 pr-1 min-h-0">
+                    <StyledPanel>
+                      <TestSuitePanel
+                        suites={suites}
+                        activeSuiteId={activeSuiteId}
+                        activeTestId={activeTest?.id ?? null}
+                        onSuiteChange={handleSuiteChange}
+                        onTestSelect={handleTestSelect}
+                        onCreateSuite={handleCreateSuite}
+                        onDeleteSuite={handleDeleteSuite}
+                        onTestDeleteRequest={handleTestDeleteRequest}
+                        onRunAllTests={handleRunAllTests}
+                        onReorderTests={() => {}}
+                      />
+                    </StyledPanel>
+                  </div>
+                </div>
+                <div className="w-[70%] flex flex-col space-y-2">
+                  <h3 className="px-1 text-lg font-semibold text-neutral-dark">
+                    {t('recorder.recorderPage.recordedSteps')}
+                  </h3>
+                  <div className="flex-1 pb-1 pr-1 min-h-0">
+                    <StyledPanel>
+                      {!activeTest && !activeSuiteId ? (
+                        <div className="flex items-center justify-center h-full text-neutral-mid text-sm p-8 text-center">
+                          {t('recorder.recorderPage.noSuiteSteps')}
+                        </div>
+                      ) : !activeTest && activeSuiteId ? (
+                        <div className="flex items-center justify-center h-full text-neutral-mid text-sm p-8 text-center">
+                          {t('recorder.recorderPage.noTestSteps')}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-center p-1 border-b border-neutral-bdr">
+                            <div className="flex gap-1">
+                              <Button onClick={() => setShowCode(!showCode)} type="secondary">
+                                {showCode
+                                  ? t('recorder.recorderPage.friendlyView')
+                                  : t('recorder.recorderPage.codeView')}
+                              </Button>
+                            </div>
+                            <Button
+                              onClick={() => setIsOutputVisible(!isOutputVisible)}
+                              type="secondary"
+                            >
+                              {isOutputVisible
+                                ? t('recorder.recorderPage.hideOutput')
+                                : t('recorder.recorderPage.testOutput')}
+                            </Button>
+                          </div>
+                          <CommandList
+                            steps={activeTest?.steps ?? []}
+                            setSteps={(newSteps: SetStateAction<string[]>) =>
+                              updateActiveTest((prevTest) => {
+                                if (!prevTest) return null
+                                const updatedSteps =
+                                  typeof newSteps === 'function' ? newSteps(prevTest.steps) : newSteps
+                                return { ...prevTest, steps: updatedSteps }
+                              })
+                            }
+                            onDeleteStep={(indexToDelete) =>
+                              updateActiveTest((p) =>
+                                p
+                                  ? { ...p, steps: p.steps.filter((_, i) => i !== indexToDelete) }
+                                  : null
+                              )
+                            }
+                            onEditStep={(editIndex, newCommand) =>
+                              updateActiveTest((p) =>
+                                p
+                                  ? {
+                                      ...p,
+                                      steps: p.steps.map((s, i) => (i === editIndex ? newCommand : s))
+                                    }
+                                  : null
+                              )
+                            }
+                            showCode={showCode}
+                          />
+                        </>
+                      )}
+                    </StyledPanel>
+                  </div>
+                </div>
+              </div>
+              <div
+                className={`${isOutputVisible ? 'h-48' : 'h-0 overflow-hidden'} transition-all duration-300 mt-2`}
+              >
+                <div className="h-full pb-1 pr-1">
+                  <StyledPanel>
+                    <div className="flex justify-between items-center p-1 border-b border-neutral-bdr">
+                      <h3 className="text-lg font-semibold text-neutral-dark">
+                        {t('recorder.recorderPage.runOutput')}
+                      </h3>
+                    </div>
+                    <OutputPanel output={runOutput} />
+                  </StyledPanel>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Dashboard tab */}
+      {activeTab === 'dashboard' && (
+        <div className="flex-1 min-h-0 overflow-y-auto pb-1 pr-1">
+          <div className="border border-neutral-bdr rounded-lg bg-white p-4">
+            <RecordingDashboard runOutput={runOutput} />
           </div>
         </div>
-        {isOutputVisible && (
-          <div className="w-1/3 flex flex-col space-y-2 transition-all duration-300">
-            <h3 className="px-1 text-lg font-semibold text-gray-800">
-              {t('recorder.recorderPage.runOutput')}
-            </h3>
-            <div className="flex-1 pb-1 pr-1">
-              <StyledPanel>
-                <OutputPanel output={runOutput} />
-              </StyledPanel>
+      )}
+
+      {/* Settings tab */}
+      {activeTab === 'settings' && (
+        <div className="flex-1 min-h-0 overflow-y-auto pb-1 pr-1">
+          <div className="border border-neutral-bdr rounded-lg bg-white p-4">
+            <h2 className="text-xl font-bold mb-1">{t('settings.recording.title')}</h2>
+            <p className="text-sm text-neutral-mid mb-4">
+              {t('settings.recording.description')}
+            </p>
+
+            <details open className="mb-4">
+              <summary className="cursor-pointer font-semibold text-neutral-dark mb-2">
+                {t('settings.recording.implicitWait.label')} &amp;{' '}
+                {t('settings.recording.explicitWait.label')}
+              </summary>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="border border-neutral-bdr rounded-lg p-3">
+                  <label htmlFor="implicit-wait" className="font-medium mr-2">
+                    {t('settings.recording.implicitWait.label')}
+                  </label>
+                  <input
+                    type="number"
+                    id="implicit-wait"
+                    value={implicitWait}
+                    onChange={handleImplicitWaitChange}
+                    className="border p-1 rounded mt-2"
+                    min="0"
+                  />
+                  <p className="text-sm text-neutral-mid mt-1">
+                    {t('settings.recording.implicitWait.description')}
+                  </p>
+                </div>
+                <div className="border border-neutral-bdr rounded-lg p-3">
+                  <label htmlFor="explicit-wait" className="font-medium mr-2">
+                    {t('settings.recording.explicitWait.label')}
+                  </label>
+                  <input
+                    type="number"
+                    id="explicit-wait"
+                    value={explicitWait}
+                    onChange={handleExplicitWaitChange}
+                    className="border p-1 rounded mt-2"
+                    min="0"
+                  />
+                  <p className="text-sm text-neutral-mid mt-1">
+                    {t('settings.recording.explicitWait.description')}
+                  </p>
+                </div>
+              </div>
+            </details>
+
+            <div className="mt-4">
+              <Button onClick={handleUpdateSettings} type="primary" disabled={isUpdatingSettings}>
+                {t('settings.recording.updateRecordingSettingsButton')}
+              </Button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
       {assertionInfo && (
         <AssertionTextModal
           initialText={assertionInfo.text}
           onSave={handleSaveAssertionText}
-          onClose={handleCloseAssertionModal}
+          onClose={() => setAssertionInfo(null)}
         />
       )}
       {isDeleteModalOpen && testToDelete && (

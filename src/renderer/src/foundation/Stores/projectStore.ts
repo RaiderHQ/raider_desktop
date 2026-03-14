@@ -6,9 +6,13 @@ import { RaiderConfig } from '@foundation/Types/raiderConfig'
 interface ProjectStore {
   projectPath: string | null
   projectConfig: RaiderConfig | null
+  projectAutomation: string | null
+  projectFramework: string | null
   files: FileNode[]
   selectedFiles: string[]
   setProjectPath: (path: string) => void
+  setProjectAutomation: (automation: string | null) => void
+  setProjectFramework: (framework: string | null) => void
   loadFiles: (path: string) => void
   toggleFile: (filePath: string) => void
   toggleAll: (select: boolean) => void
@@ -18,9 +22,13 @@ const useProjectStore = create(
   subscribeWithSelector<ProjectStore>((set, get) => ({
     projectPath: null,
     projectConfig: null,
+    projectAutomation: null,
+    projectFramework: null,
     files: [],
     selectedFiles: [],
     setProjectPath: (path: string): void => set({ projectPath: path }),
+    setProjectAutomation: (automation: string | null): void => set({ projectAutomation: automation }),
+    setProjectFramework: (framework: string | null): void => set({ projectFramework: framework }),
 
     loadFiles: async (path: string): Promise<void> => {
       try {

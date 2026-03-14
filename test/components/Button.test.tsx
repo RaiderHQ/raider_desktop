@@ -10,22 +10,22 @@ describe('Button', () => {
 
   it('applies primary styles by default', () => {
     render(<Button>Primary</Button>)
-    expect(screen.getByRole('button')).toHaveClass('bg-blue-500')
+    expect(screen.getByRole('button')).toHaveClass('bg-ruby')
   })
 
   it('applies secondary styles', () => {
     render(<Button type="secondary">Secondary</Button>)
-    expect(screen.getByRole('button')).toHaveClass('bg-blue-100')
+    expect(screen.getByRole('button')).toHaveClass('bg-ruby-sub')
   })
 
   it('applies success styles', () => {
     render(<Button type="success">Success</Button>)
-    expect(screen.getByRole('button')).toHaveClass('bg-green-500')
+    expect(screen.getByRole('button')).toHaveClass('bg-status-ok')
   })
 
   it('applies disabled styles when disabled prop is true', () => {
     render(<Button disabled>Disabled</Button>)
-    expect(screen.getByRole('button')).toHaveClass('bg-gray-300')
+    expect(screen.getByRole('button')).toHaveClass('bg-neutral-bdr')
     expect(screen.getByRole('button')).toBeDisabled()
   })
 

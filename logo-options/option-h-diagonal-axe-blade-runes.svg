@@ -1,0 +1,86 @@
+<svg width="240" height="240" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Option H: Diagonal bearded axe with runes engraved on the blade itself -->
+
+  <!-- Axe handle (diagonal) -->
+  <rect x="0" y="0" width="14" height="210" rx="4" fill="#2C2D30"
+        transform="translate(58, 218) rotate(-55)"/>
+
+  <!-- Leather grip wrapping -->
+  <g stroke="#5C3D2E" stroke-width="2.5" stroke-linecap="round">
+    <line x1="52" y1="218" x2="62" y2="208" transform="rotate(-5, 57, 213)"/>
+    <line x1="58" y1="212" x2="68" y2="202" transform="rotate(-5, 63, 207)"/>
+    <line x1="64" y1="206" x2="74" y2="196" transform="rotate(-5, 69, 201)"/>
+    <line x1="70" y1="200" x2="80" y2="190" transform="rotate(-5, 75, 195)"/>
+    <line x1="76" y1="194" x2="86" y2="184" transform="rotate(-5, 81, 189)"/>
+  </g>
+
+  <!-- Large bearded axe head -->
+  <path d="M160 68
+           Q175 38 198 25
+           Q218 18 230 30
+           Q238 45 232 68
+           L218 105
+           Q205 135 180 155
+           L158 168
+           Q148 174 142 165
+           L145 128
+           L155 88 Z"
+        fill="#C14420"/>
+
+  <!-- Left cheek of axe -->
+  <path d="M160 68
+           Q152 55 140 52
+           Q128 50 122 60
+           L120 72
+           Q118 85 128 92
+           L148 96
+           L155 82 Z"
+        fill="#C14420"/>
+
+  <!-- Blade cutting edge -->
+  <path d="M230 30 Q238 45 232 68 L218 105 Q205 135 180 155 L158 168"
+        stroke="#DA917B" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- ═══ Runes engraved on the axe blade ═══ -->
+  <g stroke="#8B2010" stroke-width="2" stroke-linecap="round" opacity="0.7">
+    <!-- ᚱ Raido (R for Ruby/Raid) — prominent -->
+    <g transform="translate(188, 58) rotate(-20)">
+      <line x1="0" y1="-9" x2="0" y2="9"/>
+      <line x1="0" y1="-9" x2="8" y2="-3"/>
+      <line x1="8" y1="-3" x2="0" y2="2"/>
+    </g>
+
+    <!-- ᚦ Thurisaz (Thor/power) -->
+    <g transform="translate(198, 82) rotate(-25)">
+      <line x1="0" y1="-8" x2="0" y2="8"/>
+      <line x1="0" y1="-5" x2="7" y2="0"/>
+      <line x1="7" y1="0" x2="0" y2="5"/>
+    </g>
+
+    <!-- ᛏ Tiwaz (Tyr/victory) -->
+    <g transform="translate(192, 110) rotate(-35)">
+      <line x1="0" y1="-8" x2="0" y2="8"/>
+      <line x1="-6" y1="-8" x2="0" y2="-8"/>
+      <line x1="6" y1="-8" x2="0" y2="-8"/>
+    </g>
+
+    <!-- ᚨ Ansuz (Odin/divine) -->
+    <g transform="translate(178, 135) rotate(-42)">
+      <line x1="0" y1="-7" x2="0" y2="7"/>
+      <line x1="0" y1="-5" x2="5" y2="-2"/>
+      <line x1="0" y1="-1" x2="5" y2="2"/>
+    </g>
+  </g>
+
+  <!-- Axe bevel line -->
+  <path d="M168 55 L170 85 L165 118 L158 145 L150 160"
+        stroke="#2C2D30" stroke-width="1.2" fill="none" opacity="0.25"/>
+
+  <!-- Socket ring -->
+  <ellipse cx="150" cy="82" rx="12" ry="6"
+           transform="rotate(-55, 150, 82)"
+           stroke="#1A1B1D" stroke-width="2" fill="none" opacity="0.4"/>
+
+  <!-- Pommel at bottom -->
+  <circle cx="48" cy="225" r="5" fill="#3A3B40"/>
+</svg>

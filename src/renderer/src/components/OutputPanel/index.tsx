@@ -14,10 +14,20 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ output }) => {
       if (parsed.summary && parsed.examples) {
         let formatted = `${t('recorder.outputPanel.title')}\n\n`
         parsed.examples.forEach(
-          (example: { description: string; status: string; exception?: { message: string } }) => {
+          (example: {
+            description: string
+            status: string
+            exception?: { message: string; backtrace?: string[] }
+          }) => {
             formatted += `  - ${example.description}: ${example.status.toUpperCase()}\n`
             if (example.status === 'failed' && example.exception) {
               formatted += `    ${t('recorder.outputPanel.error')} ${example.exception.message}\n`
+              if (example.exception.backtrace) {
+                formatted += `    ${t('recorder.outputPanel.stackTrace')}\n`
+                example.exception.backtrace.forEach((line) => {
+                  formatted += `      ${line}\n`
+                })
+              }
             }
           }
         )
@@ -32,7 +42,7 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ output }) => {
 
   return (
     <div className="flex flex-col h-full">
-      <pre className="w-full flex-grow p-2 mt-2 border rounded bg-black text-white border-gray-700 resize-none text-sm overflow-auto whitespace-pre-wrap">
+      <pre className="w-full flex-grow p-2 mt-2 border rounded bg-black text-white border-neutral-dk resize-none text-sm overflow-auto whitespace-pre-wrap">
         {formatOutput(output) || t('recorder.outputPanel.placeholder')}
       </pre>
     </div>

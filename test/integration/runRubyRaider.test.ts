@@ -1,6 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { exec } from 'child_process'
 
+const { mockExistsSync } = vi.hoisted(() => ({
+  mockExistsSync: vi.fn(() => true)
+}))
+
+vi.mock('fs', async () => {
+  const actual = await vi.importActual<typeof import('fs')>('fs')
+  return { ...actual, default: { ...actual, existsSync: mockExistsSync }, existsSync: mockExistsSync }
+})
+
 vi.mock('electron', () => ({ app: { getPath: vi.fn() } }))
 vi.mock('fix-path', () => ({ default: vi.fn() }))
 vi.mock('child_process', () => {
@@ -8,7 +17,7 @@ vi.mock('child_process', () => {
   return { exec, default: { exec } }
 })
 
-import handler from '../../src/main/handlers/runRubyRaider'
+import handler from '../../src/main/handlers/project/runRubyRaider'
 
 const mockExec = exec as ReturnType<typeof vi.fn>
 
@@ -92,6 +101,16 @@ describe('runRubyRaider handler (integration)', () => {
     const result = await handler({} as any, '/tmp', 'proj', 'rspec', 'selenium', '')
     expect(result.success).toBe(false)
     expect(result.error).toContain('Invalid rubyCommand')
+  })
+
+  it('returns error when command succeeds but project directory not created', async () => {
+    mockExecSuccess()
+    mockExistsSync.mockReturnValueOnce(false)
+
+    const result = await handler(...validArgs)
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('project directory was not created')
   })
 
   it('uses the mobile platform as automation when mobile param is given', async () => {

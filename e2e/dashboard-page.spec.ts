@@ -1,46 +1,62 @@
 import { test, expect } from './electronApp'
+import { goToRecorder } from './helpers/navigation'
+import { mockIPC, mockIPCSync } from './helpers/ipc-mock'
 
-test.describe('Dashboard Page', () => {
+test.describe('Dashboard Tab (Recorder)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.locator('nav >> text=Dashboard').click()
-    await page.waitForURL('**/#/dashboard')
+    // Mock IPC methods used on Recorder mount
+    await mockIPC(page, 'getSelectorPriorities', [])
+    await mockIPC(page, 'getSuites', [])
+    await mockIPCSync(page, 'onTestRunStatus')
+    await mockIPCSync(page, 'removeTestRunStatusListener')
+    await goToRecorder(page)
+    await page.waitForTimeout(500)
   })
 
-  test('shows Project Dashboard tab by default', async ({ page }) => {
-    const projectTab = page.getByRole('button', { name: 'Project Dashboard' })
-    await expect(projectTab).toBeVisible()
-    await expect(projectTab).toHaveClass(/font-semibold/)
+  test('shows Recording tab by default', async ({ page }) => {
+    // Recording tab content is shown by default
+    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).toBeVisible()
   })
 
-  test('shows Recording Dashboard tab', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Recording Dashboard' })).toBeVisible()
+  test('shows Dashboard tab button', async ({ page }) => {
+    const dashboardTab = page.locator('button').filter({ hasText: 'Dashboard' })
+    await expect(dashboardTab).toBeVisible()
   })
 
-  test('switching to Recording Dashboard tab works', async ({ page }) => {
-    await page.getByRole('button', { name: 'Recording Dashboard' }).click()
+  test('switching to Dashboard tab works', async ({ page }) => {
+    const dashboardTab = page.locator('button').filter({ hasText: 'Dashboard' })
+    await dashboardTab.click()
+    await page.waitForTimeout(500)
 
-    const recordingTab = page.getByRole('button', { name: 'Recording Dashboard' })
-    await expect(recordingTab).toHaveClass(/font-semibold/)
-  })
-
-  test('shows placeholder message when no tests have been run', async ({ page }) => {
-    // Project dashboard should show a message about running tests
-    await expect(
-      page.getByText('Please run your tests to see the results on the dashboard.')
-    ).toBeVisible()
+    // Recording content should be hidden
+    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).not.toBeVisible()
   })
 
   test('Recording Dashboard shows placeholder when no recording results', async ({ page }) => {
-    await page.getByRole('button', { name: 'Recording Dashboard' }).click()
+    const dashboardTab = page.locator('button').filter({ hasText: 'Dashboard' })
+    await dashboardTab.click()
+    await page.waitForTimeout(500)
 
     await expect(
       page.getByText('Please run a test to see the recording results on the dashboard.')
     ).toBeVisible()
   })
 
-  test('dashboard has the styled container with orange accent', async ({ page }) => {
-    // The dashboard container has a bg-[#c14420] accent div
-    const accentDiv = page.locator('.bg-\\[\\#c14420\\]')
-    await expect(accentDiv).toBeVisible()
+  test('switching tabs changes active styling', async ({ page }) => {
+    const recordingTab = page.locator('button').filter({ hasText: 'Recording' }).first()
+    const dashboardTab = page.locator('button').filter({ hasText: 'Dashboard' })
+
+    // Recording tab is active by default
+    await expect(recordingTab).toHaveClass(/border-ruby/)
+
+    // Switch to Dashboard
+    await dashboardTab.click()
+    await page.waitForTimeout(300)
+    await expect(dashboardTab).toHaveClass(/border-ruby/)
+
+    // Switch back to Recording
+    await recordingTab.click()
+    await page.waitForTimeout(300)
+    await expect(recordingTab).toHaveClass(/border-ruby/)
   })
 })

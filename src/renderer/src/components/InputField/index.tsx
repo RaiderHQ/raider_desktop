@@ -7,7 +7,7 @@ interface InputFieldProps {
   placeholder?: string
   type?: string
   className?: string
-  label?: string // Added an optional label for better accessibility
+  label?: string
   disabled?: boolean
   autoFocus?: boolean
 }
@@ -23,16 +23,19 @@ const InputField: React.FC<InputFieldProps> = ({
   disabled = false,
   autoFocus = false
 }) => {
-  // Combine base styles with any custom classes passed in as props
   const baseStyles =
-    'block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm md:text-base lg:text-lg focus:ring-blue-500 focus:border-blue-500'
-  const disabledStyles = 'bg-gray-100 cursor-not-allowed'
+    'block w-full px-3 py-2 border border-neutral-bdr rounded-md shadow-sm text-sm md:text-base lg:text-lg focus:ring-ruby focus:border-ruby transition-colors'
+  const disabledStyles = 'bg-neutral-lt cursor-not-allowed'
 
   const combinedClassName = `${baseStyles} ${disabled ? disabledStyles : ''} ${className}`.trim()
 
   return (
     <div className="w-full">
-      {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
+      {label && (
+        <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-dk mb-1">
+          {label}
+        </label>
+      )}
       <input
         type={type}
         className={combinedClassName}

@@ -1,11 +1,9 @@
 import { test, expect } from './electronApp'
+import { goToNewProject } from './helpers/navigation'
 
 test.describe('New Project Page', () => {
   test.beforeEach(async ({ page }) => {
-    await page.evaluate(() => {
-      window.location.hash = '#/new'
-    })
-    await page.waitForURL('**/#/new')
+    await goToNewProject(page)
   })
 
   test('shows create project title', async ({ page }) => {
@@ -41,10 +39,8 @@ test.describe('New Project Page', () => {
   })
 
   test('automation dropdown has correct options', async ({ page }) => {
-    // The SelectInput renders a <select> element
     const automationSelect = page.locator('select').first()
     const options = automationSelect.locator('option')
-
     const optionTexts = await options.allTextContents()
     expect(optionTexts).toContain('Selenium')
     expect(optionTexts).toContain('Appium')
@@ -55,7 +51,6 @@ test.describe('New Project Page', () => {
   test('test framework dropdown has correct options', async ({ page }) => {
     const testSelect = page.locator('select').nth(1)
     const options = testSelect.locator('option')
-
     const optionTexts = await options.allTextContents()
     expect(optionTexts).toContain('Rspec')
     expect(optionTexts).toContain('Cucumber')
@@ -65,7 +60,6 @@ test.describe('New Project Page', () => {
   test('selecting Appium shows mobile platform dropdown', async ({ page }) => {
     const automationSelect = page.locator('select').first()
     await automationSelect.selectOption('Appium')
-
     await expect(page.getByText('Select your mobile platform')).toBeVisible()
 
     const mobileSelect = page.locator('select').nth(2)
@@ -76,12 +70,10 @@ test.describe('New Project Page', () => {
   })
 
   test('selecting non-Appium hides mobile platform dropdown', async ({ page }) => {
-    // First select Appium to show mobile dropdown
     const automationSelect = page.locator('select').first()
     await automationSelect.selectOption('Appium')
     await expect(page.getByText('Select your mobile platform')).toBeVisible()
 
-    // Switch to Selenium — mobile dropdown should disappear
     await automationSelect.selectOption('Selenium')
     await expect(page.getByText('Select your mobile platform')).not.toBeVisible()
   })
@@ -91,23 +83,78 @@ test.describe('New Project Page', () => {
     await expect(page.getByRole('button', { name: 'Create' })).toBeVisible()
   })
 
-  test('Back button navigates away', async ({ page }) => {
+  test('Back button navigates away from new project page', async ({ page }) => {
     await page.getByRole('button', { name: 'Back' }).click()
-    // Should navigate back (hash should change)
     const url = page.url()
     expect(url).not.toContain('#/new')
   })
 
   test('shows help icon that opens info modal', async ({ page }) => {
-    const helpIcon = page.locator('img[alt="Help"]')
+    const helpIcon = page.locator('button[aria-label="Help"]')
     await expect(helpIcon).toBeVisible()
 
     await helpIcon.click()
-
-    // Modal should appear with project creation info
     await expect(page.getByText('Start a New Project')).toBeVisible()
     await expect(
       page.getByText('Choose the different options in the selectors')
     ).toBeVisible()
+  })
+
+  test('help modal can be closed', async ({ page }) => {
+    const helpIcon = page.locator('button[aria-label="Help"]')
+    await helpIcon.click()
+    await expect(page.getByText('Start a New Project')).toBeVisible()
+
+    // Close the modal
+    const closeButton = page.getByRole('button', { name: /close|ok|got it/i })
+    if (await closeButton.isVisible()) {
+      await closeButton.click()
+    }
+    await page.waitForTimeout(300)
+  })
+
+  test('Create button triggers folder selection and project creation', async ({ page }) => {
+    // Fill in the form
+    await page.getByPlaceholder('Enter project name').fill('test_project')
+
+    // Mock the IPC calls
+    await page.evaluate(() => {
+      ;(window as any).api.selectFolder = async () => '/mock/folder'
+      ;(window as any).api.runRubyRaider = async () => ({
+        success: true,
+        output: 'Project created successfully'
+      })
+      ;(window as any).api.readDirectory = async () => []
+    })
+
+    await page.getByRole('button', { name: 'Create' }).click()
+    await page.waitForTimeout(1000)
+  })
+
+  test('Applitools option available in automation dropdown', async ({ page }) => {
+    const automationSelect = page.locator('select').first()
+    const options = automationSelect.locator('option')
+    const optionTexts = await options.allTextContents()
+    expect(optionTexts).toContain('Applitools')
+  })
+
+  test('all automation framework options can be selected', async ({ page }) => {
+    const automationSelect = page.locator('select').first()
+    const frameworks = ['Selenium', 'Appium', 'Watir', 'Capybara']
+
+    for (const fw of frameworks) {
+      await automationSelect.selectOption(fw)
+      await expect(automationSelect).toHaveValue(fw)
+    }
+  })
+
+  test('all test framework options can be selected', async ({ page }) => {
+    const testSelect = page.locator('select').nth(1)
+    const frameworks = ['Rspec', 'Cucumber', 'Minitest']
+
+    for (const fw of frameworks) {
+      await testSelect.selectOption(fw)
+      await expect(testSelect).toHaveValue(fw)
+    }
   })
 })

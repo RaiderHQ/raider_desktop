@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ParsedCommand } from '@foundation/Types/command'
 
@@ -10,6 +10,7 @@ interface CommandBlockProps {
   onDragEnter: (index: number) => void
   onDragEnd: () => void
   onDelete: (index: number) => void
+  onEdit?: (index: number, newCommand: string) => void
 }
 
 const CommandBlock: React.FC<CommandBlockProps> = ({
@@ -19,11 +20,17 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   onDragStart,
   onDragEnter,
   onDragEnd,
-  onDelete
+  onDelete,
+  onEdit
 }) => {
   const { t } = useTranslation()
   const [mainCommand, comment] = command.split(' # ')
   const [parsedCommand, setParsedCommand] = useState<string | ParsedCommand>('Loading...')
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(command)
+  const editValueRef = useRef(command)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const isCancellingRef = useRef(false)
 
   useEffect((): (() => void) => {
     let isMounted = true
@@ -45,37 +52,109 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
     }
   }, [mainCommand, showCode])
 
-  const CodeView = (): JSX.Element => (
-    <div className="font-mono text-sm">
-      <span className="text-blue-700">{mainCommand}</span>
-      {comment && <span className="text-gray-500 ml-2"># {comment}</span>}
-    </div>
-  )
+  useEffect(() => {
+    editValueRef.current = command
+    setEditValue(command)
+  }, [command])
 
-  const FriendlyView = (): JSX.Element => {
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus()
+      textareaRef.current.selectionStart = textareaRef.current.value.length
+    }
+  }, [isEditing])
+
+  const handleEditStart = (): void => {
+    if (showCode && onEdit) {
+      editValueRef.current = command
+      setEditValue(command)
+      setIsEditing(true)
+    }
+  }
+
+  const handleEditChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
+    editValueRef.current = e.target.value
+    setEditValue(e.target.value)
+  }
+
+  const handleEditSave = (): void => {
+    if (isCancellingRef.current) {
+      isCancellingRef.current = false
+      return
+    }
+    const trimmed = editValueRef.current.trim()
+    if (trimmed && trimmed !== command && onEdit) {
+      onEdit(index, trimmed)
+    }
+    setIsEditing(false)
+  }
+
+  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleEditSave()
+    }
+    if (e.key === 'Escape') {
+      isCancellingRef.current = true
+      editValueRef.current = command
+      setEditValue(command)
+      setIsEditing(false)
+    }
+  }
+
+  const renderContent = (): JSX.Element => {
+    if (showCode) {
+      if (isEditing) {
+        return (
+          <textarea
+            ref={textareaRef}
+            value={editValue}
+            onChange={handleEditChange}
+            onBlur={handleEditSave}
+            onKeyDown={handleEditKeyDown}
+            className="font-mono text-sm text-ruby w-full bg-ruby-sub border border-ruby rounded p-1 resize-none focus:outline-none focus:ring-1 focus:ring-ruby"
+            rows={Math.max(1, editValue.split('\n').length)}
+            aria-label="Edit command"
+          />
+        )
+      }
+
+      return (
+        <div
+          className="font-mono text-sm cursor-text"
+          onDoubleClick={handleEditStart}
+          title={onEdit ? 'Double-click to edit' : undefined}
+        >
+          <span className="text-ruby">{mainCommand}</span>
+          {comment && <span className="text-neutral-mid ml-2"># {comment}</span>}
+        </div>
+      )
+    }
+
+    // Friendly view
     if (typeof parsedCommand === 'string') {
-      return <span className="text-gray-800">{parsedCommand}</span>
+      return <span className="text-neutral-dark">{parsedCommand}</span>
     }
     const { key, values } = parsedCommand
-    return <span className="text-gray-800">{t(key, values)}</span>
+    return <span className="text-neutral-dark">{t(key, values)}</span>
   }
 
   return (
     <div className="relative w-full mb-3">
       <div className="absolute -right-1 -bottom-1 w-full h-full" />
       <div
-        className="relative bg-white p-3 pl-4 pr-8 rounded-lg border border-black cursor-grab active:cursor-grabbing transition-shadow duration-200 z-10"
-        draggable
+        className="relative bg-white p-3 pl-4 pr-8 rounded-lg border border-neutral-bdr cursor-grab active:cursor-grabbing transition-shadow duration-200 z-10"
+        draggable={!isEditing}
         onDragStart={() => onDragStart(index)}
         onDragEnter={() => onDragEnter(index)}
         onDragEnd={onDragEnd}
         onDragOver={(e) => e.preventDefault()}
       >
-        {showCode ? <CodeView /> : <FriendlyView />}
+        {renderContent()}
 
         <button
           onClick={() => onDelete(index)}
-          className="absolute top-1/2 -translate-y-1/2 right-2 w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:bg-red-100 hover:text-red-600 transition-colors"
+          className="absolute top-1/2 -translate-y-1/2 right-2 w-6 h-6 flex items-center justify-center rounded-full text-neutral-mid hover:bg-status-err-bg hover:text-red-600 transition-colors"
           aria-label="Delete step"
         >
           <span className="text-2xl font-light select-none leading-none">×</span>

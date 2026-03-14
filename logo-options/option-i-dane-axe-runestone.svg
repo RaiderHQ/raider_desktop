@@ -1,0 +1,124 @@
+<svg width="240" height="240" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Option I: Dane axe (long-handled) with runestone-style border pattern -->
+
+  <!-- Runestone-inspired border -->
+  <rect x="10" y="10" width="220" height="220" rx="20" stroke="#C14420" stroke-width="3" fill="none"/>
+  <rect x="18" y="18" width="204" height="204" rx="15" stroke="#C14420" stroke-width="1" fill="none" opacity="0.3"/>
+
+  <!-- Corner knotwork accents -->
+  <g stroke="#C14420" stroke-width="2" fill="none" opacity="0.5">
+    <path d="M25 25 Q35 18 45 25 Q35 32 25 25"/>
+    <path d="M215 25 Q205 18 195 25 Q205 32 215 25"/>
+    <path d="M25 215 Q35 222 45 215 Q35 208 25 215"/>
+    <path d="M215 215 Q205 222 195 215 Q205 208 215 215"/>
+  </g>
+
+  <!-- Axe handle -->
+  <rect x="113" y="45" width="14" height="168" rx="3.5" fill="#2C2D30"/>
+
+  <!-- Wood grain -->
+  <line x1="118" y1="90" x2="118" y2="210" stroke="#404145" stroke-width="0.7" opacity="0.4"/>
+  <line x1="123" y1="90" x2="123" y2="210" stroke="#404145" stroke-width="0.7" opacity="0.3"/>
+
+  <!-- Leather binding -->
+  <g stroke="#6B4226" stroke-width="2.5">
+    <line x1="111" y1="145" x2="129" y2="141"/>
+    <line x1="111" y1="153" x2="129" y2="149"/>
+    <line x1="111" y1="161" x2="129" y2="157"/>
+    <line x1="111" y1="169" x2="129" y2="165"/>
+    <line x1="111" y1="177" x2="129" y2="173"/>
+    <line x1="111" y1="185" x2="129" y2="181"/>
+    <line x1="111" y1="193" x2="129" y2="189"/>
+  </g>
+
+  <!-- Wide Dane axe head (broad crescent) -->
+  <path d="M127 42
+           Q148 30 170 28
+           Q195 28 208 48
+           L212 62
+           Q214 82 206 100
+           L188 130
+           Q172 152 152 158
+           L138 155
+           Q130 150 128 138
+           L127 95 Z"
+        fill="#C14420"/>
+
+  <!-- Small left cheek -->
+  <path d="M113 42
+           Q98 32 85 38
+           Q76 46 78 62
+           L82 76
+           Q88 88 100 86
+           L113 80 Z"
+        fill="#C14420"/>
+
+  <!-- Blade edge shine -->
+  <path d="M208 48 L212 62 Q214 82 206 100 L188 130 Q172 152 152 158"
+        stroke="#DA917B" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Dark bevel -->
+  <path d="M150 35 L155 68 L150 105 L142 135 L136 150"
+        stroke="#961E12" stroke-width="1.5" fill="none" opacity="0.35"/>
+
+  <!-- ═══ Runes on the handle (between head and grip) ═══ -->
+  <g stroke="#C14420" stroke-width="2.2" stroke-linecap="round">
+    <!-- ᚱ Raido -->
+    <g transform="translate(120, 100)">
+      <line x1="0" y1="-10" x2="0" y2="10"/>
+      <line x1="0" y1="-10" x2="8" y2="-4"/>
+      <line x1="8" y1="-4" x2="0" y2="2"/>
+    </g>
+    <!-- ᚢ Uruz -->
+    <g transform="translate(120, 122)">
+      <line x1="-4" y1="-8" x2="-4" y2="8"/>
+      <line x1="-4" y1="-8" x2="5" y2="-4"/>
+      <line x1="5" y1="-4" x2="5" y2="8"/>
+    </g>
+  </g>
+
+  <!-- ═══ Runes engraved on axe blade ═══ -->
+  <g stroke="#8B2010" stroke-width="1.8" stroke-linecap="round" opacity="0.55">
+    <!-- ᚦ Thurisaz on blade -->
+    <g transform="translate(175, 58)">
+      <line x1="0" y1="-9" x2="0" y2="9"/>
+      <line x1="0" y1="-6" x2="8" y2="0"/>
+      <line x1="8" y1="0" x2="0" y2="6"/>
+    </g>
+    <!-- ᛏ Tiwaz on blade -->
+    <g transform="translate(190, 82)">
+      <line x1="0" y1="-8" x2="0" y2="8"/>
+      <line x1="-5" y1="-8" x2="0" y2="-8"/>
+      <line x1="5" y1="-8" x2="0" y2="-8"/>
+    </g>
+    <!-- ᚨ Ansuz on blade -->
+    <g transform="translate(185, 108)">
+      <line x1="0" y1="-8" x2="0" y2="8"/>
+      <line x1="0" y1="-6" x2="6" y2="-2"/>
+      <line x1="0" y1="-1" x2="6" y2="3"/>
+    </g>
+  </g>
+
+  <!-- Socket band -->
+  <ellipse cx="120" cy="80" rx="13" ry="5" stroke="#1A1B1D" stroke-width="2" fill="none" opacity="0.45"/>
+
+  <!-- Pommel -->
+  <ellipse cx="120" cy="215" rx="10" ry="4" fill="#3A3B40"/>
+
+  <!-- Bottom rune decoration (in border area) -->
+  <g stroke="#C14420" stroke-width="1.5" stroke-linecap="round" opacity="0.4">
+    <!-- ᛗ Mannaz -->
+    <g transform="translate(60, 228)">
+      <line x1="-4" y1="-5" x2="-4" y2="5"/>
+      <line x1="4" y1="-5" x2="4" y2="5"/>
+      <line x1="-4" y1="-5" x2="0" y2="0"/>
+      <line x1="0" y1="0" x2="4" y2="-5"/>
+    </g>
+    <!-- ᛟ Othala -->
+    <g transform="translate(180, 228)">
+      <line x1="-4" y1="5" x2="0" y2="-1"/>
+      <line x1="4" y1="5" x2="0" y2="-1"/>
+      <path d="M0,-1 L4,-5 L0,-8 L-4,-5 Z" fill="none"/>
+    </g>
+  </g>
+</svg>

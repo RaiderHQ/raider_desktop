@@ -39,7 +39,7 @@ describe('InputField', () => {
 
   it('applies disabled styles when disabled', () => {
     render(<InputField value="" onChange={vi.fn()} disabled />)
-    expect(screen.getByRole('textbox')).toHaveClass('bg-gray-100')
+    expect(screen.getByRole('textbox')).toHaveClass('bg-neutral-lt')
   })
 
   it('renders a placeholder', () => {
