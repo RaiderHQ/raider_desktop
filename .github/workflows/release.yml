@@ -3,6 +3,12 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. v3.0.0). Leave empty to build without creating a release.'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -67,6 +73,7 @@ jobs:
   release:
     name: Create GitHub Release
     needs: build
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.version != '')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -76,10 +83,26 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create tag (manual dispatch only)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.version != ''
+        run: |
+          git tag ${{ steps.version.outputs.tag }}
+          git push origin ${{ steps.version.outputs.tag }}
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Ruby Raider ${{ github.ref_name }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Ruby Raider ${{ steps.version.outputs.tag }}
           generate_release_notes: true
           files: artifacts/*
           body: |
@@ -97,4 +120,4 @@ jobs:
             - `gem install ruby_raider`
 
             ---
-            *Auto-generated release. See [full changelog](https://github.com/RaiderHQ/raider_desktop/commits/${{ github.ref_name }}) for details.*
+            *Auto-generated release. See [full changelog](https://github.com/RaiderHQ/raider_desktop/commits/${{ steps.version.outputs.tag }}) for details.*
