@@ -8,6 +8,39 @@ type ElectronFixtures = {
 }
 
 /**
+ * Find the main app window (not DevTools).
+ * DevTools windows have titles like "DevTools" and URLs starting with "devtools://".
+ */
+async function getMainWindow(app: ElectronApplication): Promise<Page> {
+  // Wait for at least one window
+  let mainWindow = await app.firstWindow()
+
+  // Check if this is the DevTools window
+  const url = mainWindow.url()
+  if (url.includes('devtools://')) {
+    // Wait for the actual app window to appear
+    mainWindow = await new Promise<Page>((resolve) => {
+      const check = () => {
+        for (const win of app.windows()) {
+          if (!win.url().includes('devtools://')) {
+            resolve(win)
+            return
+          }
+        }
+      }
+      // Check existing windows first
+      check()
+      // Listen for new windows
+      app.on('window', () => {
+        check()
+      })
+    })
+  }
+
+  return mainWindow
+}
+
+/**
  * Custom Playwright fixture that launches the Electron app before each test
  * and closes it after. Every test gets a fresh app instance.
  */
@@ -26,9 +59,10 @@ export const test = base.extend<ElectronFixtures>({
     await app.close()
   },
   page: async ({ electronApp }, use) => {
-    const window = await electronApp.firstWindow()
-    // Wait for the renderer to fully load
+    const window = await getMainWindow(electronApp)
     await window.waitForLoadState('domcontentloaded')
+    // Give the React app time to mount and i18n to initialize
+    await window.waitForTimeout(2000)
     await use(window)
   }
 })

@@ -55,4 +55,5 @@ describe('TestResultCard', () => {
     })
     expect(window.api.readImage).toHaveBeenCalledWith('/path/img.png')
   })
+
 })

@@ -39,7 +39,7 @@ describe('ProjectSelector', () => {
 
   it('opens the information modal when ? icon is clicked', () => {
     render(<MemoryRouter><ProjectSelector {...defaultProps} /></MemoryRouter>)
-    fireEvent.click(screen.getByAltText('Help'))
+    fireEvent.click(screen.getByLabelText('Help'))
     expect(screen.getByText('modal.title')).toBeInTheDocument()
     expect(screen.getByText('modal.message')).toBeInTheDocument()
   })

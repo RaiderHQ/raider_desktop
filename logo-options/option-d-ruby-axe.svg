@@ -1,0 +1,17 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Option D: Single Axe + Ruby — one clean axe with a ruby gem as the blade -->
+
+  <!-- Axe handle (diagonal) -->
+  <line x1="55" y1="170" x2="145" y2="40" stroke="#2C2D30" stroke-width="5" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- Axe head as ruby gem shape -->
+  <path d="M110 35 L155 55 L150 90 L120 95 L105 65 Z" fill="#C14420"/>
+
+  <!-- Gem highlight -->
+  <path d="M110 35 L130 52 L120 95 L105 65 Z" fill="#C14420" opacity="0.7"/>
+  <line x1="110" y1="35" x2="130" y2="52" stroke="white" stroke-width="1.5" opacity="0.4"/>
+  <line x1="130" y1="52" x2="150" y2="90" stroke="white" stroke-width="1.5" opacity="0.3"/>
+
+  <!-- Small ruby accent at bottom of handle -->
+  <polygon points="55,170 65,155 45,155" fill="#C14420" opacity="0.6"/>
+</svg>

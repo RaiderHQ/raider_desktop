@@ -8,7 +8,7 @@ vi.mock('child_process', () => {
   return { exec, default: { exec } }
 })
 
-import handler from '../../src/main/handlers/checkBundle'
+import handler from '../../src/main/handlers/ruby/checkBundle'
 
 const mockExec = exec as ReturnType<typeof vi.fn>
 

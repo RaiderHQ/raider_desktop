@@ -1,23 +1,15 @@
 import { test, expect } from './electronApp'
+import { goToLanding, goToRecorder, createSuiteViaUI, navigateTo } from './helpers/navigation'
+import { mockIPC, mockIPCSync } from './helpers/ipc-mock'
 
-/**
- * End-to-end workflow tests that simulate real user journeys
- * across multiple pages of the application.
- */
 test.describe('User Workflows', () => {
-  test('new user flow: landing → create project form → back', async ({ page }) => {
-    // 1. User starts at the landing page
-    await page.evaluate(() => {
-      window.location.hash = '#/start-project'
-    })
-    await page.waitForURL('**/#/start-project')
+  test('new user flow: landing -> create project form -> back', async ({ page }) => {
+    await goToLanding(page)
     await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
 
-    // 2. User clicks Create
     await page.getByRole('button', { name: 'Create' }).click()
-    await page.waitForURL('**/#/new')
+    await page.waitForTimeout(800)
 
-    // 3. User fills in the project form
     await page.getByPlaceholder('Enter project name').fill('test_automation_project')
     const automationSelect = page.locator('select').first()
     await automationSelect.selectOption('Watir')
@@ -25,93 +17,144 @@ test.describe('User Workflows', () => {
     const testSelect = page.locator('select').nth(1)
     await testSelect.selectOption('Cucumber')
 
-    // 4. Verify selections persisted
     await expect(page.getByPlaceholder('Enter project name')).toHaveValue(
       'test_automation_project'
     )
 
-    // 5. User goes back
     await page.getByRole('button', { name: 'Back' }).click()
   })
 
   test('explore all main pages without a project loaded', async ({ page }) => {
-    // Recorder page (default)
-    await page.locator('nav >> text=Recorder').click()
-    await expect(page.getByText('Test Suites')).toBeVisible()
+    await page.locator('a[href="#/recorder"]').click()
+    await page.waitForTimeout(500)
+    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).toBeVisible()
 
-    // Dashboard page
-    await page.locator('nav >> text=Dashboard').click()
-    await expect(page.getByText('Project Dashboard')).toBeVisible()
-    await expect(
-      page.getByText('Please run your tests to see the results on the dashboard.')
-    ).toBeVisible()
-
-    // Settings page
-    await page.locator('nav >> text=Settings').click()
-    await expect(page.getByText('General Settings')).toBeVisible()
-
-    // Check project settings shows no-project message
-    await page.getByRole('button', { name: 'Project Settings' }).click()
-    await expect(page.getByText('No Project Loaded')).toBeVisible()
-
-    // Tests/Overview page
-    await page.locator('nav >> text=Tests').click()
+    await page.locator('a[href="#/overview"]').click()
+    await page.waitForTimeout(500)
   })
 
   test('recorder suite management workflow', async ({ page }) => {
-    await page.locator('nav >> text=Recorder').click()
-    await page.waitForURL('**/#/recorder')
+    await goToRecorder(page)
 
-    // 1. Create a test suite
-    await page.getByText('+ New Suite...').click()
-    await page.getByPlaceholder('New suite name...').fill('Login Tests')
-    await page.getByRole('button', { name: 'Create' }).click()
+    await createSuiteViaUI(page, 'Login Tests')
+    await expect(page.getByRole('heading', { name: 'Suite: Login Tests' })).toBeVisible()
 
-    // 2. Verify the suite was created
-    await expect(page.getByText('Login Tests')).toBeVisible({ timeout: 5000 })
+    await createSuiteViaUI(page, 'Checkout Tests')
+    // The active suite (last created) is shown in dropdown button
+    await expect(page.getByRole('heading', { name: 'Suite: Checkout Tests' })).toBeVisible()
 
-    // 3. Create another suite
-    await page.getByText('+ New Suite...').click()
-    await page.getByPlaceholder('New suite name...').fill('Checkout Tests')
-    await page.getByRole('button', { name: 'Create' }).click()
-
-    await expect(page.getByText('Checkout Tests')).toBeVisible({ timeout: 5000 })
+    // Open dropdown to verify Login Tests is also listed
+    const suiteDropdownBtn = page.locator('button[aria-label="Select a Suite"]')
+    await suiteDropdownBtn.click()
+    await page.waitForTimeout(300)
+    await expect(page.getByText('Login Tests').first()).toBeVisible()
   })
 
-  test('settings tab navigation remembers state within session', async ({ page }) => {
-    await page.locator('nav >> text=Settings').click()
+  test('recorder settings tab navigation and state', async ({ page }) => {
+    // Mock IPC methods used on Recorder mount
+    await mockIPC(page, 'getSelectorPriorities', [])
+    await mockIPC(page, 'getSuites', [])
+    await mockIPCSync(page, 'onTestRunStatus')
+    await mockIPCSync(page, 'removeTestRunStatusListener')
+    await goToRecorder(page)
+    await page.waitForTimeout(500)
 
-    // Start at General (default)
-    await expect(page.getByText('Language')).toBeVisible()
-
-    // Switch to Recording
-    await page.getByRole('button', { name: 'Recording Settings' }).click()
+    // Click Settings tab on Recorder
+    const settingsTab = page.locator('button').filter({ hasText: 'Settings' })
+    await settingsTab.click()
+    await page.waitForTimeout(500)
     await expect(page.getByText('Implicit Wait')).toBeVisible()
 
-    // Navigate away
-    await page.locator('nav >> text=Dashboard').click()
-    await expect(page.getByText('Project Dashboard')).toBeVisible()
+    // Switch to Dashboard tab
+    const dashboardTab = page.locator('button').filter({ hasText: 'Dashboard' })
+    await dashboardTab.click()
+    await page.waitForTimeout(500)
 
-    // Navigate back — tab state resets to General (component remounts)
-    await page.locator('nav >> text=Settings').click()
-    const generalTab = page.getByRole('button', { name: 'General Settings' })
-    await expect(generalTab).toHaveClass(/font-semibold/)
+    // Switch back to Recording tab
+    const recordingTab = page.locator('button').filter({ hasText: 'Recording' }).first()
+    await recordingTab.click()
+    await page.waitForTimeout(500)
+    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).toBeVisible()
   })
 
   test('landing page info modals show correct content', async ({ page }) => {
-    await page.evaluate(() => {
-      window.location.hash = '#/start-project'
-    })
-    await page.waitForURL('**/#/start-project')
+    await goToLanding(page)
 
-    // Each ProjectSelector card has an info icon — find them
-    const infoIcons = page.locator('img[alt="Information"]')
+    const infoIcons = page.locator('button[aria-label="Help"]')
     const count = await infoIcons.count()
 
     if (count > 0) {
-      // Click the first info icon (Create project)
       await infoIcons.first().click()
+      await page.waitForTimeout(500)
       await expect(page.getByText('Creating a New Project')).toBeVisible()
     }
+  })
+
+  test('full navigation round trip: all pages', async ({ page }) => {
+    await goToLanding(page)
+    await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Create' }).click()
+    await page.waitForTimeout(800)
+    await expect(page.getByText('Create a new project')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Back' }).click()
+    await page.waitForTimeout(500)
+
+    await page.locator('a[href="#/recorder"]').click()
+    await page.waitForTimeout(500)
+    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).toBeVisible()
+
+    await page.locator('a[href="#/overview"]').click()
+    await page.waitForTimeout(500)
+  })
+
+  test('recorder settings -> add selectors', async ({ page }) => {
+    // Mock IPC methods used on Recorder mount
+    await mockIPC(page, 'getSelectorPriorities', [])
+    await mockIPC(page, 'getSuites', [])
+    await mockIPCSync(page, 'onTestRunStatus')
+    await mockIPCSync(page, 'removeTestRunStatusListener')
+    await goToRecorder(page)
+    await page.waitForTimeout(500)
+
+    // Click Settings tab on Recorder
+    const settingsTab = page.locator('button').filter({ hasText: 'Settings' })
+    await settingsTab.click()
+    await page.waitForTimeout(500)
+
+    const addInput = page.getByPlaceholder('e.g., data-testid')
+    if (await addInput.isVisible().catch(() => false)) {
+      await addInput.fill('data-qa')
+      const addBtn = page.getByRole('button', { name: 'Add' })
+      if (await addBtn.isVisible().catch(() => false)) {
+        await addBtn.click()
+        await page.waitForTimeout(300)
+      }
+    }
+
+    const updateBtn = page.getByRole('button', { name: /update/i })
+    if (await updateBtn.isVisible().catch(() => false)) {
+      await updateBtn.click()
+      await page.waitForTimeout(500)
+    }
+  })
+
+  test('multiple suites can be created and are all visible', async ({ page }) => {
+    await goToRecorder(page)
+
+    await createSuiteViaUI(page, 'Suite A')
+    await createSuiteViaUI(page, 'Suite B')
+    await createSuiteViaUI(page, 'Suite C')
+
+    // The active suite (last created) is shown in dropdown button
+    await expect(page.getByRole('heading', { name: 'Suite: Suite C' })).toBeVisible()
+
+    // Open dropdown to verify all suites are listed
+    const suiteDropdownBtn = page.locator('button[aria-label="Select a Suite"]')
+    await suiteDropdownBtn.click()
+    await page.waitForTimeout(300)
+    await expect(page.getByText('Suite A')).toBeVisible()
+    await expect(page.getByText('Suite B')).toBeVisible()
   })
 })

@@ -5,10 +5,21 @@ export interface VersionStore {
   loadVersion: () => Promise<void>
 }
 
+const MIN_VERSION = '2.0.0'
+
+const isVersionAtLeast = (version: string, minimum: string): boolean => {
+  const [vMajor, vMinor, vPatch] = version.split('.').map(Number)
+  const [mMajor, mMinor, mPatch] = minimum.split('.').map(Number)
+  if (vMajor !== mMajor) return vMajor > mMajor
+  if (vMinor !== mMinor) return vMinor > mMinor
+  return vPatch >= mPatch
+}
+
 const useVersionStore = create<VersionStore>((set) => {
   const extractVersion = (input: string): string => {
     const match = input.match(/(\d+\.\d+\.\d+)/)
-    return match ? match[0] : '1.1.4'
+    if (!match) return MIN_VERSION
+    return isVersionAtLeast(match[0], MIN_VERSION) ? match[0] : MIN_VERSION
   }
 
   const loadVersion = async (): Promise<void> => {
@@ -17,10 +28,10 @@ const useVersionStore = create<VersionStore>((set) => {
       if (result.success) {
         set({ version: extractVersion(result.output) })
       } else {
-        set({ version: '1.1.4' })
+        set({ version: MIN_VERSION })
       }
     } catch (error) {
-      set({ version: '1.1.4' })
+      set({ version: MIN_VERSION })
     }
   }
 
@@ -40,7 +51,7 @@ const useVersionStore = create<VersionStore>((set) => {
   }, 0)
 
   return {
-    version: '1.1.4',
+    version: MIN_VERSION,
     loadVersion
   }
 })

@@ -1,0 +1,129 @@
+<svg width="240" height="240" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Option G: Broad Viking axe centered, runes arranged in a circle around it -->
+
+  <!-- Rune circle (Elder Futhark runes around the edge) -->
+  <!-- Using a circular text path -->
+  <circle cx="120" cy="120" r="108" stroke="#C14420" stroke-width="2" fill="none" opacity="0.35"/>
+  <circle cx="120" cy="120" r="103" stroke="#C14420" stroke-width="0.5" fill="none" opacity="0.2"/>
+
+  <!-- Runes positioned around the circle -->
+  <!-- Top runes -->
+  <g stroke="#C14420" stroke-width="1.8" stroke-linecap="round" opacity="0.6">
+    <!-- ᚠ Fehu (top) -->
+    <g transform="translate(120, 18)">
+      <line x1="0" y1="-6" x2="0" y2="6"/>
+      <line x1="0" y1="-6" x2="6" y2="-2"/>
+      <line x1="0" y1="-1" x2="6" y2="3"/>
+    </g>
+    <!-- ᚦ Thurisaz (top-right) -->
+    <g transform="translate(175, 32) rotate(40)">
+      <line x1="0" y1="-6" x2="0" y2="6"/>
+      <line x1="0" y1="-4" x2="6" y2="0"/>
+      <line x1="6" y1="0" x2="0" y2="4"/>
+    </g>
+    <!-- ᚨ Ansuz (right) -->
+    <g transform="translate(210, 75) rotate(72)">
+      <line x1="0" y1="-6" x2="0" y2="6"/>
+      <line x1="0" y1="-4" x2="5" y2="-1"/>
+      <line x1="0" y1="0" x2="5" y2="3"/>
+    </g>
+    <!-- ᚱ Raido (right-mid) -->
+    <g transform="translate(222, 120) rotate(90)">
+      <line x1="0" y1="-6" x2="0" y2="6"/>
+      <line x1="0" y1="-6" x2="6" y2="-2"/>
+      <line x1="6" y1="-2" x2="0" y2="1"/>
+    </g>
+    <!-- ᚲ Kenaz (bottom-right) -->
+    <g transform="translate(210, 168) rotate(112)">
+      <line x1="0" y1="-6" x2="5" y2="0"/>
+      <line x1="5" y1="0" x2="0" y2="6"/>
+    </g>
+    <!-- ᚷ Gebo (bottom) -->
+    <g transform="translate(175, 208) rotate(140)">
+      <line x1="-5" y1="-5" x2="5" y2="5"/>
+      <line x1="5" y1="-5" x2="-5" y2="5"/>
+    </g>
+    <!-- ᛃ Jera (bottom-center) -->
+    <g transform="translate(120, 224)">
+      <line x1="-4" y1="-5" x2="2" y2="0"/>
+      <line x1="2" y1="0" x2="-4" y2="5"/>
+      <line x1="4" y1="-5" x2="-2" y2="0"/>
+      <line x1="-2" y1="0" x2="4" y2="5"/>
+    </g>
+    <!-- ᛁ Isa (bottom-left) -->
+    <g transform="translate(65, 208) rotate(-140)">
+      <line x1="0" y1="-6" x2="0" y2="6"/>
+    </g>
+    <!-- ᛈ Pertho (left-bottom) -->
+    <g transform="translate(30, 168) rotate(-112)">
+      <line x1="0" y1="-6" x2="0" y2="6"/>
+      <path d="M0,-6 Q7,-3 7,0 Q7,3 0,6" fill="none"/>
+    </g>
+    <!-- ᛏ Tiwaz (left) -->
+    <g transform="translate(18, 120) rotate(-90)">
+      <line x1="0" y1="-6" x2="0" y2="6"/>
+      <line x1="-5" y1="-6" x2="0" y2="-6"/>
+      <line x1="5" y1="-6" x2="0" y2="-6"/>
+    </g>
+    <!-- ᛚ Laguz (top-left) -->
+    <g transform="translate(30, 75) rotate(-72)">
+      <line x1="0" y1="-6" x2="0" y2="6"/>
+      <line x1="0" y1="-6" x2="5" y2="-1"/>
+    </g>
+    <!-- ᛞ Dagaz (top-left-2) -->
+    <g transform="translate(65, 32) rotate(-40)">
+      <line x1="-4" y1="-6" x2="-4" y2="6"/>
+      <line x1="4" y1="-6" x2="4" y2="6"/>
+      <line x1="-4" y1="-6" x2="4" y2="6"/>
+      <line x1="-4" y1="6" x2="4" y2="-6"/>
+    </g>
+  </g>
+
+  <!-- ═══ Main axe ═══ -->
+  <!-- Axe handle -->
+  <rect x="114" y="52" width="12" height="158" rx="3" fill="#2C2D30"/>
+
+  <!-- Leather wrap -->
+  <g stroke="#5C3D2E" stroke-width="2.2">
+    <line x1="112" y1="155" x2="128" y2="151"/>
+    <line x1="112" y1="162" x2="128" y2="158"/>
+    <line x1="112" y1="169" x2="128" y2="165"/>
+    <line x1="112" y1="176" x2="128" y2="172"/>
+    <line x1="112" y1="183" x2="128" y2="179"/>
+    <line x1="112" y1="190" x2="128" y2="186"/>
+  </g>
+
+  <!-- Broad bearded axe head -->
+  <path d="M126 50
+           Q150 38 172 42
+           Q188 48 192 68
+           L190 82
+           Q186 102 170 118
+           L148 140
+           Q138 148 130 142
+           L126 110 Z"
+        fill="#C14420"/>
+
+  <!-- Small left cheek -->
+  <path d="M114 50
+           Q100 42 92 48
+           Q84 54 86 68
+           L90 78
+           Q95 86 104 84
+           L114 78 Z"
+        fill="#C14420"/>
+
+  <!-- Blade edge (beveled highlight) -->
+  <path d="M188 48 Q192 68 190 82 Q186 102 170 118 L148 140"
+        stroke="#DA917B" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- Inner bevel -->
+  <path d="M145 45 L148 75 L142 108 L134 130"
+        stroke="#A03518" stroke-width="1.2" fill="none" opacity="0.5"/>
+
+  <!-- Socket detail -->
+  <ellipse cx="120" cy="82" rx="12" ry="4.5" stroke="#1A1B1D" stroke-width="1.5" fill="none" opacity="0.5"/>
+
+  <!-- Pommel -->
+  <ellipse cx="120" cy="212" rx="10" ry="4" fill="#3A3B40"/>
+</svg>

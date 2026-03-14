@@ -1,23 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('../../src/main/handlers/isRbenvRubyInstalled', () => ({
+vi.mock('../../src/main/handlers/ruby/isRbenvRubyInstalled', () => ({
   default: vi.fn()
 }))
-vi.mock('../../src/main/handlers/isRvmRubyInstalled', () => ({
+vi.mock('../../src/main/handlers/ruby/isRvmRubyInstalled', () => ({
   default: vi.fn()
 }))
-vi.mock('../../src/main/handlers/isSystemRubyInstalled', () => ({
+vi.mock('../../src/main/handlers/ruby/isSystemRubyInstalled', () => ({
   default: vi.fn()
 }))
-vi.mock('../../src/main/handlers/checkRubyDependencies', () => ({
+vi.mock('../../src/main/handlers/ruby/checkRubyDependencies', () => ({
   default: vi.fn()
 }))
 
-import handler from '../../src/main/handlers/isRubyInstalled'
-import isRbenvRubyInstalled from '../../src/main/handlers/isRbenvRubyInstalled'
-import isRvmRubyInstalled from '../../src/main/handlers/isRvmRubyInstalled'
-import isSystemRubyInstalled from '../../src/main/handlers/isSystemRubyInstalled'
-import checkRubyDependencies from '../../src/main/handlers/checkRubyDependencies'
+import handler from '../../src/main/handlers/ruby/isRubyInstalled'
+import isRbenvRubyInstalled from '../../src/main/handlers/ruby/isRbenvRubyInstalled'
+import isRvmRubyInstalled from '../../src/main/handlers/ruby/isRvmRubyInstalled'
+import isSystemRubyInstalled from '../../src/main/handlers/ruby/isSystemRubyInstalled'
+import checkRubyDependencies from '../../src/main/handlers/ruby/checkRubyDependencies'
 
 const mockRbenv = isRbenvRubyInstalled as ReturnType<typeof vi.fn>
 const mockRvm = isRvmRubyInstalled as ReturnType<typeof vi.fn>

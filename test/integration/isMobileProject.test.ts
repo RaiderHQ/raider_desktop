@@ -3,7 +3,7 @@ import fs from 'fs'
 
 vi.mock('electron', () => ({ app: { getPath: vi.fn() } }))
 
-import handler from '../../src/main/handlers/isMobileProject'
+import handler from '../../src/main/handlers/config/isMobileProject'
 
 describe('isMobileProject handler (integration)', () => {
   beforeEach(() => {

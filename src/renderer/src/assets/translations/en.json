@@ -5,6 +5,7 @@
     "error": {
       "selectFolder": "Select a project folder",
       "folderNotFound": "The folder does not exist.",
+      "noFolderSelected": "No folder selected.",
       "openProject": "An error occurred while opening the project. Please try again."
     }
   },
@@ -23,7 +24,24 @@
       "automation": "Select your automation framework",
       "mobile": "Select your mobile platform",
       "test": "Select your test framework"
-    }
+    },
+    "addons": {
+      "title": "Add-ons",
+      "accessibility": "Accessibility testing (axe)",
+      "accessibilityHelp": "Adds axe-core for automated accessibility checks",
+      "disabledMobile": "Add-ons are not available for mobile (Appium) projects"
+    },
+    "reporter": {
+      "label": "Reporter"
+    },
+    "advanced": {
+      "title": "Advanced",
+      "skipCi": "Skip CI configuration",
+      "skipAllure": "Skip Allure setup",
+      "rubyVersion": "Ruby Version",
+      "rubyVersionPlaceholder": "Auto-detected from system"
+    },
+    "versionWarning": "Your Ruby version may not be compatible with Ruby Raider v3"
   },
   "button": {
     "create": {
@@ -83,7 +101,13 @@
     "section": {
       "baseUrl": "Base Url",
       "browser": "Browser",
-      "appiumSettings": "Appium Settings"
+      "appiumSettings": "Appium Settings",
+      "timeout": "Timeout",
+      "viewport": "Viewport",
+      "debug": "Debug Mode",
+      "browserOptions": "Browser Options",
+      "appium": "Appium",
+      "paths": "Paths"
     },
     "baseUrl": {
       "label": "Browser URL:",
@@ -135,11 +159,14 @@
     "tabs": {
       "project": "Project Settings",
       "recording": "Recording Settings",
-      "general": "General Settings"
+      "general": "General Settings",
+      "llm": "AI / LLM",
+      "plugins": "Plugins"
     },
     "general": {
       "title": "General Settings",
       "description": "Adjust general application settings.",
+      "rubyVersion": "Ruby Version",
       "language": {
         "label": "Language"
       },
@@ -163,6 +190,65 @@
       "recordingUpdateSuccess": "Recording settings updated successfully!",
       "updateRecordingSettingsButton": "Update Settings"
     },
+    "timeout": {
+      "label": "Test timeout (seconds):",
+      "updateButton": "Update Timeout",
+      "updateSuccess": "Timeout updated successfully!"
+    },
+    "viewport": {
+      "title": "Viewport",
+      "width": "Width:",
+      "height": "Height:",
+      "updateButton": "Update Viewport",
+      "updateSuccess": "Viewport updated successfully!"
+    },
+    "debug": {
+      "label": "Enable debug diagnostics",
+      "description": "Captures screenshots, HTML, and console logs on failure.",
+      "updateSuccess": "Debug mode updated!"
+    },
+    "browserOptions": {
+      "placeholder": "Add option (e.g. headless)...",
+      "updateButton": "Update Options",
+      "updateSuccess": "Browser options updated!"
+    },
+    "appium": {
+      "startButton": "Start Appium Server",
+      "starting": "Starting Appium...",
+      "startSuccess": "Appium server started!",
+      "startFailed": "Failed to start Appium server."
+    },
+    "paths": {
+      "page": "Page objects path:",
+      "feature": "Features path:",
+      "spec": "Specs path:",
+      "helper": "Helpers path:",
+      "updateButton": "Update Paths",
+      "updateSuccess": "Paths updated successfully!"
+    },
+    "llm": {
+      "title": "AI / LLM Configuration",
+      "description": "Configure the AI provider for smart scaffolding features.",
+      "provider": "Provider",
+      "apiKey": "API Key",
+      "model": "Model",
+      "apiUrl": "API URL",
+      "saveButton": "Save Configuration",
+      "testButton": "Test Connection",
+      "saveSuccess": "LLM configuration saved!",
+      "saveFailed": "Failed to save LLM configuration.",
+      "testSuccess": "Connection successful!",
+      "testFailed": "Connection test failed."
+    },
+    "plugins": {
+      "title": "Plugin Manager",
+      "description": "Install or uninstall plugins for your project.",
+      "install": "Install",
+      "uninstall": "Uninstall",
+      "installSuccess": "{{name}} installed successfully!",
+      "uninstallSuccess": "{{name}} uninstalled successfully!",
+      "operationFailed": "Plugin operation failed."
+    },
     "noProject": {
       "title": "No Project Loaded",
       "description": "Please create or open a project to configure its settings."
@@ -172,6 +258,7 @@
     "error": {
       "openAllure": "An issue occurred opening the dashboard",
       "runTests": "Failed to run tests",
+      "rerun": "Failed to re-run tests",
       "permission": {
         "title": "Permission Error",
         "message": "The application needs write permissions to modify files in the project directory. Please grant permissions to the folder containing the path: {{path}}.",
@@ -181,12 +268,37 @@
     },
     "running": "Tests are being executed...",
     "runTestsSuccess": "Tests completed successfully!",
+    "rerunning": "Re-running failed tests...",
+    "rerunSuccess": "Failed tests re-run completed!",
     "tabs": {
       "files": "Files",
-      "dashboard": "Dashboard"
+      "dashboard": "Dashboard",
+      "settings": "Settings"
     },
+    "parallelToggle": "Run in parallel",
     "installingDependencies": "Installing dependencies...",
-    "starting": "Starting test run..."
+    "starting": "Starting test run...",
+    "settings": {
+      "urlLabel": "URL",
+      "urlPlaceholder": "https://example.com",
+      "browserLabel": "Browser",
+      "headlessLabel": "Headless",
+      "urlUpdateSuccess": "Base URL updated!",
+      "urlUpdateFailed": "Failed to update base URL.",
+      "browserUpdateSuccess": "Browser updated!",
+      "browserUpdateFailed": "Failed to update browser.",
+      "headlessUpdateSuccess": "Headless mode updated!",
+      "headlessUpdateFailed": "Failed to update headless mode.",
+      "runModeLabel": "Run",
+      "runMode": {
+        "all": "All Tests",
+        "smoke": "Smoke",
+        "regression": "Regression",
+        "custom": "Custom Tag"
+      },
+      "customTagPlaceholder": "Tag name...",
+      "rerunFailed": "Re-run Failed"
+    }
   },
   "editor": {
     "placeholder": "Start editing file content here...",
@@ -212,6 +324,7 @@
     "passed": "Passed",
     "failed": "Failed",
     "skipped": "Skipped",
+    "viewTrace": "View Trace",
     "error": {
       "imageRead": "Error reading image",
       "imageAccess": "Error accessing image file"
@@ -225,6 +338,9 @@
     "skipped": "Skipped",
     "noResults": "Please run your tests to see the results on the dashboard.",
     "noRecordingResults": "Please run a test to see the recording results on the dashboard.",
+    "viewTrace": "View Trace",
+    "backToResults": "Back to Results",
+    "traceTitle": "Trace View",
     "tabs": {
       "project": "Project Dashboard",
       "recording": "Recording Dashboard"
@@ -278,7 +394,7 @@
     },
     "rubyInstallModal": {
       "title": "Ruby Installation Required",
-      "message": "To use all features of the app, you need to install Ruby using rbenv with a version higher than 3.0.0",
+      "message": "To use all features of the app, you need to install Ruby using rbenv with a version higher than 3.1.0",
       "continue": "Continue",
       "close": "Close App"
     },
@@ -296,6 +412,7 @@
       "newTest": "New Test",
       "import": "Import",
       "export": "Export",
+      "more": "More",
       "record": "Record",
       "run": "Run",
       "stop": "Stop",
@@ -308,7 +425,8 @@
       "exportSuccess": "{{exportType}} exported to {{path}}",
       "exportError": "Export failed: {{error}}",
       "importSuccess": "{{importType}} imported successfully!",
-      "importError": "Import failed: {{error}}"
+      "importError": "Import failed: {{error}}",
+      "emptyHelper": "Select or create a suite to get started"
     },
     "outputPanel": {
       "title": "Test Results:",
@@ -323,16 +441,38 @@
       "newSuiteName": "New suite name...",
       "cancel": "Cancel",
       "create": "Create",
-      "deleteConfirmation": "Are you sure you want to delete the suite \"{{suiteName}}\"? This cannot be undone."
+      "deleteConfirmation": "Are you sure you want to delete the suite \"{{suiteName}}\"? This cannot be undone.",
+      "emptyTitle": "No Test Suites Yet",
+      "emptyDescription": "Create a suite to organize your tests and start recording",
+      "createFirst": "Create Suite"
+    },
+    "tabs": {
+      "recording": "Recording",
+      "dashboard": "Dashboard",
+      "settings": "Settings"
     },
     "recorderPage": {
       "testSuites": "Test Suites",
+      "noSuiteSteps": "Create a suite and add a test to start recording steps",
+      "noTestSteps": "Click New Test in the toolbar to create your first test",
       "recordedSteps": "Recorded Steps",
       "runOutput": "Run Output",
       "codeView": "Code View",
       "friendlyView": "Friendly View",
       "hideOutput": "Hide Output",
-      "testOutput": "Test Output"
+      "testOutput": "Test Output",
+      "traceView": "Trace View",
+      "traceViewExit": "Exit Trace"
+    },
+    "traceTimeline": {
+      "title": "Trace Timeline",
+      "noTrace": "Record a test to see the trace timeline"
+    },
+    "traceDetail": {
+      "elementInfo": "Element Info",
+      "pageUrl": "Page URL",
+      "timestamp": "Timestamp",
+      "command": "Command"
     },
     "commandParser": {
       "visit": "Visit {{url}}",

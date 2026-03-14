@@ -1,0 +1,17 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Option A: Geometric Ruby + Shield — clean hexagonal ruby inside a minimal shield -->
+
+  <!-- Shield outline -->
+  <path d="M100 16 L170 50 L170 110 Q170 160 100 188 Q30 160 30 110 L30 50 Z"
+        stroke="#C14420" stroke-width="5" fill="none" stroke-linejoin="round"/>
+
+  <!-- Ruby gem shape (faceted) -->
+  <polygon points="100,55 135,80 125,130 75,130 65,80" fill="#C14420"/>
+
+  <!-- Gem facet lines -->
+  <line x1="100" y1="55" x2="85" y2="80" stroke="white" stroke-width="2" opacity="0.5"/>
+  <line x1="100" y1="55" x2="115" y2="80" stroke="white" stroke-width="2" opacity="0.5"/>
+  <line x1="65" y1="80" x2="135" y2="80" stroke="white" stroke-width="2" opacity="0.4"/>
+  <line x1="85" y1="80" x2="75" y2="130" stroke="white" stroke-width="1.5" opacity="0.3"/>
+  <line x1="115" y1="80" x2="125" y2="130" stroke="white" stroke-width="1.5" opacity="0.3"/>
+</svg>

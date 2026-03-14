@@ -4,6 +4,7 @@
     "src/renderer/src/env.d.ts",
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.tsx",
+    "src/shared/**/*",
     "src/preload/*.d.ts",
     "src/preload/*.ts",
     "test/**/*.tsx"
@@ -20,7 +21,8 @@
       "@components/*": ["./src/renderer/src/components/*"],
       "@foundation/*": ["./src/renderer/src/foundation/*"],
       "@pages/*": ["./src/renderer/src/pages/*"],
-      "@templates/*": ["./src/renderer/src/templates/*"]
+      "@templates/*": ["./src/renderer/src/templates/*"],
+      "@shared/*": ["./src/shared/*"]
     },
     "types": ["vitest/globals"]
   }

@@ -6,27 +6,38 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string, opts?: object) => opts ? `${key} ${JSON.stringify(opts)}` : key })
 }))
 
-vi.mock('react-hot-toast', () => ({ default: { success: vi.fn(), error: vi.fn() }, Toaster: () => null }))
+vi.mock('react-hot-toast', () => ({ default: { success: vi.fn(), error: vi.fn(), loading: vi.fn() }, Toaster: () => null }))
 
-const baseProps = {
-  activeSuiteName: 'My Suite',
-  activeTest: { id: 't1', name: 'Test 1', url: 'https://example.com', steps: [] },
+const storeState = {
+  activeTest: { id: 't1', name: 'Test 1', url: 'https://example.com', steps: [] } as { id: string; name: string; url: string; steps: string[] } | null,
   isRecording: false,
   isRunning: false,
-  onTestNameChange: vi.fn(),
-  onUrlChange: vi.fn(),
+  activeSuiteId: 'suite-1' as string | null,
+  activeSuite: () => ({ id: 'suite-1', name: 'My Suite', tests: [] }) as { id: string; name: string; tests: unknown[] } | undefined,
+  setActiveTest: vi.fn(),
+  updateActiveTest: vi.fn()
+}
+
+vi.mock('@foundation/Stores/recorderStore', () => {
+  const useRecorderStore = (selector?: (s: typeof storeState) => unknown) =>
+    selector ? selector(storeState) : storeState
+  useRecorderStore.getState = () => storeState
+  return { default: useRecorderStore }
+})
+
+const baseProps = {
   onStartRecording: vi.fn(),
   onRunTest: vi.fn(),
-  onStopRecording: vi.fn(),
-  onNewTest: vi.fn(),
-  onExportTest: vi.fn().mockResolvedValue({ success: true, path: '/out' }),
-  onExportSuite: vi.fn().mockResolvedValue({ success: true, path: '/out' }),
-  onExportProject: vi.fn().mockResolvedValue({ success: true, path: '/out' }),
-  onImportTest: vi.fn().mockResolvedValue({ success: true }),
-  onImportSuite: vi.fn().mockResolvedValue({ success: true }),
-  onImportProject: vi.fn().mockResolvedValue({ success: true }),
-  activeSuiteId: 'suite-1'
+  onStopRecording: vi.fn()
 }
+
+beforeEach(() => {
+  storeState.activeTest = { id: 't1', name: 'Test 1', url: 'https://example.com', steps: [] }
+  storeState.isRecording = false
+  storeState.isRunning = false
+  storeState.activeSuiteId = 'suite-1'
+  storeState.activeSuite = () => ({ id: 'suite-1', name: 'My Suite', tests: [] })
+})
 
 describe('MainRecorderPanel', () => {
   it('renders the suite name', async () => {
@@ -34,11 +45,17 @@ describe('MainRecorderPanel', () => {
     expect(screen.getByText(/My Suite/)).toBeInTheDocument()
   })
 
-  it('shows "no suite" message when no active suite', async () => {
+  it('shows simplified toolbar when no active suite', async () => {
+    storeState.activeSuite = () => undefined
+    storeState.activeSuiteId = null
     await act(async () => {
-      render(<MainRecorderPanel {...baseProps} activeSuiteName={undefined} activeSuiteId={null} />)
+      render(<MainRecorderPanel {...baseProps} />)
     })
     expect(screen.getByText('recorder.mainRecorderPanel.noSuite')).toBeInTheDocument()
+    expect(screen.getByText('recorder.mainRecorderPanel.emptyHelper')).toBeInTheDocument()
+    // Inputs and action buttons should not be rendered
+    expect(screen.queryByText('recorder.mainRecorderPanel.newTest')).not.toBeInTheDocument()
+    expect(screen.queryByText('recorder.mainRecorderPanel.record')).not.toBeInTheDocument()
   })
 
   it('renders test name and URL inputs', async () => {
@@ -47,17 +64,10 @@ describe('MainRecorderPanel', () => {
     expect(screen.getByDisplayValue('https://example.com')).toBeInTheDocument()
   })
 
-  it('New Test button is disabled when no active suite', async () => {
-    await act(async () => {
-      render(<MainRecorderPanel {...baseProps} activeSuiteId={null} />)
-    })
-    const newTestBtn = screen.getByText('recorder.mainRecorderPanel.newTest')
-    expect(newTestBtn.closest('button')).toBeDisabled()
-  })
-
   it('Record button is disabled when already recording', async () => {
+    storeState.isRecording = true
     await act(async () => {
-      render(<MainRecorderPanel {...baseProps} isRecording={true} />)
+      render(<MainRecorderPanel {...baseProps} />)
     })
     expect(screen.getByText('recorder.mainRecorderPanel.record').closest('button')).toBeDisabled()
   })
@@ -68,15 +78,17 @@ describe('MainRecorderPanel', () => {
   })
 
   it('Stop button is enabled when recording', async () => {
+    storeState.isRecording = true
     await act(async () => {
-      render(<MainRecorderPanel {...baseProps} isRecording={true} />)
+      render(<MainRecorderPanel {...baseProps} />)
     })
     expect(screen.getByText('recorder.mainRecorderPanel.stop').closest('button')).not.toBeDisabled()
   })
 
   it('Run button is disabled when recording', async () => {
+    storeState.isRecording = true
     await act(async () => {
-      render(<MainRecorderPanel {...baseProps} isRecording={true} />)
+      render(<MainRecorderPanel {...baseProps} />)
     })
     expect(screen.getByText('recorder.mainRecorderPanel.run').closest('button')).toBeDisabled()
   })

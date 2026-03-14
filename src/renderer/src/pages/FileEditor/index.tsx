@@ -86,8 +86,7 @@ const FileEditor: React.FC = (): JSX.Element => {
   return (
     <div className="flex flex-col w-screen p-8">
       <div className="relative w-full">
-        <div className="absolute -right-1 -bottom-1 w-full h-full bg-[#c14420] rounded-lg" />
-        <div className="relative h-[70vh] border rounded-lg shadow-sm overflow-y-auto bg-white z-10">
+        <div className="relative h-[70vh] border border-neutral-bdr rounded-lg shadow-card overflow-y-auto bg-white">
           {isLoading ? (
             <h2>{t('editor.loading')}</h2>
           ) : (
@@ -95,11 +94,11 @@ const FileEditor: React.FC = (): JSX.Element => {
               <div className="flex items-center mb-4">
                 <button
                   onClick={() => navigate('/overview')}
-                  className="mr-2 ml-2 focus:outline-none"
+                  className="mr-2 ml-2 focus:outline-none text-neutral-dk hover:text-ruby transition-colors"
                 >
                   <FaArrowLeft />
                 </button>
-                <h2 className="text-xl font-semibold">{fileName}</h2>
+                <h2 className="text-xl font-semibold text-neutral-dark">{fileName}</h2>
               </div>
               <div className="flex-grow overflow-y-auto">
                 <Editor

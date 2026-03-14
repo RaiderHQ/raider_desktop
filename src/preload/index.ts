@@ -4,6 +4,8 @@ import type { FileNode } from '@foundation/Types/fileNode'
 import type { CommandType } from '@foundation/Types/commandType'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
+import type { TraceStep } from '@foundation/Types/traceStep'
+import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 
 declare global {
   interface Window {
@@ -19,7 +21,8 @@ const api = {
     framework: string,
     automation: string,
     rubyCommand: string,
-    mobile: string | null = null
+    mobile: string | null = null,
+    options?: ProjectCreationOptions
   ): Promise<CommandType> => {
     return ipcRenderer.invoke(
       'run-ruby-raider',
@@ -28,7 +31,8 @@ const api = {
       framework,
       automation,
       rubyCommand,
-      mobile
+      mobile,
+      options
     )
   },
   selectFolder: async (title: string): Promise<string | null> =>
@@ -48,13 +52,38 @@ const api = {
     newContent: string
   ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('edit-file', filePath, newContent),
+  deleteFile: async (
+    filePath: string
+  ): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('delete-file', filePath),
+  renameFile: async (
+    filePath: string,
+    newName: string
+  ): Promise<{ success: boolean; newPath?: string; error?: string }> =>
+    ipcRenderer.invoke('rename-file', filePath, newName),
+  duplicateFile: async (
+    filePath: string
+  ): Promise<{ success: boolean; newPath?: string; error?: string }> =>
+    ipcRenderer.invoke('duplicate-file', filePath),
   openAllure: async (): Promise<{ success: boolean; output?: string; error?: string }> =>
     ipcRenderer.invoke('open-allure'),
   runRaiderTests: async (
     folderPath: string,
+    rubyCommand: string,
+    parallel?: boolean
+  ): Promise<{ success: boolean; output?: string; error?: string }> =>
+    ipcRenderer.invoke('run-raider-tests', folderPath, rubyCommand, parallel),
+  runRakeTask: async (
+    folderPath: string,
+    rubyCommand: string,
+    taskName: string
+  ): Promise<{ success: boolean; output?: string; error?: string }> =>
+    ipcRenderer.invoke('run-rake-task', folderPath, rubyCommand, taskName),
+  rerunFailedTests: async (
+    folderPath: string,
     rubyCommand: string
   ): Promise<{ success: boolean; output?: string; error?: string }> =>
-    ipcRenderer.invoke('run-raider-tests', folderPath, rubyCommand),
+    ipcRenderer.invoke('rerun-failed-tests', folderPath, rubyCommand),
   updateBrowserUrl: async (
     projectPath: string,
     url: string
@@ -80,6 +109,7 @@ const api = {
     error?: string
     missingGems?: string[]
     rubyCommand?: string
+    versionWarning?: string
   }> => ipcRenderer.invoke('is-ruby-installed'),
   isRbenvRubyInstalled: async (): Promise<{
     success: boolean
@@ -151,8 +181,17 @@ const api = {
     ipcRenderer.invoke('save-recording', suiteId, testData),
   deleteTest: (suiteId: string, testId: string): Promise<void> =>
     ipcRenderer.invoke('delete-test', { suiteId, testId }),
+  saveTrace: (testId: string, trace: TraceStep[]): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('save-trace', testId, trace),
+  loadTrace: (testId: string): Promise<{ success: boolean; trace?: TraceStep[] }> =>
+    ipcRenderer.invoke('load-trace', testId),
+  deleteTrace: (testId: string): Promise<void> =>
+    ipcRenderer.invoke('delete-trace', testId),
   // Recording Session Control
-  startRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('start-recording-main'),
+  startRecordingMain: async (): Promise<{ success: boolean; url: string; preloadPath: string }> =>
+    ipcRenderer.invoke('start-recording-main'),
+  registerRecorderWebContents: async (webContentsId: number): Promise<void> =>
+    ipcRenderer.invoke('register-recorder-webcontents', webContentsId),
   stopRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('stop-recording-main'),
   loadUrlRequest: async (url: string): Promise<CommandType> =>
     ipcRenderer.invoke('load-url-request', url),
@@ -179,16 +218,88 @@ const api = {
     explicitWait: number
   }): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('update-recording-settings', settings),
-  getSelectorPriorities: (): Promise<string[]> => ipcRenderer.invoke('get-selector-priorities'),
-  saveSelectorPriorities: (priorities: string[]): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke('save-selector-priorities', priorities),
   onTestRunStatus: (
     callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
   ): Electron.IpcRenderer => ipcRenderer.on('test-run-status', callback),
   removeTestRunStatusListener: (
     callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
   ): Electron.IpcRenderer => ipcRenderer.removeListener('test-run-status', callback),
-  closeApp: (): Promise<void> => ipcRenderer.invoke('close-app')
+  closeApp: (): Promise<void> => ipcRenderer.invoke('close-app'),
+
+  // --- Scaffolding APIs ---
+  scaffoldGenerate: async (
+    params: Record<string, unknown>,
+    projectPath: string,
+    rubyCommand: string
+  ): Promise<{ success: boolean; output: string; error?: string }> =>
+    ipcRenderer.invoke('scaffold-generate', params, projectPath, rubyCommand),
+
+  // --- Extended Project Settings APIs ---
+  updateTimeout: async (
+    projectPath: string,
+    seconds: number
+  ): Promise<CommandType> =>
+    ipcRenderer.invoke('update-timeout', projectPath, seconds),
+  updateViewport: async (
+    projectPath: string,
+    width: number,
+    height: number
+  ): Promise<CommandType> =>
+    ipcRenderer.invoke('update-viewport', projectPath, width, height),
+  updateDebugMode: async (
+    projectPath: string,
+    enabled: boolean
+  ): Promise<CommandType> =>
+    ipcRenderer.invoke('update-debug-mode', projectPath, enabled),
+  updateBrowserOptions: async (
+    projectPath: string,
+    options: string[]
+  ): Promise<CommandType> =>
+    ipcRenderer.invoke('update-browser-options', projectPath, options),
+  startAppium: async (projectPath: string): Promise<CommandType> =>
+    ipcRenderer.invoke('start-appium', projectPath),
+  updateHeadlessMode: async (
+    projectPath: string,
+    enabled: boolean
+  ): Promise<{ success: boolean; output?: string; error?: string }> =>
+    ipcRenderer.invoke('update-headless-mode', projectPath, enabled),
+  getProjectConfig: async (
+    projectPath: string
+  ): Promise<{
+    success: boolean
+    config?: {
+      baseUrl?: string
+      browser?: string
+      headless?: boolean
+    }
+    error?: string
+  }> => ipcRenderer.invoke('get-project-config', projectPath),
+
+  // --- Path Configuration APIs ---
+  updatePaths: async (
+    projectPath: string,
+    pathValue: string,
+    pathType?: string
+  ): Promise<CommandType> =>
+    ipcRenderer.invoke('update-paths', projectPath, pathValue, pathType),
+
+  // --- Terminal APIs ---
+  terminalSpawn: async (cwd: string, cols: number, rows: number): Promise<void> =>
+    ipcRenderer.invoke('terminal-spawn', cwd, cols, rows),
+  terminalWrite: async (data: string): Promise<void> =>
+    ipcRenderer.invoke('terminal-write', data),
+  terminalResize: async (cols: number, rows: number): Promise<void> =>
+    ipcRenderer.invoke('terminal-resize', cols, rows),
+  terminalKill: async (): Promise<void> =>
+    ipcRenderer.invoke('terminal-kill'),
+  onTerminalData: (callback: (event: IpcRendererEvent, data: string) => void): Electron.IpcRenderer =>
+    ipcRenderer.on('terminal-data', callback),
+  removeTerminalDataListener: (callback: (event: IpcRendererEvent, data: string) => void): Electron.IpcRenderer =>
+    ipcRenderer.removeListener('terminal-data', callback),
+  onTerminalExit: (callback: (event: IpcRendererEvent) => void): Electron.IpcRenderer =>
+    ipcRenderer.on('terminal-exit', callback),
+  removeTerminalExitListener: (callback: (event: IpcRendererEvent) => void): Electron.IpcRenderer =>
+    ipcRenderer.removeListener('terminal-exit', callback)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

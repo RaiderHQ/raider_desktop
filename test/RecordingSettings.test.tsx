@@ -3,7 +3,6 @@ import RecordingSettings from '@pages/RecorderSettings'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
-// Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string) => string } => ({
     t: (key: string): string => key
@@ -11,14 +10,14 @@ vi.mock('react-i18next', () => ({
 }))
 
 const mockApi = {
-  getSelectorPriorities: vi.fn().mockResolvedValue(['id', 'name', 'css']),
-  updateRecordingSettings: vi.fn(),
-  saveSelectorPriorities: vi.fn()
+  updateRecordingSettings: vi.fn().mockResolvedValue(undefined)
 }
 
 beforeEach(() => {
   // @ts-expect-error - Mocking window.api
   window.api = mockApi
+  vi.clearAllMocks()
+  localStorage.clear()
 })
 
 describe('RecordingSettings Page', (): void => {
@@ -30,39 +29,39 @@ describe('RecordingSettings Page', (): void => {
     expect(screen.getByText('settings.recording.title')).toBeInTheDocument()
     expect(screen.getByLabelText('settings.recording.implicitWait.label')).toBeInTheDocument()
     expect(screen.getByLabelText('settings.recording.explicitWait.label')).toBeInTheDocument()
-    expect(screen.getByText('Selector Priorities')).toBeInTheDocument()
   })
 
-  it('loads initial selector priorities', async (): Promise<void> => {
+  describe('Wait validation', () => {
+    it('does not allow negative implicit wait values', async () => {
+      await act(async () => {
+        render(<RecordingSettings />)
+      })
+
+      const implicitInput = screen.getByLabelText(
+        'settings.recording.implicitWait.label'
+      ) as HTMLInputElement
+      expect(implicitInput.min).toBe('0')
+    })
+  })
+
+  it('updates settings when button is clicked', async () => {
     await act(async () => {
       render(<RecordingSettings />)
     })
 
-    expect(await screen.findByText('id')).toBeInTheDocument()
-    expect(await screen.findByText('name')).toBeInTheDocument()
-    expect(await screen.findByText('css')).toBeInTheDocument()
-  })
-
-  it('adds and removes a selector', async (): Promise<void> => {
+    const implicitInput = screen.getByLabelText('settings.recording.implicitWait.label')
     await act(async () => {
-      render(<RecordingSettings />)
+      fireEvent.change(implicitInput, { target: { value: '5' } })
     })
 
-    const newSelectorInput = screen.getByPlaceholderText('e.g., data-testid')
-    const addButton = screen.getByText('Add')
-
+    const updateButton = screen.getByText('settings.recording.updateRecordingSettingsButton')
     await act(async () => {
-      fireEvent.change(newSelectorInput, { target: { value: 'data-testid' } })
-      fireEvent.click(addButton)
+      fireEvent.click(updateButton)
     })
 
-    expect(screen.getByText('data-testid')).toBeInTheDocument()
-
-    const deleteButton = screen.getAllByText('Delete')[3] // Assuming it's the last one
-    await act(async () => {
-      fireEvent.click(deleteButton)
+    expect(mockApi.updateRecordingSettings).toHaveBeenCalledWith({
+      implicitWait: 5,
+      explicitWait: 30
     })
-
-    expect(screen.queryByText('data-testid')).not.toBeInTheDocument()
   })
 })
