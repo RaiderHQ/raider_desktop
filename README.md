@@ -130,6 +130,18 @@ sudo chown -R $(whoami) /path/to/your/project/folder
 You only need to do this once.
 </details>
 
+<details>
+<summary><strong>macOS: "Ruby Raider is damaged and can't be opened"</strong></summary>
+
+This happens because the app is not yet code-signed with an Apple Developer certificate. To fix it, open Terminal and run:
+
+```bash
+xattr -cr /Applications/Ruby\ Raider.app
+```
+
+If you installed from the DMG to a different location, replace the path accordingly. This only needs to be done once after installation.
+</details>
+
 ---
 
 ## For Developers
@@ -177,7 +189,7 @@ npm run typecheck
 GitHub Actions runs automatically:
 
 - **On PRs to `main`**: Unit tests + typecheck + smoke builds (`test.yml`, `build-test.yml`)
-- **On tag push (`v*`)**: Full cross-platform builds (macOS ARM + Intel, Windows, Linux) → GitHub Release with downloadable artifacts (`release.yml`)
+- **On tag push (`v*`)** or **manual dispatch**: Full cross-platform builds (macOS, Windows, Linux) → GitHub Release with downloadable artifacts (`release.yml`)
 
 To create a release, tag a commit and push:
 
