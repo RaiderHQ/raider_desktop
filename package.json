@@ -1,6 +1,6 @@
 {
   "name": "ruby-raider",
-  "version": "2.0.0",
+  "version": "3.2.1",
   "description": "Desktop app for Ruby Raider",
   "main": "./out/main/index.js",
   "author": "Augustin Gottlieb Pequeno",
