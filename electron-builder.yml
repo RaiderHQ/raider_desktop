@@ -28,7 +28,7 @@ mac:
   category: public.app-category.developer-tools
   icon: build/icon.icns
   hardenedRuntime: true
-  notarize: true
+  notarize: false
   gatekeeperAssess: false
   extendInfo:
     NSCameraUsageDescription: Application requests access to the device's camera.
