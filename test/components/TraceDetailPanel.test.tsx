@@ -88,10 +88,8 @@ describe('TraceDetailPanel', () => {
       }
     })
     render(<TraceDetailPanel step={step} />)
-    // x and y are rounded
-    expect(screen.getByText(/101/)).toBeInTheDocument()
-    expect(screen.getByText(/200/)).toBeInTheDocument()
-    expect(screen.getByText(/50/)).toBeInTheDocument()
+    // x and y are rounded, rendered as "101, 200 (50x30)"
+    expect(screen.getByText(/101,\s*200\s*\(50x30\)/)).toBeInTheDocument()
   })
 
   it('does not render innerText when not provided', () => {
