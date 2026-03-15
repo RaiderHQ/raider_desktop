@@ -33,9 +33,10 @@ function parseA11yMessage(msg: string): A11yViolation[] | null {
   const violations: A11yViolation[] = []
   const ruleBlocks = msg.split(/\d+\)\s+/).slice(1)
   for (const block of ruleBlocks) {
-    const headerMatch = block.match(/^(\S+):\s*(.+?)\s*\((\w+)\)\s*(https?:\/\/\S+)/)
+    const headerMatch = block.match(/^(\S+):\s*(.+)\((\w+)\)\s*(https?:\/\/\S+)/)
     if (!headerMatch) continue
-    const [, id, description, severity, helpUrl] = headerMatch
+    const [, id, rawDesc, severity, helpUrl] = headerMatch
+    const description = rawDesc.trim()
     const nodes: A11yNode[] = []
     const nodeBlocks = block.split(/Selector:\s+/).slice(1)
     for (const nb of nodeBlocks) {
