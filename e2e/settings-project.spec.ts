@@ -17,11 +17,10 @@ test.describe('Project Settings', () => {
     await overviewSettingsTab.click()
     await page.waitForTimeout(3000)
 
-    // The settings tab should show sections like Timeout, Viewport, etc.
+    // The settings tab should show sections like Timeout, Debug, etc.
     const bodyText = await page.locator('body').textContent()
     const hasSettingsContent =
       bodyText?.includes('Timeout') ||
-      bodyText?.includes('Viewport') ||
       bodyText?.includes('Debug') ||
       bodyText?.includes('Loading') ||
       bodyText?.includes('Base Url') ||
