@@ -93,8 +93,9 @@ const Index: React.FC = (): JSX.Element => {
               msg = msg.substring(0, encodingErrIdx).trim() || msg.substring(0, 500)
             }
             // Cap very long messages (e.g. full axe-core source dumps)
-            if (msg.length > 2000) {
-              msg = msg.substring(0, 2000) + '\n… (message truncated)'
+            // Use a generous limit so multi-violation a11y reports aren't truncated
+            if (msg.length > 20000) {
+              msg = msg.substring(0, 20000) + '\n… (message truncated)'
             }
             result.statusDetails.message = msg
           }
