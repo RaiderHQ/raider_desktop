@@ -96,7 +96,7 @@ const Index: React.FC = (): JSX.Element => {
   }, [projectPath, t])
 
   const passedTests = results.filter((r) => r.status === 'passed')
-  const failedTests = results.filter((r) => r.status === 'failed')
+  const failedTests = results.filter((r) => r.status === 'failed' || r.status === 'broken')
   const skippedTests = results.filter((r) => r.status === 'skipped')
 
   const passedCount = passedTests.length
