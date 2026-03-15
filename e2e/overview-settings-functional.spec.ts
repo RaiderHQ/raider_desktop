@@ -121,42 +121,6 @@ test.describe('Overview Settings Tab - Functional', () => {
     await expect(toast).toBeVisible({ timeout: 5000 })
   })
 
-  // ── Viewport ────────────────────────────────────
-
-  test('viewport update triggers updateViewport with dimensions', async ({ page }) => {
-    await mockIPCCapture(page, 'updateViewport', { success: true })
-    await page.locator('#viewport-width').fill('800')
-    await page.locator('#viewport-height').fill('600')
-    const viewportSection = page.locator('details').filter({ has: page.locator('#viewport-width') })
-    await viewportSection.getByText('Update', { exact: false }).click()
-    await page.waitForTimeout(500)
-
-    const calls = await getIPCCalls(page, 'updateViewport')
-    expect(calls.length).toBe(1)
-    expect(calls[0][0]).toBe('/mock/test-project')
-    expect(calls[0][1]).toBe(800)
-    expect(calls[0][2]).toBe(600)
-  })
-
-  test('Mobile preset sets 375x812', async ({ page }) => {
-    await page.getByText('Mobile', { exact: true }).click()
-    await expect(page.locator('#viewport-width')).toHaveValue('375')
-    await expect(page.locator('#viewport-height')).toHaveValue('812')
-  })
-
-  test('Desktop preset sets 1920x1080', async ({ page }) => {
-    // First change viewport to something else, then click Desktop
-    await page.locator('#viewport-width').fill('800')
-    await page.getByText('Desktop', { exact: true }).click()
-    await expect(page.locator('#viewport-width')).toHaveValue('1920')
-    await expect(page.locator('#viewport-height')).toHaveValue('1080')
-  })
-
-  test('Tablet preset sets 768x1024', async ({ page }) => {
-    await page.getByText('Tablet', { exact: true }).click()
-    await expect(page.locator('#viewport-width')).toHaveValue('768')
-    await expect(page.locator('#viewport-height')).toHaveValue('1024')
-  })
 
   // ── Debug ───────────────────────────────────────
 

@@ -208,7 +208,6 @@ describe('Overview Page', (): void => {
 
     await waitFor(() => {
       expect(screen.getByText('settings.section.timeout')).toBeInTheDocument()
-      expect(screen.getByText('settings.section.viewport')).toBeInTheDocument()
       expect(screen.getByText('settings.section.browserOptions')).toBeInTheDocument()
       expect(screen.getByText('settings.section.paths')).toBeInTheDocument()
     })
