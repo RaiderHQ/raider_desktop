@@ -98,11 +98,18 @@ jobs:
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create tag (manual dispatch only)
+      - name: Create or update tag (manual dispatch only)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.version != ''
         run: |
-          git tag ${{ steps.version.outputs.tag }}
-          git push origin ${{ steps.version.outputs.tag }}
+          git tag -f ${{ steps.version.outputs.tag }}
+          git push origin ${{ steps.version.outputs.tag }} --force
+
+      - name: Delete existing release
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.version != ''
+        run: |
+          gh release delete ${{ steps.version.outputs.tag }} --cleanup-tag=false --yes 2>/dev/null || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -110,6 +117,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Ruby Raider ${{ steps.version.outputs.tag }}
           generate_release_notes: true
+          make_latest: true
           files: artifacts/*
           body: |
             ## Downloads
