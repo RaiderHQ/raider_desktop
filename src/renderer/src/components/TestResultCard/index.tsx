@@ -40,16 +40,21 @@ function parseA11yMessage(msg: string): A11yViolation[] | null {
     const nodes: A11yNode[] = []
     const nodeBlocks = block.split(/Selector:\s+/).slice(1)
     for (const nb of nodeBlocks) {
-      const selectorMatch = nb.match(/^(.+?)[\r\n]/)
-      const htmlMatch = nb.match(/HTML:\s*(.+?)[\r\n]/)
-      const fixMatch = nb.match(/Fix any of the following:\s*[\r\n]\s*-\s*(.+?)(?:[\r\n]|$)/)
+      const selectorMatch = nb.match(/^(.+?)(?:[\r\n]|$)/)
+      const htmlMatch = nb.match(/HTML:\s*(.+?)(?:[\r\n]|$)/)
+      const fixMatch =
+        nb.match(/Fix any of the following:\s*[\r\n]\s*-\s*(.+?)(?:[\r\n]|$)/) ||
+        nb.match(/Fix all of the following:\s*[\r\n]\s*-\s*(.+?)(?:[\r\n]|$)/)
+      // If no "Fix ..." block, grab the first indented line after HTML as the description
+      const descMatch = !fixMatch ? nb.match(/(?:HTML:.*[\r\n])\s+(.+?)(?:[\r\n]|$)/) : null
       nodes.push({
         selector: selectorMatch?.[1]?.trim() || '',
         html: htmlMatch?.[1]?.trim() || '',
-        fix: fixMatch?.[1]?.trim() || ''
+        fix: fixMatch?.[1]?.trim() || descMatch?.[1]?.trim() || ''
       })
     }
-    violations.push({ id, description, severity, helpUrl, nodes })
+    const validNodes = nodes.filter((n) => n.selector || n.html || n.fix)
+    violations.push({ id, description, severity, helpUrl, nodes: validNodes })
   }
   return violations.length > 0 ? violations : null
 }
