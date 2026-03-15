@@ -23,7 +23,7 @@
 <br />
 
 > [!WARNING]
-> Raider Desktop is currently available for **macOS only**. Windows and Linux builds are generated via CI but are not yet fully tested.
+> Raider Desktop is currently fully tested for **macOS only**. Windows and Linux builds are generated via CI but are not yet fully tested.
 
 Raider Desktop is the UI companion for [Ruby Raider](https://github.com/RaiderHQ/ruby_raider) — a Ruby test automation framework. It provides an intuitive interface for creating projects, recording tests, editing code, running suites, and viewing results, all without needing to touch the command line.
 
