@@ -168,7 +168,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
 
   if (status === 'passed') {
     statusIcon = <FaCheckCircle className="text-status-ok" />
-  } else if (status === 'failed') {
+  } else if (status === 'failed' || status === 'broken') {
     statusIcon = <FaTimesCircle className="text-red-500" />
   } else if (status === 'skipped') {
     statusIcon = <FaExclamationCircle className="text-neutral-mid" />

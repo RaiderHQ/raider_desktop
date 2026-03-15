@@ -28,7 +28,7 @@ export function safeExec(
   const timeout = Math.min(options.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS)
 
   return new Promise((resolve) => {
-    const child = exec(command, { ...options, timeout }, (error, stdout, stderr) => {
+    const child = exec(command, { ...options, timeout, encoding: 'utf8' }, (error, stdout, stderr) => {
       if (error && error.killed) {
         resolve({
           stdout: stdout?.toString() ?? '',
