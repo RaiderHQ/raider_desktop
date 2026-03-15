@@ -6,11 +6,6 @@ import ToggleSwitch from '@components/ToggleSwitch'
 import TagInput from '@components/TagInput'
 import useProjectStore from '@foundation/Stores/projectStore'
 
-const VIEWPORT_PRESETS: { label: string; width: number; height: number }[] = [
-  { label: 'Desktop', width: 1920, height: 1080 },
-  { label: 'Tablet', width: 768, height: 1024 },
-  { label: 'Mobile', width: 375, height: 812 }
-]
 
 const Settings: React.FC = () => {
   const { t } = useTranslation()
@@ -28,9 +23,7 @@ const Settings: React.FC = () => {
   // New settings state
   const [timeout, setTimeout_] = useState(30)
   const [isUpdatingTimeout, setIsUpdatingTimeout] = useState(false)
-  const [viewportWidth, setViewportWidth] = useState(1920)
-  const [viewportHeight, setViewportHeight] = useState(1080)
-  const [isUpdatingViewport, setIsUpdatingViewport] = useState(false)
+
   const [debugMode, setDebugMode] = useState(false)
   const [isUpdatingDebug, setIsUpdatingDebug] = useState(false)
   const [browserOptions, setBrowserOptions] = useState<string[]>([])
@@ -151,26 +144,6 @@ const Settings: React.FC = () => {
     }
   }
 
-  const handleViewportUpdate = async (): Promise<void> => {
-    setIsUpdatingViewport(true)
-    try {
-      const result = await window.api.updateViewport(projectPath, viewportWidth, viewportHeight)
-      if (result.success) {
-        toast.success(t('settings.viewport.updateSuccess'))
-      } else {
-        toast.error(result.error || t('settings.error.unexpected'))
-      }
-    } catch (error) {
-      toast.error(`${t('settings.error.unexpected')}: ${error}`)
-    } finally {
-      setIsUpdatingViewport(false)
-    }
-  }
-
-  const handleViewportPreset = (preset: { width: number; height: number }): void => {
-    setViewportWidth(preset.width)
-    setViewportHeight(preset.height)
-  }
 
   const handleDebugToggle = async (enabled: boolean): Promise<void> => {
     setDebugMode(enabled)
@@ -262,7 +235,6 @@ const Settings: React.FC = () => {
     ? ['settings.section.appium']
     : [
         'settings.section.timeout',
-        'settings.section.viewport',
         'settings.section.debug',
         'settings.section.browserOptions'
       ]
@@ -383,56 +355,7 @@ const Settings: React.FC = () => {
                       </div>
                     </>
                   )}
-                  {section === 'settings.section.viewport' && (
-                    <>
-                      <div className="flex gap-4 items-end mt-2">
-                        <div>
-                          <label htmlFor="viewport-width" className="font-medium block mb-1">
-                            {t('settings.viewport.width')}
-                          </label>
-                          <input
-                            type="number"
-                            id="viewport-width"
-                            value={viewportWidth}
-                            onChange={(e) => setViewportWidth(Number(e.target.value))}
-                            className="border p-1 rounded w-24"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="viewport-height" className="font-medium block mb-1">
-                            {t('settings.viewport.height')}
-                          </label>
-                          <input
-                            type="number"
-                            id="viewport-height"
-                            value={viewportHeight}
-                            onChange={(e) => setViewportHeight(Number(e.target.value))}
-                            className="border p-1 rounded w-24"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex gap-2 mt-3">
-                        {VIEWPORT_PRESETS.map((preset) => (
-                          <button
-                            key={preset.label}
-                            onClick={() => handleViewportPreset(preset)}
-                            className="px-3 py-1 text-xs border border-neutral-bdr rounded hover:bg-neutral-lt transition-colors"
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="mt-4">
-                        <Button
-                          onClick={handleViewportUpdate}
-                          type="primary"
-                          disabled={isUpdatingViewport}
-                        >
-                          {t('settings.viewport.updateButton')}
-                        </Button>
-                      </div>
-                    </>
-                  )}
+
                   {section === 'settings.section.debug' && (
                     <div className="mt-2">
                       <ToggleSwitch

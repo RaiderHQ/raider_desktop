@@ -112,7 +112,6 @@ describe('Project Settings in Tests view', (): void => {
     await renderSettingsTab()
 
     expect(screen.getByText('settings.section.timeout')).toBeInTheDocument()
-    expect(screen.getByText('settings.section.viewport')).toBeInTheDocument()
     expect(screen.getByText('settings.section.browserOptions')).toBeInTheDocument()
     expect(screen.getByText('settings.section.paths')).toBeInTheDocument()
   })
