@@ -61,13 +61,14 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      # To enable code signing, add CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID,
-      # APPLE_ID_PASSWORD, and APPLE_TEAM_ID as repository secrets, then
-      # replace CSC_IDENTITY_AUTO_DISCOVERY: false with the secrets below.
       - name: Build
         run: ${{ matrix.build_cmd }}
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
