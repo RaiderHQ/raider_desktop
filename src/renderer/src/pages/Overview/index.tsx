@@ -842,11 +842,11 @@ const Overview: React.FC = () => {
 
       {activeTab === 'settings' && (
         <div className="relative w-full">
-          <div className="relative h-[70vh] border border-neutral-bdr rounded-lg shadow-card overflow-y-auto bg-white p-4">
+          <div className="relative h-[70vh] border border-neutral-bdr rounded-lg shadow-card overflow-y-auto bg-white p-4 flex items-start justify-center">
             {settingsLoading ? (
               <p>{t('settings.loading')}</p>
             ) : (
-              <div className="border border-neutral-bdr rounded-lg overflow-hidden max-w-[60vw] mx-auto">
+              <div className="border border-neutral-bdr rounded-lg overflow-hidden w-full max-w-2xl">
                 {/* Appium Settings — mobile projects */}
                 {isMobileProject && (
                   <>
