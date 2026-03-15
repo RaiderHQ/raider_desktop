@@ -83,6 +83,21 @@ const Index: React.FC = (): JSX.Element => {
             const attachment = result.attachments[0]
             result.screenshot = `${projectPath}/allure-results/${attachment.source}`
           }
+          if (result.statusDetails?.message) {
+            let msg = result.statusDetails.message
+            // Strip non-printable / replacement characters that come from encoding failures
+            msg = msg.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFD]/g, '')
+            // If the message contains a Ruby encoding error, extract just the useful part
+            const encodingErrIdx = msg.indexOf('Unable to encode string')
+            if (encodingErrIdx !== -1) {
+              msg = msg.substring(0, encodingErrIdx).trim() || msg.substring(0, 500)
+            }
+            // Cap very long messages (e.g. full axe-core source dumps)
+            if (msg.length > 2000) {
+              msg = msg.substring(0, 2000) + '\n… (message truncated)'
+            }
+            result.statusDetails.message = msg
+          }
           return result
         })
         setResults(resultsWithMedia)

@@ -33,7 +33,11 @@ const handler = async (
 
     const result = await safeExec(commandToExecute, {
       cwd: normalizedFolderPath,
-      timeout: 120_000
+      timeout: 120_000,
+      env: {
+        ...process.env,
+        RUBYOPT: [process.env.RUBYOPT, '-EUTF-8'].filter(Boolean).join(' ')
+      }
     })
 
     const stderr = result.stderr.trim()
