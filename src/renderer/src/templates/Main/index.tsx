@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import toast, { Toaster } from 'react-hot-toast'
 import Logo from '@components/Logo'
@@ -8,6 +8,7 @@ import RubyInstallModal from '@components/RubyInstallModal'
 import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
 import useVersionStore from '@foundation/Stores/versionStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
+import useProjectStore from '@foundation/Stores/projectStore'
 
 const MainTemplate: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -64,6 +65,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
   }
 
   const isCreateProjectView = location.pathname === '/project/new'
+  const projectPath = useProjectStore((state) => state.projectPath)
 
   const isActive = (paths: string[]): boolean =>
     paths.some((p) => (p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)))
@@ -71,14 +73,13 @@ const MainTemplate: React.FC = (): JSX.Element => {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <header className="flex items-center justify-between bg-white px-8 py-3 border-b border-neutral-bdr shadow-nav">
-        <div className="flex items-center gap-3">
+        <Link to="/overview" className="flex items-center gap-3">
           <Logo size={36} />
           <span className="text-lg font-bold text-neutral-dark tracking-tight">Ruby Raider</span>
-        </div>
+        </Link>
 
-        {!isCreateProjectView && (
+        {!isCreateProjectView && projectPath && (
           <nav className="flex gap-2">
-            <NavBtn to="/overview" label={t('menu.tests')} active={isActive(['/overview'])} />
             <NavBtn to="/recorder" label="Recorder" active={isActive(['/recorder'])} />
           </nav>
         )}
