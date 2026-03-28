@@ -144,7 +144,7 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
   if (!activeSuiteName) {
     return (
       <div className="flex-none border-b border-neutral-bdr pb-4 space-y-1">
-        <h2 className="text-xl font-semibold">{t('recorder.mainRecorderPanel.noSuite')}</h2>
+        <h2 className="text-sm font-semibold text-neutral-dark">{t('recorder.mainRecorderPanel.noSuite')}</h2>
         <p className="text-sm text-neutral-mid">{t('recorder.mainRecorderPanel.emptyHelper')}</p>
       </div>
     )
@@ -153,7 +153,7 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
   return (
     <div className="flex-none border-b border-neutral-bdr pb-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">
+        <h2 className="text-sm font-semibold text-neutral-dark">
           {t('recorder.mainRecorderPanel.suite', { activeSuiteName })}
         </h2>
       </div>

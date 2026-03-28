@@ -258,8 +258,8 @@ const Recorder: React.FC = (): JSX.Element => {
 
           {/* Inline wait settings */}
           <div className="flex items-center gap-4 px-1">
-            <div className="flex items-center gap-2 text-sm text-neutral-mid">
-              <label htmlFor="implicit-wait" className="font-medium whitespace-nowrap">
+            <div className="flex items-center gap-2">
+              <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                 {t('settings.recording.implicitWait.label')}
               </label>
               <input
@@ -271,10 +271,9 @@ const Recorder: React.FC = (): JSX.Element => {
                 className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
                 min="0"
               />
-              <span className="text-xs">s</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-neutral-mid">
-              <label htmlFor="explicit-wait" className="font-medium whitespace-nowrap">
+            <div className="flex items-center gap-2">
+              <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                 {t('settings.recording.explicitWait.label')}
               </label>
               <input
@@ -286,7 +285,6 @@ const Recorder: React.FC = (): JSX.Element => {
                 className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
                 min="0"
               />
-              <span className="text-xs">s</span>
             </div>
           </div>
 
@@ -315,7 +313,7 @@ const Recorder: React.FC = (): JSX.Element => {
               </div>
               {/* Recorded steps panel */}
               <div className="w-[40%] flex flex-col space-y-2">
-                <h3 className="px-1 text-lg font-semibold text-neutral-dark">
+                <h3 className="px-1 text-sm font-semibold text-neutral-dark">
                   {t('recorder.recorderPage.recordedSteps')}
                 </h3>
                 <div className="flex-1 min-h-0">
@@ -370,7 +368,7 @@ const Recorder: React.FC = (): JSX.Element => {
             <>
               <div className="flex-1 flex flex-row min-h-0">
                 <div className="w-[30%] flex flex-col space-y-2 pr-4 border-r border-neutral-bdr">
-                  <h3 className="px-1 text-lg font-semibold text-neutral-dark">
+                  <h3 className="px-1 text-sm font-semibold text-neutral-dark">
                     {t('recorder.recorderPage.testSuites')}
                   </h3>
                   <div className="flex-1 min-h-0">
@@ -391,7 +389,7 @@ const Recorder: React.FC = (): JSX.Element => {
                   </div>
                 </div>
                 <div className="w-[70%] flex flex-col space-y-2 pl-4">
-                  <h3 className="px-1 text-lg font-semibold text-neutral-dark">
+                  <h3 className="px-1 text-sm font-semibold text-neutral-dark">
                     {t('recorder.recorderPage.recordedSteps')}
                   </h3>
                   <div className="flex-1 min-h-0">

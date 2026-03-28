@@ -24,7 +24,7 @@ const InputField: React.FC<InputFieldProps> = ({
   autoFocus = false
 }) => {
   const baseStyles =
-    'block w-full px-3 py-2 border border-neutral-bdr rounded-md shadow-sm text-sm md:text-base lg:text-lg focus:ring-ruby focus:border-ruby transition-colors'
+    'block w-full px-3 py-1 border border-neutral-bdr rounded text-sm focus:ring-ruby focus:border-ruby transition-colors'
   const disabledStyles = 'bg-neutral-lt cursor-not-allowed'
 
   const combinedClassName = `${baseStyles} ${disabled ? disabledStyles : ''} ${className}`.trim()

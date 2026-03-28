@@ -188,18 +188,18 @@
         "unexpected": "An unexpected error occurred. Please try again."
       },
       "implicitWait": {
-        "label": "Implicit Wait (seconds)",
+        "label": "Implicit Wait",
         "description": "The default time to wait for elements to appear during playback."
       },
       "explicitWait": {
-        "label": "Explicit Wait (seconds)",
+        "label": "Explicit Wait",
         "description": "The maximum time to wait for a specific condition to be met."
       },
       "recordingUpdateSuccess": "Recording settings updated successfully!",
       "updateRecordingSettingsButton": "Update Settings"
     },
     "timeout": {
-      "label": "Test timeout (seconds):",
+      "label": "Test timeout",
       "updateButton": "Update Timeout",
       "updateSuccess": "Timeout updated successfully!"
     },

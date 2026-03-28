@@ -34,7 +34,6 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
   const activeSuite = suites.find((s) => s.id === activeSuiteId)
 
   const [newSuiteName, setNewSuiteName] = useState('')
-  const [isSuiteDropdownOpen, setIsSuiteDropdownOpen] = useState(false)
   const [isCreatingSuite, setIsCreatingSuite] = useState(false)
   const [displayedTests, setDisplayedTests] = useState<Test[]>([])
 
@@ -44,16 +43,6 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
   useEffect(() => {
     setDisplayedTests(activeSuite?.tests ?? [])
   }, [activeSuite?.tests])
-
-  useEffect((): (() => void) => {
-    const handleClickOutside = (event: MouseEvent): void => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsSuiteDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return (): void => document.removeEventListener('mousedown', handleClickOutside)
-  }, [dropdownRef])
 
   const handleCreateSuiteConfirm = (): void => {
     if (newSuiteName.trim()) {
@@ -73,12 +62,10 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
         onDeleteSuite(activeSuiteId)
       }
     }
-    setIsSuiteDropdownOpen(false)
   }
 
   const handleNewSuiteClick = (): void => {
     setIsCreatingSuite(true)
-    setIsSuiteDropdownOpen(false)
   }
 
   const handleRunAllClick = (): void => {
@@ -188,52 +175,34 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
   return (
     <div className="w-full h-full p-2 flex flex-col">
       <div className="flex-shrink-0">
-        <div className="flex items-center pb-2 border-b">
-          <div className="relative w-full" ref={dropdownRef}>
-            <button
-              onClick={() => setIsSuiteDropdownOpen((prev) => !prev)}
-              className="w-full flex items-center justify-between px-3 py-2 border rounded bg-white hover:bg-neutral-lt text-left"
+        <div className="flex items-center pb-2 border-b gap-1">
+          <div className="relative flex-1" ref={dropdownRef}>
+            <select
+              value={activeSuiteId ?? ''}
+              onChange={(e) => {
+                const val = e.target.value
+                if (val === '__new__') {
+                  handleNewSuiteClick()
+                } else if (val === '__delete__') {
+                  handleDeleteSuite()
+                } else {
+                  onSuiteChange(val)
+                }
+              }}
+              className="w-full border border-neutral-bdr rounded px-3 py-1 text-sm bg-white"
               aria-label={t('recorder.testSuitePanel.selectSuite')}
             >
-              <span className="font-semibold truncate">
-                {activeSuite?.name ?? t('recorder.testSuitePanel.selectSuite')}
-              </span>
-              <span className="text-xs ml-2">{isSuiteDropdownOpen ? '▲' : '▼'}</span>
-            </button>
-            {isSuiteDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-md shadow-lg z-30 border">
-                <ul>
-                  {suites.map((suite) => (
-                    <li key={suite.id}>
-                      <button
-                        onClick={() => {
-                          onSuiteChange(suite.id)
-                          setIsSuiteDropdownOpen(false)
-                        }}
-                        className="block w-full text-left px-4 py-2 text-sm text-neutral-dk hover:bg-ruby-sub"
-                      >
-                        {suite.name}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <div className="border-t border-neutral-bdr">
-                  <button
-                    onClick={handleNewSuiteClick}
-                    className="block w-full text-left px-4 py-2 text-sm text-ruby hover:bg-neutral-lt"
-                  >
-                    {t('recorder.testSuitePanel.newSuite')}
-                  </button>
-                  <button
-                    onClick={handleDeleteSuite}
-                    disabled={!activeSuiteId}
-                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-status-err-bg disabled:text-neutral-mid"
-                  >
-                    {t('recorder.testSuitePanel.deleteSuite')}
-                  </button>
-                </div>
-              </div>
-            )}
+              {suites.map((suite) => (
+                <option key={suite.id} value={suite.id}>
+                  {suite.name}
+                </option>
+              ))}
+              <option disabled>──────────</option>
+              <option value="__new__">{t('recorder.testSuitePanel.newSuite')}</option>
+              {activeSuiteId && (
+                <option value="__delete__">{t('recorder.testSuitePanel.deleteSuite')}</option>
+              )}
+            </select>
           </div>
           <button
             onClick={handleRunAllClick}

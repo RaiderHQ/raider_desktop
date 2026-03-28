@@ -681,10 +681,10 @@ const Overview: React.FC = () => {
                 data-testid="overview-url-input"
               />
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                  {t('overview.settings.browserLabel')}:
+                  {t('overview.settings.browserLabel')}
                 </label>
                 <select
                   value={selectedBrowser}
@@ -704,11 +704,9 @@ const Overview: React.FC = () => {
                 onChange={handleHeadlessToggle}
                 testId="overview-headless-toggle"
               />
-            </div>
-            <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                  {t('overview.settings.runModeLabel')}:
+                  {t('overview.settings.runModeLabel')}
                 </label>
                 <select
                   value={runMode}
@@ -739,12 +737,10 @@ const Overview: React.FC = () => {
               >
                 {t('overview.settings.rerunFailed')}
               </button>
-            </div>
-            {!isMobileProject && (
-              <div className="flex items-center gap-4">
+              {!isMobileProject && (
                 <div className="flex items-center gap-2">
                   <label htmlFor="timeout-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                    {t('settings.timeout.label')}:
+                    {t('settings.timeout.label')}
                   </label>
                   <input
                     type="number"
@@ -756,25 +752,26 @@ const Overview: React.FC = () => {
                     max={300}
                     className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
                   />
-                  <span className="text-xs text-neutral-mid">s</span>
                 </div>
-                <div className="flex items-center gap-2 flex-1">
-                  <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                    {t('settings.section.browserOptions')}:
-                  </label>
-                  <div className="flex-1">
-                    <TagInput
-                      tags={browserOptions}
-                      onChange={(tags) => {
-                        setBrowserOptions(tags)
-                        if (projectPath) {
-                          window.api.updateBrowserOptions(projectPath, tags)
-                            .catch(() => toast.error(t('settings.error.unexpected')))
-                        }
-                      }}
-                      placeholder={t('settings.browserOptions.placeholder')}
-                    />
-                  </div>
+              )}
+            </div>
+            {!isMobileProject && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                  {t('settings.section.browserOptions')}
+                </label>
+                <div className="flex-1">
+                  <TagInput
+                    tags={browserOptions}
+                    onChange={(tags) => {
+                      setBrowserOptions(tags)
+                      if (projectPath) {
+                        window.api.updateBrowserOptions(projectPath, tags)
+                          .catch(() => toast.error(t('settings.error.unexpected')))
+                      }
+                    }}
+                    placeholder={t('settings.browserOptions.placeholder')}
+                  />
                 </div>
               </div>
             )}
