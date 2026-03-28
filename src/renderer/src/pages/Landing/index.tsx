@@ -6,6 +6,7 @@ import ProjectSelector from '@components/ProjectSelector'
 import Logo from '@components/Logo'
 import OpenFolder from '@assets/icons/open-folder.svg'
 import AddIcon from '@assets/icons/add.svg'
+import RecorderIcon from '@assets/icons/bxs_up-arrow_side.svg'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 
@@ -52,7 +53,15 @@ const Landing: React.FC = (): JSX.Element => {
           {t('landing.subtitle')}
         </p>
 
-        <div className="flex space-x-8 mb-8">
+        <div className="grid grid-cols-3 gap-8 mb-8">
+          <ProjectSelector
+            icon={RecorderIcon}
+            description={t('button.recorder.description')}
+            url="/recorder"
+            buttonValue={t('button.recorder.text')}
+            modalTitleKey="information.openRecorder.title"
+            modalMessageKey="information.openRecorder.message"
+          />
           <ProjectSelector
             icon={OpenFolder}
             description={t('button.create.description')}
