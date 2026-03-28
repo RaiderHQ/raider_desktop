@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { setMainWindow, appState, getRecordingSettings } from './handlers/appState'
+import { getLongshipConfig, setLongshipConfig, LongshipConfig } from './handlers/longship/longshipConfig'
 import type { Test } from '@foundation/Types/test'
 import type { TestData } from '@foundation/Types/testData'
 import type { TraceStep } from '@foundation/Types/traceStep'
@@ -231,7 +232,7 @@ app.whenReady().then(() => {
     }
   )
 
-  ipcMain.handle('run-suite', (_event, suiteId: string, rubyCommand: string) =>
+  ipcMain.handle('run-suite', (_event, suiteId: string, _projectPath: string, rubyCommand: string) =>
     runSuite(suiteId, rubyCommand)
   )
   ipcMain.handle('export-test', (_event, testData: TestData) => exportTest(testData))
@@ -296,6 +297,12 @@ app.whenReady().then(() => {
     'update-paths',
     (event, projectPath: string, pathValue: string, pathType?: string) =>
       updatePaths(event, projectPath, pathValue, pathType as 'feature' | 'spec' | 'helper' | undefined)
+  )
+
+  // --- Longship Integration Handlers ---
+  ipcMain.handle('get-longship-config', () => getLongshipConfig())
+  ipcMain.handle('set-longship-config', (_event, config: Partial<LongshipConfig>) =>
+    setLongshipConfig(config)
   )
 
   // --- Terminal Handlers ---
