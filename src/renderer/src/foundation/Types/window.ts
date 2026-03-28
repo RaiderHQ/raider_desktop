@@ -193,6 +193,18 @@ export interface WindowApi {
   // --- Path Configuration ---
   updatePaths: (projectPath: string, pathValue: string, pathType?: string) => Promise<CommandType>
 
+  // --- Longship Integration ---
+  getLongshipConfig: () => Promise<{
+    url: string
+    apiKey: string
+    enabled: boolean
+  }>
+  setLongshipConfig: (config: {
+    url?: string
+    apiKey?: string
+    enabled?: boolean
+  }) => Promise<{ url: string; apiKey: string; enabled: boolean }>
+
   // --- Terminal ---
   terminalSpawn: (cwd: string, cols: number, rows: number) => Promise<void>
   terminalWrite: (data: string) => Promise<void>
