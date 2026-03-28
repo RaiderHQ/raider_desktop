@@ -141,9 +141,8 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
 
   return (
     <div className="relative w-full mb-3">
-      <div className="absolute -right-1 -bottom-1 w-full h-full" />
       <div
-        className="relative bg-white p-3 pl-4 pr-8 rounded-lg border border-neutral-bdr cursor-grab active:cursor-grabbing transition-shadow duration-200 z-10"
+        className="relative bg-white p-3 pl-4 pr-8 rounded-lg border border-neutral-bdr/50 cursor-grab active:cursor-grabbing transition-shadow duration-200 z-10"
         draggable={!isEditing}
         onDragStart={() => onDragStart(index)}
         onDragEnter={() => onDragEnter(index)}

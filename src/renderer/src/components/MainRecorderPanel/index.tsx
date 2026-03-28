@@ -143,88 +143,101 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
 
   if (!activeSuiteName) {
     return (
-      <div className="flex-none pb-1 pr-1">
-        <div className="relative">
-          <div className="relative flex flex-col border border-neutral-bdr rounded-lg bg-white p-4 space-y-2">
-            <h2 className="text-xl font-semibold">
-              {t('recorder.mainRecorderPanel.noSuite')}
-            </h2>
-            <p className="text-sm text-neutral-mid">
-              {t('recorder.mainRecorderPanel.emptyHelper')}
-            </p>
-          </div>
-        </div>
+      <div className="flex-none border-b border-neutral-bdr pb-4 space-y-1">
+        <h2 className="text-xl font-semibold">{t('recorder.mainRecorderPanel.noSuite')}</h2>
+        <p className="text-sm text-neutral-mid">{t('recorder.mainRecorderPanel.emptyHelper')}</p>
       </div>
     )
   }
 
   return (
-    <div className="flex-none pb-1 pr-1">
-      <div className="relative">
-        <div className="relative flex flex-col border border-neutral-bdr rounded-lg bg-white p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">
-              {t('recorder.mainRecorderPanel.suite', { activeSuiteName })}
-            </h2>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex-1">
-              <InputField
-                value={activeTest?.name ?? ''}
-                onChange={onTestNameChange}
-                placeholder={t('recorder.mainRecorderPanel.testName')}
-                disabled={!activeTest}
-              />
-            </div>
-            <div className="flex-1">
-              <InputField
-                value={activeTest?.url ?? ''}
-                onChange={onUrlChange}
-                placeholder={t('recorder.mainRecorderPanel.url')}
-                disabled={!activeTest}
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-between border-t border-neutral-bdr pt-4">
-            <div className="flex items-center space-x-2">
-              <Button
-                onClick={onNewTest}
-                disabled={!activeSuiteId}
-                type={!activeSuiteId ? 'disabled' : 'secondary'}
-              >
-                {t('recorder.mainRecorderPanel.newTest')}
-              </Button>
-              <Dropdown
-                buttonText={t('recorder.mainRecorderPanel.more')}
-                options={moreOptions}
-                defaultOption={0}
-                disabled={false}
-              />
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                onClick={onStartRecording}
-                disabled={!activeTest || isRecording}
-                type={isRecording ? 'disabled' : 'primary'}
-              >
-                {t('recorder.mainRecorderPanel.record')}
-              </Button>
-              <Button
-                onClick={onRunTest}
-                disabled={!activeTest || isRecording || isRunning}
-                type={!activeTest || isRecording || isRunning ? 'disabled' : 'success'}
-              >
-                {t('recorder.mainRecorderPanel.run')}
-              </Button>
-              <Button
-                onClick={onStopRecording}
-                disabled={!isRecording}
-                type={!isRecording ? 'disabled' : 'secondary'}
-              >
-                {t('recorder.mainRecorderPanel.stop')}
-              </Button>
-            </div>
-          </div>
+    <div className="flex-none border-b border-neutral-bdr pb-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">
+          {t('recorder.mainRecorderPanel.suite', { activeSuiteName })}
+        </h2>
+      </div>
+      <div className="flex items-center space-x-4">
+        <div className="flex-1">
+          <InputField
+            value={activeTest?.name ?? ''}
+            onChange={onTestNameChange}
+            placeholder={t('recorder.mainRecorderPanel.testName')}
+            disabled={!activeTest}
+          />
+        </div>
+        <div className="flex-1">
+          <InputField
+            value={activeTest?.url ?? ''}
+            onChange={onUrlChange}
+            placeholder={t('recorder.mainRecorderPanel.url')}
+            disabled={!activeTest}
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={onNewTest}
+            disabled={!activeSuiteId}
+            className={`text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors ${
+              !activeSuiteId
+                ? 'text-neutral-mid cursor-not-allowed bg-white'
+                : 'text-neutral-dk bg-white hover:bg-neutral-50'
+            }`}
+          >
+            {t('recorder.mainRecorderPanel.newTest')}
+          </button>
+          <Dropdown
+            buttonText={t('recorder.mainRecorderPanel.more')}
+            options={moreOptions}
+            defaultOption={0}
+            disabled={false}
+          />
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={onStartRecording}
+            disabled={!activeTest || isRecording}
+            title={t('recorder.mainRecorderPanel.record')}
+            className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
+              !activeTest || isRecording
+                ? 'text-neutral-300 cursor-not-allowed'
+                : 'text-red-500 hover:bg-red-50'
+            }`}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <circle cx="12" cy="12" r="8" />
+            </svg>
+          </button>
+          <button
+            onClick={onRunTest}
+            disabled={!activeTest || isRecording || isRunning}
+            title={t('recorder.mainRecorderPanel.run')}
+            className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
+              !activeTest || isRecording || isRunning
+                ? 'text-neutral-300 cursor-not-allowed'
+                : 'text-green-600 hover:bg-green-50'
+            }`}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <polygon points="5,3 19,12 5,21" />
+            </svg>
+          </button>
+          <button
+            onClick={onStopRecording}
+            disabled={!isRecording}
+            title={t('recorder.mainRecorderPanel.stop')}
+            className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
+              !isRecording
+                ? 'text-neutral-300 cursor-not-allowed'
+                : 'text-neutral-dark hover:bg-neutral-100'
+            }`}
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <rect x="4" y="4" width="16" height="16" rx="2" />
+            </svg>
+          </button>
         </div>
       </div>
     </div>

@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
-import Button from '@components/Button'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import { useTranslation } from 'react-i18next'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 
 interface TestSuitePanelProps {
   suites: Suite[]
@@ -30,6 +30,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
   onReorderTests
 }) => {
   const { t } = useTranslation()
+  const isRunning = useRecorderStore((s) => s.isRunning)
   const activeSuite = suites.find((s) => s.id === activeSuiteId)
 
   const [newSuiteName, setNewSuiteName] = useState('')
@@ -234,15 +235,26 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
               </div>
             )}
           </div>
-          <div className="pl-4">
-            <Button
-              type="success"
-              onClick={handleRunAllClick}
-              disabled={!activeSuite || activeSuite.tests.length === 0}
-            >
-              {t('recorder.testSuitePanel.runAll')}
-            </Button>
-          </div>
+          <button
+            onClick={handleRunAllClick}
+            disabled={!activeSuite || activeSuite.tests.length === 0 || isRunning}
+            title={t('recorder.testSuitePanel.runAll')}
+            className={`ml-2 w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full transition-colors ${
+              !activeSuite || activeSuite.tests.length === 0 || isRunning
+                ? 'text-neutral-300 cursor-not-allowed'
+                : 'text-green-600 hover:bg-green-50'
+            }`}
+          >
+            {isRunning ? (
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round"/>
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <polygon points="5,3 19,12 5,21" />
+              </svg>
+            )}
+          </button>
         </div>
 
         {isCreatingSuite && (
@@ -301,7 +313,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
                   e.stopPropagation()
                   onTestDeleteRequest(test)
                 }}
-                className="p-4 h-full w-12 flex items-center justify-center text-neutral-mid group-hover:opacity-100 hover:text-white hover:bg-red-200 transition-all"
+                className="mr-1 w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-neutral-mid opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 transition-all"
                 aria-label={`Delete test ${test.name}`}
               >
                 <svg

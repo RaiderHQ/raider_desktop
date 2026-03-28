@@ -40,7 +40,7 @@ const CommandList: React.FC<CommandListProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="w-full flex-grow h-full max-h-[60vh] overflow-y-auto p-1 bg-neutral-lt rounded-b-md">
+      <div className="w-full flex-grow h-full max-h-[60vh] overflow-y-auto p-1">
         {steps.length > 0 ? (
           steps.map((step, index) => (
             <CommandBlock
