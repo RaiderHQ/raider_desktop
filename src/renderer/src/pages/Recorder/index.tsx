@@ -24,7 +24,7 @@ interface AssertionInfo {
   text: string
 }
 
-type RecorderTab = 'recording' | 'dashboard' | 'settings'
+type RecorderTab = 'recording' | 'dashboard'
 
 const Recorder: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -209,6 +209,13 @@ const Recorder: React.FC = (): JSX.Element => {
     setAssertionInfo(null)
   }
 
+  const runStatus: 'pass' | 'fail' | null = React.useMemo(() => {
+    if (!runOutput || runOutput.startsWith('Running')) return null
+    if (/0 failures?/i.test(runOutput) || /\bpassed\b/i.test(runOutput)) return 'pass'
+    if (/\d+ failures?/i.test(runOutput) || /\bfailed\b/i.test(runOutput)) return 'fail'
+    return null
+  }, [runOutput])
+
   return (
     <div className="flex flex-col h-screen w-screen p-4 space-y-4 bg-neutral-lt">
       {/* Tab bar */}
@@ -233,16 +240,17 @@ const Recorder: React.FC = (): JSX.Element => {
         >
           {t('recorder.tabs.dashboard')}
         </button>
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`px-5 py-2 text-sm font-semibold transition-colors ${
-            activeTab === 'settings'
-              ? 'text-neutral-dark border-b-2 border-ruby'
-              : 'text-neutral-mid hover:text-neutral-dk'
-          }`}
-        >
-          {t('recorder.tabs.settings')}
-        </button>
+        {runStatus && (
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`ml-auto flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-white transition-opacity hover:opacity-80 ${
+              runStatus === 'pass' ? 'bg-green-500' : 'bg-red-500'
+            }`}
+          >
+            <span className="text-base leading-none">{runStatus === 'pass' ? '✓' : '✕'}</span>
+            {runStatus === 'pass' ? 'Passed' : 'Failed'}
+          </button>
+        )}
       </div>
 
       {/* Recording tab */}
@@ -253,6 +261,41 @@ const Recorder: React.FC = (): JSX.Element => {
             onRunTest={handleRunTest}
             onStopRecording={handleStopRecording}
           />
+
+          {/* Inline wait settings */}
+          <div className="flex items-center gap-4 px-1">
+            <div className="flex items-center gap-2 text-sm text-neutral-mid">
+              <label htmlFor="implicit-wait" className="font-medium whitespace-nowrap">
+                {t('settings.recording.implicitWait.label')}
+              </label>
+              <input
+                type="number"
+                id="implicit-wait"
+                value={implicitWait}
+                onChange={handleImplicitWaitChange}
+                className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                min="0"
+              />
+              <span className="text-xs">s</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-neutral-mid">
+              <label htmlFor="explicit-wait" className="font-medium whitespace-nowrap">
+                {t('settings.recording.explicitWait.label')}
+              </label>
+              <input
+                type="number"
+                id="explicit-wait"
+                value={explicitWait}
+                onChange={handleExplicitWaitChange}
+                className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                min="0"
+              />
+              <span className="text-xs">s</span>
+            </div>
+            <Button onClick={handleUpdateSettings} type="secondary" disabled={isUpdatingSettings}>
+              {t('settings.recording.updateRecordingSettingsButton')}
+            </Button>
+          </div>
 
           {/* When recording: embedded browser + steps side by side */}
           {recordingUrl && preloadPath ? (
@@ -445,65 +488,6 @@ const Recorder: React.FC = (): JSX.Element => {
         <div className="flex-1 min-h-0 overflow-y-auto pb-1 pr-1">
           <div className="border border-neutral-bdr rounded-lg bg-white p-4">
             <RecordingDashboard runOutput={runOutput} />
-          </div>
-        </div>
-      )}
-
-      {/* Settings tab */}
-      {activeTab === 'settings' && (
-        <div className="flex-1 min-h-0 overflow-y-auto pb-1 pr-1">
-          <div className="border border-neutral-bdr rounded-lg bg-white p-4">
-            <h2 className="text-xl font-bold mb-1">{t('settings.recording.title')}</h2>
-            <p className="text-sm text-neutral-mid mb-4">
-              {t('settings.recording.description')}
-            </p>
-
-            <details open className="mb-4">
-              <summary className="cursor-pointer font-semibold text-neutral-dark mb-2">
-                {t('settings.recording.implicitWait.label')} &amp;{' '}
-                {t('settings.recording.explicitWait.label')}
-              </summary>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="border border-neutral-bdr rounded-lg p-3">
-                  <label htmlFor="implicit-wait" className="font-medium mr-2">
-                    {t('settings.recording.implicitWait.label')}
-                  </label>
-                  <input
-                    type="number"
-                    id="implicit-wait"
-                    value={implicitWait}
-                    onChange={handleImplicitWaitChange}
-                    className="border p-1 rounded mt-2"
-                    min="0"
-                  />
-                  <p className="text-sm text-neutral-mid mt-1">
-                    {t('settings.recording.implicitWait.description')}
-                  </p>
-                </div>
-                <div className="border border-neutral-bdr rounded-lg p-3">
-                  <label htmlFor="explicit-wait" className="font-medium mr-2">
-                    {t('settings.recording.explicitWait.label')}
-                  </label>
-                  <input
-                    type="number"
-                    id="explicit-wait"
-                    value={explicitWait}
-                    onChange={handleExplicitWaitChange}
-                    className="border p-1 rounded mt-2"
-                    min="0"
-                  />
-                  <p className="text-sm text-neutral-mid mt-1">
-                    {t('settings.recording.explicitWait.description')}
-                  </p>
-                </div>
-              </div>
-            </details>
-
-            <div className="mt-4">
-              <Button onClick={handleUpdateSettings} type="primary" disabled={isUpdatingSettings}>
-                {t('settings.recording.updateRecordingSettingsButton')}
-              </Button>
-            </div>
           </div>
         </div>
       )}
