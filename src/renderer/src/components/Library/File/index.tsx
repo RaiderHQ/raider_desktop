@@ -35,7 +35,7 @@ const File: React.FC<FileProps> = ({ name, path, onFileClick, onGenerateSpec, on
 
   return (
     <div
-      className="flex items-center px-4 py-2 border-b cursor-pointer hover:bg-neutral-lt hover:text-ruby"
+      className="flex items-center px-2 py-1.5 border-b cursor-pointer hover:bg-neutral-lt hover:text-ruby"
       onClick={() => onFileClick(path)}
       onContextMenu={handleContextMenu}
     >
