@@ -283,6 +283,19 @@ const api = {
   ): Promise<CommandType> =>
     ipcRenderer.invoke('update-paths', projectPath, pathValue, pathType),
 
+  // --- Longship Integration APIs ---
+  getLongshipConfig: async (): Promise<{
+    url: string
+    apiKey: string
+    enabled: boolean
+  }> => ipcRenderer.invoke('get-longship-config'),
+  setLongshipConfig: async (config: {
+    url?: string
+    apiKey?: string
+    enabled?: boolean
+  }): Promise<{ url: string; apiKey: string; enabled: boolean }> =>
+    ipcRenderer.invoke('set-longship-config', config),
+
   // --- Terminal APIs ---
   terminalSpawn: async (cwd: string, cols: number, rows: number): Promise<void> =>
     ipcRenderer.invoke('terminal-spawn', cwd, cols, rows),

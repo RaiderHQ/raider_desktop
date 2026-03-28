@@ -4,6 +4,7 @@ import { CommandType } from '@foundation/Types/commandType'
 import { safeExec } from '../../utils/safeExec'
 import checkBundle from '../ruby/checkBundle'
 import bundleInstall from '../ruby/bundleInstall'
+import { pushToLongship } from '../longship/pushToLongship'
 
 const handler = async (
   mainWindow: BrowserWindow,
@@ -31,6 +32,7 @@ const handler = async (
     const normalizedFolderPath = path.resolve(folderPath)
     const commandToExecute = `${rubyCommand} -S bundle exec raider u raid${parallel ? ' -p' : ''}`
 
+    const startTime = Date.now()
     const result = await safeExec(commandToExecute, {
       cwd: normalizedFolderPath,
       timeout: 120_000,
@@ -39,6 +41,7 @@ const handler = async (
         RUBYOPT: [process.env.RUBYOPT, '-EUTF-8'].filter(Boolean).join(' ')
       }
     })
+    const durationMs = Date.now() - startTime
 
     const stderr = result.stderr.trim()
     const stdout = result.stdout.trim()
@@ -47,9 +50,11 @@ const handler = async (
     // that's normal. Only treat it as an error if there's no test output.
     if (result.exitCode !== 0 && !stdout) {
       const errorMessage = stderr || 'Test execution failed with no output.'
+      pushToLongship(false, errorMessage, durationMs)
       return { success: false, error: errorMessage, output: '' }
     }
 
+    pushToLongship(true, stdout, durationMs)
     return { success: true, output: stdout }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
