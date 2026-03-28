@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { FaFolder, FaChevronDown, FaChevronRight, FaPlay } from 'react-icons/fa'
+import { FaFolder, FaChevronDown, FaChevronRight } from 'react-icons/fa'
 import File from '@components/Library/File'
 import { FileNode } from '@foundation/Types/fileNode'
 
@@ -46,7 +46,7 @@ const Folder: React.FC<FolderProps> = ({
   return (
     <>
       <div
-        className="flex items-center w-full px-4 py-2 bg-neutral-lt border-b focus:outline-none"
+        className="flex items-center w-full px-2 py-1.5 border-b focus:outline-none"
         onContextMenu={handleFolderContextMenu}
       >
         {!isRoot && (
@@ -54,11 +54,17 @@ const Folder: React.FC<FolderProps> = ({
             {isOpen ? <FaChevronDown /> : <FaChevronRight />}
           </button>
         )}
-        <FaFolder className="ml-2 mr-2" />
+        <FaFolder className="mr-2" />
         <span className="font-semibold flex-grow">{name}</span>
         {isRoot && onRunTests && (
-          <button onClick={onRunTests} className="ml-auto focus:outline-none">
-            <FaPlay className="text-status-ok hover:text-status-ok" />
+          <button
+            onClick={onRunTests}
+            title="Run tests"
+            className="ml-auto w-7 h-7 flex items-center justify-center rounded-full text-green-600 hover:bg-green-50 transition-colors"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+              <polygon points="5,3 19,12 5,21" />
+            </svg>
           </button>
         )}
       </div>

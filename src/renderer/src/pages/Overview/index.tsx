@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { sample } from 'lodash'
-import { FaArrowLeft, FaTerminal } from 'react-icons/fa'
+import { FaTerminal } from 'react-icons/fa'
 import Folder from '@components/Library/Folder'
 import ScaffoldPanel from '@components/ScaffoldPanel'
 import ContextMenu from '@components/ContextMenu'
@@ -79,7 +79,6 @@ const Overview: React.FC = () => {
 
   // Terminal state
   const [terminalOpen, setTerminalOpen] = useState(false)
-  const [fileTreeCollapsed, setFileTreeCollapsed] = useState(false)
 
   // Inline editor state
   const [editingFile, setEditingFile] = useState<{ path: string; name: string } | null>(null)
@@ -660,10 +659,7 @@ const Overview: React.FC = () => {
         <div className="ml-auto">
           {activeTab === 'files' && !terminalOpen && (
             <button
-              onClick={() => {
-                setTerminalOpen(true)
-                setFileTreeCollapsed(true)
-              }}
+              onClick={() => setTerminalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-dk border border-neutral-bdr rounded hover:bg-neutral-lt transition-colors"
               data-testid="open-terminal-btn"
             >
@@ -756,26 +752,32 @@ const Overview: React.FC = () => {
             </div>
           </div>
           <div className="relative h-[62vh] border border-t-0 border-neutral-bdr rounded-b-lg shadow-card flex flex-col bg-white">
-            {/* File tree / editor area */}
-            {!fileTreeCollapsed && (
-              <div className={`${terminalOpen ? 'h-1/3' : 'flex-1'} overflow-y-auto`}>
+            {/* Split: file tree left + editor preview right */}
+            <div className={`${terminalOpen ? 'h-1/3' : 'flex-1'} flex flex-row min-h-0 overflow-hidden`}>
+              {/* File tree - always visible */}
+              <div className="w-[28%] border-r border-neutral-bdr overflow-y-auto shrink-0">
+                <Folder
+                  name={projectPath ? projectPath.split('/').pop() : ''}
+                  path={projectPath || ''}
+                  files={files}
+                  defaultOpen={true}
+                  onFileClick={handleOpenFile}
+                  isRoot={true}
+                  onRunTests={handleRunRaiderTests}
+                  onGenerateSpec={handleGenerateSpec}
+                  onFileContextMenu={handleFileContextMenu}
+                  onFolderContextMenu={handleFolderContextMenu}
+                />
+              </div>
+              {/* Editor preview */}
+              <div className="flex-1 flex flex-col overflow-hidden">
                 {editingFile ? (
-                  <div className="flex flex-col h-full">
-                    <div className="flex items-center px-4 py-2 border-b border-neutral-bdr bg-neutral-50 shrink-0">
-                      <button
-                        onClick={() => {
-                          setEditingFile(null)
-                          setFileContent('')
-                          if (projectPath) useProjectStore.getState().loadFiles(projectPath)
-                        }}
-                        className="mr-3 text-neutral-dk hover:text-ruby transition-colors"
-                      >
-                        <FaArrowLeft />
-                      </button>
+                  <>
+                    <div className="flex items-center px-4 py-2 border-b border-neutral-bdr shrink-0">
                       <span className="text-sm font-semibold text-neutral-dark truncate">{editingFile.name}</span>
                     </div>
                     {isLoadingFile ? (
-                      <div className="flex-1 flex items-center justify-center text-neutral-mid">
+                      <div className="flex-1 flex items-center justify-center text-neutral-mid text-sm">
                         {t('editor.loading')}
                       </div>
                     ) : (
@@ -787,43 +789,23 @@ const Overview: React.FC = () => {
                         />
                       </div>
                     )}
-                  </div>
+                  </>
                 ) : (
-                  <Folder
-                    name={projectPath ? projectPath.split('/').pop() : ''}
-                    path={projectPath || ''}
-                    files={files}
-                    defaultOpen={true}
-                    onFileClick={handleOpenFile}
-                    isRoot={true}
-                    onRunTests={handleRunRaiderTests}
-                    onGenerateSpec={handleGenerateSpec}
-                    onFileContextMenu={handleFileContextMenu}
-                    onFolderContextMenu={handleFolderContextMenu}
-                  />
+                  <div className="flex-1 flex items-center justify-center text-neutral-mid text-sm">
+                    Select a file to preview
+                  </div>
                 )}
               </div>
-            )}
+            </div>
 
             {/* Terminal panel */}
             {terminalOpen && projectPath && (
               <>
-                {/* Toggle bar to show/hide file tree */}
-                <div className="flex items-center px-3 py-1 bg-neutral-50 border-y border-neutral-bdr shrink-0">
-                  <button
-                    onClick={() => setFileTreeCollapsed(!fileTreeCollapsed)}
-                    className="text-xs text-neutral-dk hover:text-neutral-dark transition-colors"
-                  >
-                    {fileTreeCollapsed ? 'Show Files' : 'Hide Files'}
-                  </button>
-                </div>
+                <div className="border-t border-neutral-bdr shrink-0" />
                 <div className="flex-1 min-h-0">
                   <Terminal
                     cwd={projectPath}
-                    onClose={() => {
-                      setTerminalOpen(false)
-                      setFileTreeCollapsed(false)
-                    }}
+                    onClose={() => setTerminalOpen(false)}
                   />
                 </div>
               </>
