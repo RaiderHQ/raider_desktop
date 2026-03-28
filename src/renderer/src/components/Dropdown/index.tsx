@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react'
-import Button from '@components/Button'
 
 interface DropdownOption {
   label: string
@@ -50,16 +49,20 @@ const Dropdown: React.FC<DropdownProps> = ({
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>
       <div>
-        <Button
+        <button
           onClick={handleToggle}
           disabled={disabled}
-          type={disabled ? 'disabled' : 'secondary'}
+          className={`text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors ${
+            disabled
+              ? 'text-neutral-mid cursor-not-allowed bg-white'
+              : 'text-neutral-dk bg-white hover:bg-neutral-50'
+          }`}
         >
           {buttonText}
-        </Button>
+        </button>
       </div>
       {isOpen && (
-        <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+        <div className="origin-top-left absolute left-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
           <div
             className="py-1"
             role="menu"

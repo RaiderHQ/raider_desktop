@@ -12,7 +12,6 @@ import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { formatLocator } from '@foundation/recorderUtils'
 import { useSuiteSync, useRecordingIPC } from '../../hooks/useRecorderIPC'
-import Button from '@components/Button'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import DeleteModal from '@components/DeleteModal'
@@ -62,7 +61,6 @@ const Recorder: React.FC = (): JSX.Element => {
   // Recording settings state
   const [implicitWait, setImplicitWait] = useState(0)
   const [explicitWait, setExplicitWait] = useState(30)
-  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false)
 
   // IPC hooks
   useSuiteSync()
@@ -87,16 +85,12 @@ const Recorder: React.FC = (): JSX.Element => {
   }
 
   const handleUpdateSettings = async (): Promise<void> => {
-    setIsUpdatingSettings(true)
     try {
       await window.api.updateRecordingSettings({ implicitWait, explicitWait })
       localStorage.setItem('implicitWait', implicitWait.toString())
       localStorage.setItem('explicitWait', explicitWait.toString())
-      toast.success(t('settings.recording.recordingUpdateSuccess'))
     } catch (error) {
       toast.error(`${t('settings.recording.error.unexpected')} : ${error}`)
-    } finally {
-      setIsUpdatingSettings(false)
     }
   }
 
@@ -217,7 +211,7 @@ const Recorder: React.FC = (): JSX.Element => {
   }, [runOutput])
 
   return (
-    <div className="flex flex-col h-screen w-screen p-4 space-y-4 bg-neutral-lt">
+    <div className="flex flex-col h-screen w-screen p-4 space-y-4 bg-white">
       {/* Tab bar */}
       <div className="flex items-center border-b border-neutral-bdr">
         <button
@@ -273,6 +267,7 @@ const Recorder: React.FC = (): JSX.Element => {
                 id="implicit-wait"
                 value={implicitWait}
                 onChange={handleImplicitWaitChange}
+                onBlur={handleUpdateSettings}
                 className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
                 min="0"
               />
@@ -287,14 +282,12 @@ const Recorder: React.FC = (): JSX.Element => {
                 id="explicit-wait"
                 value={explicitWait}
                 onChange={handleExplicitWaitChange}
+                onBlur={handleUpdateSettings}
                 className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
                 min="0"
               />
               <span className="text-xs">s</span>
             </div>
-            <Button onClick={handleUpdateSettings} type="secondary" disabled={isUpdatingSettings}>
-              {t('settings.recording.updateRecordingSettingsButton')}
-            </Button>
           </div>
 
           {/* When recording: embedded browser + steps side by side */}
@@ -325,17 +318,18 @@ const Recorder: React.FC = (): JSX.Element => {
                 <h3 className="px-1 text-lg font-semibold text-neutral-dark">
                   {t('recorder.recorderPage.recordedSteps')}
                 </h3>
-                <div className="flex-1 pb-1 pr-1 min-h-0">
+                <div className="flex-1 min-h-0">
                   <StyledPanel>
                     <>
-                      <div className="flex justify-between items-center p-1 border-b border-neutral-bdr">
-                        <div className="flex gap-1">
-                          <Button onClick={() => setShowCode(!showCode)} type="secondary">
-                            {showCode
-                              ? t('recorder.recorderPage.friendlyView')
-                              : t('recorder.recorderPage.codeView')}
-                          </Button>
-                        </div>
+                      <div className="flex items-center p-1 border-b border-neutral-bdr">
+                        <button
+                          onClick={() => setShowCode(!showCode)}
+                          className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
+                        >
+                          {showCode
+                            ? t('recorder.recorderPage.friendlyView')
+                            : t('recorder.recorderPage.codeView')}
+                        </button>
                       </div>
                       <CommandList
                         steps={activeTest?.steps ?? []}
@@ -374,12 +368,12 @@ const Recorder: React.FC = (): JSX.Element => {
           ) : (
             /* Normal view: suites + steps */
             <>
-              <div className="flex-1 flex flex-row space-x-4 min-h-0">
-                <div className="w-[30%] flex flex-col space-y-2">
+              <div className="flex-1 flex flex-row min-h-0">
+                <div className="w-[30%] flex flex-col space-y-2 pr-4 border-r border-neutral-bdr">
                   <h3 className="px-1 text-lg font-semibold text-neutral-dark">
                     {t('recorder.recorderPage.testSuites')}
                   </h3>
-                  <div className="flex-1 pb-1 pr-1 min-h-0">
+                  <div className="flex-1 min-h-0">
                     <StyledPanel>
                       <TestSuitePanel
                         suites={suites}
@@ -396,11 +390,11 @@ const Recorder: React.FC = (): JSX.Element => {
                     </StyledPanel>
                   </div>
                 </div>
-                <div className="w-[70%] flex flex-col space-y-2">
+                <div className="w-[70%] flex flex-col space-y-2 pl-4">
                   <h3 className="px-1 text-lg font-semibold text-neutral-dark">
                     {t('recorder.recorderPage.recordedSteps')}
                   </h3>
-                  <div className="flex-1 pb-1 pr-1 min-h-0">
+                  <div className="flex-1 min-h-0">
                     <StyledPanel>
                       {!activeTest && !activeSuiteId ? (
                         <div className="flex items-center justify-center h-full text-neutral-mid text-sm p-8 text-center">
@@ -413,21 +407,22 @@ const Recorder: React.FC = (): JSX.Element => {
                       ) : (
                         <>
                           <div className="flex justify-between items-center p-1 border-b border-neutral-bdr">
-                            <div className="flex gap-1">
-                              <Button onClick={() => setShowCode(!showCode)} type="secondary">
-                                {showCode
-                                  ? t('recorder.recorderPage.friendlyView')
-                                  : t('recorder.recorderPage.codeView')}
-                              </Button>
-                            </div>
-                            <Button
+                            <button
+                              onClick={() => setShowCode(!showCode)}
+                              className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
+                            >
+                              {showCode
+                                ? t('recorder.recorderPage.friendlyView')
+                                : t('recorder.recorderPage.codeView')}
+                            </button>
+                            <button
                               onClick={() => setIsOutputVisible(!isOutputVisible)}
-                              type="secondary"
+                              className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
                             >
                               {isOutputVisible
                                 ? t('recorder.recorderPage.hideOutput')
                                 : t('recorder.recorderPage.testOutput')}
-                            </Button>
+                            </button>
                           </div>
                           <CommandList
                             steps={activeTest?.steps ?? []}
@@ -467,7 +462,7 @@ const Recorder: React.FC = (): JSX.Element => {
               <div
                 className={`${isOutputVisible ? 'h-48' : 'h-0 overflow-hidden'} transition-all duration-300 mt-2`}
               >
-                <div className="h-full pb-1 pr-1">
+                <div className="h-full">
                   <StyledPanel>
                     <div className="flex justify-between items-center p-1 border-b border-neutral-bdr">
                       <h3 className="text-lg font-semibold text-neutral-dark">
@@ -485,10 +480,8 @@ const Recorder: React.FC = (): JSX.Element => {
 
       {/* Dashboard tab */}
       {activeTab === 'dashboard' && (
-        <div className="flex-1 min-h-0 overflow-y-auto pb-1 pr-1">
-          <div className="border border-neutral-bdr rounded-lg bg-white p-4">
-            <RecordingDashboard runOutput={runOutput} />
-          </div>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <RecordingDashboard runOutput={runOutput} />
         </div>
       )}
 
