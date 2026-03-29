@@ -113,7 +113,7 @@ describe('Overview Page', (): void => {
     expect(mockNavigate).toHaveBeenCalledWith('/start-project')
   })
 
-  it('renders Files, Scaffolding, Dashboard, and Settings tabs', async (): Promise<void> => {
+  it('renders Files, Scaffolding, and Dashboard tabs', async (): Promise<void> => {
     useProjectStore.setState({ projectPath: '/fake/project', files: [] })
     await act(async () => {
       render(
@@ -126,7 +126,6 @@ describe('Overview Page', (): void => {
     expect(screen.getByText('overview.tabs.files')).toBeInTheDocument()
     expect(screen.getByText('Scaffolding')).toBeInTheDocument()
     expect(screen.getByText('overview.tabs.dashboard')).toBeInTheDocument()
-    expect(screen.getByText('overview.tabs.settings')).toBeInTheDocument()
   })
 
   it('shows file tree by default on Files tab', async (): Promise<void> => {
@@ -194,24 +193,6 @@ describe('Overview Page', (): void => {
     expect(screen.queryByTestId('scaffold-panel')).not.toBeInTheDocument()
   })
 
-  it('shows project settings when Settings tab is clicked', async (): Promise<void> => {
-    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <Overview />
-        </MemoryRouter>
-      )
-    })
-
-    fireEvent.click(screen.getByText('overview.tabs.settings'))
-
-    await waitFor(() => {
-      expect(screen.getByText('settings.section.timeout')).toBeInTheDocument()
-      expect(screen.getByText('settings.section.browserOptions')).toBeInTheDocument()
-      expect(screen.getByText('settings.section.paths')).toBeInTheDocument()
-    })
-  })
 })
 
 describe('Overview Settings Toolbar', (): void => {

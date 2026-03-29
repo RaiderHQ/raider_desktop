@@ -8,6 +8,10 @@ interface CommandListProps {
   onDeleteStep: (index: number) => void
   onEditStep?: (index: number, newCommand: string) => void
   showCode: boolean
+  breakpointIndex?: number | null
+  onSetBreakpoint?: (index: number) => void
+  onClearBreakpoint?: () => void
+  onRecordFromHere?: (index: number) => void
 }
 
 const CommandList: React.FC<CommandListProps> = ({
@@ -15,7 +19,11 @@ const CommandList: React.FC<CommandListProps> = ({
   setSteps,
   onDeleteStep,
   onEditStep,
-  showCode
+  showCode,
+  breakpointIndex,
+  onSetBreakpoint,
+  onClearBreakpoint,
+  onRecordFromHere
 }) => {
   const { t } = useTranslation()
   const dragItemIndex = useRef<number | null>(null)
@@ -40,7 +48,7 @@ const CommandList: React.FC<CommandListProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="w-full flex-grow h-full max-h-[60vh] overflow-y-auto p-1 bg-neutral-lt rounded-b-md">
+      <div className="w-full flex-grow h-full max-h-[60vh] overflow-y-auto p-1">
         {steps.length > 0 ? (
           steps.map((step, index) => (
             <CommandBlock
@@ -53,6 +61,10 @@ const CommandList: React.FC<CommandListProps> = ({
               onDragEnd={handleDragEnd}
               onDelete={onDeleteStep}
               onEdit={onEditStep}
+              isBreakpoint={breakpointIndex === index}
+              onSetBreakpoint={onSetBreakpoint}
+              onClearBreakpoint={onClearBreakpoint}
+              onRecordFromHere={onRecordFromHere}
             />
           ))
         ) : (

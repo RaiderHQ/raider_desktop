@@ -11,22 +11,42 @@ interface DeleteModalProps {
 const DeleteModal: React.FC<DeleteModalProps> = ({ testName, onConfirm, onCancel }) => {
   const { t } = useTranslation()
 
+  const handleOutsideClick = (e: React.MouseEvent): void => {
+    if ((e.target as HTMLElement).id === 'delete-modal-overlay') {
+      onCancel()
+    }
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-xl shadow-elevated w-1/3">
-        <h2 className="text-lg font-semibold mb-4">{t('recorder.deleteModal.title')}</h2>
-        <p className="mb-4">
-          {t('recorder.deleteModal.message')} <span className="font-bold">{testName}</span>?
-        </p>
-        <div className="flex justify-end space-x-2">
+    <div
+      id="delete-modal-overlay"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
+      onClick={handleOutsideClick}
+    >
+      <div
+        className="bg-white rounded-xl shadow-elevated w-full max-w-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-neutral-bdr">
+          <h2 className="text-lg font-semibold text-neutral-dark">
+            {t('recorder.deleteModal.title')}
+          </h2>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-4">
+          <p className="text-neutral-dk">
+            {t('recorder.deleteModal.message')} <span className="font-bold">{testName}</span>?
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-neutral-bdr px-6 py-4 flex justify-end space-x-2">
           <Button onClick={onCancel} type="secondary">
             {t('recorder.deleteModal.cancel')}
           </Button>
-          <Button
-            onClick={onConfirm}
-            type="secondary"
-            className="bg-red-500 hover:bg-red-600 text-white"
-          >
+          <Button onClick={onConfirm} type="danger">
             {t('recorder.deleteModal.delete')}
           </Button>
         </div>

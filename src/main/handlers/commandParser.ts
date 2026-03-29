@@ -97,9 +97,25 @@ const commandParser = (command: string): ParsedCommand | string => {
     },
     {
       regex:
+        /expect\(@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\)\.not_to be_displayed$/,
+      template: (matches: string[]): ParsedCommand => ({
+        key: 'recorder.commandParser.assertElementNotDisplayed',
+        values: { strategy: matches[1], value: matches[2] || matches[3] }
+      })
+    },
+    {
+      regex:
         /expect\(@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\)\.to be_enabled/,
       template: (matches: string[]): ParsedCommand => ({
         key: 'recorder.commandParser.assertElementEnabled',
+        values: { strategy: matches[1], value: matches[2] || matches[3] }
+      })
+    },
+    {
+      regex:
+        /expect\(@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\)\.to be_selected/,
+      template: (matches: string[]): ParsedCommand => ({
+        key: 'recorder.commandParser.assertElementChecked',
         values: { strategy: matches[1], value: matches[2] || matches[3] }
       })
     },
@@ -109,6 +125,44 @@ const commandParser = (command: string): ParsedCommand | string => {
       template: (matches: string[]): ParsedCommand => ({
         key: 'recorder.commandParser.assertElementTextEquals',
         values: { strategy: matches[1], value: matches[2] || matches[3], text: matches[4] }
+      })
+    },
+    {
+      regex:
+        /expect\(@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\.text\)\.to include\("([^"]+)"\)/,
+      template: (matches: string[]): ParsedCommand => ({
+        key: 'recorder.commandParser.assertElementTextIncludes',
+        values: { strategy: matches[1], value: matches[2] || matches[3], text: matches[4] }
+      })
+    },
+    {
+      regex:
+        /expect\(@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\.attribute\("value"\)\)\.to eq\("([^"]+)"\)/,
+      template: (matches: string[]): ParsedCommand => ({
+        key: 'recorder.commandParser.assertElementValue',
+        values: { strategy: matches[1], value: matches[2] || matches[3], text: matches[4] }
+      })
+    },
+    {
+      regex: /expect\(@driver\.title\)\.to eq\("([^"]+)"\)/,
+      template: (matches: string[]): ParsedCommand => ({
+        key: 'recorder.commandParser.assertPageTitle',
+        values: { title: matches[1] }
+      })
+    },
+    {
+      regex: /expect\(@driver\.current_url\)\.to include\("([^"]+)"\)/,
+      template: (matches: string[]): ParsedCommand => ({
+        key: 'recorder.commandParser.assertUrlContains',
+        values: { url: matches[1] }
+      })
+    },
+    {
+      regex:
+        /@wait\.until { !@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\"|[^"])*)")\)\.displayed\? }/,
+      template: (matches: string[]): ParsedCommand => ({
+        key: 'recorder.commandParser.waitForElementDisappear',
+        values: { strategy: matches[1], value: matches[2] || matches[3] }
       })
     }
   ]

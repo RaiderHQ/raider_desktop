@@ -1,5 +1,6 @@
 import { BrowserWindow } from 'electron'
 import type { Suite } from '@foundation/Types/suite'
+import type { ChildProcess } from 'child_process'
 
 interface AppState {
   mainWindow: BrowserWindow | null
@@ -13,6 +14,8 @@ interface AppState {
   suites: Map<string, Suite>
   recordingSettings: RecordingSettings
   activeTraceDir: string | null
+  activeReplayProcess: ChildProcess | null
+  isReplayingInWebview: boolean
 }
 
 interface RecordingSettings {
@@ -55,7 +58,9 @@ export const appState: AppState = {
     implicitWait: 0,
     explicitWait: 30
   },
-  activeTraceDir: null
+  activeTraceDir: null,
+  activeReplayProcess: null,
+  isReplayingInWebview: false
 }
 
 export function setProjectAutomation(automation: string | null): void {

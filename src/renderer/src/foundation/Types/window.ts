@@ -140,6 +140,13 @@ export interface WindowApi {
 
   // --- Recording Session ---
   startRecordingMain: () => Promise<{ success: boolean; url: string; preloadPath: string }>
+  replayStepsAndRecord: (
+    testName: string,
+    stepsToReplay: string[],
+    rubyCommand: string
+  ) => Promise<{ success: boolean; url?: string; preloadPath?: string; error?: string; cancelled?: boolean }>
+  cancelReplay: () => Promise<{ success: boolean }>
+  replayInWebview: (steps: string[]) => Promise<{ success: boolean; error?: string; cancelled?: boolean }>
   registerRecorderWebContents: (webContentsId: number) => Promise<void>
   stopRecordingMain: () => Promise<CommandType>
   loadUrlRequest: (url: string) => Promise<CommandType>
@@ -192,6 +199,18 @@ export interface WindowApi {
 
   // --- Path Configuration ---
   updatePaths: (projectPath: string, pathValue: string, pathType?: string) => Promise<CommandType>
+
+  // --- Longship Integration ---
+  getLongshipConfig: () => Promise<{
+    url: string
+    apiKey: string
+    enabled: boolean
+  }>
+  setLongshipConfig: (config: {
+    url?: string
+    apiKey?: string
+    enabled?: boolean
+  }) => Promise<{ url: string; apiKey: string; enabled: boolean }>
 
   // --- Terminal ---
   terminalSpawn: (cwd: string, cols: number, rows: number) => Promise<void>

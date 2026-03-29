@@ -5,17 +5,23 @@ import { useTranslation } from 'react-i18next'
 
 interface AssertionTextModalProps {
   initialText: string
+  assertionType?: string
   onSave: (text: string) => void
   onClose: () => void
 }
 
 const AssertionTextModal: React.FC<AssertionTextModalProps> = ({
   initialText,
+  assertionType,
   onSave,
   onClose
 }) => {
   const { t } = useTranslation()
   const [text, setText] = useState(initialText)
+
+  const titleKey = `recorder.assertionTextModal.titles.${assertionType || 'text'}`
+  const messageKey = `recorder.assertionTextModal.messages.${assertionType || 'text'}`
+  const labelKey = `recorder.assertionTextModal.labels.${assertionType || 'text'}`
 
   const handleSave = (): void => {
     onSave(text)
@@ -27,19 +33,41 @@ const AssertionTextModal: React.FC<AssertionTextModalProps> = ({
     }
   }
 
+  const handleOutsideClick = (e: React.MouseEvent): void => {
+    if ((e.target as HTMLElement).id === 'assertion-modal-overlay') {
+      onClose()
+    }
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-        <h2 className="text-lg font-semibold mb-4">{t('recorder.assertionTextModal.title')}</h2>
-        <p className="mb-4 text-sm text-neutral-dk">{t('recorder.assertionTextModal.message')}</p>
-        <InputField
-          label={t('recorder.assertionTextModal.label')}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          autoFocus
-        />
-        <div className="mt-6 flex justify-end space-x-2">
+    <div
+      id="assertion-modal-overlay"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
+      onClick={handleOutsideClick}
+    >
+      <div
+        className="bg-white rounded-xl shadow-elevated w-full max-w-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-neutral-bdr">
+          <h2 className="text-lg font-semibold text-neutral-dark">{t(titleKey)}</h2>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-4">
+          <p className="mb-4 text-sm text-neutral-dk">{t(messageKey)}</p>
+          <InputField
+            label={t(labelKey)}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            autoFocus
+          />
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-neutral-bdr px-6 py-4 flex justify-end space-x-2">
           <Button type="secondary" onClick={onClose}>
             {t('recorder.assertionTextModal.cancel')}
           </Button>

@@ -52,6 +52,10 @@
       "text": "Open",
       "description": "Open existing project"
     },
+    "recorder": {
+      "text": "Open",
+      "description": "Record a test session"
+    },
     "back": {
       "text": "Back",
       "description": "Go back to the previous step"
@@ -82,6 +86,10 @@
     "openProject": {
       "title": "Opening an Existing Project",
       "message": "Here you can open an existing project and continue automating your tests."
+    },
+    "openRecorder": {
+      "title": "Open Recorder",
+      "message": "The Recorder lets you capture browser interactions and automatically generate test scripts without writing code.\n\nNo prior coding experience is required."
     },
     "new": {
       "title": "Start a New Project",
@@ -180,18 +188,18 @@
         "unexpected": "An unexpected error occurred. Please try again."
       },
       "implicitWait": {
-        "label": "Implicit Wait (seconds)",
+        "label": "Implicit Wait",
         "description": "The default time to wait for elements to appear during playback."
       },
       "explicitWait": {
-        "label": "Explicit Wait (seconds)",
+        "label": "Explicit Wait",
         "description": "The maximum time to wait for a specific condition to be met."
       },
       "recordingUpdateSuccess": "Recording settings updated successfully!",
       "updateRecordingSettingsButton": "Update Settings"
     },
     "timeout": {
-      "label": "Test timeout (seconds):",
+      "label": "Test timeout",
       "updateButton": "Update Timeout",
       "updateSuccess": "Timeout updated successfully!"
     },
@@ -336,8 +344,21 @@
     "passed": "Passed",
     "failed": "Failed",
     "skipped": "Skipped",
-    "noResults": "Please run your tests to see the results on the dashboard.",
-    "noRecordingResults": "Please run a test to see the recording results on the dashboard.",
+    "noResults": {
+      "title": "No test results yet",
+      "subtitle": "Run your tests from the Files tab and results will appear here.",
+      "step1": "Open the Files tab and browse your project files.",
+      "step2": "Use the toolbar to choose your browser, run mode, and timeout.",
+      "step3": "Click the Run button — then come back here to see the results."
+    },
+    "noRecordingResults": {
+      "title": "No recording results yet",
+      "subtitle": "Record and run a test from the Recording tab to see results here.",
+      "step1": "Go to the Recording tab and select or create a test suite.",
+      "step2": "Create a new test, enter the URL you want to test, and press Record.",
+      "step3": "Interact with the page in the browser — every action is captured as a step.",
+      "step4": "Press Stop, then Run to execute the test and see the results here."
+    },
     "viewTrace": "View Trace",
     "backToResults": "Back to Results",
     "traceTitle": "Trace View",
@@ -380,9 +401,27 @@
       "runOutput": "Run Output"
     },
     "assertionTextModal": {
-      "title": "Assert Element Text",
-      "message": "Enter the exact text you expect the element to contain.",
-      "label": "Expected Text",
+      "titles": {
+        "text": "Assert Element Text",
+        "text-includes": "Assert Element Text Includes",
+        "value": "Assert Element Value",
+        "page-title": "Assert Page Title",
+        "page-url": "Assert Current URL"
+      },
+      "messages": {
+        "text": "Enter the exact text you expect the element to contain.",
+        "text-includes": "Enter the text you expect to find within the element.",
+        "value": "Enter the value you expect in this input field.",
+        "page-title": "Enter the exact page title you expect.",
+        "page-url": "Enter the text you expect the URL to contain (e.g. /dashboard)."
+      },
+      "labels": {
+        "text": "Expected Text",
+        "text-includes": "Text to Find",
+        "value": "Expected Value",
+        "page-title": "Expected Title",
+        "page-url": "URL Contains"
+      },
       "cancel": "Cancel",
       "save": "Save Assertion"
     },
@@ -393,16 +432,16 @@
       "delete": "Delete"
     },
     "rubyInstallModal": {
-      "title": "Ruby Installation Required",
-      "message": "To use all features of the app, you need to install Ruby using rbenv with a version higher than 3.1.0",
+      "title": "Ruby Not Found",
+      "message": "Ruby Raider needs Ruby 3+ installed via rbenv. Follow the steps below to get set up.",
       "continue": "Continue",
       "close": "Close App"
     },
     "rubyGemsInstallModal": {
-      "title": "Missing Dependencies",
-      "message": "The following gems are missing: {{missingGems}}. Would you like to install them?",
-      "yes": "Yes",
-      "no": "No"
+      "title": "Missing Gems",
+      "message": "The following gems are missing: {{missingGems}}.",
+      "yes": "Install Now",
+      "no": "Skip"
     },
     "mainRecorderPanel": {
       "suite": "Suite: {{activeSuiteName}}",
@@ -426,7 +465,13 @@
       "exportError": "Export failed: {{error}}",
       "importSuccess": "{{importType}} imported successfully!",
       "importError": "Import failed: {{error}}",
-      "emptyHelper": "Select or create a suite to get started"
+      "emptyHelper": "Select or create a suite to get started",
+      "replaying": "Replaying to breakpoint..."
+    },
+    "breakpoint": {
+      "recordFromHere": "Record from here",
+      "replayFailed": "Replay failed",
+      "stopReplay": "Stop Replay"
     },
     "outputPanel": {
       "title": "Test Results:",
@@ -486,8 +531,153 @@
       "switchToFrame": "Switch to frame identified by {{frame}}",
       "switchToDefaultContent": "Switch back to main content",
       "assertElementDisplayed": "Assert that element with {{strategy}} \"{{value}}\" is displayed",
+      "assertElementNotDisplayed": "Assert that element with {{strategy}} \"{{value}}\" is NOT displayed",
       "assertElementEnabled": "Assert that element with {{strategy}} \"{{value}}\" is enabled",
-      "assertElementTextEquals": "Assert that element with {{strategy}} \"{{value}}\" has text equal to \"{{text}}\""
+      "assertElementChecked": "Assert that element with {{strategy}} \"{{value}}\" is checked",
+      "assertElementTextEquals": "Assert that element with {{strategy}} \"{{value}}\" has text equal to \"{{text}}\"",
+      "assertElementTextIncludes": "Assert that element with {{strategy}} \"{{value}}\" has text including \"{{text}}\"",
+      "assertElementValue": "Assert that element with {{strategy}} \"{{value}}\" has value \"{{text}}\"",
+      "assertPageTitle": "Assert that page title equals \"{{title}}\"",
+      "assertUrlContains": "Assert that current URL contains \"{{url}}\"",
+      "waitForElementDisappear": "Wait for element with {{strategy}} \"{{value}}\" to disappear"
     }
+  },
+  "concepts": {
+    "title": "How Ruby Raider Works",
+    "subtitle": "New here? These are the key ideas you need to get started.",
+    "hint": "Hover over any button or input in the app for a quick explanation. Click ℹ on any tab for more detail.",
+    "installTitle": "Installation Prerequisites",
+    "installSubtitle": "Ruby Raider needs three things installed on your machine before it can run.",
+    "install": {
+      "mac": {
+        "step1": { "title": "1. Install rbenv (via Homebrew)", "desc": "rbenv manages Ruby versions. Homebrew must be installed first (brew.sh)." },
+        "step2": { "title": "2. Install Ruby 3+", "desc": "Install Ruby 3 or higher and set it as the global version." },
+        "step3": { "title": "3. Install ruby_raider", "desc": "Install the gem from RubyGems." }
+      },
+      "linux": {
+        "step1": { "title": "1. Install rbenv (via git)", "desc": "Clone rbenv and ruby-build into your home directory, then reload your shell." },
+        "step2": { "title": "2. Install Ruby 3+", "desc": "Install Ruby 3 or higher and set it as the global version." },
+        "step3": { "title": "3. Install ruby_raider", "desc": "Install the gem from RubyGems." }
+      },
+      "windows": {
+        "note": "Native Windows support is coming soon. In the meantime, use WSL (Windows Subsystem for Linux) and follow the Linux steps.",
+        "step1": { "title": "1. Enable WSL", "desc": "Run PowerShell as Administrator and install WSL." },
+        "step2": { "title": "2. Follow Linux steps inside WSL", "desc": "Open the WSL terminal and follow the Linux installation instructions above." },
+        "step3": { "title": "3. Install ruby_raider", "desc": "Install the gem inside WSL." }
+      },
+      "rbenv": {
+        "title": "1. Install rbenv",
+        "message": "rbenv manages Ruby versions on your machine. Run in Terminal:",
+        "command": "brew install rbenv ruby-build && rbenv init"
+      },
+      "ruby": {
+        "title": "2. Install Ruby 3+",
+        "message": "Once rbenv is set up, install Ruby 3 or higher:",
+        "command": "rbenv install 3.4.1 && rbenv global 3.4.1"
+      },
+      "gem": {
+        "title": "3. Install ruby_raider",
+        "message": "Install the Ruby Raider gem using the terminal:",
+        "command": "gem install ruby_raider"
+      }
+    },
+    "suite": {
+      "title": "Test Suite",
+      "message": "A suite is a named folder that groups related tests together — for example, all tests for your login page.\n\nYou can run an entire suite at once."
+    },
+    "test": {
+      "title": "Test",
+      "message": "A test is a single script that checks one thing — like 'can a user log in?'.\n\nIt has a name, a starting URL, and a list of recorded steps."
+    },
+    "recording": {
+      "title": "Recording",
+      "message": "When you press Record, a browser opens and every click, keystroke, and navigation you make is captured automatically as a step.\n\nNo code needed."
+    },
+    "running": {
+      "title": "Running a Test",
+      "message": "When you press Run, Ruby Raider opens the browser and replays every recorded step automatically.\n\nIt then tells you whether the test passed or failed."
+    },
+    "steps": {
+      "title": "Recorded Steps",
+      "message": "Steps are the individual actions in a test — things like 'click button', 'type text', or 'visit URL'.\n\nYou can reorder, edit, or delete steps at any time."
+    },
+    "overview": {
+      "title": "Project Overview",
+      "message": "The Overview is your project's home.\n\nBrowse files on the left, preview them on the right, and use the toolbar to set your browser, run mode, and test timeout."
+    }
+  },
+  "help": {
+    "recorder": {
+      "recording": {
+        "title": "Recording a Test",
+        "message": "Pick a suite from the dropdown, create a test, and enter the URL you want to test.\n\nThen press the red Record button — a browser will open and every click or keystroke you make is captured as a step.\n\nPress Stop when you're done, then Run to check if the test passes.",
+        "assertions": {
+          "title": "Adding Assertions",
+          "content": "Right-click any element in the browser to add a checkpoint — a step that verifies something about the page.\n\n\u2022 Assert element is displayed — confirms an element is visible\n\u2022 Assert element is NOT displayed — confirms it is hidden or gone\n\u2022 Assert element is enabled — confirms a button or field is interactive\n\u2022 Assert element is checked — confirms a checkbox or radio is selected\n\u2022 Assert element text equals — checks the element's exact text\n\u2022 Assert element text includes — checks it contains certain text\n\u2022 Assert element value — checks what's entered in an input field\n\u2022 Assert page title — checks the browser tab title\n\u2022 Assert current URL contains — checks the page address\n\u2022 Wait for element to appear / disappear / be enabled — pauses the test until a condition is met"
+        }
+      },
+      "dashboard": {
+        "title": "Recording Dashboard",
+        "message": "The dashboard shows the output from your last test run — which steps passed, which failed, and any error messages.\n\nUse it to understand what went wrong and decide what to fix or re-record."
+      }
+    },
+    "overview": {
+      "files": {
+        "title": "Files & Test Settings",
+        "message": "Browse all files in your project on the left — click any file to preview it on the right.\n\nUse the toolbar above to set which browser to use, whether to run headlessly, which tests to run, and the timeout.\n\nThese settings apply every time you run your tests."
+      },
+      "scaffold": {
+        "title": "Scaffolding",
+        "message": "Scaffolding generates boilerplate files for you — page objects, spec files, feature files, and helpers.\n\nFill in the form and Ruby Raider will create the right file structure so you can start writing test logic immediately without setting things up by hand."
+      },
+      "dashboard": {
+        "title": "Project Dashboard",
+        "message": "The dashboard gives you an at-a-glance view of your project's test health — total tests, recent pass/fail trends, and run history.\n\nUse it to track quality over time without having to run tests manually."
+      }
+    },
+    "createProject": {
+      "title": "Create a New Project",
+      "message": "Choose your automation framework (Selenium is the most common for web apps), your test style (RSpec or Cucumber), and give your project a name.\n\nRuby Raider will generate a ready-to-use folder structure for you."
+    },
+    "landing": {
+      "title": "Welcome to Ruby Raider",
+      "message": "Ruby Raider is a visual test automation tool.\n\nUse the Recorder to capture browser actions as tests, the Overview to browse and run your tests, or Create Project to start a brand new test suite from scratch.\n\nFor installation help and a full guide, click the Ruby Raider logo in the top-left corner of the app."
+    }
+  },
+  "tooltips": {
+    "viewTrace": "View the step-by-step trace for this test — see screenshots and element info for every recorded action.",
+    "recorder": {
+      "record": "Start recording — opens the website in a built-in browser and captures every click and keystroke as a test step.",
+      "run": "Run the selected test — replays every recorded step in a browser and reports pass or fail.",
+      "stop": "Stop the current recording session and return to the normal view.",
+      "newTest": "Create a new blank test inside the active suite. Give it a name and a URL, then press Record.",
+      "more": "Import or export tests, suites, or the entire project to share or back up your work.",
+      "testName": "A short name that describes what this test checks — e.g. 'Login with valid credentials'.",
+      "urlToRecord": "The web address the browser will open when you start recording. Must start with https://",
+      "implicitWait": "Seconds Selenium automatically waits for a page element to appear before giving up. 0 means no automatic wait.",
+      "explicitWait": "Maximum seconds to wait for a specific condition — such as a button becoming clickable.",
+      "suiteSelector": "A suite is a named group of related tests. Select one here or create a new one via the dropdown.",
+      "runAllTests": "Run every test in the currently selected suite one after another and see the combined results.",
+      "deleteTest": "Permanently remove this test from the suite. This cannot be undone.",
+      "codeView": "See the raw Ruby/Selenium commands. In code view you can double-click any step to edit it directly.",
+      "friendlyView": "Switch to a plain-English description of each recorded step — easier to read without coding knowledge.",
+      "testOutput": "Show the output panel — displays the pass/fail result and any errors after running a test.",
+      "hideOutput": "Hide the output panel to give more space to your recorded steps.",
+      "deleteStep": "Remove this step from the test. The remaining steps will still run in order.",
+      "dragStep": "Drag to reorder this step. Tests run steps from top to bottom.",
+      "setBreakpoint": "Set a breakpoint here — click 'Record from here' to replay steps up to this point headlessly, then continue recording from this page state.",
+      "clearBreakpoint": "Clear this breakpoint."
+    },
+    "overview": {
+      "urlInput": "The base URL used when running your tests — e.g. https://staging.example.com",
+      "browserSelect": "Which browser to launch when running tests. Chrome is the most widely supported.",
+      "headlessToggle": "Headless mode runs the browser invisibly in the background — faster, but you won't see what's happening on screen.",
+      "runMode": "Choose which tests to run: all of them, only smoke tests, regression tests, or a custom tag.",
+      "rerunFailed": "Re-run only the tests that failed in the last run — useful for quickly confirming a fix.",
+      "timeout": "Maximum seconds a single test can take before it is automatically marked as failed."
+    }
+  },
+  "common": {
+    "close": "Close"
   }
 }

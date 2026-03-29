@@ -6,6 +6,16 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string, opts?: Record<string, string>) => opts ? `${key} ${JSON.stringify(opts)}` : key })
 }))
 
+beforeEach(() => {
+  const root = document.createElement('div')
+  root.id = 'root'
+  document.body.appendChild(root)
+})
+
+afterEach(() => {
+  document.getElementById('root')?.remove()
+})
+
 describe('RubyGemsInstallModal', () => {
   const defaultProps = {
     missingGems: ['selenium-webdriver', 'rspec'],

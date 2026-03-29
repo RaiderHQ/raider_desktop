@@ -14,8 +14,9 @@ describe('ConfirmationModal', () => {
     render(
       <ConfirmationModal message="Continue?" onConfirm={vi.fn()} onCancel={vi.fn()} />
     )
-    expect(screen.getByText('Confirm')).toBeInTheDocument()
-    expect(screen.getByText('Cancel')).toBeInTheDocument()
+    const buttons = screen.getAllByRole('button')
+    expect(buttons.some((b) => b.textContent === 'Confirm')).toBe(true)
+    expect(buttons.some((b) => b.textContent === 'Cancel')).toBe(true)
   })
 
   it('calls onConfirm when Confirm is clicked', () => {
@@ -23,7 +24,8 @@ describe('ConfirmationModal', () => {
     render(
       <ConfirmationModal message="Continue?" onConfirm={onConfirm} onCancel={vi.fn()} />
     )
-    fireEvent.click(screen.getByText('Confirm'))
+    const confirmBtn = screen.getAllByRole('button').find((b) => b.textContent === 'Confirm')!
+    fireEvent.click(confirmBtn)
     expect(onConfirm).toHaveBeenCalledTimes(1)
   })
 
@@ -34,5 +36,39 @@ describe('ConfirmationModal', () => {
     )
     fireEvent.click(screen.getByText('Cancel'))
     expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders custom title when provided', () => {
+    render(
+      <ConfirmationModal title="Delete Item" message="Sure?" onConfirm={vi.fn()} onCancel={vi.fn()} />
+    )
+    expect(screen.getByText('Delete Item')).toBeInTheDocument()
+  })
+
+  it('renders default title when none provided', () => {
+    render(
+      <ConfirmationModal message="Sure?" onConfirm={vi.fn()} onCancel={vi.fn()} />
+    )
+    const heading = screen.getByRole('heading')
+    expect(heading).toHaveTextContent('Confirm')
+  })
+
+  it('calls onCancel when clicking the overlay backdrop', () => {
+    const onCancel = vi.fn()
+    render(
+      <ConfirmationModal message="Continue?" onConfirm={vi.fn()} onCancel={onCancel} />
+    )
+    const overlay = document.getElementById('confirm-modal-overlay')!
+    fireEvent.click(overlay)
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('does NOT call onCancel when clicking modal content', () => {
+    const onCancel = vi.fn()
+    render(
+      <ConfirmationModal message="Continue?" onConfirm={vi.fn()} onCancel={onCancel} />
+    )
+    fireEvent.click(screen.getByText('Continue?'))
+    expect(onCancel).not.toHaveBeenCalled()
   })
 })

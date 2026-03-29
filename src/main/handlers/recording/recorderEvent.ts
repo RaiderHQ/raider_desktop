@@ -17,6 +17,9 @@ export interface RecorderEventData {
 }
 
 function recorderEvent(data: RecorderEventData): void {
+  // Ignore events triggered by the webview replay — only record real user actions
+  if (appState.isReplayingInWebview) return
+
   const commandString = generateCommand(appState.projectAutomation, data)
 
   if (commandString) {

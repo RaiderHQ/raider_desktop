@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
-import Button from '@components/Button'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import { useTranslation } from 'react-i18next'
+import useRecorderStore from '@foundation/Stores/recorderStore'
+import Tooltip from '@components/Tooltip'
 
 interface TestSuitePanelProps {
   suites: Suite[]
@@ -30,10 +31,10 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
   onReorderTests
 }) => {
   const { t } = useTranslation()
+  const isRunning = useRecorderStore((s) => s.isRunning)
   const activeSuite = suites.find((s) => s.id === activeSuiteId)
 
   const [newSuiteName, setNewSuiteName] = useState('')
-  const [isSuiteDropdownOpen, setIsSuiteDropdownOpen] = useState(false)
   const [isCreatingSuite, setIsCreatingSuite] = useState(false)
   const [displayedTests, setDisplayedTests] = useState<Test[]>([])
 
@@ -43,16 +44,6 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
   useEffect(() => {
     setDisplayedTests(activeSuite?.tests ?? [])
   }, [activeSuite?.tests])
-
-  useEffect((): (() => void) => {
-    const handleClickOutside = (event: MouseEvent): void => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsSuiteDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return (): void => document.removeEventListener('mousedown', handleClickOutside)
-  }, [dropdownRef])
 
   const handleCreateSuiteConfirm = (): void => {
     if (newSuiteName.trim()) {
@@ -72,12 +63,10 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
         onDeleteSuite(activeSuiteId)
       }
     }
-    setIsSuiteDropdownOpen(false)
   }
 
   const handleNewSuiteClick = (): void => {
     setIsCreatingSuite(true)
-    setIsSuiteDropdownOpen(false)
   }
 
   const handleRunAllClick = (): void => {
@@ -187,62 +176,59 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
   return (
     <div className="w-full h-full p-2 flex flex-col">
       <div className="flex-shrink-0">
-        <div className="flex items-center pb-2 border-b">
-          <div className="relative w-full" ref={dropdownRef}>
+        <div className="flex items-center pb-2 border-b gap-1">
+          <Tooltip content={t('tooltips.recorder.suiteSelector')} position="right" className="relative flex-1">
+            <div className="w-full" ref={dropdownRef}>
+              <select
+                value={activeSuiteId ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value
+                  if (val === '__new__') {
+                    handleNewSuiteClick()
+                  } else if (val === '__delete__') {
+                    handleDeleteSuite()
+                  } else {
+                    onSuiteChange(val)
+                  }
+                }}
+                className="w-full border border-neutral-bdr rounded px-3 py-1 text-sm bg-white"
+                aria-label={t('recorder.testSuitePanel.selectSuite')}
+              >
+                {suites.map((suite) => (
+                  <option key={suite.id} value={suite.id}>
+                    {suite.name}
+                  </option>
+                ))}
+                <option disabled>──────────</option>
+                <option value="__new__">{t('recorder.testSuitePanel.newSuite')}</option>
+                {activeSuiteId && (
+                  <option value="__delete__">{t('recorder.testSuitePanel.deleteSuite')}</option>
+                )}
+              </select>
+            </div>
+          </Tooltip>
+          <Tooltip content={t('tooltips.recorder.runAllTests')} position="top">
             <button
-              onClick={() => setIsSuiteDropdownOpen((prev) => !prev)}
-              className="w-full flex items-center justify-between px-3 py-2 border rounded bg-white hover:bg-neutral-lt text-left"
-              aria-label={t('recorder.testSuitePanel.selectSuite')}
-            >
-              <span className="font-semibold truncate">
-                {activeSuite?.name ?? t('recorder.testSuitePanel.selectSuite')}
-              </span>
-              <span className="text-xs ml-2">{isSuiteDropdownOpen ? '▲' : '▼'}</span>
-            </button>
-            {isSuiteDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-md shadow-lg z-30 border">
-                <ul>
-                  {suites.map((suite) => (
-                    <li key={suite.id}>
-                      <button
-                        onClick={() => {
-                          onSuiteChange(suite.id)
-                          setIsSuiteDropdownOpen(false)
-                        }}
-                        className="block w-full text-left px-4 py-2 text-sm text-neutral-dk hover:bg-ruby-sub"
-                      >
-                        {suite.name}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <div className="border-t border-neutral-bdr">
-                  <button
-                    onClick={handleNewSuiteClick}
-                    className="block w-full text-left px-4 py-2 text-sm text-ruby hover:bg-neutral-lt"
-                  >
-                    {t('recorder.testSuitePanel.newSuite')}
-                  </button>
-                  <button
-                    onClick={handleDeleteSuite}
-                    disabled={!activeSuiteId}
-                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-status-err-bg disabled:text-neutral-mid"
-                  >
-                    {t('recorder.testSuitePanel.deleteSuite')}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="pl-4">
-            <Button
-              type="success"
               onClick={handleRunAllClick}
-              disabled={!activeSuite || activeSuite.tests.length === 0}
+              disabled={!activeSuite || activeSuite.tests.length === 0 || isRunning}
+              aria-label={t('recorder.testSuitePanel.runAll')}
+              className={`ml-2 w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full transition-colors ${
+                !activeSuite || activeSuite.tests.length === 0 || isRunning
+                  ? 'text-neutral-300 cursor-not-allowed'
+                  : 'text-green-600 hover:bg-green-50'
+              }`}
             >
-              {t('recorder.testSuitePanel.runAll')}
-            </Button>
-          </div>
+              {isRunning ? (
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round"/>
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                  <polygon points="5,3 19,12 5,21" />
+                </svg>
+              )}
+            </button>
+          </Tooltip>
         </div>
 
         {isCreatingSuite && (
@@ -296,12 +282,13 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
               >
                 {test.name}
               </button>
+              <Tooltip content={t('tooltips.recorder.deleteTest')} position="top">
               <button
                 onClick={(e) => {
                   e.stopPropagation()
                   onTestDeleteRequest(test)
                 }}
-                className="p-4 h-full w-12 flex items-center justify-center text-neutral-mid group-hover:opacity-100 hover:text-white hover:bg-red-200 transition-all"
+                className="mr-1 w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-neutral-mid opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 transition-all"
                 aria-label={`Delete test ${test.name}`}
               >
                 <svg
@@ -314,6 +301,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
                   <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z" />
                 </svg>
               </button>
+              </Tooltip>
             </li>
           ))}
         </ul>

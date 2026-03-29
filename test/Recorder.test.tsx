@@ -114,7 +114,12 @@ const mockApi = {
   onTerminalData: vi.fn().mockReturnValue({ on: vi.fn() }),
   removeTerminalDataListener: vi.fn().mockReturnValue({ on: vi.fn() }),
   onTerminalExit: vi.fn().mockReturnValue({ on: vi.fn() }),
-  removeTerminalExitListener: vi.fn().mockReturnValue({ on: vi.fn() })
+  removeTerminalExitListener: vi.fn().mockReturnValue({ on: vi.fn() }),
+  replayStepsAndRecord: vi.fn().mockResolvedValue({ success: true, url: 'http://localhost', preloadPath: '/path/to/preload.js' }),
+  cancelReplay: vi.fn().mockResolvedValue({ success: true }),
+  replayInWebview: vi.fn().mockResolvedValue({ success: true }),
+  getLongshipConfig: vi.fn().mockResolvedValue({ url: '', apiKey: '', enabled: false }),
+  setLongshipConfig: vi.fn().mockResolvedValue({ url: '', apiKey: '', enabled: false })
 }
 
 let suiteUpdatedCallback: (event: IpcRendererEvent, updatedSuites: unknown) => void = () => {}
@@ -178,8 +183,6 @@ describe('Recorder Page', (): void => {
     // Check tab buttons are rendered
     expect(screen.getByText('recorder.tabs.recording')).toBeInTheDocument()
     expect(screen.getByText('recorder.tabs.dashboard')).toBeInTheDocument()
-    expect(screen.getByText('recorder.tabs.settings')).toBeInTheDocument()
-
     // Recording tab content is shown by default
     expect(screen.getByText('recorder.recorderPage.testSuites')).toBeInTheDocument()
     expect(screen.getByText('recorder.recorderPage.noSuiteSteps')).toBeInTheDocument()
@@ -194,21 +197,6 @@ describe('Recorder Page', (): void => {
       fireEvent.click(screen.getByText('recorder.tabs.dashboard'))
     })
 
-    // Recording content should be hidden
-    expect(screen.queryByText('recorder.recorderPage.testSuites')).not.toBeInTheDocument()
-  })
-
-  it('switches to settings tab', async (): Promise<void> => {
-    await act(async () => {
-      render(<Recorder />)
-    })
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('recorder.tabs.settings'))
-    })
-
-    // Settings content should be visible
-    expect(screen.getByText('settings.recording.title')).toBeInTheDocument()
     // Recording content should be hidden
     expect(screen.queryByText('recorder.recorderPage.testSuites')).not.toBeInTheDocument()
   })

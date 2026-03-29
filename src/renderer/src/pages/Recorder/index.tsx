@@ -4,6 +4,8 @@ import TestSuitePanel from '@components/TestSuitePanel'
 import OutputPanel from '@components/OutputPanel'
 import MainRecorderPanel from '@components/MainRecorderPanel'
 import StyledPanel from '@components/StyledPanel'
+import Tooltip from '@components/Tooltip'
+import InfoButton from '@components/InfoButton'
 import type { Test } from '@foundation/Types/test'
 import AssertionTextModal from '@components/AssertionTextModal'
 import useProjectStore from '@foundation/Stores/projectStore'
@@ -12,7 +14,6 @@ import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { formatLocator } from '@foundation/recorderUtils'
 import { useSuiteSync, useRecordingIPC } from '../../hooks/useRecorderIPC'
-import Button from '@components/Button'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import DeleteModal from '@components/DeleteModal'
@@ -22,9 +23,10 @@ import RecordingDashboard from '@components/RecordingDashboard'
 interface AssertionInfo {
   selector: string
   text: string
+  assertionType?: string
 }
 
-type RecorderTab = 'recording' | 'dashboard' | 'settings'
+type RecorderTab = 'recording' | 'dashboard'
 
 const Recorder: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -35,13 +37,17 @@ const Recorder: React.FC = (): JSX.Element => {
   const activeTest = useRecorderStore((s) => s.activeTest)
   const showCode = useRecorderStore((s) => s.showCode)
   const isOutputVisible = useRecorderStore((s) => s.isOutputVisible)
+  const breakpointIndex = useRecorderStore((s) => s.breakpointIndex)
+  const isReplayingToBreakpoint = useRecorderStore((s) => s.isReplayingToBreakpoint)
   const {
     setActiveSuiteId,
     setActiveTest,
     updateActiveTest,
     setIsRunning,
     setShowCode,
-    setIsOutputVisible
+    setIsOutputVisible,
+    setBreakpointIndex,
+    setIsReplayingToBreakpoint
   } = useRecorderStore.getState()
 
   const { runOutput, setRunOutput } = useRunOutputStore()
@@ -62,7 +68,6 @@ const Recorder: React.FC = (): JSX.Element => {
   // Recording settings state
   const [implicitWait, setImplicitWait] = useState(0)
   const [explicitWait, setExplicitWait] = useState(30)
-  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false)
 
   // IPC hooks
   useSuiteSync()
@@ -87,16 +92,12 @@ const Recorder: React.FC = (): JSX.Element => {
   }
 
   const handleUpdateSettings = async (): Promise<void> => {
-    setIsUpdatingSettings(true)
     try {
       await window.api.updateRecordingSettings({ implicitWait, explicitWait })
       localStorage.setItem('implicitWait', implicitWait.toString())
       localStorage.setItem('explicitWait', explicitWait.toString())
-      toast.success(t('settings.recording.recordingUpdateSuccess'))
     } catch (error) {
       toast.error(`${t('settings.recording.error.unexpected')} : ${error}`)
-    } finally {
-      setIsUpdatingSettings(false)
     }
   }
 
@@ -186,6 +187,65 @@ const Recorder: React.FC = (): JSX.Element => {
     }
   }, [])
 
+  const handleSetBreakpoint = useCallback((index: number): void => {
+    setBreakpointIndex(index)
+  }, [])
+
+  const handleClearBreakpoint = useCallback((): void => {
+    setBreakpointIndex(null)
+  }, [])
+
+  const handleRecordFromHere = useCallback(async (index: number): Promise<void> => {
+    const { activeTest: test } = useRecorderStore.getState()
+    if (!test) return
+
+    const stepsToReplay = test.steps.slice(0, index + 1)
+    setBreakpointIndex(index)
+    setIsReplayingToBreakpoint(true)
+
+    // Start recording to show the embedded webview immediately
+    if (test.url) {
+      await window.api.loadUrlRequest(test.url)
+    }
+    const recResult = await window.api.startRecordingMain()
+    if (!recResult.success) {
+      setIsReplayingToBreakpoint(false)
+      setBreakpointIndex(null)
+      toast.error(t('recorder.breakpoint.replayFailed'))
+      return
+    }
+
+    setRecordingUrl(recResult.url)
+    setPreloadPath(recResult.preloadPath)
+
+    // Wait briefly for the webview to mount and register its webContentsId
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+
+    // Replay steps directly in the embedded webview
+    const result = await window.api.replayInWebview(stepsToReplay)
+
+    if (result.cancelled) {
+      return
+    }
+
+    if (!result.success) {
+      setIsReplayingToBreakpoint(false)
+      setBreakpointIndex(null)
+      toast.error(`${t('recorder.breakpoint.replayFailed')}: ${result.error ?? ''}`)
+    } else {
+      setIsReplayingToBreakpoint(false)
+    }
+  }, [])
+
+  const handleCancelReplay = useCallback(async (): Promise<void> => {
+    await window.api.cancelReplay()
+    setIsReplayingToBreakpoint(false)
+    setBreakpointIndex(null)
+    setRecordingUrl(null)
+    setPreloadPath(null)
+    window.api.stopRecordingMain()
+  }, [])
+
   const handleRunAllTests = useCallback(async (suiteId: string): Promise<void> => {
     const { suites: allSuites } = useRecorderStore.getState()
     const cmd = useRubyStore.getState().rubyCommand
@@ -203,14 +263,40 @@ const Recorder: React.FC = (): JSX.Element => {
   const handleSaveAssertionText = (expectedText: string): void => {
     if (assertionInfo) {
       const { strategy, value } = formatLocator(assertionInfo.selector)
-      const newStep = `expect(@driver.find_element(:${strategy}, ${value}).text).to eq("${expectedText}")`
+      let newStep = ''
+
+      switch (assertionInfo.assertionType) {
+        case 'text-includes':
+          newStep = `expect(@driver.find_element(:${strategy}, ${value}).text).to include("${expectedText}")`
+          break
+        case 'value':
+          newStep = `expect(@driver.find_element(:${strategy}, ${value}).attribute("value")).to eq("${expectedText}")`
+          break
+        case 'page-title':
+          newStep = `expect(@driver.title).to eq("${expectedText}")`
+          break
+        case 'page-url':
+          newStep = `expect(@driver.current_url).to include("${expectedText}")`
+          break
+        default:
+          newStep = `expect(@driver.find_element(:${strategy}, ${value}).text).to eq("${expectedText}")`
+          break
+      }
+
       updateActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
     }
     setAssertionInfo(null)
   }
 
+  const runStatus: 'pass' | 'fail' | null = React.useMemo(() => {
+    if (!runOutput || runOutput.startsWith('Running')) return null
+    if (/0 failures?/i.test(runOutput) || /\bpassed\b/i.test(runOutput)) return 'pass'
+    if (/\d+ failures?/i.test(runOutput) || /\bfailed\b/i.test(runOutput)) return 'fail'
+    return null
+  }, [runOutput])
+
   return (
-    <div className="flex flex-col h-screen w-screen p-4 space-y-4 bg-neutral-lt">
+    <div className="flex flex-col h-screen w-screen p-4 space-y-4 bg-white">
       {/* Tab bar */}
       <div className="flex items-center border-b border-neutral-bdr">
         <button
@@ -233,16 +319,33 @@ const Recorder: React.FC = (): JSX.Element => {
         >
           {t('recorder.tabs.dashboard')}
         </button>
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`px-5 py-2 text-sm font-semibold transition-colors ${
-            activeTab === 'settings'
-              ? 'text-neutral-dark border-b-2 border-ruby'
-              : 'text-neutral-mid hover:text-neutral-dk'
-          }`}
-        >
-          {t('recorder.tabs.settings')}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          {runStatus && (
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-white transition-opacity hover:opacity-80 ${
+                runStatus === 'pass' ? 'bg-green-500' : 'bg-red-500'
+              }`}
+            >
+              <span className="text-base leading-none">{runStatus === 'pass' ? '✓' : '✕'}</span>
+              {runStatus === 'pass' ? 'Passed' : 'Failed'}
+            </button>
+          )}
+          <InfoButton
+            titleKey={`help.recorder.${activeTab}.title`}
+            messageKey={`help.recorder.${activeTab}.message`}
+            collapsibleSections={
+              activeTab === 'recording'
+                ? [
+                    {
+                      titleKey: 'help.recorder.recording.assertions.title',
+                      contentKey: 'help.recorder.recording.assertions.content'
+                    }
+                  ]
+                : undefined
+            }
+          />
+        </div>
       </div>
 
       {/* Recording tab */}
@@ -254,45 +357,64 @@ const Recorder: React.FC = (): JSX.Element => {
             onStopRecording={handleStopRecording}
           />
 
-          {/* When recording: embedded browser + steps side by side */}
-          {recordingUrl && preloadPath ? (
-            <div className="flex-1 flex flex-row space-x-4 min-h-0">
-              {/* Embedded browser */}
-              <div className="w-[60%] flex flex-col min-h-0">
-                <div className="flex-1 border border-neutral-bdr rounded-lg overflow-hidden bg-white">
-                  <webview
-                    ref={(el: HTMLElement | null) => {
-                      const wv = el as unknown as Electron.WebviewTag | null
-                      if (wv && wv !== webviewRef.current) {
-                        webviewRef.current = wv
-                        wv.addEventListener('dom-ready', () => {
-                          const wcId = wv.getWebContentsId()
-                          window.api.registerRecorderWebContents(wcId)
-                        })
-                      }
-                    }}
-                    src={recordingUrl}
-                    preload={`file://${preloadPath}`}
-                    style={{ width: '100%', height: '100%' }}
-                  />
-                </div>
+          {/* Inline wait settings */}
+          <div className="flex items-center gap-4 px-1">
+            <Tooltip content={t('tooltips.recorder.implicitWait')} position="right">
+              <div className="flex items-center gap-2">
+                <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                  {t('settings.recording.implicitWait.label')}
+                </label>
+                <input
+                  type="number"
+                  id="implicit-wait"
+                  value={implicitWait}
+                  onChange={handleImplicitWaitChange}
+                  onBlur={handleUpdateSettings}
+                  className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                  min="0"
+                />
               </div>
-              {/* Recorded steps panel */}
+            </Tooltip>
+            <Tooltip content={t('tooltips.recorder.explicitWait')} position="right">
+              <div className="flex items-center gap-2">
+                <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                  {t('settings.recording.explicitWait.label')}
+                </label>
+                <input
+                  type="number"
+                  id="explicit-wait"
+                  value={explicitWait}
+                  onChange={handleExplicitWaitChange}
+                  onBlur={handleUpdateSettings}
+                  className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                  min="0"
+                />
+              </div>
+            </Tooltip>
+          </div>
+
+          {/* When recording or replaying to breakpoint: steps left + browser/replay right */}
+          {(recordingUrl && preloadPath) || isReplayingToBreakpoint ? (
+            <div className="flex-1 flex flex-row space-x-4 min-h-0">
+              {/* Recorded steps panel — left */}
               <div className="w-[40%] flex flex-col space-y-2">
-                <h3 className="px-1 text-lg font-semibold text-neutral-dark">
+                <h3 className="px-1 text-sm font-semibold text-neutral-dark">
                   {t('recorder.recorderPage.recordedSteps')}
                 </h3>
-                <div className="flex-1 pb-1 pr-1 min-h-0">
+                <div className="flex-1 min-h-0">
                   <StyledPanel>
                     <>
-                      <div className="flex justify-between items-center p-1 border-b border-neutral-bdr">
-                        <div className="flex gap-1">
-                          <Button onClick={() => setShowCode(!showCode)} type="secondary">
+                      <div className="flex items-center p-1 border-b border-neutral-bdr">
+                        <Tooltip content={t(showCode ? 'tooltips.recorder.friendlyView' : 'tooltips.recorder.codeView')} position="right">
+                          <button
+                            onClick={() => setShowCode(!showCode)}
+                            className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
+                          >
                             {showCode
                               ? t('recorder.recorderPage.friendlyView')
                               : t('recorder.recorderPage.codeView')}
-                          </Button>
-                        </div>
+                          </button>
+                        </Tooltip>
                       </div>
                       <CommandList
                         steps={activeTest?.steps ?? []}
@@ -322,21 +444,60 @@ const Recorder: React.FC = (): JSX.Element => {
                           )
                         }
                         showCode={showCode}
+                        breakpointIndex={breakpointIndex}
+                        onSetBreakpoint={handleSetBreakpoint}
+                        onClearBreakpoint={handleClearBreakpoint}
+                        onRecordFromHere={handleRecordFromHere}
                       />
                     </>
                   </StyledPanel>
                 </div>
               </div>
+
+              {/* Embedded browser or replay progress — right */}
+              <div className="w-[60%] flex flex-col min-h-0">
+                  <div className="flex-1 border border-neutral-bdr rounded-lg overflow-hidden bg-white relative">
+                    <webview
+                      ref={(el: HTMLElement | null) => {
+                        const wv = el as unknown as Electron.WebviewTag | null
+                        if (wv && wv !== webviewRef.current) {
+                          webviewRef.current = wv
+                          wv.addEventListener('dom-ready', () => {
+                            const wcId = wv.getWebContentsId()
+                            window.api.registerRecorderWebContents(wcId)
+                          })
+                        }
+                      }}
+                      src={recordingUrl!}
+                      preload={`file://${preloadPath}`}
+                      style={{ width: '100%', height: '100%' }}
+                    />
+                    {isReplayingToBreakpoint && (
+                      <div className="absolute inset-0 bg-amber-50/60 flex flex-col items-center justify-center gap-3 z-10 pointer-events-auto">
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin text-amber-700">
+                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round"/>
+                        </svg>
+                        <p className="text-sm font-medium text-amber-700">{t('recorder.mainRecorderPanel.replaying')}</p>
+                        <button
+                          onClick={handleCancelReplay}
+                          className="px-4 py-1.5 text-sm rounded border border-amber-400 bg-white text-amber-700 hover:bg-amber-50 font-medium transition-colors"
+                        >
+                          {t('recorder.breakpoint.stopReplay')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+              </div>
             </div>
           ) : (
             /* Normal view: suites + steps */
             <>
-              <div className="flex-1 flex flex-row space-x-4 min-h-0">
-                <div className="w-[30%] flex flex-col space-y-2">
-                  <h3 className="px-1 text-lg font-semibold text-neutral-dark">
+              <div className="flex-1 flex flex-row min-h-0">
+                <div className="w-[30%] flex flex-col space-y-2 pr-4 border-r border-neutral-bdr">
+                  <h3 className="px-1 text-sm font-semibold text-neutral-dark">
                     {t('recorder.recorderPage.testSuites')}
                   </h3>
-                  <div className="flex-1 pb-1 pr-1 min-h-0">
+                  <div className="flex-1 min-h-0">
                     <StyledPanel>
                       <TestSuitePanel
                         suites={suites}
@@ -353,11 +514,11 @@ const Recorder: React.FC = (): JSX.Element => {
                     </StyledPanel>
                   </div>
                 </div>
-                <div className="w-[70%] flex flex-col space-y-2">
-                  <h3 className="px-1 text-lg font-semibold text-neutral-dark">
+                <div className="w-[70%] flex flex-col space-y-2 pl-4">
+                  <h3 className="px-1 text-sm font-semibold text-neutral-dark">
                     {t('recorder.recorderPage.recordedSteps')}
                   </h3>
-                  <div className="flex-1 pb-1 pr-1 min-h-0">
+                  <div className="flex-1 min-h-0">
                     <StyledPanel>
                       {!activeTest && !activeSuiteId ? (
                         <div className="flex items-center justify-center h-full text-neutral-mid text-sm p-8 text-center">
@@ -370,21 +531,26 @@ const Recorder: React.FC = (): JSX.Element => {
                       ) : (
                         <>
                           <div className="flex justify-between items-center p-1 border-b border-neutral-bdr">
-                            <div className="flex gap-1">
-                              <Button onClick={() => setShowCode(!showCode)} type="secondary">
+                            <Tooltip content={t(showCode ? 'tooltips.recorder.friendlyView' : 'tooltips.recorder.codeView')} position="right">
+                              <button
+                                onClick={() => setShowCode(!showCode)}
+                                className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
+                              >
                                 {showCode
                                   ? t('recorder.recorderPage.friendlyView')
                                   : t('recorder.recorderPage.codeView')}
-                              </Button>
-                            </div>
-                            <Button
-                              onClick={() => setIsOutputVisible(!isOutputVisible)}
-                              type="secondary"
-                            >
-                              {isOutputVisible
-                                ? t('recorder.recorderPage.hideOutput')
-                                : t('recorder.recorderPage.testOutput')}
-                            </Button>
+                              </button>
+                            </Tooltip>
+                            <Tooltip content={t(isOutputVisible ? 'tooltips.recorder.hideOutput' : 'tooltips.recorder.testOutput')} position="right">
+                              <button
+                                onClick={() => setIsOutputVisible(!isOutputVisible)}
+                                className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
+                              >
+                                {isOutputVisible
+                                  ? t('recorder.recorderPage.hideOutput')
+                                  : t('recorder.recorderPage.testOutput')}
+                              </button>
+                            </Tooltip>
                           </div>
                           <CommandList
                             steps={activeTest?.steps ?? []}
@@ -414,6 +580,10 @@ const Recorder: React.FC = (): JSX.Element => {
                               )
                             }
                             showCode={showCode}
+                            breakpointIndex={breakpointIndex}
+                            onSetBreakpoint={handleSetBreakpoint}
+                            onClearBreakpoint={handleClearBreakpoint}
+                            onRecordFromHere={handleRecordFromHere}
                           />
                         </>
                       )}
@@ -424,7 +594,7 @@ const Recorder: React.FC = (): JSX.Element => {
               <div
                 className={`${isOutputVisible ? 'h-48' : 'h-0 overflow-hidden'} transition-all duration-300 mt-2`}
               >
-                <div className="h-full pb-1 pr-1">
+                <div className="h-full">
                   <StyledPanel>
                     <div className="flex justify-between items-center p-1 border-b border-neutral-bdr">
                       <h3 className="text-lg font-semibold text-neutral-dark">
@@ -442,75 +612,15 @@ const Recorder: React.FC = (): JSX.Element => {
 
       {/* Dashboard tab */}
       {activeTab === 'dashboard' && (
-        <div className="flex-1 min-h-0 overflow-y-auto pb-1 pr-1">
-          <div className="border border-neutral-bdr rounded-lg bg-white p-4">
-            <RecordingDashboard runOutput={runOutput} />
-          </div>
-        </div>
-      )}
-
-      {/* Settings tab */}
-      {activeTab === 'settings' && (
-        <div className="flex-1 min-h-0 overflow-y-auto pb-1 pr-1">
-          <div className="border border-neutral-bdr rounded-lg bg-white p-4">
-            <h2 className="text-xl font-bold mb-1">{t('settings.recording.title')}</h2>
-            <p className="text-sm text-neutral-mid mb-4">
-              {t('settings.recording.description')}
-            </p>
-
-            <details open className="mb-4">
-              <summary className="cursor-pointer font-semibold text-neutral-dark mb-2">
-                {t('settings.recording.implicitWait.label')} &amp;{' '}
-                {t('settings.recording.explicitWait.label')}
-              </summary>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="border border-neutral-bdr rounded-lg p-3">
-                  <label htmlFor="implicit-wait" className="font-medium mr-2">
-                    {t('settings.recording.implicitWait.label')}
-                  </label>
-                  <input
-                    type="number"
-                    id="implicit-wait"
-                    value={implicitWait}
-                    onChange={handleImplicitWaitChange}
-                    className="border p-1 rounded mt-2"
-                    min="0"
-                  />
-                  <p className="text-sm text-neutral-mid mt-1">
-                    {t('settings.recording.implicitWait.description')}
-                  </p>
-                </div>
-                <div className="border border-neutral-bdr rounded-lg p-3">
-                  <label htmlFor="explicit-wait" className="font-medium mr-2">
-                    {t('settings.recording.explicitWait.label')}
-                  </label>
-                  <input
-                    type="number"
-                    id="explicit-wait"
-                    value={explicitWait}
-                    onChange={handleExplicitWaitChange}
-                    className="border p-1 rounded mt-2"
-                    min="0"
-                  />
-                  <p className="text-sm text-neutral-mid mt-1">
-                    {t('settings.recording.explicitWait.description')}
-                  </p>
-                </div>
-              </div>
-            </details>
-
-            <div className="mt-4">
-              <Button onClick={handleUpdateSettings} type="primary" disabled={isUpdatingSettings}>
-                {t('settings.recording.updateRecordingSettingsButton')}
-              </Button>
-            </div>
-          </div>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <RecordingDashboard runOutput={runOutput} />
         </div>
       )}
 
       {assertionInfo && (
         <AssertionTextModal
           initialText={assertionInfo.text}
+          assertionType={assertionInfo.assertionType}
           onSave={handleSaveAssertionText}
           onClose={() => setAssertionInfo(null)}
         />

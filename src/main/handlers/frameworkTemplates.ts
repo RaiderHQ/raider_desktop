@@ -337,6 +337,7 @@ interface TestCodeParams {
   implicitWait: number
   explicitWait: number
   automation: string | null
+  headless?: boolean
 }
 
 export function generateRspecTestCode({
@@ -344,7 +345,8 @@ export function generateRspecTestCode({
   steps,
   implicitWait,
   explicitWait,
-  automation
+  automation,
+  headless
 }: TestCodeParams): string {
   const formattedSteps = steps.map((step) => `    ${step}`).join('\n    sleep(1)\n')
 
@@ -363,11 +365,15 @@ export function generateRspecTestCode({
       teardownBlock = `    @browser.close`
       helperMethod = `  def find_and_wait(selector)\n    @browser.element(css: selector).wait_until(timeout: ${explicitWait}, &:present?)\n  end`
       break
-    default:
-      setupBlock = `    @driver = Selenium::WebDriver.for :chrome\n    @driver.manage.timeouts.implicit_wait = ${implicitWait}\n    @wait = Selenium::WebDriver::Wait.new(timeout: ${explicitWait})\n    @vars = {}`
+    default: {
+      const chromeSetup = headless
+        ? `opts = Selenium::WebDriver::Chrome::Options.new(args: ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage'])\n    @driver = Selenium::WebDriver.for :chrome, options: opts`
+        : `@driver = Selenium::WebDriver.for :chrome`
+      setupBlock = `    ${chromeSetup}\n    @driver.manage.timeouts.implicit_wait = ${implicitWait}\n    @wait = Selenium::WebDriver::Wait.new(timeout: ${explicitWait})\n    @vars = {}`
       teardownBlock = `    if example.exception\n      # You can add custom screenshot logic here if needed\n    end\n    @driver.quit`
       helperMethod = `  def find_and_wait(selector)\n    @wait.until { @driver.find_element(:css, selector).displayed? }\n    return @driver.find_element(:css, selector)\n  end`
       break
+    }
   }
 
   return `

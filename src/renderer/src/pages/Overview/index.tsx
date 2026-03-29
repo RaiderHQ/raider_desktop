@@ -3,22 +3,23 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { sample } from 'lodash'
-import { FaArrowLeft, FaTerminal } from 'react-icons/fa'
+import { FaTerminal } from 'react-icons/fa'
 import Folder from '@components/Library/Folder'
 import ScaffoldPanel from '@components/ScaffoldPanel'
 import ContextMenu from '@components/ContextMenu'
 import ToggleSwitch from '@components/ToggleSwitch'
-import Button from '@components/Button'
 import TagInput from '@components/TagInput'
 import ProjectDashboard from '@components/ProjectDashboard'
 import Editor from '@components/Editor'
 import Terminal from '@components/Terminal'
+import Tooltip from '@components/Tooltip'
+import InfoButton from '@components/InfoButton'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { FileNode } from '@foundation/Types/fileNode'
 import { getFileLanguage } from '@foundation/helpers'
 
-type OverviewTab = 'files' | 'scaffold' | 'settings' | 'dashboard'
+type OverviewTab = 'files' | 'scaffold' | 'dashboard'
 
 
 const Overview: React.FC = () => {
@@ -39,24 +40,13 @@ const Overview: React.FC = () => {
 
   // Project settings state (migrated from ProjectSettings)
   const [isMobileProject, setIsMobileProject] = useState(false)
-  const [settingsLoading, setSettingsLoading] = useState(true)
-  const [mobileAppiumUrl, setMobileAppiumUrl] = useState('')
-  const [mobilePlatformVersion, setMobilePlatformVersion] = useState('')
-  const [mobileAutomationName, setMobileAutomationName] = useState('')
-  const [mobileDeviceName, setMobileDeviceName] = useState('')
-  const [mobileApp, setMobileApp] = useState('')
-  const [isUpdatingMobile, setIsUpdatingMobile] = useState(false)
   const [timeout, setTimeout_] = useState(30)
-  const [isUpdatingTimeout, setIsUpdatingTimeout] = useState(false)
 
   const [browserOptions, setBrowserOptions] = useState<string[]>([])
-  const [isUpdatingOptions, setIsUpdatingOptions] = useState(false)
-  const [isStartingAppium, setIsStartingAppium] = useState(false)
   const [pagePath, setPagePath] = useState('')
   const [specPath, setSpecPath] = useState('')
   const [featurePath, setFeaturePath] = useState('')
   const [helperPath, setHelperPath] = useState('')
-  const [isUpdatingPaths, setIsUpdatingPaths] = useState(false)
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -79,7 +69,6 @@ const Overview: React.FC = () => {
 
   // Terminal state
   const [terminalOpen, setTerminalOpen] = useState(false)
-  const [fileTreeCollapsed, setFileTreeCollapsed] = useState(false)
 
   // Inline editor state
   const [editingFile, setEditingFile] = useState<{ path: string; name: string } | null>(null)
@@ -143,65 +132,14 @@ const Overview: React.FC = () => {
     void loadSettings()
   }, [projectPath])
 
-  // Load project settings (mobile detection, capabilities)
+  // Detect mobile project
   useEffect(() => {
     if (!projectPath) return
-    const fetchSettings = async (): Promise<void> => {
-      try {
-        const result = await window.api.isMobileProject(projectPath)
-        if (result.success) {
-          setIsMobileProject(result.isMobileProject || false)
-          if (result.isMobileProject) {
-            const storedMobileAppiumUrl = localStorage.getItem('mobileAppiumUrl')
-            const storedPlatformVersion = localStorage.getItem('mobilePlatformVersion')
-            const storedAutomationName = localStorage.getItem('mobileAutomationName')
-            const storedDeviceName = localStorage.getItem('mobileDeviceName')
-            const storedMobileApp = localStorage.getItem('mobileApp')
-
-            if (storedMobileAppiumUrl) setMobileAppiumUrl(storedMobileAppiumUrl)
-            if (storedPlatformVersion) setMobilePlatformVersion(storedPlatformVersion)
-            if (storedAutomationName) setMobileAutomationName(storedAutomationName)
-            if (storedDeviceName) setMobileDeviceName(storedDeviceName)
-            if (storedMobileApp) setMobileApp(storedMobileApp)
-
-            if (
-              !storedMobileAppiumUrl ||
-              !storedPlatformVersion ||
-              !storedAutomationName ||
-              !storedDeviceName ||
-              !storedMobileApp
-            ) {
-              const capResponse = await window.api.getMobileCapabilities(projectPath)
-              if (capResponse.success && capResponse.capabilities) {
-                const appiumOptions = capResponse.capabilities['appium:options'] as
-                  | {
-                      url?: string
-                      platformVersion?: string
-                      automationName?: string
-                      deviceName?: string
-                      app?: string
-                    }
-                  | undefined
-                if (appiumOptions) {
-                  if (!storedMobileAppiumUrl) setMobileAppiumUrl(appiumOptions.url || '')
-                  if (!storedPlatformVersion)
-                    setMobilePlatformVersion(appiumOptions.platformVersion || '')
-                  if (!storedAutomationName)
-                    setMobileAutomationName(appiumOptions.automationName || '')
-                  if (!storedDeviceName) setMobileDeviceName(appiumOptions.deviceName || '')
-                  if (!storedMobileApp) setMobileApp(appiumOptions.app || '')
-                }
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch project settings:', error)
-      } finally {
-        setSettingsLoading(false)
-      }
-    }
-    void fetchSettings()
+    window.api.isMobileProject(projectPath)
+      .then((result) => {
+        if (result.success) setIsMobileProject(result.isMobileProject || false)
+      })
+      .catch(() => {})
   }, [projectPath])
 
   const handleUrlSave = async (): Promise<void> => {
@@ -271,39 +209,8 @@ const Overview: React.FC = () => {
     }
   }
 
-  // Project settings handlers
-  const handleMobileSettingsUpdate = async (): Promise<void> => {
-    if (!projectPath) return
-    setIsUpdatingMobile(true)
-    try {
-      const capabilities = {
-        url: mobileAppiumUrl,
-        platformVersion: mobilePlatformVersion,
-        automationName: mobileAutomationName,
-        deviceName: mobileDeviceName,
-        app: mobileApp
-      }
-      const capsResponse = await window.api.updateMobileCapabilities(projectPath, capabilities)
-      if (!capsResponse.success) {
-        toast.error(t('settings.error.mobileCapabilitiesUpdateFailed'))
-        return
-      }
-      localStorage.setItem('mobileAppiumUrl', mobileAppiumUrl)
-      localStorage.setItem('mobilePlatformVersion', mobilePlatformVersion)
-      localStorage.setItem('mobileAutomationName', mobileAutomationName)
-      localStorage.setItem('mobileDeviceName', mobileDeviceName)
-      localStorage.setItem('mobileApp', mobileApp)
-      toast.success(t('settings.mobile.updateSuccess'))
-    } catch (error) {
-      toast.error(`${t('settings.error.unexpected')} : ${error}`)
-    } finally {
-      setIsUpdatingMobile(false)
-    }
-  }
-
   const handleTimeoutUpdate = async (): Promise<void> => {
     if (!projectPath) return
-    setIsUpdatingTimeout(true)
     try {
       const result = await window.api.updateTimeout(projectPath, timeout)
       if (result.success) {
@@ -313,49 +220,11 @@ const Overview: React.FC = () => {
       }
     } catch (error) {
       toast.error(`${t('settings.error.unexpected')}: ${error}`)
-    } finally {
-      setIsUpdatingTimeout(false)
-    }
-  }
-
-
-  const handleBrowserOptionsUpdate = async (): Promise<void> => {
-    if (!projectPath) return
-    setIsUpdatingOptions(true)
-    try {
-      const result = await window.api.updateBrowserOptions(projectPath, browserOptions)
-      if (result.success) {
-        toast.success(t('settings.browserOptions.updateSuccess'))
-      } else {
-        toast.error(result.error || t('settings.error.unexpected'))
-      }
-    } catch (error) {
-      toast.error(`${t('settings.error.unexpected')}: ${error}`)
-    } finally {
-      setIsUpdatingOptions(false)
-    }
-  }
-
-  const handleStartAppium = async (): Promise<void> => {
-    if (!projectPath) return
-    setIsStartingAppium(true)
-    try {
-      const result = await window.api.startAppium(projectPath)
-      if (result.success) {
-        toast.success(t('settings.appium.startSuccess'))
-      } else {
-        toast.error(result.error || t('settings.appium.startFailed'))
-      }
-    } catch (error) {
-      toast.error(`${t('settings.error.unexpected')}: ${error}`)
-    } finally {
-      setIsStartingAppium(false)
     }
   }
 
   const handlePathsUpdate = async (): Promise<void> => {
     if (!projectPath) return
-    setIsUpdatingPaths(true)
     try {
       const updates: { value: string; type?: 'feature' | 'spec' | 'helper' }[] = []
       if (pagePath.trim()) updates.push({ value: pagePath.trim() })
@@ -367,7 +236,6 @@ const Overview: React.FC = () => {
         const result = await window.api.updatePaths(projectPath, update.value, update.type)
         if (!result.success) {
           toast.error(result.error || t('settings.error.unexpected'))
-          setIsUpdatingPaths(false)
           return
         }
       }
@@ -376,8 +244,6 @@ const Overview: React.FC = () => {
       }
     } catch (error) {
       toast.error(`${t('settings.error.unexpected')}: ${error}`)
-    } finally {
-      setIsUpdatingPaths(false)
     }
   }
 
@@ -647,23 +513,10 @@ const Overview: React.FC = () => {
         >
           {t('overview.tabs.dashboard')}
         </button>
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`px-5 py-2 text-sm font-semibold transition-colors ${
-            activeTab === 'settings'
-              ? 'text-neutral-dark border-b-2 border-ruby'
-              : 'text-neutral-mid hover:text-neutral-dk'
-          }`}
-        >
-          {t('overview.tabs.settings')}
-        </button>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
           {activeTab === 'files' && !terminalOpen && (
             <button
-              onClick={() => {
-                setTerminalOpen(true)
-                setFileTreeCollapsed(true)
-              }}
+              onClick={() => setTerminalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-dk border border-neutral-bdr rounded hover:bg-neutral-lt transition-colors"
               data-testid="open-terminal-btn"
             >
@@ -671,6 +524,10 @@ const Overview: React.FC = () => {
               Open Terminal
             </button>
           )}
+          <InfoButton
+            titleKey={`help.overview.${activeTab}.title`}
+            messageKey={`help.overview.${activeTab}.message`}
+          />
         </div>
       </div>
 
@@ -678,104 +535,157 @@ const Overview: React.FC = () => {
         <div className="relative w-full">
           {/* Test settings toolbar */}
           <div className="border border-neutral-bdr rounded-t-lg bg-neutral-50 px-4 py-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                {t('overview.settings.urlLabel')}:
-              </label>
-              <input
-                type="text"
-                value={browserUrl}
-                onChange={(e) => setBrowserUrl(e.target.value)}
-                onBlur={handleUrlSave}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleUrlSave()
-                }}
-                placeholder={t('overview.settings.urlPlaceholder')}
-                className="flex-1 border border-neutral-bdr rounded px-2 py-1 text-sm"
-                data-testid="overview-url-input"
-              />
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
+            <Tooltip content={t('tooltips.overview.urlInput')} position="right" className="w-full">
+              <div className="flex items-center gap-2 w-full">
                 <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                  {t('overview.settings.browserLabel')}:
+                  {t('overview.settings.urlLabel')}:
                 </label>
-                <select
-                  value={selectedBrowser}
-                  onChange={handleBrowserChange}
-                  className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[160px]"
-                  data-testid="overview-browser-select"
-                >
-                  <option value="chrome">{t('settings.browser.chrome')}</option>
-                  <option value="safari">{t('settings.browser.safari')}</option>
-                  <option value="firefox">{t('settings.browser.firefox')}</option>
-                  <option value="edge">{t('settings.browser.edge')}</option>
-                </select>
+                <input
+                  type="text"
+                  value={browserUrl}
+                  onChange={(e) => setBrowserUrl(e.target.value)}
+                  onBlur={handleUrlSave}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleUrlSave()
+                  }}
+                  placeholder={t('overview.settings.urlPlaceholder')}
+                  className="flex-1 border border-neutral-bdr rounded px-2 py-1 text-sm"
+                  data-testid="overview-url-input"
+                />
               </div>
-              <ToggleSwitch
-                label={t('overview.settings.headlessLabel')}
-                checked={headless}
-                onChange={handleHeadlessToggle}
-                testId="overview-headless-toggle"
-              />
+            </Tooltip>
+            <div className="flex items-center gap-4 flex-wrap">
+              <Tooltip content={t('tooltips.overview.browserSelect')} position="right">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                    {t('overview.settings.browserLabel')}
+                  </label>
+                  <select
+                    value={selectedBrowser}
+                    onChange={handleBrowserChange}
+                    className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[160px]"
+                    data-testid="overview-browser-select"
+                  >
+                    <option value="chrome">{t('settings.browser.chrome')}</option>
+                    <option value="safari">{t('settings.browser.safari')}</option>
+                    <option value="firefox">{t('settings.browser.firefox')}</option>
+                    <option value="edge">{t('settings.browser.edge')}</option>
+                  </select>
+                </div>
+              </Tooltip>
+              <Tooltip content={t('tooltips.overview.headlessToggle')} position="right">
+                <ToggleSwitch
+                  label={t('overview.settings.headlessLabel')}
+                  checked={headless}
+                  onChange={handleHeadlessToggle}
+                  testId="overview-headless-toggle"
+                />
+              </Tooltip>
+              <Tooltip content={t('tooltips.overview.runMode')} position="right">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                    {t('overview.settings.runModeLabel')}
+                  </label>
+                  <select
+                    value={runMode}
+                    onChange={(e) => setRunMode(e.target.value as 'all' | 'smoke' | 'regression' | 'custom')}
+                    className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[140px]"
+                    data-testid="overview-run-mode-select"
+                  >
+                    <option value="all">{t('overview.settings.runMode.all')}</option>
+                    <option value="smoke">{t('overview.settings.runMode.smoke')}</option>
+                    <option value="regression">{t('overview.settings.runMode.regression')}</option>
+                    <option value="custom">{t('overview.settings.runMode.custom')}</option>
+                  </select>
+                  {runMode === 'custom' && (
+                    <input
+                      type="text"
+                      value={customTag}
+                      onChange={(e) => setCustomTag(e.target.value)}
+                      placeholder={t('overview.settings.customTagPlaceholder')}
+                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-32"
+                      data-testid="overview-custom-tag-input"
+                    />
+                  )}
+                </div>
+              </Tooltip>
+              <Tooltip content={t('tooltips.overview.rerunFailed')} position="right">
+                <button
+                  onClick={handleRerunFailed}
+                  className="px-3 py-1 text-sm font-medium text-neutral-dk border border-neutral-bdr rounded hover:bg-neutral-lt transition-colors"
+                  data-testid="overview-rerun-failed-btn"
+                >
+                  {t('overview.settings.rerunFailed')}
+                </button>
+              </Tooltip>
+              {!isMobileProject && (
+                <Tooltip content={t('tooltips.overview.timeout')} position="right">
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="timeout-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                      {t('settings.timeout.label')}
+                    </label>
+                    <input
+                      type="number"
+                      id="timeout-input"
+                      value={timeout}
+                      onChange={(e) => setTimeout_(Number(e.target.value))}
+                      onBlur={handleTimeoutUpdate}
+                      min={1}
+                      max={300}
+                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
+                    />
+                  </div>
+                </Tooltip>
+              )}
             </div>
-            <div className="flex items-center gap-4">
+            {!isMobileProject && (
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                  {t('overview.settings.runModeLabel')}:
+                  {t('settings.section.browserOptions')}
                 </label>
-                <select
-                  value={runMode}
-                  onChange={(e) => setRunMode(e.target.value as 'all' | 'smoke' | 'regression' | 'custom')}
-                  className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[140px]"
-                  data-testid="overview-run-mode-select"
-                >
-                  <option value="all">{t('overview.settings.runMode.all')}</option>
-                  <option value="smoke">{t('overview.settings.runMode.smoke')}</option>
-                  <option value="regression">{t('overview.settings.runMode.regression')}</option>
-                  <option value="custom">{t('overview.settings.runMode.custom')}</option>
-                </select>
-                {runMode === 'custom' && (
-                  <input
-                    type="text"
-                    value={customTag}
-                    onChange={(e) => setCustomTag(e.target.value)}
-                    placeholder={t('overview.settings.customTagPlaceholder')}
-                    className="border border-neutral-bdr rounded px-2 py-1 text-sm w-32"
-                    data-testid="overview-custom-tag-input"
+                <div className="flex-1">
+                  <TagInput
+                    tags={browserOptions}
+                    onChange={(tags) => {
+                      setBrowserOptions(tags)
+                      if (projectPath) {
+                        window.api.updateBrowserOptions(projectPath, tags)
+                          .catch(() => toast.error(t('settings.error.unexpected')))
+                      }
+                    }}
+                    placeholder={t('settings.browserOptions.placeholder')}
                   />
-                )}
+                </div>
               </div>
-              <button
-                onClick={handleRerunFailed}
-                className="px-3 py-1 text-sm font-medium text-neutral-dk border border-neutral-bdr rounded hover:bg-neutral-lt transition-colors"
-                data-testid="overview-rerun-failed-btn"
-              >
-                {t('overview.settings.rerunFailed')}
-              </button>
-            </div>
+            )}
           </div>
           <div className="relative h-[62vh] border border-t-0 border-neutral-bdr rounded-b-lg shadow-card flex flex-col bg-white">
-            {/* File tree / editor area */}
-            {!fileTreeCollapsed && (
-              <div className={`${terminalOpen ? 'h-1/3' : 'flex-1'} overflow-y-auto`}>
+            {/* Split: file tree left + editor preview right */}
+            <div className={`${terminalOpen ? 'h-1/3' : 'flex-1'} flex flex-row min-h-0 overflow-hidden`}>
+              {/* File tree - always visible */}
+              <div className="w-[28%] border-r border-neutral-bdr overflow-y-auto shrink-0">
+                <Folder
+                  name={projectPath ? projectPath.split('/').pop() : ''}
+                  path={projectPath || ''}
+                  files={files}
+                  defaultOpen={true}
+                  onFileClick={handleOpenFile}
+                  isRoot={true}
+                  onRunTests={handleRunRaiderTests}
+                  onGenerateSpec={handleGenerateSpec}
+                  onFileContextMenu={handleFileContextMenu}
+                  onFolderContextMenu={handleFolderContextMenu}
+                />
+              </div>
+              {/* Editor preview */}
+              <div className="flex-1 flex flex-col overflow-hidden">
                 {editingFile ? (
-                  <div className="flex flex-col h-full">
-                    <div className="flex items-center px-4 py-2 border-b border-neutral-bdr bg-neutral-50 shrink-0">
-                      <button
-                        onClick={() => {
-                          setEditingFile(null)
-                          setFileContent('')
-                          if (projectPath) useProjectStore.getState().loadFiles(projectPath)
-                        }}
-                        className="mr-3 text-neutral-dk hover:text-ruby transition-colors"
-                      >
-                        <FaArrowLeft />
-                      </button>
+                  <>
+                    <div className="flex items-center px-4 py-2 border-b border-neutral-bdr shrink-0">
                       <span className="text-sm font-semibold text-neutral-dark truncate">{editingFile.name}</span>
                     </div>
                     {isLoadingFile ? (
-                      <div className="flex-1 flex items-center justify-center text-neutral-mid">
+                      <div className="flex-1 flex items-center justify-center text-neutral-mid text-sm">
                         {t('editor.loading')}
                       </div>
                     ) : (
@@ -787,43 +697,23 @@ const Overview: React.FC = () => {
                         />
                       </div>
                     )}
-                  </div>
+                  </>
                 ) : (
-                  <Folder
-                    name={projectPath ? projectPath.split('/').pop() : ''}
-                    path={projectPath || ''}
-                    files={files}
-                    defaultOpen={true}
-                    onFileClick={handleOpenFile}
-                    isRoot={true}
-                    onRunTests={handleRunRaiderTests}
-                    onGenerateSpec={handleGenerateSpec}
-                    onFileContextMenu={handleFileContextMenu}
-                    onFolderContextMenu={handleFolderContextMenu}
-                  />
+                  <div className="flex-1 flex items-center justify-center text-neutral-mid text-sm">
+                    Select a file to preview
+                  </div>
                 )}
               </div>
-            )}
+            </div>
 
             {/* Terminal panel */}
             {terminalOpen && projectPath && (
               <>
-                {/* Toggle bar to show/hide file tree */}
-                <div className="flex items-center px-3 py-1 bg-neutral-50 border-y border-neutral-bdr shrink-0">
-                  <button
-                    onClick={() => setFileTreeCollapsed(!fileTreeCollapsed)}
-                    className="text-xs text-neutral-dk hover:text-neutral-dark transition-colors"
-                  >
-                    {fileTreeCollapsed ? 'Show Files' : 'Hide Files'}
-                  </button>
-                </div>
+                <div className="border-t border-neutral-bdr shrink-0" />
                 <div className="flex-1 min-h-0">
                   <Terminal
                     cwd={projectPath}
-                    onClose={() => {
-                      setTerminalOpen(false)
-                      setFileTreeCollapsed(false)
-                    }}
+                    onClose={() => setTerminalOpen(false)}
                   />
                 </div>
               </>
@@ -834,239 +724,35 @@ const Overview: React.FC = () => {
 
       {activeTab === 'scaffold' && (
         <div className="relative w-full">
-          <div className="relative h-[70vh] border border-neutral-bdr rounded-lg shadow-card overflow-y-auto bg-white p-4">
-            <ScaffoldPanel />
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'settings' && (
-        <div className="relative w-full">
-          <div className="relative h-[70vh] border border-neutral-bdr rounded-lg shadow-card overflow-y-auto bg-white p-4 flex items-start justify-center">
-            {settingsLoading ? (
-              <p>{t('settings.loading')}</p>
-            ) : (
-              <div className="border border-neutral-bdr rounded-lg overflow-hidden w-full max-w-2xl">
-                {/* Appium Settings — mobile projects */}
-                {isMobileProject && (
-                  <>
-                    <details className="border-b border-neutral-bdr p-4">
-                      <summary className="cursor-pointer font-semibold">
-                        {t('settings.section.appiumSettings')}
-                      </summary>
-                      <div className="pt-2">
-                        <label htmlFor="mobile-appium-url" className="font-medium mr-2">
-                          {t('settings.mobile.appiumUrl.label')}
-                        </label>
-                        <input
-                          type="text"
-                          id="mobile-appium-url"
-                          value={mobileAppiumUrl}
-                          onChange={(e) => setMobileAppiumUrl(e.target.value)}
-                          placeholder={t('settings.mobile.appiumUrl.placeholder')}
-                          className="border p-1 rounded mt-2 w-full"
-                        />
-                        <label
-                          htmlFor="mobile-platform-version"
-                          className="font-medium mr-2 mt-4 block"
-                        >
-                          {t('settings.mobile.platformVersion.label')}
-                        </label>
-                        <input
-                          type="text"
-                          id="mobile-platform-version"
-                          value={mobilePlatformVersion}
-                          onChange={(e) => setMobilePlatformVersion(e.target.value)}
-                          placeholder={t('settings.mobile.platformVersion.placeholder')}
-                          className="border p-1 rounded mt-2 w-full"
-                        />
-                        <label
-                          htmlFor="mobile-automation-name"
-                          className="font-medium mr-2 mt-4 block"
-                        >
-                          {t('settings.mobile.automationName.label')}
-                        </label>
-                        <input
-                          type="text"
-                          id="mobile-automation-name"
-                          value={mobileAutomationName}
-                          onChange={(e) => setMobileAutomationName(e.target.value)}
-                          placeholder={t('settings.mobile.automationName.placeholder')}
-                          className="border p-1 rounded mt-2 w-full"
-                        />
-                        <label htmlFor="mobile-device-name" className="font-medium mr-2 mt-4 block">
-                          {t('settings.mobile.deviceName.label')}
-                        </label>
-                        <input
-                          type="text"
-                          id="mobile-device-name"
-                          value={mobileDeviceName}
-                          onChange={(e) => setMobileDeviceName(e.target.value)}
-                          placeholder={t('settings.mobile.deviceName.placeholder')}
-                          className="border p-1 rounded mt-2 w-full"
-                        />
-                        <label htmlFor="mobile-app" className="font-medium mr-2 mt-4 block">
-                          {t('settings.mobile.app.label')}
-                        </label>
-                        <input
-                          type="text"
-                          id="mobile-app"
-                          value={mobileApp}
-                          onChange={(e) => setMobileApp(e.target.value)}
-                          placeholder={t('settings.mobile.app.placeholder')}
-                          className="border p-1 rounded mt-2 w-full"
-                        />
-                        <div className="mt-4">
-                          <Button
-                            onClick={handleMobileSettingsUpdate}
-                            type="primary"
-                            disabled={isUpdatingMobile}
-                          >
-                            {t('settings.updateMobileSettingsButton')}
-                          </Button>
-                        </div>
-                      </div>
-                    </details>
-
-                    <details className="border-b border-neutral-bdr p-4">
-                      <summary className="cursor-pointer font-semibold">
-                        {t('settings.section.appium')}
-                      </summary>
-                      <div className="mt-2">
-                        <Button
-                          onClick={handleStartAppium}
-                          type="primary"
-                          disabled={isStartingAppium}
-                        >
-                          {isStartingAppium
-                            ? t('settings.appium.starting')
-                            : t('settings.appium.startButton')}
-                        </Button>
-                      </div>
-                    </details>
-                  </>
-                )}
-
-                {/* Timeout */}
-                {!isMobileProject && (
-                  <details className="border-b border-neutral-bdr p-4">
-                    <summary className="cursor-pointer font-semibold">
-                      {t('settings.section.timeout')}
-                    </summary>
-                    <div className="pt-2">
-                      <label htmlFor="timeout-input" className="font-medium mr-2">
-                        {t('settings.timeout.label')}
-                      </label>
-                      <input
-                        type="number"
-                        id="timeout-input"
-                        value={timeout}
-                        onChange={(e) => setTimeout_(Number(e.target.value))}
-                        min={1}
-                        max={300}
-                        className="border p-1 rounded mt-2 w-32"
-                      />
-                      <div className="mt-4">
-                        <Button
-                          onClick={handleTimeoutUpdate}
-                          type="primary"
-                          disabled={isUpdatingTimeout}
-                        >
-                          {t('settings.timeout.updateButton')}
-                        </Button>
-                      </div>
-                    </div>
-                  </details>
-                )}
-
-
-                {/* Browser Options */}
-                {!isMobileProject && (
-                  <details className="border-b border-neutral-bdr p-4">
-                    <summary className="cursor-pointer font-semibold">
-                      {t('settings.section.browserOptions')}
-                    </summary>
-                    <div className="pt-2">
-                      <div className="mt-2">
-                        <TagInput
-                          tags={browserOptions}
-                          onChange={setBrowserOptions}
-                          placeholder={t('settings.browserOptions.placeholder')}
-                        />
-                      </div>
-                      <div className="mt-4">
-                        <Button
-                          onClick={handleBrowserOptionsUpdate}
-                          type="primary"
-                          disabled={isUpdatingOptions}
-                        >
-                          {t('settings.browserOptions.updateButton')}
-                        </Button>
-                      </div>
-                    </div>
-                  </details>
-                )}
-
-                {/* Paths */}
-                <details className="border-b border-neutral-bdr p-4">
-                  <summary className="cursor-pointer font-semibold">
-                    {t('settings.section.paths')}
-                  </summary>
-                  <div className="pt-2 space-y-3">
-                    <div>
-                      <label className="font-medium block mb-1">{t('settings.paths.page')}</label>
-                      <input
-                        type="text"
-                        value={pagePath}
-                        onChange={(e) => setPagePath(e.target.value)}
-                        placeholder="e.g. pages"
-                        className="border p-1 rounded w-full"
-                      />
-                    </div>
-                    <div>
-                      <label className="font-medium block mb-1">
-                        {t('settings.paths.feature')}
-                      </label>
-                      <input
-                        type="text"
-                        value={featurePath}
-                        onChange={(e) => setFeaturePath(e.target.value)}
-                        placeholder="e.g. features"
-                        className="border p-1 rounded w-full"
-                      />
-                    </div>
-                    <div>
-                      <label className="font-medium block mb-1">{t('settings.paths.spec')}</label>
-                      <input
-                        type="text"
-                        value={specPath}
-                        onChange={(e) => setSpecPath(e.target.value)}
-                        placeholder="e.g. spec"
-                        className="border p-1 rounded w-full"
-                      />
-                    </div>
-                    <div>
-                      <label className="font-medium block mb-1">{t('settings.paths.helper')}</label>
-                      <input
-                        type="text"
-                        value={helperPath}
-                        onChange={(e) => setHelperPath(e.target.value)}
-                        placeholder="e.g. helpers"
-                        className="border p-1 rounded w-full"
-                      />
-                    </div>
-                    <div className="mt-4">
-                      <Button onClick={handlePathsUpdate} type="primary" disabled={isUpdatingPaths}>
-                        {t('settings.paths.updateButton')}
-                      </Button>
-                    </div>
-                  </div>
-                </details>
+          <div className="relative h-[70vh] border border-neutral-bdr rounded-lg shadow-card overflow-y-auto bg-white p-4 flex gap-8">
+            <div className="flex-1">
+              <ScaffoldPanel />
+            </div>
+            <div className="w-64 shrink-0 border-l border-neutral-bdr pl-8">
+              <h3 className="text-sm font-semibold text-neutral-dark mb-3">{t('settings.section.paths')}</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.page')}</label>
+                  <input type="text" value={pagePath} onChange={(e) => setPagePath(e.target.value)} onBlur={handlePathsUpdate} placeholder="e.g. pages" className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.feature')}</label>
+                  <input type="text" value={featurePath} onChange={(e) => setFeaturePath(e.target.value)} onBlur={handlePathsUpdate} placeholder="e.g. features" className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.spec')}</label>
+                  <input type="text" value={specPath} onChange={(e) => setSpecPath(e.target.value)} onBlur={handlePathsUpdate} placeholder="e.g. spec" className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.helper')}</label>
+                  <input type="text" value={helperPath} onChange={(e) => setHelperPath(e.target.value)} onBlur={handlePathsUpdate} placeholder="e.g. helpers" className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full" />
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
+
 
       {activeTab === 'dashboard' && (
         <div className="relative w-full">

@@ -176,7 +176,19 @@ document.addEventListener(
     if (target) {
       const { selector, strategy } = getPrioritizedSelector(target)
       const elementText = target.innerText || ''
-      ipcRenderer.send('show-assertion-context-menu', { selector, strategy, elementText })
+      const elementValue = (target as HTMLInputElement).value ?? ''
+      const inputType = target.tagName === 'INPUT' ? (target as HTMLInputElement).type.toLowerCase() : ''
+      const pageTitle = document.title
+      const pageUrl = window.location.href
+      ipcRenderer.send('show-assertion-context-menu', {
+        selector,
+        strategy,
+        elementText,
+        elementValue,
+        inputType,
+        pageTitle,
+        pageUrl
+      })
     }
   },
   true

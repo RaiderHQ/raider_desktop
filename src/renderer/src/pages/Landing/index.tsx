@@ -1,17 +1,20 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import ProjectSelector from '@components/ProjectSelector'
 import Logo from '@components/Logo'
+import InformationModal from '@components/InformationModal'
 import OpenFolder from '@assets/icons/open-folder.svg'
 import AddIcon from '@assets/icons/add.svg'
+import RecorderIcon from '@assets/icons/bxs_up-arrow_side.svg'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 
 const Landing: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [helpOpen, setHelpOpen] = useState(false)
 
   const setLoading: (loading: boolean) => void = useLoadingStore(
     (state: { setLoading: (loading: boolean) => void }) => state.setLoading
@@ -42,8 +45,25 @@ const Landing: React.FC = (): JSX.Element => {
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex flex-col items-center justify-center flex-grow">
-        <div className="mb-8">
-          <Logo size={120} />
+        {/* Clickable logo with speech bubble */}
+        <div className="relative mb-8 flex flex-col items-center">
+          <button
+            onClick={() => setHelpOpen(true)}
+            className="relative group focus:outline-none"
+            aria-label="Learn how Ruby Raider works"
+          >
+            <Logo size={120} />
+            {/* Pulse ring to draw attention */}
+            <span className="absolute inset-0 rounded-full animate-ping opacity-20 bg-ruby pointer-events-none" />
+          </button>
+
+          {/* Speech bubble */}
+          <div className="mt-3 relative bg-white border border-neutral-bdr rounded-lg px-3 py-1.5 shadow-sm text-xs text-neutral-dk font-medium whitespace-nowrap">
+            {/* Bubble tail pointing up */}
+            <span className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[8px] border-b-neutral-bdr" />
+            <span className="absolute -top-[7px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[7px] border-b-white" />
+            Click me to learn how Raider works
+          </div>
         </div>
 
         <h1 className="text-[2.5rem] font-bold text-neutral-dark mb-4">{t('landing.title')}</h1>
@@ -52,7 +72,15 @@ const Landing: React.FC = (): JSX.Element => {
           {t('landing.subtitle')}
         </p>
 
-        <div className="flex space-x-8 mb-8">
+        <div className="grid grid-cols-3 gap-8 mb-8">
+          <ProjectSelector
+            icon={RecorderIcon}
+            description={t('button.recorder.description')}
+            url="/recorder"
+            buttonValue={t('button.recorder.text')}
+            modalTitleKey="information.openRecorder.title"
+            modalMessageKey="information.openRecorder.message"
+          />
           <ProjectSelector
             icon={OpenFolder}
             description={t('button.create.description')}
@@ -71,6 +99,14 @@ const Landing: React.FC = (): JSX.Element => {
           />
         </div>
       </main>
+
+      {helpOpen && (
+        <InformationModal
+          title={t('help.landing.title')}
+          message={t('help.landing.message')}
+          onClose={() => setHelpOpen(false)}
+        />
+      )}
     </div>
   )
 }
