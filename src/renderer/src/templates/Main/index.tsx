@@ -90,9 +90,15 @@ const MainTemplate: React.FC = (): JSX.Element => {
               ?
             </span>
           </button>
-          <Link to="/overview" className="text-lg font-bold text-neutral-dark tracking-tight hover:text-ruby transition-colors">
-            Ruby Raider
-          </Link>
+          {projectPath || isActive(['/recorder']) ? (
+            <Link to="/overview" className="text-lg font-bold text-neutral-dark tracking-tight hover:text-ruby transition-colors">
+              Ruby Raider
+            </Link>
+          ) : (
+            <span className="text-lg font-bold text-neutral-dark tracking-tight">
+              Ruby Raider
+            </span>
+          )}
         </div>
 
         {!isCreateProjectView && projectPath && (
