@@ -142,7 +142,7 @@ const ConceptsModal: React.FC<ConceptsModalProps> = ({ onClose }) => {
                 <span className="text-2xl leading-none shrink-0 mt-0.5">{concept.icon}</span>
                 <div>
                   <h3 className="text-sm font-semibold text-neutral-dark mb-0.5">{t(concept.titleKey)}</h3>
-                  <p className="text-xs text-neutral-mid leading-relaxed">{t(concept.messageKey)}</p>
+                  <p className="text-xs text-neutral-mid leading-relaxed whitespace-pre-wrap">{t(concept.messageKey)}</p>
                 </div>
               </div>
             ))}

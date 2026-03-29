@@ -89,7 +89,7 @@
     },
     "openRecorder": {
       "title": "Open Recorder",
-      "message": "The Recorder lets you capture browser interactions and automatically generate test scripts without writing code."
+      "message": "The Recorder lets you capture browser interactions and automatically generate test scripts without writing code.\n\nNo prior coding experience is required."
     },
     "new": {
       "title": "Start a New Project",
@@ -539,61 +539,61 @@
     },
     "suite": {
       "title": "Test Suite",
-      "message": "A suite is a named folder that groups related tests together — for example, all tests for your login page. You can run an entire suite at once."
+      "message": "A suite is a named folder that groups related tests together — for example, all tests for your login page.\n\nYou can run an entire suite at once."
     },
     "test": {
       "title": "Test",
-      "message": "A test is a single script that checks one thing — like 'can a user log in?'. It has a name, a starting URL, and a list of recorded steps."
+      "message": "A test is a single script that checks one thing — like 'can a user log in?'.\n\nIt has a name, a starting URL, and a list of recorded steps."
     },
     "recording": {
       "title": "Recording",
-      "message": "When you press Record, a browser opens and every click, keystroke, and navigation you make is captured automatically as a step — no code needed."
+      "message": "When you press Record, a browser opens and every click, keystroke, and navigation you make is captured automatically as a step.\n\nNo code needed."
     },
     "running": {
       "title": "Running a Test",
-      "message": "When you press Run, Ruby Raider opens the browser and replays every recorded step automatically. It then tells you whether the test passed or failed."
+      "message": "When you press Run, Ruby Raider opens the browser and replays every recorded step automatically.\n\nIt then tells you whether the test passed or failed."
     },
     "steps": {
       "title": "Recorded Steps",
-      "message": "Steps are the individual actions in a test — things like 'click button', 'type text', or 'visit URL'. You can reorder, edit, or delete steps at any time."
+      "message": "Steps are the individual actions in a test — things like 'click button', 'type text', or 'visit URL'.\n\nYou can reorder, edit, or delete steps at any time."
     },
     "overview": {
       "title": "Project Overview",
-      "message": "The Overview is your project's home. Browse files on the left, preview them on the right, and use the toolbar to set your browser, run mode, and test timeout."
+      "message": "The Overview is your project's home.\n\nBrowse files on the left, preview them on the right, and use the toolbar to set your browser, run mode, and test timeout."
     }
   },
   "help": {
     "recorder": {
       "recording": {
         "title": "Recording a Test",
-        "message": "Pick a suite from the dropdown, create a test, enter the URL you want to test, then press the red Record button. A browser will open and every click or keystroke you make is captured as a step. Press Stop when you're done, then Run to check if the test passes."
+        "message": "Pick a suite from the dropdown, create a test, and enter the URL you want to test.\n\nThen press the red Record button — a browser will open and every click or keystroke you make is captured as a step.\n\nPress Stop when you're done, then Run to check if the test passes."
       },
       "dashboard": {
         "title": "Recording Dashboard",
-        "message": "The dashboard shows the output from your last test run — which steps passed, which failed, and any error messages. Use it to understand what went wrong and decide what to fix or re-record."
+        "message": "The dashboard shows the output from your last test run — which steps passed, which failed, and any error messages.\n\nUse it to understand what went wrong and decide what to fix or re-record."
       }
     },
     "overview": {
       "files": {
         "title": "Files & Test Settings",
-        "message": "Browse all files in your project on the left — click any file to preview it on the right. Use the toolbar above to set which browser to use, whether to run headlessly, which tests to run, and the timeout. These settings apply every time you run your tests."
+        "message": "Browse all files in your project on the left — click any file to preview it on the right.\n\nUse the toolbar above to set which browser to use, whether to run headlessly, which tests to run, and the timeout.\n\nThese settings apply every time you run your tests."
       },
       "scaffold": {
         "title": "Scaffolding",
-        "message": "Scaffolding generates boilerplate files for you — page objects, spec files, feature files, and helpers. Fill in the form and Ruby Raider will create the right file structure so you can start writing test logic immediately without setting things up by hand."
+        "message": "Scaffolding generates boilerplate files for you — page objects, spec files, feature files, and helpers.\n\nFill in the form and Ruby Raider will create the right file structure so you can start writing test logic immediately without setting things up by hand."
       },
       "dashboard": {
         "title": "Project Dashboard",
-        "message": "The dashboard gives you an at-a-glance view of your project's test health — total tests, recent pass/fail trends, and run history. Use it to track quality over time without having to run tests manually."
+        "message": "The dashboard gives you an at-a-glance view of your project's test health — total tests, recent pass/fail trends, and run history.\n\nUse it to track quality over time without having to run tests manually."
       }
     },
     "createProject": {
       "title": "Create a New Project",
-      "message": "Choose your automation framework (Selenium is the most common for web apps), your test style (RSpec or Cucumber), and give your project a name. Ruby Raider will generate a ready-to-use folder structure for you."
+      "message": "Choose your automation framework (Selenium is the most common for web apps), your test style (RSpec or Cucumber), and give your project a name.\n\nRuby Raider will generate a ready-to-use folder structure for you."
     },
     "landing": {
       "title": "Welcome to Ruby Raider",
-      "message": "Ruby Raider is a visual test automation tool. Use the Recorder to capture browser actions as tests, the Overview to browse and run your tests, or Create Project to start a brand new test suite from scratch. For installation help and a full guide, click the Ruby Raider logo in the top-left corner of the app."
+      "message": "Ruby Raider is a visual test automation tool.\n\nUse the Recorder to capture browser actions as tests, the Overview to browse and run your tests, or Create Project to start a brand new test suite from scratch.\n\nFor installation help and a full guide, click the Ruby Raider logo in the top-left corner of the app."
     }
   },
   "tooltips": {
