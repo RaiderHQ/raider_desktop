@@ -27,6 +27,38 @@ interface TestResult {
   statusDetails?: StatusDetails
 }
 
+const EmptyState: React.FC = () => {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-col items-center justify-center py-14 px-6">
+      <div className="w-12 h-12 rounded-full bg-neutral-100 border border-neutral-bdr flex items-center justify-center mb-4">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-mid">
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
+        </svg>
+      </div>
+      <h3 className="text-sm font-semibold text-neutral-dark mb-1">{t('dashboard.noResults.title')}</h3>
+      <p className="text-xs text-neutral-mid text-center mb-6 max-w-xs">{t('dashboard.noResults.subtitle')}</p>
+      <div className="space-y-3 w-full max-w-sm">
+        {([
+          t('dashboard.noResults.step1'),
+          t('dashboard.noResults.step2'),
+          t('dashboard.noResults.step3'),
+        ] as string[]).map((step, i) => (
+          <div key={i} className="flex items-start gap-3">
+            <span className="w-5 h-5 rounded-full bg-ruby text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+              {i + 1}
+            </span>
+            <p className="text-xs text-neutral-dk leading-relaxed">{step}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 const Index: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const [results, setResults] = useState<TestResult[]>([])
@@ -85,15 +117,11 @@ const Index: React.FC = (): JSX.Element => {
           }
           if (result.statusDetails?.message) {
             let msg = result.statusDetails.message
-            // Strip non-printable / replacement characters that come from encoding failures
             msg = msg.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFD]/g, '')
-            // If the message contains a Ruby encoding error, extract just the useful part
             const encodingErrIdx = msg.indexOf('Unable to encode string')
             if (encodingErrIdx !== -1) {
               msg = msg.substring(0, encodingErrIdx).trim() || msg.substring(0, 500)
             }
-            // Cap very long messages (e.g. full axe-core source dumps)
-            // Use a generous limit so multi-violation a11y reports aren't truncated
             if (msg.length > 20000) {
               msg = msg.substring(0, 20000) + '\n… (message truncated)'
             }
@@ -136,42 +164,49 @@ const Index: React.FC = (): JSX.Element => {
   }
 
   return (
-    <div className="p-2 min-h-fit sm:p-4 md:p-6 w-full flex flex-col">
+    <div className="p-4 w-full flex flex-col gap-4">
       {totalCount === 0 ? (
-        <div className="text-center text-neutral-dk text-lg font-semibold p-6 border rounded bg-white shadow">
-          {t('dashboard.noResults')}
+        <div className="border border-neutral-bdr rounded-lg bg-white">
+          <EmptyState />
         </div>
       ) : (
         <>
-          <div className="mb-2 sm:mb-4 md:mb-6 p-4 border rounded bg-white">
-            <h2 className="text-2xl font-bold mb-2">{t('dashboard.overallSummary')}</h2>
-            <p className="text-lg">
-              {t('dashboard.totalTests')}: <span className="font-semibold">{totalCount}</span>
+          {/* Summary bar */}
+          <div className="border border-neutral-bdr rounded-lg bg-white px-5 py-4">
+            <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-3">
+              {t('dashboard.overallSummary')}
             </p>
-            <p className="text-lg">
-              {t('dashboard.passed')}:{' '}
-              <span className="font-semibold text-status-ok">{passedCount}</span>
-            </p>
-            <p className="text-lg">
-              {t('dashboard.failed')}:{' '}
-              <span className="font-semibold text-status-err">{failedCount}</span>
-            </p>
-            <p className="text-lg">
-              {t('dashboard.skipped')}:{' '}
-              <span className="font-semibold text-amber-500">{skippedCount}</span>
-            </p>
+            <div className="flex gap-3 flex-wrap">
+              <div className="flex flex-col items-center px-4 py-2 rounded-lg border border-neutral-bdr bg-neutral-50 min-w-[64px]">
+                <span className="text-lg font-bold text-neutral-dark">{totalCount}</span>
+                <span className="text-xs text-neutral-mid">{t('dashboard.totalTests')}</span>
+              </div>
+              <div className="flex flex-col items-center px-4 py-2 rounded-lg border border-neutral-bdr bg-neutral-50 min-w-[64px]">
+                <span className="text-lg font-bold text-status-ok">{passedCount}</span>
+                <span className="text-xs text-neutral-mid">{t('dashboard.passed')}</span>
+              </div>
+              <div className="flex flex-col items-center px-4 py-2 rounded-lg border border-neutral-bdr bg-neutral-50 min-w-[64px]">
+                <span className="text-lg font-bold text-status-err">{failedCount}</span>
+                <span className="text-xs text-neutral-mid">{t('dashboard.failed')}</span>
+              </div>
+              <div className="flex flex-col items-center px-4 py-2 rounded-lg border border-neutral-bdr bg-neutral-50 min-w-[64px]">
+                <span className="text-lg font-bold text-amber-500">{skippedCount}</span>
+                <span className="text-xs text-neutral-mid">{t('dashboard.skipped')}</span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-1 flex-col md:flex-row gap-4 sm:gap-6 md:gap-8">
-            <div className="items-center">
-              <PieChartWidget passed={passedCount} failed={failedCount} skipped={skippedCount} />
-            </div>
+          {/* Chart + results */}
+          <div className="flex flex-col md:flex-row gap-4">
+            <PieChartWidget passed={passedCount} failed={failedCount} skipped={skippedCount} />
 
-            <div className="flex-1 flex flex-col border rounded shadow p-4 h-min">
-              <div className="flex flex-col gap-4">
-                {passedTests.length > 0 && (
-                  <div>
-                    <h3 className="text-xl font-semibold mb-2">{t('dashboard.passed')}</h3>
+            <div className="flex-1 border border-neutral-bdr rounded-lg bg-white p-4 flex flex-col gap-4">
+              {passedTests.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-2">
+                    {t('dashboard.passed')}
+                  </p>
+                  <div className="flex flex-col gap-2">
                     {passedTests.map((result, index) => {
                       const testInfo = testByName.get(result.name)
                       return (
@@ -180,7 +215,6 @@ const Index: React.FC = (): JSX.Element => {
                           name={result.name}
                           status={result.status}
                           screenshot={result.screenshot}
-
                           message={result.statusDetails?.message}
                           hasTrace={testInfo?.hasTrace}
                           onViewTrace={() => handleViewTrace(result.name)}
@@ -188,10 +222,14 @@ const Index: React.FC = (): JSX.Element => {
                       )
                     })}
                   </div>
-                )}
-                {failedTests.length > 0 && (
-                  <div>
-                    <h3 className="text-xl font-semibold mb-2">{t('dashboard.failed')}</h3>
+                </div>
+              )}
+              {failedTests.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-2">
+                    {t('dashboard.failed')}
+                  </p>
+                  <div className="flex flex-col gap-2">
                     {failedTests.map((result, index) => {
                       const testInfo = testByName.get(result.name)
                       return (
@@ -200,7 +238,6 @@ const Index: React.FC = (): JSX.Element => {
                           name={result.name}
                           status={result.status}
                           screenshot={result.screenshot}
-
                           message={result.statusDetails?.message}
                           hasTrace={testInfo?.hasTrace}
                           onViewTrace={() => handleViewTrace(result.name)}
@@ -208,10 +245,14 @@ const Index: React.FC = (): JSX.Element => {
                       )
                     })}
                   </div>
-                )}
-                {skippedTests.length > 0 && (
-                  <div>
-                    <h3 className="text-xl font-semibold mb-2">{t('dashboard.skipped')}</h3>
+                </div>
+              )}
+              {skippedTests.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-2">
+                    {t('dashboard.skipped')}
+                  </p>
+                  <div className="flex flex-col gap-2">
                     {skippedTests.map((result, index) => (
                       <TestResultCard
                         key={`skipped-${index}`}
@@ -222,8 +263,8 @@ const Index: React.FC = (): JSX.Element => {
                       />
                     ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </>

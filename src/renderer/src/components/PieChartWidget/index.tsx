@@ -34,8 +34,8 @@ const PieChartWidget: React.FC<PieChartWidgetProps> = ({ passed, failed, skipped
   }
 
   return (
-    <div className="p-4 border rounded shadow">
-      <h2 className="text-xl font-bold mb-2">{t('testResults.breakdown')}</h2>
+    <div className="p-4 border border-neutral-bdr rounded-lg bg-white">
+      <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-2">{t('testResults.breakdown')}</p>
       <PieChart width={300} height={300}>
         <Pie
           data={data}
