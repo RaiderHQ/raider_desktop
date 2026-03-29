@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
-import InformationModal from '@components/InformationModal'
+import InfoButton from '@components/InfoButton'
 import InputField from '@components/InputField'
 import SelectInput from '@components/SelectInput'
 import Checkbox from '@components/Checkbox'
@@ -28,7 +28,6 @@ const CreateProject: React.FC = () => {
 
   const [automationFramework, setAutomationFramework] = useState('Selenium')
   const [testFramework, setTestFramework] = useState('Rspec')
-  const [isModalOpen, setModalOpen] = useState(false)
   const [projectName, setProjectName] = useState('')
 
   // Add-ons state
@@ -97,15 +96,11 @@ const CreateProject: React.FC = () => {
       </div>
 
       <ContentArea>
-        <button
-          className="absolute top-2 right-4 w-8 h-8 flex items-center justify-center rounded-full text-neutral-mid hover:text-ruby hover:bg-ruby-sub transition-colors"
-          onClick={() => setModalOpen(true)}
-          aria-label="Help"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-            <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
-          </svg>
-        </button>
+        <InfoButton
+          titleKey="help.createProject.title"
+          messageKey="help.createProject.message"
+          className="absolute top-2 right-4"
+        />
 
         <div className="bg-white p-4">
           <div className="mb-6">
@@ -166,13 +161,6 @@ const CreateProject: React.FC = () => {
         </div>
       </ContentArea>
 
-      {isModalOpen && (
-        <InformationModal
-          title={t('information.new.title')}
-          message={t('information.new.message')}
-          onClose={() => setModalOpen(false)}
-        />
-      )}
     </>
   )
 }

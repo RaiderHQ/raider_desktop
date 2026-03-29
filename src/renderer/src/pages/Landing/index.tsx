@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import ProjectSelector from '@components/ProjectSelector'
 import Logo from '@components/Logo'
+import InfoButton from '@components/InfoButton'
 import OpenFolder from '@assets/icons/open-folder.svg'
 import AddIcon from '@assets/icons/add.svg'
 import RecorderIcon from '@assets/icons/bxs_up-arrow_side.svg'
@@ -47,7 +48,10 @@ const Landing: React.FC = (): JSX.Element => {
           <Logo size={120} />
         </div>
 
-        <h1 className="text-[2.5rem] font-bold text-neutral-dark mb-4">{t('landing.title')}</h1>
+        <div className="flex items-center gap-2 mb-4">
+          <h1 className="text-[2.5rem] font-bold text-neutral-dark">{t('landing.title')}</h1>
+          <InfoButton titleKey="help.landing.title" messageKey="help.landing.message" />
+        </div>
 
         <p className="text-center text-lg md:text-xl lg:text-2xl text-neutral-mid mb-8">
           {t('landing.subtitle')}

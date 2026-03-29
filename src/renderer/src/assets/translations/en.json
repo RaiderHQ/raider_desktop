@@ -497,5 +497,53 @@
       "assertElementEnabled": "Assert that element with {{strategy}} \"{{value}}\" is enabled",
       "assertElementTextEquals": "Assert that element with {{strategy}} \"{{value}}\" has text equal to \"{{text}}\""
     }
+  },
+  "help": {
+    "recorder": {
+      "title": "The Recorder",
+      "message": "The Recorder lets you click around a website and automatically capture every action as a test step — no coding needed. Pick a suite, create a test, enter a URL, then press Record. When you're done, press Run to check if everything passes."
+    },
+    "overview": {
+      "title": "Project Overview",
+      "message": "This is your project's home. Browse your test files in the tree on the left, preview them on the right, and configure which browser to use and how to run your tests from the toolbar above."
+    },
+    "createProject": {
+      "title": "Create a New Project",
+      "message": "Choose your automation framework (Selenium is the most common for web apps), your test style (RSpec or Cucumber), and give your project a name. Ruby Raider will generate a ready-to-use folder structure for you."
+    },
+    "landing": {
+      "title": "Welcome to Ruby Raider",
+      "message": "Ruby Raider is a visual test automation tool. Use the Recorder to capture browser actions as tests, the Overview to browse and run your tests, or Create Project to start a brand new test suite from scratch."
+    }
+  },
+  "tooltips": {
+    "recorder": {
+      "record": "Start recording — opens the website in a built-in browser and captures every click and keystroke as a test step.",
+      "run": "Run the selected test — replays every recorded step in a browser and reports pass or fail.",
+      "stop": "Stop the current recording session and return to the normal view.",
+      "newTest": "Create a new blank test inside the active suite. Give it a name and a URL, then press Record.",
+      "more": "Import or export tests, suites, or the entire project to share or back up your work.",
+      "testName": "A short name that describes what this test checks — e.g. 'Login with valid credentials'.",
+      "urlToRecord": "The web address the browser will open when you start recording. Must start with https://",
+      "implicitWait": "Seconds Selenium automatically waits for a page element to appear before giving up. 0 means no automatic wait.",
+      "explicitWait": "Maximum seconds to wait for a specific condition — such as a button becoming clickable.",
+      "suiteSelector": "A suite is a named group of related tests. Select one here or create a new one via the dropdown.",
+      "runAllTests": "Run every test in the currently selected suite one after another and see the combined results.",
+      "deleteTest": "Permanently remove this test from the suite. This cannot be undone.",
+      "codeView": "See the raw Ruby/Selenium commands. In code view you can double-click any step to edit it directly.",
+      "friendlyView": "Switch to a plain-English description of each recorded step — easier to read without coding knowledge.",
+      "testOutput": "Show the output panel — displays the pass/fail result and any errors after running a test.",
+      "hideOutput": "Hide the output panel to give more space to your recorded steps.",
+      "deleteStep": "Remove this step from the test. The remaining steps will still run in order.",
+      "dragStep": "Drag to reorder this step. Tests run steps from top to bottom."
+    },
+    "overview": {
+      "urlInput": "The base URL used when running your tests — e.g. https://staging.example.com",
+      "browserSelect": "Which browser to launch when running tests. Chrome is the most widely supported.",
+      "headlessToggle": "Headless mode runs the browser invisibly in the background — faster, but you won't see what's happening on screen.",
+      "runMode": "Choose which tests to run: all of them, only smoke tests, regression tests, or a custom tag.",
+      "rerunFailed": "Re-run only the tests that failed in the last run — useful for quickly confirming a fix.",
+      "timeout": "Maximum seconds a single test can take before it is automatically marked as failed."
+    }
   }
 }
