@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ParsedCommand } from '@foundation/Types/command'
+import Tooltip from '@components/Tooltip'
 
 interface CommandBlockProps {
   command: string
@@ -151,13 +152,15 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
       >
         {renderContent()}
 
-        <button
-          onClick={() => onDelete(index)}
-          className="absolute top-1/2 -translate-y-1/2 right-2 w-6 h-6 flex items-center justify-center rounded-full text-neutral-mid hover:bg-status-err-bg hover:text-red-600 transition-colors"
-          aria-label="Delete step"
-        >
-          <span className="text-2xl font-light select-none leading-none">×</span>
-        </button>
+        <Tooltip content={t('tooltips.recorder.deleteStep')} position="top">
+          <button
+            onClick={() => onDelete(index)}
+            className="absolute top-1/2 -translate-y-1/2 right-2 w-6 h-6 flex items-center justify-center rounded-full text-neutral-mid hover:bg-status-err-bg hover:text-red-600 transition-colors"
+            aria-label="Delete step"
+          >
+            <span className="text-2xl font-light select-none leading-none">×</span>
+          </button>
+        </Tooltip>
       </div>
     </div>
   )

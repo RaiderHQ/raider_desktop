@@ -3,6 +3,7 @@ import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import { useTranslation } from 'react-i18next'
 import useRecorderStore from '@foundation/Stores/recorderStore'
+import Tooltip from '@components/Tooltip'
 
 interface TestSuitePanelProps {
   suites: Suite[]
@@ -176,54 +177,58 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
     <div className="w-full h-full p-2 flex flex-col">
       <div className="flex-shrink-0">
         <div className="flex items-center pb-2 border-b gap-1">
-          <div className="relative flex-1" ref={dropdownRef}>
-            <select
-              value={activeSuiteId ?? ''}
-              onChange={(e) => {
-                const val = e.target.value
-                if (val === '__new__') {
-                  handleNewSuiteClick()
-                } else if (val === '__delete__') {
-                  handleDeleteSuite()
-                } else {
-                  onSuiteChange(val)
-                }
-              }}
-              className="w-full border border-neutral-bdr rounded px-3 py-1 text-sm bg-white"
-              aria-label={t('recorder.testSuitePanel.selectSuite')}
+          <Tooltip content={t('tooltips.recorder.suiteSelector')} position="bottom" className="relative flex-1">
+            <div className="w-full" ref={dropdownRef}>
+              <select
+                value={activeSuiteId ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value
+                  if (val === '__new__') {
+                    handleNewSuiteClick()
+                  } else if (val === '__delete__') {
+                    handleDeleteSuite()
+                  } else {
+                    onSuiteChange(val)
+                  }
+                }}
+                className="w-full border border-neutral-bdr rounded px-3 py-1 text-sm bg-white"
+                aria-label={t('recorder.testSuitePanel.selectSuite')}
+              >
+                {suites.map((suite) => (
+                  <option key={suite.id} value={suite.id}>
+                    {suite.name}
+                  </option>
+                ))}
+                <option disabled>──────────</option>
+                <option value="__new__">{t('recorder.testSuitePanel.newSuite')}</option>
+                {activeSuiteId && (
+                  <option value="__delete__">{t('recorder.testSuitePanel.deleteSuite')}</option>
+                )}
+              </select>
+            </div>
+          </Tooltip>
+          <Tooltip content={t('tooltips.recorder.runAllTests')} position="top">
+            <button
+              onClick={handleRunAllClick}
+              disabled={!activeSuite || activeSuite.tests.length === 0 || isRunning}
+              aria-label={t('recorder.testSuitePanel.runAll')}
+              className={`ml-2 w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full transition-colors ${
+                !activeSuite || activeSuite.tests.length === 0 || isRunning
+                  ? 'text-neutral-300 cursor-not-allowed'
+                  : 'text-green-600 hover:bg-green-50'
+              }`}
             >
-              {suites.map((suite) => (
-                <option key={suite.id} value={suite.id}>
-                  {suite.name}
-                </option>
-              ))}
-              <option disabled>──────────</option>
-              <option value="__new__">{t('recorder.testSuitePanel.newSuite')}</option>
-              {activeSuiteId && (
-                <option value="__delete__">{t('recorder.testSuitePanel.deleteSuite')}</option>
+              {isRunning ? (
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round"/>
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                  <polygon points="5,3 19,12 5,21" />
+                </svg>
               )}
-            </select>
-          </div>
-          <button
-            onClick={handleRunAllClick}
-            disabled={!activeSuite || activeSuite.tests.length === 0 || isRunning}
-            title={t('recorder.testSuitePanel.runAll')}
-            className={`ml-2 w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full transition-colors ${
-              !activeSuite || activeSuite.tests.length === 0 || isRunning
-                ? 'text-neutral-300 cursor-not-allowed'
-                : 'text-green-600 hover:bg-green-50'
-            }`}
-          >
-            {isRunning ? (
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin">
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round"/>
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                <polygon points="5,3 19,12 5,21" />
-              </svg>
-            )}
-          </button>
+            </button>
+          </Tooltip>
         </div>
 
         {isCreatingSuite && (
@@ -277,6 +282,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
               >
                 {test.name}
               </button>
+              <Tooltip content={t('tooltips.recorder.deleteTest')} position="top">
               <button
                 onClick={(e) => {
                   e.stopPropagation()
@@ -295,6 +301,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
                   <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z" />
                 </svg>
               </button>
+              </Tooltip>
             </li>
           ))}
         </ul>

@@ -4,6 +4,8 @@ import TestSuitePanel from '@components/TestSuitePanel'
 import OutputPanel from '@components/OutputPanel'
 import MainRecorderPanel from '@components/MainRecorderPanel'
 import StyledPanel from '@components/StyledPanel'
+import Tooltip from '@components/Tooltip'
+import InfoButton from '@components/InfoButton'
 import type { Test } from '@foundation/Types/test'
 import AssertionTextModal from '@components/AssertionTextModal'
 import useProjectStore from '@foundation/Stores/projectStore'
@@ -234,17 +236,20 @@ const Recorder: React.FC = (): JSX.Element => {
         >
           {t('recorder.tabs.dashboard')}
         </button>
-        {runStatus && (
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`ml-auto flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-white transition-opacity hover:opacity-80 ${
-              runStatus === 'pass' ? 'bg-green-500' : 'bg-red-500'
-            }`}
-          >
-            <span className="text-base leading-none">{runStatus === 'pass' ? '✓' : '✕'}</span>
-            {runStatus === 'pass' ? 'Passed' : 'Failed'}
-          </button>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {runStatus && (
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-white transition-opacity hover:opacity-80 ${
+                runStatus === 'pass' ? 'bg-green-500' : 'bg-red-500'
+              }`}
+            >
+              <span className="text-base leading-none">{runStatus === 'pass' ? '✓' : '✕'}</span>
+              {runStatus === 'pass' ? 'Passed' : 'Failed'}
+            </button>
+          )}
+          <InfoButton titleKey="help.recorder.title" messageKey="help.recorder.message" />
+        </div>
       </div>
 
       {/* Recording tab */}
@@ -258,34 +263,38 @@ const Recorder: React.FC = (): JSX.Element => {
 
           {/* Inline wait settings */}
           <div className="flex items-center gap-4 px-1">
-            <div className="flex items-center gap-2">
-              <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                {t('settings.recording.implicitWait.label')}
-              </label>
-              <input
-                type="number"
-                id="implicit-wait"
-                value={implicitWait}
-                onChange={handleImplicitWaitChange}
-                onBlur={handleUpdateSettings}
-                className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
-                min="0"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                {t('settings.recording.explicitWait.label')}
-              </label>
-              <input
-                type="number"
-                id="explicit-wait"
-                value={explicitWait}
-                onChange={handleExplicitWaitChange}
-                onBlur={handleUpdateSettings}
-                className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
-                min="0"
-              />
-            </div>
+            <Tooltip content={t('tooltips.recorder.implicitWait')} position="bottom">
+              <div className="flex items-center gap-2">
+                <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                  {t('settings.recording.implicitWait.label')}
+                </label>
+                <input
+                  type="number"
+                  id="implicit-wait"
+                  value={implicitWait}
+                  onChange={handleImplicitWaitChange}
+                  onBlur={handleUpdateSettings}
+                  className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                  min="0"
+                />
+              </div>
+            </Tooltip>
+            <Tooltip content={t('tooltips.recorder.explicitWait')} position="bottom">
+              <div className="flex items-center gap-2">
+                <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                  {t('settings.recording.explicitWait.label')}
+                </label>
+                <input
+                  type="number"
+                  id="explicit-wait"
+                  value={explicitWait}
+                  onChange={handleExplicitWaitChange}
+                  onBlur={handleUpdateSettings}
+                  className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                  min="0"
+                />
+              </div>
+            </Tooltip>
           </div>
 
           {/* When recording: embedded browser + steps side by side */}
@@ -320,14 +329,16 @@ const Recorder: React.FC = (): JSX.Element => {
                   <StyledPanel>
                     <>
                       <div className="flex items-center p-1 border-b border-neutral-bdr">
-                        <button
-                          onClick={() => setShowCode(!showCode)}
-                          className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
-                        >
-                          {showCode
-                            ? t('recorder.recorderPage.friendlyView')
-                            : t('recorder.recorderPage.codeView')}
-                        </button>
+                        <Tooltip content={t(showCode ? 'tooltips.recorder.friendlyView' : 'tooltips.recorder.codeView')} position="bottom">
+                          <button
+                            onClick={() => setShowCode(!showCode)}
+                            className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
+                          >
+                            {showCode
+                              ? t('recorder.recorderPage.friendlyView')
+                              : t('recorder.recorderPage.codeView')}
+                          </button>
+                        </Tooltip>
                       </div>
                       <CommandList
                         steps={activeTest?.steps ?? []}
@@ -405,22 +416,26 @@ const Recorder: React.FC = (): JSX.Element => {
                       ) : (
                         <>
                           <div className="flex justify-between items-center p-1 border-b border-neutral-bdr">
-                            <button
-                              onClick={() => setShowCode(!showCode)}
-                              className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
-                            >
-                              {showCode
-                                ? t('recorder.recorderPage.friendlyView')
-                                : t('recorder.recorderPage.codeView')}
-                            </button>
-                            <button
-                              onClick={() => setIsOutputVisible(!isOutputVisible)}
-                              className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
-                            >
-                              {isOutputVisible
-                                ? t('recorder.recorderPage.hideOutput')
-                                : t('recorder.recorderPage.testOutput')}
-                            </button>
+                            <Tooltip content={t(showCode ? 'tooltips.recorder.friendlyView' : 'tooltips.recorder.codeView')} position="bottom">
+                              <button
+                                onClick={() => setShowCode(!showCode)}
+                                className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
+                              >
+                                {showCode
+                                  ? t('recorder.recorderPage.friendlyView')
+                                  : t('recorder.recorderPage.codeView')}
+                              </button>
+                            </Tooltip>
+                            <Tooltip content={t(isOutputVisible ? 'tooltips.recorder.hideOutput' : 'tooltips.recorder.testOutput')} position="bottom">
+                              <button
+                                onClick={() => setIsOutputVisible(!isOutputVisible)}
+                                className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
+                              >
+                                {isOutputVisible
+                                  ? t('recorder.recorderPage.hideOutput')
+                                  : t('recorder.recorderPage.testOutput')}
+                              </button>
+                            </Tooltip>
                           </div>
                           <CommandList
                             steps={activeTest?.steps ?? []}
