@@ -2,11 +2,10 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import useProjectStore from '@foundation/Stores/projectStore'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 import PieChartWidget from '@components/PieChartWidget'
 import TestResultCard from '@components/TestResultCard'
-import TraceViewer from '@components/TraceViewer'
 import NoProjectLoadedMessage from '@components/NoProjectLoadedMessage'
-import { useTraceViewer } from '../../hooks/useTraceViewer'
 
 interface Attachment {
   name: string
@@ -63,16 +62,14 @@ const Index: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const [results, setResults] = useState<TestResult[]>([])
   const projectPath: string | null = useProjectStore((state) => state.projectPath)
+  const suites = useRecorderStore((s) => s.suites)
 
-  const {
-    viewingTraceTestId,
-    traceSteps,
-    selectedTraceStepId,
-    testByName,
-    handleViewTrace,
-    handleBackToResults,
-    setSelectedTraceStepId
-  } = useTraceViewer()
+  const testByName = new Map<string, { id: string; hasTrace?: boolean }>()
+  for (const suite of suites) {
+    for (const test of suite.tests) {
+      testByName.set(test.name, { id: test.id, hasTrace: test.hasTrace })
+    }
+  }
 
   useEffect(() => {
     const fetchDashboard = async (): Promise<void> => {
@@ -152,17 +149,6 @@ const Index: React.FC = (): JSX.Element => {
     return <NoProjectLoadedMessage />
   }
 
-  if (viewingTraceTestId) {
-    return (
-      <TraceViewer
-        traceSteps={traceSteps}
-        selectedTraceStepId={selectedTraceStepId}
-        onSelectStep={setSelectedTraceStepId}
-        onBack={handleBackToResults}
-      />
-    )
-  }
-
   return (
     <div className="p-4 w-full flex flex-col gap-4">
       {totalCount === 0 ? (
@@ -216,8 +202,7 @@ const Index: React.FC = (): JSX.Element => {
                           status={result.status}
                           screenshot={result.screenshot}
                           message={result.statusDetails?.message}
-                          hasTrace={testInfo?.hasTrace}
-                          onViewTrace={() => handleViewTrace(result.name)}
+                          traceTestId={testInfo?.hasTrace ? testInfo.id : undefined}
                         />
                       )
                     })}
@@ -239,8 +224,7 @@ const Index: React.FC = (): JSX.Element => {
                           status={result.status}
                           screenshot={result.screenshot}
                           message={result.statusDetails?.message}
-                          hasTrace={testInfo?.hasTrace}
-                          onViewTrace={() => handleViewTrace(result.name)}
+                          traceTestId={testInfo?.hasTrace ? testInfo.id : undefined}
                         />
                       )
                     })}
@@ -253,15 +237,19 @@ const Index: React.FC = (): JSX.Element => {
                     {t('dashboard.skipped')}
                   </p>
                   <div className="flex flex-col gap-2">
-                    {skippedTests.map((result, index) => (
-                      <TestResultCard
-                        key={`skipped-${index}`}
-                        name={result.name}
-                        status={result.status}
-                        screenshot={result.screenshot}
-                        message={result.statusDetails?.message}
-                      />
-                    ))}
+                    {skippedTests.map((result, index) => {
+                      const testInfo = testByName.get(result.name)
+                      return (
+                        <TestResultCard
+                          key={`skipped-${index}`}
+                          name={result.name}
+                          status={result.status}
+                          screenshot={result.screenshot}
+                          message={result.statusDetails?.message}
+                          traceTestId={testInfo?.hasTrace ? testInfo.id : undefined}
+                        />
+                      )
+                    })}
                   </div>
                 </div>
               )}
