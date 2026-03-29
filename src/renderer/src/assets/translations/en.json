@@ -610,6 +610,7 @@
     }
   },
   "tooltips": {
+    "viewTrace": "View the step-by-step trace for this test — see screenshots and element info for every recorded action.",
     "recorder": {
       "record": "Start recording — opens the website in a built-in browser and captures every click and keystroke as a test step.",
       "run": "Run the selected test — replays every recorded step in a browser and reports pass or fail.",

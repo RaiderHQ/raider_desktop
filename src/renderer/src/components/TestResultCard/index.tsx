@@ -13,6 +13,10 @@ import {
   FaExternalLinkAlt
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
+import TraceTimeline from '@components/TraceTimeline'
+import TraceDetailPanel from '@components/TraceDetailPanel'
+import Tooltip from '@components/Tooltip'
+import type { TraceStep } from '@foundation/Types/traceStep'
 
 interface A11yNode {
   selector: string
@@ -45,7 +49,6 @@ function parseA11yMessage(msg: string): A11yViolation[] | null {
       const fixMatch =
         nb.match(/Fix any of the following:\s*[\r\n]\s*-\s*(.+?)(?:[\r\n]|$)/) ||
         nb.match(/Fix all of the following:\s*[\r\n]\s*-\s*(.+?)(?:[\r\n]|$)/)
-      // If no "Fix ..." block, grab the first indented line after HTML as the description
       const descMatch = !fixMatch ? nb.match(/(?:HTML:.*[\r\n])\s+(.+?)(?:[\r\n]|$)/) : null
       nodes.push({
         selector: selectorMatch?.[1]?.trim() || '',
@@ -65,8 +68,7 @@ interface TestResultCardProps {
   screenshot?: string
   message?: string | null
   backtrace?: string[]
-  hasTrace?: boolean
-  onViewTrace?: () => void
+  traceTestId?: string
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -164,13 +166,16 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
   screenshot,
   message,
   backtrace,
-  hasTrace,
-  onViewTrace
+  traceTestId
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [imageData, setImageData] = useState<string>('')
+  const [showTrace, setShowTrace] = useState(false)
+  const [traceSteps, setTraceSteps] = useState<TraceStep[]>([])
+  const [selectedTraceStepId, setSelectedTraceStepId] = useState<string | null>(null)
+  const [traceLoading, setTraceLoading] = useState(false)
 
   let statusIcon: JSX.Element | null = null
 
@@ -202,6 +207,29 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
     }
   }, [showModal, screenshot, t])
 
+  const handleToggleTrace = async (e: React.MouseEvent): Promise<void> => {
+    e.stopPropagation()
+    if (showTrace) {
+      setShowTrace(false)
+      return
+    }
+    if (traceSteps.length > 0) {
+      setShowTrace(true)
+      return
+    }
+    setTraceLoading(true)
+    try {
+      const result = await window.api.loadTrace(traceTestId!)
+      if (result.success && result.trace) {
+        setTraceSteps(result.trace)
+        setSelectedTraceStepId(null)
+        setShowTrace(true)
+      }
+    } finally {
+      setTraceLoading(false)
+    }
+  }
+
   return (
     <div className="border border-neutral-bdr rounded-lg bg-white">
       <div
@@ -214,6 +242,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
         </div>
         <div className="pl-4 shrink-0">{statusIcon}</div>
       </div>
+
       {open && (
         <div className="border-t border-neutral-bdr px-4 py-3">
           <p className="text-xs text-neutral-mid mb-1">
@@ -228,28 +257,57 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
               </pre>
             </div>
           )}
+
           <div className="flex gap-3 mt-2">
             {screenshot && (
               <button
-                onClick={() => setShowModal(true)}
+                onClick={(e) => { e.stopPropagation(); setShowModal(true) }}
                 className="text-xs text-ruby flex items-center gap-1 hover:underline"
               >
                 <FaImage />
                 {t('testResults.viewScreenshot')}
               </button>
             )}
-            {hasTrace && onViewTrace && (
-              <button
-                onClick={onViewTrace}
-                className="text-xs text-ruby flex items-center gap-1 hover:underline"
-              >
-                <FaRoute />
-                {t('testResults.viewTrace')}
-              </button>
+            {traceTestId && (
+              <Tooltip content={t('tooltips.viewTrace')}>
+                <button
+                  onClick={handleToggleTrace}
+                  disabled={traceLoading}
+                  className="text-xs text-ruby flex items-center gap-1 hover:underline disabled:opacity-50"
+                >
+                  <FaRoute />
+                  {traceLoading
+                    ? 'Loading...'
+                    : showTrace
+                      ? t('recorder.recorderPage.traceViewExit')
+                      : t('testResults.viewTrace')}
+                </button>
+              </Tooltip>
             )}
           </div>
+
+          {/* Inline trace panel */}
+          {showTrace && traceSteps.length > 0 && (
+            <div className="mt-3 border border-neutral-bdr rounded-lg overflow-hidden" style={{ height: 380 }}>
+              <div className="flex h-full">
+                <div className="w-[30%] border-r border-neutral-bdr overflow-y-auto">
+                  <TraceTimeline
+                    steps={traceSteps}
+                    selectedStepId={selectedTraceStepId}
+                    onSelectStep={setSelectedTraceStepId}
+                  />
+                </div>
+                <div className="w-[70%] overflow-y-auto">
+                  <TraceDetailPanel
+                    step={traceSteps.find((s) => s.id === selectedTraceStepId) || null}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
+
       {showModal && imageData && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
           <button

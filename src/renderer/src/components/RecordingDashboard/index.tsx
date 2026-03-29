@@ -1,9 +1,8 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 import PieChartWidget from '@components/PieChartWidget'
 import TestResultCard from '@components/TestResultCard'
-import TraceViewer from '@components/TraceViewer'
-import { useTraceViewer } from '../../hooks/useTraceViewer'
 
 interface RSpecExample {
   id: string
@@ -69,16 +68,14 @@ const EmptyState: React.FC = () => {
 
 const RecordingDashboard: React.FC<RecordingDashboardProps> = ({ runOutput }) => {
   const { t } = useTranslation()
+  const suites = useRecorderStore((s) => s.suites)
 
-  const {
-    viewingTraceTestId,
-    traceSteps,
-    selectedTraceStepId,
-    testByName,
-    handleViewTrace,
-    handleBackToResults,
-    setSelectedTraceStepId
-  } = useTraceViewer()
+  const testByName = new Map<string, { id: string; hasTrace?: boolean }>()
+  for (const suite of suites) {
+    for (const test of suite.tests) {
+      testByName.set(test.name, { id: test.id, hasTrace: test.hasTrace })
+    }
+  }
 
   let data: RSpecOutput | null = null
   try {
@@ -102,17 +99,6 @@ const RecordingDashboard: React.FC<RecordingDashboardProps> = ({ runOutput }) =>
   const failedCount = summary.failure_count
   const skippedCount = summary.pending_count
   const totalCount = summary.example_count
-
-  if (viewingTraceTestId) {
-    return (
-      <TraceViewer
-        traceSteps={traceSteps}
-        selectedTraceStepId={selectedTraceStepId}
-        onSelectStep={setSelectedTraceStepId}
-        onBack={handleBackToResults}
-      />
-    )
-  }
 
   return (
     <div className="p-4 w-full flex flex-col gap-4">
@@ -155,8 +141,7 @@ const RecordingDashboard: React.FC<RecordingDashboardProps> = ({ runOutput }) =>
                 status={example.status}
                 message={example.exception?.message ?? example.pending_message}
                 backtrace={example.exception?.backtrace}
-                hasTrace={testInfo?.hasTrace}
-                onViewTrace={() => handleViewTrace(example.description)}
+                traceTestId={testInfo?.hasTrace ? testInfo.id : undefined}
               />
             )
           })}
