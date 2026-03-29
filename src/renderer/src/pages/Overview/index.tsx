@@ -524,7 +524,10 @@ const Overview: React.FC = () => {
               Open Terminal
             </button>
           )}
-          <InfoButton titleKey="help.overview.title" messageKey="help.overview.message" />
+          <InfoButton
+            titleKey={`help.overview.${activeTab}.title`}
+            messageKey={`help.overview.${activeTab}.message`}
+          />
         </div>
       </div>
 
