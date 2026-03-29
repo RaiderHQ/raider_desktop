@@ -401,16 +401,16 @@
       "delete": "Delete"
     },
     "rubyInstallModal": {
-      "title": "Ruby Installation Required",
-      "message": "To use all features of the app, you need to install Ruby using rbenv with a version higher than 3.1.0",
+      "title": "Ruby Not Found",
+      "message": "Ruby Raider needs Ruby 3+ installed via rbenv. Follow the steps below to get set up.",
       "continue": "Continue",
       "close": "Close App"
     },
     "rubyGemsInstallModal": {
-      "title": "Missing Dependencies",
-      "message": "The following gems are missing: {{missingGems}}. Would you like to install them?",
-      "yes": "Yes",
-      "no": "No"
+      "title": "Missing Gems",
+      "message": "The following gems are missing: {{missingGems}}.",
+      "yes": "Install Now",
+      "no": "Skip"
     },
     "mainRecorderPanel": {
       "suite": "Suite: {{activeSuiteName}}",
@@ -498,14 +498,78 @@
       "assertElementTextEquals": "Assert that element with {{strategy}} \"{{value}}\" has text equal to \"{{text}}\""
     }
   },
-  "help": {
-    "recorder": {
-      "title": "The Recorder",
-      "message": "The Recorder lets you click around a website and automatically capture every action as a test step — no coding needed. Pick a suite, create a test, enter a URL, then press Record. When you're done, press Run to check if everything passes."
+  "concepts": {
+    "title": "How Ruby Raider Works",
+    "subtitle": "New here? These are the key ideas you need to get started.",
+    "hint": "Hover over any button or input in the app for a quick explanation. Click ℹ on any tab for more detail.",
+    "installTitle": "Installation Prerequisites",
+    "installSubtitle": "Ruby Raider needs three things installed on your machine before it can run.",
+    "install": {
+      "rbenv": {
+        "title": "1. Install rbenv",
+        "message": "rbenv manages Ruby versions on your machine. Run in Terminal:",
+        "command": "brew install rbenv ruby-build && rbenv init"
+      },
+      "ruby": {
+        "title": "2. Install Ruby 3+",
+        "message": "Once rbenv is set up, install Ruby 3 or higher:",
+        "command": "rbenv install 3.4.1 && rbenv global 3.4.1"
+      },
+      "gem": {
+        "title": "3. Install ruby_raider",
+        "message": "Install the Ruby Raider gem using the terminal:",
+        "command": "gem install ruby_raider"
+      }
+    },
+    "suite": {
+      "title": "Test Suite",
+      "message": "A suite is a named folder that groups related tests together — for example, all tests for your login page. You can run an entire suite at once."
+    },
+    "test": {
+      "title": "Test",
+      "message": "A test is a single script that checks one thing — like 'can a user log in?'. It has a name, a starting URL, and a list of recorded steps."
+    },
+    "recording": {
+      "title": "Recording",
+      "message": "When you press Record, a browser opens and every click, keystroke, and navigation you make is captured automatically as a step — no code needed."
+    },
+    "running": {
+      "title": "Running a Test",
+      "message": "When you press Run, Ruby Raider opens the browser and replays every recorded step automatically. It then tells you whether the test passed or failed."
+    },
+    "steps": {
+      "title": "Recorded Steps",
+      "message": "Steps are the individual actions in a test — things like 'click button', 'type text', or 'visit URL'. You can reorder, edit, or delete steps at any time."
     },
     "overview": {
       "title": "Project Overview",
-      "message": "This is your project's home. Browse your test files in the tree on the left, preview them on the right, and configure which browser to use and how to run your tests from the toolbar above."
+      "message": "The Overview is your project's home. Browse files on the left, preview them on the right, and use the toolbar to set your browser, run mode, and test timeout."
+    }
+  },
+  "help": {
+    "recorder": {
+      "recording": {
+        "title": "Recording a Test",
+        "message": "Pick a suite from the dropdown, create a test, enter the URL you want to test, then press the red Record button. A browser will open and every click or keystroke you make is captured as a step. Press Stop when you're done, then Run to check if the test passes."
+      },
+      "dashboard": {
+        "title": "Recording Dashboard",
+        "message": "The dashboard shows the output from your last test run — which steps passed, which failed, and any error messages. Use it to understand what went wrong and decide what to fix or re-record."
+      }
+    },
+    "overview": {
+      "files": {
+        "title": "Files & Test Settings",
+        "message": "Browse all files in your project on the left — click any file to preview it on the right. Use the toolbar above to set which browser to use, whether to run headlessly, which tests to run, and the timeout. These settings apply every time you run your tests."
+      },
+      "scaffold": {
+        "title": "Scaffolding",
+        "message": "Scaffolding generates boilerplate files for you — page objects, spec files, feature files, and helpers. Fill in the form and Ruby Raider will create the right file structure so you can start writing test logic immediately without setting things up by hand."
+      },
+      "dashboard": {
+        "title": "Project Dashboard",
+        "message": "The dashboard gives you an at-a-glance view of your project's test health — total tests, recent pass/fail trends, and run history. Use it to track quality over time without having to run tests manually."
+      }
     },
     "createProject": {
       "title": "Create a New Project",
@@ -513,7 +577,7 @@
     },
     "landing": {
       "title": "Welcome to Ruby Raider",
-      "message": "Ruby Raider is a visual test automation tool. Use the Recorder to capture browser actions as tests, the Overview to browse and run your tests, or Create Project to start a brand new test suite from scratch."
+      "message": "Ruby Raider is a visual test automation tool. Use the Recorder to capture browser actions as tests, the Overview to browse and run your tests, or Create Project to start a brand new test suite from scratch. For installation help and a full guide, click the Ruby Raider logo in the top-left corner of the app."
     }
   },
   "tooltips": {

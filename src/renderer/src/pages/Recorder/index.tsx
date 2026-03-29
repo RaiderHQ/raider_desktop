@@ -248,7 +248,10 @@ const Recorder: React.FC = (): JSX.Element => {
               {runStatus === 'pass' ? 'Passed' : 'Failed'}
             </button>
           )}
-          <InfoButton titleKey="help.recorder.title" messageKey="help.recorder.message" />
+          <InfoButton
+            titleKey={`help.recorder.${activeTab}.title`}
+            messageKey={`help.recorder.${activeTab}.message`}
+          />
         </div>
       </div>
 
