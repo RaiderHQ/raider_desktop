@@ -114,7 +114,12 @@ const mockApi = {
   onTerminalData: vi.fn().mockReturnValue({ on: vi.fn() }),
   removeTerminalDataListener: vi.fn().mockReturnValue({ on: vi.fn() }),
   onTerminalExit: vi.fn().mockReturnValue({ on: vi.fn() }),
-  removeTerminalExitListener: vi.fn().mockReturnValue({ on: vi.fn() })
+  removeTerminalExitListener: vi.fn().mockReturnValue({ on: vi.fn() }),
+  replayStepsAndRecord: vi.fn().mockResolvedValue({ success: true, url: 'http://localhost', preloadPath: '/path/to/preload.js' }),
+  cancelReplay: vi.fn().mockResolvedValue({ success: true }),
+  replayInWebview: vi.fn().mockResolvedValue({ success: true }),
+  getLongshipConfig: vi.fn().mockResolvedValue({ url: '', apiKey: '', enabled: false }),
+  setLongshipConfig: vi.fn().mockResolvedValue({ url: '', apiKey: '', enabled: false })
 }
 
 let suiteUpdatedCallback: (event: IpcRendererEvent, updatedSuites: unknown) => void = () => {}

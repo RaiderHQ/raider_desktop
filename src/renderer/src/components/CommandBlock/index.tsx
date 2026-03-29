@@ -12,6 +12,10 @@ interface CommandBlockProps {
   onDragEnd: () => void
   onDelete: (index: number) => void
   onEdit?: (index: number, newCommand: string) => void
+  isBreakpoint?: boolean
+  onSetBreakpoint?: (index: number) => void
+  onClearBreakpoint?: () => void
+  onRecordFromHere?: (index: number) => void
 }
 
 const CommandBlock: React.FC<CommandBlockProps> = ({
@@ -22,7 +26,11 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   onDragEnter,
   onDragEnd,
   onDelete,
-  onEdit
+  onEdit,
+  isBreakpoint,
+  onSetBreakpoint,
+  onClearBreakpoint,
+  onRecordFromHere
 }) => {
   const { t } = useTranslation()
   const [mainCommand, comment] = command.split(' # ')
@@ -140,10 +148,33 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
     return <span className="text-neutral-dark">{t(key, values)}</span>
   }
 
+  const handleGutterClick = (): void => {
+    if (isBreakpoint) {
+      onClearBreakpoint?.()
+    } else {
+      onSetBreakpoint?.(index)
+    }
+  }
+
   return (
-    <div className="relative w-full mb-3">
+    <div className="relative w-full mb-3 group/block">
+      {/* Breakpoint gutter */}
       <div
-        className="relative bg-white p-3 pl-4 pr-8 rounded-lg border border-neutral-bdr/50 cursor-grab active:cursor-grabbing transition-shadow duration-200 z-10"
+        className="absolute left-0 top-0 bottom-0 w-5 flex items-center justify-center cursor-pointer z-20"
+        onClick={handleGutterClick}
+        title={isBreakpoint ? t('tooltips.recorder.clearBreakpoint') : t('tooltips.recorder.setBreakpoint')}
+      >
+        <div className={`w-2.5 h-2.5 rounded-full transition-colors ${
+          isBreakpoint
+            ? 'bg-amber-400'
+            : 'bg-transparent group-hover/block:bg-amber-200'
+        }`} />
+      </div>
+
+      <div
+        className={`relative bg-white p-3 pl-4 pr-8 rounded-lg border transition-shadow duration-200 z-10 cursor-grab active:cursor-grabbing ml-5 ${
+          isBreakpoint ? 'border-amber-300 bg-amber-50/30' : 'border-neutral-bdr/50'
+        }`}
         draggable={!isEditing}
         onDragStart={() => onDragStart(index)}
         onDragEnter={() => onDragEnter(index)}
@@ -152,16 +183,27 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
       >
         {renderContent()}
 
-        <Tooltip content={t('tooltips.recorder.deleteStep')} position="top">
-          <button
-            onClick={() => onDelete(index)}
-            className="absolute top-1/2 -translate-y-1/2 right-2 w-6 h-6 flex items-center justify-center rounded-full text-neutral-mid hover:bg-status-err-bg hover:text-red-600 transition-colors"
-            aria-label="Delete step"
-          >
-            <span className="text-2xl font-light select-none leading-none">×</span>
-          </button>
-        </Tooltip>
+        <div className="absolute top-2 right-2">
+          <Tooltip content={t('tooltips.recorder.deleteStep')} position="top">
+            <button
+              onClick={() => onDelete(index)}
+              className="w-6 h-6 flex items-center justify-center rounded-full text-neutral-mid hover:bg-status-err-bg hover:text-red-600 transition-colors"
+              aria-label="Delete step"
+            >
+              <span className="text-2xl font-light select-none leading-none">×</span>
+            </button>
+          </Tooltip>
+        </div>
       </div>
+
+      {isBreakpoint && onRecordFromHere && (
+        <button
+          onClick={() => onRecordFromHere(index)}
+          className="mt-1 ml-5 text-xs text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded px-2 py-0.5 transition-colors font-medium"
+        >
+          ▶ {t('recorder.breakpoint.recordFromHere')}
+        </button>
+      )}
     </div>
   )
 }

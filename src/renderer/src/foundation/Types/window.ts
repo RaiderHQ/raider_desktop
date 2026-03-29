@@ -140,6 +140,13 @@ export interface WindowApi {
 
   // --- Recording Session ---
   startRecordingMain: () => Promise<{ success: boolean; url: string; preloadPath: string }>
+  replayStepsAndRecord: (
+    testName: string,
+    stepsToReplay: string[],
+    rubyCommand: string
+  ) => Promise<{ success: boolean; url?: string; preloadPath?: string; error?: string; cancelled?: boolean }>
+  cancelReplay: () => Promise<{ success: boolean }>
+  replayInWebview: (steps: string[]) => Promise<{ success: boolean; error?: string; cancelled?: boolean }>
   registerRecorderWebContents: (webContentsId: number) => Promise<void>
   stopRecordingMain: () => Promise<CommandType>
   loadUrlRequest: (url: string) => Promise<CommandType>

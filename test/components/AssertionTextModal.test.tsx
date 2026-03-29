@@ -19,8 +19,8 @@ describe('AssertionTextModal', () => {
 
   it('renders the title, message and label', () => {
     render(<AssertionTextModal {...defaultProps} />)
-    expect(screen.getByText('recorder.assertionTextModal.title')).toBeInTheDocument()
-    expect(screen.getByText('recorder.assertionTextModal.message')).toBeInTheDocument()
+    expect(screen.getByText('recorder.assertionTextModal.titles.text')).toBeInTheDocument()
+    expect(screen.getByText('recorder.assertionTextModal.messages.text')).toBeInTheDocument()
   })
 
   it('populates input with initialText', () => {

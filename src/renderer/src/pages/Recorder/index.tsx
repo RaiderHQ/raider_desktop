@@ -23,6 +23,7 @@ import RecordingDashboard from '@components/RecordingDashboard'
 interface AssertionInfo {
   selector: string
   text: string
+  assertionType?: string
 }
 
 type RecorderTab = 'recording' | 'dashboard'
@@ -36,13 +37,17 @@ const Recorder: React.FC = (): JSX.Element => {
   const activeTest = useRecorderStore((s) => s.activeTest)
   const showCode = useRecorderStore((s) => s.showCode)
   const isOutputVisible = useRecorderStore((s) => s.isOutputVisible)
+  const breakpointIndex = useRecorderStore((s) => s.breakpointIndex)
+  const isReplayingToBreakpoint = useRecorderStore((s) => s.isReplayingToBreakpoint)
   const {
     setActiveSuiteId,
     setActiveTest,
     updateActiveTest,
     setIsRunning,
     setShowCode,
-    setIsOutputVisible
+    setIsOutputVisible,
+    setBreakpointIndex,
+    setIsReplayingToBreakpoint
   } = useRecorderStore.getState()
 
   const { runOutput, setRunOutput } = useRunOutputStore()
@@ -182,6 +187,65 @@ const Recorder: React.FC = (): JSX.Element => {
     }
   }, [])
 
+  const handleSetBreakpoint = useCallback((index: number): void => {
+    setBreakpointIndex(index)
+  }, [])
+
+  const handleClearBreakpoint = useCallback((): void => {
+    setBreakpointIndex(null)
+  }, [])
+
+  const handleRecordFromHere = useCallback(async (index: number): Promise<void> => {
+    const { activeTest: test } = useRecorderStore.getState()
+    if (!test) return
+
+    const stepsToReplay = test.steps.slice(0, index + 1)
+    setBreakpointIndex(index)
+    setIsReplayingToBreakpoint(true)
+
+    // Start recording to show the embedded webview immediately
+    if (test.url) {
+      await window.api.loadUrlRequest(test.url)
+    }
+    const recResult = await window.api.startRecordingMain()
+    if (!recResult.success) {
+      setIsReplayingToBreakpoint(false)
+      setBreakpointIndex(null)
+      toast.error(t('recorder.breakpoint.replayFailed'))
+      return
+    }
+
+    setRecordingUrl(recResult.url)
+    setPreloadPath(recResult.preloadPath)
+
+    // Wait briefly for the webview to mount and register its webContentsId
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+
+    // Replay steps directly in the embedded webview
+    const result = await window.api.replayInWebview(stepsToReplay)
+
+    if (result.cancelled) {
+      return
+    }
+
+    if (!result.success) {
+      setIsReplayingToBreakpoint(false)
+      setBreakpointIndex(null)
+      toast.error(`${t('recorder.breakpoint.replayFailed')}: ${result.error ?? ''}`)
+    } else {
+      setIsReplayingToBreakpoint(false)
+    }
+  }, [])
+
+  const handleCancelReplay = useCallback(async (): Promise<void> => {
+    await window.api.cancelReplay()
+    setIsReplayingToBreakpoint(false)
+    setBreakpointIndex(null)
+    setRecordingUrl(null)
+    setPreloadPath(null)
+    window.api.stopRecordingMain()
+  }, [])
+
   const handleRunAllTests = useCallback(async (suiteId: string): Promise<void> => {
     const { suites: allSuites } = useRecorderStore.getState()
     const cmd = useRubyStore.getState().rubyCommand
@@ -199,7 +263,26 @@ const Recorder: React.FC = (): JSX.Element => {
   const handleSaveAssertionText = (expectedText: string): void => {
     if (assertionInfo) {
       const { strategy, value } = formatLocator(assertionInfo.selector)
-      const newStep = `expect(@driver.find_element(:${strategy}, ${value}).text).to eq("${expectedText}")`
+      let newStep = ''
+
+      switch (assertionInfo.assertionType) {
+        case 'text-includes':
+          newStep = `expect(@driver.find_element(:${strategy}, ${value}).text).to include("${expectedText}")`
+          break
+        case 'value':
+          newStep = `expect(@driver.find_element(:${strategy}, ${value}).attribute("value")).to eq("${expectedText}")`
+          break
+        case 'page-title':
+          newStep = `expect(@driver.title).to eq("${expectedText}")`
+          break
+        case 'page-url':
+          newStep = `expect(@driver.current_url).to include("${expectedText}")`
+          break
+        default:
+          newStep = `expect(@driver.find_element(:${strategy}, ${value}).text).to eq("${expectedText}")`
+          break
+      }
+
       updateActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
     }
     setAssertionInfo(null)
@@ -251,6 +334,16 @@ const Recorder: React.FC = (): JSX.Element => {
           <InfoButton
             titleKey={`help.recorder.${activeTab}.title`}
             messageKey={`help.recorder.${activeTab}.message`}
+            collapsibleSections={
+              activeTab === 'recording'
+                ? [
+                    {
+                      titleKey: 'help.recorder.recording.assertions.title',
+                      contentKey: 'help.recorder.recording.assertions.content'
+                    }
+                  ]
+                : undefined
+            }
           />
         </div>
       </div>
@@ -300,30 +393,10 @@ const Recorder: React.FC = (): JSX.Element => {
             </Tooltip>
           </div>
 
-          {/* When recording: embedded browser + steps side by side */}
-          {recordingUrl && preloadPath ? (
+          {/* When recording or replaying to breakpoint: steps left + browser/replay right */}
+          {(recordingUrl && preloadPath) || isReplayingToBreakpoint ? (
             <div className="flex-1 flex flex-row space-x-4 min-h-0">
-              {/* Embedded browser */}
-              <div className="w-[60%] flex flex-col min-h-0">
-                <div className="flex-1 border border-neutral-bdr rounded-lg overflow-hidden bg-white">
-                  <webview
-                    ref={(el: HTMLElement | null) => {
-                      const wv = el as unknown as Electron.WebviewTag | null
-                      if (wv && wv !== webviewRef.current) {
-                        webviewRef.current = wv
-                        wv.addEventListener('dom-ready', () => {
-                          const wcId = wv.getWebContentsId()
-                          window.api.registerRecorderWebContents(wcId)
-                        })
-                      }
-                    }}
-                    src={recordingUrl}
-                    preload={`file://${preloadPath}`}
-                    style={{ width: '100%', height: '100%' }}
-                  />
-                </div>
-              </div>
-              {/* Recorded steps panel */}
+              {/* Recorded steps panel — left */}
               <div className="w-[40%] flex flex-col space-y-2">
                 <h3 className="px-1 text-sm font-semibold text-neutral-dark">
                   {t('recorder.recorderPage.recordedSteps')}
@@ -371,10 +444,49 @@ const Recorder: React.FC = (): JSX.Element => {
                           )
                         }
                         showCode={showCode}
+                        breakpointIndex={breakpointIndex}
+                        onSetBreakpoint={handleSetBreakpoint}
+                        onClearBreakpoint={handleClearBreakpoint}
+                        onRecordFromHere={handleRecordFromHere}
                       />
                     </>
                   </StyledPanel>
                 </div>
+              </div>
+
+              {/* Embedded browser or replay progress — right */}
+              <div className="w-[60%] flex flex-col min-h-0">
+                  <div className="flex-1 border border-neutral-bdr rounded-lg overflow-hidden bg-white relative">
+                    <webview
+                      ref={(el: HTMLElement | null) => {
+                        const wv = el as unknown as Electron.WebviewTag | null
+                        if (wv && wv !== webviewRef.current) {
+                          webviewRef.current = wv
+                          wv.addEventListener('dom-ready', () => {
+                            const wcId = wv.getWebContentsId()
+                            window.api.registerRecorderWebContents(wcId)
+                          })
+                        }
+                      }}
+                      src={recordingUrl!}
+                      preload={`file://${preloadPath}`}
+                      style={{ width: '100%', height: '100%' }}
+                    />
+                    {isReplayingToBreakpoint && (
+                      <div className="absolute inset-0 bg-amber-50/60 flex flex-col items-center justify-center gap-3 z-10 pointer-events-auto">
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin text-amber-700">
+                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round"/>
+                        </svg>
+                        <p className="text-sm font-medium text-amber-700">{t('recorder.mainRecorderPanel.replaying')}</p>
+                        <button
+                          onClick={handleCancelReplay}
+                          className="px-4 py-1.5 text-sm rounded border border-amber-400 bg-white text-amber-700 hover:bg-amber-50 font-medium transition-colors"
+                        >
+                          {t('recorder.breakpoint.stopReplay')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
               </div>
             </div>
           ) : (
@@ -468,6 +580,10 @@ const Recorder: React.FC = (): JSX.Element => {
                               )
                             }
                             showCode={showCode}
+                            breakpointIndex={breakpointIndex}
+                            onSetBreakpoint={handleSetBreakpoint}
+                            onClearBreakpoint={handleClearBreakpoint}
+                            onRecordFromHere={handleRecordFromHere}
                           />
                         </>
                       )}
@@ -504,6 +620,7 @@ const Recorder: React.FC = (): JSX.Element => {
       {assertionInfo && (
         <AssertionTextModal
           initialText={assertionInfo.text}
+          assertionType={assertionInfo.assertionType}
           onSave={handleSaveAssertionText}
           onClose={() => setAssertionInfo(null)}
         />

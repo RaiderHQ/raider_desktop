@@ -49,6 +49,8 @@ import deleteTest from './handlers/deleteTest'
 import recorderEvent, { RecorderEventData } from './handlers/recording/recorderEvent'
 import loadUrlRequest from './handlers/loadUrlRequest'
 import startRecordingMain from './handlers/recording/startRecordingMain'
+import replayStepsAndRecord from './handlers/recording/replayStepsAndRecord'
+import replayInWebview, { cancelWebviewReplay } from './handlers/recording/replayInWebview'
 import stopRecordingMain from './handlers/recording/stopRecordingMain'
 import saveRecording from './handlers/recording/saveRecording'
 import saveTrace from './handlers/trace/saveTrace'
@@ -250,6 +252,22 @@ app.whenReady().then(() => {
   })
   ipcMain.handle('load-url-request', (_event, url: string) => loadUrlRequest(url))
   ipcMain.handle('start-recording-main', startRecordingMain)
+  ipcMain.handle(
+    'replay-steps-and-record',
+    (event, testName: string, stepsToReplay: string[], rubyCommand: string) =>
+      replayStepsAndRecord(event, testName, stepsToReplay, rubyCommand)
+  )
+  ipcMain.handle('cancel-replay', () => {
+    if (appState.activeReplayProcess && !appState.activeReplayProcess.killed) {
+      appState.activeReplayProcess.kill('SIGKILL')
+      appState.activeReplayProcess = null
+    }
+    cancelWebviewReplay()
+    return { success: true }
+  })
+  ipcMain.handle('replay-in-webview', (event, steps: string[]) =>
+    replayInWebview(event, steps)
+  )
   ipcMain.handle('stop-recording-main', stopRecordingMain)
   ipcMain.on('recorder-event', (_event, data: RecorderEventData) => recorderEvent(data))
   ipcMain.handle('register-recorder-webcontents', (_event, webContentsId: number) => {
@@ -320,76 +338,75 @@ app.whenReady().then(() => {
   })
 
   // --- Assertion Context Menu Handler ---
-  ipcMain.on('show-assertion-context-menu', (_event, { selector, elementText }): void => {
-    if (!appState.mainWindow) return
+  ipcMain.on(
+    'show-assertion-context-menu',
+    (_event, { selector, elementText, elementValue, inputType, pageTitle, pageUrl }): void => {
+      if (!appState.mainWindow) return
 
-    const template: (Electron.MenuItemConstructorOptions | Electron.MenuItem)[] = [
-      {
-        label: 'Raider Assertions',
-        enabled: false
-      },
-      { type: 'separator' },
-      { type: 'separator' },
-      {
-        label: 'Wait for element',
-        submenu: [
-          {
-            label: 'to be displayed',
-            click: (): void => {
-              appState.mainWindow!.webContents.send('add-assertion-step', {
-                type: 'wait-displayed',
-                selector
-              })
-            }
-          },
-          {
-            label: 'to be enabled',
-            click: (): void => {
-              appState.mainWindow!.webContents.send('add-assertion-step', {
-                type: 'wait-enabled',
-                selector
-              })
-            }
-          }
-        ]
-      },
-      {
-        label: 'Assert element is displayed',
-        click: (): void => {
-          appState.mainWindow!.webContents.send('add-assertion-step', {
-            type: 'displayed',
-            selector
-          })
-        }
-      },
-      {
-        label: 'Assert element is enabled',
-        click: (): void => {
-          appState.mainWindow!.webContents.send('add-assertion-step', {
-            type: 'enabled',
-            selector
-          })
-        }
-      },
-      {
-        label: 'Assert element contains text',
-        click: (): void => {
-          appState.mainWindow!.webContents.send('add-assertion-step', {
-            type: 'text',
-            selector,
-            text: elementText.trim()
-          })
-        }
+      const send = (type: string, extra?: Record<string, string>): void => {
+        appState.mainWindow!.webContents.send('add-assertion-step', { type, selector, ...extra })
       }
-    ]
 
-    const menu = Menu.buildFromTemplate(template)
-    if (appState.recorderWindow) {
-      menu.popup({ window: appState.recorderWindow })
-    } else if (appState.mainWindow) {
-      menu.popup({ window: appState.mainWindow })
+      const isCheckable = inputType === 'checkbox' || inputType === 'radio'
+
+      const template: (Electron.MenuItemConstructorOptions | Electron.MenuItem)[] = [
+        { label: 'Raider Assertions', enabled: false },
+        { type: 'separator' },
+
+        // --- Wait submenu ---
+        {
+          label: 'Wait for element',
+          submenu: [
+            { label: 'to appear', click: (): void => send('wait-displayed') },
+            { label: 'to disappear', click: (): void => send('wait-disappear') },
+            { label: 'to be enabled', click: (): void => send('wait-enabled') }
+          ]
+        },
+        { type: 'separator' },
+
+        // --- Assert element state ---
+        { label: 'Assert element is displayed', click: (): void => send('displayed') },
+        { label: 'Assert element is NOT displayed', click: (): void => send('not-displayed') },
+        { label: 'Assert element is enabled', click: (): void => send('enabled') },
+        ...(isCheckable
+          ? [{ label: 'Assert element is checked', click: (): void => send('checked') }]
+          : []),
+        { type: 'separator' },
+
+        // --- Assert content ---
+        {
+          label: 'Assert element text equals',
+          click: (): void => send('text', { text: (elementText || '').trim() })
+        },
+        {
+          label: 'Assert element text includes',
+          click: (): void => send('text-includes', { text: (elementText || '').trim() })
+        },
+        {
+          label: 'Assert element value',
+          click: (): void => send('value', { text: (elementValue || '').trim() })
+        },
+        { type: 'separator' },
+
+        // --- Assert page ---
+        {
+          label: 'Assert page title',
+          click: (): void => send('page-title', { text: pageTitle || '' })
+        },
+        {
+          label: 'Assert current URL contains',
+          click: (): void => send('page-url', { text: pageUrl || '' })
+        }
+      ]
+
+      const menu = Menu.buildFromTemplate(template)
+      if (appState.recorderWindow) {
+        menu.popup({ window: appState.recorderWindow })
+      } else if (appState.mainWindow) {
+        menu.popup({ window: appState.mainWindow })
+      }
     }
-  })
+  )
 })
 
 app.on('window-all-closed', () => {

@@ -26,6 +26,7 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
   const isRunning = useRecorderStore((s) => s.isRunning)
   const activeSuiteId = useRecorderStore((s) => s.activeSuiteId)
   const activeSuiteName = useRecorderStore((s) => s.activeSuite()?.name)
+  const isReplayingToBreakpoint = useRecorderStore((s) => s.isReplayingToBreakpoint)
 
   const { setActiveTest } = useRecorderStore.getState()
 
@@ -156,6 +157,14 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
         <h2 className="text-sm font-semibold text-neutral-dark">
           {t('recorder.mainRecorderPanel.suite', { activeSuiteName })}
         </h2>
+        {isReplayingToBreakpoint && (
+          <span className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5 font-medium">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round"/>
+            </svg>
+            {t('recorder.mainRecorderPanel.replaying')}
+          </span>
+        )}
       </div>
       <div className="flex items-center space-x-4">
         <Tooltip content={t('tooltips.recorder.testName')} position="right" className="flex-1">
@@ -203,10 +212,10 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
           <Tooltip content={t('tooltips.recorder.record')} position="top">
             <button
               onClick={onStartRecording}
-              disabled={!activeTest || isRecording}
+              disabled={!activeTest || isRecording || isReplayingToBreakpoint}
               aria-label={t('recorder.mainRecorderPanel.record')}
               className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
-                !activeTest || isRecording
+                !activeTest || isRecording || isReplayingToBreakpoint
                   ? 'text-neutral-300 cursor-not-allowed'
                   : 'text-red-500 hover:bg-red-50'
               }`}
@@ -219,10 +228,10 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
           <Tooltip content={t('tooltips.recorder.run')} position="top">
             <button
               onClick={onRunTest}
-              disabled={!activeTest || isRecording || isRunning}
+              disabled={!activeTest || isRecording || isRunning || isReplayingToBreakpoint}
               aria-label={t('recorder.mainRecorderPanel.run')}
               className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
-                !activeTest || isRecording || isRunning
+                !activeTest || isRecording || isRunning || isReplayingToBreakpoint
                   ? 'text-neutral-300 cursor-not-allowed'
                   : 'text-green-600 hover:bg-green-50'
               }`}
@@ -235,10 +244,10 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
           <Tooltip content={t('tooltips.recorder.stop')} position="left">
             <button
               onClick={onStopRecording}
-              disabled={!isRecording}
+              disabled={!isRecording || isReplayingToBreakpoint}
               aria-label={t('recorder.mainRecorderPanel.stop')}
               className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
-                !isRecording
+                !isRecording || isReplayingToBreakpoint
                   ? 'text-neutral-300 cursor-not-allowed'
                   : 'text-neutral-dark hover:bg-neutral-100'
               }`}
