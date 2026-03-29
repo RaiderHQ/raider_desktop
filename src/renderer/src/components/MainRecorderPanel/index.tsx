@@ -158,7 +158,7 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
         </h2>
       </div>
       <div className="flex items-center space-x-4">
-        <Tooltip content={t('tooltips.recorder.testName')} position="bottom" className="flex-1">
+        <Tooltip content={t('tooltips.recorder.testName')} position="right" className="flex-1">
           <InputField
             value={activeTest?.name ?? ''}
             onChange={onTestNameChange}
@@ -166,7 +166,7 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
             disabled={!activeTest}
           />
         </Tooltip>
-        <Tooltip content={t('tooltips.recorder.urlToRecord')} position="bottom" className="flex-1">
+        <Tooltip content={t('tooltips.recorder.urlToRecord')} position="right" className="flex-1">
           <InputField
             value={activeTest?.url ?? ''}
             onChange={onUrlChange}
@@ -177,7 +177,7 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
       </div>
       <div className="flex items-center justify-between pt-2">
         <div className="flex items-center space-x-2">
-          <Tooltip content={t('tooltips.recorder.newTest')} position="bottom">
+          <Tooltip content={t('tooltips.recorder.newTest')} position="right">
             <button
               onClick={onNewTest}
               disabled={!activeSuiteId}
@@ -190,7 +190,7 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
               {t('recorder.mainRecorderPanel.newTest')}
             </button>
           </Tooltip>
-          <Tooltip content={t('tooltips.recorder.more')} position="bottom">
+          <Tooltip content={t('tooltips.recorder.more')} position="right">
             <Dropdown
               buttonText={t('recorder.mainRecorderPanel.more')}
               options={moreOptions}

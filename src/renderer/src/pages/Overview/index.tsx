@@ -535,7 +535,7 @@ const Overview: React.FC = () => {
         <div className="relative w-full">
           {/* Test settings toolbar */}
           <div className="border border-neutral-bdr rounded-t-lg bg-neutral-50 px-4 py-3 space-y-2">
-            <Tooltip content={t('tooltips.overview.urlInput')} position="bottom" className="w-full">
+            <Tooltip content={t('tooltips.overview.urlInput')} position="right" className="w-full">
               <div className="flex items-center gap-2 w-full">
                 <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                   {t('overview.settings.urlLabel')}:
@@ -555,7 +555,7 @@ const Overview: React.FC = () => {
               </div>
             </Tooltip>
             <div className="flex items-center gap-4 flex-wrap">
-              <Tooltip content={t('tooltips.overview.browserSelect')} position="bottom">
+              <Tooltip content={t('tooltips.overview.browserSelect')} position="right">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                     {t('overview.settings.browserLabel')}
@@ -573,7 +573,7 @@ const Overview: React.FC = () => {
                   </select>
                 </div>
               </Tooltip>
-              <Tooltip content={t('tooltips.overview.headlessToggle')} position="bottom">
+              <Tooltip content={t('tooltips.overview.headlessToggle')} position="right">
                 <ToggleSwitch
                   label={t('overview.settings.headlessLabel')}
                   checked={headless}
@@ -581,7 +581,7 @@ const Overview: React.FC = () => {
                   testId="overview-headless-toggle"
                 />
               </Tooltip>
-              <Tooltip content={t('tooltips.overview.runMode')} position="bottom">
+              <Tooltip content={t('tooltips.overview.runMode')} position="right">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                     {t('overview.settings.runModeLabel')}
@@ -609,7 +609,7 @@ const Overview: React.FC = () => {
                   )}
                 </div>
               </Tooltip>
-              <Tooltip content={t('tooltips.overview.rerunFailed')} position="bottom">
+              <Tooltip content={t('tooltips.overview.rerunFailed')} position="right">
                 <button
                   onClick={handleRerunFailed}
                   className="px-3 py-1 text-sm font-medium text-neutral-dk border border-neutral-bdr rounded hover:bg-neutral-lt transition-colors"
@@ -619,7 +619,7 @@ const Overview: React.FC = () => {
                 </button>
               </Tooltip>
               {!isMobileProject && (
-                <Tooltip content={t('tooltips.overview.timeout')} position="bottom">
+                <Tooltip content={t('tooltips.overview.timeout')} position="right">
                   <div className="flex items-center gap-2">
                     <label htmlFor="timeout-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                       {t('settings.timeout.label')}
