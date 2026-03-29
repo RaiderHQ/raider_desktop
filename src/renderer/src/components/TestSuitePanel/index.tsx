@@ -177,7 +177,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
     <div className="w-full h-full p-2 flex flex-col">
       <div className="flex-shrink-0">
         <div className="flex items-center pb-2 border-b gap-1">
-          <Tooltip content={t('tooltips.recorder.suiteSelector')} position="bottom" className="relative flex-1">
+          <Tooltip content={t('tooltips.recorder.suiteSelector')} position="right" className="relative flex-1">
             <div className="w-full" ref={dropdownRef}>
               <select
                 value={activeSuiteId ?? ''}
