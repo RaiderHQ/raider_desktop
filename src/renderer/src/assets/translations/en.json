@@ -505,6 +505,22 @@
     "installTitle": "Installation Prerequisites",
     "installSubtitle": "Ruby Raider needs three things installed on your machine before it can run.",
     "install": {
+      "mac": {
+        "step1": { "title": "1. Install rbenv (via Homebrew)", "desc": "rbenv manages Ruby versions. Homebrew must be installed first (brew.sh)." },
+        "step2": { "title": "2. Install Ruby 3+", "desc": "Install Ruby 3 or higher and set it as the global version." },
+        "step3": { "title": "3. Install ruby_raider", "desc": "Install the gem from RubyGems." }
+      },
+      "linux": {
+        "step1": { "title": "1. Install rbenv (via git)", "desc": "Clone rbenv and ruby-build into your home directory, then reload your shell." },
+        "step2": { "title": "2. Install Ruby 3+", "desc": "Install Ruby 3 or higher and set it as the global version." },
+        "step3": { "title": "3. Install ruby_raider", "desc": "Install the gem from RubyGems." }
+      },
+      "windows": {
+        "note": "Native Windows support is coming soon. In the meantime, use WSL (Windows Subsystem for Linux) and follow the Linux steps.",
+        "step1": { "title": "1. Enable WSL", "desc": "Run PowerShell as Administrator and install WSL." },
+        "step2": { "title": "2. Follow Linux steps inside WSL", "desc": "Open the WSL terminal and follow the Linux installation instructions above." },
+        "step3": { "title": "3. Install ruby_raider", "desc": "Install the gem inside WSL." }
+      },
       "rbenv": {
         "title": "1. Install rbenv",
         "message": "rbenv manages Ruby versions on your machine. Run in Terminal:",
