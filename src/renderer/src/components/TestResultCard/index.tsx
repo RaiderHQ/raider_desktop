@@ -64,6 +64,7 @@ interface TestResultCardProps {
   status: string
   screenshot?: string
   message?: string | null
+  backtrace?: string[]
   hasTrace?: boolean
   onViewTrace?: () => void
 }
@@ -162,6 +163,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
   status,
   screenshot,
   message,
+  backtrace,
   hasTrace,
   onViewTrace
 }) => {
@@ -176,7 +178,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
     statusIcon = <FaCheckCircle className="text-status-ok" />
   } else if (status === 'failed' || status === 'broken') {
     statusIcon = <FaTimesCircle className="text-red-500" />
-  } else if (status === 'skipped') {
+  } else if (status === 'skipped' || status === 'pending') {
     statusIcon = <FaExclamationCircle className="text-neutral-mid" />
   }
 
@@ -218,6 +220,14 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
             {t('testResults.status')}: <span className="font-medium text-neutral-dk">{t(`testResults.${status}`)}</span>
           </p>
           {message && <MessageContent message={message} />}
+          {backtrace && backtrace.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-1">Backtrace</p>
+              <pre className="text-xs font-mono text-neutral-dk bg-neutral-50 border border-neutral-bdr rounded px-3 py-2 overflow-auto max-h-40 whitespace-pre-wrap break-all">
+                {backtrace.join('\n')}
+              </pre>
+            </div>
+          )}
           <div className="flex gap-3 mt-2">
             {screenshot && (
               <button
