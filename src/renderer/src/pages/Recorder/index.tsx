@@ -266,7 +266,7 @@ const Recorder: React.FC = (): JSX.Element => {
 
           {/* Inline wait settings */}
           <div className="flex items-center gap-4 px-1">
-            <Tooltip content={t('tooltips.recorder.implicitWait')} position="bottom">
+            <Tooltip content={t('tooltips.recorder.implicitWait')} position="right">
               <div className="flex items-center gap-2">
                 <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                   {t('settings.recording.implicitWait.label')}
@@ -282,7 +282,7 @@ const Recorder: React.FC = (): JSX.Element => {
                 />
               </div>
             </Tooltip>
-            <Tooltip content={t('tooltips.recorder.explicitWait')} position="bottom">
+            <Tooltip content={t('tooltips.recorder.explicitWait')} position="right">
               <div className="flex items-center gap-2">
                 <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                   {t('settings.recording.explicitWait.label')}
@@ -332,7 +332,7 @@ const Recorder: React.FC = (): JSX.Element => {
                   <StyledPanel>
                     <>
                       <div className="flex items-center p-1 border-b border-neutral-bdr">
-                        <Tooltip content={t(showCode ? 'tooltips.recorder.friendlyView' : 'tooltips.recorder.codeView')} position="bottom">
+                        <Tooltip content={t(showCode ? 'tooltips.recorder.friendlyView' : 'tooltips.recorder.codeView')} position="right">
                           <button
                             onClick={() => setShowCode(!showCode)}
                             className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
@@ -419,7 +419,7 @@ const Recorder: React.FC = (): JSX.Element => {
                       ) : (
                         <>
                           <div className="flex justify-between items-center p-1 border-b border-neutral-bdr">
-                            <Tooltip content={t(showCode ? 'tooltips.recorder.friendlyView' : 'tooltips.recorder.codeView')} position="bottom">
+                            <Tooltip content={t(showCode ? 'tooltips.recorder.friendlyView' : 'tooltips.recorder.codeView')} position="right">
                               <button
                                 onClick={() => setShowCode(!showCode)}
                                 className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
@@ -429,7 +429,7 @@ const Recorder: React.FC = (): JSX.Element => {
                                   : t('recorder.recorderPage.codeView')}
                               </button>
                             </Tooltip>
-                            <Tooltip content={t(isOutputVisible ? 'tooltips.recorder.hideOutput' : 'tooltips.recorder.testOutput')} position="bottom">
+                            <Tooltip content={t(isOutputVisible ? 'tooltips.recorder.hideOutput' : 'tooltips.recorder.testOutput')} position="right">
                               <button
                                 onClick={() => setIsOutputVisible(!isOutputVisible)}
                                 className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
