@@ -30,7 +30,7 @@ const InformationModal: React.FC<ModalProps> = ({ title, message, onClose }): JS
         </div>
 
         <div className="mb-4">
-          <p className="text-neutral-dk">{message}</p>
+          <p className="text-neutral-dk whitespace-pre-wrap">{message}</p>
         </div>
         <button
           className="absolute top-3 right-4 text-neutral-mid hover:text-neutral-dark transition-colors"
