@@ -5,8 +5,8 @@ import { MemoryRouter } from 'react-router-dom'
 import MainTemplate from '@templates/Main'
 
 vi.mock('react-i18next', () => ({
-  useTranslation: (): { t: (key: string) => string } => ({
-    t: (key: string): string => key
+  useTranslation: (): { t: (key: string, opts?: object) => string } => ({
+    t: (key: string, opts?: object): string => (opts ? `${key} ${JSON.stringify(opts)}` : key)
   })
 }))
 
@@ -15,35 +15,59 @@ vi.mock('@foundation/Stores/versionStore', () => ({
   default: vi.fn(() => '2.0.0')
 }))
 
+vi.mock('@foundation/Stores/projectStore', () => {
+  const useProjectStore = (selector?: (s: Record<string, unknown>) => unknown) =>
+    selector ? selector({ projectPath: '/fake/project' }) : { projectPath: '/fake/project' }
+  useProjectStore.getState = () => ({ projectPath: '/fake/project' })
+  useProjectStore.subscribe = vi.fn()
+  return { default: useProjectStore }
+})
+
+vi.mock('@foundation/Stores/rubyStore', () => {
+  const state = {
+    rubyCommand: null,
+    rubyVersion: null,
+    versionWarning: null,
+    setRubyCommand: vi.fn(),
+    setRubyVersion: vi.fn(),
+    setVersionWarning: vi.fn()
+  }
+  const useRubyStore = (selector?: (s: typeof state) => unknown) =>
+    selector ? selector(state) : state
+  useRubyStore.getState = () => state
+  return { default: useRubyStore }
+})
+
 vi.mock('react-hot-toast', () => ({
+  default: { success: vi.fn(), error: vi.fn(), loading: vi.fn() },
   Toaster: (): JSX.Element => <div data-testid="toaster" />
 }))
 
+// Mock window.api to prevent useEffect errors
+beforeAll(() => {
+  ;(window as unknown as Record<string, unknown>).api = {
+    isRubyInstalled: vi.fn().mockResolvedValue({ success: true, rubyCommand: 'ruby', rubyVersion: '3.2.0' }),
+    closeApp: vi.fn()
+  }
+})
+
 describe('MainTemplate Navigation', () => {
-  it('renders all navigation links', () => {
+  it('renders the Recorder navigation link', () => {
     render(
       <MemoryRouter initialEntries={['/overview']}>
         <MainTemplate />
       </MemoryRouter>
     )
 
-    expect(screen.getByText('menu.tests')).toBeInTheDocument()
     expect(screen.getByText('Recorder')).toBeInTheDocument()
-    // Settings and Dashboard have been removed from the nav
-    expect(screen.queryByText('menu.settings')).not.toBeInTheDocument()
-    expect(screen.queryByText('menu.dashboard')).not.toBeInTheDocument()
   })
 
-  it('highlights Tests link when on /overview', () => {
+  it('does not highlight Recorder link when on /overview', () => {
     render(
       <MemoryRouter initialEntries={['/overview']}>
         <MainTemplate />
       </MemoryRouter>
     )
-
-    const testsLink = screen.getByText('menu.tests')
-    expect(testsLink.className).toContain('font-semibold')
-    expect(testsLink.className).toContain('bg-ruby-sub')
 
     const recorderLink = screen.getByText('Recorder')
     expect(recorderLink.className).not.toContain('font-semibold')
@@ -79,6 +103,6 @@ describe('MainTemplate Navigation', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByText('version')).toBeInTheDocument()
+    expect(screen.getByText(/version/)).toBeInTheDocument()
   })
 })

@@ -55,7 +55,7 @@ describe('MainRecorderPanel', () => {
     expect(screen.getByText('recorder.mainRecorderPanel.emptyHelper')).toBeInTheDocument()
     // Inputs and action buttons should not be rendered
     expect(screen.queryByText('recorder.mainRecorderPanel.newTest')).not.toBeInTheDocument()
-    expect(screen.queryByText('recorder.mainRecorderPanel.record')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('recorder.mainRecorderPanel.record')).not.toBeInTheDocument()
   })
 
   it('renders test name and URL inputs', async () => {
@@ -69,12 +69,12 @@ describe('MainRecorderPanel', () => {
     await act(async () => {
       render(<MainRecorderPanel {...baseProps} />)
     })
-    expect(screen.getByText('recorder.mainRecorderPanel.record').closest('button')).toBeDisabled()
+    expect(screen.getByLabelText('recorder.mainRecorderPanel.record')).toBeDisabled()
   })
 
   it('Stop button is disabled when not recording', async () => {
     await act(async () => { render(<MainRecorderPanel {...baseProps} />) })
-    expect(screen.getByText('recorder.mainRecorderPanel.stop').closest('button')).toBeDisabled()
+    expect(screen.getByLabelText('recorder.mainRecorderPanel.stop')).toBeDisabled()
   })
 
   it('Stop button is enabled when recording', async () => {
@@ -82,7 +82,7 @@ describe('MainRecorderPanel', () => {
     await act(async () => {
       render(<MainRecorderPanel {...baseProps} />)
     })
-    expect(screen.getByText('recorder.mainRecorderPanel.stop').closest('button')).not.toBeDisabled()
+    expect(screen.getByLabelText('recorder.mainRecorderPanel.stop')).not.toBeDisabled()
   })
 
   it('Run button is disabled when recording', async () => {
@@ -90,6 +90,6 @@ describe('MainRecorderPanel', () => {
     await act(async () => {
       render(<MainRecorderPanel {...baseProps} />)
     })
-    expect(screen.getByText('recorder.mainRecorderPanel.run').closest('button')).toBeDisabled()
+    expect(screen.getByLabelText('recorder.mainRecorderPanel.run')).toBeDisabled()
   })
 })

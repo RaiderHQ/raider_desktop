@@ -5,6 +5,7 @@ const mockSend = vi.fn()
 vi.mock('../../src/main/handlers/appState', () => ({
   appState: {
     projectAutomation: null,
+    isReplayingInWebview: false,
     mainWindow: {
       webContents: {
         send: (...args: unknown[]) => mockSend(...args)
@@ -20,6 +21,7 @@ describe('recorderEvent handler', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ;(appState as { projectAutomation: string | null }).projectAutomation = null
+    appState.isReplayingInWebview = false
   })
 
   it('sends selenium command by default (null automation)', () => {
@@ -92,6 +94,35 @@ describe('recorderEvent handler', () => {
     expect(mockSend).toHaveBeenCalledWith(
       'new-recorded-command',
       expect.stringContaining('hello world')
+    )
+  })
+
+  it('does not send events while isReplayingInWebview is true', () => {
+    appState.isReplayingInWebview = true
+
+    recorderEvent({
+      action: 'click',
+      selector: '#btn',
+      strategy: 'css',
+      tagName: 'BUTTON'
+    })
+
+    expect(mockSend).not.toHaveBeenCalled()
+  })
+
+  it('resumes sending events after isReplayingInWebview is set back to false', () => {
+    appState.isReplayingInWebview = false
+
+    recorderEvent({
+      action: 'click',
+      selector: '#btn',
+      strategy: 'css',
+      tagName: 'BUTTON'
+    })
+
+    expect(mockSend).toHaveBeenCalledWith(
+      'new-recorded-command',
+      expect.stringContaining('@driver.find_element')
     )
   })
 })

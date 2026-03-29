@@ -39,12 +39,12 @@ const makeRspecOutput = (examples: object[], overrides = {}) =>
 describe('RecordingDashboard', () => {
   it('shows no-results message when output is empty', () => {
     render(<RecordingDashboard runOutput="" />)
-    expect(screen.getByText('dashboard.noRecordingResults')).toBeInTheDocument()
+    expect(screen.getByText('dashboard.noRecordingResults.title')).toBeInTheDocument()
   })
 
   it('shows no-results message when output is invalid JSON', () => {
     render(<RecordingDashboard runOutput="not json" />)
-    expect(screen.getByText('dashboard.noRecordingResults')).toBeInTheDocument()
+    expect(screen.getByText('dashboard.noRecordingResults.title')).toBeInTheDocument()
   })
 
   it('renders summary stats when valid JSON is provided', () => {

@@ -6,6 +6,13 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
 }))
 
+vi.mock('@foundation/Stores/recorderStore', () => {
+  const useRecorderStore = (selector?: (s: Record<string, unknown>) => unknown) =>
+    selector ? selector({ isRunning: false }) : { isRunning: false }
+  useRecorderStore.getState = () => ({ isRunning: false })
+  return { default: useRecorderStore }
+})
+
 const baseProps = {
   onSuiteChange: vi.fn(),
   onTestSelect: vi.fn(),
@@ -168,8 +175,9 @@ describe('TestSuitePanel', () => {
           activeTestId="test-1"
         />
       )
-      fireEvent.click(screen.getByLabelText('recorder.testSuitePanel.selectSuite'))
-      fireEvent.click(screen.getByText('Checkout Suite'))
+      fireEvent.change(screen.getByLabelText('recorder.testSuitePanel.selectSuite'), {
+        target: { value: 'suite-2' }
+      })
       expect(baseProps.onSuiteChange).toHaveBeenCalledWith('suite-2')
     })
 
@@ -208,7 +216,7 @@ describe('TestSuitePanel', () => {
           activeTestId="test-1"
         />
       )
-      expect(screen.getByText('recorder.testSuitePanel.runAll')).toBeInTheDocument()
+      expect(screen.getByLabelText('recorder.testSuitePanel.runAll')).toBeInTheDocument()
     })
 
     it('calls onRunAllTests when Run All is clicked', () => {
@@ -220,7 +228,7 @@ describe('TestSuitePanel', () => {
           activeTestId="test-1"
         />
       )
-      fireEvent.click(screen.getByText('recorder.testSuitePanel.runAll'))
+      fireEvent.click(screen.getByLabelText('recorder.testSuitePanel.runAll'))
       expect(baseProps.onRunAllTests).toHaveBeenCalledWith('suite-1')
     })
 
@@ -261,7 +269,7 @@ describe('TestSuitePanel', () => {
           activeTestId={null}
         />
       )
-      expect(screen.getByText('recorder.testSuitePanel.runAll').closest('button')).toBeDisabled()
+      expect(screen.getByLabelText('recorder.testSuitePanel.runAll')).toBeDisabled()
     })
   })
 })

@@ -36,4 +36,17 @@ describe('DeleteModal', () => {
     fireEvent.click(screen.getByText('recorder.deleteModal.cancel'))
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
   })
+
+  it('calls onCancel when the overlay backdrop is clicked', () => {
+    render(<DeleteModal {...defaultProps} />)
+    const overlay = document.getElementById('delete-modal-overlay')!
+    fireEvent.click(overlay)
+    expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not call onCancel when modal content is clicked', () => {
+    render(<DeleteModal {...defaultProps} />)
+    fireEvent.click(screen.getByText('My Test'))
+    expect(defaultProps.onCancel).not.toHaveBeenCalled()
+  })
 })

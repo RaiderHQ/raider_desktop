@@ -58,4 +58,60 @@ describe('AssertionTextModal', () => {
     })
     expect(onSave).toHaveBeenCalledWith('value')
   })
+
+  it('renders text-includes title when assertionType is text-includes', () => {
+    render(<AssertionTextModal {...defaultProps} assertionType="text-includes" />)
+    expect(
+      screen.getByText('recorder.assertionTextModal.titles.text-includes')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('recorder.assertionTextModal.messages.text-includes')
+    ).toBeInTheDocument()
+  })
+
+  it('renders value title when assertionType is value', () => {
+    render(<AssertionTextModal {...defaultProps} assertionType="value" />)
+    expect(
+      screen.getByText('recorder.assertionTextModal.titles.value')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('recorder.assertionTextModal.messages.value')
+    ).toBeInTheDocument()
+  })
+
+  it('renders page-title title when assertionType is page-title', () => {
+    render(<AssertionTextModal {...defaultProps} assertionType="page-title" />)
+    expect(
+      screen.getByText('recorder.assertionTextModal.titles.page-title')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('recorder.assertionTextModal.messages.page-title')
+    ).toBeInTheDocument()
+  })
+
+  it('renders page-url title when assertionType is page-url', () => {
+    render(<AssertionTextModal {...defaultProps} assertionType="page-url" />)
+    expect(
+      screen.getByText('recorder.assertionTextModal.titles.page-url')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('recorder.assertionTextModal.messages.page-url')
+    ).toBeInTheDocument()
+  })
+
+  it('calls onClose when clicking the overlay', () => {
+    const onClose = vi.fn()
+    render(<AssertionTextModal {...defaultProps} onClose={onClose} />)
+    const overlay = document.getElementById('assertion-modal-overlay')!
+    fireEvent.click(overlay)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('does NOT call onClose when clicking modal content', () => {
+    const onClose = vi.fn()
+    render(<AssertionTextModal {...defaultProps} onClose={onClose} />)
+    const title = screen.getByText('recorder.assertionTextModal.titles.text')
+    fireEvent.click(title)
+    expect(onClose).not.toHaveBeenCalled()
+  })
 })
