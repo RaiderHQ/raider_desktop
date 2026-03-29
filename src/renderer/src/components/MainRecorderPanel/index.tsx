@@ -166,7 +166,7 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
             disabled={!activeTest}
           />
         </Tooltip>
-        <Tooltip content={t('tooltips.recorder.urlToRecord')} position="right" className="flex-1">
+        <Tooltip content={t('tooltips.recorder.urlToRecord')} position="left" className="flex-1">
           <InputField
             value={activeTest?.url ?? ''}
             onChange={onUrlChange}
@@ -232,7 +232,7 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
               </svg>
             </button>
           </Tooltip>
-          <Tooltip content={t('tooltips.recorder.stop')} position="top">
+          <Tooltip content={t('tooltips.recorder.stop')} position="left">
             <button
               onClick={onStopRecording}
               disabled={!isRecording}
