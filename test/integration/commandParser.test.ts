@@ -116,6 +116,160 @@ describe('commandParser (integration)', () => {
     })
   })
 
+  // --- New assertion types ---
+
+  it('parses expect not_to be_displayed assertion', () => {
+    const result = commandParser(
+      'expect(@driver.find_element(:css, "#el")).not_to be_displayed'
+    )
+    expect(result).toEqual({
+      key: 'recorder.commandParser.assertElementNotDisplayed',
+      values: { strategy: 'css', value: '#el' }
+    })
+  })
+
+  it('parses expect not_to be_displayed with id strategy', () => {
+    const result = commandParser(
+      'expect(@driver.find_element(:id, "banner")).not_to be_displayed'
+    )
+    expect(result).toEqual({
+      key: 'recorder.commandParser.assertElementNotDisplayed',
+      values: { strategy: 'id', value: 'banner' }
+    })
+  })
+
+  it('parses expect be_selected assertion', () => {
+    const result = commandParser(
+      'expect(@driver.find_element(:css, "#el")).to be_selected'
+    )
+    expect(result).toEqual({
+      key: 'recorder.commandParser.assertElementChecked',
+      values: { strategy: 'css', value: '#el' }
+    })
+  })
+
+  it('parses expect be_selected with xpath strategy', () => {
+    const result = commandParser(
+      'expect(@driver.find_element(:xpath, %q(//input[@type="checkbox"]))).to be_selected'
+    )
+    expect(result).toEqual({
+      key: 'recorder.commandParser.assertElementChecked',
+      values: { strategy: 'xpath', value: '//input[@type="checkbox"]' }
+    })
+  })
+
+  it('parses expect text includes assertion', () => {
+    const result = commandParser(
+      'expect(@driver.find_element(:css, "#el").text).to include("partial")'
+    )
+    expect(result).toEqual({
+      key: 'recorder.commandParser.assertElementTextIncludes',
+      values: { strategy: 'css', value: '#el', text: 'partial' }
+    })
+  })
+
+  it('parses expect text includes with id strategy', () => {
+    const result = commandParser(
+      'expect(@driver.find_element(:id, "msg").text).to include("success")'
+    )
+    expect(result).toEqual({
+      key: 'recorder.commandParser.assertElementTextIncludes',
+      values: { strategy: 'id', value: 'msg', text: 'success' }
+    })
+  })
+
+  it('parses expect attribute value assertion', () => {
+    const result = commandParser(
+      'expect(@driver.find_element(:css, "#el").attribute("value")).to eq("val")'
+    )
+    expect(result).toEqual({
+      key: 'recorder.commandParser.assertElementValue',
+      values: { strategy: 'css', value: '#el', text: 'val' }
+    })
+  })
+
+  it('parses expect attribute value with xpath strategy', () => {
+    const result = commandParser(
+      'expect(@driver.find_element(:xpath, %q(//input[@name="email"])).attribute("value")).to eq("test@example.com")'
+    )
+    expect(result).toEqual({
+      key: 'recorder.commandParser.assertElementValue',
+      values: { strategy: 'xpath', value: '//input[@name="email"]', text: 'test@example.com' }
+    })
+  })
+
+  it('parses expect page title assertion', () => {
+    const result = commandParser('expect(@driver.title).to eq("My Page")')
+    expect(result).toEqual({
+      key: 'recorder.commandParser.assertPageTitle',
+      values: { title: 'My Page' }
+    })
+  })
+
+  it('parses expect page title with different title', () => {
+    const result = commandParser('expect(@driver.title).to eq("Dashboard - Raider")')
+    expect(result).toEqual({
+      key: 'recorder.commandParser.assertPageTitle',
+      values: { title: 'Dashboard - Raider' }
+    })
+  })
+
+  it('parses expect url contains assertion', () => {
+    const result = commandParser('expect(@driver.current_url).to include("/dashboard")')
+    expect(result).toEqual({
+      key: 'recorder.commandParser.assertUrlContains',
+      values: { url: '/dashboard' }
+    })
+  })
+
+  it('parses expect url contains with query string', () => {
+    const result = commandParser('expect(@driver.current_url).to include("/search?q=test")')
+    expect(result).toEqual({
+      key: 'recorder.commandParser.assertUrlContains',
+      values: { url: '/search?q=test' }
+    })
+  })
+
+  it('parses wait.until element disappear', () => {
+    const result = commandParser(
+      '@wait.until { !@driver.find_element(:css, "#el").displayed? }'
+    )
+    expect(result).toEqual({
+      key: 'recorder.commandParser.waitForElementDisappear',
+      values: { strategy: 'css', value: '#el' }
+    })
+  })
+
+  it('parses wait.until element disappear with id strategy', () => {
+    const result = commandParser(
+      '@wait.until { !@driver.find_element(:id, "spinner").displayed? }'
+    )
+    expect(result).toEqual({
+      key: 'recorder.commandParser.waitForElementDisappear',
+      values: { strategy: 'id', value: 'spinner' }
+    })
+  })
+
+  it('parses wait.until element disappear with xpath strategy', () => {
+    const result = commandParser(
+      '@wait.until { !@driver.find_element(:xpath, %q(//div[@class="loading"])).displayed? }'
+    )
+    expect(result).toEqual({
+      key: 'recorder.commandParser.waitForElementDisappear',
+      values: { strategy: 'xpath', value: '//div[@class="loading"]' }
+    })
+  })
+
+  it('parses expect not_to be_displayed with xpath strategy', () => {
+    const result = commandParser(
+      'expect(@driver.find_element(:xpath, %q(//div[@id="modal"]))).not_to be_displayed'
+    )
+    expect(result).toEqual({
+      key: 'recorder.commandParser.assertElementNotDisplayed',
+      values: { strategy: 'xpath', value: '//div[@id="modal"]' }
+    })
+  })
+
   it('returns the raw command string for unrecognized patterns', () => {
     const raw = '@driver.some_unknown_method'
     expect(commandParser(raw)).toBe(raw)

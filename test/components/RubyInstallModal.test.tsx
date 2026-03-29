@@ -6,6 +6,16 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
 }))
 
+beforeEach(() => {
+  const root = document.createElement('div')
+  root.id = 'root'
+  document.body.appendChild(root)
+})
+
+afterEach(() => {
+  document.getElementById('root')?.remove()
+})
+
 describe('RubyInstallModal', () => {
   it('renders the title and message', () => {
     render(<RubyInstallModal onClose={vi.fn()} onCloseApp={vi.fn()} />)
