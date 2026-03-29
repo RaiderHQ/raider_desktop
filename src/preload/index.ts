@@ -190,6 +190,18 @@ const api = {
   // Recording Session Control
   startRecordingMain: async (): Promise<{ success: boolean; url: string; preloadPath: string }> =>
     ipcRenderer.invoke('start-recording-main'),
+  replayStepsAndRecord: async (
+    testName: string,
+    stepsToReplay: string[],
+    rubyCommand: string
+  ): Promise<{ success: boolean; url?: string; preloadPath?: string; error?: string; cancelled?: boolean }> =>
+    ipcRenderer.invoke('replay-steps-and-record', testName, stepsToReplay, rubyCommand),
+  cancelReplay: async (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('cancel-replay'),
+  replayInWebview: async (
+    steps: string[]
+  ): Promise<{ success: boolean; error?: string; cancelled?: boolean }> =>
+    ipcRenderer.invoke('replay-in-webview', steps),
   registerRecorderWebContents: async (webContentsId: number): Promise<void> =>
     ipcRenderer.invoke('register-recorder-webcontents', webContentsId),
   stopRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('stop-recording-main'),

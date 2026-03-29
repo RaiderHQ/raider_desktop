@@ -103,6 +103,9 @@ describe('IPC Contract', () => {
 
     // Recording Session
     'startRecordingMain',
+    'replayStepsAndRecord',
+    'cancelReplay',
+    'replayInWebview',
     'registerRecorderWebContents',
     'stopRecordingMain',
     'loadUrlRequest',
@@ -141,6 +144,10 @@ describe('IPC Contract', () => {
     'removeTerminalDataListener',
     'onTerminalExit',
     'removeTerminalExitListener',
+
+    // Longship
+    'getLongshipConfig',
+    'setLongshipConfig',
 
     // App Lifecycle
     'closeApp'

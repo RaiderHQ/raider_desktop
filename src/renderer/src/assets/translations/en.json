@@ -401,9 +401,27 @@
       "runOutput": "Run Output"
     },
     "assertionTextModal": {
-      "title": "Assert Element Text",
-      "message": "Enter the exact text you expect the element to contain.",
-      "label": "Expected Text",
+      "titles": {
+        "text": "Assert Element Text",
+        "text-includes": "Assert Element Text Includes",
+        "value": "Assert Element Value",
+        "page-title": "Assert Page Title",
+        "page-url": "Assert Current URL"
+      },
+      "messages": {
+        "text": "Enter the exact text you expect the element to contain.",
+        "text-includes": "Enter the text you expect to find within the element.",
+        "value": "Enter the value you expect in this input field.",
+        "page-title": "Enter the exact page title you expect.",
+        "page-url": "Enter the text you expect the URL to contain (e.g. /dashboard)."
+      },
+      "labels": {
+        "text": "Expected Text",
+        "text-includes": "Text to Find",
+        "value": "Expected Value",
+        "page-title": "Expected Title",
+        "page-url": "URL Contains"
+      },
       "cancel": "Cancel",
       "save": "Save Assertion"
     },
@@ -447,7 +465,13 @@
       "exportError": "Export failed: {{error}}",
       "importSuccess": "{{importType}} imported successfully!",
       "importError": "Import failed: {{error}}",
-      "emptyHelper": "Select or create a suite to get started"
+      "emptyHelper": "Select or create a suite to get started",
+      "replaying": "Replaying to breakpoint..."
+    },
+    "breakpoint": {
+      "recordFromHere": "Record from here",
+      "replayFailed": "Replay failed",
+      "stopReplay": "Stop Replay"
     },
     "outputPanel": {
       "title": "Test Results:",
@@ -507,8 +531,15 @@
       "switchToFrame": "Switch to frame identified by {{frame}}",
       "switchToDefaultContent": "Switch back to main content",
       "assertElementDisplayed": "Assert that element with {{strategy}} \"{{value}}\" is displayed",
+      "assertElementNotDisplayed": "Assert that element with {{strategy}} \"{{value}}\" is NOT displayed",
       "assertElementEnabled": "Assert that element with {{strategy}} \"{{value}}\" is enabled",
-      "assertElementTextEquals": "Assert that element with {{strategy}} \"{{value}}\" has text equal to \"{{text}}\""
+      "assertElementChecked": "Assert that element with {{strategy}} \"{{value}}\" is checked",
+      "assertElementTextEquals": "Assert that element with {{strategy}} \"{{value}}\" has text equal to \"{{text}}\"",
+      "assertElementTextIncludes": "Assert that element with {{strategy}} \"{{value}}\" has text including \"{{text}}\"",
+      "assertElementValue": "Assert that element with {{strategy}} \"{{value}}\" has value \"{{text}}\"",
+      "assertPageTitle": "Assert that page title equals \"{{title}}\"",
+      "assertUrlContains": "Assert that current URL contains \"{{url}}\"",
+      "waitForElementDisappear": "Wait for element with {{strategy}} \"{{value}}\" to disappear"
     }
   },
   "concepts": {
@@ -579,7 +610,11 @@
     "recorder": {
       "recording": {
         "title": "Recording a Test",
-        "message": "Pick a suite from the dropdown, create a test, and enter the URL you want to test.\n\nThen press the red Record button — a browser will open and every click or keystroke you make is captured as a step.\n\nPress Stop when you're done, then Run to check if the test passes."
+        "message": "Pick a suite from the dropdown, create a test, and enter the URL you want to test.\n\nThen press the red Record button — a browser will open and every click or keystroke you make is captured as a step.\n\nPress Stop when you're done, then Run to check if the test passes.",
+        "assertions": {
+          "title": "Adding Assertions",
+          "content": "Right-click any element in the browser to add a checkpoint — a step that verifies something about the page.\n\n\u2022 Assert element is displayed — confirms an element is visible\n\u2022 Assert element is NOT displayed — confirms it is hidden or gone\n\u2022 Assert element is enabled — confirms a button or field is interactive\n\u2022 Assert element is checked — confirms a checkbox or radio is selected\n\u2022 Assert element text equals — checks the element's exact text\n\u2022 Assert element text includes — checks it contains certain text\n\u2022 Assert element value — checks what's entered in an input field\n\u2022 Assert page title — checks the browser tab title\n\u2022 Assert current URL contains — checks the page address\n\u2022 Wait for element to appear / disappear / be enabled — pauses the test until a condition is met"
+        }
       },
       "dashboard": {
         "title": "Recording Dashboard",
@@ -629,7 +664,9 @@
       "testOutput": "Show the output panel — displays the pass/fail result and any errors after running a test.",
       "hideOutput": "Hide the output panel to give more space to your recorded steps.",
       "deleteStep": "Remove this step from the test. The remaining steps will still run in order.",
-      "dragStep": "Drag to reorder this step. Tests run steps from top to bottom."
+      "dragStep": "Drag to reorder this step. Tests run steps from top to bottom.",
+      "setBreakpoint": "Set a breakpoint here — click 'Record from here' to replay steps up to this point headlessly, then continue recording from this page state.",
+      "clearBreakpoint": "Clear this breakpoint."
     },
     "overview": {
       "urlInput": "The base URL used when running your tests — e.g. https://staging.example.com",
@@ -639,5 +676,8 @@
       "rerunFailed": "Re-run only the tests that failed in the last run — useful for quickly confirming a fix.",
       "timeout": "Maximum seconds a single test can take before it is automatically marked as failed."
     }
+  },
+  "common": {
+    "close": "Close"
   }
 }

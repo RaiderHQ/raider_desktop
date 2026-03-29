@@ -14,8 +14,9 @@ describe('ConfirmationModal', () => {
     render(
       <ConfirmationModal message="Continue?" onConfirm={vi.fn()} onCancel={vi.fn()} />
     )
-    expect(screen.getByText('Confirm')).toBeInTheDocument()
-    expect(screen.getByText('Cancel')).toBeInTheDocument()
+    const buttons = screen.getAllByRole('button')
+    expect(buttons.some((b) => b.textContent === 'Confirm')).toBe(true)
+    expect(buttons.some((b) => b.textContent === 'Cancel')).toBe(true)
   })
 
   it('calls onConfirm when Confirm is clicked', () => {
@@ -23,7 +24,8 @@ describe('ConfirmationModal', () => {
     render(
       <ConfirmationModal message="Continue?" onConfirm={onConfirm} onCancel={vi.fn()} />
     )
-    fireEvent.click(screen.getByText('Confirm'))
+    const confirmBtn = screen.getAllByRole('button').find((b) => b.textContent === 'Confirm')!
+    fireEvent.click(confirmBtn)
     expect(onConfirm).toHaveBeenCalledTimes(1)
   })
 
