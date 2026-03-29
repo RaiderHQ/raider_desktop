@@ -154,6 +154,7 @@ const RecordingDashboard: React.FC<RecordingDashboardProps> = ({ runOutput }) =>
                 name={example.description}
                 status={example.status}
                 message={example.exception?.message ?? example.pending_message}
+                backtrace={example.exception?.backtrace}
                 hasTrace={testInfo?.hasTrace}
                 onViewTrace={() => handleViewTrace(example.description)}
               />
