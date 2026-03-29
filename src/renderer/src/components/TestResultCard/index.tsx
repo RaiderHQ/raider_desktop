@@ -201,40 +201,40 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
   }, [showModal, screenshot, t])
 
   return (
-    <div className="p-4 border rounded shadow">
+    <div className="border border-neutral-bdr rounded-lg bg-white">
       <div
-        className="flex items-center justify-between cursor-pointer"
+        className="flex items-center justify-between cursor-pointer px-4 py-3"
         onClick={() => setOpen(!open)}
       >
-        <div className="flex items-center">
-          <div className="mr-2">{chevronIcon}</div>
-          <h2 className="font-semibold">{name}</h2>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-neutral-mid shrink-0">{chevronIcon}</span>
+          <span className="text-sm font-semibold text-neutral-dark truncate">{name}</span>
         </div>
-        <div className="pl-4">{statusIcon}</div>
+        <div className="pl-4 shrink-0">{statusIcon}</div>
       </div>
       {open && (
-        <div className="mt-2">
-          <p>
-            {t('testResults.status')}: {t(`testResults.${status}`)}
+        <div className="border-t border-neutral-bdr px-4 py-3">
+          <p className="text-xs text-neutral-mid mb-1">
+            {t('testResults.status')}: <span className="font-medium text-neutral-dk">{t(`testResults.${status}`)}</span>
           </p>
           {message && <MessageContent message={message} />}
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-3 mt-2">
             {screenshot && (
               <button
                 onClick={() => setShowModal(true)}
-                className="text-ruby flex items-center"
+                className="text-xs text-ruby flex items-center gap-1 hover:underline"
               >
-                <FaImage className="mr-1" />
-                <span className="underline">{t('testResults.viewScreenshot')}</span>
+                <FaImage />
+                {t('testResults.viewScreenshot')}
               </button>
             )}
             {hasTrace && onViewTrace && (
               <button
                 onClick={onViewTrace}
-                className="text-ruby flex items-center"
+                className="text-xs text-ruby flex items-center gap-1 hover:underline"
               >
-                <FaRoute className="mr-1" />
-                <span className="underline">{t('testResults.viewTrace')}</span>
+                <FaRoute />
+                {t('testResults.viewTrace')}
               </button>
             )}
           </div>

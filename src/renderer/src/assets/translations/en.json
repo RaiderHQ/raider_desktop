@@ -344,8 +344,21 @@
     "passed": "Passed",
     "failed": "Failed",
     "skipped": "Skipped",
-    "noResults": "Please run your tests to see the results on the dashboard.",
-    "noRecordingResults": "Please run a test to see the recording results on the dashboard.",
+    "noResults": {
+      "title": "No test results yet",
+      "subtitle": "Run your tests from the Files tab and results will appear here.",
+      "step1": "Open the Files tab and browse your project files.",
+      "step2": "Use the toolbar to choose your browser, run mode, and timeout.",
+      "step3": "Click the Run button — then come back here to see the results."
+    },
+    "noRecordingResults": {
+      "title": "No recording results yet",
+      "subtitle": "Record and run a test from the Recording tab to see results here.",
+      "step1": "Go to the Recording tab and select or create a test suite.",
+      "step2": "Create a new test, enter the URL you want to test, and press Record.",
+      "step3": "Interact with the page in the browser — every action is captured as a step.",
+      "step4": "Press Stop, then Run to execute the test and see the results here."
+    },
     "viewTrace": "View Trace",
     "backToResults": "Back to Results",
     "traceTitle": "Trace View",
