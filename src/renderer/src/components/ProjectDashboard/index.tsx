@@ -7,25 +7,7 @@ import PieChartWidget from '@components/PieChartWidget'
 import TestResultCard from '@components/TestResultCard'
 import NoProjectLoadedMessage from '@components/NoProjectLoadedMessage'
 import { loadRaiderResults, sanitizeMessage } from '@foundation/raiderResults'
-
-interface Attachment {
-  name: string
-  type: string
-  source: string
-}
-
-interface StatusDetails {
-  message?: string
-  trace?: string
-}
-
-interface TestResult {
-  name: string
-  status: string
-  attachments?: Attachment[]
-  screenshot?: string
-  statusDetails?: StatusDetails
-}
+import type { TestResult } from '@foundation/Types/testResult'
 
 const EmptyState: React.FC = () => {
   const { t } = useTranslation()
@@ -79,14 +61,7 @@ const Index: React.FC = (): JSX.Element => {
           toast.error(`${t('dashboard.error.parsing', { file })}: ${message}`)
         )
         if (raider) {
-          setResults(
-            raider.map((result) => {
-              if (result.statusDetails?.message) {
-                result.statusDetails.message = sanitizeMessage(result.statusDetails.message)
-              }
-              return result
-            })
-          )
+          setResults(raider)
           return
         }
         const folderPath = `${projectPath}/allure-results`

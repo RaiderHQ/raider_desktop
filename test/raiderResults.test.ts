@@ -79,13 +79,130 @@ describe('loadRaiderResults', () => {
     expect(rows!.map((x) => x.name)).toEqual(['F: one', 'F: two'])
   })
 
-  it('prefers run.json when shard files also exist', async () => {
+  const timed = (finished_at: string, shard: unknown, results: unknown[]): string =>
+    JSON.stringify({
+      schema_version: 1,
+      run: { finished_at, ...(shard ? { shard } : {}) },
+      results
+    })
+  const sh = (index: number, total: number): unknown => ({ index, total, label: `l#${index}` })
+
+  it('prefers fresh shards over a stale run.json', async () => {
     const api = makeApi({
-      'run.json': run([r('F: whole', 'passed')]),
-      'run-1.json': run([r('F: stale', 'passed')])
+      'run.json': timed('2026-10-10T10:00:00Z', null, [r('F: stale', 'passed')]),
+      'run-1.json': timed('2026-10-10T12:00:00Z', sh(1, 2), [r('F: s1', 'passed')]),
+      'run-2.json': timed('2026-10-10T12:00:01Z', sh(2, 2), [r('F: s2', 'passed')])
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows!.map((x) => x.name)).toEqual(['F: s1', 'F: s2'])
+  })
+
+  it('prefers a fresh run.json over stale shards', async () => {
+    const api = makeApi({
+      'run.json': timed('2026-10-10T12:00:00Z', null, [r('F: whole', 'passed')]),
+      'run-1.json': timed('2026-10-10T10:00:00Z', sh(1, 2), [r('F: stale', 'passed')])
     })
     const rows = await loadRaiderResults('/proj', api)
     expect(rows!.map((x) => x.name)).toEqual(['F: whole'])
+  })
+
+  it('ignores stale shards left over from a run with more shards', async () => {
+    const api = makeApi({
+      'run-1.json': timed('2026-10-10T12:00:00Z', sh(1, 2), [r('F: s1', 'passed')]),
+      'run-2.json': timed('2026-10-10T12:00:01Z', sh(2, 2), [r('F: s2', 'passed')]),
+      'run-3.json': timed('2026-10-10T10:00:00Z', sh(3, 4), [r('F: old3', 'passed')]),
+      'run-4.json': timed('2026-10-10T10:00:01Z', sh(4, 4), [r('F: old4', 'passed')])
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows!.map((x) => x.name)).toEqual(['F: s1', 'F: s2'])
+  })
+
+  it('orders shards numerically (run-10 after run-2)', async () => {
+    const api = makeApi({
+      'run-10.json': run([r('F: ten', 'passed')]),
+      'run-2.json': run([r('F: two', 'passed')])
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows!.map((x) => x.name)).toEqual(['F: two', 'F: ten'])
+  })
+
+  it('uses run.json when timestamps are missing', async () => {
+    const api = makeApi({
+      'run.json': run([r('F: whole', 'passed')]),
+      'run-1.json': run([r('F: shard', 'passed')])
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows!.map((x) => x.name)).toEqual(['F: whole'])
+  })
+
+  it.each([
+    '../x.png',
+    '..\\x.png',
+    '/etc/x.png',
+    'C:\\x.png',
+    'attachments/../../x.png',
+    'other/x.png'
+  ])('rejects unsafe screenshot path %s', async (path) => {
+    const api = makeApi({
+      'run.json': run([r('F: s', 'failed', { attachments: [{ content_type: 'image/png', path }] })])
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows![0].screenshot).toBeUndefined()
+  })
+
+  it('accepts a sharded attachment path', async () => {
+    const api = makeApi({
+      'run-2.json': run([
+        r('F: s', 'failed', {
+          attachments: [{ content_type: 'image/png', path: 'attachments-2/0-shot.png' }]
+        })
+      ])
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows![0].screenshot).toBe('/proj/raider-results/attachments-2/0-shot.png')
+  })
+
+  it('handles a failure without backtrace and unknown statuses', async () => {
+    const api = makeApi({
+      'run.json': run([
+        r('F: bad', 'failed', { failure: { message: 'boom' } }),
+        r('F: odd', 'weird')
+      ])
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows![0].statusDetails?.message).toBe('boom')
+    expect(rows![1].status).toBe('skipped')
+  })
+
+  it('sanitizes failure messages', async () => {
+    const api = makeApi({
+      'run.json': run([r('F: bad', 'failed', { failure: { message: 'a\u0000b' } })])
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows![0].statusDetails?.message).toBe('ab')
+  })
+
+  it('reports unreadable files through onError', async () => {
+    const api = makeApi({ 'run-1.json': run([r('F: one', 'passed')]) }, [
+      'run-1.json',
+      'run-2.json'
+    ])
+    const onError = vi.fn()
+    const rows = await loadRaiderResults('/proj', api, onError)
+    expect(rows!.map((x) => x.name)).toEqual(['F: one'])
+    expect(onError).toHaveBeenCalledWith('run-2.json', 'missing')
+  })
+
+  it('returns null when every file is malformed', async () => {
+    const api = makeApi({ 'run-1.json': '{bad', 'run-2.json': '[' })
+    const onError = vi.fn()
+    expect(await loadRaiderResults('/proj', api, onError)).toBeNull()
+    expect(onError).toHaveBeenCalledTimes(2)
+  })
+
+  it('treats an empty results array as parsed', async () => {
+    const api = makeApi({ 'run.json': run([]) })
+    expect(await loadRaiderResults('/proj', api)).toEqual([])
   })
 
   it('sets screenshot from the first image attachment and ignores others', async () => {
