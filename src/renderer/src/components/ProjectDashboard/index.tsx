@@ -6,6 +6,7 @@ import useRecorderStore from '@foundation/Stores/recorderStore'
 import PieChartWidget from '@components/PieChartWidget'
 import TestResultCard from '@components/TestResultCard'
 import NoProjectLoadedMessage from '@components/NoProjectLoadedMessage'
+import { loadRaiderResults, sanitizeMessage } from '@foundation/raiderResults'
 
 interface Attachment {
   name: string
@@ -74,6 +75,20 @@ const Index: React.FC = (): JSX.Element => {
   useEffect(() => {
     const fetchDashboard = async (): Promise<void> => {
       try {
+        const raider = await loadRaiderResults(projectPath as string, window.api, (file, message) =>
+          toast.error(`${t('dashboard.error.parsing', { file })}: ${message}`)
+        )
+        if (raider) {
+          setResults(
+            raider.map((result) => {
+              if (result.statusDetails?.message) {
+                result.statusDetails.message = sanitizeMessage(result.statusDetails.message)
+              }
+              return result
+            })
+          )
+          return
+        }
         const folderPath = `${projectPath}/allure-results`
         const fileNodes = await window.api.readDirectory(folderPath)
         const resultFiles = fileNodes.filter(
@@ -113,15 +128,7 @@ const Index: React.FC = (): JSX.Element => {
             result.screenshot = `${projectPath}/allure-results/${attachment.source}`
           }
           if (result.statusDetails?.message) {
-            let msg = result.statusDetails.message
-            msg = msg.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFD]/g, '')
-            const encodingErrIdx = msg.indexOf('Unable to encode string')
-            if (encodingErrIdx !== -1) {
-              msg = msg.substring(0, encodingErrIdx).trim() || msg.substring(0, 500)
-            }
-            if (msg.length > 20000) {
-              msg = msg.substring(0, 20000) + '\n… (message truncated)'
-            }
+            const msg = sanitizeMessage(result.statusDetails.message)
             result.statusDetails.message = msg
           }
           return result
