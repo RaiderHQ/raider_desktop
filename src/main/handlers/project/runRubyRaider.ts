@@ -51,6 +51,10 @@ const handler = async (
 
     let raiderCommand = `raider new "${projectName}" -p framework:${formattedFramework} automation:${formattedAutomation}`
 
+    // Azure Pipelines is web-only for now; github is ruby_raider's default so nothing is passed.
+    const isMobile = typeof mobile === 'string' && mobile.trim() !== ''
+    if (options?.ci === 'azure' && !isMobile) raiderCommand += ' ci:azure'
+
     if (options) {
       if (options.accessibility) raiderCommand += ' --accessibility'
       if (options.reporter && options.reporter !== 'none') {

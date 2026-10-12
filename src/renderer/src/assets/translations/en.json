@@ -25,6 +25,11 @@
       "mobile": "Select your mobile platform",
       "test": "Select your test framework"
     },
+    "ci": {
+      "label": "CI provider",
+      "github": "GitHub Actions",
+      "azure": "Azure Pipelines"
+    },
     "addons": {
       "title": "Add-ons",
       "accessibility": "Accessibility testing (axe)",

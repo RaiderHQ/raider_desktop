@@ -1,4 +1,4 @@
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import CreateProject from '@pages/New'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
@@ -71,5 +71,40 @@ describe('CreateProject Page', (): void => {
 
     expect(screen.getByText('newProject.addons.title')).toBeInTheDocument()
     expect(screen.getByText('newProject.addons.accessibility')).toBeInTheDocument()
+  })
+
+  it('passes ci: azure to runRubyRaider when Azure Pipelines is chosen', async (): Promise<void> => {
+    const runRubyRaider = vi.fn().mockResolvedValue({ success: false, error: 'stop' })
+    ;(window as unknown as { api: unknown }).api = {
+      selectFolder: vi.fn().mockResolvedValue('/tmp/projects'),
+      runRubyRaider
+    }
+    await act(async (): Promise<void> => {
+      render(
+        <MemoryRouter>
+          <CreateProject />
+        </MemoryRouter>
+      )
+    })
+
+    expect(screen.getByText('newProject.ci.label')).toBeInTheDocument()
+    const select = screen.getByDisplayValue('newProject.ci.github')
+    fireEvent.change(select, { target: { value: 'newProject.ci.azure' } })
+    fireEvent.change(screen.getByPlaceholderText('newProject.input.placeholder'), {
+      target: { value: 'proj' }
+    })
+    await act(async (): Promise<void> => {
+      fireEvent.click(screen.getByText('button.create.text'))
+    })
+
+    expect(runRubyRaider).toHaveBeenCalledWith(
+      '/tmp/projects',
+      'proj',
+      'rspec',
+      'selenium',
+      '/usr/bin/ruby',
+      null,
+      { accessibility: false, ci: 'azure' }
+    )
   })
 })
