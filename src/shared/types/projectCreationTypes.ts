@@ -6,4 +6,5 @@ export interface ProjectCreationOptions {
   skipCi?: boolean
   skipAllure?: boolean
   rubyVersion?: string
+  ci?: 'github' | 'azure'
 }

@@ -17,6 +17,7 @@ vi.mock('child_process', () => {
   return { exec, default: { exec } }
 })
 
+import type { ProjectCreationOptions } from '../../src/shared/types/projectCreationTypes'
 import handler from '../../src/main/handlers/project/runRubyRaider'
 
 const mockExec = exec as ReturnType<typeof vi.fn>
@@ -64,6 +65,37 @@ describe('runRubyRaider handler (integration)', () => {
     expect(call).toContain('"my_project"')
     expect(call).toContain('framework:rspec')
     expect(call).toContain('automation:selenium')
+  })
+
+  describe('ci option', () => {
+    const run = async (
+      options: ProjectCreationOptions | undefined,
+      mobile: string | null = null
+    ): Promise<string> => {
+      mockExecSuccess()
+      await handler(...validArgs, mobile, options)
+      return mockExec.mock.calls[0][0] as string
+    }
+
+    it('adds ci:azure inside the -p list', async () => {
+      const cmd = await run({ ci: 'azure', accessibility: true })
+      expect(cmd).toContain('-p framework:rspec automation:selenium ci:azure')
+      expect(cmd.indexOf('ci:azure')).toBeLessThan(cmd.indexOf('--accessibility'))
+    })
+
+    it('passes no ci for github or when absent', async () => {
+      expect(await run({ ci: 'github' })).not.toContain('ci:')
+      vi.clearAllMocks()
+      expect(await run(undefined)).not.toContain('ci:')
+    })
+
+    it('ignores unknown providers', async () => {
+      expect(await run({ ci: 'gitlab' as never })).not.toContain('ci:')
+    })
+
+    it('ignores azure for mobile projects', async () => {
+      expect(await run({ ci: 'azure' }, 'android')).not.toContain('ci:')
+    })
   })
 
   it('returns error when exec fails', async () => {
