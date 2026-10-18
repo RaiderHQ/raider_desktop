@@ -14,14 +14,9 @@ interface RubyError {
 interface InstallGuideProps {
   rubyMissing: boolean
   rubyError?: RubyError | string | null
-  allureMissing: boolean
 }
 
-const InstallGuide: React.FC<InstallGuideProps> = ({
-  rubyMissing,
-  rubyError,
-  allureMissing
-}): JSX.Element => {
+const InstallGuide: React.FC<InstallGuideProps> = ({ rubyMissing, rubyError }): JSX.Element => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const handleNavigation = (url: string): void => {
@@ -38,11 +33,6 @@ const InstallGuide: React.FC<InstallGuideProps> = ({
     }
   } else if (rubyMissing) {
     errorMessage = t('installGuide.rubyMissing')
-  }
-
-  if (allureMissing) {
-    errorMessage += errorMessage ? ' ' : ''
-    errorMessage += t('installGuide.allureMissing')
   }
 
   return (

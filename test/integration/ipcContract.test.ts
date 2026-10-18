@@ -56,7 +56,8 @@ describe('IPC Contract', () => {
     'deleteFile',
     'renameFile',
     'duplicateFile',
-    'openAllure',
+    'openReport',
+    'reportExists',
 
     // Ruby & Dependencies
     'isRubyInstalled',

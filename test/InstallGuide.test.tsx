@@ -16,42 +16,18 @@ describe('InstallGuide Page', () => {
     await act(async () => {
       render(
         <MemoryRouter>
-          <InstallGuide rubyMissing={true} allureMissing={false} />
+          <InstallGuide rubyMissing={true} />
         </MemoryRouter>
       )
     })
     expect(screen.getByText('installGuide.rubyMissing')).toBeInTheDocument()
   })
 
-  it('renders with allure missing message', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <InstallGuide rubyMissing={false} allureMissing={true} />
-        </MemoryRouter>
-      )
-    })
-    expect(screen.getByText('installGuide.allureMissing')).toBeInTheDocument()
-  })
-
-  it('renders with both messages', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <InstallGuide rubyMissing={true} allureMissing={true} />
-        </MemoryRouter>
-      )
-    })
-    expect(
-      screen.getByText('installGuide.rubyMissing installGuide.allureMissing')
-    ).toBeInTheDocument()
-  })
-
   it('renders with a custom error message', async () => {
     await act(async () => {
       render(
         <MemoryRouter>
-          <InstallGuide rubyMissing={false} allureMissing={false} rubyError="Custom error" />
+          <InstallGuide rubyMissing={false} rubyError="Custom error" />
         </MemoryRouter>
       )
     })
@@ -62,7 +38,7 @@ describe('InstallGuide Page', () => {
     await act(async () => {
       render(
         <MemoryRouter>
-          <InstallGuide rubyMissing={false} allureMissing={false} />
+          <InstallGuide rubyMissing={false} />
         </MemoryRouter>
       )
     })

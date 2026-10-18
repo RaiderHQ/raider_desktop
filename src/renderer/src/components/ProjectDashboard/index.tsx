@@ -6,7 +6,7 @@ import useRecorderStore from '@foundation/Stores/recorderStore'
 import PieChartWidget from '@components/PieChartWidget'
 import TestResultCard from '@components/TestResultCard'
 import NoProjectLoadedMessage from '@components/NoProjectLoadedMessage'
-import { loadRaiderResults, sanitizeMessage } from '@foundation/raiderResults'
+import { loadRaiderResults } from '@foundation/raiderResults'
 import type { TestResult } from '@foundation/Types/testResult'
 
 const EmptyState: React.FC = () => {
@@ -44,6 +44,7 @@ const EmptyState: React.FC = () => {
 const Index: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const [results, setResults] = useState<TestResult[]>([])
+  const [hasReport, setHasReport] = useState(false)
   const projectPath: string | null = useProjectStore((state) => state.projectPath)
   const suites = useRecorderStore((s) => s.suites)
 
@@ -57,6 +58,11 @@ const Index: React.FC = (): JSX.Element => {
   useEffect(() => {
     const fetchDashboard = async (): Promise<void> => {
       try {
+        setHasReport(await window.api.reportExists(projectPath as string))
+      } catch {
+        setHasReport(false)
+      }
+      try {
         const raider = await loadRaiderResults(projectPath as string, window.api, (file, message) =>
           toast.error(`${t('dashboard.error.parsing', { file })}: ${message}`)
         )
@@ -64,59 +70,20 @@ const Index: React.FC = (): JSX.Element => {
           setResults(raider)
           return
         }
-        const folderPath = `${projectPath}/allure-results`
-        const fileNodes = await window.api.readDirectory(folderPath)
-        const resultFiles = fileNodes.filter(
-          (file: { name: string; type: string; path: string }) =>
-            file.type === 'file' && file.name.toLowerCase().includes('result')
-        )
-        const promises = resultFiles.map(async (file: { name: string; path: string }) => {
-          const res = await window.api.readFile(file.path)
-          if (res.success && res.data) {
-            try {
-              return JSON.parse(res.data)
-            } catch (e: unknown) {
-              const error = e as Error
-              toast.error(`${t('dashboard.error.parsing', { file: file.name })}: ${error.message}`)
-              return null
-            }
-          } else {
-            toast.error(`${t('dashboard.error.reading', { file: file.name })}: ${res.error}`)
-            return null
-          }
-        })
-        const fileData = await Promise.all(promises)
-        let aggregated: TestResult[] = []
-        fileData.forEach((data) => {
-          if (data) {
-            if (Array.isArray(data)) {
-              aggregated = aggregated.concat(data)
-            } else {
-              aggregated.push(data)
-            }
-          }
-        })
-
-        const resultsWithMedia = aggregated.map((result) => {
-          if (result.attachments && result.attachments.length > 0) {
-            const attachment = result.attachments[0]
-            result.screenshot = `${projectPath}/allure-results/${attachment.source}`
-          }
-          if (result.statusDetails?.message) {
-            const msg = sanitizeMessage(result.statusDetails.message)
-            result.statusDetails.message = msg
-          }
-          return result
-        })
-        setResults(resultsWithMedia)
+        setResults((prev) => (prev.length ? [] : prev))
       } catch (error: unknown) {
-        // silently ignore missing allure-results
+        // missing raider-results: show the empty state
       }
     }
     if (projectPath) {
       fetchDashboard()
     }
   }, [projectPath, t])
+
+  const openReport = async (): Promise<void> => {
+    const result = await window.api.openReport(projectPath as string)
+    if (!result.success) toast.error(`${t('dashboard.error.openReport')}: ${result.error ?? ''}`)
+  }
 
   const passedTests = results.filter((r) => r.status === 'passed')
   const failedTests = results.filter((r) => r.status === 'failed' || r.status === 'broken')
@@ -133,6 +100,16 @@ const Index: React.FC = (): JSX.Element => {
 
   return (
     <div className="p-4 w-full flex flex-col gap-4">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={openReport}
+          disabled={!hasReport}
+          className="px-3 py-1.5 text-xs font-semibold rounded-md bg-ruby text-white disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {t('dashboard.openReport')}
+        </button>
+      </div>
       {totalCount === 0 ? (
         <div className="border border-neutral-bdr rounded-lg bg-white">
           <EmptyState />

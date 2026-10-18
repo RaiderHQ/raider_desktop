@@ -29,7 +29,8 @@ export interface WindowApi {
   deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
   renameFile: (filePath: string, newName: string) => Promise<{ success: boolean; newPath?: string; error?: string }>
   duplicateFile: (filePath: string) => Promise<{ success: boolean; newPath?: string; error?: string }>
-  openAllure: () => Promise<{ success: boolean; output?: string; error?: string }>
+  openReport: (projectPath: string) => Promise<{ success: boolean; error?: string }>
+  reportExists: (projectPath: string) => Promise<boolean>
 
   // --- Ruby & Dependencies ---
   isRubyInstalled: () => Promise<{

@@ -54,3 +54,42 @@ describe('ProjectDashboard with raider-results', () => {
     expect(readDirectory).not.toHaveBeenCalledWith('/proj/allure-results')
   })
 })
+
+describe('ProjectDashboard Open report button', () => {
+  const setup = (exists: boolean): { openReport: ReturnType<typeof vi.fn> } => {
+    useProjectStore.setState({ projectPath: '/proj' })
+    const openReport = vi.fn(async () => ({ success: true }))
+    window.api = {
+      readDirectory: vi.fn(async () => {
+        throw new Error('ENOENT')
+      }),
+      readFile: vi.fn(),
+      reportExists: vi.fn(async () => exists),
+      openReport
+    } as unknown as typeof window.api
+    return { openReport }
+  }
+
+  it('is disabled when there is no report', async () => {
+    setup(false)
+    render(<ProjectDashboard />)
+    const button = await screen.findByRole('button', { name: 'dashboard.openReport' })
+    await waitFor(() => expect(button).toBeDisabled())
+  })
+
+  it('opens the report for the current project', async () => {
+    const { openReport } = setup(true)
+    render(<ProjectDashboard />)
+    const button = await screen.findByRole('button', { name: 'dashboard.openReport' })
+    await waitFor(() => expect(button).toBeEnabled())
+    button.click()
+    await waitFor(() => expect(openReport).toHaveBeenCalledWith('/proj'))
+  })
+
+  it('never reads allure-results', async () => {
+    setup(false)
+    render(<ProjectDashboard />)
+    await screen.findByRole('button', { name: 'dashboard.openReport' })
+    expect(window.api.readDirectory).not.toHaveBeenCalledWith('/proj/allure-results')
+  })
+})

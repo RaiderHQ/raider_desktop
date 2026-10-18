@@ -14,7 +14,7 @@ import runRakeTask from './handlers/testing/runRakeTask'
 import rerunFailedTests from './handlers/testing/rerunFailedTests'
 import readFile from './handlers/io/readFile'
 import readImage from './handlers/io/readImage'
-import openAllure from './handlers/openAllure'
+import { openReport, reportExists } from './handlers/openReport'
 import editFile from './handlers/io/editFile'
 import deleteFile from './handlers/io/deleteFile'
 import renameFile from './handlers/io/renameFile'
@@ -133,7 +133,8 @@ app.whenReady().then(() => {
   // --- All IPC Handlers Registered After Window Creation ---
   ipcMain.handle('select-folder', selectFolder)
   ipcMain.handle('read-directory', readDirectory)
-  ipcMain.handle('open-allure', openAllure)
+  ipcMain.handle('open-report', (_event, projectPath: string) => openReport(projectPath))
+  ipcMain.handle('report-exists', (_event, projectPath: string) => reportExists(projectPath))
   ipcMain.handle('read-file', readFile)
   ipcMain.handle('read-image', readImage)
   ipcMain.handle('edit-file', editFile)
