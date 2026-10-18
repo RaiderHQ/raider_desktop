@@ -61,7 +61,6 @@ const handler = async (
         raiderCommand += ` -r ${options.reporter}`
       }
       if (options.skipCi) raiderCommand += ' --skip_ci'
-      if (options.skipAllure) raiderCommand += ' --skip_allure'
       if (options.rubyVersion) raiderCommand += ` --ruby_version ${options.rubyVersion}`
     }
 

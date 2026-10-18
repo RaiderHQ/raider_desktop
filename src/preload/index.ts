@@ -65,8 +65,10 @@ const api = {
     filePath: string
   ): Promise<{ success: boolean; newPath?: string; error?: string }> =>
     ipcRenderer.invoke('duplicate-file', filePath),
-  openAllure: async (): Promise<{ success: boolean; output?: string; error?: string }> =>
-    ipcRenderer.invoke('open-allure'),
+  openReport: async (projectPath: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('open-report', projectPath),
+  reportExists: async (projectPath: string): Promise<boolean> =>
+    ipcRenderer.invoke('report-exists', projectPath),
   runRaiderTests: async (
     folderPath: string,
     rubyCommand: string,

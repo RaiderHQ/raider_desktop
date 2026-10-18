@@ -42,7 +42,6 @@
     "advanced": {
       "title": "Advanced",
       "skipCi": "Skip CI configuration",
-      "skipAllure": "Skip Allure setup",
       "rubyVersion": "Ruby Version",
       "rubyVersionPlaceholder": "Auto-detected from system"
     },
@@ -78,7 +77,6 @@
   "version": "Ruby Raider Version: {{version}}",
   "installGuide": {
     "title": "Installation Required",
-    "allureMissing": "Allure is missing. Please install Allure to proceed.",
     "logoAlt": "Ruby Raider Logo",
     "githubButton": "Go to GitHub",
     "websiteButton": "Go to Website"
@@ -269,7 +267,6 @@
   },
   "overview": {
     "error": {
-      "openAllure": "An issue occurred opening the dashboard",
       "runTests": "Failed to run tests",
       "rerun": "Failed to re-run tests",
       "permission": {
@@ -364,6 +361,7 @@
       "step3": "Interact with the page in the browser — every action is captured as a step.",
       "step4": "Press Stop, then Run to execute the test and see the results here."
     },
+    "openReport": "Open report",
     "viewTrace": "View Trace",
     "backToResults": "Back to Results",
     "traceTitle": "Trace View",
@@ -374,7 +372,8 @@
     "error": {
       "fetching": "Error fetching dashboard",
       "parsing": "Error parsing {{file}}",
-      "reading": "Error reading {{file}}"
+      "reading": "Error reading {{file}}",
+      "openReport": "Could not open the report"
     }
   },
   "errorPage": {
