@@ -6,9 +6,9 @@ const reportFile = (projectPath: string): string =>
   path.join(projectPath, 'raider-results', 'index.html')
 
 export const reportExists = async (projectPath: string): Promise<boolean> => {
-  if (!projectPath) return false
+  if (!projectPath || !path.isAbsolute(projectPath)) return false
   try {
-    return (await fs.promises.stat(reportFile(projectPath))).isFile()
+    return (await fs.promises.lstat(reportFile(projectPath))).isFile()
   } catch {
     return false
   }

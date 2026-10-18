@@ -56,4 +56,23 @@ describe('openReport handlers', () => {
     expect(await reportExists('')).toBe(false)
     expect((await openReport('')).success).toBe(false)
   })
+
+  it('rejects relative project paths', async () => {
+    for (const rel of ['proj', '.']) {
+      expect(await reportExists(rel)).toBe(false)
+      const result = await openReport(rel)
+      expect(result).toEqual({ success: false, error: 'No report yet — run the tests first' })
+    }
+    expect(openPath).not.toHaveBeenCalled()
+  })
+
+  it.skipIf(process.platform === 'win32')('ignores a symlinked index.html', async () => {
+    fs.mkdirSync(path.join(project, 'raider-results'))
+    const target = path.join(project, 'target.html')
+    fs.writeFileSync(target, '<html></html>')
+    fs.symlinkSync(target, path.join(project, 'raider-results', 'index.html'))
+    expect(await reportExists(project)).toBe(false)
+    expect((await openReport(project)).success).toBe(false)
+    expect(openPath).not.toHaveBeenCalled()
+  })
 })
