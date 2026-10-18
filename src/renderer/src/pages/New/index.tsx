@@ -29,6 +29,7 @@ const CreateProject: React.FC = () => {
   const [automationFramework, setAutomationFramework] = useState('Selenium')
   const [testFramework, setTestFramework] = useState('Rspec')
   const [projectName, setProjectName] = useState('')
+  const [ciProvider, setCiProvider] = useState<'github' | 'azure'>('github')
 
   // Add-ons state
   const [accessibility, setAccessibility] = useState(false)
@@ -56,7 +57,7 @@ const CreateProject: React.FC = () => {
         automationParam,
         rubyCommand || '',
         null,
-        { accessibility }
+        { accessibility, ci: ciProvider }
       )
 
       if (!raiderResult || !raiderResult.success) {
@@ -127,6 +128,16 @@ const CreateProject: React.FC = () => {
               selected={testFramework}
               onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
                 handleOptionChange(setTestFramework, target.value)
+              }
+            />
+            <SelectInput
+              label={t('newProject.ci.label')}
+              options={[t('newProject.ci.github'), t('newProject.ci.azure')]}
+              selected={
+                ciProvider === 'azure' ? t('newProject.ci.azure') : t('newProject.ci.github')
+              }
+              onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
+                setCiProvider(target.value === t('newProject.ci.azure') ? 'azure' : 'github')
               }
             />
           </div>
