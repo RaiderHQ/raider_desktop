@@ -20,7 +20,9 @@ module.exports = {
           ok: '#1B7A3D',
           'ok-bg': 'rgba(27,122,61,0.07)',
           err: '#C62828',
-          'err-bg': 'rgba(198,40,40,0.07)'
+          'err-bg': 'rgba(198,40,40,0.07)',
+          quarantine: '#6B4FA0',
+          'quarantine-bg': 'rgba(107,79,160,0.08)'
         },
         neutral: {
           dark: '#1A1A1A',

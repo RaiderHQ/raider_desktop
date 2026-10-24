@@ -10,7 +10,8 @@ import {
   FaTimes,
   FaRoute,
   FaExclamationTriangle,
-  FaExternalLinkAlt
+  FaExternalLinkAlt,
+  FaShieldAlt
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import TraceTimeline from '@components/TraceTimeline'
@@ -185,6 +186,18 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
     statusIcon = <FaTimesCircle className="text-red-500" />
   } else if (status === 'skipped' || status === 'pending') {
     statusIcon = <FaExclamationCircle className="text-neutral-mid" />
+  } else if (status === 'quarantined') {
+    statusIcon = (
+      <Tooltip content={t('testResults.quarantinedTooltip')} position="left">
+        <span
+          data-testid="quarantined-badge"
+          className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide rounded-md bg-status-quarantine-bg text-status-quarantine"
+        >
+          <FaShieldAlt />
+          {t('testResults.quarantined')}
+        </span>
+      </Tooltip>
+    )
   }
 
   const chevronIcon = open ? <FaChevronDown /> : <FaChevronRight />

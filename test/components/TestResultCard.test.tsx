@@ -3,13 +3,15 @@ import TestResultCard from '@components/TestResultCard'
 import '@testing-library/jest-dom'
 
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key })
+  useTranslation: (): { t: (key: string) => string } => ({ t: (key: string): string => key })
 }))
 
 vi.mock('react-hot-toast', () => ({ default: { error: vi.fn() } }))
 
 beforeEach(() => {
-  window.api = { readImage: vi.fn().mockResolvedValue({ success: true, data: 'base64data' }) } as any
+  window.api = {
+    readImage: vi.fn().mockResolvedValue({ success: true, data: 'base64data' })
+  } as unknown as typeof window.api
 })
 
 describe('TestResultCard', () => {
@@ -56,4 +58,36 @@ describe('TestResultCard', () => {
     expect(window.api.readImage).toHaveBeenCalledWith('/path/img.png')
   })
 
+
+  it('shows a quarantined badge with its tooltip and still shows the failure', () => {
+    vi.useFakeTimers()
+    try {
+      render(
+        <TestResultCard
+          name="flaky"
+          status="quarantined"
+          message="Net::ReadTimeout"
+          backtrace={['a.rb:1']}
+        />
+      )
+      const badge = screen.getByTestId('quarantined-badge')
+      expect(badge).toHaveTextContent('testResults.quarantined')
+      fireEvent.mouseEnter(badge.parentElement as HTMLElement)
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+      expect(screen.getByText('testResults.quarantinedTooltip')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByText('flaky'))
+      expect(screen.getByText('Net::ReadTimeout')).toBeInTheDocument()
+      expect(screen.getByText('a.rb:1')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('shows no quarantined badge for a failed test', () => {
+    render(<TestResultCard name="bad" status="failed" />)
+    expect(screen.queryByTestId('quarantined-badge')).not.toBeInTheDocument()
+  })
 })

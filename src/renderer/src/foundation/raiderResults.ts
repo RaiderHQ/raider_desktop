@@ -36,10 +36,11 @@ export const sanitizeMessage = (message: string): string => {
   return msg
 }
 
-const mapStatus = (status: string | undefined): string => {
-  if (status === 'passed' || status === 'failed') return status
-  return 'skipped' // pending, skipped, unknown or missing
-}
+const KEPT_STATUSES = new Set(['passed', 'failed', 'quarantined'])
+
+// quarantined (schema 2) keeps its own status; pending, skipped, unknown or missing show as skipped.
+export const mapStatus = (status: string | undefined): string =>
+  status !== undefined && KEPT_STATUSES.has(status) ? status : 'skipped'
 
 // run.json is untrusted: only accept relative paths inside attachments[-<n>]/.
 const safeAttachmentPath = (raw: string): string | null => {
