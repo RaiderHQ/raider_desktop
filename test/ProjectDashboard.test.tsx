@@ -10,7 +10,16 @@ vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string) => string } => ({ t })
 }))
 vi.mock('react-hot-toast', () => ({ default: { error: vi.fn() } }))
-vi.mock('@components/PieChartWidget', () => ({ default: (): JSX.Element => <div /> }))
+vi.mock('@components/PieChartWidget', () => ({
+  default: (props: {
+    passed: number
+    failed: number
+    skipped: number
+    quarantined?: number
+  }): JSX.Element => (
+    <div data-testid="pie">{`${props.passed}|${props.failed}|${props.skipped}|${props.quarantined ?? 0}`}</div>
+  )
+}))
 vi.mock('@components/TestResultCard', () => ({
   default: ({ name, status }: { name: string; status: string }): JSX.Element => (
     <div data-testid="row">{`${name}|${status}`}</div>
@@ -118,5 +127,37 @@ describe('ProjectDashboard Open report button', () => {
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith('dashboard.error.openReport: boom')
     )
+  })
+})
+
+describe('ProjectDashboard with quarantined results', () => {
+  it('counts quarantined separately and lists them in their own section', async () => {
+    useProjectStore.setState({ projectPath: '/proj' })
+    const run = JSON.stringify({
+      schema_version: 2,
+      results: [
+        { full_name: 'Login: ok', status: 'passed', attachments: [] },
+        { full_name: 'Login: bad', status: 'failed', failure: { message: 'boom' }, attachments: [] },
+        { full_name: 'Login: flaky', status: 'quarantined', failure: { message: 'timeout' }, attachments: [] }
+      ]
+    })
+    window.api = {
+      readDirectory: vi.fn(async (dir: string) => {
+        if (dir === '/proj/raider-results')
+          return [
+            { name: 'run.json', type: 'file', isDirectory: false, path: '/proj/raider-results/run.json' }
+          ]
+        throw new Error('ENOENT')
+      }),
+      readFile: vi.fn(async () => ({ success: true, data: run })),
+      reportExists: vi.fn(async () => false)
+    } as unknown as typeof window.api
+
+    render(<ProjectDashboard />)
+
+    await waitFor(() => expect(screen.getAllByTestId('row')).toHaveLength(3))
+    expect(screen.getByTestId('pie')).toHaveTextContent('1|1|0|1')
+    expect(screen.getByText('Login: flaky|quarantined')).toBeInTheDocument()
+    expect(screen.getAllByText('dashboard.quarantined')).toHaveLength(2)
   })
 })

@@ -334,6 +334,8 @@
     "passed": "Passed",
     "failed": "Failed",
     "skipped": "Skipped",
+    "quarantined": "Quarantined",
+    "quarantinedTooltip": "Failed, but quarantined in Raider; did not fail the build",
     "viewTrace": "View Trace",
     "error": {
       "imageRead": "Error reading image",
@@ -346,6 +348,7 @@
     "passed": "Passed",
     "failed": "Failed",
     "skipped": "Skipped",
+    "quarantined": "Quarantined",
     "noResults": {
       "title": "No test results yet",
       "subtitle": "Run your tests from the Files tab and results will appear here.",

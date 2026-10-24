@@ -6,23 +6,26 @@ interface PieChartWidgetProps {
   passed: number
   failed: number
   skipped: number
+  quarantined?: number
 }
 
 const COLORS = {
   passed: '#4caf50',
   failed: '#f44336',
+  quarantined: '#6B4FA0',
   skipped: '#ff9800'
 }
 
-const PieChartWidget: React.FC<PieChartWidgetProps> = ({ passed, failed, skipped }) => {
+const PieChartWidget: React.FC<PieChartWidgetProps> = ({ passed, failed, skipped, quarantined = 0 }) => {
   const { t } = useTranslation()
 
-  const total = passed + failed + skipped
+  const total = passed + failed + skipped + quarantined
 
   const rawData = [
-    { name: t('testResults.passed'), value: passed },
-    { name: t('testResults.failed'), value: failed },
-    { name: t('testResults.skipped'), value: skipped }
+    { name: t('testResults.passed'), value: passed, color: COLORS.passed },
+    { name: t('testResults.failed'), value: failed, color: COLORS.failed },
+    { name: t('testResults.quarantined'), value: quarantined, color: COLORS.quarantined },
+    { name: t('testResults.skipped'), value: skipped, color: COLORS.skipped }
   ]
 
   const data = rawData.filter((item) => item.value > 0)
@@ -35,28 +38,13 @@ const PieChartWidget: React.FC<PieChartWidgetProps> = ({ passed, failed, skipped
 
   return (
     <div className="p-4 border border-neutral-bdr rounded-lg bg-white">
-      <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-2">{t('testResults.breakdown')}</p>
+      <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-2">
+        {t('testResults.breakdown')}
+      </p>
       <PieChart width={300} height={300}>
-        <Pie
-          data={data}
-          dataKey="value"
-          nameKey="name"
-          cx="50%"
-          cy="50%"
-          outerRadius={80}
-          fill="#8884d8"
-        >
+        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8">
           {data.map((entry, index) => (
-            <Cell
-              key={`cell-${index}`}
-              fill={
-                entry.name === t('testResults.passed')
-                  ? COLORS.passed
-                  : entry.name === t('testResults.failed')
-                    ? COLORS.failed
-                    : COLORS.skipped
-              }
-            />
+            <Cell key={`cell-${index}`} fill={entry.color} />
           ))}
         </Pie>
         <Tooltip />

@@ -3,7 +3,7 @@ import PieChartWidget from '@components/PieChartWidget'
 import '@testing-library/jest-dom'
 
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key })
+  useTranslation: (): { t: (key: string) => string } => ({ t: (key: string): string => key })
 }))
 
 // recharts needs ResizeObserver
@@ -32,5 +32,17 @@ describe('PieChartWidget', () => {
     render(<PieChartWidget passed={5} failed={0} skipped={0} />)
     expect(screen.queryByText(/testResults\.failed/)).not.toBeInTheDocument()
     expect(screen.queryByText(/testResults\.skipped/)).not.toBeInTheDocument()
+  })
+
+  it('draws quarantined as its own slice, never as passed or failed', () => {
+    render(<PieChartWidget passed={2} failed={1} skipped={0} quarantined={1} />)
+    expect(screen.getByText('testResults.passed: 50%')).toBeInTheDocument()
+    expect(screen.getByText('testResults.failed: 25%')).toBeInTheDocument()
+    expect(screen.getByText('testResults.quarantined: 25%')).toBeInTheDocument()
+  })
+
+  it('omits the quarantined slice when there are none', () => {
+    render(<PieChartWidget passed={2} failed={1} skipped={0} />)
+    expect(screen.queryByText(/testResults\.quarantined/)).not.toBeInTheDocument()
   })
 })

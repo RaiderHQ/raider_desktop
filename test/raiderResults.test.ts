@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
   loadRaiderResults,
+  mapStatus,
   sanitizeMessage,
   type RaiderResultsApi
 } from '@foundation/raiderResults'
@@ -253,5 +254,42 @@ describe('sanitizeMessage', () => {
     const out = sanitizeMessage('x'.repeat(30000))
     expect(out.length).toBeLessThan(20100)
     expect(out.endsWith('(message truncated)')).toBe(true)
+  })
+})
+
+describe('mapStatus', () => {
+  it('keeps passed, failed and quarantined and maps everything else to skipped', () => {
+    const statuses = ['passed', 'failed', 'quarantined', 'pending', 'skipped', 'weird', undefined]
+    expect(statuses.map((s) => mapStatus(s))).toEqual([
+      'passed',
+      'failed',
+      'quarantined',
+      'skipped',
+      'skipped',
+      'skipped',
+      'skipped'
+    ])
+  })
+})
+
+describe('loadRaiderResults with schema 2', () => {
+  it('keeps a quarantined result with its failure message', async () => {
+    const api = makeApi({
+      'run.json': JSON.stringify({
+        schema_version: 2,
+        client_run_id: 'x',
+        run: {},
+        results: [
+          r('F: flaky', 'quarantined', { failure: { message: 'timeout', backtrace: ['a:1'] } }),
+          r('F: ok', 'passed')
+        ]
+      })
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows!.map((x) => [x.name, x.status])).toEqual([
+      ['F: flaky', 'quarantined'],
+      ['F: ok', 'passed']
+    ])
+    expect(rows![0].statusDetails?.message).toBe('timeout\na:1')
   })
 })

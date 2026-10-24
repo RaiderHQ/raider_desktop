@@ -57,6 +57,45 @@ const EmptyState: React.FC = () => {
   )
 }
 
+interface ResultSectionProps {
+  titleKey: string
+  results: TestResult[]
+  keyPrefix: string
+  testByName: Map<string, { id: string; hasTrace?: boolean }>
+}
+
+const ResultSection: React.FC<ResultSectionProps> = ({
+  titleKey,
+  results,
+  keyPrefix,
+  testByName
+}) => {
+  const { t } = useTranslation()
+  if (results.length === 0) return null
+  return (
+    <div>
+      <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-2">
+        {t(titleKey)}
+      </p>
+      <div className="flex flex-col gap-2">
+        {results.map((result, index) => {
+          const testInfo = testByName.get(result.name)
+          return (
+            <TestResultCard
+              key={`${keyPrefix}-${index}`}
+              name={result.name}
+              status={result.status}
+              screenshot={result.screenshot}
+              message={result.statusDetails?.message}
+              traceTestId={testInfo?.hasTrace ? testInfo.id : undefined}
+            />
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 const Index: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const [results, setResults] = useState<TestResult[]>([])
@@ -118,10 +157,12 @@ const Index: React.FC = (): JSX.Element => {
   const passedTests = results.filter((r) => r.status === 'passed')
   const failedTests = results.filter((r) => r.status === 'failed' || r.status === 'broken')
   const skippedTests = results.filter((r) => r.status === 'skipped')
+  const quarantinedTests = results.filter((r) => r.status === 'quarantined')
 
   const passedCount = passedTests.length
   const failedCount = failedTests.length
   const skippedCount = skippedTests.length
+  const quarantinedCount = quarantinedTests.length
   const totalCount = results.length
 
   if (!projectPath) {
@@ -167,6 +208,10 @@ const Index: React.FC = (): JSX.Element => {
                 <span className="text-xs text-neutral-mid">{t('dashboard.failed')}</span>
               </div>
               <div className="flex flex-col items-center px-4 py-2 rounded-lg border border-neutral-bdr bg-neutral-50 min-w-[64px]">
+                <span className="text-lg font-bold text-status-quarantine">{quarantinedCount}</span>
+                <span className="text-xs text-neutral-mid">{t('dashboard.quarantined')}</span>
+              </div>
+              <div className="flex flex-col items-center px-4 py-2 rounded-lg border border-neutral-bdr bg-neutral-50 min-w-[64px]">
                 <span className="text-lg font-bold text-amber-500">{skippedCount}</span>
                 <span className="text-xs text-neutral-mid">{t('dashboard.skipped')}</span>
               </div>
@@ -175,75 +220,38 @@ const Index: React.FC = (): JSX.Element => {
 
           {/* Chart + results */}
           <div className="flex flex-col md:flex-row gap-4">
-            <PieChartWidget passed={passedCount} failed={failedCount} skipped={skippedCount} />
+            <PieChartWidget
+              passed={passedCount}
+              failed={failedCount}
+              skipped={skippedCount}
+              quarantined={quarantinedCount}
+            />
 
             <div className="flex-1 border border-neutral-bdr rounded-lg bg-white p-4 flex flex-col gap-4">
-              {passedTests.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-2">
-                    {t('dashboard.passed')}
-                  </p>
-                  <div className="flex flex-col gap-2">
-                    {passedTests.map((result, index) => {
-                      const testInfo = testByName.get(result.name)
-                      return (
-                        <TestResultCard
-                          key={`passed-${index}`}
-                          name={result.name}
-                          status={result.status}
-                          screenshot={result.screenshot}
-                          message={result.statusDetails?.message}
-                          traceTestId={testInfo?.hasTrace ? testInfo.id : undefined}
-                        />
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-              {failedTests.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-2">
-                    {t('dashboard.failed')}
-                  </p>
-                  <div className="flex flex-col gap-2">
-                    {failedTests.map((result, index) => {
-                      const testInfo = testByName.get(result.name)
-                      return (
-                        <TestResultCard
-                          key={`failed-${index}`}
-                          name={result.name}
-                          status={result.status}
-                          screenshot={result.screenshot}
-                          message={result.statusDetails?.message}
-                          traceTestId={testInfo?.hasTrace ? testInfo.id : undefined}
-                        />
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-              {skippedTests.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-2">
-                    {t('dashboard.skipped')}
-                  </p>
-                  <div className="flex flex-col gap-2">
-                    {skippedTests.map((result, index) => {
-                      const testInfo = testByName.get(result.name)
-                      return (
-                        <TestResultCard
-                          key={`skipped-${index}`}
-                          name={result.name}
-                          status={result.status}
-                          screenshot={result.screenshot}
-                          message={result.statusDetails?.message}
-                          traceTestId={testInfo?.hasTrace ? testInfo.id : undefined}
-                        />
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
+              <ResultSection
+                titleKey="dashboard.passed"
+                results={passedTests}
+                keyPrefix="passed"
+                testByName={testByName}
+              />
+              <ResultSection
+                titleKey="dashboard.failed"
+                results={failedTests}
+                keyPrefix="failed"
+                testByName={testByName}
+              />
+              <ResultSection
+                titleKey="dashboard.quarantined"
+                results={quarantinedTests}
+                keyPrefix="quarantined"
+                testByName={testByName}
+              />
+              <ResultSection
+                titleKey="dashboard.skipped"
+                results={skippedTests}
+                keyPrefix="skipped"
+                testByName={testByName}
+              />
             </div>
           </div>
         </>
