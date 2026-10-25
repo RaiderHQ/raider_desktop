@@ -26,13 +26,19 @@ const configFile = (): string => join(dir, 'config', 'config.yml')
 
 // Stands in for the gem CLI: rewrites one config key the way `raider u ...` would
 function cliSets(key: string, value: string): void {
-  mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) => {
-    const lines = readFileSync(configFile(), 'utf-8')
-      .split('\n')
-      .filter((l) => l && !l.startsWith(`${key}:`))
-    writeFileSync(configFile(), [...lines, `${key}: ${value}`, ''].join('\n'))
-    cb(null, 'ok', '')
-  })
+  mockExec.mockImplementation(
+    (
+      _cmd: string,
+      _opts: object,
+      cb: (err: Error | null, stdout: string, stderr: string) => void
+    ) => {
+      const lines = readFileSync(configFile(), 'utf-8')
+        .split('\n')
+        .filter((l) => l && !l.startsWith(`${key}:`))
+      writeFileSync(configFile(), [...lines, `${key}: ${value}`, ''].join('\n'))
+      cb(null, 'ok', '')
+    }
+  )
 }
 
 beforeEach(async () => {
@@ -84,9 +90,15 @@ describe('project settings changes reach the recorder without a restart', () => 
   })
 
   it('keeps the old settings when the CLI fails', async () => {
-    mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) => {
-      cb(new Error('boom'), '', 'boom')
-    })
+    mockExec.mockImplementation(
+      (
+        _cmd: string,
+        _opts: object,
+        cb: (err: Error | null, stdout: string, stderr: string) => void
+      ) => {
+        cb(new Error('boom'), '', 'boom')
+      }
+    )
     await updateBrowserUrl({} as never, dir, 'https://new.test/')
     expect(appState.recorderSettings.baseUrl).toBe('https://old.test/')
     expect(await readFile(configFile(), 'utf-8')).toContain('https://old.test/')
