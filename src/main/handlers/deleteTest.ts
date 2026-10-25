@@ -1,5 +1,6 @@
 import { appState } from './appState'
 import { BrowserWindow } from 'electron'
+import { persistActiveSuites } from './suitePersistence'
 import { safeError, safeWarn } from '../utils/safeLog'
 
 type DeletionResult = {
@@ -25,6 +26,7 @@ export default async (
     safeWarn(`Warning: Test with ID ${testId} was not found in suite "${suite.name}".`)
   }
 
+  await persistActiveSuites()
   mainWindow?.webContents.send('suite-updated', Array.from(appState.suites.values()))
 
   return { success: true }

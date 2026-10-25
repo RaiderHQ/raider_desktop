@@ -49,6 +49,16 @@ const MainTemplate: React.FC = (): JSX.Element => {
     checkRuby()
   }, [])
 
+  useEffect(() => {
+    const cleanup = window.electron.ipcRenderer.on('suites-recovered', () => {
+      toast.error(
+        "Your saved suites file couldn't be read. A backup was kept as .raider/suites.json.bak.",
+        { duration: 10000 }
+      )
+    })
+    return (): void => cleanup?.()
+  }, [])
+
   const { rubyCommand } = useRubyStore()
 
   const handleInstallGems = async (): Promise<void> => {

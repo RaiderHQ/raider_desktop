@@ -49,6 +49,9 @@ beforeAll(() => {
     isRubyInstalled: vi.fn().mockResolvedValue({ success: true, rubyCommand: 'ruby', rubyVersion: '3.2.0' }),
     closeApp: vi.fn()
   }
+  ;(window as unknown as Record<string, unknown>).electron = {
+    ipcRenderer: { on: vi.fn().mockReturnValue(() => {}) }
+  }
 })
 
 describe('MainTemplate Navigation', () => {

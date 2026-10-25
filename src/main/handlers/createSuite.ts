@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
 import { appState } from './appState'
 import { BrowserWindow } from 'electron'
+import { persistActiveSuites } from './suitePersistence'
 import type { Suite } from '@foundation/Types/suite'
 
 type SuiteResult = {
@@ -18,6 +19,7 @@ export default async (
   }
   const newSuite: Suite = { id: randomUUID(), name: suiteName, tests: [] }
   appState.suites.set(newSuite.id, newSuite)
+  await persistActiveSuites()
   mainWindow?.webContents.send('suite-updated', Array.from(appState.suites.values()))
   return { success: true, suite: newSuite }
 }

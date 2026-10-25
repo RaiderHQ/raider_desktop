@@ -2,6 +2,7 @@ import { dialog, BrowserWindow } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import { appState } from '../appState'
+import { persistActiveSuites } from '../suitePersistence'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
@@ -64,6 +65,7 @@ export default async function importSuite(
     }
 
     appState.suites.set(newSuite.id, newSuite)
+    await persistActiveSuites()
     mainWindow.webContents.send('suite-updated', Array.from(appState.suites.values()))
 
     return { success: true, suite: newSuite }
