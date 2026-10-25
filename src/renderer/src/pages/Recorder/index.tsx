@@ -44,7 +44,8 @@ const Recorder: React.FC = (): JSX.Element => {
     setShowCode,
     setIsOutputVisible,
     setBreakpointIndex,
-    setIsReplayingToBreakpoint
+    setIsReplayingToBreakpoint,
+    setFailedStepId
   } = useRecorderStore.getState()
 
   const { runOutput, setRunOutput } = useRunOutputStore()
@@ -193,6 +194,7 @@ const Recorder: React.FC = (): JSX.Element => {
 
     const stepsToReplay = test.steps.slice(0, index + 1)
     setBreakpointIndex(index)
+    setFailedStepId(null)
     setIsReplayingToBreakpoint(true)
 
     // Start recording to show the embedded webview immediately
@@ -223,6 +225,8 @@ const Recorder: React.FC = (): JSX.Element => {
     if (!result.success) {
       setIsReplayingToBreakpoint(false)
       setBreakpointIndex(null)
+      // Highlighting the failed step is UI work for plan 3; the store carries the id until then
+      setFailedStepId(result.failedStepId ?? null)
       toast.error(`${t('recorder.breakpoint.replayFailed')}: ${result.error ?? ''}`)
     } else {
       setIsReplayingToBreakpoint(false)

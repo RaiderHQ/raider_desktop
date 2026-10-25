@@ -12,6 +12,7 @@ interface RecorderStore {
   isOutputVisible: boolean
   breakpointIndex: number | null
   isReplayingToBreakpoint: boolean
+  failedStepId: string | null
 
   setSuites: (suites: Suite[]) => void
   setActiveSuiteId: (id: string | null) => void
@@ -23,6 +24,7 @@ interface RecorderStore {
   setIsOutputVisible: (value: boolean) => void
   setBreakpointIndex: (index: number | null) => void
   setIsReplayingToBreakpoint: (value: boolean) => void
+  setFailedStepId: (id: string | null) => void
 
   activeSuite: () => Suite | undefined
 }
@@ -37,6 +39,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   isOutputVisible: false,
   breakpointIndex: null,
   isReplayingToBreakpoint: false,
+  failedStepId: null,
 
   setSuites: (suites) => set({ suites }),
   setActiveSuiteId: (id) => set({ activeSuiteId: id }),
@@ -48,6 +51,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   setIsOutputVisible: (value) => set({ isOutputVisible: value }),
   setBreakpointIndex: (index) => set({ breakpointIndex: index }),
   setIsReplayingToBreakpoint: (value) => set({ isReplayingToBreakpoint: value }),
+  setFailedStepId: (id) => set({ failedStepId: id }),
 
   activeSuite: () => {
     const { suites, activeSuiteId } = get()

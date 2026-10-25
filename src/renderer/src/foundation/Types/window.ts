@@ -149,7 +149,9 @@ export interface WindowApi {
     rubyCommand: string
   ) => Promise<{ success: boolean; url?: string; preloadPath?: string; error?: string; cancelled?: boolean }>
   cancelReplay: () => Promise<{ success: boolean }>
-  replayInWebview: (steps: Step[]) => Promise<{ success: boolean; error?: string; cancelled?: boolean }>
+  replayInWebview: (
+    steps: Step[]
+  ) => Promise<{ success: boolean; error?: string; failedStepId?: string; cancelled?: boolean }>
   registerRecorderWebContents: (webContentsId: number) => Promise<void>
   stopRecordingMain: () => Promise<CommandType>
   loadUrlRequest: (url: string) => Promise<CommandType>

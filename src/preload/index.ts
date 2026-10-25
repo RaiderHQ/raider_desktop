@@ -204,8 +204,12 @@ const api = {
     ipcRenderer.invoke('cancel-replay'),
   replayInWebview: async (
     steps: Step[]
-  ): Promise<{ success: boolean; error?: string; cancelled?: boolean }> =>
-    ipcRenderer.invoke('replay-in-webview', steps),
+  ): Promise<{
+    success: boolean
+    error?: string
+    failedStepId?: string
+    cancelled?: boolean
+  }> => ipcRenderer.invoke('replay-in-webview', steps),
   registerRecorderWebContents: async (webContentsId: number): Promise<void> =>
     ipcRenderer.invoke('register-recorder-webcontents', webContentsId),
   stopRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('stop-recording-main'),
