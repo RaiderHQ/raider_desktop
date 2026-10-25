@@ -77,20 +77,20 @@ describe('replayInWebview', () => {
     const result = await run([{ id: '1', kind: 'navigate', url: 'https://example.com' }])
     expect(mockLoadURL).toHaveBeenCalledWith('https://example.com')
     expect(emitter.listenerCount('did-stop-loading')).toBe(0)
-    expect(result).toEqual({ success: true })
+    expect(result).toEqual({ success: true, skippedStepIds: [] })
   })
 
   it('does not hang on navigate when the page never stops loading', async () => {
     mockLoadURL.mockResolvedValue(undefined)
     const result = await run([{ id: '1', kind: 'navigate', url: 'https://example.com' }])
-    expect(result).toEqual({ success: true })
+    expect(result).toEqual({ success: true, skippedStepIds: [] })
   })
 
   it('clicks an element', async () => {
     const result = await run([{ id: '1', kind: 'click', element: el }])
     expect(jsAt(0)).toContain('el.click()')
     expect(jsAt(0)).toContain(`document.querySelector(${JSON.stringify('#btn')})`)
-    expect(result).toEqual({ success: true })
+    expect(result).toEqual({ success: true, skippedStepIds: [] })
   })
 
   it('types through the native value setter and fires input and change', async () => {
@@ -124,7 +124,7 @@ describe('replayInWebview', () => {
       .mockResolvedValueOnce({ found: true })
     const result = await run([{ id: '1', kind: 'click', element: el }])
     expect(mockExecuteJavaScript).toHaveBeenCalledTimes(3)
-    expect(result).toEqual({ success: true })
+    expect(result).toEqual({ success: true, skippedStepIds: [] })
   })
 
   it('fails with the step number, English description and failedStepId when never found', async () => {
@@ -133,7 +133,8 @@ describe('replayInWebview', () => {
     expect(result).toEqual({
       success: false,
       error: 'Step 1 (Click "Login button"): element not found: css=#btn',
-      failedStepId: 'abc'
+      failedStepId: 'abc',
+      skippedStepIds: []
     })
     expect(appState.isReplayingInWebview).toBe(false)
   })
@@ -144,13 +145,14 @@ describe('replayInWebview', () => {
       .mockResolvedValueOnce({ found: true, visible: true })
     const result = await run([{ id: '1', kind: 'wait', element: el, until: 'visible' }])
     expect(mockExecuteJavaScript).toHaveBeenCalledTimes(2)
-    expect(result).toEqual({ success: true })
+    expect(result).toEqual({ success: true, skippedStepIds: [] })
   })
 
   it('wait hidden passes when the element is gone, and fails on timeout otherwise', async () => {
     mockExecuteJavaScript.mockResolvedValue({ found: false })
     expect(await run([{ id: '1', kind: 'wait', element: el, until: 'hidden' }])).toEqual({
-      success: true
+      success: true,
+      skippedStepIds: []
     })
     mockExecuteJavaScript.mockResolvedValue({ found: true, visible: true })
     const result = await run([{ id: '2', kind: 'wait', element: el, until: 'hidden' }])
@@ -163,7 +165,8 @@ describe('replayInWebview', () => {
       .mockResolvedValueOnce({ found: true, enabled: false })
       .mockResolvedValueOnce({ found: true, enabled: true })
     expect(await run([{ id: '1', kind: 'wait', element: el, until: 'enabled' }])).toEqual({
-      success: true
+      success: true,
+      skippedStepIds: []
     })
   })
 
@@ -176,7 +179,8 @@ describe('replayInWebview', () => {
       success: false,
       error:
         'Step 1 (Assert that "Login button" has text equal to "Hello"): expected Hello, got Goodbye',
-      failedStepId: 'a1'
+      failedStepId: 'a1',
+      skippedStepIds: []
     })
   })
 
@@ -186,7 +190,7 @@ describe('replayInWebview', () => {
       { id: '1', kind: 'assert', check: 'titleEquals', expected: 'Home' },
       { id: '2', kind: 'assert', check: 'urlIncludes', expected: '/home' }
     ])
-    expect(result).toEqual({ success: true })
+    expect(result).toEqual({ success: true, skippedStepIds: [] })
   })
 
   it('assertions retry within the wait budget', async () => {
@@ -194,7 +198,7 @@ describe('replayInWebview', () => {
       .mockResolvedValueOnce({ found: true, visible: false })
       .mockResolvedValueOnce({ found: true, visible: true })
     const result = await run([{ id: '1', kind: 'assert', check: 'displayed', element: el }])
-    expect(result).toEqual({ success: true })
+    expect(result).toEqual({ success: true, skippedStepIds: [] })
   })
 
   it('notDisplayed fails with got displayed while the element stays visible', async () => {
@@ -219,7 +223,18 @@ describe('replayInWebview', () => {
       total: 2,
       skipped: true
     })
-    expect(result).toEqual({ success: true })
+    expect(result).toEqual({ success: true, skippedStepIds: ['1', '2'] })
+  })
+
+  it('still reports skipped steps when a later step fails', async () => {
+    mockExecuteJavaScript.mockResolvedValue({ found: false })
+    const result = await run([
+      { id: 's', kind: 'custom', code: 'puts 1' },
+      { id: 'c', kind: 'click', element: el }
+    ])
+    expect(result.success).toBe(false)
+    expect(result.failedStepId).toBe('c')
+    expect(result.skippedStepIds).toEqual(['s'])
   })
 
   it('sends replay-progress for executed steps', async () => {
@@ -292,7 +307,7 @@ describe('replayInWebview', () => {
       .mockResolvedValueOnce({ found: true })
     const result = await run([{ id: '1', kind: 'click', element: el }])
     expect(mockExecuteJavaScript).toHaveBeenCalledTimes(4)
-    expect(result).toEqual({ success: true })
+    expect(result).toEqual({ success: true, skippedStepIds: [] })
   })
 
   it('reports the last probe error only after the budget runs out', async () => {
@@ -337,7 +352,7 @@ describe('replayInWebview', () => {
   it('leaks no did-stop-loading listener when the load timeout elapses', async () => {
     mockLoadURL.mockResolvedValue(undefined)
     const result = await run([{ id: '1', kind: 'navigate', url: 'https://example.com' }])
-    expect(result).toEqual({ success: true })
+    expect(result).toEqual({ success: true, skippedStepIds: [] })
     expect(emitter.listenerCount('did-stop-loading')).toBe(0)
   })
 

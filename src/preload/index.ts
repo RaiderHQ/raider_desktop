@@ -209,6 +209,7 @@ const api = {
     error?: string
     failedStepId?: string
     cancelled?: boolean
+    skippedStepIds?: string[]
   }> => ipcRenderer.invoke('replay-in-webview', steps),
   registerRecorderWebContents: async (webContentsId: number): Promise<void> =>
     ipcRenderer.invoke('register-recorder-webcontents', webContentsId),

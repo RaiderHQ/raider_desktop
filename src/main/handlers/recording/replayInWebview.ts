@@ -313,10 +313,19 @@ async function runStep(wc: WebContents, step: Step, timeoutMs: number): Promise<
   }
 }
 
+export interface WebviewReplayResult {
+  success: boolean
+  error?: string
+  failedStepId?: string
+  cancelled?: boolean
+  /** Steps replay could not run (custom code, frame switches), so the page may differ */
+  skippedStepIds?: string[]
+}
+
 async function replayInWebview(
   _event: Electron.IpcMainInvokeEvent,
   steps: Step[]
-): Promise<{ success: boolean; error?: string; failedStepId?: string; cancelled?: boolean }> {
+): Promise<WebviewReplayResult> {
   cancelRequested = false
   appState.isReplayingInWebview = true
   // The flag gates recorder events, so it must be reset on every exit, including throws
@@ -328,17 +337,17 @@ async function replayInWebview(
     if (!wc) return { success: false, error: 'Webview web contents not found' }
 
     const timeoutMs = appState.recorderSettings.explicitWait * 1000
+    const skippedStepIds: string[] = []
 
     for (let i = 0; i < steps.length; i++) {
       if (cancelRequested) return { success: false, cancelled: true }
 
       const step = steps[i]
-      const fail = (
-        message: string
-      ): { success: boolean; error: string; failedStepId: string } => ({
+      const fail = (message: string): WebviewReplayResult => ({
         success: false,
         error: `Step ${i + 1} (${describeStepEnglish(step)}): ${message}`,
-        failedStepId: step.id
+        failedStepId: step.id,
+        skippedStepIds
       })
 
       let outcome: string | null
@@ -350,6 +359,7 @@ async function replayInWebview(
 
       if (cancelRequested) return { success: false, cancelled: true }
       if (outcome === SKIPPED) {
+        skippedStepIds.push(step.id)
         appState.mainWindow?.webContents.send('replay-progress', {
           current: i + 1,
           total: steps.length,
@@ -365,7 +375,7 @@ async function replayInWebview(
       })
     }
 
-    return { success: true }
+    return { success: true, skippedStepIds }
   } finally {
     appState.isReplayingInWebview = false
   }
