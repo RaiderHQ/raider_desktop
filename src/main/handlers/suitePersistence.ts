@@ -16,14 +16,54 @@ const WRITE_VERSION = 2
 const raiderDir = (projectPath: string): string => join(projectPath, '.raider')
 const suitesFile = (projectPath: string): string => join(raiderDir(projectPath), 'suites.json')
 
+// Version 2 suites are used as-is, so each must hold a tests array whose tests hold a steps array
+const isV2Suite = (suite: unknown): boolean => {
+  const tests = (suite as Suite | null)?.tests
+  return (
+    Array.isArray(tests) &&
+    tests.every((test) => test !== null && typeof test === 'object' && Array.isArray(test.steps))
+  )
+}
+
 function extractSuites(parsed: unknown): { suites: Suite[]; version: number } | null {
   // A plain array of suites (no version) predates versioning, so it is version 1
   if (Array.isArray(parsed)) return { suites: parsed as Suite[], version: 1 }
   if (parsed && typeof parsed === 'object' && Array.isArray((parsed as SuitesFile).suites)) {
     const { suites, version } = parsed as SuitesFile
-    return { suites, version: typeof version === 'number' ? version : 1 }
+    const v = typeof version === 'number' ? version : 1
+    if (v >= WRITE_VERSION && !suites.every(isV2Suite)) return null
+    return { suites, version: v }
   }
   return null
+}
+
+// Timestamped (plus a counter on a clash) so a later backup never overwrites an earlier one
+async function backupName(file: string): Promise<string> {
+  const base = `${file}.${new Date().toISOString().replace(/[:.]/g, '-')}`
+  for (let n = 0; ; n++) {
+    const candidate = n === 0 ? `${base}.bak` : `${base}-${n}.bak`
+    try {
+      await fs.access(candidate)
+    } catch {
+      return candidate
+    }
+  }
+}
+
+/**
+ * Copies the project's suites.json to a timestamped .bak before it gets replaced.
+ * Returns the backup path, or null when there is no suites file to keep.
+ */
+export async function backupSuitesFile(projectPath: string): Promise<string | null> {
+  const file = suitesFile(projectPath)
+  const backup = await backupName(file)
+  try {
+    await fs.copyFile(file, backup)
+    return backup
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
+    throw error
+  }
 }
 
 const migrateSuites = (suites: Suite[]): Suite[] =>
@@ -31,7 +71,7 @@ const migrateSuites = (suites: Suite[]): Suite[] =>
 
 export async function loadSuites(
   projectPath: string
-): Promise<{ suites: Suite[]; recoveredFromCorrupt: boolean }> {
+): Promise<{ suites: Suite[]; recoveredFromCorrupt: boolean; backupSaved?: boolean }> {
   const file = suitesFile(projectPath)
   let raw: string
   try {
@@ -51,8 +91,14 @@ export async function loadSuites(
   }
 
   if (extracted === null) {
-    await fs.rename(file, `${file}.bak`)
-    return { suites: [], recoveredFromCorrupt: true }
+    // Moving the bad file aside is best-effort: the project still opens with no suites
+    try {
+      await fs.rename(file, await backupName(file))
+      return { suites: [], recoveredFromCorrupt: true, backupSaved: true }
+    } catch (error) {
+      safeError('Failed to back up corrupt suites file:', error)
+      return { suites: [], recoveredFromCorrupt: true, backupSaved: false }
+    }
   }
 
   if (extracted.version >= WRITE_VERSION) {

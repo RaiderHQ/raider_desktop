@@ -169,12 +169,70 @@ describe('suite files', () => {
     expect((await loadSuites(a)).suites).toEqual([suite('3')])
   })
 
-  it('corrupt file is moved to suites.json.bak', async () => {
+  it('corrupt file is moved to a timestamped suites.json.<time>.bak', async () => {
     await fsp.mkdir(join(a, '.raider'))
     await writeFile(join(a, '.raider', 'suites.json'), '{not json')
-    expect(await loadSuites(a)).toEqual({ suites: [], recoveredFromCorrupt: true })
-    expect(await readFile(join(a, '.raider', 'suites.json.bak'), 'utf-8')).toBe('{not json')
+    expect(await loadSuites(a)).toEqual({
+      suites: [],
+      recoveredFromCorrupt: true,
+      backupSaved: true
+    })
+    const [backup] = (await fsp.readdir(join(a, '.raider'))).filter((f) => f.endsWith('.bak'))
+    expect(backup).toMatch(/^suites\.json\.[0-9TZ-]+\.bak$/)
+    expect(await readFile(join(a, '.raider', backup), 'utf-8')).toBe('{not json')
     expect(await exists(join(a, '.raider', 'suites.json'))).toBe(false)
+  })
+
+  it('a second corruption keeps the earlier backup', async () => {
+    await fsp.mkdir(join(a, '.raider'))
+    await writeFile(join(a, '.raider', 'suites.json'), 'first')
+    await loadSuites(a)
+    await writeFile(join(a, '.raider', 'suites.json'), 'second')
+    await loadSuites(a)
+    const backups = (await fsp.readdir(join(a, '.raider'))).filter((f) => f.endsWith('.bak'))
+    const contents = await Promise.all(backups.map((f) => readFile(join(a, '.raider', f), 'utf-8')))
+    expect(contents.sort()).toEqual(['first', 'second'])
+  })
+
+  it('a version 2 file with a suite missing its tests is treated as corrupt', async () => {
+    await fsp.mkdir(join(a, '.raider'))
+    const bad = JSON.stringify({ version: 2, suites: [{ id: 'x', name: 'x' }] })
+    await writeFile(join(a, '.raider', 'suites.json'), bad)
+    expect(await loadSuites(a)).toMatchObject({ suites: [], recoveredFromCorrupt: true })
+    const backups = (await fsp.readdir(join(a, '.raider'))).filter((f) => f.endsWith('.bak'))
+    expect(backups).toHaveLength(1)
+  })
+
+  it('a version 2 file with a test missing its steps is treated as corrupt', async () => {
+    await fsp.mkdir(join(a, '.raider'))
+    const bad = JSON.stringify({
+      version: 2,
+      suites: [{ id: 'x', name: 'x', tests: [{ id: 't', name: 't', url: '' }] }]
+    })
+    await writeFile(join(a, '.raider', 'suites.json'), bad)
+    expect((await loadSuites(a)).recoveredFromCorrupt).toBe(true)
+  })
+
+  it('opens with empty suites when the corrupt file cannot be moved aside', async () => {
+    await fsp.mkdir(join(a, '.raider'))
+    await writeFile(join(a, '.raider', 'suites.json'), '{not json')
+    vi.spyOn(fsp, 'rename').mockRejectedValueOnce(new Error('EACCES'))
+    expect(await loadSuites(a)).toEqual({
+      suites: [],
+      recoveredFromCorrupt: true,
+      backupSaved: false
+    })
+  })
+
+  it('backupSuitesFile copies suites.json to a timestamped .bak', async () => {
+    await saveSuites(a, [suite('keep')])
+    const backup = await persistence.backupSuitesFile(a)
+    expect(backup).toMatch(/suites\.json\.[0-9TZ-]+\.bak$/)
+    expect(JSON.parse(await readFile(backup!, 'utf-8')).suites).toEqual([suite('keep')])
+  })
+
+  it('backupSuitesFile is a no-op when there is no suites file', async () => {
+    expect(await persistence.backupSuitesFile(a)).toBeNull()
   })
 })
 
@@ -186,7 +244,7 @@ describe('setActiveProject loading', () => {
     await setActiveProject(a)
     expect(Array.from(appState.suites.values())).toEqual([suite('A')])
     expect(send).toHaveBeenCalledWith('suite-updated', [suite('A')])
-    expect(send).not.toHaveBeenCalledWith('suites-recovered')
+    expect(send.mock.calls.map(([channel]) => channel)).not.toContain('suites-recovered')
   })
 
   it('sends suites-recovered for a corrupt file', async () => {
@@ -195,7 +253,7 @@ describe('setActiveProject loading', () => {
     appState.mainWindow = win
     await setActiveProject(a)
     expect(appState.suites.size).toBe(0)
-    expect(send).toHaveBeenCalledWith('suites-recovered')
+    expect(send).toHaveBeenCalledWith('suites-recovered', { backupSaved: true })
   })
 
   it('null clears suites', async () => {
@@ -268,6 +326,22 @@ describe('handlers persist', () => {
     const res = await importTest(win, id)
     expect(res.success).toBe(true)
     expect(spy).toHaveBeenCalledTimes(4)
+  })
+})
+
+describe('importProject keeps a backup', () => {
+  it('copies the open project suites.json aside before replacing it', async () => {
+    await saveSuites(a, [suite('precious')])
+    await setActiveProject(a)
+    await mkdir(join(b, 'imported-suite'))
+    mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [b] })
+    const result = await importProject({ ...win, reload: vi.fn() } as never)
+    expect(result.success).toBe(true)
+    const backups = (await fsp.readdir(join(a, '.raider'))).filter((f) => f.endsWith('.bak'))
+    expect(backups).toHaveLength(1)
+    const saved = JSON.parse(await readFile(join(a, '.raider', backups[0]), 'utf-8'))
+    expect(saved.suites).toEqual([suite('precious')])
+    expect((await loadSuites(a)).suites.map((s) => s.name)).toEqual(['imported-suite'])
   })
 })
 

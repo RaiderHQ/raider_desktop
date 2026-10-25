@@ -2,7 +2,7 @@ import { dialog, BrowserWindow } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import { appState } from '../appState'
-import { persistActiveSuites } from '../suitePersistence'
+import { backupSuitesFile, persistActiveSuites } from '../suitePersistence'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
@@ -29,6 +29,9 @@ export default async function importProject(
       .filter((dirent) => dirent.isDirectory())
       .map((dirent) => dirent.name)
 
+    // Importing replaces every suite, so keep a copy of the current file first.
+    // If the copy fails the import stops, rather than risk losing the user's suites.
+    if (appState.projectPath) await backupSuitesFile(appState.projectPath)
     appState.suites.clear()
 
     for (const suiteDir of subdirectories) {

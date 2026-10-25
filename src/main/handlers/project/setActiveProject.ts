@@ -35,12 +35,14 @@ async function activate(projectPath: string | null): Promise<ActivationResult> {
     } else {
       // Load everything first so a failure leaves the previous project untouched
       const settings = await readRecorderSettings(projectPath)
-      const { suites, recoveredFromCorrupt } = await loadSuites(projectPath)
+      const { suites, recoveredFromCorrupt, backupSaved } = await loadSuites(projectPath)
       appState.recorderSettings = settings
       appState.projectPath = projectPath
       appState.suites = new Map(suites.map((suite) => [suite.id, suite]))
       appState.mainWindow?.webContents.send('suite-updated', suites)
-      if (recoveredFromCorrupt) appState.mainWindow?.webContents.send('suites-recovered')
+      if (recoveredFromCorrupt) {
+        appState.mainWindow?.webContents.send('suites-recovered', { backupSaved })
+      }
     }
     return { success: true, settings: appState.recorderSettings }
   } catch (error) {

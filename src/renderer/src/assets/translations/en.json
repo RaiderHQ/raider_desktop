@@ -382,6 +382,12 @@
   "errorPage": {
     "title": "Pre-requisites not installed"
   },
+  "suites": {
+    "recovered": {
+      "backupSaved": "Your saved suites couldn't be read, so this project opened with no suites. A copy of the old file was kept in the project's .raider folder.",
+      "backupFailed": "Your saved suites couldn't be read, so this project opened with no suites. The app couldn't keep a copy of the old file."
+    }
+  },
   "errors": {
     "ruby": {
       "commandFailed": "Ruby command failed.\nCommand: {{command}}\nOutput: {{output}}\nDebug Info:\n{{debugInfo}}",

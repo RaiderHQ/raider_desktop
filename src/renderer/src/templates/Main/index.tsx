@@ -50,12 +50,13 @@ const MainTemplate: React.FC = (): JSX.Element => {
   }, [])
 
   useEffect(() => {
-    const cleanup = window.electron.ipcRenderer.on('suites-recovered', () => {
-      toast.error(
-        "Your saved suites file couldn't be read. A backup was kept as .raider/suites.json.bak.",
-        { duration: 10000 }
-      )
-    })
+    const cleanup = window.electron.ipcRenderer.on(
+      'suites-recovered',
+      (_event, info?: { backupSaved?: boolean }) => {
+        const key = info?.backupSaved === false ? 'backupFailed' : 'backupSaved'
+        toast.error(t(`suites.recovered.${key}`), { duration: 10000 })
+      }
+    )
     return (): void => cleanup?.()
   }, [])
 
