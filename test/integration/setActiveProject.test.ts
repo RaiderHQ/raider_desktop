@@ -7,7 +7,7 @@ vi.mock('electron', () => ({ BrowserWindow: class {} }))
 
 import { appState } from '../../src/main/handlers/appState'
 import { DEFAULT_RECORDER_SETTINGS } from '../../src/main/handlers/config/projectSettings'
-import setActiveProject from '../../src/main/handlers/project/setActiveProject'
+import setActiveProject, { getRecorderSettings } from '../../src/main/handlers/project/setActiveProject'
 import startRecordingMain from '../../src/main/handlers/recording/startRecordingMain'
 import loadUrlRequest from '../../src/main/handlers/loadUrlRequest'
 import updateRecordingSettings from '../../src/main/handlers/config/updateRecordingSettings'
@@ -31,6 +31,13 @@ afterEach(async () => {
 })
 
 describe('setActiveProject', () => {
+  it('getRecorderSettings waits for an in-flight activation', async () => {
+    void setActiveProject(dir)
+    const settings = await getRecorderSettings()
+    expect(settings.implicitWait).toBe(3)
+    expect(settings.explicitWait).toBe(15)
+  })
+
   it('loads settings from the project config', async () => {
     const result = await setActiveProject(dir)
     expect(result.success).toBe(true)

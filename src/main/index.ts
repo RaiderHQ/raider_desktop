@@ -56,7 +56,7 @@ import saveRecording from './handlers/recording/saveRecording'
 import saveTrace from './handlers/trace/saveTrace'
 import loadTrace from './handlers/trace/loadTrace'
 import deleteTrace from './handlers/trace/deleteTrace'
-import setActiveProject from './handlers/project/setActiveProject'
+import setActiveProject, { getRecorderSettings } from './handlers/project/setActiveProject'
 import updateRecordingSettings from './handlers/config/updateRecordingSettings'
 import { closeApp } from './handlers/closeApp'
 import scaffoldGenerate from './handlers/project/scaffoldGenerate'
@@ -258,7 +258,7 @@ app.whenReady().then(() => {
   ipcMain.handle('set-active-project', (_event, projectPath: string | null) =>
     setActiveProject(projectPath)
   )
-  ipcMain.handle('get-recorder-settings', () => appState.recorderSettings)
+  ipcMain.handle('get-recorder-settings', () => getRecorderSettings())
   ipcMain.handle('load-url-request', (_event, url: string) => loadUrlRequest(url))
   ipcMain.handle('start-recording-main', startRecordingMain)
   ipcMain.handle(

@@ -1,25 +1,13 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import Button from '@components/Button'
-import useProjectStore from '@foundation/Stores/projectStore'
+import { useRecorderSettings } from '../../hooks/useRecorderSettings'
 
 const RecordingSettings: React.FC = () => {
   const { t } = useTranslation()
-  const projectPath = useProjectStore((s) => s.projectPath)
-  const [implicitWait, setImplicitWait] = useState(0)
-  const [explicitWait, setExplicitWait] = useState(30)
+  const { implicitWait, setImplicitWait, explicitWait, setExplicitWait } = useRecorderSettings()
   const [isUpdating, setIsUpdating] = useState(false)
-
-  useEffect(() => {
-    window.api
-      .getRecorderSettings()
-      .then((settings) => {
-        setImplicitWait(settings.implicitWait)
-        setExplicitWait(settings.explicitWait)
-      })
-      .catch((error) => console.error('Error loading recorder settings:', error))
-  }, [projectPath])
 
   const handleImplicitWaitChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const val = Number(event.target.value)

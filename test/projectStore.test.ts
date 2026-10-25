@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
+const toastError = vi.hoisted(() => vi.fn())
+vi.mock('react-hot-toast', () => ({ default: { error: toastError } }))
+
 // Mock window.api before importing the store
 vi.stubGlobal('window', {
   api: {
@@ -8,9 +11,7 @@ vi.stubGlobal('window', {
   }
 })
 
-const { default: useProjectStore } = await import(
-  '@foundation/Stores/projectStore'
-)
+const { default: useProjectStore } = await import('@foundation/Stores/projectStore')
 
 describe('projectStore', () => {
   beforeEach(() => {
@@ -46,6 +47,18 @@ describe('projectStore', () => {
     useProjectStore.getState().setProjectPath('/test/path')
     useProjectStore.setState({ projectPath: null })
     expect(window.api.setActiveProject).toHaveBeenLastCalledWith(null)
+  })
+
+  it('shows an error toast when main fails to activate the project', async () => {
+    vi.clearAllMocks()
+    vi.mocked(window.api.setActiveProject).mockResolvedValueOnce({
+      success: false,
+      error: 'bad config'
+    })
+    useProjectStore.getState().setProjectPath('/broken')
+    await vi.waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(expect.stringContaining('bad config'))
+    )
   })
 
   it('sets project automation', () => {
@@ -109,9 +122,7 @@ describe('projectStore', () => {
             isDirectory: true,
             type: 'folder',
             path: '/test/dir',
-            children: [
-              { name: 'c.rb', isDirectory: false, type: 'file', path: '/test/dir/c.rb' }
-            ]
+            children: [{ name: 'c.rb', isDirectory: false, type: 'file', path: '/test/dir/c.rb' }]
           }
         ]
       })

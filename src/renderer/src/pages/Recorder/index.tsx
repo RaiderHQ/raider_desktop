@@ -13,6 +13,7 @@ import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { formatLocator } from '@foundation/recorderUtils'
+import { useRecorderSettings } from '../../hooks/useRecorderSettings'
 import { useSuiteSync, useRecordingIPC } from '../../hooks/useRecorderIPC'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
@@ -66,25 +67,13 @@ const Recorder: React.FC = (): JSX.Element => {
   const webviewRef = useRef<Electron.WebviewTag | null>(null)
 
   // Recording settings state
-  const [implicitWait, setImplicitWait] = useState(0)
-  const [explicitWait, setExplicitWait] = useState(30)
+  const { implicitWait, setImplicitWait, explicitWait, setExplicitWait } = useRecorderSettings()
 
   // IPC hooks
   useSuiteSync()
   useRecordingIPC({ setAssertionInfo })
 
   // Load recording settings from the project config whenever the project changes
-  const projectPath = useProjectStore((s) => s.projectPath)
-  useEffect(() => {
-    window.api
-      .getRecorderSettings()
-      .then((settings) => {
-        setImplicitWait(settings.implicitWait)
-        setExplicitWait(settings.explicitWait)
-      })
-      .catch((error) => console.error('Error loading recorder settings:', error))
-  }, [projectPath])
-
   const handleImplicitWaitChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const val = Number(event.target.value)
     if (val >= 0) setImplicitWait(val)
