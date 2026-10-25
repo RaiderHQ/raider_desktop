@@ -130,7 +130,7 @@ describe('renderStep details', () => {
       'valueEquals',
       'A',
       "expect(@driver.find_element(css: '.x').attribute('value')).to eq('A')",
-      "expect(@browser.element(css: '.x').value).to eq('A')"
+      "expect(@browser.element(css: '.x').to_subtype.value).to eq('A')"
     ],
     ['titleEquals', 'A', "expect(@driver.title).to eq('A')", "expect(@browser.title).to eq('A')"],
     [
@@ -157,6 +157,7 @@ describe('renderStep details', () => {
     expect(renderStep(key('ArrowUp'), 'selenium')).toContain('send_keys(:arrow_up)')
     expect(renderStep(key('Escape'), 'watir')).toContain('send_keys(:escape)')
     expect(renderStep(key('Tab'), 'watir')).toContain('send_keys(:tab)')
+    expect(renderStep(key('constructor'), 'selenium')).toContain("send_keys('constructor')")
     expect(renderStep(key('x'), 'selenium')).toContain("send_keys('x')")
     expect(renderStep(key("it's"), 'watir')).toContain("send_keys('it\\'s')")
   })

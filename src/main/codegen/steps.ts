@@ -21,7 +21,7 @@ const KEY_SYMBOLS: Record<string, string> = {
 }
 
 const keyArg = (key: string): string =>
-  KEY_SYMBOLS[key] ? `:${KEY_SYMBOLS[key]}` : rubyString(key)
+  Object.hasOwn(KEY_SYMBOLS, key) ? `:${KEY_SYMBOLS[key]}` : rubyString(key)
 
 const locator = (el: ElementTarget): string => `${el.strategy}: ${rubyString(el.value)}`
 const sel = (el: ElementTarget): string => `@driver.find_element(${locator(el)})`
@@ -64,7 +64,7 @@ function renderAssert(step: Extract<Step, { kind: 'assert' }>, automation: Autom
     }
     case 'valueEquals': {
       const expected = rubyString(need(step.expected, 'an expected string', check))
-      const read = selenium ? `.attribute('value')` : '.value'
+      const read = selenium ? `.attribute('value')` : '.to_subtype.value'
       return `expect(${target}${read}).to eq(${expected})`
     }
   }
