@@ -45,11 +45,9 @@ test.describe('Recorder Controls', () => {
     // The active suite name is shown in the dropdown button
     await expect(page.getByRole('heading', { name: 'Suite: Suite Three' })).toBeVisible()
 
-    // Open the dropdown to verify all suites are listed
-    const suiteDropdownBtn = page.locator('button[aria-label="Select a Suite"]')
-    await suiteDropdownBtn.click()
-    await page.waitForTimeout(300)
-    await expect(page.getByText('Suite One')).toBeVisible()
-    await expect(page.getByText('Suite Two')).toBeVisible()
+    // All suites are listed in the suite selector
+    const options = page.locator('select[aria-label="Select a Suite"] option')
+    await expect(options.filter({ hasText: 'Suite One' })).toHaveCount(1)
+    await expect(options.filter({ hasText: 'Suite Two' })).toHaveCount(1)
   })
 })
