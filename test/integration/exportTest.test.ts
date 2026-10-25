@@ -21,18 +21,24 @@ vi.mock('fs', () => ({
 vi.mock('../../src/main/handlers/appState', () => ({
   appState: {
     projectFramework: 'rspec',
-    projectAutomation: 'selenium'
+    projectAutomation: 'selenium',
+    recorderSettings: { browser: 'chrome', headless: false, implicitWait: 0, explicitWait: 30 }
   }
 }))
 
+vi.mock('../../src/main/codegen/testFile', () => ({
+  generateRspecFile: vi.fn(() => '# generated test content'),
+  toAutomation: vi.fn(() => 'selenium')
+}))
+
 vi.mock('../../src/main/handlers/frameworkTemplates', () => ({
-  generateExportContent: vi.fn(() => '# generated test content'),
   getExportExtension: vi.fn(() => 'rb'),
   getExportFilters: vi.fn(() => [{ name: 'Ruby', extensions: ['rb'] }])
 }))
 
 import { BrowserWindow, dialog } from 'electron'
 import fs from 'fs'
+import { generateRspecFile } from '../../src/main/codegen/testFile'
 import exportTest from '../../src/main/handlers/io/exportTest'
 
 const mockGetFocusedWindow = BrowserWindow.getFocusedWindow as ReturnType<typeof vi.fn>
@@ -79,6 +85,17 @@ describe('exportTest handler', () => {
     expect(result.success).toBe(true)
     expect(result.path).toBe('/tmp/login_test.rb')
     expect(mockWriteFileSync).toHaveBeenCalledWith('/tmp/login_test.rb', '# generated test content', 'utf8')
+  })
+
+  it('migrates legacy string steps to the step model before generating', async () => {
+    mockShowSaveDialog.mockResolvedValue({ canceled: false, filePath: '/tmp/login_test.rb' })
+    await exportTest(testData as any)
+    const [test, automation, settings] = (generateRspecFile as ReturnType<typeof vi.fn>).mock
+      .calls[0]
+    expect(test.name).toBe('Login Test')
+    expect(test.steps.map((s: { kind: string }) => s.kind)).toEqual(['navigate', 'click'])
+    expect(automation).toBe('selenium')
+    expect(settings).toMatchObject({ browser: 'chrome', explicitWait: 30 })
   })
 
   it('sets file permissions on non-windows platforms', async () => {

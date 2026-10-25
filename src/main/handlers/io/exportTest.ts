@@ -2,7 +2,9 @@ import { BrowserWindow, dialog } from 'electron'
 import fs from 'fs'
 import type { TestData } from '@foundation/Types/testData'
 import { appState } from '../appState'
-import { generateExportContent, getExportExtension, getExportFilters } from '../frameworkTemplates'
+import { getExportExtension, getExportFilters } from '../frameworkTemplates'
+import { generateRspecFile, toAutomation } from '../../codegen/testFile'
+import { migrateLegacyStep } from '../../codegen/legacy'
 import { safeError } from '../../utils/safeLog'
 
 export default async ({
@@ -29,11 +31,14 @@ export default async ({
     return { success: false, error: 'Export cancelled by user.' }
   }
 
-  const scriptContent = generateExportContent(framework, {
-    testName,
-    steps,
-    automation: appState.projectAutomation
-  })
+  const scriptContent = generateRspecFile(
+    {
+      name: testName,
+      steps: steps.map((s) => migrateLegacyStep(s))
+    },
+    toAutomation(appState.projectAutomation),
+    appState.recorderSettings
+  )
 
   try {
     fs.writeFileSync(filePath, scriptContent, 'utf8')

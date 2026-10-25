@@ -213,11 +213,13 @@ app.whenReady().then(() => {
         return { success: false, output: `Test with ID ${testId} not found.` }
       }
 
-      const { implicitWait, explicitWait } = appState.recorderSettings
+      const { implicitWait, explicitWait, browser, headless } = appState.recorderSettings
       return runRecording({
         savedTest: test,
         implicitWait,
         explicitWait,
+        browser,
+        headless,
         projectPath,
         rubyCommand,
         projectAutomation: appState.projectAutomation,

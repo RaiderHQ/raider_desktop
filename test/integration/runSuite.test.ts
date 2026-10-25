@@ -22,7 +22,7 @@ vi.mock('fs', () => {
 vi.mock('../../src/main/handlers/appState', () => {
   const suites = new Map()
   return {
-    appState: { suites, recorderSettings: { implicitWait: 0, explicitWait: 30 } }
+    appState: { suites, recorderSettings: { browser: 'chrome', headless: false, implicitWait: 0, explicitWait: 30 } }
   }
 })
 
@@ -109,6 +109,8 @@ describe('runSuite handler (integration)', () => {
       tests: [{ id: 'test-1', name: 'Test', url: '', steps: [] }]
     });
     (appState as unknown as { recorderSettings: object }).recorderSettings = {
+      browser: 'firefox',
+      headless: false,
       implicitWait: 5,
       explicitWait: 60
     }
@@ -117,5 +119,7 @@ describe('runSuite handler (integration)', () => {
     const writtenCode = (mockWriteFile.mock.calls[0][1] as string)
     expect(writtenCode).toContain('implicit_wait = 5')
     expect(writtenCode).toContain('timeout: 60')
+    expect(writtenCode).toContain('Selenium::WebDriver.for :firefox')
+    expect(writtenCode).not.toContain('sleep(')
   })
 })

@@ -2,35 +2,19 @@ import { promises as fs } from 'fs'
 import os from 'os'
 import path from 'path'
 import { safeExec } from '../../utils/safeExec'
-import { generateTestCode, getTestRunCommand } from '../frameworkTemplates'
+import { generateRspecFile, toAutomation } from '../../codegen/testFile'
+import { migrateLegacyTest } from '../../codegen/legacy'
 
 interface RunRecordingState {
-  savedTest: { name: string; steps: string[] } | null
+  savedTest: { id: string; name: string; url: string; steps: unknown[] } | null
   implicitWait: number
   explicitWait: number
+  browser?: string
+  headless?: boolean
   projectPath: string
   rubyCommand: string
   projectAutomation?: string | null
   projectFramework?: string | null
-}
-
-/**
- * Generates the full Ruby RSpec code from an array of steps.
- * Kept for backward compatibility — delegates to generateTestCode with rspec defaults.
- */
-export function generateRspecCode(
-  testName: string,
-  steps: string[],
-  implicitWait: number,
-  explicitWait: number
-): string {
-  return generateTestCode(null, {
-    testName,
-    steps,
-    implicitWait,
-    explicitWait,
-    automation: null
-  })
 }
 
 /**
@@ -44,10 +28,7 @@ const runRecording = async (
     return { success: false, output: 'No test has been saved to run.' }
   }
 
-  const framework = appState.projectFramework || null
-  const automation = appState.projectAutomation || null
-  const ext = framework === 'cucumber' ? 'feature' : 'rb'
-  const tempFilePath = path.join(os.tmpdir(), `test_${Date.now()}.${ext}`)
+  const tempFilePath = path.join(os.tmpdir(), `test_${Date.now()}.rb`)
 
   try {
     const newPath = (process.env.PATH || '')
@@ -57,20 +38,19 @@ const runRecording = async (
 
     const executionEnv = { ...process.env, PATH: newPath }
 
-    const { name, steps } = appState.savedTest
-    const { implicitWait, explicitWait, rubyCommand } = appState
+    const { implicitWait, explicitWait, rubyCommand, browser, headless } = appState
+    const test = migrateLegacyTest(appState.savedTest)
 
-    const testCode = generateTestCode(framework, {
-      testName: name,
-      steps,
+    const testCode = generateRspecFile(test, toAutomation(appState.projectAutomation ?? null), {
+      browser: browser ?? 'chrome',
+      headless: headless ?? false,
       implicitWait,
-      explicitWait,
-      automation
+      explicitWait
     })
 
     await fs.writeFile(tempFilePath, testCode)
 
-    const command = getTestRunCommand(framework, rubyCommand, tempFilePath)
+    const command = `${rubyCommand} -S rspec ${tempFilePath} --format json`
 
     const result = await safeExec(command, { env: executionEnv, timeout: 120_000 })
 
