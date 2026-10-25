@@ -71,6 +71,27 @@ describe('recording start URL', () => {
     expect(appState.sessionUrl).toBe('https://session.test/')
     expect(startRecordingMain().url).toBe('https://session.test/')
   })
+
+  it('an empty loadUrlRequest clears the session URL so the base URL applies', async () => {
+    await setActiveProject(dir)
+    loadUrlRequest('https://session.test/')
+    loadUrlRequest('')
+    expect(appState.sessionUrl).toBeNull()
+    expect(startRecordingMain().url).toBe('https://example.test/')
+  })
+
+  it('does not start when there is no URL anywhere', async () => {
+    await writeFile(join(dir, 'config', 'config.yml'), 'explicit_wait: 15\n')
+    await setActiveProject(dir)
+    const send = vi.fn()
+    appState.mainWindow = { webContents: { send } } as never
+    appState.activeTraceDir = null
+    const result = startRecordingMain()
+    appState.mainWindow = null
+    expect(result.success).toBe(false)
+    expect(appState.activeTraceDir).toBeNull()
+    expect(send).not.toHaveBeenCalled()
+  })
 })
 
 describe('updateRecordingSettings', () => {

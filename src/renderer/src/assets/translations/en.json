@@ -401,6 +401,7 @@
     }
   },
   "recorder": {
+    "noStartUrl": "There's no page to start recording on. Enter a URL for this test, or set the project's base URL in Settings.",
     "placeholder": {
       "url": "Enter URL to record",
       "commands": "Recorded Selenium Ruby commands will appear here..."
@@ -487,6 +488,8 @@
     "breakpoint": {
       "recordFromHere": "Record from here",
       "replayFailed": "Replay failed",
+      "skippedSteps_one": "1 step couldn't run during replay (custom code or a frame switch), so the page may not match your steps.",
+      "skippedSteps_other": "{{count}} steps couldn't run during replay (custom code or frame switches), so the page may not match your steps.",
       "stopReplay": "Stop Replay"
     },
     "outputPanel": {

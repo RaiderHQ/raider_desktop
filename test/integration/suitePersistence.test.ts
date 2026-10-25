@@ -374,6 +374,8 @@ describe('imports migrate recorded Ruby to steps', () => {
     })
     const res = await importTest(win, 's1')
     expect(res.test!.steps).toEqual(expected)
+    // The start URL comes from the first navigate step
+    expect(res.test!.url).toBe('https://x.test')
   })
 
   it('importSuite', async () => {
@@ -385,6 +387,7 @@ describe('imports migrate recorded Ruby to steps', () => {
     })
     const res = await importSuite(win)
     expect(res.suite!.tests[0].steps).toEqual(expected)
+    expect(res.suite!.tests[0].url).toBe('https://x.test')
   })
 
   it('importProject', async () => {
@@ -394,6 +397,7 @@ describe('imports migrate recorded Ruby to steps', () => {
     await importProject(win)
     const imported = Array.from(appState.suites.values()).find((s) => s.name === 'legacy-suite')
     expect(imported!.tests[0].steps).toEqual(expected)
+    expect(imported!.tests[0].url).toBe('https://x.test')
   })
 })
 

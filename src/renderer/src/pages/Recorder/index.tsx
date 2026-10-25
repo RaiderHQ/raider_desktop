@@ -151,13 +151,15 @@ const Recorder: React.FC = (): JSX.Element => {
 
   const handleStartRecording = useCallback(async (): Promise<void> => {
     const test = useRecorderStore.getState().activeTest
-    if (test?.url) {
-      await window.api.loadUrlRequest(test.url)
-      const result = await window.api.startRecordingMain()
-      if (result.success) {
-        setRecordingUrl(result.url)
-        setPreloadPath(result.preloadPath)
-      }
+    if (!test) return
+    // An empty URL clears any earlier one, so main falls back to the project base URL
+    await window.api.loadUrlRequest(test.url ?? '')
+    const result = await window.api.startRecordingMain()
+    if (result.success) {
+      setRecordingUrl(result.url)
+      setPreloadPath(result.preloadPath)
+    } else {
+      toast.error(t('recorder.noStartUrl'))
     }
   }, [])
 
@@ -198,14 +200,12 @@ const Recorder: React.FC = (): JSX.Element => {
     setIsReplayingToBreakpoint(true)
 
     // Start recording to show the embedded webview immediately
-    if (test.url) {
-      await window.api.loadUrlRequest(test.url)
-    }
+    await window.api.loadUrlRequest(test.url ?? '')
     const recResult = await window.api.startRecordingMain()
     if (!recResult.success) {
       setIsReplayingToBreakpoint(false)
       setBreakpointIndex(null)
-      toast.error(t('recorder.breakpoint.replayFailed'))
+      toast.error(t('recorder.noStartUrl'))
       return
     }
 
@@ -230,6 +230,14 @@ const Recorder: React.FC = (): JSX.Element => {
       toast.error(`${t('recorder.breakpoint.replayFailed')}: ${result.error ?? ''}`)
     } else {
       setIsReplayingToBreakpoint(false)
+      // Replay can't run custom code or switch frames, so the page may not match the steps
+      const skipped = result.skippedStepIds?.length ?? 0
+      if (skipped > 0) {
+        toast(t('recorder.breakpoint.skippedSteps', { count: skipped }), {
+          icon: '\u26A0\uFE0F',
+          duration: 8000
+        })
+      }
     }
   }, [])
 

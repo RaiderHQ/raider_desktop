@@ -66,6 +66,14 @@ export function readExportHeader(text: string): {
   return { testName, suiteName: value(SUITE), steps }
 }
 
+/** The URL a test starts at: its first navigate step's URL, or '' when it has none. */
+export function startUrl(steps: Step[]): string {
+  const navigate = steps.find(
+    (step): step is Extract<Step, { kind: 'navigate' }> => step.kind === 'navigate'
+  )
+  return navigate?.url ?? ''
+}
+
 /** Gives a fresh id to any step whose id is already taken; records the ids it keeps. */
 export function withUniqueIds(steps: Step[], taken: Set<string>): Step[] {
   return steps.map((step) => {

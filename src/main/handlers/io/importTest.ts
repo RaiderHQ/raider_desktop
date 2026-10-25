@@ -4,7 +4,7 @@ import { appState } from '../appState'
 import { persistActiveSuites } from '../suitePersistence'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
-import { readExportHeader, withUniqueIds } from '../../codegen/exportHeader'
+import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
 
 export default async function importTest(
   mainWindow: BrowserWindow,
@@ -38,11 +38,12 @@ export default async function importTest(
     // Exported files carry their steps as JSON; older files hold Ruby lines
     const header = readExportHeader(fileContent)
     const stepIds = new Set(suite.tests.flatMap((t) => t.steps.map((step) => step.id)))
+    const steps = withUniqueIds(header.steps ?? [], stepIds)
     const newTest: Test = {
       id: randomUUID(),
       name: header.testName ?? 'Unnamed Test',
-      url: '',
-      steps: withUniqueIds(header.steps ?? [], stepIds)
+      url: startUrl(steps),
+      steps
     }
 
     if (suite.tests.some((t) => t.name === newTest.name)) {

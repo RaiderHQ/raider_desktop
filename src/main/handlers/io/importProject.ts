@@ -6,7 +6,7 @@ import { backupSuitesFile, persistActiveSuites } from '../suitePersistence'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
-import { readExportHeader, withUniqueIds } from '../../codegen/exportHeader'
+import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
 
 export default async function importProject(
   mainWindow: BrowserWindow
@@ -53,11 +53,12 @@ export default async function importProject(
 
           // Exported files carry their steps as JSON; older files hold Ruby lines
           const header = readExportHeader(fileContent)
+          const steps = withUniqueIds(header.steps ?? [], stepIds)
           const newTest: Test = {
             id: randomUUID(),
             name: header.testName ?? path.basename(file, '.rb'),
-            url: '',
-            steps: withUniqueIds(header.steps ?? [], stepIds)
+            url: startUrl(steps),
+            steps
           }
           newSuite.tests.push(newTest)
         }

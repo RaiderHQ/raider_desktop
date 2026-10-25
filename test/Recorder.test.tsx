@@ -4,6 +4,7 @@ import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 import { IpcRendererEvent } from 'electron'
 import useRecorderStore from '@foundation/Stores/recorderStore'
+import type { Test } from '@foundation/Types/test'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
@@ -12,9 +13,12 @@ vi.mock('react-i18next', () => ({
   })
 }))
 
+const mockToast = vi.hoisted(() =>
+  Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), loading: vi.fn() })
+)
 vi.mock('react-hot-toast', () => ({
-  default: { success: vi.fn(), error: vi.fn(), loading: vi.fn() },
-  toast: { success: vi.fn(), error: vi.fn(), loading: vi.fn() },
+  default: mockToast,
+  toast: mockToast,
   Toaster: () => null
 }))
 
@@ -408,6 +412,120 @@ describe('Recorder Page', (): void => {
       expect(steps()).toEqual([
         { id: expect.any(String), kind: 'assert', check: 'titleEquals', expected: 'Home' }
       ])
+    })
+  })
+
+  describe('start URL', () => {
+    const useTest = (url: string): void => {
+      const test: Test = { id: 't1', name: 'Test', url, steps: [] }
+      const suites = [{ id: 's1', name: 'Suite', tests: [test] }]
+      mockApi.getSuites.mockResolvedValue(suites)
+      useRecorderStore.setState({ suites, activeSuiteId: 's1', activeTest: test })
+    }
+    const clickRecord = async (): Promise<void> => {
+      await act(async () => {
+        fireEvent.click(screen.getByLabelText('recorder.mainRecorderPanel.record'))
+      })
+    }
+
+    beforeEach(() => {
+      vi.clearAllMocks()
+      mockApi.startRecordingMain.mockResolvedValue({
+        success: true,
+        url: 'https://base.test/',
+        preloadPath: '/p.js'
+      })
+    })
+
+    it("starts at the test's own URL when it has one", async () => {
+      useTest('https://own.test/')
+      await act(async () => {
+        render(<Recorder />)
+      })
+      await clickRecord()
+      expect(mockApi.loadUrlRequest).toHaveBeenCalledWith('https://own.test/')
+      expect(mockApi.startRecordingMain).toHaveBeenCalled()
+    })
+
+    it('falls back to the project base URL when the test has none', async () => {
+      useTest('')
+      await act(async () => {
+        render(<Recorder />)
+      })
+      await clickRecord()
+      // An empty URL clears any URL left over from another test, so main uses the base URL
+      expect(mockApi.loadUrlRequest).toHaveBeenCalledWith('')
+      expect(mockApi.startRecordingMain).toHaveBeenCalled()
+      expect(mockToast.error).not.toHaveBeenCalled()
+    })
+
+    it('tells the user when there is no URL anywhere', async () => {
+      useTest('')
+      mockApi.startRecordingMain.mockResolvedValue({ success: false, url: '', preloadPath: '' })
+      await act(async () => {
+        render(<Recorder />)
+      })
+      await clickRecord()
+      expect(mockToast.error).toHaveBeenCalledWith('recorder.noStartUrl')
+    })
+  })
+
+  describe('record from here', () => {
+    const recordFromHere = async (replayResult: object): Promise<void> => {
+      const test: Test = {
+        id: 't1',
+        name: 'Test',
+        url: 'https://x.test',
+        steps: [
+          { id: 'c', kind: 'custom', code: 'puts 1' },
+          { id: 'k', kind: 'click', element: { strategy: 'id', value: 'go' } }
+        ]
+      }
+      const suites = [{ id: 's1', name: 'Suite', tests: [test] }]
+      mockApi.getSuites.mockResolvedValue(suites)
+      useRecorderStore.setState({
+        suites,
+        activeSuiteId: 's1',
+        activeTest: test,
+        breakpointIndex: 1
+      })
+      mockApi.startRecordingMain.mockResolvedValue({
+        success: true,
+        url: 'https://x.test',
+        preloadPath: '/p.js'
+      })
+      mockApi.replayInWebview.mockResolvedValue(replayResult)
+      await act(async () => {
+        render(<Recorder />)
+      })
+      vi.useFakeTimers({ toFake: ['setTimeout'] })
+      try {
+        await act(async () => {
+          fireEvent.click(screen.getByText(/recorder\.breakpoint\.recordFromHere/))
+        })
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(2000)
+        })
+      } finally {
+        vi.useRealTimers()
+      }
+    }
+
+    beforeEach(() => vi.clearAllMocks())
+
+    it('warns when replay skipped steps', async () => {
+      await recordFromHere({ success: true, skippedStepIds: ['c'] })
+      expect(mockApi.replayInWebview).toHaveBeenCalled()
+      expect(mockToast).toHaveBeenCalledWith(
+        'recorder.breakpoint.skippedSteps',
+        expect.objectContaining({ icon: expect.any(String) })
+      )
+    })
+
+    it('does not warn when nothing was skipped', async () => {
+      await recordFromHere({ success: true, skippedStepIds: [] })
+      expect(mockApi.replayInWebview).toHaveBeenCalled()
+      expect(mockToast).not.toHaveBeenCalled()
     })
   })
 })

@@ -4,7 +4,7 @@ describe('createNewTest', () => {
   it('creates a test with expected default values', () => {
     const test = createNewTest()
     expect(test.name).toBe('Untitled Test')
-    expect(test.url).toBe('https://raider-test-site.onrender.com/')
+    expect(test.url).toBe('')
     expect(test.steps).toEqual([])
   })
 
