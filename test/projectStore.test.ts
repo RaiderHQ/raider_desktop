@@ -3,7 +3,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 // Mock window.api before importing the store
 vi.stubGlobal('window', {
   api: {
-    readDirectory: vi.fn().mockResolvedValue([])
+    readDirectory: vi.fn().mockResolvedValue([]),
+    setActiveProject: vi.fn().mockResolvedValue({ success: true })
   }
 })
 
@@ -34,6 +35,17 @@ describe('projectStore', () => {
   it('sets project path', () => {
     useProjectStore.getState().setProjectPath('/test/path')
     expect(useProjectStore.getState().projectPath).toBe('/test/path')
+  })
+
+  it('tells main about the active project when projectPath changes', () => {
+    useProjectStore.getState().setProjectPath('/test/path')
+    expect(window.api.setActiveProject).toHaveBeenCalledWith('/test/path')
+  })
+
+  it('tells main the project closed when projectPath becomes null', () => {
+    useProjectStore.getState().setProjectPath('/test/path')
+    useProjectStore.setState({ projectPath: null })
+    expect(window.api.setActiveProject).toHaveBeenLastCalledWith(null)
   })
 
   it('sets project automation', () => {

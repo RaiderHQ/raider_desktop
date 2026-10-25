@@ -28,6 +28,10 @@ vi.mock('@components/TestResultCard', () => ({
 
 describe('ProjectDashboard with raider-results', () => {
   it('renders rows from a raider-results fixture without touching allure-results', async () => {
+    window.api = {
+      setActiveProject: vi.fn().mockResolvedValue({ success: true }),
+      readDirectory: vi.fn().mockResolvedValue([])
+    } as unknown as typeof window.api
     useProjectStore.setState({ projectPath: '/proj' })
     const run = JSON.stringify({
       results: [
@@ -53,6 +57,7 @@ describe('ProjectDashboard with raider-results', () => {
       throw new Error('ENOENT')
     })
     window.api = {
+      setActiveProject: vi.fn().mockResolvedValue({ success: true }),
       readDirectory,
       readFile: vi.fn(async () => ({ success: true, data: run }))
     } as unknown as typeof window.api
@@ -71,6 +76,7 @@ describe('ProjectDashboard Open report button', () => {
     useProjectStore.setState({ projectPath: '/proj' })
     const openReport = vi.fn(async () => ({ success: true }))
     window.api = {
+      setActiveProject: vi.fn().mockResolvedValue({ success: true }),
       readDirectory: vi.fn(async () => {
         throw new Error('ENOENT')
       }),
@@ -142,6 +148,7 @@ describe('ProjectDashboard with quarantined results', () => {
       ]
     })
     window.api = {
+      setActiveProject: vi.fn().mockResolvedValue({ success: true }),
       readDirectory: vi.fn(async (dir: string) => {
         if (dir === '/proj/raider-results')
           return [

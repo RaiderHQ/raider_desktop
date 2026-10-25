@@ -73,13 +73,17 @@ const Recorder: React.FC = (): JSX.Element => {
   useSuiteSync()
   useRecordingIPC({ setAssertionInfo })
 
-  // Load recording settings on mount
+  // Load recording settings from the project config whenever the project changes
+  const projectPath = useProjectStore((s) => s.projectPath)
   useEffect(() => {
-    const savedImplicitWait = localStorage.getItem('implicitWait')
-    if (savedImplicitWait) setImplicitWait(Number(savedImplicitWait))
-    const savedExplicitWait = localStorage.getItem('explicitWait')
-    if (savedExplicitWait) setExplicitWait(Number(savedExplicitWait))
-  }, [])
+    window.api
+      .getRecorderSettings()
+      .then((settings) => {
+        setImplicitWait(settings.implicitWait)
+        setExplicitWait(settings.explicitWait)
+      })
+      .catch((error) => console.error('Error loading recorder settings:', error))
+  }, [projectPath])
 
   const handleImplicitWaitChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const val = Number(event.target.value)
@@ -91,11 +95,14 @@ const Recorder: React.FC = (): JSX.Element => {
     if (val >= 0) setExplicitWait(val)
   }
 
-  const handleUpdateSettings = async (): Promise<void> => {
+  const saveWait = async (
+    patch: { implicitWait: number } | { explicitWait: number }
+  ): Promise<void> => {
     try {
-      await window.api.updateRecordingSettings({ implicitWait, explicitWait })
-      localStorage.setItem('implicitWait', implicitWait.toString())
-      localStorage.setItem('explicitWait', explicitWait.toString())
+      const result = await window.api.updateRecordingSettings(patch)
+      if (!result.success) {
+        toast.error(`${t('settings.recording.error.unexpected')} : ${result.error}`)
+      }
     } catch (error) {
       toast.error(`${t('settings.recording.error.unexpected')} : ${error}`)
     }
@@ -369,7 +376,7 @@ const Recorder: React.FC = (): JSX.Element => {
                   id="implicit-wait"
                   value={implicitWait}
                   onChange={handleImplicitWaitChange}
-                  onBlur={handleUpdateSettings}
+                  onBlur={() => saveWait({ implicitWait })}
                   className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
                   min="0"
                 />
@@ -385,7 +392,7 @@ const Recorder: React.FC = (): JSX.Element => {
                   id="explicit-wait"
                   value={explicitWait}
                   onChange={handleExplicitWaitChange}
-                  onBlur={handleUpdateSettings}
+                  onBlur={() => saveWait({ explicitWait })}
                   className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
                   min="0"
                 />

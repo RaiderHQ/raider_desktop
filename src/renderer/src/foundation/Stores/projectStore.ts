@@ -102,4 +102,18 @@ useProjectStore.subscribe(
   }
 )
 
+// Main process owns the recorder settings in the project's config, so it must know the open project
+const syncActiveProject = (projectPath: string | null): void => {
+  window.api.setActiveProject(projectPath).catch((error: unknown) => {
+    console.error('Error setting active project:', error)
+  })
+}
+
+useProjectStore.subscribe((state) => state.projectPath, syncActiveProject)
+
+const initialProjectPath = useProjectStore.getState().projectPath
+if (initialProjectPath) {
+  syncActiveProject(initialProjectPath)
+}
+
 export default useProjectStore

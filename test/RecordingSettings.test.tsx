@@ -2,6 +2,11 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import RecordingSettings from '@pages/RecorderSettings'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
+import toast from 'react-hot-toast'
+
+vi.mock('react-hot-toast', () => ({
+  default: { success: vi.fn(), error: vi.fn() }
+}))
 
 vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string) => string } => ({
@@ -10,14 +15,16 @@ vi.mock('react-i18next', () => ({
 }))
 
 const mockApi = {
-  updateRecordingSettings: vi.fn().mockResolvedValue(undefined)
+  updateRecordingSettings: vi.fn().mockResolvedValue({ success: true }),
+  getRecorderSettings: vi.fn().mockResolvedValue({ implicitWait: 3, explicitWait: 25 })
 }
 
 beforeEach(() => {
   // @ts-expect-error - Mocking window.api
   window.api = mockApi
   vi.clearAllMocks()
-  localStorage.clear()
+  mockApi.updateRecordingSettings.mockResolvedValue({ success: true })
+  mockApi.getRecorderSettings.mockResolvedValue({ implicitWait: 3, explicitWait: 25 })
 })
 
 describe('RecordingSettings Page', (): void => {
@@ -61,7 +68,33 @@ describe('RecordingSettings Page', (): void => {
 
     expect(mockApi.updateRecordingSettings).toHaveBeenCalledWith({
       implicitWait: 5,
-      explicitWait: 30
+      explicitWait: 25
     })
+  })
+
+  it('shows wait values from project settings and never reads localStorage', async () => {
+    const getItem = vi.spyOn(Storage.prototype, 'getItem')
+    await act(async () => {
+      render(<RecordingSettings />)
+    })
+
+    expect(screen.getByLabelText('settings.recording.implicitWait.label')).toHaveValue(3)
+    expect(screen.getByLabelText('settings.recording.explicitWait.label')).toHaveValue(25)
+    expect(getItem).not.toHaveBeenCalledWith('implicitWait')
+    expect(getItem).not.toHaveBeenCalledWith('explicitWait')
+    getItem.mockRestore()
+  })
+
+  it('shows an error toast when saving fails', async () => {
+    mockApi.updateRecordingSettings.mockResolvedValue({ success: false, error: 'No project open' })
+    await act(async () => {
+      render(<RecordingSettings />)
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByText('settings.recording.updateRecordingSettingsButton'))
+    })
+
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('No project open'))
+    expect(toast.success).not.toHaveBeenCalled()
   })
 })

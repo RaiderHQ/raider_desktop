@@ -88,9 +88,9 @@ const mockApi = {
   isSystemRubyInstalled: vi.fn(),
   xpathParser: vi.fn().mockResolvedValue(''),
   commandParser: vi.fn().mockResolvedValue(''),
-  updateRecordingSettings: vi.fn(),
+  updateRecordingSettings: vi.fn().mockResolvedValue({ success: true }),
   setActiveProject: vi.fn(),
-  getRecorderSettings: vi.fn(),
+  getRecorderSettings: vi.fn().mockResolvedValue({ implicitWait: 3, explicitWait: 25 }),
   onTestRunStatus: vi.fn(),
   removeTestRunStatusListener: vi.fn(),
   closeApp: vi.fn(),
@@ -178,6 +178,34 @@ beforeEach(() => {
 })
 
 describe('Recorder Page', (): void => {
+  it('shows wait values from project settings and never reads localStorage', async (): Promise<void> => {
+    const getItem = vi.spyOn(Storage.prototype, 'getItem')
+    await act(async () => {
+      render(<Recorder />)
+    })
+
+    expect(screen.getByLabelText('settings.recording.implicitWait.label')).toHaveValue(3)
+    expect(screen.getByLabelText('settings.recording.explicitWait.label')).toHaveValue(25)
+    expect(getItem).not.toHaveBeenCalledWith('implicitWait')
+    expect(getItem).not.toHaveBeenCalledWith('explicitWait')
+    getItem.mockRestore()
+  })
+
+  it('saves a changed wait to the project config on blur', async (): Promise<void> => {
+    await act(async () => {
+      render(<Recorder />)
+    })
+    const input = screen.getByLabelText('settings.recording.explicitWait.label')
+    await act(async () => {
+      fireEvent.change(input, { target: { value: '30' } })
+    })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+
+    expect(mockApi.updateRecordingSettings).toHaveBeenCalledWith({ explicitWait: 30 })
+  })
+
   it('renders tab navigation and default recording tab', async (): Promise<void> => {
     await act(async () => {
       render(<Recorder />)

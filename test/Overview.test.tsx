@@ -53,6 +53,7 @@ vi.mock('@foundation/Stores/rubyStore', () => ({
 
 const mockApi = {
   readDirectory: vi.fn().mockResolvedValue([]),
+  setActiveProject: vi.fn().mockResolvedValue({ success: true }),
   onTestRunStatus: vi.fn(),
   removeTestRunStatusListener: vi.fn(),
   scaffoldGenerate: vi.fn().mockResolvedValue({ success: true, output: '' }),
