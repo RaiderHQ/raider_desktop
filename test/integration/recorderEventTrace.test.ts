@@ -47,7 +47,7 @@ describe('recorderEvent trace capture', () => {
       tagName: 'BUTTON'
     })
 
-    expect(mockSend).toHaveBeenCalledWith('new-recorded-command', expect.any(String))
+    expect(mockSend).toHaveBeenCalledWith('new-recorded-step', expect.any(Object))
     expect(getTraceStepCall()).toBeUndefined()
   })
 
@@ -67,7 +67,7 @@ describe('recorderEvent trace capture', () => {
     })
 
     // The command should be sent immediately
-    expect(mockSend).toHaveBeenCalledWith('new-recorded-command', expect.any(String))
+    expect(mockSend).toHaveBeenCalledWith('new-recorded-step', expect.any(Object))
     // Screenshot capture should be triggered
     expect(mockCapturePage).toHaveBeenCalled()
   })
@@ -136,7 +136,7 @@ describe('recorderEvent trace capture', () => {
     expect(elementInfo.strategy).toBe('css')
   })
 
-  it('does not emit trace step when command is empty', () => {
+  it('does not emit trace step when the event maps to no step', () => {
     ;(appState as any).activeTraceDir = '/tmp/trace-test'
     ;(appState as any).recorderWebContentsId = 42
 
@@ -163,9 +163,44 @@ describe('recorderEvent trace capture', () => {
       tagName: 'BUTTON'
     })
 
-    expect(mockSend).toHaveBeenCalledWith('new-recorded-command', expect.any(String))
+    expect(mockSend).toHaveBeenCalledWith('new-recorded-step', expect.any(Object))
     expect(mockCapturePage).not.toHaveBeenCalled()
     expect(getTraceStepCall()).toBeUndefined()
+  })
+
+  it('links the trace step to the recorded step and renders it for Watir', async () => {
+    ;(appState as any).projectAutomation = 'watir'
+    ;(appState as any).activeTraceDir = '/tmp/trace-test'
+    ;(appState as any).recorderWebContentsId = 42
+    mockCapturePage.mockResolvedValue({ toJPEG: () => Buffer.from('jpeg') })
+
+    recorderEvent({ action: 'click', selector: 'go', strategy: 'id', tagName: 'BUTTON' })
+
+    await vi.waitFor(() => {
+      expect(getTraceStepCall()).toBeDefined()
+    })
+
+    const step = mockSend.mock.calls.find((c) => c[0] === 'new-recorded-step')![1]
+    const traceStep = getTraceStepCall()![1] as Record<string, unknown>
+    expect(traceStep.stepId).toBe(step.id)
+    expect(traceStep.command).toBe("@browser.element(id: 'go').click")
+  })
+
+  it('renders Selenium Ruby for the trace command by default', async () => {
+    ;(appState as any).activeTraceDir = '/tmp/trace-test'
+    ;(appState as any).recorderWebContentsId = 42
+    mockCapturePage.mockRejectedValue(new Error('no capture'))
+
+    recorderEvent({ action: 'click', selector: 'go', strategy: 'id', tagName: 'BUTTON' })
+
+    await vi.waitFor(() => {
+      expect(getTraceStepCall()).toBeDefined()
+    })
+
+    const step = mockSend.mock.calls.find((c) => c[0] === 'new-recorded-step')![1]
+    const traceStep = getTraceStepCall()![1] as Record<string, unknown>
+    expect(traceStep.stepId).toBe(step.id)
+    expect(traceStep.command).toContain("@driver.find_element(id: 'go').click")
   })
 
   it('includes element info in trace step for type action', async () => {

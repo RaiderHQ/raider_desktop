@@ -56,9 +56,58 @@ afterEach(async () => {
 
 describe('suite files', () => {
   it('round trips, creating .raider/', async () => {
-    const suites = [{ ...suite('s'), tests: [{ id: 't', name: 'T', url: '', steps: ['x'] }] }]
-    await saveSuites(a, suites as Suite[])
+    const suites: Suite[] = [
+      {
+        ...suite('s'),
+        tests: [{ id: 't', name: 'T', url: '', steps: [{ id: 'n', kind: 'navigate', url: 'u' }] }]
+      }
+    ]
+    await saveSuites(a, suites)
     expect(await loadSuites(a)).toEqual({ suites, recoveredFromCorrupt: false })
+  })
+
+  it('writes version 2', async () => {
+    await saveSuites(a, [suite('s')])
+    const written = JSON.parse(await readFile(join(a, '.raider', 'suites.json'), 'utf-8'))
+    expect(written.version).toBe(2)
+  })
+
+  it('migrates a version 1 file to steps and rewrites it as version 2', async () => {
+    const legacy = {
+      version: 1,
+      suites: [
+        {
+          ...suite('s'),
+          tests: [
+            {
+              id: 't',
+              name: 'T',
+              url: '',
+              steps: ['@driver.get("https://x.test")', 'puts "hi"']
+            }
+          ]
+        }
+      ]
+    }
+    await fsp.mkdir(join(a, '.raider'))
+    await writeFile(join(a, '.raider', 'suites.json'), JSON.stringify(legacy))
+
+    const { suites } = await loadSuites(a)
+    expect(suites[0].tests[0].steps).toEqual([
+      { id: expect.any(String), kind: 'navigate', url: 'https://x.test' },
+      { id: expect.any(String), kind: 'custom', code: 'puts "hi"' }
+    ])
+
+    const written = JSON.parse(await readFile(join(a, '.raider', 'suites.json'), 'utf-8'))
+    expect(written.version).toBe(2)
+    expect(written.suites).toEqual(suites)
+  })
+
+  it('does not rewrite a version 2 file on load', async () => {
+    await saveSuites(a, [suite('s')])
+    const spy = vi.spyOn(fsp, 'writeFile')
+    await loadSuites(a)
+    expect(spy).not.toHaveBeenCalled()
   })
 
   it('returns empty when there is no file', async () => {
@@ -192,5 +241,56 @@ describe('handlers persist', () => {
     const res = await importTest(win, id)
     expect(res.success).toBe(true)
     expect(spy).toHaveBeenCalledTimes(4)
+  })
+})
+
+describe('imports migrate recorded Ruby to steps', () => {
+  const legacyFile = [
+    '# Test: Legacy',
+    'begin',
+    '  @driver.get("https://x.test")',
+    '  @driver.find_element(:id, "q").clear',
+    '  @driver.find_element(:id, "q").send_keys("cats")',
+    '  puts "Test \'Legacy\' passed successfully!"',
+    ''
+  ].join('\n')
+  const expected = [
+    { id: expect.any(String), kind: 'navigate', url: 'https://x.test' },
+    { id: expect.any(String), kind: 'type', element: { strategy: 'id', value: 'q' }, text: 'cats' }
+  ]
+
+  beforeEach(() => {
+    vi.spyOn(persistence, 'persistActiveSuites').mockResolvedValue()
+  })
+
+  it('importTest', async () => {
+    appState.suites = new Map([['s1', suite('s1')]])
+    await writeFile(join(b, 'legacy.rb'), legacyFile)
+    mockDialog.showOpenDialog.mockResolvedValue({
+      canceled: false,
+      filePaths: [join(b, 'legacy.rb')]
+    })
+    const res = await importTest(win, 's1')
+    expect(res.test!.steps).toEqual(expected)
+  })
+
+  it('importSuite', async () => {
+    await mkdir(join(b, 'legacy-suite'))
+    await writeFile(join(b, 'legacy-suite', 'legacy.rb'), legacyFile)
+    mockDialog.showOpenDialog.mockResolvedValue({
+      canceled: false,
+      filePaths: [join(b, 'legacy-suite')]
+    })
+    const res = await importSuite(win)
+    expect(res.suite!.tests[0].steps).toEqual(expected)
+  })
+
+  it('importProject', async () => {
+    await mkdir(join(b, 'legacy-suite'))
+    await writeFile(join(b, 'legacy-suite', 'legacy.rb'), legacyFile)
+    mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [b] })
+    await importProject(win)
+    const imported = Array.from(appState.suites.values()).find((s) => s.name === 'legacy-suite')
+    expect(imported!.tests[0].steps).toEqual(expected)
   })
 })

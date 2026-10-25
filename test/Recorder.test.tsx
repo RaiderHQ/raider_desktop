@@ -86,8 +86,7 @@ const mockApi = {
   isRbenvRubyInstalled: vi.fn(),
   isRvmRubyInstalled: vi.fn(),
   isSystemRubyInstalled: vi.fn(),
-  xpathParser: vi.fn().mockResolvedValue(''),
-  commandParser: vi.fn().mockResolvedValue(''),
+  renderStep: vi.fn().mockResolvedValue(''),
   updateRecordingSettings: vi.fn().mockResolvedValue({ success: true }),
   setActiveProject: vi.fn(),
   getRecorderSettings: vi.fn().mockResolvedValue({ implicitWait: 3, explicitWait: 25 }),
@@ -126,6 +125,12 @@ const mockApi = {
 }
 
 let suiteUpdatedCallback: (event: IpcRendererEvent, updatedSuites: unknown) => void = () => {}
+const ipcListeners = new Map<string, (event: IpcRendererEvent, ...args: unknown[]) => unknown>()
+const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
+  await act(async () => {
+    await ipcListeners.get(channel)?.({} as IpcRendererEvent, ...args)
+  })
+}
 
 beforeEach(() => {
   window.api = mockApi
@@ -138,6 +143,7 @@ beforeEach(() => {
         if (channel === 'suite-updated') {
           suiteUpdatedCallback = callback
         }
+        ipcListeners.set(channel, callback)
         return () => {}
       },
       send: vi.fn(),
@@ -322,5 +328,86 @@ describe('Recorder Page', (): void => {
     })
 
     expect(screen.getByText('Untitled Test')).toBeInTheDocument()
+  })
+
+  describe('recording steps', () => {
+    const el = { strategy: 'id' as const, value: 'greeting', label: 'Greeting' }
+
+    beforeEach(() => {
+      const test = { id: 't1', name: 'Test', url: 'https://x.test', steps: [] }
+      const suites = [{ id: 's1', name: 'Suite', tests: [test] }]
+      // The page loads suites on mount and selects the first test
+      mockApi.getSuites.mockResolvedValue(suites)
+      useRecorderStore.setState({ suites, activeSuiteId: 's1', activeTest: test })
+    })
+
+    const steps = (): unknown[] => useRecorderStore.getState().activeTest!.steps
+
+    it('starts a recording with a navigate step', async () => {
+      await act(async () => {
+        render(<Recorder />)
+      })
+      await emit('recording-started', 'https://x.test/start')
+      expect(steps()).toEqual([
+        { id: expect.any(String), kind: 'navigate', url: 'https://x.test/start' }
+      ])
+    })
+
+    it('appends recorded steps', async () => {
+      await act(async () => {
+        render(<Recorder />)
+      })
+      const click = { id: 'c1', kind: 'click', element: el }
+      await emit('new-recorded-step', click)
+      expect(steps()).toEqual([click])
+    })
+
+    it('appends assertion steps that need no text', async () => {
+      await act(async () => {
+        render(<Recorder />)
+      })
+      const step = { id: 'a1', kind: 'assert', check: 'displayed', element: el }
+      await emit('add-assertion-step', step)
+      expect(steps()).toEqual([step])
+    })
+
+    it('adds the Step from the assertion modal, with no Ruby in the store', async () => {
+      await act(async () => {
+        render(<Recorder />)
+      })
+      await emit('add-assertion-step', { pendingAssertion: 'textIncludes', element: el, text: 'Hi' })
+
+      expect(screen.getByText('recorder.assertionTextModal.titles.text-includes')).toBeInTheDocument()
+      await act(async () => {
+        fireEvent.change(screen.getByDisplayValue('Hi'), { target: { value: 'Hi there' } })
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByText('recorder.assertionTextModal.save'))
+      })
+
+      expect(steps()).toEqual([
+        {
+          id: expect.any(String),
+          kind: 'assert',
+          check: 'textIncludes',
+          element: el,
+          expected: 'Hi there'
+        }
+      ])
+      expect(JSON.stringify(useRecorderStore.getState())).not.toMatch(/@driver|@browser/)
+    })
+
+    it('adds page assertions from the modal without an element', async () => {
+      await act(async () => {
+        render(<Recorder />)
+      })
+      await emit('add-assertion-step', { pendingAssertion: 'titleEquals', text: 'Home' })
+      await act(async () => {
+        fireEvent.click(screen.getByText('recorder.assertionTextModal.save'))
+      })
+      expect(steps()).toEqual([
+        { id: expect.any(String), kind: 'assert', check: 'titleEquals', expected: 'Home' }
+      ])
+    })
   })
 })

@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import { migrateLegacyStep, migrateLegacyTest } from '../../../src/main/codegen/legacy'
 import { isStep } from '../../../src/shared/types/step'
 import type { Step } from '../../../src/shared/types/step'
-import { generateSeleniumCommand } from '../../../src/main/handlers/frameworkTemplates'
 
 const css = (value: string) => ({ strategy: 'css' as const, value })
 const id = (value: string) => ({ strategy: 'id' as const, value })
@@ -232,31 +231,18 @@ describe('migrateLegacyTest', () => {
   })
 })
 
+// Verbatim output of the removed recorder generator (frameworkTemplates.generateSeleniumCommand)
 describe('migrates the old recorder output', () => {
-  const base = { tagName: 'INPUT' }
   it('type, click, key, xpath', () => {
     const type = migrateLegacyStep(
-      generateSeleniumCommand({
-        ...base,
-        action: 'type',
-        strategy: 'xpath',
-        selector: '//a[@x="1"]/b',
-        value: 'hi'
-      })
+      `@driver.find_element(:xpath, '//a[@x="1"]/b').clear\n` +
+        `    @driver.find_element(:xpath, '//a[@x="1"]/b').send_keys("hi")`
     )
     expect(strip(type)).toEqual({ kind: 'type', element: xp('//a[@x="1"]/b'), text: 'hi' })
-    const click = migrateLegacyStep(
-      generateSeleniumCommand({ ...base, action: 'click', strategy: 'css', selector: '#a' })
-    )
+    const click = migrateLegacyStep('@driver.find_element(:css, "#a").click # Clicked <input>')
     expect(strip(click)).toEqual({ kind: 'click', element: css('#a') })
     const key = migrateLegacyStep(
-      generateSeleniumCommand({
-        ...base,
-        action: 'sendKeys',
-        strategy: 'id',
-        selector: 'q',
-        value: 'ArrowDown'
-      })
+      '@driver.find_element(:id, "q").send_keys(:arrow_down) # Pressed ArrowDown on <input>'
     )
     expect(strip(key)).toEqual({ kind: 'pressKey', element: id('q'), key: 'ArrowDown' })
   })

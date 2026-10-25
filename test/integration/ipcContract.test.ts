@@ -83,9 +83,8 @@ describe('IPC Contract', () => {
     'runTest',
     'runSuite',
 
-    // Command Parsing
-    'xpathParser',
-    'commandParser',
+    // Step Rendering
+    'renderStep',
 
     // Suite Management
     'getSuites',

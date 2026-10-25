@@ -4,6 +4,7 @@ import { appState } from '../appState'
 import { persistActiveSuites } from '../suitePersistence'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
+import { migrateLegacyTest } from '../../codegen/legacy'
 
 export default async function importTest(
   mainWindow: BrowserWindow,
@@ -47,12 +48,8 @@ export default async function importTest(
       return { success: false, error: 'Suite not found' }
     }
 
-    const newTest: Test = {
-      id: randomUUID(),
-      name: testName,
-      url: '',
-      steps: steps
-    }
+    // Imported files hold Ruby lines; convert them to steps
+    const newTest: Test = migrateLegacyTest({ id: randomUUID(), name: testName, url: '', steps })
 
     if (suite.tests.some((t) => t.name === newTest.name)) {
       return { success: false, error: 'A test with this name already exists in the suite.' }

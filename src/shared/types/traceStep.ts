@@ -1,6 +1,7 @@
 export interface TraceStep {
   id: string
-  command: string
+  stepId?: string // the recorded Step this trace entry belongs to
+  command: string // Ruby for the step, rendered for the project's automation
   timestamp: number
   url: string
   screenshotPath?: string

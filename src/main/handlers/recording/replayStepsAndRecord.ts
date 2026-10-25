@@ -4,8 +4,8 @@ import os from 'os'
 import path from 'path'
 import { appState } from '../appState'
 import startRecordingMain from './startRecordingMain'
-import { generateRspecFile } from '../../codegen/testFile'
-import { migrateLegacyStep } from '../../codegen/legacy'
+import { generateRspecFile, toAutomation } from '../../codegen/testFile'
+import type { Step } from '../../../shared/types/step'
 
 interface ReplayResult {
   success: boolean
@@ -23,26 +23,24 @@ interface ReplayResult {
 async function replayStepsAndRecord(
   _event: Electron.IpcMainInvokeEvent,
   _testName: string,
-  stepsToReplay: string[],
+  stepsToReplay: Step[],
   rubyCommand: string
 ): Promise<ReplayResult> {
   const { implicitWait, explicitWait } = appState.recorderSettings
   const tempFilePath = path.join(os.tmpdir(), `replay_${Date.now()}_spec.rb`)
 
   // Replay headlessly in Chrome, then print the final URL for the recorder to resume from.
+  const automation = toAutomation(appState.projectAutomation)
+  const currentUrl = automation === 'watir' ? '@browser.url' : '@driver.current_url'
   const script = generateRspecFile(
     {
       name: 'replay',
       steps: [
-        ...stepsToReplay.map((s) => migrateLegacyStep(s)),
-        {
-          id: 'replay-final-url',
-          kind: 'custom',
-          code: 'puts "RAIDER_FINAL_URL:#{@driver.current_url}"'
-        }
+        ...stepsToReplay,
+        { id: 'replay-final-url', kind: 'custom', code: `puts "RAIDER_FINAL_URL:#{${currentUrl}}"` }
       ]
     },
-    'selenium',
+    automation,
     { browser: 'chrome', headless: true, implicitWait, explicitWait }
   )
 

@@ -27,6 +27,11 @@ import replayInWebview, {
   cancelWebviewReplay
 } from '../../src/main/handlers/recording/replayInWebview'
 import { appState } from '../../src/main/handlers/appState'
+import { migrateLegacyStep } from '../../src/main/codegen/legacy'
+import type { Step } from '../../src/shared/types/step'
+
+/** Steps as the recorder stored them before the Step model (migrated on the way in). */
+const replay = (codes: string[]) => replayInWebview({} as any, codes.map(migrateLegacyStep))
 
 describe('replayInWebview', () => {
   beforeEach(() => {
@@ -44,7 +49,7 @@ describe('replayInWebview', () => {
   it('returns error when webview is not registered (recorderWebContentsId is null)', async () => {
     appState.recorderWebContentsId = null
 
-    const result = await replayInWebview({} as any, ['@driver.get("https://example.com")'])
+    const result = await replay(['@driver.get("https://example.com")'])
 
     expect(result).toEqual({ success: false, error: 'Webview not registered' })
   })
@@ -54,7 +59,7 @@ describe('replayInWebview', () => {
     appState.recorderWebContentsId = 42
     mockFromId.mockReturnValue(null)
 
-    const result = await replayInWebview({} as any, ['@driver.get("https://example.com")'])
+    const result = await replay(['@driver.get("https://example.com")'])
 
     expect(result).toEqual({ success: false, error: 'Webview web contents not found' })
   })
@@ -63,7 +68,7 @@ describe('replayInWebview', () => {
   it('successfully replays a @driver.get("url") step (calls wc.loadURL)', async () => {
     appState.recorderWebContentsId = 1
 
-    const promise = replayInWebview({} as any, ['@driver.get("https://example.com")'])
+    const promise = replay(['@driver.get("https://example.com")'])
     await vi.runAllTimersAsync()
     const result = await promise
 
@@ -75,7 +80,7 @@ describe('replayInWebview', () => {
   it('successfully replays a click step (calls wc.executeJavaScript with click code)', async () => {
     appState.recorderWebContentsId = 1
 
-    const promise = replayInWebview({} as any, [
+    const promise = replay([
       '@driver.find_element(:css, "#btn").click'
     ])
     await vi.runAllTimersAsync()
@@ -92,7 +97,7 @@ describe('replayInWebview', () => {
   it('successfully replays a type step (calls wc.executeJavaScript with type code)', async () => {
     appState.recorderWebContentsId = 1
 
-    const promise = replayInWebview({} as any, [
+    const promise = replay([
       '@driver.find_element(:css, "#input").send_keys("hello")'
     ])
     await vi.runAllTimersAsync()
@@ -109,7 +114,7 @@ describe('replayInWebview', () => {
   it('successfully replays a sendKey step (calls wc.executeJavaScript with keydown)', async () => {
     appState.recorderWebContentsId = 1
 
-    const promise = replayInWebview({} as any, [
+    const promise = replay([
       '@driver.find_element(:css, "#input").send_keys(:enter)'
     ])
     await vi.runAllTimersAsync()
@@ -126,7 +131,7 @@ describe('replayInWebview', () => {
   it('successfully replays a sleep step (does not call any webContents methods)', async () => {
     appState.recorderWebContentsId = 1
 
-    const promise = replayInWebview({} as any, ['sleep(2)'])
+    const promise = replay(['sleep(2)'])
     await vi.runAllTimersAsync()
     const result = await promise
 
@@ -140,7 +145,7 @@ describe('replayInWebview', () => {
     appState.recorderWebContentsId = 1
     mockExecuteJavaScript.mockRejectedValueOnce(new Error('Element not found'))
 
-    const promise = replayInWebview({} as any, [
+    const promise = replay([
       '@driver.find_element(:css, "#missing").click'
     ])
     await vi.runAllTimersAsync()
@@ -162,7 +167,7 @@ describe('replayInWebview', () => {
       return Promise.resolve()
     })
 
-    const promise = replayInWebview({} as any, ['@driver.get("https://example.com")'])
+    const promise = replay(['@driver.get("https://example.com")'])
     await vi.runAllTimersAsync()
     await promise
 
@@ -175,7 +180,7 @@ describe('replayInWebview', () => {
     appState.recorderWebContentsId = 1
     mockExecuteJavaScript.mockRejectedValueOnce(new Error('boom'))
 
-    const promise = replayInWebview({} as any, [
+    const promise = replay([
       '@driver.find_element(:css, "#x").click'
     ])
     await vi.runAllTimersAsync()
@@ -188,7 +193,7 @@ describe('replayInWebview', () => {
   it('sends replay-progress events to mainWindow', async () => {
     appState.recorderWebContentsId = 1
 
-    const promise = replayInWebview({} as any, [
+    const promise = replay([
       '@driver.get("https://example.com")',
       'sleep(0)'
     ])
@@ -208,7 +213,7 @@ describe('replayInWebview', () => {
       return Promise.resolve()
     })
 
-    const promise = replayInWebview({} as any, [
+    const promise = replay([
       '@driver.get("https://example.com")',
       '@driver.get("https://example.com/page2")'
     ])
@@ -218,5 +223,30 @@ describe('replayInWebview', () => {
     expect(result).toEqual({ success: false, cancelled: true })
     // Only the first loadURL should have been called
     expect(mockLoadURL).toHaveBeenCalledTimes(1)
+  })
+
+  it('replays structured steps and skips waits and assertions', async () => {
+    appState.recorderWebContentsId = 1
+    mockLoadURL.mockResolvedValue(undefined) // an earlier test cancels from loadURL
+    const el = { strategy: 'id' as const, value: 'q' }
+    const steps: Step[] = [
+      { id: '1', kind: 'navigate', url: 'https://x.test' },
+      { id: '2', kind: 'type', element: el, text: "it's" },
+      { id: '3', kind: 'pressKey', element: el, key: 'Enter' },
+      { id: '4', kind: 'wait', element: el, until: 'visible' },
+      { id: '5', kind: 'assert', check: 'titleEquals', expected: 'X' }
+    ]
+
+    const promise = replayInWebview({} as any, steps)
+    await vi.runAllTimersAsync()
+    const result = await promise
+
+    expect(mockLoadURL).toHaveBeenCalledWith('https://x.test')
+    expect(mockExecuteJavaScript).toHaveBeenCalledTimes(2)
+    expect(mockExecuteJavaScript.mock.calls[0][0]).toContain("document.getElementById('q')")
+    expect(mockExecuteJavaScript.mock.calls[0][0]).toContain("el.value = 'it\\'s'")
+    expect(mockExecuteJavaScript.mock.calls[1][0]).toContain("key: 'Enter'")
+    expect(mockSend).toHaveBeenCalledWith('replay-progress', { current: 5, total: 5 })
+    expect(result).toEqual({ success: true })
   })
 })

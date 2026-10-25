@@ -12,7 +12,9 @@ import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
-import { formatLocator } from '@foundation/recorderUtils'
+import { buildAssertionStep, assertionModalType } from '@foundation/assertionStep'
+import type { Step } from '@shared/types/step'
+import type { PendingAssertion } from '@shared/types/pendingAssertion'
 import { useRecorderSettings } from '../../hooks/useRecorderSettings'
 import { useSuiteSync, useRecordingIPC } from '../../hooks/useRecorderIPC'
 import { useTranslation } from 'react-i18next'
@@ -20,12 +22,6 @@ import toast from 'react-hot-toast'
 import DeleteModal from '@components/DeleteModal'
 import RecordingDashboard from '@components/RecordingDashboard'
 
-
-interface AssertionInfo {
-  selector: string
-  text: string
-  assertionType?: string
-}
 
 type RecorderTab = 'recording' | 'dashboard'
 
@@ -57,7 +53,7 @@ const Recorder: React.FC = (): JSX.Element => {
   const [activeTab, setActiveTab] = useState<RecorderTab>('recording')
 
   // Local modal state
-  const [assertionInfo, setAssertionInfo] = useState<AssertionInfo | null>(null)
+  const [assertionInfo, setAssertionInfo] = useState<PendingAssertion | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [testToDelete, setTestToDelete] = useState<Test | null>(null)
 
@@ -258,28 +254,12 @@ const Recorder: React.FC = (): JSX.Element => {
 
   const handleSaveAssertionText = (expectedText: string): void => {
     if (assertionInfo) {
-      const { strategy, value } = formatLocator(assertionInfo.selector)
-      let newStep = ''
-
-      switch (assertionInfo.assertionType) {
-        case 'text-includes':
-          newStep = `expect(@driver.find_element(:${strategy}, ${value}).text).to include("${expectedText}")`
-          break
-        case 'value':
-          newStep = `expect(@driver.find_element(:${strategy}, ${value}).attribute("value")).to eq("${expectedText}")`
-          break
-        case 'page-title':
-          newStep = `expect(@driver.title).to eq("${expectedText}")`
-          break
-        case 'page-url':
-          newStep = `expect(@driver.current_url).to include("${expectedText}")`
-          break
-        default:
-          newStep = `expect(@driver.find_element(:${strategy}, ${value}).text).to eq("${expectedText}")`
-          break
-      }
-
-      updateActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
+      const step = buildAssertionStep(
+        assertionInfo.pendingAssertion,
+        assertionInfo.element,
+        expectedText
+      )
+      updateActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, step] } : null))
     }
     setAssertionInfo(null)
   }
@@ -414,7 +394,7 @@ const Recorder: React.FC = (): JSX.Element => {
                       </div>
                       <CommandList
                         steps={activeTest?.steps ?? []}
-                        setSteps={(newSteps: SetStateAction<string[]>) =>
+                        setSteps={(newSteps: SetStateAction<Step[]>) =>
                           updateActiveTest((prevTest) => {
                             if (!prevTest) return null
                             const updatedSteps =
@@ -429,12 +409,12 @@ const Recorder: React.FC = (): JSX.Element => {
                               : null
                           )
                         }
-                        onEditStep={(editIndex, newCommand) =>
+                        onEditStep={(editIndex, newStep) =>
                           updateActiveTest((p) =>
                             p
                               ? {
                                   ...p,
-                                  steps: p.steps.map((s, i) => (i === editIndex ? newCommand : s))
+                                  steps: p.steps.map((s, i) => (i === editIndex ? newStep : s))
                                 }
                               : null
                           )
@@ -550,7 +530,7 @@ const Recorder: React.FC = (): JSX.Element => {
                           </div>
                           <CommandList
                             steps={activeTest?.steps ?? []}
-                            setSteps={(newSteps: SetStateAction<string[]>) =>
+                            setSteps={(newSteps: SetStateAction<Step[]>) =>
                               updateActiveTest((prevTest) => {
                                 if (!prevTest) return null
                                 const updatedSteps =
@@ -565,12 +545,12 @@ const Recorder: React.FC = (): JSX.Element => {
                                   : null
                               )
                             }
-                            onEditStep={(editIndex, newCommand) =>
+                            onEditStep={(editIndex, newStep) =>
                               updateActiveTest((p) =>
                                 p
                                   ? {
                                       ...p,
-                                      steps: p.steps.map((s, i) => (i === editIndex ? newCommand : s))
+                                      steps: p.steps.map((s, i) => (i === editIndex ? newStep : s))
                                     }
                                   : null
                               )
@@ -616,7 +596,7 @@ const Recorder: React.FC = (): JSX.Element => {
       {assertionInfo && (
         <AssertionTextModal
           initialText={assertionInfo.text}
-          assertionType={assertionInfo.assertionType}
+          assertionType={assertionModalType(assertionInfo.pendingAssertion)}
           onSave={handleSaveAssertionText}
           onClose={() => setAssertionInfo(null)}
         />

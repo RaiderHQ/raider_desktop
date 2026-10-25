@@ -1,5 +1,6 @@
 import { webContents } from 'electron'
 import { appState } from '../appState'
+import type { Step } from '../../../shared/types/step'
 
 interface ReplayStepAction {
   type: 'navigate' | 'click' | 'type' | 'sendKey' | 'sleep' | 'executeScript' | 'unknown'
@@ -27,6 +28,7 @@ const KEY_MAP: Record<string, string> = {
   arrow_right: 'ArrowRight'
 }
 
+/** Legacy Ruby parsing, now only used for the code of custom steps. */
 function parseStep(step: string): ReplayStepAction {
   // @driver.get("url")
   let match = step.match(/@driver\.get\("([^"]+)"\)/)
@@ -68,6 +70,34 @@ function parseStep(step: string): ReplayStepAction {
   return { type: 'unknown' }
 }
 
+/** What the webview does for a step. Waits and assertions verify, so replay skips them. */
+function toAction(step: Step): ReplayStepAction {
+  switch (step.kind) {
+    case 'navigate':
+      return { type: 'navigate', url: step.url }
+    case 'click':
+      return { type: 'click', strategy: step.element.strategy, value: step.element.value }
+    case 'type':
+      return {
+        type: 'type',
+        strategy: step.element.strategy,
+        value: step.element.value,
+        text: step.text
+      }
+    case 'pressKey':
+      return {
+        type: 'sendKey',
+        strategy: step.element.strategy,
+        value: step.element.value,
+        key: step.key
+      }
+    case 'custom':
+      return parseStep(step.code)
+    default:
+      return { type: 'unknown' }
+  }
+}
+
 /** Build a JS snippet that finds an element by Selenium strategy + value */
 function buildFindElementJS(strategy: string, value: string): string {
   const escaped = value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
@@ -106,7 +136,7 @@ export function cancelWebviewReplay(): void {
 
 async function replayInWebview(
   _event: Electron.IpcMainInvokeEvent,
-  steps: string[]
+  steps: Step[]
 ): Promise<{ success: boolean; error?: string; cancelled?: boolean }> {
   cancelRequested = false
   appState.isReplayingInWebview = true
@@ -128,7 +158,7 @@ async function replayInWebview(
       return { success: false, cancelled: true }
     }
 
-    const action = parseStep(steps[i])
+    const action = toAction(steps[i])
 
     try {
       switch (action.type) {

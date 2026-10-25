@@ -3,26 +3,31 @@ import { join } from 'path'
 import { appState } from './appState'
 import { safeError } from '../utils/safeLog'
 import type { Suite } from '@foundation/Types/suite'
+import { migrateLegacyTest } from '../codegen/legacy'
 
-// Written as version 1 until Task 10 adds the Step model migration and bumps writes to 2.
+// Version 1 stored steps as Ruby strings; version 2 stores structured Steps.
 export interface SuitesFile {
   version: 1 | 2
   suites: Suite[]
 }
 
-const WRITE_VERSION = 1
+const WRITE_VERSION = 2
 
 const raiderDir = (projectPath: string): string => join(projectPath, '.raider')
 const suitesFile = (projectPath: string): string => join(raiderDir(projectPath), 'suites.json')
 
-function extractSuites(parsed: unknown): Suite[] | null {
-  // A plain array of suites (no version) is accepted as-is
-  if (Array.isArray(parsed)) return parsed as Suite[]
+function extractSuites(parsed: unknown): { suites: Suite[]; version: number } | null {
+  // A plain array of suites (no version) predates versioning, so it is version 1
+  if (Array.isArray(parsed)) return { suites: parsed as Suite[], version: 1 }
   if (parsed && typeof parsed === 'object' && Array.isArray((parsed as SuitesFile).suites)) {
-    return (parsed as SuitesFile).suites
+    const { suites, version } = parsed as SuitesFile
+    return { suites, version: typeof version === 'number' ? version : 1 }
   }
   return null
 }
+
+const migrateSuites = (suites: Suite[]): Suite[] =>
+  suites.map((suite) => ({ ...suite, tests: (suite.tests ?? []).map(migrateLegacyTest) }))
 
 export async function loadSuites(
   projectPath: string
@@ -38,19 +43,25 @@ export async function loadSuites(
     throw error
   }
 
-  let suites: Suite[] | null = null
+  let extracted: ReturnType<typeof extractSuites> = null
   try {
-    suites = extractSuites(JSON.parse(raw))
+    extracted = extractSuites(JSON.parse(raw))
   } catch {
-    suites = null
+    extracted = null
   }
 
-  if (suites === null) {
+  if (extracted === null) {
     await fs.rename(file, `${file}.bak`)
     return { suites: [], recoveredFromCorrupt: true }
   }
 
-  // TODO(Task 10): migrate version-1 tests (string[] steps) here via migrateLegacyTest
+  if (extracted.version >= WRITE_VERSION) {
+    return { suites: extracted.suites, recoveredFromCorrupt: false }
+  }
+
+  // Older files hold Ruby string steps: convert once and rewrite in the current format
+  const suites = migrateSuites(extracted.suites)
+  await saveSuites(projectPath, suites)
   return { suites, recoveredFromCorrupt: false }
 }
 

@@ -20,6 +20,14 @@ function getPrioritizedSelector(el: Element) {
   return buildSelector(el, selectorPriorities)
 }
 
+// Fallbacks for naming an element when it has no visible text (e.g. inputs)
+function labelHints(el: Element): { ariaLabel?: string; placeholder?: string } {
+  return {
+    ariaLabel: el.getAttribute('aria-label') ?? undefined,
+    placeholder: el.getAttribute('placeholder') ?? undefined
+  }
+}
+
 document.addEventListener(
   'click',
   (event) => {
@@ -35,6 +43,7 @@ document.addEventListener(
       tagName: target.tagName,
       pageUrl: window.location.href,
       innerText: (target.innerText || '').slice(0, 200),
+      ...labelHints(target),
       boundingRect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
     })
   },
@@ -56,6 +65,7 @@ document.addEventListener(
         value: target.value,
         pageUrl: window.location.href,
         innerText: (target.innerText || '').slice(0, 200),
+        ...labelHints(target),
         boundingRect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
       })
     }
@@ -90,6 +100,7 @@ document.addEventListener(
           value: key,
           pageUrl: window.location.href,
           innerText: (target.innerText || '').slice(0, 200),
+          ...labelHints(target),
           boundingRect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
         })
       }
@@ -114,6 +125,7 @@ document.addEventListener(
       ipcRenderer.send('show-assertion-context-menu', {
         selector,
         strategy,
+        ...labelHints(target),
         elementText,
         elementValue,
         inputType,

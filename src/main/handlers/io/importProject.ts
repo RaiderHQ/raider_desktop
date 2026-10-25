@@ -6,6 +6,7 @@ import { persistActiveSuites } from '../suitePersistence'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
+import { migrateLegacyTest } from '../../codegen/legacy'
 
 export default async function importProject(
   mainWindow: BrowserWindow
@@ -59,12 +60,13 @@ export default async function importProject(
                 .map((step) => step.trim())
             : []
 
-          const newTest: Test = {
+          // Imported files hold Ruby lines; convert them to steps
+          const newTest: Test = migrateLegacyTest({
             id: randomUUID(),
             name: testName,
             url: '',
-            steps: steps
-          }
+            steps
+          })
           newSuite.tests.push(newTest)
         }
       }

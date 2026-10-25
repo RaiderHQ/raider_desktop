@@ -16,6 +16,7 @@ vi.mock('fs', () => {
 vi.mock('../../src/main/handlers/appState', () => ({
   appState: {
     mainWindow: null,
+    projectAutomation: null,
     sessionUrl: null,
     activeReplayProcess: null,
     recorderSettings: {
@@ -34,12 +35,22 @@ vi.mock('../../src/main/handlers/recording/startRecordingMain', () => ({
 
 import replayStepsAndRecord from '../../src/main/handlers/recording/replayStepsAndRecord'
 import { appState } from '../../src/main/handlers/appState'
+import type { Step } from '../../src/shared/types/step'
 
 const mockExec = exec as ReturnType<typeof vi.fn>
 const mockWriteFile = fs.writeFile as ReturnType<typeof vi.fn>
 
+const click = (id: string, value: string): Step => ({
+  id,
+  kind: 'click',
+  element: { strategy: 'id', value }
+})
+
 describe('replayStepsAndRecord', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    appState.projectAutomation = null
+  })
 
   it('replays the steps via a generated rspec file without sleeps', async () => {
     mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) =>
@@ -48,7 +59,7 @@ describe('replayStepsAndRecord', () => {
     const result = await replayStepsAndRecord(
       {} as never,
       'T',
-      ['@driver.find_element(:id, "a").click', '@driver.find_element(:id, "b").click'],
+      [click('1', 'a'), click('2', 'b')],
       'ruby'
     )
 
@@ -56,11 +67,27 @@ describe('replayStepsAndRecord', () => {
     expect(code).toContain("'--headless=new'")
     expect(code).toContain("@driver.find_element(id: 'a').click")
     expect(code).toContain("@driver.find_element(id: 'b').click")
-    expect(code).toContain('RAIDER_FINAL_URL')
+    expect(code).toContain('puts "RAIDER_FINAL_URL:#{@driver.current_url}"')
     expect(code).toContain('implicit_wait = 3')
     expect(code).not.toContain('sleep(')
     expect(mockExec.mock.calls[0][0]).toMatch(/^ruby -S rspec .*\.rb$/)
     expect(appState.sessionUrl).toBe('http://final/page')
+    expect(result.success).toBe(true)
+  })
+
+  it('replays with Watir and reads the final URL from @browser on a Watir project', async () => {
+    appState.projectAutomation = 'watir'
+    mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) =>
+      cb(null, 'RAIDER_FINAL_URL:http://final/watir\n', '')
+    )
+    const result = await replayStepsAndRecord({} as never, 'T', [click('1', 'a')], 'ruby')
+
+    const code = mockWriteFile.mock.calls[0][1] as string
+    expect(code).toContain("require 'watir'")
+    expect(code).toContain("@browser.element(id: 'a').click")
+    expect(code).toContain('puts "RAIDER_FINAL_URL:#{@browser.url}"')
+    expect(code).not.toContain('@driver')
+    expect(appState.sessionUrl).toBe('http://final/watir')
     expect(result.success).toBe(true)
   })
 

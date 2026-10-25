@@ -10,7 +10,8 @@ import type { Test } from '../../shared/types/test'
  * Anything it cannot map losslessly becomes a `custom` step.
  */
 
-export type MigratedTest = Omit<Test, 'steps'> & { steps: Step[] }
+/** Kept as an alias: a migrated test is a plain Test now that steps are Step[]. */
+export type MigratedTest = Test
 
 // find_element(:strategy, <ruby string>) — capture groups: strategy, %q(), "…", '…'
 const FE = String.raw`@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\.|[^"\\])*)"|'([^']*)')\)`
@@ -165,7 +166,7 @@ export function migrateLegacyStep(code: string): Step {
   return (lines.length <= 1 && parseLine(code)) || custom(code)
 }
 
-function migrateLegacySteps(steps: unknown[]): Step[] {
+export function migrateLegacySteps(steps: unknown[]): Step[] {
   const out: Step[] = []
   for (let i = 0; i < steps.length; i++) {
     const s = steps[i]
@@ -194,6 +195,6 @@ export function migrateLegacyTest(test: {
   steps: unknown[]
   hasTrace?: boolean
   trace?: unknown
-}): MigratedTest {
-  return { ...test, steps: migrateLegacySteps(test.steps) } as MigratedTest
+}): Test {
+  return { ...test, steps: migrateLegacySteps(test.steps) } as Test
 }

@@ -4,7 +4,7 @@ import type { TestData } from '@foundation/Types/testData'
 import { appState } from '../appState'
 import { getExportExtension, getExportFilters } from '../frameworkTemplates'
 import { generateRspecFile, toAutomation } from '../../codegen/testFile'
-import { migrateLegacyStep } from '../../codegen/legacy'
+import { migrateLegacySteps } from '../../codegen/legacy'
 import { safeError } from '../../utils/safeLog'
 
 export default async ({
@@ -32,10 +32,7 @@ export default async ({
   }
 
   const scriptContent = generateRspecFile(
-    {
-      name: testName,
-      steps: steps.map((s) => migrateLegacyStep(s))
-    },
+    { name: testName, steps: migrateLegacySteps(steps) },
     toAutomation(appState.projectAutomation),
     appState.recorderSettings
   )

@@ -528,25 +528,26 @@
     },
     "commandParser": {
       "visit": "Visit {{url}}",
-      "waitForElementDisplayed": "Wait for element with {{strategy}} \"{{value}}\" to be displayed",
-      "waitForElementEnabled": "Wait for element with {{strategy}} \"{{value}}\" to be enabled",
-      "clickElement": "Click element with {{strategy}} \"{{value}}\"",
-      "pressKey": "Press the {{key}} key on element with {{strategy}} \"{{value}}\"",
-      "typeText": "Type \"{{text}}\" into element with {{strategy}} \"{{value}}\"",
-      "wait": "Wait for {{seconds}} seconds",
-      "executeScript": "Execute script: {{script}}",
-      "switchToFrame": "Switch to frame identified by {{frame}}",
+      "waitForElementDisplayed": "Wait for \"{{element}}\" to be displayed",
+      "waitForElementEnabled": "Wait for \"{{element}}\" to be enabled",
+      "clickElement": "Click \"{{element}}\"",
+      "pressKey": "Press the {{key}} key on \"{{element}}\"",
+      "typeText": "Type \"{{text}}\" into \"{{element}}\"",
+      "switchToFrame": "Switch to frame \"{{element}}\"",
       "switchToDefaultContent": "Switch back to main content",
-      "assertElementDisplayed": "Assert that element with {{strategy}} \"{{value}}\" is displayed",
-      "assertElementNotDisplayed": "Assert that element with {{strategy}} \"{{value}}\" is NOT displayed",
-      "assertElementEnabled": "Assert that element with {{strategy}} \"{{value}}\" is enabled",
-      "assertElementChecked": "Assert that element with {{strategy}} \"{{value}}\" is checked",
-      "assertElementTextEquals": "Assert that element with {{strategy}} \"{{value}}\" has text equal to \"{{text}}\"",
-      "assertElementTextIncludes": "Assert that element with {{strategy}} \"{{value}}\" has text including \"{{text}}\"",
-      "assertElementValue": "Assert that element with {{strategy}} \"{{value}}\" has value \"{{text}}\"",
+      "assertElementDisplayed": "Assert that \"{{element}}\" is displayed",
+      "assertElementNotDisplayed": "Assert that \"{{element}}\" is NOT displayed",
+      "assertElementEnabled": "Assert that \"{{element}}\" is enabled",
+      "assertElementChecked": "Assert that \"{{element}}\" is checked",
+      "assertElementTextEquals": "Assert that \"{{element}}\" has text equal to \"{{text}}\"",
+      "assertElementTextIncludes": "Assert that \"{{element}}\" has text including \"{{text}}\"",
+      "assertElementValue": "Assert that \"{{element}}\" has value \"{{text}}\"",
       "assertPageTitle": "Assert that page title equals \"{{title}}\"",
       "assertUrlContains": "Assert that current URL contains \"{{url}}\"",
-      "waitForElementDisappear": "Wait for element with {{strategy}} \"{{value}}\" to disappear"
+      "waitForElementDisappear": "Wait for \"{{element}}\" to disappear"
+    },
+    "step": {
+      "custom": "Custom code step"
     }
   },
   "concepts": {

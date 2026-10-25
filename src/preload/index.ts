@@ -5,6 +5,7 @@ import type { CommandType } from '@foundation/Types/commandType'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import type { TraceStep } from '@foundation/Types/traceStep'
+import type { Step } from '@shared/types/step'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 
@@ -195,14 +196,14 @@ const api = {
     ipcRenderer.invoke('start-recording-main'),
   replayStepsAndRecord: async (
     testName: string,
-    stepsToReplay: string[],
+    stepsToReplay: Step[],
     rubyCommand: string
   ): Promise<{ success: boolean; url?: string; preloadPath?: string; error?: string; cancelled?: boolean }> =>
     ipcRenderer.invoke('replay-steps-and-record', testName, stepsToReplay, rubyCommand),
   cancelReplay: async (): Promise<{ success: boolean }> =>
     ipcRenderer.invoke('cancel-replay'),
   replayInWebview: async (
-    steps: string[]
+    steps: Step[]
   ): Promise<{ success: boolean; error?: string; cancelled?: boolean }> =>
     ipcRenderer.invoke('replay-in-webview', steps),
   registerRecorderWebContents: async (webContentsId: number): Promise<void> =>
@@ -210,15 +211,10 @@ const api = {
   stopRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('stop-recording-main'),
   loadUrlRequest: async (url: string): Promise<CommandType> =>
     ipcRenderer.invoke('load-url-request', url),
-  xpathParser: (command: string): Promise<string> => {
-    return ipcRenderer.invoke('xpath-parser', command)
-  },
-  commandParser: (command: string): Promise<string> => {
-    return ipcRenderer.invoke('command-parser', command)
-  },
+  renderStep: (step: Step): Promise<string> => ipcRenderer.invoke('render-step', step),
   exportTest: (
     testName: string,
-    steps: string[]
+    steps: Step[]
   ): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('export-test', { testName, steps }),
   runTest: async (
