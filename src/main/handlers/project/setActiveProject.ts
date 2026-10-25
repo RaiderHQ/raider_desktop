@@ -23,6 +23,19 @@ export async function activationSettled(): Promise<void> {
   await activation
 }
 
+/**
+ * Re-reads the recorder settings after something rewrote the project's config,
+ * so runs and recordings use the new values without reopening the project.
+ * Does nothing unless the given project is the active one.
+ */
+export async function refreshRecorderSettings(projectPath: string): Promise<void> {
+  await activationSettled()
+  if (projectPath !== appState.projectPath) return
+  const settings = await readRecorderSettings(projectPath)
+  // The active project may have changed while the config was being read
+  if (projectPath === appState.projectPath) appState.recorderSettings = settings
+}
+
 /** Current recorder settings, once any in-flight project activation has finished. */
 export async function getRecorderSettings(): Promise<RecorderSettings> {
   await activationSettled()
