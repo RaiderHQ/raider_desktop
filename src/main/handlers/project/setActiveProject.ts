@@ -18,22 +18,31 @@ function setActiveProject(projectPath: string | null): Promise<ActivationResult>
   return result
 }
 
+/** Resolves once any in-flight project activation has finished. */
+export async function activationSettled(): Promise<void> {
+  await activation
+}
+
 /** Current recorder settings, once any in-flight project activation has finished. */
 export async function getRecorderSettings(): Promise<RecorderSettings> {
-  await activation
+  await activationSettled()
   return appState.recorderSettings
+}
+
+function clearActiveProject(): void {
+  appState.projectPath = null
+  appState.recorderSettings = { ...DEFAULT_RECORDER_SETTINGS }
+  appState.suites = new Map()
+  appState.mainWindow?.webContents.send('suite-updated', [])
 }
 
 async function activate(projectPath: string | null): Promise<ActivationResult> {
   try {
     appState.sessionUrl = null
     if (projectPath === null) {
-      appState.projectPath = null
-      appState.recorderSettings = { ...DEFAULT_RECORDER_SETTINGS }
-      appState.suites = new Map()
-      appState.mainWindow?.webContents.send('suite-updated', [])
+      clearActiveProject()
     } else {
-      // Load everything first so a failure leaves the previous project untouched
+      // Load everything before swapping, so suites and projectPath always change together
       const settings = await readRecorderSettings(projectPath)
       const { suites, recoveredFromCorrupt, backupSaved } = await loadSuites(projectPath)
       appState.recorderSettings = settings
@@ -46,6 +55,9 @@ async function activate(projectPath: string | null): Promise<ActivationResult> {
     }
     return { success: true, settings: appState.recorderSettings }
   } catch (error) {
+    // The renderer has already switched projects, so keeping the previous one active
+    // would save recordings and settings into a project the user no longer sees
+    clearActiveProject()
     return { success: false, error: (error as Error).message }
   }
 }

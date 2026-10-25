@@ -382,6 +382,9 @@
   "errorPage": {
     "title": "Pre-requisites not installed"
   },
+  "project": {
+    "activationFailed": "This project's saved tests and recorder settings couldn't be loaded, so nothing will be recorded or saved for it. Fix the problem and open the project again. Details: {{error}}"
+  },
   "suites": {
     "recovered": {
       "backupSaved": "Your saved suites couldn't be read, so this project opened with no suites. A copy of the old file was kept in the project's .raider folder.",

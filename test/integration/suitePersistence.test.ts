@@ -23,6 +23,7 @@ import importProject from '../../src/main/handlers/io/importProject'
 import importSuite from '../../src/main/handlers/io/importSuite'
 import importTest from '../../src/main/handlers/io/importTest'
 import saveRecording from '../../src/main/handlers/recording/saveRecording'
+import getSuites from '../../src/main/handlers/getSuites'
 import * as persistence from '../../src/main/handlers/suitePersistence'
 import { loadSuites, saveSuites } from '../../src/main/handlers/suitePersistence'
 import type { Suite } from '../../src/shared/types/suite'
@@ -393,5 +394,34 @@ describe('imports migrate recorded Ruby to steps', () => {
     await importProject(win)
     const imported = Array.from(appState.suites.values()).find((s) => s.name === 'legacy-suite')
     expect(imported!.tests[0].steps).toEqual(expected)
+  })
+})
+
+describe('failed activation', () => {
+  it('clears the active project so nothing is saved into the previous one', async () => {
+    await saveSuites(a, [suite('A')])
+    await setActiveProject(a)
+    // A directory where the file should be makes reading it fail with EISDIR
+    await mkdir(join(b, '.raider', 'suites.json'), { recursive: true })
+    appState.mainWindow = win
+    const result = await setActiveProject(b)
+    expect(result.success).toBe(false)
+    expect(appState.projectPath).toBeNull()
+    expect(appState.suites.size).toBe(0)
+    expect(appState.recorderSettings).toEqual(DEFAULT_RECORDER_SETTINGS)
+    expect(send).toHaveBeenCalledWith('suite-updated', [])
+
+    await createSuite(null, 'stray')
+    await persistence.persistActiveSuites()
+    expect((await loadSuites(a)).suites).toEqual([suite('A')])
+  })
+})
+
+describe('getSuites', () => {
+  it('waits for an in-flight activation before returning suites', async () => {
+    mockUserData.dir = b
+    await saveSuites(a, [suite('A')])
+    void setActiveProject(a)
+    expect(await getSuites()).toEqual([suite('A')])
   })
 })

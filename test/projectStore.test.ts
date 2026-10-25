@@ -2,6 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 const toastError = vi.hoisted(() => vi.fn())
 vi.mock('react-hot-toast', () => ({ default: { error: toastError } }))
+vi.mock('i18next', () => ({
+  default: { t: (key: string, opts?: object): string => `${key} ${JSON.stringify(opts ?? {})}` }
+}))
 
 // Mock window.api before importing the store
 vi.stubGlobal('window', {
@@ -57,7 +60,10 @@ describe('projectStore', () => {
     })
     useProjectStore.getState().setProjectPath('/broken')
     await vi.waitFor(() =>
-      expect(toastError).toHaveBeenCalledWith(expect.stringContaining('bad config'))
+      expect(toastError).toHaveBeenCalledWith(
+        'project.activationFailed {"error":"bad config"}',
+        expect.anything()
+      )
     )
   })
 

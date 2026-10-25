@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import toast from 'react-hot-toast'
+import i18n from 'i18next'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { FileNode } from '@foundation/Types/fileNode'
 import { RaiderConfig } from '@foundation/Types/raiderConfig'
@@ -109,7 +110,10 @@ const syncActiveProject = (projectPath: string | null): void => {
     .setActiveProject(projectPath)
     .then((result) => {
       if (!result.success) {
-        toast.error(`Could not load project settings: ${result.error}`)
+        // Main has closed the project, so nothing is saved until it opens cleanly
+        toast.error(i18n.t('project.activationFailed', { error: result.error }), {
+          duration: 10000
+        })
       }
     })
     .catch((error: unknown) => {
