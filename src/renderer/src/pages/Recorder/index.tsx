@@ -64,7 +64,8 @@ const Recorder: React.FC = (): JSX.Element => {
   const webviewRef = useRef<Electron.WebviewTag | null>(null)
 
   // Recording settings state
-  const { implicitWait, setImplicitWait, explicitWait, setExplicitWait } = useRecorderSettings()
+  const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
+    useRecorderSettings()
 
   // IPC hooks
   useSuiteSync()
@@ -84,6 +85,8 @@ const Recorder: React.FC = (): JSX.Element => {
   const saveWait = async (
     patch: { implicitWait: number } | { explicitWait: number }
   ): Promise<void> => {
+    // Until the project's settings load, the fields hold defaults that must not overwrite the config
+    if (!loaded) return
     try {
       const result = await window.api.updateRecordingSettings(patch)
       if (!result.success) {

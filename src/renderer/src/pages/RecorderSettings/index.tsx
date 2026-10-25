@@ -6,7 +6,8 @@ import { useRecorderSettings } from '../../hooks/useRecorderSettings'
 
 const RecordingSettings: React.FC = () => {
   const { t } = useTranslation()
-  const { implicitWait, setImplicitWait, explicitWait, setExplicitWait } = useRecorderSettings()
+  const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
+    useRecorderSettings()
   const [isUpdating, setIsUpdating] = useState(false)
 
   const handleImplicitWaitChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
@@ -20,6 +21,11 @@ const RecordingSettings: React.FC = () => {
   }
 
   const handleUpdateClick = async (): Promise<void> => {
+    // Until the project's settings load, the fields hold defaults that must not overwrite the config
+    if (!loaded) {
+      toast.error(t('settings.recording.error.notLoaded'))
+      return
+    }
     setIsUpdating(true)
     try {
       const result = await window.api.updateRecordingSettings({ implicitWait, explicitWait })

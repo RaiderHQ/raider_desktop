@@ -188,7 +188,8 @@
       "description": "Adjust the settings for test recording and playback.",
       "error": {
         "recordingUpdateFailed": "Failed to update recording settings.",
-        "unexpected": "An unexpected error occurred. Please try again."
+        "unexpected": "An unexpected error occurred. Please try again.",
+        "notLoaded": "This project's recording settings haven't loaded, so they can't be saved yet. Open the project again and retry."
       },
       "implicitWait": {
         "label": "Implicit Wait",

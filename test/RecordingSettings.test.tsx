@@ -28,6 +28,28 @@ beforeEach(() => {
 })
 
 describe('RecordingSettings Page', (): void => {
+  it('starts from the spec default explicit wait of 10 before settings load', async () => {
+    mockApi.getRecorderSettings.mockReturnValue(new Promise(() => {}))
+    await act(async () => {
+      render(<RecordingSettings />)
+    })
+    expect(screen.getByLabelText('settings.recording.explicitWait.label')).toHaveValue(10)
+  })
+
+  it('never writes defaults to the config when settings failed to load', async () => {
+    mockApi.getRecorderSettings.mockRejectedValue(new Error('no project'))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await act(async () => {
+      render(<RecordingSettings />)
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByText('settings.recording.updateRecordingSettingsButton'))
+    })
+    expect(mockApi.updateRecordingSettings).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('settings.recording.error.notLoaded')
+    consoleError.mockRestore()
+  })
+
   it('renders correctly', async (): Promise<void> => {
     await act(async () => {
       render(<RecordingSettings />)

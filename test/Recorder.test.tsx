@@ -216,6 +216,20 @@ describe('Recorder Page', (): void => {
     expect(mockApi.updateRecordingSettings).toHaveBeenCalledWith({ explicitWait: 30 })
   })
 
+  it('does not save a wait on blur when settings failed to load', async (): Promise<void> => {
+    mockApi.getRecorderSettings.mockRejectedValueOnce(new Error('no project'))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await act(async () => {
+      render(<Recorder />)
+    })
+    vi.mocked(mockApi.updateRecordingSettings).mockClear()
+    await act(async () => {
+      fireEvent.blur(screen.getByLabelText('settings.recording.explicitWait.label'))
+    })
+    expect(mockApi.updateRecordingSettings).not.toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
   it('renders tab navigation and default recording tab', async (): Promise<void> => {
     await act(async () => {
       render(<Recorder />)
