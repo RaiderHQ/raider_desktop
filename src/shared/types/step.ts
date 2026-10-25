@@ -42,6 +42,23 @@ const ASSERT_KINDS: AssertKind[] = [
   'urlIncludes'
 ]
 
+const NEEDS_ELEMENT: AssertKind[] = [
+  'displayed',
+  'notDisplayed',
+  'enabled',
+  'checked',
+  'textEquals',
+  'textIncludes',
+  'valueEquals'
+]
+const NEEDS_EXPECTED: AssertKind[] = [
+  'textEquals',
+  'textIncludes',
+  'valueEquals',
+  'titleEquals',
+  'urlIncludes'
+]
+
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
 const isStr = (v: unknown): v is string => typeof v === 'string'
 
@@ -70,13 +87,15 @@ export function isStep(value: unknown): value is Step {
       return (
         isElementTarget(value.element) && isStr(value.until) && WAIT_UNTIL.includes(value.until)
       )
-    case 'assert':
-      return (
-        isStr(value.check) &&
-        (ASSERT_KINDS as string[]).includes(value.check) &&
-        isOptionalElement(value.element) &&
-        (value.expected === undefined || isStr(value.expected))
-      )
+    case 'assert': {
+      if (!isStr(value.check) || !(ASSERT_KINDS as string[]).includes(value.check)) return false
+      const check = value.check as AssertKind
+      if (!isOptionalElement(value.element)) return false
+      if (value.expected !== undefined && !isStr(value.expected)) return false
+      if (NEEDS_ELEMENT.includes(check) && value.element === undefined) return false
+      if (NEEDS_EXPECTED.includes(check) && value.expected === undefined) return false
+      return true
+    }
     case 'switchFrame':
       return isOptionalElement(value.element)
     case 'custom':
