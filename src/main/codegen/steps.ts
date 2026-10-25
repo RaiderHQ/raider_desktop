@@ -33,39 +33,76 @@ function need<T>(value: T | undefined, what: string, check: string): T {
   return value
 }
 
+// Each check first waits (up to the explicit wait) for its condition, then asserts it,
+// so content that renders late passes on Run just as it does in in-app replay
 function renderAssert(step: Extract<Step, { kind: 'assert' }>, automation: Automation): string {
   const { check } = step
   const selenium = automation === 'selenium'
+  // Selenium waits on @wait with a plain condition; Watir waits on the element (or browser) itself
+  const lines = (condition: string, assertion: string): string =>
+    `${selenium ? `@wait.until { ${condition} }` : condition}\n${assertion}`
+
   if (check === 'titleEquals' || check === 'urlIncludes') {
     const expected = rubyString(need(step.expected, 'an expected string', check))
-    const subject = check === 'titleEquals' ? 'title' : selenium ? 'current_url' : 'url'
-    const matcher = check === 'titleEquals' ? 'eq' : 'include'
-    return `expect(${selenium ? '@driver' : '@browser'}.${subject}).to ${matcher}(${expected})`
+    const title = check === 'titleEquals'
+    const subject = title ? 'title' : selenium ? 'current_url' : 'url'
+    const matches = title ? ` == ${expected}` : `.include?(${expected})`
+    const matcher = title ? 'eq' : 'include'
+    return selenium
+      ? lines(
+          `@driver.${subject}${matches}`,
+          `expect(@driver.${subject}).to ${matcher}(${expected})`
+        )
+      : lines(
+          `@browser.wait_until { |b| b.${subject}${matches} }`,
+          `expect(@browser.${subject}).to ${matcher}(${expected})`
+        )
   }
   const el = need(step.element, 'an element', check)
   const target = selenium ? sel(el) : wat(el)
   switch (check) {
     case 'displayed':
-      return `expect(${target}).to ${selenium ? 'be_displayed' : 'be_present'}`
+      return selenium
+        ? lines(`${target}.displayed?`, `expect(${target}).to be_displayed`)
+        : lines(`${target}.wait_until(&:present?)`, `expect(${target}).to be_present`)
     case 'notDisplayed':
       return selenium
-        ? `expect(${sels(el)}.none?(&:displayed?)).to be(true)`
-        : `expect(${target}).not_to be_present`
+        ? lines(
+            `${sels(el)}.none?(&:displayed?)`,
+            `expect(${sels(el)}.none?(&:displayed?)).to be(true)`
+          )
+        : lines(`${target}.wait_while(&:present?)`, `expect(${target}).not_to be_present`)
     case 'enabled':
-      return `expect(${target}).to be_enabled`
+      return lines(
+        selenium ? `${target}.enabled?` : `${target}.wait_until(&:enabled?)`,
+        `expect(${target}).to be_enabled`
+      )
     case 'checked':
       return selenium
-        ? `expect(${target}).to be_selected`
-        : `expect(${target}.to_subtype).to be_set`
+        ? lines(`${target}.selected?`, `expect(${target}).to be_selected`)
+        : lines(`${target}.to_subtype.wait_until(&:set?)`, `expect(${target}.to_subtype).to be_set`)
     case 'textEquals':
     case 'textIncludes': {
       const expected = rubyString(need(step.expected, 'an expected string', check))
-      return `expect(${target}.text).to ${check === 'textEquals' ? 'eq' : 'include'}(${expected})`
+      const equals = check === 'textEquals'
+      const text = (subject: string): string =>
+        equals ? `${subject}.text == ${expected}` : `${subject}.text.include?(${expected})`
+      return lines(
+        selenium ? text(target) : `${target}.wait_until { |el| ${text('el')} }`,
+        `expect(${target}.text).to ${equals ? 'eq' : 'include'}(${expected})`
+      )
     }
     case 'valueEquals': {
       const expected = rubyString(need(step.expected, 'an expected string', check))
-      const read = selenium ? `.attribute('value')` : '.to_subtype.value'
-      return `expect(${target}${read}).to eq(${expected})`
+      return selenium
+        ? lines(
+            `${target}.attribute('value') == ${expected}`,
+            `expect(${target}.attribute('value')).to eq(${expected})`
+          )
+        : lines(
+            `${target}.to_subtype.wait_until { |el| el.value == ${expected} }`,
+            `expect(${target}.to_subtype.value).to eq(${expected})`
+          )
     }
   }
 }

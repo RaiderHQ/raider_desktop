@@ -62,14 +62,14 @@ describe('renderStep table', () => {
     [
       'assert textIncludes',
       { id: '1', kind: 'assert', check: 'textIncludes', element: css('h1'), expected: 'Hi' },
-      "expect(@driver.find_element(css: 'h1').text).to include('Hi')",
-      "expect(@browser.element(css: 'h1').text).to include('Hi')"
+      "@wait.until { @driver.find_element(css: 'h1').text.include?('Hi') }\nexpect(@driver.find_element(css: 'h1').text).to include('Hi')",
+      "@browser.element(css: 'h1').wait_until { |el| el.text.include?('Hi') }\nexpect(@browser.element(css: 'h1').text).to include('Hi')"
     ],
     [
       'assert titleEquals',
       { id: '1', kind: 'assert', check: 'titleEquals', expected: 'T' },
-      "expect(@driver.title).to eq('T')",
-      "expect(@browser.title).to eq('T')"
+      "@wait.until { @driver.title == 'T' }\nexpect(@driver.title).to eq('T')",
+      "@browser.wait_until { |b| b.title == 'T' }\nexpect(@browser.title).to eq('T')"
     ],
     [
       'switchFrame default',
@@ -99,51 +99,56 @@ describe('renderStep details', () => {
     [
       'displayed',
       undefined,
-      "expect(@driver.find_element(css: '.x')).to be_displayed",
-      "expect(@browser.element(css: '.x')).to be_present"
+      "@wait.until { @driver.find_element(css: '.x').displayed? }\nexpect(@driver.find_element(css: '.x')).to be_displayed",
+      "@browser.element(css: '.x').wait_until(&:present?)\nexpect(@browser.element(css: '.x')).to be_present"
     ],
     [
       'notDisplayed',
       undefined,
-      "expect(@driver.find_elements(css: '.x').none?(&:displayed?)).to be(true)",
-      "expect(@browser.element(css: '.x')).not_to be_present"
+      "@wait.until { @driver.find_elements(css: '.x').none?(&:displayed?) }\nexpect(@driver.find_elements(css: '.x').none?(&:displayed?)).to be(true)",
+      "@browser.element(css: '.x').wait_while(&:present?)\nexpect(@browser.element(css: '.x')).not_to be_present"
     ],
     [
       'enabled',
       undefined,
-      "expect(@driver.find_element(css: '.x')).to be_enabled",
-      "expect(@browser.element(css: '.x')).to be_enabled"
+      "@wait.until { @driver.find_element(css: '.x').enabled? }\nexpect(@driver.find_element(css: '.x')).to be_enabled",
+      "@browser.element(css: '.x').wait_until(&:enabled?)\nexpect(@browser.element(css: '.x')).to be_enabled"
     ],
     [
       'checked',
       undefined,
-      "expect(@driver.find_element(css: '.x')).to be_selected",
-      "expect(@browser.element(css: '.x').to_subtype).to be_set"
+      "@wait.until { @driver.find_element(css: '.x').selected? }\nexpect(@driver.find_element(css: '.x')).to be_selected",
+      "@browser.element(css: '.x').to_subtype.wait_until(&:set?)\nexpect(@browser.element(css: '.x').to_subtype).to be_set"
     ],
     [
       'textEquals',
       'A',
-      "expect(@driver.find_element(css: '.x').text).to eq('A')",
-      "expect(@browser.element(css: '.x').text).to eq('A')"
+      "@wait.until { @driver.find_element(css: '.x').text == 'A' }\nexpect(@driver.find_element(css: '.x').text).to eq('A')",
+      "@browser.element(css: '.x').wait_until { |el| el.text == 'A' }\nexpect(@browser.element(css: '.x').text).to eq('A')"
     ],
     [
       'textIncludes',
       'A',
-      "expect(@driver.find_element(css: '.x').text).to include('A')",
-      "expect(@browser.element(css: '.x').text).to include('A')"
+      "@wait.until { @driver.find_element(css: '.x').text.include?('A') }\nexpect(@driver.find_element(css: '.x').text).to include('A')",
+      "@browser.element(css: '.x').wait_until { |el| el.text.include?('A') }\nexpect(@browser.element(css: '.x').text).to include('A')"
     ],
     [
       'valueEquals',
       'A',
-      "expect(@driver.find_element(css: '.x').attribute('value')).to eq('A')",
-      "expect(@browser.element(css: '.x').to_subtype.value).to eq('A')"
+      "@wait.until { @driver.find_element(css: '.x').attribute('value') == 'A' }\nexpect(@driver.find_element(css: '.x').attribute('value')).to eq('A')",
+      "@browser.element(css: '.x').to_subtype.wait_until { |el| el.value == 'A' }\nexpect(@browser.element(css: '.x').to_subtype.value).to eq('A')"
     ],
-    ['titleEquals', 'A', "expect(@driver.title).to eq('A')", "expect(@browser.title).to eq('A')"],
+    [
+      'titleEquals',
+      'A',
+      "@wait.until { @driver.title == 'A' }\nexpect(@driver.title).to eq('A')",
+      "@browser.wait_until { |b| b.title == 'A' }\nexpect(@browser.title).to eq('A')"
+    ],
     [
       'urlIncludes',
       'A',
-      "expect(@driver.current_url).to include('A')",
-      "expect(@browser.url).to include('A')"
+      "@wait.until { @driver.current_url.include?('A') }\nexpect(@driver.current_url).to include('A')",
+      "@browser.wait_until { |b| b.url.include?('A') }\nexpect(@browser.url).to include('A')"
     ]
   ])('assert %s', (check, expected, sel, wat) => {
     expect(renderStep(assertStep(check, expected), 'selenium')).toBe(sel)
