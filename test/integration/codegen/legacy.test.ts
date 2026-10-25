@@ -8,6 +8,7 @@ const id = (value: string) => ({ strategy: 'id' as const, value })
 const xp = (value: string) => ({ strategy: 'xpath' as const, value })
 
 const strip = (s: Step) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { id: _id, ...rest } = s
   return rest
 }

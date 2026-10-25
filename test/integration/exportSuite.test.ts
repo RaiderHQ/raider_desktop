@@ -42,7 +42,6 @@ vi.mock('../../src/main/handlers/frameworkTemplates', () => ({
 
 import { BrowserWindow, dialog } from 'electron'
 import fs from 'fs'
-import { generateRspecFile } from '../../src/main/codegen/testFile'
 import exportSuite from '../../src/main/handlers/io/exportSuite'
 import { appState } from '../../src/main/handlers/appState'
 
@@ -59,8 +58,18 @@ const fakeSuite = {
   id: 'suite-1',
   name: 'Login Suite',
   tests: [
-    { id: 'test-1', name: 'Login test', url: 'http://example.com', steps: ['@driver.get("http://example.com")'] },
-    { id: 'test-2', name: 'Logout test', url: 'http://example.com', steps: ['@driver.get("http://example.com/logout")'] }
+    {
+      id: 'test-1',
+      name: 'Login test',
+      url: 'http://example.com',
+      steps: ['@driver.get("http://example.com")']
+    },
+    {
+      id: 'test-2',
+      name: 'Logout test',
+      url: 'http://example.com',
+      steps: ['@driver.get("http://example.com/logout")']
+    }
   ]
 }
 

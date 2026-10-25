@@ -24,7 +24,7 @@ export function useRecorderSettings(): RecorderWaits {
         setExplicitWait(settings.explicitWait)
       })
       .catch((error) => console.error('Error loading recorder settings:', error))
-    return () => {
+    return (): void => {
       cancelled = true
     }
   }, [projectPath])

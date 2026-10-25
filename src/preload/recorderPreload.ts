@@ -16,7 +16,7 @@ ipcRenderer
     // keep defaults
   })
 
-function getPrioritizedSelector(el: Element) {
+function getPrioritizedSelector(el: Element): ReturnType<typeof buildSelector> {
   return buildSelector(el, selectorPriorities)
 }
 

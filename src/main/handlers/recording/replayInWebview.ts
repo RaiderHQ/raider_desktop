@@ -166,7 +166,12 @@ const requireElement = (target: ElementTarget): string =>
   `element not found: ${target.strategy}=${target.value}`
 
 /** Runs an element action, polling until the element exists. Returns an error message or null. */
-async function runAction(wc: WebContents, js: string, target: ElementTarget, timeoutMs: number) {
+async function runAction(
+  wc: WebContents,
+  js: string,
+  target: ElementTarget,
+  timeoutMs: number
+): Promise<string | null> {
   const result = await pollUntil(
     () => wc.executeJavaScript(js) as Promise<{ found: boolean }>,
     (r) => r.found,
@@ -328,7 +333,9 @@ async function replayInWebview(
       if (cancelRequested) return { success: false, cancelled: true }
 
       const step = steps[i]
-      const fail = (message: string) => ({
+      const fail = (
+        message: string
+      ): { success: boolean; error: string; failedStepId: string } => ({
         success: false,
         error: `Step ${i + 1} (${describeStepEnglish(step)}): ${message}`,
         failedStepId: step.id

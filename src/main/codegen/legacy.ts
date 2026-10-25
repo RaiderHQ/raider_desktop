@@ -55,9 +55,11 @@ const SEND_KEY = rx(`${FE}\\.send_keys\\(:(\\w+)\\)`)
 const sameTarget = (a: ElementTarget, b: ElementTarget): boolean =>
   a.strategy === b.strategy && a.value === b.value
 
-type Builder = (m: RegExpMatchArray) => Omit<Step, 'id'> | null
+// distributes over the Step union so each built object is checked against its own kind
+type Built = (Step extends infer S ? (S extends Step ? Omit<S, 'id'> : never) : never) | null
+type Builder = (m: RegExpMatchArray) => Built
 
-const el = (m: RegExpMatchArray, kind: 'assert', check: AssertKind, expectedAt?: number) => {
+const el = (m: RegExpMatchArray, kind: 'assert', check: AssertKind, expectedAt?: number): Built => {
   const element = target(m, 1)
   if (!element) return null
   return expectedAt === undefined
@@ -66,31 +68,31 @@ const el = (m: RegExpMatchArray, kind: 'assert', check: AssertKind, expectedAt?:
 }
 
 const PATTERNS: Array<[RegExp, Builder]> = [
-  [rx(`@driver\\.get\\(${STR}\\)`), (m) => ({ kind: 'navigate', url: unescape(m[1]) })],
+  [rx(`@driver\\.get\\(${STR}\\)`), (m): Built => ({ kind: 'navigate', url: unescape(m[1]) })],
   [
     rx(`@?wait\\.until\\s*\\{\\s*(!?)${FE}\\.displayed\\?\\s*\\}`),
-    (m) => {
+    (m): Built => {
       const element = target(m, 2)
       return element ? { kind: 'wait', element, until: m[1] ? 'hidden' : 'visible' } : null
     }
   ],
   [
     rx(`@?wait\\.until\\s*\\{\\s*${FE}\\.enabled\\?\\s*\\}`),
-    (m) => {
+    (m): Built => {
       const element = target(m, 1)
       return element ? { kind: 'wait', element, until: 'enabled' } : null
     }
   ],
   [
     rx(`${FE}\\.click`),
-    (m) => {
+    (m): Built => {
       const element = target(m, 1)
       return element ? { kind: 'click', element } : null
     }
   ],
   [
     SEND_KEY,
-    (m) => {
+    (m): Built => {
       const element = target(m, 1)
       const key = Object.hasOwn(KEYS, m[5]) ? KEYS[m[5]] : undefined
       return element && key ? { kind: 'pressKey', element, key } : null
@@ -98,39 +100,42 @@ const PATTERNS: Array<[RegExp, Builder]> = [
   ],
   [
     SEND_TEXT,
-    (m) => {
+    (m): Built => {
       const element = target(m, 1)
       return element ? { kind: 'type', element, text: unescape(m[5]) } : null
     }
   ],
-  [rx(String.raw`@driver\.switch_to\.default_content`), () => ({ kind: 'switchFrame' })],
+  [rx(String.raw`@driver\.switch_to\.default_content`), (): Built => ({ kind: 'switchFrame' })],
   [
     rx(`@driver\\.switch_to\\.frame\\(\\s*${FE}\\s*\\)`),
-    (m) => {
+    (m): Built => {
       const element = target(m, 1)
       return element ? { kind: 'switchFrame', element } : null
     }
   ],
-  [rx(`expect\\(${FE}\\)\\.to be_displayed`), (m) => el(m, 'assert', 'displayed')],
-  [rx(`expect\\(${FE}\\)\\.not_to be_displayed`), (m) => el(m, 'assert', 'notDisplayed')],
-  [rx(`expect\\(${FE}\\)\\.to be_enabled`), (m) => el(m, 'assert', 'enabled')],
-  [rx(`expect\\(${FE}\\)\\.to be_selected`), (m) => el(m, 'assert', 'checked')],
-  [rx(`expect\\(${FE}\\.text\\)\\.to eq\\(${STR}\\)`), (m) => el(m, 'assert', 'textEquals', 5)],
+  [rx(`expect\\(${FE}\\)\\.to be_displayed`), (m): Built => el(m, 'assert', 'displayed')],
+  [rx(`expect\\(${FE}\\)\\.not_to be_displayed`), (m): Built => el(m, 'assert', 'notDisplayed')],
+  [rx(`expect\\(${FE}\\)\\.to be_enabled`), (m): Built => el(m, 'assert', 'enabled')],
+  [rx(`expect\\(${FE}\\)\\.to be_selected`), (m): Built => el(m, 'assert', 'checked')],
+  [
+    rx(`expect\\(${FE}\\.text\\)\\.to eq\\(${STR}\\)`),
+    (m): Built => el(m, 'assert', 'textEquals', 5)
+  ],
   [
     rx(`expect\\(${FE}\\.text\\)\\.to include\\(${STR}\\)`),
-    (m) => el(m, 'assert', 'textIncludes', 5)
+    (m): Built => el(m, 'assert', 'textIncludes', 5)
   ],
   [
     rx(`expect\\(${FE}\\.attribute\\("value"\\)\\)\\.to eq\\(${STR}\\)`),
-    (m) => el(m, 'assert', 'valueEquals', 5)
+    (m): Built => el(m, 'assert', 'valueEquals', 5)
   ],
   [
     rx(`expect\\(@driver\\.title\\)\\.to eq\\(${STR}\\)`),
-    (m) => ({ kind: 'assert', check: 'titleEquals', expected: unescape(m[1]) })
+    (m): Built => ({ kind: 'assert', check: 'titleEquals', expected: unescape(m[1]) })
   ],
   [
     rx(`expect\\(@driver\\.current_url\\)\\.to include\\(${STR}\\)`),
-    (m) => ({ kind: 'assert', check: 'urlIncludes', expected: unescape(m[1]) })
+    (m): Built => ({ kind: 'assert', check: 'urlIncludes', expected: unescape(m[1]) })
   ]
 ]
 

@@ -83,7 +83,9 @@ describe('export then import round trips', () => {
     appState.suites = new Map()
     mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [out] })
     const res = await importSuite(win)
-    const withoutIds = (list: Step[]): unknown[] => list.map(({ id: _id, ...rest }) => rest)
+    const withoutIds = (list: Step[]): unknown[] =>
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      list.map(({ id: _id, ...rest }) => rest)
     const byName = Object.fromEntries(res.suite!.tests.map((t) => [t.name, t.steps]))
     expect(withoutIds(byName.Pay)).toEqual(withoutIds(steps))
     expect(withoutIds(byName.Cancel)).toEqual(withoutIds([steps[0]]))
