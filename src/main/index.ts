@@ -259,6 +259,10 @@ app.whenReady().then(() => {
     setActiveProject(projectPath)
   )
   ipcMain.handle('get-recorder-settings', () => getRecorderSettings())
+  ipcMain.handle(
+    'get-selector-priority',
+    async () => (await getRecorderSettings()).selectorPriority
+  )
   ipcMain.handle('load-url-request', (_event, url: string) => loadUrlRequest(url))
   ipcMain.handle('start-recording-main', startRecordingMain)
   ipcMain.handle(
