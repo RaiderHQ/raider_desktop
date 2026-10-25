@@ -67,6 +67,13 @@ describe('projectStore', () => {
     )
   })
 
+  it('choosing the same project again retries activation', () => {
+    useProjectStore.getState().setProjectPath('/broken')
+    useProjectStore.getState().setProjectPath('/broken')
+    expect(window.api.setActiveProject).toHaveBeenCalledTimes(2)
+    expect(window.api.setActiveProject).toHaveBeenLastCalledWith('/broken')
+  })
+
   it('sets project automation', () => {
     useProjectStore.getState().setProjectAutomation('selenium')
     expect(useProjectStore.getState().projectAutomation).toBe('selenium')

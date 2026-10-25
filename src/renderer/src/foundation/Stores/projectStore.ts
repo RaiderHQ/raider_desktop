@@ -28,7 +28,12 @@ const useProjectStore = create(
     projectFramework: null,
     files: [],
     selectedFiles: [],
-    setProjectPath: (path: string): void => set({ projectPath: path }),
+    setProjectPath: (path: string): void => {
+      // The same path doesn't trigger the subscription, so re-activate directly: this is how
+      // a project that failed to load (e.g. after fixing permissions) gets another try
+      if (path === get().projectPath) syncActiveProject(path)
+      else set({ projectPath: path })
+    },
     setProjectAutomation: (automation: string | null): void => set({ projectAutomation: automation }),
     setProjectFramework: (framework: string | null): void => set({ projectFramework: framework }),
 
