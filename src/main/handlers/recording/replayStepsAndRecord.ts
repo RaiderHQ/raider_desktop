@@ -2,7 +2,7 @@ import { promises as fs } from 'fs'
 import { exec } from 'child_process'
 import os from 'os'
 import path from 'path'
-import { appState, getRecordingSettings } from '../appState'
+import { appState } from '../appState'
 import startRecordingMain from './startRecordingMain'
 
 interface ReplayResult {
@@ -24,7 +24,7 @@ async function replayStepsAndRecord(
   stepsToReplay: string[],
   rubyCommand: string
 ): Promise<ReplayResult> {
-  const { implicitWait, explicitWait } = getRecordingSettings()
+  const { implicitWait, explicitWait } = appState.recorderSettings
   const tempFilePath = path.join(os.tmpdir(), `replay_${Date.now()}.rb`)
 
   const formattedSteps = stepsToReplay.map((step) => `  ${step}`).join('\n  sleep(1)\n')
@@ -97,9 +97,9 @@ end
       .find((l) => l.startsWith('RAIDER_FINAL_URL:'))
     const finalUrl = finalUrlLine
       ? finalUrlLine.replace('RAIDER_FINAL_URL:', '').trim()
-      : appState.projectBaseUrl
+      : (appState.sessionUrl ?? appState.recorderSettings.baseUrl)
 
-    appState.projectBaseUrl = finalUrl
+    appState.sessionUrl = finalUrl
 
     const recordingResult = startRecordingMain()
     return {

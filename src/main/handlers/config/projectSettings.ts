@@ -1,17 +1,20 @@
 import { readFile, writeFile, mkdir } from 'fs/promises'
 import { join, dirname } from 'path'
 import yaml from 'js-yaml'
+import type { RecorderSettings } from '@shared/types/recorderSettings'
 
-export interface RecorderSettings {
-  baseUrl: string
-  browser: string
-  headless: boolean
-  implicitWait: number
-  explicitWait: number
-  selectorPriority: string[]
-}
+export type { RecorderSettings }
 
 export const DEFAULT_SELECTOR_PRIORITY: string[] = ['id', 'data-testid', 'css', 'xpath']
+
+export const DEFAULT_RECORDER_SETTINGS: RecorderSettings = {
+  baseUrl: '',
+  browser: 'chrome',
+  headless: false,
+  implicitWait: 0,
+  explicitWait: 10,
+  selectorPriority: [...DEFAULT_SELECTOR_PRIORITY]
+}
 
 type WritableSettings = Partial<
   Pick<RecorderSettings, 'implicitWait' | 'explicitWait' | 'selectorPriority'>

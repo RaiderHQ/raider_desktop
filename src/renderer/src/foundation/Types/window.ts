@@ -4,6 +4,7 @@ import type { Suite } from '@shared/types/suite'
 import type { Test } from '@shared/types/test'
 import type { TraceStep } from '@shared/types/traceStep'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
+import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { IpcRendererEvent } from 'electron'
 
 export interface WindowApi {
@@ -151,10 +152,13 @@ export interface WindowApi {
   registerRecorderWebContents: (webContentsId: number) => Promise<void>
   stopRecordingMain: () => Promise<CommandType>
   loadUrlRequest: (url: string) => Promise<CommandType>
-  updateRecordingSettings: (settings: {
-    implicitWait: number
-    explicitWait: number
-  }) => Promise<{ success: boolean; error?: string }>
+  updateRecordingSettings: (
+    settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
+  ) => Promise<{ success: boolean; error?: string }>
+  setActiveProject: (
+    projectPath: string | null
+  ) => Promise<{ success: boolean; settings?: RecorderSettings; error?: string }>
+  getRecorderSettings: () => Promise<RecorderSettings>
 
   // --- Trace Management ---
   saveTrace: (testId: string, trace: TraceStep[]) => Promise<{ success: boolean; error?: string }>

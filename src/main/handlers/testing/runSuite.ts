@@ -3,7 +3,7 @@ import os from 'os'
 import path from 'path'
 import { safeExec } from '../../utils/safeExec'
 import { safeWarn } from '../../utils/safeLog'
-import { appState, getRecordingSettings } from '../appState'
+import { appState } from '../appState'
 import { generateTestCode } from '../frameworkTemplates'
 
 export default async (
@@ -15,7 +15,7 @@ export default async (
     return { success: false, output: `Suite with ID ${suiteId} not found.` }
   }
 
-  const { implicitWait, explicitWait } = getRecordingSettings()
+  const { implicitWait, explicitWait } = appState.recorderSettings
   const framework = appState.projectFramework || null
   const automation = appState.projectAutomation || null
   const ext = framework === 'cucumber' ? 'feature' : 'rb'

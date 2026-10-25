@@ -89,6 +89,8 @@ const mockApi = {
   xpathParser: vi.fn().mockResolvedValue(''),
   commandParser: vi.fn().mockResolvedValue(''),
   updateRecordingSettings: vi.fn(),
+  setActiveProject: vi.fn(),
+  getRecorderSettings: vi.fn(),
   onTestRunStatus: vi.fn(),
   removeTestRunStatusListener: vi.fn(),
   closeApp: vi.fn(),

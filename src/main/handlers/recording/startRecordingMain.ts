@@ -13,9 +13,11 @@ function startRecordingMain(): { success: boolean; url: string; preloadPath: str
   // Return the URL and preload path so the renderer can create an embedded webview
   const preloadPath = join(__dirname, '../preload/recorderPreload.js')
 
-  appState.mainWindow?.webContents.send('recording-started', appState.projectBaseUrl)
+  const url = appState.sessionUrl ?? appState.recorderSettings.baseUrl
 
-  return { success: true, url: appState.projectBaseUrl, preloadPath }
+  appState.mainWindow?.webContents.send('recording-started', url)
+
+  return { success: true, url, preloadPath }
 }
 
 export default startRecordingMain

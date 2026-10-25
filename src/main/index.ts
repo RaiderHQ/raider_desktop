@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { setMainWindow, appState, getRecordingSettings } from './handlers/appState'
+import { setMainWindow, appState } from './handlers/appState'
 import { getLongshipConfig, setLongshipConfig, LongshipConfig } from './handlers/longship/longshipConfig'
 import type { Test } from '@foundation/Types/test'
 import type { TestData } from '@foundation/Types/testData'
@@ -56,6 +56,7 @@ import saveRecording from './handlers/recording/saveRecording'
 import saveTrace from './handlers/trace/saveTrace'
 import loadTrace from './handlers/trace/loadTrace'
 import deleteTrace from './handlers/trace/deleteTrace'
+import setActiveProject from './handlers/project/setActiveProject'
 import updateRecordingSettings from './handlers/config/updateRecordingSettings'
 import { closeApp } from './handlers/closeApp'
 import scaffoldGenerate from './handlers/project/scaffoldGenerate'
@@ -212,7 +213,7 @@ app.whenReady().then(() => {
         return { success: false, output: `Test with ID ${testId} not found.` }
       }
 
-      const { implicitWait, explicitWait } = getRecordingSettings()
+      const { implicitWait, explicitWait } = appState.recorderSettings
       return runRecording({
         savedTest: test,
         implicitWait,
@@ -226,9 +227,12 @@ app.whenReady().then(() => {
   )
   ipcMain.handle(
     'update-recording-settings',
-    async (_event, settings: { implicitWait: number; explicitWait: number }) => {
+    async (
+      _event,
+      settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
+    ) => {
       try {
-        return updateRecordingSettings(settings)
+        return await updateRecordingSettings(settings)
       } catch (error) {
         return { success: false, error: (error as Error).message }
       }
@@ -251,6 +255,10 @@ app.whenReady().then(() => {
     deleteTrace(args.testId)
     return result
   })
+  ipcMain.handle('set-active-project', (_event, projectPath: string | null) =>
+    setActiveProject(projectPath)
+  )
+  ipcMain.handle('get-recorder-settings', () => appState.recorderSettings)
   ipcMain.handle('load-url-request', (_event, url: string) => loadUrlRequest(url))
   ipcMain.handle('start-recording-main', startRecordingMain)
   ipcMain.handle(

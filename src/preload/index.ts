@@ -6,6 +6,7 @@ import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import type { TraceStep } from '@foundation/Types/traceStep'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
+import type { RecorderSettings } from '@shared/types/recorderSettings'
 
 declare global {
   interface Window {
@@ -227,11 +228,16 @@ const api = {
     rubyCommand: string
   ): Promise<{ success: boolean; output: string }> =>
     ipcRenderer.invoke('run-test', suiteId, testId, projectPath, rubyCommand),
-  updateRecordingSettings: (settings: {
-    implicitWait: number
-    explicitWait: number
-  }): Promise<{ success: boolean; error?: string }> =>
+  updateRecordingSettings: (
+    settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
+  ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('update-recording-settings', settings),
+  setActiveProject: (
+    projectPath: string | null
+  ): Promise<{ success: boolean; settings?: RecorderSettings; error?: string }> =>
+    ipcRenderer.invoke('set-active-project', projectPath),
+  getRecorderSettings: (): Promise<RecorderSettings> =>
+    ipcRenderer.invoke('get-recorder-settings'),
   onTestRunStatus: (
     callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
   ): Electron.IpcRenderer => ipcRenderer.on('test-run-status', callback),

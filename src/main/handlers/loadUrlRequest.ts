@@ -1,7 +1,7 @@
-import { setProjectBaseUrl } from './appState'
+import { appState } from './appState'
 
 const handler = (url: string): void => {
-  setProjectBaseUrl(url)
+  appState.sessionUrl = url
 }
 
 export default handler

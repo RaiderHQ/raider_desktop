@@ -111,6 +111,8 @@ describe('IPC Contract', () => {
     'stopRecordingMain',
     'loadUrlRequest',
     'updateRecordingSettings',
+    'setActiveProject',
+    'getRecorderSettings',
 
     // Trace Management
     'saveTrace',
