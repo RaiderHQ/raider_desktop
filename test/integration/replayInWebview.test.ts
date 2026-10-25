@@ -281,4 +281,62 @@ describe('replayInWebview', () => {
     expect(result).toEqual({ success: false, cancelled: true })
     expect(mockExecuteJavaScript).toHaveBeenCalledTimes(1)
   })
+
+  it('retries when the probe rejects or returns garbage, then succeeds', async () => {
+    mockExecuteJavaScript
+      .mockRejectedValueOnce(new Error('Execution context was destroyed'))
+      .mockRejectedValueOnce(new Error('Execution context was destroyed'))
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ found: true })
+    const result = await run([{ id: '1', kind: 'click', element: el }])
+    expect(mockExecuteJavaScript).toHaveBeenCalledTimes(4)
+    expect(result).toEqual({ success: true })
+  })
+
+  it('reports the last probe error only after the budget runs out', async () => {
+    mockExecuteJavaScript.mockRejectedValue(new Error('navigating'))
+    const result = await run([{ id: '1', kind: 'click', element: el }])
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('element not found: css=#btn (navigating)')
+  })
+
+  it('resets isReplayingInWebview when progress reporting throws', async () => {
+    mockSend.mockImplementationOnce(() => {
+      throw new Error('window destroyed')
+    })
+    await expect(run([{ id: '1', kind: 'click', element: el }])).rejects.toThrow('window destroyed')
+    expect(appState.isReplayingInWebview).toBe(false)
+  })
+
+  it('cancelling while polling for a missing element returns cancelled and resets the flag', async () => {
+    mockExecuteJavaScript.mockImplementation(async () => {
+      cancelWebviewReplay()
+      return { found: false }
+    })
+    const result = await run([{ id: '1', kind: 'click', element: el }])
+    expect(result).toEqual({ success: false, cancelled: true })
+    expect(appState.isReplayingInWebview).toBe(false)
+  })
+
+  it('fails an unsupported assert check instead of passing', async () => {
+    mockExecuteJavaScript.mockResolvedValue({ found: true })
+    const result = await run([{ id: '1', kind: 'assert', check: 'bogus', element: el } as any])
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('unsupported check bogus')
+  })
+
+  it('leaks no did-stop-loading listener when the load timeout elapses', async () => {
+    mockLoadURL.mockResolvedValue(undefined)
+    const result = await run([{ id: '1', kind: 'navigate', url: 'https://example.com' }])
+    expect(result).toEqual({ success: true })
+    expect(emitter.listenerCount('did-stop-loading')).toBe(0)
+  })
+
+  it('fails the step when loadURL rejects', async () => {
+    mockLoadURL.mockRejectedValue(new Error('ERR_NAME_NOT_RESOLVED'))
+    const result = await run([{ id: 'n', kind: 'navigate', url: 'https://nope.invalid' }])
+    expect(result).toMatchObject({ success: false, failedStepId: 'n' })
+    expect(result.error).toContain('ERR_NAME_NOT_RESOLVED')
+    expect(emitter.listenerCount('did-stop-loading')).toBe(0)
+  })
 })

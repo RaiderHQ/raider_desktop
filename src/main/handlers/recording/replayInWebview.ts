@@ -115,20 +115,34 @@ export function cancelWebviewReplay(): void {
 
 type WebContents = Electron.WebContents
 
-/** Probes every 100 ms until `done` accepts the result or the budget runs out. */
+/**
+ * Probes every 100 ms until `done` accepts the result or the budget runs out. A probe that
+ * rejects or returns something malformed (e.g. mid-navigation) counts as "not yet"; the last
+ * such error is reported only on timeout.
+ */
 async function pollUntil<T>(
   probe: () => Promise<T>,
   done: (result: T) => boolean,
   timeoutMs: number
-): Promise<{ ok: boolean; last: T }> {
+): Promise<{ ok: boolean; last?: T; error?: string }> {
   const deadline = Date.now() + timeoutMs
+  let last: T | undefined
+  let error: string | undefined
   for (;;) {
-    const last = await probe()
-    if (done(last)) return { ok: true, last }
-    if (cancelRequested || Date.now() >= deadline) return { ok: false, last }
+    try {
+      last = await probe()
+      error = undefined
+      if (done(last)) return { ok: true, last }
+    } catch (e: unknown) {
+      error = e instanceof Error ? e.message : String(e)
+    }
+    if (cancelRequested || Date.now() >= deadline) return { ok: false, last, error }
     await delay(POLL_INTERVAL_MS)
   }
 }
+
+const withError = (message: string, error?: string): string =>
+  error ? `${message} (${error})` : message
 
 /** Loads the URL and resolves once the page stops loading (or the budget runs out). */
 async function navigate(wc: WebContents, url: string, timeoutMs: number): Promise<void> {
@@ -153,12 +167,13 @@ const requireElement = (target: ElementTarget): string =>
 
 /** Runs an element action, polling until the element exists. Returns an error message or null. */
 async function runAction(wc: WebContents, js: string, target: ElementTarget, timeoutMs: number) {
-  const { ok } = await pollUntil(
+  const result = await pollUntil(
     () => wc.executeJavaScript(js) as Promise<{ found: boolean }>,
     (r) => r.found,
     timeoutMs
   )
-  return ok ? null : requireElement(target)
+  const { ok, error } = result
+  return ok ? null : withError(requireElement(target), error)
 }
 
 async function runWait(
@@ -172,13 +187,16 @@ async function runWait(
       : step.until === 'enabled'
         ? !!s.found && !!s.enabled
         : !!s.found && !!s.visible
-  const { ok } = await pollUntil(
+  const { ok, error } = await pollUntil(
     () => wc.executeJavaScript(snapshotJS(step.element)) as Promise<ElementSnapshot>,
     met,
     timeoutMs
   )
   if (ok) return null
-  return `timed out waiting for the element to be ${step.until}: ${step.element.strategy}=${step.element.value}`
+  return withError(
+    `timed out waiting for the element to be ${step.until}: ${step.element.strategy}=${step.element.value}`,
+    error
+  )
 }
 
 /** Checks one assertion against a page/element snapshot; returns the actual value on mismatch. */
@@ -236,8 +254,14 @@ function checkAssert(
         expected,
         actual: s.found ? (s.value ?? '') : 'element not found'
       }
-    default:
-      return { pass: true, expected: '', actual: '' }
+    default: {
+      const unsupported: never = step.check
+      return {
+        pass: false,
+        expected: 'a supported check',
+        actual: `unsupported check ${unsupported}`
+      }
+    }
   }
 }
 
@@ -249,12 +273,14 @@ async function runAssert(
   const isPage = step.check === 'titleEquals' || step.check === 'urlIncludes'
   const script = isPage || !step.element ? pageSnapshotJS : snapshotJS(step.element)
   // Assertions retry within the wait budget, like Selenium waits, so late-rendering UI passes
-  const { ok, last } = await pollUntil(
+  const { ok, last, error } = await pollUntil(
     async () => checkAssert(step, (await wc.executeJavaScript(script)) as ElementSnapshot),
     (r) => r.pass,
     timeoutMs
   )
-  return ok ? null : `expected ${last.expected}, got ${last.actual}`
+  if (ok) return null
+  if (!last) return withError('could not read the page', error)
+  return `expected ${last.expected}, got ${last.actual}`
 }
 
 /** Returns an error message, or null on success, or 'skipped' for steps replay doesn't run. */
@@ -288,65 +314,54 @@ async function replayInWebview(
 ): Promise<{ success: boolean; error?: string; failedStepId?: string; cancelled?: boolean }> {
   cancelRequested = false
   appState.isReplayingInWebview = true
-  const wcId = appState.recorderWebContentsId
-  if (!wcId) {
-    appState.isReplayingInWebview = false
-    return { success: false, error: 'Webview not registered' }
-  }
+  // The flag gates recorder events, so it must be reset on every exit, including throws
+  try {
+    const wcId = appState.recorderWebContentsId
+    if (!wcId) return { success: false, error: 'Webview not registered' }
 
-  const wc = webContents.fromId(wcId)
-  if (!wc) {
-    appState.isReplayingInWebview = false
-    return { success: false, error: 'Webview web contents not found' }
-  }
+    const wc = webContents.fromId(wcId)
+    if (!wc) return { success: false, error: 'Webview web contents not found' }
 
-  const timeoutMs = appState.recorderSettings.explicitWait * 1000
+    const timeoutMs = appState.recorderSettings.explicitWait * 1000
 
-  for (let i = 0; i < steps.length; i++) {
-    if (cancelRequested) {
-      appState.isReplayingInWebview = false
-      return { success: false, cancelled: true }
-    }
+    for (let i = 0; i < steps.length; i++) {
+      if (cancelRequested) return { success: false, cancelled: true }
 
-    const step = steps[i]
-    const fail = (message: string) => {
-      appState.isReplayingInWebview = false
-      return {
+      const step = steps[i]
+      const fail = (message: string) => ({
         success: false,
         error: `Step ${i + 1} (${describeStepEnglish(step)}): ${message}`,
         failedStepId: step.id
+      })
+
+      let outcome: string | null
+      try {
+        outcome = await runStep(wc, step, timeoutMs)
+      } catch (e: unknown) {
+        return fail(e instanceof Error ? e.message : String(e))
       }
-    }
 
-    let outcome: string | null
-    try {
-      outcome = await runStep(wc, step, timeoutMs)
-    } catch (e: unknown) {
-      return fail(e instanceof Error ? e.message : String(e))
-    }
+      if (cancelRequested) return { success: false, cancelled: true }
+      if (outcome === SKIPPED) {
+        appState.mainWindow?.webContents.send('replay-progress', {
+          current: i + 1,
+          total: steps.length,
+          skipped: true
+        })
+        continue
+      }
+      if (outcome) return fail(outcome)
 
-    if (cancelRequested) {
-      appState.isReplayingInWebview = false
-      return { success: false, cancelled: true }
-    }
-    if (outcome === SKIPPED) {
       appState.mainWindow?.webContents.send('replay-progress', {
         current: i + 1,
-        total: steps.length,
-        skipped: true
+        total: steps.length
       })
-      continue
     }
-    if (outcome) return fail(outcome)
 
-    appState.mainWindow?.webContents.send('replay-progress', {
-      current: i + 1,
-      total: steps.length
-    })
+    return { success: true }
+  } finally {
+    appState.isReplayingInWebview = false
   }
-
-  appState.isReplayingInWebview = false
-  return { success: true }
 }
 
 export default replayInWebview
