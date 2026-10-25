@@ -304,7 +304,12 @@ describe('replayInWebview', () => {
     mockSend.mockImplementationOnce(() => {
       throw new Error('window destroyed')
     })
-    await expect(run([{ id: '1', kind: 'click', element: el }])).rejects.toThrow('window destroyed')
+    // attach the rejection handler before advancing timers so the rejection is never unhandled
+    const assertion = expect(replay([{ id: '1', kind: 'click', element: el }])).rejects.toThrow(
+      'window destroyed'
+    )
+    await vi.runAllTimersAsync()
+    await assertion
     expect(appState.isReplayingInWebview).toBe(false)
   })
 
