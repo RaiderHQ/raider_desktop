@@ -4,8 +4,8 @@ import '@testing-library/jest-dom'
 import type { Step } from '@shared/types/step'
 
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, vals?: Record<string, string>) =>
+  useTranslation: (): { t: (key: string, vals?: Record<string, string>) => string } => ({
+    t: (key: string, vals?: Record<string, string>): string =>
       vals && Object.keys(vals).length ? `${key} ${JSON.stringify(vals)}` : key
   })
 }))
@@ -17,7 +17,7 @@ beforeEach(() => {
   renderStep.mockImplementation(async (step: Step) =>
     step.kind === 'custom' ? step.code : `ruby for ${step.id}`
   )
-  window.api = { renderStep } as any
+  window.api = { renderStep } as unknown as typeof window.api
 })
 
 const baseProps = {
@@ -36,7 +36,9 @@ const watirClick: Step = {
 }
 const navigate: Step = { id: 'n1', kind: 'navigate', url: 'https://example.com' }
 
-const renderBlock = async (props: Partial<React.ComponentProps<typeof CommandBlock>>) => {
+const renderBlock = async (
+  props: Partial<React.ComponentProps<typeof CommandBlock>>
+): Promise<void> => {
   await act(async () => {
     render(<CommandBlock {...baseProps} step={navigate} {...props} />)
   })

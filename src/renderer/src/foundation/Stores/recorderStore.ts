@@ -51,7 +51,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   setIsOutputVisible: (value) => set({ isOutputVisible: value }),
   setBreakpointIndex: (index) => set({ breakpointIndex: index }),
   setIsReplayingToBreakpoint: (value) => set({ isReplayingToBreakpoint: value }),
-  setFailedStepId: (id) => set({ failedStepId: id }),
+  setFailedStepId: (id): void => set({ failedStepId: id }),
 
   activeSuite: () => {
     const { suites, activeSuiteId } = get()

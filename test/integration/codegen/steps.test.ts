@@ -6,8 +6,14 @@ import { join } from 'node:path'
 import { renderStep } from '../../../src/main/codegen/steps'
 import type { Step, AssertKind } from '../../../src/shared/types/step'
 
-const css = (value: string) => ({ strategy: 'css' as const, value })
-const id = (value: string) => ({ strategy: 'id' as const, value })
+const css = (value: string): { strategy: 'css'; value: string } => ({
+  strategy: 'css' as const,
+  value
+})
+const id = (value: string): { strategy: 'id'; value: string } => ({
+  strategy: 'id' as const,
+  value
+})
 
 describe('renderStep table', () => {
   const rows: Array<[string, Step, string, string]> = [

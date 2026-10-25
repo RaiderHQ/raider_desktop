@@ -5,7 +5,7 @@ import { join } from 'path'
 
 const mockDialog = vi.hoisted(() => ({ showSaveDialog: vi.fn(), showOpenDialog: vi.fn() }))
 vi.mock('electron', () => ({
-  BrowserWindow: { getFocusedWindow: () => ({}) },
+  BrowserWindow: { getFocusedWindow: (): object => ({}) },
   dialog: mockDialog
 }))
 

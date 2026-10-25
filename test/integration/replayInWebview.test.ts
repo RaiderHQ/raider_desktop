@@ -9,7 +9,7 @@ const mockLoadURL = vi.fn()
 
 vi.mock('electron', () => ({
   webContents: {
-    fromId: (...args: unknown[]) => mockFromId(...args)
+    fromId: (...args: unknown[]): unknown => mockFromId(...args)
   }
 }))
 
@@ -20,7 +20,7 @@ vi.mock('../../src/main/handlers/appState', () => ({
     recorderSettings: { explicitWait: 1 },
     mainWindow: {
       webContents: {
-        send: (...args: unknown[]) => mockSend(...args)
+        send: (...args: unknown[]): unknown => mockSend(...args)
       }
     }
   }
@@ -33,13 +33,15 @@ import { appState } from '../../src/main/handlers/appState'
 import type { ElementTarget, Step } from '../../src/shared/types/step'
 
 const el: ElementTarget = { strategy: 'css', value: '#btn', label: 'Login button' }
-const replay = (steps: Step[]) => replayInWebview({} as any, steps)
-const run = async (steps: Step[]) => {
+type ReplayResult = Awaited<ReturnType<typeof replayInWebview>>
+const replay = (steps: Step[]): Promise<ReplayResult> =>
+  replayInWebview({} as Electron.IpcMainInvokeEvent, steps)
+const run = async (steps: Step[]): Promise<ReplayResult> => {
   const promise = replay(steps)
   await vi.runAllTimersAsync()
   return promise
 }
-const jsAt = (n: number) => mockExecuteJavaScript.mock.calls[n][0] as string
+const jsAt = (n: number): string => mockExecuteJavaScript.mock.calls[n][0] as string
 
 describe('replayInWebview', () => {
   beforeEach(() => {
@@ -325,7 +327,9 @@ describe('replayInWebview', () => {
 
   it('fails an unsupported assert check instead of passing', async () => {
     mockExecuteJavaScript.mockResolvedValue({ found: true })
-    const result = await run([{ id: '1', kind: 'assert', check: 'bogus', element: el } as any])
+    const result = await run([
+      { id: '1', kind: 'assert', check: 'bogus', element: el } as unknown as Step
+    ])
     expect(result.success).toBe(false)
     expect(result.error).toContain('unsupported check bogus')
   })

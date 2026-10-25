@@ -9,7 +9,7 @@ const mockUserData = vi.hoisted(() => ({ dir: '' }))
 vi.mock('electron', () => ({
   BrowserWindow: class {},
   dialog: mockDialog,
-  app: { getPath: () => mockUserData.dir }
+  app: { getPath: (): string => mockUserData.dir }
 }))
 
 import { appState } from '../../src/main/handlers/appState'

@@ -30,8 +30,8 @@ viewport:
 
 describe('projectSettings', () => {
   let dir: string
-  const configPath = () => join(dir, 'config', 'config.yml')
-  const seed = async (text: string) => {
+  const configPath = (): string => join(dir, 'config', 'config.yml')
+  const seed = async (text: string): Promise<void> => {
     await mkdir(join(dir, 'config'), { recursive: true })
     await writeFile(configPath(), text)
   }

@@ -53,8 +53,12 @@ describe('replayStepsAndRecord', () => {
   })
 
   it('replays the steps via a generated rspec file without sleeps', async () => {
-    mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) =>
-      cb(null, 'RAIDER_FINAL_URL:http://final/page\n', '')
+    mockExec.mockImplementation(
+      (
+        _cmd: string,
+        _opts: object,
+        cb: (err: Error | null, stdout: string, stderr: string) => void
+      ) => cb(null, 'RAIDER_FINAL_URL:http://final/page\n', '')
     )
     const result = await replayStepsAndRecord(
       {} as never,
@@ -77,8 +81,12 @@ describe('replayStepsAndRecord', () => {
 
   it('replays with Watir and reads the final URL from @browser on a Watir project', async () => {
     appState.projectAutomation = 'watir'
-    mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) =>
-      cb(null, 'RAIDER_FINAL_URL:http://final/watir\n', '')
+    mockExec.mockImplementation(
+      (
+        _cmd: string,
+        _opts: object,
+        cb: (err: Error | null, stdout: string, stderr: string) => void
+      ) => cb(null, 'RAIDER_FINAL_URL:http://final/watir\n', '')
     )
     const result = await replayStepsAndRecord({} as never, 'T', [click('1', 'a')], 'ruby')
 
@@ -92,8 +100,12 @@ describe('replayStepsAndRecord', () => {
   })
 
   it('reports a failed replay', async () => {
-    mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) =>
-      cb(Object.assign(new Error('x'), { code: 1 }), 'Failure/Error: boom', '')
+    mockExec.mockImplementation(
+      (
+        _cmd: string,
+        _opts: object,
+        cb: (err: Error | null, stdout: string, stderr: string) => void
+      ) => cb(Object.assign(new Error('x'), { code: 1 }), 'Failure/Error: boom', '')
     )
     const result = await replayStepsAndRecord({} as never, 'T', [], 'ruby')
     expect(result.success).toBe(false)

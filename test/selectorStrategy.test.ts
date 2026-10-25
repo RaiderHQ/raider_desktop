@@ -92,7 +92,7 @@ describe('cssEscape', () => {
   })
 
   it('uses native CSS.escape when present', () => {
-    ;(globalThis as { CSS?: unknown }).CSS = { escape: (s: string) => `native(${s})` }
+    ;(globalThis as { CSS?: unknown }).CSS = { escape: (s: string): string => `native(${s})` }
     expect(cssEscape('x')).toBe('native(x)')
   })
 

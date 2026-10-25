@@ -3,11 +3,20 @@ import { migrateLegacyStep, migrateLegacyTest } from '../../../src/main/codegen/
 import { isStep } from '../../../src/shared/types/step'
 import type { Step } from '../../../src/shared/types/step'
 
-const css = (value: string) => ({ strategy: 'css' as const, value })
-const id = (value: string) => ({ strategy: 'id' as const, value })
-const xp = (value: string) => ({ strategy: 'xpath' as const, value })
+const css = (value: string): { strategy: 'css'; value: string } => ({
+  strategy: 'css' as const,
+  value
+})
+const id = (value: string): { strategy: 'id'; value: string } => ({
+  strategy: 'id' as const,
+  value
+})
+const xp = (value: string): { strategy: 'xpath'; value: string } => ({
+  strategy: 'xpath' as const,
+  value
+})
 
-const strip = (s: Step) => {
+const strip = (s: Step): Omit<Step, 'id'> => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { id: _id, ...rest } = s
   return rest

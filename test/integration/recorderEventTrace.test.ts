@@ -10,7 +10,7 @@ vi.mock('../../src/main/handlers/appState', () => ({
     recorderWebContentsId: null,
     mainWindow: {
       webContents: {
-        send: (...args: unknown[]) => mockSend(...args)
+        send: (...args: unknown[]): unknown => mockSend(...args)
       }
     }
   }
@@ -18,14 +18,16 @@ vi.mock('../../src/main/handlers/appState', () => ({
 
 vi.mock('electron', () => ({
   webContents: {
-    fromId: () => ({
-      capturePage: () => mockCapturePage()
+    fromId: (): { capturePage: () => unknown } => ({
+      capturePage: (): unknown => mockCapturePage()
     })
   }
 }))
 
 import recorderEvent from '../../src/main/handlers/recording/recorderEvent'
 import { appState } from '../../src/main/handlers/appState'
+
+const state = appState as unknown as Record<string, unknown>
 
 function getTraceStepCall(): unknown[] | undefined {
   return mockSend.mock.calls.find((c) => c[0] === 'new-trace-step')
@@ -34,9 +36,9 @@ function getTraceStepCall(): unknown[] | undefined {
 describe('recorderEvent trace capture', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    ;(appState as any).projectAutomation = null
-    ;(appState as any).activeTraceDir = null
-    ;(appState as any).recorderWebContentsId = null
+    state.projectAutomation = null
+    state.activeTraceDir = null
+    state.recorderWebContentsId = null
   })
 
   it('does not emit trace step when activeTraceDir is null', () => {
@@ -52,10 +54,10 @@ describe('recorderEvent trace capture', () => {
   })
 
   it('triggers screenshot capture when activeTraceDir is set', () => {
-    ;(appState as any).activeTraceDir = '/tmp/trace-test'
-    ;(appState as any).recorderWebContentsId = 42
+    state.activeTraceDir = '/tmp/trace-test'
+    state.recorderWebContentsId = 42
 
-    const fakeNativeImage = { toJPEG: () => Buffer.from('fake-jpeg') }
+    const fakeNativeImage = { toJPEG: (): Buffer => Buffer.from('fake-jpeg') }
     mockCapturePage.mockResolvedValue(fakeNativeImage)
 
     recorderEvent({
@@ -73,10 +75,10 @@ describe('recorderEvent trace capture', () => {
   })
 
   it('emits trace step with element info on successful capture', async () => {
-    ;(appState as any).activeTraceDir = '/tmp/trace-test'
-    ;(appState as any).recorderWebContentsId = 42
+    state.activeTraceDir = '/tmp/trace-test'
+    state.recorderWebContentsId = 42
 
-    const fakeNativeImage = { toJPEG: () => Buffer.from('fake-jpeg') }
+    const fakeNativeImage = { toJPEG: (): Buffer => Buffer.from('fake-jpeg') }
     mockCapturePage.mockResolvedValue(fakeNativeImage)
 
     recorderEvent({
@@ -108,8 +110,8 @@ describe('recorderEvent trace capture', () => {
   })
 
   it('emits trace step without screenshot when capturePage fails', async () => {
-    ;(appState as any).activeTraceDir = '/tmp/trace-test'
-    ;(appState as any).recorderWebContentsId = 42
+    state.activeTraceDir = '/tmp/trace-test'
+    state.recorderWebContentsId = 42
 
     mockCapturePage.mockRejectedValue(new Error('capture failed'))
 
@@ -137,8 +139,8 @@ describe('recorderEvent trace capture', () => {
   })
 
   it('does not emit trace step when the event maps to no step', () => {
-    ;(appState as any).activeTraceDir = '/tmp/trace-test'
-    ;(appState as any).recorderWebContentsId = 42
+    state.activeTraceDir = '/tmp/trace-test'
+    state.recorderWebContentsId = 42
 
     recorderEvent({
       action: 'sendKeys',
@@ -153,8 +155,8 @@ describe('recorderEvent trace capture', () => {
   })
 
   it('does not trigger screenshot when recorderWebContentsId is null', () => {
-    ;(appState as any).activeTraceDir = '/tmp/trace-test'
-    ;(appState as any).recorderWebContentsId = null
+    state.activeTraceDir = '/tmp/trace-test'
+    state.recorderWebContentsId = null
 
     recorderEvent({
       action: 'click',
@@ -169,10 +171,10 @@ describe('recorderEvent trace capture', () => {
   })
 
   it('links the trace step to the recorded step and renders it for Watir', async () => {
-    ;(appState as any).projectAutomation = 'watir'
-    ;(appState as any).activeTraceDir = '/tmp/trace-test'
-    ;(appState as any).recorderWebContentsId = 42
-    mockCapturePage.mockResolvedValue({ toJPEG: () => Buffer.from('jpeg') })
+    state.projectAutomation = 'watir'
+    state.activeTraceDir = '/tmp/trace-test'
+    state.recorderWebContentsId = 42
+    mockCapturePage.mockResolvedValue({ toJPEG: (): Buffer => Buffer.from('jpeg') })
 
     recorderEvent({ action: 'click', selector: 'go', strategy: 'id', tagName: 'BUTTON' })
 
@@ -187,8 +189,8 @@ describe('recorderEvent trace capture', () => {
   })
 
   it('renders Selenium Ruby for the trace command by default', async () => {
-    ;(appState as any).activeTraceDir = '/tmp/trace-test'
-    ;(appState as any).recorderWebContentsId = 42
+    state.activeTraceDir = '/tmp/trace-test'
+    state.recorderWebContentsId = 42
     mockCapturePage.mockRejectedValue(new Error('no capture'))
 
     recorderEvent({ action: 'click', selector: 'go', strategy: 'id', tagName: 'BUTTON' })
@@ -204,10 +206,10 @@ describe('recorderEvent trace capture', () => {
   })
 
   it('includes element info in trace step for type action', async () => {
-    ;(appState as any).activeTraceDir = '/tmp/trace-test'
-    ;(appState as any).recorderWebContentsId = 42
+    state.activeTraceDir = '/tmp/trace-test'
+    state.recorderWebContentsId = 42
 
-    const fakeNativeImage = { toJPEG: () => Buffer.from('jpeg') }
+    const fakeNativeImage = { toJPEG: (): Buffer => Buffer.from('jpeg') }
     mockCapturePage.mockResolvedValue(fakeNativeImage)
 
     recorderEvent({
