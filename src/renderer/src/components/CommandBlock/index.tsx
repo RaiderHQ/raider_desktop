@@ -36,6 +36,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   const { t } = useTranslation()
   // Ruby for the code view, rendered by the main process for the project's automation
   const [code, setCode] = useState<string | null>(null)
+  const [renderFailed, setRenderFailed] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
   const editValueRef = useRef('')
@@ -46,9 +47,15 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
     if (!showCode) return undefined
     let isMounted = true
     setCode(null)
-    window.api.renderStep(step).then((ruby) => {
-      if (isMounted) setCode(ruby)
-    })
+    setRenderFailed(false)
+    window.api
+      .renderStep(step)
+      .then((ruby) => {
+        if (isMounted) setCode(ruby)
+      })
+      .catch(() => {
+        if (isMounted) setRenderFailed(true)
+      })
     return (): void => {
       isMounted = false
     }
@@ -122,7 +129,11 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
           onDoubleClick={handleEditStart}
           title={onEdit ? 'Double-click to edit' : undefined}
         >
-          {code ?? '\u00a0'}
+          {renderFailed ? (
+            <span className="text-neutral-mid font-sans">{t('recorder.step.renderFailed')}</span>
+          ) : (
+            (code ?? '\u00a0')
+          )}
         </div>
       )
     }

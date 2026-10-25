@@ -103,6 +103,33 @@ describe('suite files', () => {
     expect(written.suites).toEqual(suites)
   })
 
+  it('backs up the version 1 file before rewriting it', async () => {
+    const legacy = JSON.stringify({ version: 1, suites: [suite('s')] })
+    await fsp.mkdir(join(a, '.raider'))
+    await writeFile(join(a, '.raider', 'suites.json'), legacy)
+    await loadSuites(a)
+    expect(await readFile(join(a, '.raider', 'suites.json.v1.bak'), 'utf-8')).toBe(legacy)
+  })
+
+  it('still loads migrated suites when the rewrite and backup fail', async () => {
+    const legacy = {
+      version: 1,
+      suites: [{ ...suite('s'), tests: [{ id: 't', name: 'T', url: '', steps: ['puts 1'] }] }]
+    }
+    await fsp.mkdir(join(a, '.raider'))
+    await writeFile(join(a, '.raider', 'suites.json'), JSON.stringify(legacy))
+    const eacces = Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' })
+    vi.spyOn(fsp, 'writeFile').mockRejectedValue(eacces)
+    vi.spyOn(fsp, 'copyFile').mockRejectedValue(eacces)
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const { suites, recoveredFromCorrupt } = await loadSuites(a)
+    expect(recoveredFromCorrupt).toBe(false)
+    expect(suites[0].tests[0].steps).toEqual([
+      { id: expect.any(String), kind: 'custom', code: 'puts 1' }
+    ])
+  })
+
   it('does not rewrite a version 2 file on load', async () => {
     await saveSuites(a, [suite('s')])
     const spy = vi.spyOn(fsp, 'writeFile')

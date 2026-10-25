@@ -192,9 +192,10 @@ export function migrateLegacyTest(test: {
   id: string
   name: string
   url: string
-  steps: unknown[]
+  steps?: unknown
   hasTrace?: boolean
   trace?: unknown
 }): Test {
-  return { ...test, steps: migrateLegacySteps(test.steps) } as Test
+  const steps = Array.isArray(test.steps) ? test.steps : []
+  return { ...test, steps: migrateLegacySteps(steps) } as Test
 }

@@ -59,9 +59,19 @@ export async function loadSuites(
     return { suites: extracted.suites, recoveredFromCorrupt: false }
   }
 
-  // Older files hold Ruby string steps: convert once and rewrite in the current format
+  // Older files hold Ruby string steps: convert once and rewrite in the current format.
+  // Both writes are best-effort, so a read-only project still opens with the migrated suites.
   const suites = migrateSuites(extracted.suites)
-  await saveSuites(projectPath, suites)
+  try {
+    await fs.copyFile(file, `${file}.v1.bak`)
+  } catch (error) {
+    safeError('Failed to back up version 1 suites file:', error)
+  }
+  try {
+    await saveSuites(projectPath, suites)
+  } catch (error) {
+    safeError('Failed to rewrite migrated suites file:', error)
+  }
   return { suites, recoveredFromCorrupt: false }
 }
 

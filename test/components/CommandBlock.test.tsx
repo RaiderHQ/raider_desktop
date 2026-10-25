@@ -82,6 +82,17 @@ describe('CommandBlock', () => {
       expect(await screen.findByText('ruby for c1')).toBeInTheDocument()
     })
 
+    it('shows a short message and stays usable when rendering fails', async () => {
+      renderStep.mockRejectedValue(new Error('bad step'))
+      const onDelete = vi.fn()
+      await renderBlock({ step: watirClick, showCode: true, onDelete, onEdit: vi.fn() })
+      expect(await screen.findByText('recorder.step.renderFailed')).toBeInTheDocument()
+      fireEvent.doubleClick(screen.getByText('recorder.step.renderFailed'))
+      expect(screen.queryByLabelText('Edit command')).not.toBeInTheDocument()
+      fireEvent.click(screen.getByLabelText('Delete step'))
+      expect(onDelete).toHaveBeenCalledWith(0)
+    })
+
     it('re-renders when the step changes', async () => {
       const { rerender } = render(<CommandBlock {...baseProps} step={navigate} showCode />)
       expect(await screen.findByText('ruby for n1')).toBeInTheDocument()

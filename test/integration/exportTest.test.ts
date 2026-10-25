@@ -84,7 +84,10 @@ describe('exportTest handler', () => {
     const result = await exportTest(testData as any)
     expect(result.success).toBe(true)
     expect(result.path).toBe('/tmp/login_test.rb')
-    expect(mockWriteFileSync).toHaveBeenCalledWith('/tmp/login_test.rb', '# generated test content', 'utf8')
+    const [path, content, encoding] = mockWriteFileSync.mock.calls[0]
+    expect([path, encoding]).toEqual(['/tmp/login_test.rb', 'utf8'])
+    // Header (name + steps JSON for re-import) followed by the generated spec
+    expect(content).toMatch(/^# Test: Login Test\n# raider-steps: \[.*\]\n\n# generated test content$/)
   })
 
   it('migrates legacy string steps to the step model before generating', async () => {

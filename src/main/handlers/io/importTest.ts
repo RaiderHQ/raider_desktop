@@ -4,7 +4,7 @@ import { appState } from '../appState'
 import { persistActiveSuites } from '../suitePersistence'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
-import { migrateLegacyTest } from '../../codegen/legacy'
+import { readExportHeader, withUniqueIds } from '../../codegen/exportHeader'
 
 export default async function importTest(
   mainWindow: BrowserWindow,
@@ -30,26 +30,20 @@ export default async function importTest(
     const filePath = result.filePaths[0]
     const fileContent = fs.readFileSync(filePath, 'utf-8')
 
-    const testNameMatch = fileContent.match(/# Test: (.*)/)
-    const testName = testNameMatch ? testNameMatch[1] : 'Unnamed Test'
-
-    const stepsMatch = fileContent.match(
-      /begin\n([\s\S]*?)\n {2}puts "Test '.*' passed successfully!"/
-    )
-    const steps = stepsMatch
-      ? stepsMatch[1]
-          .trim()
-          .split('\n')
-          .map((step) => step.trim())
-      : []
-
     const suite = appState.suites.get(suiteId)
     if (!suite) {
       return { success: false, error: 'Suite not found' }
     }
 
-    // Imported files hold Ruby lines; convert them to steps
-    const newTest: Test = migrateLegacyTest({ id: randomUUID(), name: testName, url: '', steps })
+    // Exported files carry their steps as JSON; older files hold Ruby lines
+    const header = readExportHeader(fileContent)
+    const stepIds = new Set(suite.tests.flatMap((t) => t.steps.map((step) => step.id)))
+    const newTest: Test = {
+      id: randomUUID(),
+      name: header.testName ?? 'Unnamed Test',
+      url: '',
+      steps: withUniqueIds(header.steps ?? [], stepIds)
+    }
 
     if (suite.tests.some((t) => t.name === newTest.name)) {
       return { success: false, error: 'A test with this name already exists in the suite.' }

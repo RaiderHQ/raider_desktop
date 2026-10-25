@@ -71,5 +71,8 @@ export function describeStep(step: Step): StepDescription {
         : { key: `${P}.switchToDefaultContent`, values: {} }
     case 'custom':
       return { key: 'recorder.step.custom', values: {} }
+    default:
+      // A kind this build doesn't know (e.g. from a newer file): describe it generically
+      return { key: 'recorder.step.custom', values: {} }
   }
 }

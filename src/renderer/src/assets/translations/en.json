@@ -547,7 +547,8 @@
       "waitForElementDisappear": "Wait for \"{{element}}\" to disappear"
     },
     "step": {
-      "custom": "Custom code step"
+      "custom": "Custom code step",
+      "renderFailed": "Couldn't render code"
     }
   },
   "concepts": {

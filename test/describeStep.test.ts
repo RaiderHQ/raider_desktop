@@ -105,6 +105,13 @@ describe('describeStep', () => {
     })
   })
 
+  it('describes an unknown kind as a custom step instead of crashing', () => {
+    const future = { id, kind: 'hover', element: bare } as unknown as Parameters<
+      typeof describeStep
+    >[0]
+    expect(describeStep(future)).toEqual({ key: 'recorder.step.custom', values: {} })
+  })
+
   it('has an English string for every key it can produce', async () => {
     const en = (await import('@assets/translations/en.json')).default as Record<string, unknown>
     const lookup = (key: string): unknown =>

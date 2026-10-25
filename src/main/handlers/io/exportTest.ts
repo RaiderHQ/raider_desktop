@@ -5,6 +5,7 @@ import { appState } from '../appState'
 import { getExportExtension, getExportFilters } from '../frameworkTemplates'
 import { generateRspecFile, toAutomation } from '../../codegen/testFile'
 import { migrateLegacySteps } from '../../codegen/legacy'
+import { writeExportHeader } from '../../codegen/exportHeader'
 import { safeError } from '../../utils/safeLog'
 
 export default async ({
@@ -31,11 +32,14 @@ export default async ({
     return { success: false, error: 'Export cancelled by user.' }
   }
 
-  const scriptContent = generateRspecFile(
-    { name: testName, steps: migrateLegacySteps(steps) },
-    toAutomation(appState.projectAutomation),
-    appState.recorderSettings
-  )
+  const migrated = migrateLegacySteps(steps)
+  const scriptContent =
+    writeExportHeader({ testName, steps: migrated }) +
+    generateRspecFile(
+      { name: testName, steps: migrated },
+      toAutomation(appState.projectAutomation),
+      appState.recorderSettings
+    )
 
   try {
     fs.writeFileSync(filePath, scriptContent, 'utf8')

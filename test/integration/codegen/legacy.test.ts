@@ -183,6 +183,12 @@ describe('migrateLegacyStep', () => {
 })
 
 describe('migrateLegacyTest', () => {
+  it('treats missing or non-array steps as no steps', () => {
+    expect(migrateLegacyTest({ id: 't', name: 'n', url: 'u' }).steps).toEqual([])
+    expect(migrateLegacyTest({ id: 't', name: 'n', url: 'u', steps: 'oops' }).steps).toEqual([])
+    expect(migrateLegacyTest({ id: 't', name: 'n', url: 'u', steps: null }).steps).toEqual([])
+  })
+
   it('collapses separate clear and send_keys strings and keeps other fields', () => {
     const test = migrateLegacyTest({
       id: 't1',
