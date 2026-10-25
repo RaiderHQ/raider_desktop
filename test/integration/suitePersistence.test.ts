@@ -1,10 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import fsp from 'fs/promises'
-import { mkdtemp, readFile, writeFile, rm, access } from 'fs/promises'
+import { mkdtemp, mkdir, readFile, writeFile, rm, access } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-vi.mock('electron', () => ({ BrowserWindow: class {} }))
+const mockDialog = vi.hoisted(() => ({ showOpenDialog: vi.fn() }))
+const mockUserData = vi.hoisted(() => ({ dir: '' }))
+vi.mock('electron', () => ({
+  BrowserWindow: class {},
+  dialog: mockDialog,
+  app: { getPath: () => mockUserData.dir }
+}))
 
 import { appState } from '../../src/main/handlers/appState'
 import { DEFAULT_RECORDER_SETTINGS } from '../../src/main/handlers/config/projectSettings'
@@ -12,6 +18,10 @@ import setActiveProject from '../../src/main/handlers/project/setActiveProject'
 import createSuite from '../../src/main/handlers/createSuite'
 import deleteSuite from '../../src/main/handlers/deleteSuite'
 import deleteTest from '../../src/main/handlers/deleteTest'
+import saveTrace from '../../src/main/handlers/trace/saveTrace'
+import importProject from '../../src/main/handlers/io/importProject'
+import importSuite from '../../src/main/handlers/io/importSuite'
+import importTest from '../../src/main/handlers/io/importTest'
 import saveRecording from '../../src/main/handlers/recording/saveRecording'
 import * as persistence from '../../src/main/handlers/suitePersistence'
 import { loadSuites, saveSuites } from '../../src/main/handlers/suitePersistence'
@@ -147,6 +157,40 @@ describe('handlers persist', () => {
     expect(spy).toHaveBeenCalledTimes(3)
 
     await deleteSuite(null, id)
+    expect(spy).toHaveBeenCalledTimes(4)
+  })
+
+  it('saveTrace, importProject, importSuite and importTest persist too', async () => {
+    const spy = vi.spyOn(persistence, 'persistActiveSuites').mockResolvedValue()
+    mockUserData.dir = a
+    appState.suites = new Map([
+      ['s1', { ...suite('s1'), tests: [{ id: 't9', name: 'T', url: '', steps: [] }] }]
+    ])
+    await saveTrace('t9', [])
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(appState.suites.get('s1')!.tests[0].hasTrace).toBe(true)
+
+    await mkdir(join(b, 'imported-suite'))
+    await writeFile(join(b, 'imported-suite', 'one_spec.rb'), '# Test: One\n')
+    mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [b] })
+    await importProject(win)
+    expect(spy).toHaveBeenCalledTimes(2)
+
+    mockDialog.showOpenDialog.mockResolvedValue({
+      canceled: false,
+      filePaths: [join(b, 'other-suite')]
+    })
+    await mkdir(join(b, 'other-suite'))
+    await importSuite(win)
+    expect(spy).toHaveBeenCalledTimes(3)
+
+    const id = Array.from(appState.suites.keys()).at(-1)!
+    mockDialog.showOpenDialog.mockResolvedValue({
+      canceled: false,
+      filePaths: [join(b, 'imported-suite', 'one_spec.rb')]
+    })
+    const res = await importTest(win, id)
+    expect(res.success).toBe(true)
     expect(spy).toHaveBeenCalledTimes(4)
   })
 })

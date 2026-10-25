@@ -3,6 +3,7 @@ import { join } from 'path'
 import { mkdir, copyFile, writeFile } from 'fs/promises'
 import { existsSync } from 'fs'
 import { appState } from '../appState'
+import { persistActiveSuites } from '../suitePersistence'
 import type { TraceStep } from '@foundation/Types/traceStep'
 
 export default async (
@@ -41,6 +42,8 @@ export default async (
         break
       }
     }
+
+    await persistActiveSuites()
 
     // Broadcast updated suites
     appState.mainWindow?.webContents.send(
