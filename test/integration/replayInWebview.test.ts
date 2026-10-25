@@ -251,7 +251,7 @@ describe('replayInWebview', () => {
   })
 
   it('reports a thrown page error as a step failure', async () => {
-    mockExecuteJavaScript.mockRejectedValueOnce(new Error('boom'))
+    mockExecuteJavaScript.mockRejectedValue(new Error('boom'))
     const result = await run([{ id: '1', kind: 'click', element: el }])
     expect(result).toMatchObject({ success: false, failedStepId: '1' })
     expect(result.error).toContain('boom')
