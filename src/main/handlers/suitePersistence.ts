@@ -69,37 +69,46 @@ export async function backupSuitesFile(projectPath: string): Promise<string | nu
 const migrateSuites = (suites: Suite[]): Suite[] =>
   suites.map((suite) => ({ ...suite, tests: (suite.tests ?? []).map(migrateLegacyTest) }))
 
+// The raw suites file, or null when there is none
+async function readRaw(file: string): Promise<string | null> {
+  try {
+    return await fs.readFile(file, 'utf-8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
+    throw error
+  }
+}
+
+const parseJson = (raw: string): unknown => {
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return undefined
+  }
+}
+
+// Moving the bad file aside is best-effort: the project still opens with no suites
+async function recoverCorrupt(
+  file: string
+): Promise<{ suites: never[]; recoveredFromCorrupt: true; backupSaved: boolean }> {
+  try {
+    await fs.rename(file, await backupName(file))
+    return { suites: [], recoveredFromCorrupt: true, backupSaved: true }
+  } catch (error) {
+    safeError('Failed to back up corrupt suites file:', error)
+    return { suites: [], recoveredFromCorrupt: true, backupSaved: false }
+  }
+}
+
 export async function loadSuites(
   projectPath: string
 ): Promise<{ suites: Suite[]; recoveredFromCorrupt: boolean; backupSaved?: boolean }> {
   const file = suitesFile(projectPath)
-  let raw: string
-  try {
-    raw = await fs.readFile(file, 'utf-8')
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return { suites: [], recoveredFromCorrupt: false }
-    }
-    throw error
-  }
+  const raw = await readRaw(file)
+  if (raw === null) return { suites: [], recoveredFromCorrupt: false }
 
-  let extracted: ReturnType<typeof extractSuites> = null
-  try {
-    extracted = extractSuites(JSON.parse(raw))
-  } catch {
-    extracted = null
-  }
-
-  if (extracted === null) {
-    // Moving the bad file aside is best-effort: the project still opens with no suites
-    try {
-      await fs.rename(file, await backupName(file))
-      return { suites: [], recoveredFromCorrupt: true, backupSaved: true }
-    } catch (error) {
-      safeError('Failed to back up corrupt suites file:', error)
-      return { suites: [], recoveredFromCorrupt: true, backupSaved: false }
-    }
-  }
+  const extracted = extractSuites(parseJson(raw))
+  if (extracted === null) return recoverCorrupt(file)
 
   if (extracted.version >= WRITE_VERSION) {
     return { suites: extracted.suites, recoveredFromCorrupt: false }
@@ -127,6 +136,11 @@ const writeQueues = new Map<string, Promise<unknown>>()
 export function saveSuites(projectPath: string, suites: Suite[]): Promise<void> {
   // Serialize now so later in-memory mutations don't leak into this write
   const body = JSON.stringify({ version: WRITE_VERSION, suites } satisfies SuitesFile, null, 2)
+  return writeSuitesFile(projectPath, body)
+}
+
+// Every suites.json write (version 2 or 3) goes through here, so they share one queue
+function writeSuitesFile(projectPath: string, body: string): Promise<void> {
   const file = suitesFile(projectPath)
   const previous = writeQueues.get(projectPath) ?? Promise.resolve()
   const write = previous.then(async () => {
@@ -141,6 +155,93 @@ export function saveSuites(projectPath: string, suites: Suite[]): Promise<void> 
     write.catch(() => undefined)
   )
   return write
+}
+
+// --- Version 3: suites.json is an index of test ids; the tests live in spec files + sidecars ---
+
+export interface SuiteIndexFile {
+  version: 3
+  suites: { id: string; name: string; testIds: string[] }[]
+}
+export type SuiteIndexEntry = SuiteIndexFile['suites'][number]
+
+const INDEX_VERSION = 3
+
+/** suites.json is still version 1 or 2: it must be migrated, never treated as a corrupt index. */
+export class LegacySuitesFileError extends Error {
+  constructor(readonly version: number) {
+    super(`The suites file is version ${version} and has not been migrated yet`)
+    this.name = 'LegacySuitesFileError'
+  }
+}
+
+const isStr = (v: unknown): v is string => typeof v === 'string'
+const isIndexEntry = (suite: unknown): suite is SuiteIndexEntry => {
+  const s = suite as SuiteIndexEntry | null
+  return (
+    s !== null &&
+    typeof s === 'object' &&
+    isStr(s.id) &&
+    isStr(s.name) &&
+    Array.isArray(s.testIds) &&
+    s.testIds.every(isStr)
+  )
+}
+
+type SuitesFileState =
+  | { kind: 'missing' }
+  | { kind: 'corrupt' }
+  | { kind: 'index'; suites: SuiteIndexEntry[] }
+  | { kind: 'legacy'; version: number; suites: Suite[] }
+
+function classify(parsed: unknown): SuitesFileState {
+  if (
+    parsed &&
+    typeof parsed === 'object' &&
+    (parsed as SuiteIndexFile).version === INDEX_VERSION
+  ) {
+    const { suites } = parsed as SuiteIndexFile
+    return Array.isArray(suites) && suites.every(isIndexEntry)
+      ? { kind: 'index', suites }
+      : { kind: 'corrupt' }
+  }
+  const extracted = extractSuites(parsed)
+  return extracted ? { kind: 'legacy', ...extracted } : { kind: 'corrupt' }
+}
+
+/**
+ * What suites.json currently holds, without changing it. Version 1 Ruby steps
+ * are converted in memory, so `legacy` suites always hold structured Steps.
+ */
+export async function readSuitesFile(projectPath: string): Promise<SuitesFileState> {
+  const raw = await readRaw(suitesFile(projectPath))
+  if (raw === null) return { kind: 'missing' }
+  const state = classify(parseJson(raw))
+  if (state.kind === 'legacy' && state.version < WRITE_VERSION) {
+    return { ...state, suites: migrateSuites(state.suites) }
+  }
+  return state
+}
+
+/**
+ * Loads the version 3 index. A corrupt file is moved aside like in loadSuites;
+ * a version 1/2 file throws LegacySuitesFileError and is left untouched.
+ */
+export async function loadSuiteIndex(
+  projectPath: string
+): Promise<{ suites: SuiteIndexEntry[]; recoveredFromCorrupt: boolean; backupSaved?: boolean }> {
+  const file = suitesFile(projectPath)
+  const raw = await readRaw(file)
+  if (raw === null) return { suites: [], recoveredFromCorrupt: false }
+  const state = classify(parseJson(raw))
+  if (state.kind === 'index') return { suites: state.suites, recoveredFromCorrupt: false }
+  if (state.kind === 'legacy') throw new LegacySuitesFileError(state.version)
+  return recoverCorrupt(file)
+}
+
+export function saveSuiteIndex(projectPath: string, suites: SuiteIndexEntry[]): Promise<void> {
+  const body = JSON.stringify({ version: INDEX_VERSION, suites } satisfies SuiteIndexFile, null, 2)
+  return writeSuitesFile(projectPath, body)
 }
 
 /** Saves appState.suites to the active project. No-op without one; never rejects. */

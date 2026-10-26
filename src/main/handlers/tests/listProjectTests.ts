@@ -61,31 +61,52 @@ async function readSpec(projectPath: string, fileRel: string): Promise<string | 
 const fallbackName = (content: string | null, file: string): string =>
   (content && DESCRIBE.exec(content)?.[2]) || posix.basename(file)
 
+/**
+ * Who may edit a recorded test, by the same proof the writer uses, so "Recorded"
+ * never names a file Raider would refuse. A missing file stays recorded (saving
+ * restores it) unless the test was already marked code-owned. Throws when the
+ * spec can't be read.
+ */
+export async function recordedOwnership(
+  projectPath: string,
+  sidecar: Sidecar
+): Promise<{ ownership: 'recorded' | 'codeOwnedWasRecorded'; missingFile?: true }> {
+  const content = await readSpec(projectPath, sidecar.file)
+  const missing = content === null ? ({ missingFile: true } as const) : {}
+  if (sidecar.codeOwned) return { ownership: 'codeOwnedWasRecorded', ...missing }
+  if (content === null || isRaiderFile(content, sidecar))
+    return { ownership: 'recorded', ...missing }
+  try {
+    if (!(await markCodeOwned(projectPath, sidecar.id))) return { ownership: 'recorded' }
+  } catch (error) {
+    safeError(`Could not mark ${sidecar.file} as edited in code:`, error)
+  }
+  return { ownership: 'codeOwnedWasRecorded' }
+}
+
 async function entryFor(
   projectPath: string,
   file: string,
   sidecar: Sidecar | null
 ): Promise<ProjectTestEntry> {
-  let content: string | null = null
   try {
-    content = await readSpec(projectPath, file)
+    if (!sidecar) {
+      return {
+        file,
+        name: fallbackName(await readSpec(projectPath, file), file),
+        ownership: 'code'
+      }
+    }
+    return {
+      file,
+      name: sidecar.name,
+      testId: sidecar.id,
+      ...(await recordedOwnership(projectPath, sidecar))
+    }
   } catch (error) {
     safeError(`Could not read ${file}:`, error)
     return { file, name: sidecar?.name ?? posix.basename(file), ownership: 'code' }
   }
-  if (!sidecar) return { file, name: fallbackName(content, file), ownership: 'code' }
-
-  const base = { file, name: sidecar.name, testId: sidecar.id }
-  if (content === null) return { ...base, ownership: 'recorded', missingFile: true }
-  if (sidecar.codeOwned) return { ...base, ownership: 'codeOwnedWasRecorded' }
-  // Same proof the writer uses, so "Recorded" never names a file Raider would refuse
-  if (isRaiderFile(content, sidecar)) return { ...base, ownership: 'recorded' }
-  try {
-    if (!(await markCodeOwned(projectPath, sidecar.id))) return { ...base, ownership: 'recorded' }
-  } catch (error) {
-    safeError(`Could not mark ${file} as edited in code:`, error)
-  }
-  return { ...base, ownership: 'codeOwnedWasRecorded' }
 }
 
 export async function listProjectTests(
