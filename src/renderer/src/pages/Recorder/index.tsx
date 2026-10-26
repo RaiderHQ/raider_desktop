@@ -16,6 +16,7 @@ import useRecorderStore from '@foundation/Stores/recorderStore'
 import { buildAssertionStep, assertionModalType } from '@foundation/assertionStep'
 import type { Step } from '@shared/types/step'
 import type { PendingAssertion } from '@shared/types/pendingAssertion'
+import type { CodeTestView } from '@shared/types/projectTest'
 import { useRecorderSettings } from '../../hooks/useRecorderSettings'
 import { useSuiteSync, useRecordingIPC } from '../../hooks/useRecorderIPC'
 import { useTranslation } from 'react-i18next'
@@ -58,6 +59,30 @@ const Recorder: React.FC = (): JSX.Element => {
   // Hand-written tests, and recorded ones a developer has taken over, can only be viewed and run
   const readOnly =
     readOnlyView !== null || (!!activeTest?.ownership && activeTest.ownership !== 'recorded')
+  // A test a developer took over is shown as its file reads now, never as the steps Raider last saved
+  const codeOwnedFile =
+    activeTest?.ownership && activeTest.ownership !== 'recorded' ? activeTest.file : undefined
+  const [codeOwnedView, setCodeOwnedView] = useState<{
+    view: CodeTestView | null
+    failed: boolean
+  }>({ view: null, failed: false })
+  useEffect(() => {
+    setCodeOwnedView({ view: null, failed: false })
+    if (!codeOwnedFile) return
+    let current = true
+    window.api
+      .openCodeTest(codeOwnedFile)
+      .then((view) => {
+        if (current) setCodeOwnedView({ view, failed: false })
+      })
+      .catch((error: unknown) => {
+        console.error('Reading the test file failed:', error)
+        if (current) setCodeOwnedView({ view: null, failed: true })
+      })
+    return (): void => {
+      current = false
+    }
+  }, [codeOwnedFile, activeTest?.id])
   const recordingDisabled = layout ? !layout.recordable : false
   const isCucumber = layout?.framework === 'cucumber'
 
@@ -690,42 +715,54 @@ const Recorder: React.FC = (): JSX.Element => {
                               </button>
                             </Tooltip>
                           </div>
-                          <CommandList
-                            steps={activeTest?.steps ?? []}
-                            setSteps={(newSteps: SetStateAction<Step[]>) =>
-                              updateActiveTest((prevTest) => {
-                                if (!prevTest) return null
-                                const updatedSteps =
-                                  typeof newSteps === 'function'
-                                    ? newSteps(prevTest.steps)
-                                    : newSteps
-                                return { ...prevTest, steps: updatedSteps }
-                              })
-                            }
-                            onDeleteStep={(indexToDelete) =>
-                              updateActiveTest((p) =>
-                                p
-                                  ? { ...p, steps: p.steps.filter((_, i) => i !== indexToDelete) }
-                                  : null
-                              )
-                            }
-                            onEditStep={(editIndex, newStep) =>
-                              updateActiveTest((p) =>
-                                p
-                                  ? {
-                                      ...p,
-                                      steps: p.steps.map((s, i) => (i === editIndex ? newStep : s))
-                                    }
-                                  : null
-                              )
-                            }
-                            showCode={showCode}
-                            breakpointIndex={breakpointIndex}
-                            onSetBreakpoint={handleSetBreakpoint}
-                            onClearBreakpoint={handleClearBreakpoint}
-                            onRecordFromHere={handleRecordFromHere}
-                            readOnly={readOnly}
-                          />
+                          {codeOwnedFile ? (
+                            codeOwnedView.view ? (
+                              <ReadOnlyTestView view={codeOwnedView.view} showCode={showCode} />
+                            ) : codeOwnedView.failed ? (
+                              <div className="flex items-center justify-center h-full text-neutral-mid text-sm p-8 text-center">
+                                {t('recorder.readOnly.loadFailed')}
+                              </div>
+                            ) : null
+                          ) : (
+                            <CommandList
+                              steps={activeTest?.steps ?? []}
+                              setSteps={(newSteps: SetStateAction<Step[]>) =>
+                                updateActiveTest((prevTest) => {
+                                  if (!prevTest) return null
+                                  const updatedSteps =
+                                    typeof newSteps === 'function'
+                                      ? newSteps(prevTest.steps)
+                                      : newSteps
+                                  return { ...prevTest, steps: updatedSteps }
+                                })
+                              }
+                              onDeleteStep={(indexToDelete) =>
+                                updateActiveTest((p) =>
+                                  p
+                                    ? { ...p, steps: p.steps.filter((_, i) => i !== indexToDelete) }
+                                    : null
+                                )
+                              }
+                              onEditStep={(editIndex, newStep) =>
+                                updateActiveTest((p) =>
+                                  p
+                                    ? {
+                                        ...p,
+                                        steps: p.steps.map((s, i) =>
+                                          i === editIndex ? newStep : s
+                                        )
+                                      }
+                                    : null
+                                )
+                              }
+                              showCode={showCode}
+                              breakpointIndex={breakpointIndex}
+                              onSetBreakpoint={handleSetBreakpoint}
+                              onClearBreakpoint={handleClearBreakpoint}
+                              onRecordFromHere={handleRecordFromHere}
+                              readOnly={readOnly}
+                            />
+                          )}
                         </>
                       )}
                     </StyledPanel>

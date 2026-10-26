@@ -530,6 +530,7 @@ describe('Recorder Page', (): void => {
 
       it('turns read-only when main says a developer took the test over', async () => {
         mockApi.saveRecording.mockResolvedValue({ success: true })
+        mockApi.openCodeTest.mockResolvedValue({ file: 'spec/test_spec.rb', examples: [] })
         await act(async () => {
           render(<Recorder />)
         })
@@ -893,6 +894,54 @@ describe('Recorder Page', (): void => {
       expect(mockApi.stopRecordingMain).toHaveBeenCalled()
       expect(screen.getByText('recorder.readOnly.banner')).toBeInTheDocument()
       useRecorderStore.setState({ isRecording: false })
+    })
+
+    describe('a code-owned test picked in the suite list', () => {
+      const ownedTest: Test = {
+        id: 't9',
+        name: 'Checkout',
+        url: '',
+        file: 'spec/checkout_spec.rb',
+        ownership: 'codeOwnedWasRecorded',
+        // What Raider last saved; the developer has since rewritten the file
+        steps: [{ id: 'old', kind: 'navigate', url: 'https://stale.test' }] as Test['steps']
+      }
+      const fileSteps = [{ id: 'new', kind: 'click', element: { strategy: 'id', value: 'pay' } }]
+      const savedStep = /commandParser\.visit/
+      const fileStep = /commandParser\.clickElement/
+
+      const openOwned = async (): Promise<void> => {
+        const suites = [{ id: 's1', name: 'Smoke suite', tests: [ownedTest] }]
+        mockApi.getSuites.mockResolvedValue(suites)
+        useRecorderStore.setState({ suites, activeSuiteId: 's1', activeTest: ownedTest })
+        await act(async () => {
+          render(<Recorder />)
+        })
+      }
+
+      it('shows what the file holds now, not the steps Raider last saved', async () => {
+        mockApi.openCodeTest.mockResolvedValue({
+          file: 'spec/checkout_spec.rb',
+          examples: [{ name: 'pays by card', steps: fileSteps }]
+        })
+        await openOwned()
+        expect(mockApi.openCodeTest).toHaveBeenCalledWith('spec/checkout_spec.rb')
+        expect(screen.getByText('pays by card')).toBeInTheDocument()
+        expect(screen.getByText(fileStep)).toBeInTheDocument()
+        expect(screen.queryByText(savedStep)).not.toBeInTheDocument()
+        // The suite list stays, so the user can pick another test
+        expect(screen.getByText('Smoke suite')).toBeInTheDocument()
+        expect(screen.getByText('recorder.readOnly.banner')).toBeInTheDocument()
+      })
+
+      it('never falls back to the old steps when the file cannot be read', async () => {
+        const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        mockApi.openCodeTest.mockRejectedValue(new Error('gone'))
+        await openOwned()
+        expect(screen.getByText('recorder.readOnly.loadFailed')).toBeInTheDocument()
+        expect(screen.queryByText(savedStep)).not.toBeInTheDocument()
+        spy.mockRestore()
+      })
     })
 
     it('cucumber project shows the notice', async () => {

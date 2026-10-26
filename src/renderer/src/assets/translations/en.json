@@ -430,7 +430,8 @@
   "recorder": {
     "readOnly": {
       "banner": "Edited in code by a developer \u2014 view and run only.",
-      "close": "Back to the recorder"
+      "close": "Back to the recorder",
+      "loadFailed": "Raider couldn't read this test's file. Run it to see what happens, or ask a developer to check it."
     },
     "unsupported": {
       "title": "This project needs an upgrade for recording",
