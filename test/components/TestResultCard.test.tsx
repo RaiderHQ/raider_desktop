@@ -90,4 +90,21 @@ describe('TestResultCard', () => {
     render(<TestResultCard name="bad" status="failed" />)
     expect(screen.queryByTestId('quarantined-badge')).not.toBeInTheDocument()
   })
+
+  it('renders a collapsed video player with a raider-media src when video is set', () => {
+    const video = '/proj/raider-results/attachments/0-video.webm'
+    render(<TestResultCard name="vid test" status="failed" video={video} />)
+    fireEvent.click(screen.getByText('vid test'))
+    const el = screen.getByTestId('result-video') as HTMLVideoElement
+    expect(el.getAttribute('src')).toBe(`raider-media://file/${encodeURIComponent(video)}`)
+    expect(el.getAttribute('preload')).toBe('metadata')
+    expect(el.closest('details')).not.toHaveAttribute('open')
+    expect(screen.getByText('testResults.video')).toBeInTheDocument()
+  })
+
+  it('renders no video element when video is absent', () => {
+    render(<TestResultCard name="vid test" status="failed" />)
+    fireEvent.click(screen.getByText('vid test'))
+    expect(screen.queryByTestId('result-video')).not.toBeInTheDocument()
+  })
 })

@@ -86,6 +86,7 @@ const ResultSection: React.FC<ResultSectionProps> = ({
               name={result.name}
               status={result.status}
               screenshot={result.screenshot}
+              video={result.video}
               message={result.statusDetails?.message}
               traceTestId={testInfo?.hasTrace ? testInfo.id : undefined}
             />

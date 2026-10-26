@@ -225,6 +225,33 @@ describe('loadRaiderResults', () => {
     expect(rows![1].screenshot).toBeUndefined()
   })
 
+  it('maps the first video/* attachment to row.video under resultsDir', async () => {
+    const api = makeApi({
+      'run.json': run([
+        r('F: vid', 'failed', {
+          attachments: [
+            { name: 'v', content_type: 'video/webm', path: 'attachments/0-video.webm' },
+            { name: 'v2', content_type: 'video/mp4', path: 'attachments/1-video.mp4' }
+          ]
+        })
+      ])
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows![0].video).toBe('/proj/raider-results/attachments/0-video.webm')
+  })
+
+  it('ignores a video with an unsafe path', async () => {
+    const api = makeApi({
+      'run.json': run([
+        r('F: vid', 'failed', {
+          attachments: [{ name: 'v', content_type: 'video/webm', path: '../../etc/x.webm' }]
+        })
+      ])
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows![0].video).toBeUndefined()
+  })
+
   it('returns null when the folder is missing', async () => {
     expect(await loadRaiderResults('/proj', makeApi({}))).toBeNull()
   })

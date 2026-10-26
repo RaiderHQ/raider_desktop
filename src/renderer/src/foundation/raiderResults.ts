@@ -70,6 +70,11 @@ const toRow = (result: RaiderResult, resultsDir: string): TestResult => {
   )
   const safe = image?.path ? safeAttachmentPath(image.path) : null
   if (safe) row.screenshot = `${resultsDir}/${safe}`
+  const video = (result.attachments ?? []).find(
+    (a) => a.content_type?.startsWith('video/') && a.path
+  )
+  const safeVideo = video?.path ? safeAttachmentPath(video.path) : null
+  if (safeVideo) row.video = `${resultsDir}/${safeVideo}`
   return row
 }
 
