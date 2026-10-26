@@ -1,6 +1,30 @@
 import { useEffect } from 'react'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import type { Suite } from '@foundation/Types/suite'
+import type { Test } from '@foundation/Types/test'
+
+/**
+ * `live` with the fields only main knows (who owns the file, where it is, whether
+ * a trace is saved). Returns `live` itself when nothing changed, so an echo never
+ * triggers another autosave.
+ */
+function withServerFields(live: Test, saved: Test): Test {
+  const hasTrace = live.hasTrace || saved.hasTrace
+  if (
+    live.ownership === saved.ownership &&
+    live.file === saved.file &&
+    !!live.hasTrace === !!hasTrace
+  ) {
+    return live
+  }
+  const merged: Test = { ...live }
+  if (saved.ownership) merged.ownership = saved.ownership
+  else delete merged.ownership
+  if (saved.file) merged.file = saved.file
+  else delete merged.file
+  if (hasTrace) merged.hasTrace = true
+  return merged
+}
 
 export function useSuiteSync(): void {
   const { setSuites, setActiveSuiteId, setActiveTest } = useRecorderStore.getState()
@@ -59,9 +83,12 @@ export function useSuiteSync(): void {
         if (activeSuiteNow) {
           const activeTestNow = activeSuiteNow.tests.find((t) => t.id === currentTestId)
           if (activeTestNow) {
-            if (JSON.stringify(currentTest) !== JSON.stringify(activeTestNow)) {
-              setActiveTest(activeTestNow)
-            }
+            // The echo of a save is older than what is on screen: steps recorded while
+            // it was in flight, and the trace main never sees, must survive it
+            const { updateActiveTest } = useRecorderStore.getState()
+            updateActiveTest((live) =>
+              live && live.id === activeTestNow.id ? withServerFields(live, activeTestNow) : live
+            )
           } else {
             setActiveTest(activeSuiteNow.tests[0] ?? null)
           }

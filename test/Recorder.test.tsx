@@ -447,6 +447,103 @@ describe('Recorder Page', (): void => {
         { id: expect.any(String), kind: 'assert', check: 'titleEquals', expected: 'Home' }
       ])
     })
+
+    describe('while a save is in flight', () => {
+      beforeEach(() => {
+        mockApi.saveRecording.mockReset()
+      })
+
+      afterEach(() => {
+        vi.useRealTimers()
+        mockApi.saveRecording.mockReset()
+      })
+
+      const echoOf = (test: Partial<Test>): unknown[] => [
+        {
+          id: 's1',
+          name: 'Suite',
+          tests: [{ id: 't1', name: 'Test', url: 'https://x.test', ...test }]
+        }
+      ]
+      const savedAs = (steps: unknown[]): Partial<Test> => ({
+        steps: steps as Test['steps'],
+        file: 'spec/test_spec.rb',
+        ownership: 'recorded'
+      })
+
+      it('keeps steps and the trace recorded meanwhile when the save is echoed back', async () => {
+        let finishSave: (value: unknown) => void = () => {}
+        mockApi.saveRecording.mockImplementation(
+          () => new Promise((resolve) => (finishSave = resolve))
+        )
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+        await act(async () => {
+          render(<Recorder />)
+        })
+        const first = { id: 'c1', kind: 'click', element: el }
+        const second = { id: 'c2', kind: 'click', element: el }
+        const traceStep = { id: 'tr1', command: 'click', timestamp: 1, url: 'https://x.test' }
+        await emit('new-recorded-step', first)
+        await emit('new-trace-step', traceStep)
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(600)
+        })
+        expect(mockApi.saveRecording).toHaveBeenCalledTimes(1)
+
+        // A click lands while main is still saving the first one
+        await emit('new-recorded-step', second)
+        // Main echoes what it saved: the older steps, no trace
+        await emit('suite-updated', echoOf(savedAs([first])))
+        await act(async () => {
+          finishSave({ success: true })
+        })
+
+        const test = useRecorderStore.getState().activeTest!
+        expect(test.steps).toEqual([first, second])
+        expect(test.trace).toEqual([traceStep])
+        expect(test.file).toBe('spec/test_spec.rb')
+        expect(test.ownership).toBe('recorded')
+      })
+
+      it('an echo that changes nothing does not trigger another save', async () => {
+        mockApi.saveRecording.mockResolvedValue({ success: true })
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+        await act(async () => {
+          render(<Recorder />)
+        })
+        const first = { id: 'c1', kind: 'click', element: el }
+        await emit('new-recorded-step', first)
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(600)
+        })
+        await emit('suite-updated', echoOf(savedAs([first])))
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(600)
+        })
+        // The merged file name is a change; once merged, repeating the echo is not
+        await emit('suite-updated', echoOf(savedAs([first])))
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(2000)
+        })
+        expect(mockApi.saveRecording).toHaveBeenCalledTimes(2)
+      })
+
+      it('turns read-only when main says a developer took the test over', async () => {
+        mockApi.saveRecording.mockResolvedValue({ success: true })
+        await act(async () => {
+          render(<Recorder />)
+        })
+        const first = { id: 'c1', kind: 'click', element: el }
+        await emit('new-recorded-step', first)
+        await emit(
+          'suite-updated',
+          echoOf({ steps: [], file: 'spec/test_spec.rb', ownership: 'codeOwnedWasRecorded' })
+        )
+        expect(useRecorderStore.getState().activeTest!.ownership).toBe('codeOwnedWasRecorded')
+        expect(steps()).toEqual([first])
+        expect(screen.getByText('recorder.readOnly.banner')).toBeInTheDocument()
+      })
+    })
   })
 
   describe('start URL', () => {
