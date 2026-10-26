@@ -1,5 +1,5 @@
 import { test, expect } from './electronApp'
-import { goToRecorder, createSuiteViaUI } from './helpers/navigation'
+import { goToRecorder, createSuiteViaUI, dismissRubyModals } from './helpers/navigation'
 
 const fakeTrace = [
   {
@@ -74,9 +74,7 @@ async function mockMainIPC(
 /**
  * Navigate to the Recorder Dashboard tab.
  */
-async function goToRecorderDashboardTab(
-  page: import('@playwright/test').Page
-): Promise<void> {
+async function goToRecorderDashboardTab(page: import('@playwright/test').Page): Promise<void> {
   await goToRecorder(page)
   await page.waitForTimeout(500)
   const dashboardTab = page.locator('button').filter({ hasText: 'Dashboard' })
@@ -87,6 +85,10 @@ async function goToRecorderDashboardTab(
 }
 
 test.describe('Dashboard Trace Viewer - Full Flow', () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissRubyModals(page)
+  })
+
   test('run test from recorder, then view trace on Recording Dashboard', async ({
     electronApp,
     page
@@ -132,7 +134,7 @@ test.describe('Dashboard Trace Viewer - Full Flow', () => {
     await expect(page.getByText(testName)).toBeVisible()
 
     // ── Step 5: Update suites with hasTrace=true via main process IPC ──
-    await electronApp.evaluate(({ BrowserWindow, ipcMain }, testName) => {
+    await electronApp.evaluate(({ BrowserWindow }, testName) => {
       const mainWin = BrowserWindow.getAllWindows().find(
         (w) => !w.webContents.getURL().includes('devtools://')
       )
@@ -187,9 +189,7 @@ test.describe('Dashboard Trace Viewer - Full Flow', () => {
 
       // Trace steps should be in timeline
       await expect(page.getByText('@driver.get("https://example.com")')).toBeVisible()
-      await expect(
-        page.getByText('@driver.find_element(:id, "login").click')
-      ).toBeVisible()
+      await expect(page.getByText('@driver.find_element(:id, "login").click')).toBeVisible()
 
       // ── Step 8: Click a step to see details ──
       await page.getByText('@driver.find_element(:id, "login").click').click()
@@ -210,11 +210,16 @@ test.describe('Dashboard Trace Viewer - Full Flow', () => {
 })
 
 test.describe('Dashboard Trace Viewer - Basic Scenarios', () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissRubyModals(page)
+  })
+
   test('Recording Dashboard shows no results when no tests run', async ({ page }) => {
     await goToRecorderDashboardTab(page)
 
+    await expect(page.getByText('No recording results yet')).toBeVisible()
     await expect(
-      page.getByText('Please run a test to see the recording results on the dashboard.')
+      page.getByText('Record and run a test from the Recording tab to see results here.')
     ).toBeVisible()
   })
 

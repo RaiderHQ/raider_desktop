@@ -1,4 +1,5 @@
 import { test, expect } from './electronApp'
+import { enterMainLayout } from './helpers/navigation'
 
 test.describe('App Launch', () => {
   test('opens a window on startup', async ({ page }) => {
@@ -42,7 +43,9 @@ test.describe('App Launch', () => {
     await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
   })
 
-  test('all navigation links are present on initial load', async ({ page }) => {
+  test('navigation links are present once a project is open', async ({ electronApp, page }) => {
+    // The header nav only exists after a project is opened from the Welcome page
+    await enterMainLayout(electronApp, page)
     await expect(page.locator('a[href="#/recorder"]')).toBeVisible()
     await expect(page.locator('a[href="#/overview"]')).toBeVisible()
   })

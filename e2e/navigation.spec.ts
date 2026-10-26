@@ -1,6 +1,12 @@
 import { test, expect } from './electronApp'
+import { enterMainLayout } from './helpers/navigation'
 
 test.describe('Navigation', () => {
+  // The header nav only exists once a project is open
+  test.beforeEach(async ({ electronApp, page }) => {
+    await enterMainLayout(electronApp, page)
+  })
+
   test('main layout shows header with logo', async ({ page }) => {
     const logo = page.locator('header svg')
     await expect(logo).toBeVisible()
@@ -22,8 +28,11 @@ test.describe('Navigation', () => {
   })
 
   test('navigates to Tests (Overview) page', async ({ page }) => {
+    await page.locator('a[href="#/recorder"]').click()
+    await page.waitForTimeout(500)
+    // The "Ruby Raider" title in the header links back to the Overview
     await page.locator('a[href="#/overview"]').click()
-    await page.waitForTimeout(800)
+    await expect(page).toHaveURL(/#\/overview/)
   })
 
   test('can navigate between pages sequentially', async ({ page }) => {
@@ -40,8 +49,10 @@ test.describe('Navigation', () => {
   })
 
   test('active nav link has correct styling', async ({ page }) => {
-    // Recorder is the default route and should be active
     const recorderLink = page.locator('a[href="#/recorder"]')
+    // Inactive on the Overview, active once on the Recorder
+    await expect(recorderLink).not.toHaveClass(/font-semibold/)
+    await recorderLink.click()
     await expect(recorderLink).toHaveClass(/font-semibold/)
   })
 

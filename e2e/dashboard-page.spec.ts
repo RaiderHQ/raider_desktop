@@ -1,9 +1,10 @@
 import { test, expect } from './electronApp'
-import { goToRecorder } from './helpers/navigation'
+import { goToRecorder, dismissRubyModals } from './helpers/navigation'
 import { mockIPC, mockIPCSync } from './helpers/ipc-mock'
 
 test.describe('Dashboard Tab (Recorder)', () => {
   test.beforeEach(async ({ page }) => {
+    await dismissRubyModals(page)
     // Mock IPC methods used on Recorder mount
     await mockIPC(page, 'getSelectorPriorities', [])
     await mockIPC(page, 'getSuites', [])
@@ -37,8 +38,9 @@ test.describe('Dashboard Tab (Recorder)', () => {
     await dashboardTab.click()
     await page.waitForTimeout(500)
 
+    await expect(page.getByText('No recording results yet')).toBeVisible()
     await expect(
-      page.getByText('Please run a test to see the recording results on the dashboard.')
+      page.getByText('Record and run a test from the Recording tab to see results here.')
     ).toBeVisible()
   })
 

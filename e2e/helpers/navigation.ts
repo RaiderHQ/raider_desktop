@@ -1,5 +1,5 @@
-import type { Page } from '@playwright/test'
-import { mockSelectFolder } from './ipc-mock'
+import { expect } from '@playwright/test'
+import type { ElectronApplication, Locator, Page } from '@playwright/test'
 
 /**
  * Navigate to a page via hash router and wait for it to settle.
@@ -12,17 +12,58 @@ export async function navigateTo(page: Page, route: string): Promise<void> {
 }
 
 /**
+ * The "Open" button of the open-project card on the Welcome page. The recorder
+ * card also has a button named "Open", so anchor on this card's heading; the
+ * button is the heading's sibling (the recorder button is wrapped in a Link).
+ */
+export function openProjectButton(page: Page): Locator {
+  return page
+    .getByRole('heading', { name: 'Open existing project' })
+    .locator('xpath=following-sibling::button')
+}
+
+/**
+ * Dismiss the "Missing Gems" modal when the machine running the tests lacks a gem
+ * the app checks for. The modal overlays the whole window and swallows clicks, so
+ * specs that click through the UI call this first. The app's startup check is
+ * slow, so ask the main process the same question and only wait for the modal if
+ * it will appear. A no-op on a machine with all gems.
+ */
+export async function dismissRubyModals(page: Page): Promise<void> {
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const alreadyDismissed = await page.evaluate(() => (window as any).__rubyModalDismissed === true)
+  if (alreadyDismissed) return
+  const result = await page.evaluate(() => (window as any).api.isRubyInstalled())
+  if (!result.success) {
+    const skip = page.getByRole('button', { name: 'Skip', exact: true })
+    await skip.click({ timeout: 10000 })
+    await expect(skip).toBeHidden()
+  }
+  await page.evaluate(() => {
+    ;(window as any).__rubyModalDismissed = true
+  })
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+}
+
+/**
  * Get from the Welcome page (the app's start screen) into the main layout.
- * Mocks the folder picker, clicks "Open" on the Welcome page and waits for the
+ * Mocks the folder picker in the main process (window.api is frozen by the
+ * contextBridge, so a renderer-side mock would not take effect and the native
+ * dialog would open), clicks "Open" on the Welcome page and waits for the
  * Overview route, after which the header nav (Recorder link) is available.
  */
 export async function enterMainLayout(
+  electronApp: ElectronApplication,
   page: Page,
   projectPath = '/mock/test-project'
 ): Promise<void> {
-  await mockSelectFolder(page, projectPath)
-  await page.getByRole('button', { name: 'Open', exact: true }).click()
-  await page.waitForURL('**/#/overview')
+  await dismissRubyModals(page)
+  await electronApp.evaluate(async ({ ipcMain }, folder) => {
+    ipcMain.removeHandler('select-folder')
+    ipcMain.handle('select-folder', async () => folder)
+  }, projectPath)
+  await openProjectButton(page).click()
+  await expect(page).toHaveURL(/#\/overview/)
   await page.waitForTimeout(500)
 }
 
