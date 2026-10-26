@@ -1,11 +1,8 @@
 import path from 'path'
 import { safeExec } from '../../utils/safeExec'
 import type { SafeExecResult } from '../../utils/safeExec'
-import { buildShellCommand } from '../../utils/shellCommand'
+import { buildShellCommand, shellQuote } from '../../utils/shellCommand'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
-
-// Single quotes keep spaces and shell characters in a spec path literal
-const shellQuote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`
 
 /**
  * Runs spec files of a project in one `rspec --format json` call, from the
