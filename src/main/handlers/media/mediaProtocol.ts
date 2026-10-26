@@ -89,7 +89,8 @@ export const handleMediaRequest = async (request: Request): Promise<Response> =>
   try {
     handle = await fs.promises.open(
       filePath,
-      fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0)
+      // O_NONBLOCK: a FIFO swapped in after the checks must not block a libuv thread.
+      fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0) | (fs.constants.O_NONBLOCK ?? 0)
     )
   } catch {
     return new Response(null, { status: 404 })
@@ -107,7 +108,7 @@ export const handleMediaRequest = async (request: Request): Promise<Response> =>
     }
 
     const range = parseRange(request.headers.get('range'), size)
-    if (range.kind === 'unsatisfiable' || (size === 0 && range.kind === 'range')) {
+    if (range.kind === 'unsatisfiable') {
       return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}` } })
     }
     let status = 200
@@ -127,6 +128,8 @@ export const handleMediaRequest = async (request: Request): Promise<Response> =>
     const stream = Readable.toWeb(handle.createReadStream({ start, end })) as ReadableStream
     streaming = true
     return new Response(stream, { status, headers })
+  } catch {
+    return new Response(null, { status: 404 })
   } finally {
     if (!streaming) await handle.close().catch(() => undefined)
   }

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -53,6 +53,7 @@ beforeAll(() => {
 })
 
 afterAll(() => fs.rmSync(root, { recursive: true, force: true }))
+afterEach(() => vi.restoreAllMocks())
 
 describe('resolveMediaPath', () => {
   it('resolves a video under raider-results/attachments', async () => {
@@ -147,13 +148,16 @@ describe('resolveMediaPath escape vectors', () => {
     expect(await resolveMediaPath(url('/raider-results/attachments/a.webm'), 'win32')).toBeNull()
     expect(realpath).not.toHaveBeenCalled()
     expect(lstat).not.toHaveBeenCalled()
-    vi.restoreAllMocks()
+  })
+  it('positive control: the realpath spy fires on a valid path', async () => {
+    const realpath = vi.spyOn(fs.promises, 'realpath')
+    expect(await resolveMediaPath(url(clip))).toBe(clip)
+    expect(realpath).toHaveBeenCalledTimes(1)
   })
   it('on win32 requires a drive-letter root', async () => {
     const realpath = vi.spyOn(fs.promises, 'realpath')
     expect(await resolveMediaPath(url('\\raider-results\\attachments\\a.webm'), 'win32')).toBeNull()
     expect(realpath).not.toHaveBeenCalled()
-    vi.restoreAllMocks()
   })
 })
 
@@ -247,6 +251,26 @@ describe('handleMediaRequest', () => {
     const res = await handleMediaRequest(req(clip, { headers: { Range: 'bytes=500-' } }))
     expect(res.status).toBe(416)
     expect(res.headers.get('Content-Range')).toBe('bytes */36')
+  })
+
+  it('404 and closes the handle when stat throws', async () => {
+    const close = vi.fn().mockResolvedValue(undefined)
+    vi.spyOn(fs.promises, 'open').mockResolvedValue({
+      stat: vi.fn().mockRejectedValue(new Error('EIO')),
+      close
+    } as unknown as fs.promises.FileHandle)
+    const res = await handleMediaRequest(req(clip))
+    expect(res.status).toBe(404)
+    expect(close).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens with O_NONBLOCK so a swapped-in FIFO cannot block', async () => {
+    const open = vi.spyOn(fs.promises, 'open')
+    const res = await handleMediaRequest(req(clip))
+    await res.body?.cancel()
+    expect((open.mock.calls[0][1] as number) & fs.constants.O_NONBLOCK).toBe(
+      fs.constants.O_NONBLOCK
+    )
   })
 
   it('405 for methods other than GET/HEAD', async () => {
