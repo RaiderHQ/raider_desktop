@@ -8,11 +8,7 @@ const EXCLUDED_FILES: string[] = ['.DS_Store', 'Thumbs.db', 'desktop.ini']
 // Raider's own records (.raider) are not project files; hidden at the folder that was asked for
 const RAIDER_DIR = '.raider'
 
-const readDirectory = async (
-  _event: IpcMainInvokeEvent,
-  folderPath: string,
-  isNested = false
-): Promise<FileNode[]> => {
+async function readFolder(folderPath: string, isNested: boolean): Promise<FileNode[]> {
   const contents = await fs.promises.readdir(folderPath, { withFileTypes: true })
 
   const nodes = await Promise.all(
@@ -27,7 +23,7 @@ const readDirectory = async (
           name: content.name,
           isDirectory: true,
           type: 'folder' as const,
-          children: await readDirectory(_event, entryPath, true)
+          children: await readFolder(entryPath, true)
         }
       }
 
@@ -42,5 +38,9 @@ const readDirectory = async (
 
   return nodes.filter((node) => node !== null) as FileNode[]
 }
+
+// The IPC channel takes only the path: the nesting flag stays internal
+const readDirectory = (_event: IpcMainInvokeEvent, folderPath: string): Promise<FileNode[]> =>
+  readFolder(folderPath, false)
 
 export default readDirectory

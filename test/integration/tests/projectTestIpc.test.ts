@@ -28,6 +28,7 @@ beforeEach(async () => {
     "RSpec.describe 'A' do\n  it 'works' do\n    visit 'x'\n  end\nend\n"
   )
   await writeFile(join(outside, 'secret_spec.rb'), "it 'x' do\nend\n")
+  await writeFile(join(project, 'other_spec.rb'), "it 'o' do\nend\n")
   await writeFile(join(project, 'helper.rb'), 'x = 1\n')
   await symlink(join(outside, 'secret_spec.rb'), join(project, 'spec', 'link_spec.rb'))
   mockSafeExec.mockReset()
@@ -73,6 +74,27 @@ describe('project test IPC', () => {
     ]) {
       await expect(openCodeTestHandler(bad), bad).rejects.toThrow()
     }
+  })
+
+  it('open-code-test rejects a safe spec file the scanner does not list', async () => {
+    await setActiveProject(project)
+    expect((await listProjectTestsHandler()).map((e) => e.file)).not.toContain('other_spec.rb')
+    await expect(openCodeTestHandler('other_spec.rb')).rejects.toThrow(/Not a project test/)
+  })
+
+  it('run-project-file refuses a safe spec file the scanner does not list', async () => {
+    await setActiveProject(project)
+    const result = await runProjectFileHandler('other_spec.rb', 'ruby')
+    expect(result.success).toBe(false)
+    expect(result.output).toMatch(/Not a project test/)
+    expect(mockSafeExec).not.toHaveBeenCalled()
+  })
+
+  it('run-project-file refuses a ruby command with shell characters', async () => {
+    await setActiveProject(project)
+    const result = await runProjectFileHandler('spec/a_spec.rb', 'ruby; touch /tmp/pwned #')
+    expect(result.success).toBe(false)
+    expect(mockSafeExec).not.toHaveBeenCalled()
   })
 
   it('open-code-test refuses without a project', async () => {
