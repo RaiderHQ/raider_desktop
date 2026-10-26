@@ -122,36 +122,6 @@ test.describe('Overview Settings Tab - Functional', () => {
   })
 
 
-  // ── Debug ───────────────────────────────────────
-
-  test('debug toggle triggers updateDebugMode', async ({ page }) => {
-    await mockIPCCapture(page, 'updateDebugMode', { success: true })
-    // Find the debug section's toggle
-    const debugSection = page.locator('details').filter({ hasText: 'Debug' })
-    await debugSection.locator('[role="switch"]').click()
-    await page.waitForTimeout(500)
-
-    const calls = await getIPCCalls(page, 'updateDebugMode')
-    expect(calls.length).toBe(1)
-    expect(calls[0][0]).toBe('/mock/test-project')
-    expect(calls[0][1]).toBe(true)
-  })
-
-  test('debug toggle reverts on failure', async ({ page }) => {
-    await mockIPCCaptureFailure(page, 'updateDebugMode', 'Failed to update')
-    const debugSection = page.locator('details').filter({ hasText: 'Debug' })
-    const toggle = debugSection.locator('[role="switch"]')
-
-    // Should be off initially
-    const initialState = await toggle.getAttribute('aria-checked')
-    await toggle.click()
-    await page.waitForTimeout(1000)
-
-    // Should revert back to initial state after failure
-    const finalState = await toggle.getAttribute('aria-checked')
-    expect(finalState).toBe(initialState)
-  })
-
   // ── Browser Options ─────────────────────────────
 
   test('browser options update triggers updateBrowserOptions IPC', async ({ page }) => {

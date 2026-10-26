@@ -115,7 +115,6 @@
       "appiumSettings": "Appium Settings",
       "timeout": "Timeout",
       "viewport": "Viewport",
-      "debug": "Debug Mode",
       "browserOptions": "Browser Options",
       "appium": "Appium",
       "paths": "Paths"
@@ -213,11 +212,6 @@
       "height": "Height:",
       "updateButton": "Update Viewport",
       "updateSuccess": "Viewport updated successfully!"
-    },
-    "debug": {
-      "label": "Enable debug diagnostics",
-      "description": "Captures screenshots, HTML, and console logs on failure.",
-      "updateSuccess": "Debug mode updated!"
     },
     "browserOptions": {
       "placeholder": "Add option (e.g. headless)...",

@@ -55,14 +55,7 @@ const handler = async (
     const isMobile = typeof mobile === 'string' && mobile.trim() !== ''
     if (options?.ci === 'azure' && !isMobile) raiderCommand += ' ci:azure'
 
-    if (options) {
-      if (options.accessibility) raiderCommand += ' --accessibility'
-      if (options.reporter && options.reporter !== 'none') {
-        raiderCommand += ` -r ${options.reporter}`
-      }
-      if (options.skipCi) raiderCommand += ' --skip_ci'
-      if (options.rubyVersion) raiderCommand += ` --ruby_version ${options.rubyVersion}`
-    }
+    if (options?.accessibility) raiderCommand += ' --accessibility'
 
     // Extract the Ruby version from rubyCommand (e.g. "eval ... && rbenv shell 3.4.1 && ruby")
     // so buildShellCommand can pin RBENV_VERSION. This ensures raider is found even in

@@ -98,6 +98,21 @@ describe('runRubyRaider handler (integration)', () => {
     })
   })
 
+  it('never emits -r, --skip_ci or --ruby_version', async () => {
+    mockExecSuccess()
+    await handler(...validArgs, null, {
+      accessibility: true,
+      reporter: 'junit',
+      skipCi: true,
+      rubyVersion: '3.3.0'
+    } as never)
+    const call = mockExec.mock.calls[0][0] as string
+    expect(call).not.toMatch(/ -r /)
+    expect(call).not.toContain('--skip_ci')
+    expect(call).not.toContain('--ruby_version')
+    expect(call).toContain('--accessibility')
+  })
+
   it('returns error when exec fails', async () => {
     mockExecError('raider not found')
     const result = await handler(...validArgs)

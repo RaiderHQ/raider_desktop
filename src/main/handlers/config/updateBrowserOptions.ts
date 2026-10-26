@@ -3,6 +3,11 @@ import { safeExec } from '../../utils/safeExec'
 import { buildShellCommand } from '../../utils/shellCommand'
 import { CommandType } from '@foundation/Types/commandType'
 
+const quoteArg = (arg: string): string =>
+  /^[A-Za-z0-9_./:-]+$/.test(arg)
+    ? arg
+    : `'${arg.replace(/'/g, `'\\''`)}'`
+
 const handler = async (
   _event: IpcMainInvokeEvent,
   projectPath: string,
@@ -12,8 +17,9 @@ const handler = async (
   fixPath()
 
   try {
-    const optsStr = options.join(',')
-    const shellCommand = buildShellCommand(projectPath, `raider u browser_options --opts "${optsStr}"`)
+    // The gem takes each option as a positional argument; an empty list clears them.
+    const args = options.length > 0 ? options.map(quoteArg).join(' ') : '--delete'
+    const shellCommand = buildShellCommand(projectPath, `raider u browser_options ${args}`)
 
     const result = await safeExec(shellCommand, { timeout: 30_000 })
 

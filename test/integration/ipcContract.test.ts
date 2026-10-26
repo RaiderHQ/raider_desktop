@@ -65,7 +65,6 @@ describe('IPC Contract', () => {
     'isRvmRubyInstalled',
     'isSystemRubyInstalled',
     'installRbenvAndRuby',
-    'installRaider',
     'installGems',
 
     // Browser & Mobile Configuration
@@ -128,7 +127,6 @@ describe('IPC Contract', () => {
     // Extended Project Settings
     'updateTimeout',
     'updateViewport',
-    'updateDebugMode',
     'updateBrowserOptions',
     'updateHeadlessMode',
     'getProjectConfig',

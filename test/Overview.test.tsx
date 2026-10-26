@@ -69,7 +69,6 @@ const mockApi = {
   getMobileCapabilities: vi.fn().mockResolvedValue({ success: true, capabilities: {} }),
   updateTimeout: vi.fn().mockResolvedValue({ success: true }),
   updateViewport: vi.fn().mockResolvedValue({ success: true }),
-  updateDebugMode: vi.fn().mockResolvedValue({ success: true }),
   updateMobileCapabilities: vi.fn().mockResolvedValue({ success: true }),
   startAppium: vi.fn().mockResolvedValue({ success: true }),
   updatePaths: vi.fn().mockResolvedValue({ success: true }),

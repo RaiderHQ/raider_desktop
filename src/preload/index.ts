@@ -104,7 +104,6 @@ const api = {
     ipcRenderer.invoke('is-mobile-project', projectPath),
   runCommand: async (command: string): Promise<CommandType> =>
     ipcRenderer.invoke('run-command', command),
-  installRaider: async (): Promise<CommandType> => ipcRenderer.invoke('install-raider'),
   installGems: async (rubyCommand: string, gems: string[]): Promise<CommandType> =>
     ipcRenderer.invoke('install-gems', rubyCommand, gems),
   isRubyInstalled: async (): Promise<{
@@ -267,11 +266,6 @@ const api = {
     height: number
   ): Promise<CommandType> =>
     ipcRenderer.invoke('update-viewport', projectPath, width, height),
-  updateDebugMode: async (
-    projectPath: string,
-    enabled: boolean
-  ): Promise<CommandType> =>
-    ipcRenderer.invoke('update-debug-mode', projectPath, enabled),
   updateBrowserOptions: async (
     projectPath: string,
     options: string[]

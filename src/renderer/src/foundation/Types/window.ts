@@ -63,7 +63,6 @@ export interface WindowApi {
     output?: string
     error?: string
   }>
-  installRaider: () => Promise<CommandType>
   installGems: (rubyCommand: string, gems: string[]) => Promise<CommandType>
 
   // --- Browser & Mobile Configuration ---
@@ -190,7 +189,6 @@ export interface WindowApi {
   // --- Extended Project Settings ---
   updateTimeout: (projectPath: string, seconds: number) => Promise<CommandType>
   updateViewport: (projectPath: string, width: number, height: number) => Promise<CommandType>
-  updateDebugMode: (projectPath: string, enabled: boolean) => Promise<CommandType>
   updateBrowserOptions: (projectPath: string, options: string[]) => Promise<CommandType>
   updateHeadlessMode: (
     projectPath: string,

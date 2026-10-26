@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import Button from '@components/Button'
-import ToggleSwitch from '@components/ToggleSwitch'
 import TagInput from '@components/TagInput'
 import useProjectStore from '@foundation/Stores/projectStore'
 
@@ -24,8 +23,6 @@ const Settings: React.FC = () => {
   const [timeout, setTimeout_] = useState(30)
   const [isUpdatingTimeout, setIsUpdatingTimeout] = useState(false)
 
-  const [debugMode, setDebugMode] = useState(false)
-  const [isUpdatingDebug, setIsUpdatingDebug] = useState(false)
   const [browserOptions, setBrowserOptions] = useState<string[]>([])
   const [isUpdatingOptions, setIsUpdatingOptions] = useState(false)
   const [isStartingAppium, setIsStartingAppium] = useState(false)
@@ -145,25 +142,6 @@ const Settings: React.FC = () => {
   }
 
 
-  const handleDebugToggle = async (enabled: boolean): Promise<void> => {
-    setDebugMode(enabled)
-    setIsUpdatingDebug(true)
-    try {
-      const result = await window.api.updateDebugMode(projectPath, enabled)
-      if (result.success) {
-        toast.success(t('settings.debug.updateSuccess'))
-      } else {
-        toast.error(result.error || t('settings.error.unexpected'))
-        setDebugMode(!enabled)
-      }
-    } catch (error) {
-      toast.error(`${t('settings.error.unexpected')}: ${error}`)
-      setDebugMode(!enabled)
-    } finally {
-      setIsUpdatingDebug(false)
-    }
-  }
-
   const handleBrowserOptionsUpdate = async (): Promise<void> => {
     setIsUpdatingOptions(true)
     try {
@@ -235,7 +213,6 @@ const Settings: React.FC = () => {
     ? ['settings.section.appium']
     : [
         'settings.section.timeout',
-        'settings.section.debug',
         'settings.section.browserOptions'
       ]
 
@@ -356,17 +333,6 @@ const Settings: React.FC = () => {
                     </>
                   )}
 
-                  {section === 'settings.section.debug' && (
-                    <div className="mt-2">
-                      <ToggleSwitch
-                        label={t('settings.debug.label')}
-                        checked={debugMode}
-                        onChange={handleDebugToggle}
-                        disabled={isUpdatingDebug}
-                        description={t('settings.debug.description')}
-                      />
-                    </div>
-                  )}
                   {section === 'settings.section.browserOptions' && (
                     <>
                       <div className="mt-2">

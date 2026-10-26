@@ -24,7 +24,6 @@ import updateBrowserUrl from './handlers/config/updateBrowserUrl'
 import updateBrowserType from './handlers/config/updateBrowserType'
 import isMobileProject from './handlers/config/isMobileProject'
 import runCommand from './handlers/testing/runCommand'
-import installRaider from './handlers/ruby/installRaider'
 import updateMobileCapabilities from './handlers/config/updateMobileCapabilities'
 import getMobileCapabilities from './handlers/config/getMobileCapabilities'
 import isRubyInstalled from './handlers/ruby/isRubyInstalled'
@@ -64,7 +63,6 @@ import { closeApp } from './handlers/closeApp'
 import scaffoldGenerate from './handlers/project/scaffoldGenerate'
 import updateTimeout from './handlers/config/updateTimeout'
 import updateViewport from './handlers/config/updateViewport'
-import updateDebugMode from './handlers/config/updateDebugMode'
 import updateBrowserOptions from './handlers/config/updateBrowserOptions'
 import startAppium from './handlers/config/startAppium'
 import updatePaths from './handlers/config/updatePaths'
@@ -189,7 +187,6 @@ app.whenReady().then(() => {
     updateBrowserType(event, projectPath, browser)
   )
   ipcMain.handle('run-command', runCommand)
-  ipcMain.handle('install-raider', installRaider)
   ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)
   ipcMain.handle('get-mobile-capabilities', getMobileCapabilities)
   ipcMain.handle('is-ruby-installed', isRubyInstalled)
@@ -315,9 +312,6 @@ app.whenReady().then(() => {
   )
   ipcMain.handle('update-viewport', (event, projectPath: string, width: number, height: number) =>
     updateViewport(event, projectPath, width, height)
-  )
-  ipcMain.handle('update-debug-mode', (event, projectPath: string, enabled: boolean) =>
-    updateDebugMode(event, projectPath, enabled)
   )
   ipcMain.handle('update-browser-options', (event, projectPath: string, options: string[]) =>
     updateBrowserOptions(event, projectPath, options)
