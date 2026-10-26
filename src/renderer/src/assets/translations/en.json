@@ -681,6 +681,10 @@
       }
     },
     "overview": {
+      "tests": {
+        "title": "Tests",
+        "message": "Every test in your project is listed here.\n\nRecorded tests were made with the recorder — click Edit to change them.\n\nCode tests were written by a developer, and Code-owned tests were recorded and then changed by hand. You can view and run them, but only a developer can change them."
+      },
       "files": {
         "title": "Files & Test Settings",
         "message": "Browse all files in your project on the left — click any file to preview it on the right.\n\nUse the toolbar above to set which browser to use, whether to run headlessly, which tests to run, and the timeout.\n\nThese settings apply every time you run your tests."
