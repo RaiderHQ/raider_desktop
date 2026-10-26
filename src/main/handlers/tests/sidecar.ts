@@ -45,6 +45,7 @@ const isInside = (root: string, target: string): boolean => {
 export async function assertRealInside(projectPath: string, target: string): Promise<void> {
   const realProject = await fs.realpath(projectPath)
   let current = resolve(target)
+  let retries = 0
   for (;;) {
     try {
       const real = await fs.realpath(current)
@@ -52,12 +53,12 @@ export async function assertRealInside(projectPath: string, target: string): Pro
       return
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-      // realpath also says ENOENT for a dangling symlink, which lstat still sees
-      const dangling = await fs.lstat(current).then(
-        () => true,
-        () => false
-      )
-      if (dangling) throw new Error(`Path goes through a broken link: ${target}`)
+      // realpath also says ENOENT for a dangling symlink, which lstat still sees.
+      // Anything else lstat finds was created meanwhile (a parallel save): look again.
+      const stat = await fs.lstat(current).catch(() => null)
+      if (stat?.isSymbolicLink()) throw new Error(`Path goes through a broken link: ${target}`)
+      if (stat && ++retries <= 10) continue
+      if (stat) throw new Error(`Path keeps changing: ${target}`)
       const parent = dirname(current)
       if (parent === current) throw new Error(`Path leaves the project: ${target}`)
       current = parent
@@ -65,9 +66,26 @@ export async function assertRealInside(projectPath: string, target: string): Pro
   }
 }
 
+// Hard links are unavailable on e.g. exFAT, FAT32 and some network shares
+const NO_LINK = ['ENOTSUP', 'EOPNOTSUPP', 'EPERM', 'EXDEV', 'ENOSYS']
+
+// Creates `target` only if it doesn't exist ('wx'); removes it again if the write fails
+async function createExclusive(target: string, body: string): Promise<void> {
+  const handle = await fs.open(target, 'wx')
+  try {
+    await handle.writeFile(body, 'utf-8')
+  } catch (error) {
+    await handle.close().catch(() => undefined)
+    await fs.unlink(target).catch(() => undefined)
+    throw error
+  }
+  await handle.close()
+}
+
 /**
  * Writes via a unique tmp file. `exclusive` never replaces an existing file
- * (hard link fails with EEXIST); otherwise the tmp file is renamed over it.
+ * (hard link fails with EEXIST; without hard links it falls back to an
+ * exclusive create); otherwise the tmp file is renamed over it.
  */
 export async function writeFileAtomic(
   target: string,
@@ -77,8 +95,15 @@ export async function writeFileAtomic(
   const tmp = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`
   try {
     await fs.writeFile(tmp, body, 'utf-8')
-    if (exclusive) await fs.link(tmp, target)
-    else await fs.rename(tmp, target)
+    if (!exclusive) await fs.rename(tmp, target)
+    else {
+      try {
+        await fs.link(tmp, target)
+      } catch (error) {
+        if (!NO_LINK.includes((error as NodeJS.ErrnoException).code ?? '')) throw error
+        await createExclusive(target, body)
+      }
+    }
   } finally {
     await fs.unlink(tmp).catch(() => undefined)
   }

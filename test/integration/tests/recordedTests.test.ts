@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import fs from 'fs/promises'
 import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, symlink, access } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -63,6 +64,7 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
+  vi.restoreAllMocks()
   await rm(project, { recursive: true, force: true })
 })
 
@@ -205,5 +207,105 @@ describe('recorded tests', () => {
     expect((await readSidecar(project, sidecar.file))?.codeOwned).toBe(true)
     await expect(deleteRecordedTest(project, 't1')).rejects.toBeInstanceOf(CodeOwnedError)
     expect(await exists(file)).toBe(true)
+  })
+
+  it('spec_path change keeps updating the file at its old location', async () => {
+    const first = await saveRecordedTest(project, layout, test())
+    const moved = { ...layout, specPath: 'test/spec' }
+    const second = await saveRecordedTest(project, moved, test({ name: 'Moved' }))
+    expect(second.file).toBe(first.file)
+    expect(await readFile(join(project, first.file), 'utf-8')).toContain("describe 'Moved'")
+    // New tests go to the new folder
+    const other = await saveRecordedTest(project, moved, test({ id: 't2', name: 'Other' }))
+    expect(other.file).toBe('test/spec/other_spec.rb')
+  })
+
+  it('creates and restores files on volumes without hard links', async () => {
+    const noLink = Object.assign(new Error('not supported'), { code: 'ENOTSUP' })
+    const link = vi.spyOn(fs, 'link').mockRejectedValue(noLink)
+    const sidecar = await saveRecordedTest(project, layout, test())
+    expect(link).toHaveBeenCalled()
+    const file = join(project, sidecar.file)
+    expect(hashRuby(await readFile(file, 'utf-8'))).toBe(sidecar.hash)
+    await rm(file)
+    const restored = await saveRecordedTest(project, layout, test({ steps: steps(2) }))
+    expect(hashRuby(await readFile(file, 'utf-8'))).toBe(restored.hash)
+    // The fallback still never replaces a hand-written file
+    await writeFile(join(project, 'spec', 'other_spec.rb'), "puts 'mine'\n")
+    const other = await saveRecordedTest(project, layout, test({ id: 't2', name: 'Other' }))
+    expect(other.file).toBe('spec/other_2_spec.rb')
+    expect(await readFile(join(project, 'spec', 'other_spec.rb'), 'utf-8')).toBe("puts 'mine'\n")
+    const all = await walk(project)
+    expect(all.filter((f) => f.endsWith('.tmp'))).toEqual([])
+  })
+
+  it('a sidecar with a matching hash cannot claim a hand-written spec', async () => {
+    await mkdir(join(project, 'spec'))
+    const handWritten = "describe 'login' do\n  it 'works' do\n  end\nend\n"
+    const file = join(project, 'spec', 'login_spec.rb')
+    await writeFile(file, handWritten)
+    await writeSidecar(project, {
+      version: 1,
+      id: 'x',
+      name: 'Login',
+      url: 'https://x.test',
+      steps: steps(1),
+      file: 'spec/login_spec.rb',
+      automation: 'selenium',
+      hash: hashRuby(handWritten),
+      createdAt: '2026-10-26T00:00:00.000Z',
+      updatedAt: '2026-10-26T00:00:00.000Z'
+    })
+    await expect(saveRecordedTest(project, layout, test({ id: 'x' }))).rejects.toBeInstanceOf(
+      CodeOwnedError
+    )
+    expect(await readFile(file, 'utf-8')).toBe(handWritten)
+    expect((await readSidecar(project, 'spec/login_spec.rb'))?.codeOwned).toBe(true)
+    await expect(deleteRecordedTest(project, 'x')).rejects.toBeInstanceOf(CodeOwnedError)
+    expect(await readFile(file, 'utf-8')).toBe(handWritten)
+  })
+
+  it('a hand-written spec is refused by delete even before any save', async () => {
+    await mkdir(join(project, 'spec'))
+    const handWritten = "describe 'pay' do\nend\n"
+    const file = join(project, 'spec', 'pay_spec.rb')
+    await writeFile(file, handWritten)
+    await writeSidecar(project, {
+      version: 1,
+      id: 'y',
+      name: 'Pay',
+      url: 'https://x.test',
+      steps: steps(1),
+      file: 'spec/pay_spec.rb',
+      automation: 'selenium',
+      hash: hashRuby(handWritten),
+      createdAt: '2026-10-26T00:00:00.000Z',
+      updatedAt: '2026-10-26T00:00:00.000Z'
+    })
+    await expect(deleteRecordedTest(project, 'y')).rejects.toBeInstanceOf(CodeOwnedError)
+    expect(await readFile(file, 'utf-8')).toBe(handWritten)
+  })
+
+  it('a broken link at the candidate name is skipped', async () => {
+    await mkdir(join(project, 'spec'))
+    await symlink(join(project, 'nowhere'), join(project, 'spec', 'checkout_spec.rb'))
+    const sidecar = await saveRecordedTest(project, layout, test())
+    expect(sidecar.file).toBe('spec/checkout_2_spec.rb')
+  })
+
+  it('saves through different spellings of the project path serialize', async () => {
+    const spellings = [project, `${project}/`, join(project, '.')]
+    await Promise.all(
+      Array.from({ length: 9 }, (_, i) =>
+        saveRecordedTest(spellings[i % 3], layout, test({ steps: steps(i + 1) }))
+      )
+    )
+    const all = await walk(project)
+    expect(all.filter((f) => f.endsWith('_spec.rb'))).toHaveLength(1)
+    const sidecar = await readSidecar(project, 'spec/checkout_spec.rb')
+    expect(sidecar?.steps).toHaveLength(9)
+    expect(hashRuby(await readFile(join(project, 'spec', 'checkout_spec.rb'), 'utf-8'))).toBe(
+      sidecar?.hash
+    )
   })
 })

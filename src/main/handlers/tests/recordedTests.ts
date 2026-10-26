@@ -1,6 +1,7 @@
 import fs from 'fs/promises'
-import { dirname, posix } from 'path'
-import { generateProjectSpecFile } from '../../codegen/testFile'
+import { realpathSync } from 'fs'
+import { dirname, posix, resolve } from 'path'
+import { generateProjectSpecFile, RECORDED_MARKER } from '../../codegen/testFile'
 import { hashRuby } from './codeHash'
 import {
   assertRealInside,
@@ -42,8 +43,9 @@ export function slugify(name: string): string {
 
 const isSpecRel = (rel: unknown): rel is string => isSafeRelPath(rel) && rel.endsWith('_spec.rb')
 
+// lstat, so a broken symlink counts as taken too
 const exists = (p: string): Promise<boolean> =>
-  fs.access(p).then(
+  fs.lstat(p).then(
     () => true,
     () => false
   )
@@ -79,20 +81,25 @@ const specRoot = (layout: ProjectLayout): string => {
   return root
 }
 
-/** Absolute path of a spec file, checked to sit inside the project's spec folder. */
-async function specFilePath(
-  projectPath: string,
-  layout: ProjectLayout,
-  fileRel: string
-): Promise<string> {
-  const root = specRoot(layout)
-  const inSpec = posix.relative(root, fileRel)
-  if (!isSpecRel(fileRel) || !isSafeRelPath(inSpec))
-    throw new Error(`Spec file is outside the spec folder: ${fileRel}`)
-  const target = resolveInside(resolveInside(projectPath, root), inSpec)
+/**
+ * Absolute path of an existing recorded test's file. It only has to be a spec
+ * file inside the project, so tests stay editable after spec_path changes.
+ */
+async function recordedFilePath(projectPath: string, fileRel: string): Promise<string> {
+  if (!isSpecRel(fileRel)) throw new Error(`Not a spec file: ${fileRel}`)
+  const target = resolveInside(projectPath, fileRel)
   await assertRealInside(projectPath, target)
   return target
 }
+
+/**
+ * Raider may only replace or delete a file it wrote: the content must still hash
+ * to the sidecar's hash and carry the generator's header (hashRuby ignores
+ * comments, so a sidecar can't claim a hand-written spec just by its hash).
+ */
+const isRaiderFile = (content: string, sidecar: Sidecar): boolean =>
+  hashRuby(content) === sidecar.hash &&
+  content.split(/\r?\n/).some((line) => line.trimStart().startsWith(RECORDED_MARKER))
 
 // Marks the sidecar so the edited file is never touched again, then refuses
 async function markCodeOwned(projectPath: string, sidecar: Sidecar): Promise<never> {
@@ -135,9 +142,13 @@ async function createNewSpec(
   const root = specRoot(layout)
   const slug = slugify(test.name)
   for (let n = 1; n <= MAX_SUFFIX; n++) {
-    const file = posix.join(root, n === 1 ? `${slug}_spec.rb` : `${slug}_${n}_spec.rb`)
-    const target = await specFilePath(projectPath, layout, file)
+    const name = n === 1 ? `${slug}_spec.rb` : `${slug}_${n}_spec.rb`
+    const file = posix.join(root, name)
+    const target = resolveInside(resolveInside(projectPath, root), name)
     if ((await exists(target)) || (await exists(sidecarPath(projectPath, file)))) continue
+    // Check the folder, not the name: a racing save may create the name meanwhile,
+    // and the exclusive create below never follows a link at the name itself
+    await assertRealInside(projectPath, dirname(target))
     const content = generate(test, layout, file)
     await fs.mkdir(dirname(target), { recursive: true })
     try {
@@ -154,7 +165,16 @@ async function createNewSpec(
 
 // Per test id: the whole read-check-generate-write sequence runs one at a time
 const testQueues = new Map<string, Promise<unknown>>()
-const testKey = (projectPath: string, testId: string): string => `${projectPath}\0${testId}`
+// Keyed on the real project path so different spellings of it share one queue
+function testKey(projectPath: string, testId: string): string {
+  let project: string
+  try {
+    project = realpathSync.native(projectPath)
+  } catch {
+    project = resolve(projectPath)
+  }
+  return `${project}\0${testId}`
+}
 
 export function saveRecordedTest(
   projectPath: string,
@@ -179,9 +199,9 @@ export function saveRecordedTest(
     }
 
     if (existing.codeOwned) throw new CodeOwnedError(existing.file)
-    const target = await specFilePath(projectPath, layout, existing.file)
+    const target = await recordedFilePath(projectPath, existing.file)
     const onDisk = await readIfExists(target)
-    if (onDisk !== null && hashRuby(onDisk) !== existing.hash) {
+    if (onDisk !== null && !isRaiderFile(onDisk, existing)) {
       return markCodeOwned(projectPath, existing)
     }
 
@@ -206,12 +226,10 @@ export function deleteRecordedTest(projectPath: string, testId: string): Promise
     if (!existing) return
     if (existing.codeOwned) throw new CodeOwnedError(existing.file)
 
-    // No layout here: the file only has to be a spec file inside the project
-    const target = resolveInside(projectPath, existing.file)
-    await assertRealInside(projectPath, target)
+    const target = await recordedFilePath(projectPath, existing.file)
     const onDisk = await readIfExists(target)
     if (onDisk !== null) {
-      if (hashRuby(onDisk) !== existing.hash) return markCodeOwned(projectPath, existing)
+      if (!isRaiderFile(onDisk, existing)) return markCodeOwned(projectPath, existing)
       try {
         await fs.unlink(target)
       } catch (error) {

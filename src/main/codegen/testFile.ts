@@ -102,6 +102,9 @@ const DISABLED_COPS = 'RSpec/ExampleLength, RSpec/MultipleExpectations'
  * project's spec_helper (driver / browser) instead of creating its own session.
  * `fileRelPath` and `helperPath` are relative to the project root.
  */
+/** Header line that marks a spec file as written by Raider (hashRuby ignores comments). */
+export const RECORDED_MARKER = '# Recorded with Raider.'
+
 export function generateProjectSpecFile(
   test: { name: string; steps: Step[] },
   automation: Automation,
@@ -140,7 +143,7 @@ export function generateProjectSpecFile(
   return [
     '# frozen_string_literal: true',
     '',
-    '# Recorded with Raider. Edit in Raider; editing here makes the test code-owned.',
+    `${RECORDED_MARKER} Edit in Raider; editing here makes the test code-owned.`,
     `# rubocop:disable ${DISABLED_COPS}`,
     `require_relative ${rubyString(toHelper)}`,
     '',
