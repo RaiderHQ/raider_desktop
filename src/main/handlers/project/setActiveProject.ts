@@ -1,13 +1,20 @@
 import { appState } from '../appState'
 import { DEFAULT_RECORDER_SETTINGS, readRecorderSettings } from '../config/projectSettings'
 import { loadSuites } from '../suitePersistence'
+import { detectProjectLayout } from './projectLayout'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
+import type { ProjectLayout } from '@shared/types/projectLayout'
 
 /**
  * Makes the given project the active one (or clears it with null) and loads
  * its recorder settings and suites. Single place to hook in per-project loading.
  */
-type ActivationResult = { success: boolean; settings?: RecorderSettings; error?: string }
+type ActivationResult = {
+  success: boolean
+  settings?: RecorderSettings
+  layout?: ProjectLayout
+  error?: string
+}
 
 // Latest activation, so readers can wait for it and activations apply in call order
 let activation: Promise<unknown> = Promise.resolve()
@@ -45,6 +52,9 @@ export async function getRecorderSettings(): Promise<RecorderSettings> {
 function clearActiveProject(): void {
   appState.projectPath = null
   appState.recorderSettings = { ...DEFAULT_RECORDER_SETTINGS }
+  appState.layout = null
+  appState.projectAutomation = null
+  appState.projectFramework = null
   appState.suites = new Map()
   appState.mainWindow?.webContents.send('suite-updated', [])
 }
@@ -57,16 +67,24 @@ async function activate(projectPath: string | null): Promise<ActivationResult> {
     } else {
       // Load everything before swapping, so suites and projectPath always change together
       const settings = await readRecorderSettings(projectPath)
+      const layout = await detectProjectLayout(projectPath)
       const { suites, recoveredFromCorrupt, backupSaved } = await loadSuites(projectPath)
       appState.recorderSettings = settings
       appState.projectPath = projectPath
+      appState.layout = layout
+      appState.projectAutomation = layout.automation
+      appState.projectFramework = layout.framework
       appState.suites = new Map(suites.map((suite) => [suite.id, suite]))
       appState.mainWindow?.webContents.send('suite-updated', suites)
       if (recoveredFromCorrupt) {
         appState.mainWindow?.webContents.send('suites-recovered', { backupSaved })
       }
     }
-    return { success: true, settings: appState.recorderSettings }
+    return {
+      success: true,
+      settings: appState.recorderSettings,
+      ...(appState.layout && { layout: appState.layout })
+    }
   } catch (error) {
     // The renderer has already switched projects, so keeping the previous one active
     // would save recordings and settings into a project the user no longer sees

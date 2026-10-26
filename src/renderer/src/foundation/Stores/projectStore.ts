@@ -4,12 +4,14 @@ import i18n from 'i18next'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { FileNode } from '@foundation/Types/fileNode'
 import { RaiderConfig } from '@foundation/Types/raiderConfig'
+import type { ProjectLayout } from '@shared/types/projectLayout'
 
 interface ProjectStore {
   projectPath: string | null
   projectConfig: RaiderConfig | null
   projectAutomation: string | null
   projectFramework: string | null
+  layout: ProjectLayout | null
   files: FileNode[]
   selectedFiles: string[]
   setProjectPath: (path: string) => void
@@ -26,6 +28,7 @@ const useProjectStore = create(
     projectConfig: null,
     projectAutomation: null,
     projectFramework: null,
+    layout: null,
     files: [],
     selectedFiles: [],
     setProjectPath: (path: string): void => {
@@ -34,7 +37,8 @@ const useProjectStore = create(
       if (path === get().projectPath) syncActiveProject(path)
       else set({ projectPath: path })
     },
-    setProjectAutomation: (automation: string | null): void => set({ projectAutomation: automation }),
+    setProjectAutomation: (automation: string | null): void =>
+      set({ projectAutomation: automation }),
     setProjectFramework: (framework: string | null): void => set({ projectFramework: framework }),
 
     loadFiles: async (path: string): Promise<void> => {
@@ -93,7 +97,7 @@ useProjectStore.subscribe(
       return
     }
 
-    useProjectStore.setState({ projectConfig: null })
+    useProjectStore.setState({ projectConfig: null, layout: null })
   }
 )
 
@@ -114,6 +118,10 @@ const syncActiveProject = (projectPath: string | null): void => {
   window.api
     .setActiveProject(projectPath)
     .then((result) => {
+      // Only keep the layout if the project is still the one that was activated
+      if (useProjectStore.getState().projectPath === projectPath) {
+        useProjectStore.setState({ layout: result.layout ?? null })
+      }
       if (!result.success) {
         // Main has closed the project, so nothing is saved until it opens cleanly
         toast.error(i18n.t('project.activationFailed', { error: result.error }), {

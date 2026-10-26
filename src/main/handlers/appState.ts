@@ -2,6 +2,7 @@ import { BrowserWindow } from 'electron'
 import type { Suite } from '@foundation/Types/suite'
 import type { ChildProcess } from 'child_process'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
+import type { ProjectLayout } from '@shared/types/projectLayout'
 import { DEFAULT_RECORDER_SETTINGS } from './config/projectSettings'
 
 interface AppState {
@@ -12,6 +13,7 @@ interface AppState {
   projectPath: string | null
   projectAutomation: string | null
   projectFramework: string | null
+  layout: ProjectLayout | null
   rubyVersion: string | null
   suites: Map<string, Suite>
   recorderSettings: RecorderSettings
@@ -28,6 +30,7 @@ export const appState: AppState = {
   projectPath: null,
   projectAutomation: null,
   projectFramework: null,
+  layout: null,
   rubyVersion: null,
   suites: new Map(),
   recorderSettings: { ...DEFAULT_RECORDER_SETTINGS },

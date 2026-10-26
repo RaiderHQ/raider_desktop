@@ -6,6 +6,7 @@ import type { TraceStep } from '@shared/types/traceStep'
 import type { Step } from '@shared/types/step'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
+import type { ProjectLayout } from '@shared/types/projectLayout'
 import type { IpcRendererEvent } from 'electron'
 
 export interface WindowApi {
@@ -29,8 +30,13 @@ export interface WindowApi {
   ) => Promise<{ success: boolean; data?: string; fileExt?: string; error?: string }>
   editFile: (filePath: string, newContent: string) => Promise<{ success: boolean; error?: string }>
   deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
-  renameFile: (filePath: string, newName: string) => Promise<{ success: boolean; newPath?: string; error?: string }>
-  duplicateFile: (filePath: string) => Promise<{ success: boolean; newPath?: string; error?: string }>
+  renameFile: (
+    filePath: string,
+    newName: string
+  ) => Promise<{ success: boolean; newPath?: string; error?: string }>
+  duplicateFile: (
+    filePath: string
+  ) => Promise<{ success: boolean; newPath?: string; error?: string }>
   openReport: (projectPath: string) => Promise<{ success: boolean; error?: string }>
   reportExists: (projectPath: string) => Promise<boolean>
 
@@ -147,7 +153,13 @@ export interface WindowApi {
     testName: string,
     stepsToReplay: Step[],
     rubyCommand: string
-  ) => Promise<{ success: boolean; url?: string; preloadPath?: string; error?: string; cancelled?: boolean }>
+  ) => Promise<{
+    success: boolean
+    url?: string
+    preloadPath?: string
+    error?: string
+    cancelled?: boolean
+  }>
   cancelReplay: () => Promise<{ success: boolean }>
   replayInWebview: (steps: Step[]) => Promise<{
     success: boolean
@@ -162,9 +174,12 @@ export interface WindowApi {
   updateRecordingSettings: (
     settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
   ) => Promise<{ success: boolean; error?: string }>
-  setActiveProject: (
-    projectPath: string | null
-  ) => Promise<{ success: boolean; settings?: RecorderSettings; error?: string }>
+  setActiveProject: (projectPath: string | null) => Promise<{
+    success: boolean
+    settings?: RecorderSettings
+    layout?: ProjectLayout
+    error?: string
+  }>
   getRecorderSettings: () => Promise<RecorderSettings>
 
   // --- Trace Management ---
@@ -196,9 +211,7 @@ export interface WindowApi {
     projectPath: string,
     enabled: boolean
   ) => Promise<{ success: boolean; output?: string; error?: string }>
-  getProjectConfig: (
-    projectPath: string
-  ) => Promise<{
+  getProjectConfig: (projectPath: string) => Promise<{
     success: boolean
     config?: {
       baseUrl?: string
@@ -229,8 +242,12 @@ export interface WindowApi {
   terminalWrite: (data: string) => Promise<void>
   terminalResize: (cols: number, rows: number) => Promise<void>
   terminalKill: () => Promise<void>
-  onTerminalData: (callback: (event: IpcRendererEvent, data: string) => void) => Electron.IpcRenderer
-  removeTerminalDataListener: (callback: (event: IpcRendererEvent, data: string) => void) => Electron.IpcRenderer
+  onTerminalData: (
+    callback: (event: IpcRendererEvent, data: string) => void
+  ) => Electron.IpcRenderer
+  removeTerminalDataListener: (
+    callback: (event: IpcRendererEvent, data: string) => void
+  ) => Electron.IpcRenderer
   onTerminalExit: (callback: (event: IpcRendererEvent) => void) => Electron.IpcRenderer
   removeTerminalExitListener: (callback: (event: IpcRendererEvent) => void) => Electron.IpcRenderer
 
