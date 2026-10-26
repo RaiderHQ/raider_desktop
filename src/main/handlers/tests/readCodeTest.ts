@@ -6,7 +6,7 @@ import { assertRealInside, isSafeRelPath, resolveInside } from './sidecar'
 import type { CodeTestView } from '../../../shared/types/projectTest'
 import type { Step } from '../../../shared/types/step'
 
-const IT = /^(\s*)(?:it|specify|scenario)\s*\(?\s*(['"])(.+?)\2\s*\)?\s*do\b/
+const IT = /^(\s*)(?:it|specify|scenario)\s*\(?\s*(['"])(.+?)\2[^\n]*?\bdo\b/
 const isCode = (line: string): boolean => line.trim() !== '' && !line.trim().startsWith('#')
 
 /**
@@ -18,6 +18,8 @@ export async function readCodeTest(projectPath: string, fileRel: string): Promis
     throw new Error(`Not a spec file: ${fileRel}`)
   const target = resolveInside(projectPath, fileRel)
   await assertRealInside(projectPath, target)
+  // Never open a FIFO or device: reading it could block forever
+  if (!(await fs.lstat(target)).isFile()) throw new Error(`Not a regular file: ${fileRel}`)
   const lines = (await fs.readFile(target, 'utf-8')).split(/\r?\n/)
 
   const examples: CodeTestView['examples'] = []

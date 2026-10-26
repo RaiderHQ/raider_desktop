@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import { execFileSync } from 'child_process'
 
 import { readCodeTest } from '../../../src/main/handlers/tests/readCodeTest'
 
@@ -60,5 +61,40 @@ describe('readCodeTest', () => {
     await expect(readCodeTest(project, '../x_spec.rb')).rejects.toThrow()
     await expect(readCodeTest(project, 'spec/x.rb')).rejects.toThrow()
     expect(await readFile(join(project, 'spec/x_spec.rb'), 'utf-8')).toBe('puts 1\n')
+  })
+})
+
+describe('readCodeTest sturdiness', () => {
+  it('accepts metadata args and paren form', async () => {
+    await writeFile(
+      join(project, 'spec/m_spec.rb'),
+      `describe 'M' do
+  it 'a', :js do
+    one
+  end
+
+  it "b", tag: :smoke do
+    two
+  end
+
+  it('c') do
+    three
+  end
+end
+`
+    )
+    const view = await readCodeTest(project, 'spec/m_spec.rb')
+    expect(view.examples.map((e) => e.name)).toEqual(['a', 'b', 'c'])
+    for (const e of view.examples) expect(e.steps).toHaveLength(1)
+  })
+
+  it('refuses a FIFO without blocking', async () => {
+    const fifo = join(project, 'spec/f_spec.rb')
+    try {
+      execFileSync('mkfifo', [fifo])
+    } catch {
+      return
+    }
+    await expect(readCodeTest(project, 'spec/f_spec.rb')).rejects.toThrow()
   })
 })

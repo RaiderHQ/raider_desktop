@@ -9,13 +9,17 @@ import type { ProjectTestEntry, Sidecar } from '../../../shared/types/projectTes
 const isSpecRel = (rel: unknown): rel is string => isSafeRelPath(rel) && rel.endsWith('_spec.rb')
 const DESCRIBE = /^\s*(?:RSpec\.)?describe\s*\(?\s*(['"])(.+?)\1/m
 
+const SKIP_DIRS = new Set(['node_modules', '.git', 'vendor', '.raider'])
+const CONCURRENCY = 16
+
 // Symlinks (files and folders) are never followed
 async function walkSpecs(dir: string, prefix: string): Promise<string[]> {
   const out: string[] = []
   for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
     const rel = `${prefix}/${entry.name}`
-    if (entry.isDirectory()) out.push(...(await walkSpecs(`${dir}/${entry.name}`, rel)))
-    else if (entry.isFile() && entry.name.endsWith('_spec.rb')) out.push(rel)
+    if (entry.isDirectory()) {
+      if (!SKIP_DIRS.has(entry.name)) out.push(...(await walkSpecs(`${dir}/${entry.name}`, rel)))
+    } else if (entry.isFile() && entry.name.endsWith('_spec.rb')) out.push(rel)
   }
   return out
 }
@@ -98,15 +102,18 @@ export async function listProjectTests(
   const files = new Set<string>(await specFilesUnder(projectPath, layout.specPath))
   for (const file of sidecars.keys()) files.add(file)
 
-  const entries = await Promise.all(
-    [...files].map(async (file) => {
+  const queue = [...files]
+  const entries: ProjectTestEntry[] = []
+  const worker = async (): Promise<void> => {
+    for (let file = queue.shift(); file !== undefined; file = queue.shift()) {
       try {
-        return await entryFor(projectPath, file, sidecars.get(file) ?? null)
+        entries.push(await entryFor(projectPath, file, sidecars.get(file) ?? null))
       } catch (error) {
         safeError(`Could not list ${file}:`, error)
-        return { file, name: posix.basename(file), ownership: 'code' } as ProjectTestEntry
+        entries.push({ file, name: posix.basename(file), ownership: 'code' })
       }
-    })
-  )
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, worker))
   return entries.sort((a, b) => a.name.localeCompare(b.name) || a.file.localeCompare(b.file))
 }

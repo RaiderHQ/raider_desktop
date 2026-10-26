@@ -128,4 +128,13 @@ describe('listProjectTests', () => {
     await writeFile(join(project, 'spec/h_spec.rb'), "describe 'H' do\nend\n")
     expect(await listProjectTests(project, { ...layout, framework: 'cucumber' })).toEqual([])
   })
+
+  it('skips vendored and tool folders', async () => {
+    for (const d of ['node_modules/x', '.git/x', 'vendor/x', '.raider/x']) {
+      await mkdir(join(project, 'spec', d), { recursive: true })
+      await writeFile(join(project, 'spec', d, 'dep_spec.rb'), "describe 'Dep' do\nend\n")
+    }
+    await writeFile(join(project, 'spec/ok_spec.rb'), "describe 'Ok' do\nend\n")
+    expect((await listProjectTests(project, layout)).map((e) => e.name)).toEqual(['Ok'])
+  })
 })
