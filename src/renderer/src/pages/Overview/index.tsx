@@ -43,6 +43,8 @@ const Overview: React.FC = () => {
 
   const [browserOptions, setBrowserOptions] = useState<string[]>([])
   const [configLoaded, setConfigLoaded] = useState(false)
+  // Latest-request-wins token for config loads (project load and browser-change re-fetch)
+  const configRequestRef = useRef(0)
   const [pagePath, setPagePath] = useState('')
   const [specPath, setSpecPath] = useState('')
   const [featurePath, setFeaturePath] = useState('')
@@ -77,9 +79,16 @@ const Overview: React.FC = () => {
   useEffect(() => {
     if (!projectPath) return
     setConfigLoaded(false)
+    const token = ++configRequestRef.current
+    const isCurrent = (): boolean => token === configRequestRef.current
     const loadSettings = async (): Promise<void> => {
       try {
         const result = await window.api.getProjectConfig(projectPath)
+        if (!isCurrent()) return
+        if (!result.success || !result.config) {
+          setTimeout_(30)
+          setBrowserOptions([])
+        }
         if (result.success && result.config) {
           const {
             baseUrl,
@@ -121,6 +130,9 @@ const Overview: React.FC = () => {
           if (storedHeadless !== null) setHeadless(storedHeadless === 'true')
         }
       } catch {
+        if (!isCurrent()) return
+        setTimeout_(30)
+        setBrowserOptions([])
         // Fallback to localStorage on error
         const storedUrl = localStorage.getItem('browserUrl')
         const storedBrowser = localStorage.getItem('selectedBrowser')
@@ -130,7 +142,9 @@ const Overview: React.FC = () => {
         if (storedHeadless !== null) setHeadless(storedHeadless === 'true')
       }
     }
-    void loadSettings().finally(() => setConfigLoaded(true))
+    void loadSettings().finally(() => {
+      if (isCurrent()) setConfigLoaded(true)
+    })
   }, [projectPath])
 
   // Detect mobile project
@@ -171,20 +185,34 @@ const Overview: React.FC = () => {
       toast.error(t('settings.noProject.description'))
       return
     }
+    const token = ++configRequestRef.current
+    const isCurrent = (): boolean => token === configRequestRef.current
+    setConfigLoaded(false)
     try {
       const response = await window.api.updateBrowserType(projectPath, browser)
       if (!response.success) {
         toast.error(response.error || t('overview.settings.browserUpdateFailed'))
+        if (isCurrent()) setConfigLoaded(true)
         return
       }
       localStorage.setItem('selectedBrowser', browser)
       toast.success(t('overview.settings.browserUpdateSuccess'))
-      // browser_arguments are kept per browser, so show the new browser's list
-      const config = await window.api.getProjectConfig(projectPath)
-      if (config.success) setBrowserOptions(config.config?.browserArguments ?? [])
     } catch (error) {
       toast.error(`${t('overview.settings.browserUpdateFailed')}: ${(error as Error).message}`)
+      if (isCurrent()) setConfigLoaded(true)
+      return
     }
+    // browser_arguments are kept per browser, so show the new browser's list
+    let args: string[] = []
+    try {
+      const config = await window.api.getProjectConfig(projectPath)
+      if (config.success) args = config.config?.browserArguments ?? []
+    } catch {
+      // re-fetch failed: clear rather than show the previous browser's args
+    }
+    if (!isCurrent()) return
+    setBrowserOptions(args)
+    setConfigLoaded(true)
   }
 
   const handleHeadlessToggle = async (enabled: boolean): Promise<void> => {
@@ -611,6 +639,7 @@ const Overview: React.FC = () => {
                       }
                     }}
                     placeholder={t('settings.browserOptions.placeholder')}
+                    disabled={!configLoaded}
                   />
                 </div>
               </div>

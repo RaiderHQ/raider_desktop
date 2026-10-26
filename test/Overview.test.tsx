@@ -4,6 +4,7 @@ import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import useProjectStore from '@foundation/Stores/projectStore'
+import toast from 'react-hot-toast'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
@@ -440,5 +441,65 @@ describe('Overview Settings Toolbar', (): void => {
     await renderOverview()
 
     expect(screen.getByLabelText('settings.timeout.label')).toBeDisabled()
+  })
+
+  it('enables the timeout and browser args after a successful load', async () => {
+    mockApi.getProjectConfig.mockResolvedValueOnce({ success: true, config: { timeout: 7 } })
+    await renderOverview()
+
+    await waitFor(() => expect(screen.getByLabelText('settings.timeout.label')).toBeEnabled())
+    expect(screen.getByPlaceholderText('settings.browserOptions.placeholder')).toBeEnabled()
+  })
+
+  it('enables the timeout and browser args after a failed load and resets them', async () => {
+    mockApi.getProjectConfig.mockRejectedValueOnce(new Error('boom'))
+    await renderOverview()
+
+    await waitFor(() => expect(screen.getByLabelText('settings.timeout.label')).toBeEnabled())
+    expect(screen.getByPlaceholderText('settings.browserOptions.placeholder')).toBeEnabled()
+    expect(screen.getByLabelText('settings.timeout.label')).toHaveValue(30)
+  })
+
+  it('ignores a stale browser-change re-fetch that resolves after a newer one', async () => {
+    let resolveFirst: (v: unknown) => void = () => {}
+    mockApi.getProjectConfig
+      .mockResolvedValueOnce({ success: true, config: { browser: 'chrome', browserArguments: [] } })
+      .mockImplementationOnce(() => new Promise((res) => (resolveFirst = res)))
+      .mockResolvedValueOnce({
+        success: true,
+        config: { browser: 'chrome', browserArguments: ['latest-arg'] }
+      })
+    await renderOverview()
+    const select = screen.getByTestId('overview-browser-select')
+
+    fireEvent.change(select, { target: { value: 'firefox' } })
+    await waitFor(() => expect(mockApi.getProjectConfig).toHaveBeenCalledTimes(2))
+    fireEvent.change(select, { target: { value: 'chrome' } })
+    await waitFor(() => expect(screen.getByText('latest-arg')).toBeInTheDocument())
+
+    await act(async () => {
+      resolveFirst({ success: true, config: { browserArguments: ['stale-arg'] } })
+    })
+    expect(screen.queryByText('stale-arg')).not.toBeInTheDocument()
+    expect(screen.getByText('latest-arg')).toBeInTheDocument()
+  })
+
+  it('clears args and shows no update-failed toast when only the re-fetch fails', async () => {
+    mockApi.getProjectConfig
+      .mockResolvedValueOnce({
+        success: true,
+        config: { browser: 'chrome', browserArguments: ['no-sandbox'] }
+      })
+      .mockRejectedValueOnce(new Error('boom'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    await renderOverview()
+    await waitFor(() => expect(screen.getByText('no-sandbox')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByTestId('overview-browser-select'), {
+      target: { value: 'firefox' }
+    })
+
+    await waitFor(() => expect(screen.queryByText('no-sandbox')).not.toBeInTheDocument())
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })
