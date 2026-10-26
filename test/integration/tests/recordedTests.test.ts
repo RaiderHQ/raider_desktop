@@ -309,3 +309,85 @@ describe('recorded tests', () => {
     )
   })
 })
+
+describe('untitled tests take their real name once', () => {
+  const untitled = (over: Partial<Test> = {}): Test =>
+    test({ name: 'Untitled Test', steps: [], url: '', ...over })
+
+  it('first save with a real name moves spec and sidecar to the new slug', async () => {
+    await saveRecordedTest(project, layout, untitled())
+    const saved = await saveRecordedTest(project, layout, untitled({ name: 'Checkout' }))
+
+    expect(saved.file).toBe('spec/checkout_spec.rb')
+    expect(await exists(join(project, 'spec', 'untitled_test_spec.rb'))).toBe(false)
+    expect(
+      await exists(join(project, '.raider', 'tests', 'spec', 'untitled_test_spec.rb.json'))
+    ).toBe(false)
+    expect(await readFile(join(project, 'spec', 'checkout_spec.rb'), 'utf-8')).toContain('Checkout')
+    expect((await findSidecarById(project, 't1'))!.file).toBe('spec/checkout_spec.rb')
+  })
+
+  it('a numbered untitled file moves too, and never over an existing file', async () => {
+    await mkdir(join(project, 'spec'), { recursive: true })
+    await writeFile(join(project, 'spec', 'untitled_test_spec.rb'), '# someone else\n')
+    await writeFile(join(project, 'spec', 'checkout_spec.rb'), '# hand written\n')
+    await saveRecordedTest(project, layout, untitled())
+    expect((await findSidecarById(project, 't1'))!.file).toBe('spec/untitled_test_2_spec.rb')
+
+    const saved = await saveRecordedTest(project, layout, untitled({ name: 'Checkout' }))
+
+    expect(saved.file).toBe('spec/checkout_2_spec.rb')
+    expect(await readFile(join(project, 'spec', 'checkout_spec.rb'), 'utf-8')).toBe(
+      '# hand written\n'
+    )
+    expect(await exists(join(project, 'spec', 'untitled_test_2_spec.rb'))).toBe(false)
+  })
+
+  it('after the first rename the name is fixed', async () => {
+    await saveRecordedTest(project, layout, untitled())
+    await saveRecordedTest(project, layout, untitled({ name: 'Checkout' }))
+    const saved = await saveRecordedTest(project, layout, untitled({ name: 'Payment' }))
+    expect(saved.file).toBe('spec/checkout_spec.rb')
+  })
+
+  it('an empty name does not move the file', async () => {
+    await saveRecordedTest(project, layout, untitled())
+    const saved = await saveRecordedTest(project, layout, untitled({ name: '  ' }))
+    expect(saved.file).toBe('spec/untitled_test_spec.rb')
+  })
+
+  it('a code-owned untitled file is never moved', async () => {
+    await saveRecordedTest(project, layout, untitled())
+    const spec = join(project, 'spec', 'untitled_test_spec.rb')
+    await writeFile(spec, (await readFile(spec, 'utf-8')) + '\nputs "edit"\n')
+
+    await expect(
+      saveRecordedTest(project, layout, untitled({ name: 'Checkout' }))
+    ).rejects.toBeInstanceOf(CodeOwnedError)
+    expect(await readFile(spec, 'utf-8')).toContain('puts "edit"')
+    expect(await exists(join(project, 'spec', 'checkout_spec.rb'))).toBe(false)
+  })
+})
+
+describe('unchanged saves', () => {
+  it('write nothing and keep updatedAt', async () => {
+    const first = await saveRecordedTest(project, layout, test())
+    const spec = join(project, 'spec', 'checkout_spec.rb')
+    const sidecarFile = join(project, '.raider', 'tests', 'spec', 'checkout_spec.rb.json')
+    const before = [await fs.stat(spec), await fs.stat(sidecarFile)].map((s) => s.mtimeMs)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    const again = await saveRecordedTest(project, layout, test())
+
+    expect(again.updatedAt).toBe(first.updatedAt)
+    const after = [await fs.stat(spec), await fs.stat(sidecarFile)].map((s) => s.mtimeMs)
+    expect(after).toEqual(before)
+  })
+
+  it('a changed step still writes', async () => {
+    const first = await saveRecordedTest(project, layout, test())
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    const again = await saveRecordedTest(project, layout, test({ steps: steps(2) }))
+    expect(again.updatedAt).not.toBe(first.updatedAt)
+  })
+})

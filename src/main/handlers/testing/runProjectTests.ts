@@ -1,8 +1,11 @@
+import { promises as fs } from 'fs'
+import path from 'path'
 import { appState } from '../appState'
 import runRecording from './runRecording'
 import runSuite from './runSuite'
 import { runSpecFiles } from './runSpecFiles'
 import { activeSuiteMode, broadcast, filesStore, saveTestInSuite } from '../tests/suiteStore'
+import type { FilesStore } from '../tests/suiteStore'
 import { safeError } from '../../utils/safeLog'
 import type { Test } from '../../../shared/types/test'
 
@@ -30,28 +33,51 @@ export async function runTestHandler(
 ): Promise<RunResult> {
   await activeSuiteMode()
   const store = filesStore()
-  const cached = (store?.suites ?? appState.suites).get(suiteId)?.tests.find((t) => t.id === testId)
+  if (store) return runRecordedFile(store, suiteId, testId, rubyCommand, test)
+
+  const cached = appState.suites.get(suiteId)?.tests.find((t) => t.id === testId)
   if (!cached) return { success: false, output: `Test with ID ${testId} not found.` }
+  const { implicitWait, explicitWait, browser, headless } = appState.recorderSettings
+  return runRecording({
+    savedTest: cached,
+    implicitWait,
+    explicitWait,
+    browser,
+    headless,
+    projectPath,
+    rubyCommand,
+    projectAutomation: appState.projectAutomation,
+    projectFramework: appState.projectFramework
+  })
+}
 
-  if (!store) {
-    const { implicitWait, explicitWait, browser, headless } = appState.recorderSettings
-    return runRecording({
-      savedTest: cached,
-      implicitWait,
-      explicitWait,
-      browser,
-      headless,
-      projectPath,
-      rubyCommand,
-      projectAutomation: appState.projectAutomation,
-      projectFramework: appState.projectFramework
-    })
-  }
+const fileExists = (projectPath: string, file: string): Promise<boolean> =>
+  fs.access(path.join(projectPath, file)).then(
+    () => true,
+    () => false
+  )
 
-  let file = cached.file
-  if (test?.id === testId && !sameContent(test, cached)) {
+// Files mode: save when needed, then run the test's own spec file from the project
+async function runRecordedFile(
+  store: FilesStore,
+  suiteId: string,
+  testId: string,
+  rubyCommand: string,
+  test?: Test
+): Promise<RunResult> {
+  const cached = store.suites.get(suiteId)?.tests.find((t) => t.id === testId)
+  const given = test?.id === testId ? test : undefined
+  const source = given ?? cached
+  if (!source) return { success: false, output: `Test with ID ${testId} not found.` }
+
+  let file = cached?.file
+  // Save when the editor is ahead of the file, the test was never saved, or its
+  // recorded file went missing (saving puts it back from the sidecar)
+  const missing =
+    cached?.ownership === 'recorded' && (!file || !(await fileExists(store.projectPath, file)))
+  if (!cached || missing || (given && !sameContent(given, cached))) {
     try {
-      const saved = await saveTestInSuite(store, suiteId, test)
+      const saved = await saveTestInSuite(store, suiteId, source)
       broadcast(store)
       if (saved.success) file = saved.test.file
       else if (saved.error !== 'codeOwned') return { success: false, output: NOT_SAVED }

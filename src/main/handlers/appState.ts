@@ -14,6 +14,8 @@ import { DEFAULT_RECORDER_SETTINGS } from './config/projectSettings'
  * - locked: suites.json was written by a newer Raider; nothing is shown or written
  */
 export type SuiteMode = 'legacy' | 'files' | 'locked'
+/** Why a project is locked: a newer suites file, or recorded files in a project that can't record */
+export type SuiteLock = 'tooNew' | 'cannotRecord'
 
 interface AppState {
   mainWindow: BrowserWindow | null
@@ -28,6 +30,7 @@ interface AppState {
   /** The suites as the renderer sees them (in files mode, assembled from the index and sidecars) */
   suites: Map<string, Suite>
   suiteMode: SuiteMode
+  suiteLock: SuiteLock | null
   /** Files mode only: the version 3 index. Keeps ids whose sidecar is missing, which `suites` leaves out */
   suiteIndex: Map<string, SuiteIndexEntry>
   recorderSettings: RecorderSettings
@@ -48,6 +51,7 @@ export const appState: AppState = {
   rubyVersion: null,
   suites: new Map(),
   suiteMode: 'legacy',
+  suiteLock: null,
   suiteIndex: new Map(),
   recorderSettings: { ...DEFAULT_RECORDER_SETTINGS },
   activeTraceDir: null,

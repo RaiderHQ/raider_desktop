@@ -10,7 +10,7 @@ import {
   broadcast,
   filesStore,
   isCurrent,
-  LOCKED_ERROR,
+  lockedError,
   PROJECT_CHANGED_ERROR,
   saveTestInSuite
 } from '../tests/suiteStore'
@@ -26,7 +26,7 @@ export default async function importTest(
     if (!suiteId) {
       return { success: false, error: 'No suite selected' }
     }
-    if ((await activeSuiteMode()) === 'locked') return { success: false, error: LOCKED_ERROR }
+    if ((await activeSuiteMode()) === 'locked') return { success: false, error: lockedError() }
     // Taken before the dialog: the import goes to the project that was open when it started
     const store = filesStore()
 

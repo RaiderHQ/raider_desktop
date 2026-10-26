@@ -5,7 +5,7 @@ import { safeError, safeWarn } from '../utils/safeLog'
 import {
   activeSuiteMode,
   filesStore,
-  LOCKED_ERROR,
+  lockedError,
   releaseTests,
   saveIndex
 } from './tests/suiteStore'
@@ -27,15 +27,20 @@ async function deleteFromFiles(
     safeError(`Error: Attempted to delete test from a non-existent suite (ID: ${suiteId}).`)
     return { success: false, error: `Suite with ID ${suiteId} not found.` }
   }
-  const before = entry.testIds
-  entry.testIds = before.filter((id) => id !== testId)
-  if (entry.testIds.length === before.length) {
+  const position = entry.testIds.indexOf(testId)
+  if (position === -1) {
+    // Nothing to unlist, so nothing to delete: the file may belong to another suite or none
     safeWarn(`Warning: Test with ID ${testId} was not found in suite "${entry.name}".`)
+    return { success: true }
   }
+  entry.testIds = entry.testIds.filter((id) => id !== testId)
   try {
     await saveIndex(store)
   } catch (error) {
-    entry.testIds = before
+    // Put it back in its place, keeping any change made meanwhile
+    if (!entry.testIds.includes(testId)) {
+      entry.testIds.splice(Math.min(position, entry.testIds.length), 0, testId)
+    }
     return { success: false, error: (error as Error).message }
   }
   const suite = store.suites.get(suiteId)
@@ -49,7 +54,7 @@ export default async (
   { suiteId, testId }: { suiteId: string; testId: string }
 ): Promise<DeletionResult> => {
   const mode = await activeSuiteMode()
-  if (mode === 'locked') return { success: false, error: LOCKED_ERROR }
+  if (mode === 'locked') return { success: false, error: lockedError() }
 
   const store = filesStore()
   if (store) {

@@ -23,8 +23,11 @@ export interface FilesStore {
   suites: Map<string, Suite>
 }
 
-export const LOCKED_ERROR =
-  'These suites were saved by a newer version of Raider and cannot be changed.'
+/** Why the active project's suites can't be changed (only meaningful in locked mode). */
+export const lockedError = (): string =>
+  appState.suiteLock === 'cannotRecord'
+    ? "Raider can't change these suites because this project can no longer record tests."
+    : 'These suites were saved by a newer version of Raider and cannot be changed.'
 export const PROJECT_CHANGED_ERROR = 'The project was closed before this change could be saved.'
 export const INVALID_TEST_ERROR = 'This test could not be saved.'
 export const importFailed = (count: number): string =>
@@ -184,7 +187,9 @@ export async function addSuites(
     suites.push({ id: suite.id, name: suite.name, tests })
   }
 
-  const before = { index: Array.from(store.index), suites: Array.from(store.suites) }
+  const replaced = replace
+    ? { index: Array.from(store.index), suites: Array.from(store.suites) }
+    : { index: [], suites: [] }
   if (replace) {
     store.index.clear()
     store.suites.clear()
@@ -200,14 +205,29 @@ export async function addSuites(
   try {
     await saveIndex(store)
   } catch (error) {
-    // The saved files stay in the project as recorded tests outside any suite
-    store.index.clear()
-    store.suites.clear()
-    before.index.forEach(([id, entry]) => store.index.set(id, entry))
-    before.suites.forEach(([id, suite]) => store.suites.set(id, suite))
+    // Undo only this import: changes made meanwhile stay. The saved files stay in
+    // the project as recorded tests outside any suite.
+    for (const suite of suites) {
+      store.index.delete(suite.id)
+      store.suites.delete(suite.id)
+    }
+    replaced.index.forEach(([id, entry], position) => putBack(store.index, id, entry, position))
+    replaced.suites.forEach(([id, suite], position) => putBack(store.suites, id, suite, position))
     throw error
   }
   return { suites, failed }
+}
+
+/**
+ * Puts an entry removed by a failed change back at its old position, keeping
+ * whatever else changed in the map meanwhile. No-op if the key is there again.
+ */
+export function putBack<K, V>(map: Map<K, V>, key: K, value: V, position: number): void {
+  if (map.has(key)) return
+  const entries = Array.from(map)
+  entries.splice(Math.min(position, entries.length), 0, [key, value])
+  map.clear()
+  entries.forEach(([k, v]) => map.set(k, v))
 }
 
 /**

@@ -8,7 +8,7 @@ import {
   UnknownSuitesVersionError
 } from '../suitePersistence'
 import type { SuiteIndexEntry } from '../suitePersistence'
-import type { SuiteMode } from '../appState'
+import type { SuiteLock, SuiteMode } from '../appState'
 import { detectProjectLayout } from './projectLayout'
 import { migrateToProjectFiles } from '../tests/migrateToProjectFiles'
 import { assembleFromIndex } from '../tests/assembleSuites'
@@ -69,6 +69,7 @@ function clearActiveProject(): void {
   appState.projectFramework = null
   appState.suites = new Map()
   appState.suiteMode = 'legacy'
+  appState.suiteLock = null
   appState.suiteIndex = new Map()
   appState.mainWindow?.webContents.send('suite-updated', [])
 }
@@ -79,8 +80,8 @@ interface LoadedSuites {
   index: SuiteIndexEntry[]
   recoveredFromCorrupt: boolean
   backupSaved?: boolean
-  /** suites.json was written by a newer Raider */
-  tooNew?: boolean
+  /** Why the suites can't be changed, in locked mode */
+  lock?: SuiteLock
   /** What to tell the renderer about the move to project files, if anything */
   migration?: { migrated: number; postponed: boolean }
 }
@@ -95,7 +96,8 @@ async function loadLegacy(projectPath: string, layout: ProjectLayout): Promise<L
   if (state.kind === 'index' || state.kind === 'unknown') {
     const loaded = await loadIndex(projectPath)
     // Recorded files in a project Raider can't record into any more: show them, change nothing
-    return canRecordFiles(layout) ? loaded : { ...loaded, mode: 'locked' }
+    if (canRecordFiles(layout) || loaded.mode !== 'files') return loaded
+    return { ...loaded, mode: 'locked', lock: 'cannotRecord' }
   }
   const loaded = await loadSuites(projectPath)
   return { mode: 'legacy', index: [], ...loaded }
@@ -109,7 +111,7 @@ async function loadIndex(projectPath: string): Promise<LoadedSuites> {
     return { mode: 'files', suites, index, ...recovery }
   } catch (error) {
     if (error instanceof UnknownSuitesVersionError) {
-      return { mode: 'locked', suites: [], index: [], recoveredFromCorrupt: false, tooNew: true }
+      return { mode: 'locked', suites: [], index: [], recoveredFromCorrupt: false, lock: 'tooNew' }
     }
     if (error instanceof LegacySuitesFileError) {
       // Only if a version 2 file appeared after the migration looked: keep it as is
@@ -134,7 +136,20 @@ async function loadProjectSuites(
     const loaded = await loadLegacy(projectPath, layout)
     return { ...loaded, migration: { migrated: 0, postponed: true } }
   }
-  const loaded = await loadIndex(projectPath)
+  let loaded: LoadedSuites
+  try {
+    loaded = await loadIndex(projectPath)
+  } catch (error) {
+    // The project can't open, but nothing is lost: the tests are spec files now
+    // and the old suites file is kept as a backup
+    safeError(
+      migrated > 0
+        ? 'Recorded tests were moved to project files but could not be loaded:'
+        : 'Could not load the recorded tests:',
+      error
+    )
+    throw error
+  }
   return migrated > 0 ? { ...loaded, migration: { migrated, postponed: false } } : loaded
 }
 
@@ -156,13 +171,14 @@ async function activate(projectPath: string | null): Promise<ActivationResult> {
       appState.projectAutomation = layout.automation
       appState.projectFramework = layout.framework
       appState.suiteMode = loaded.mode
+      appState.suiteLock = loaded.lock ?? null
       appState.suiteIndex = new Map(loaded.index.map((entry) => [entry.id, entry]))
       appState.suites = new Map(suites.map((suite) => [suite.id, suite]))
       const send = (channel: string, ...args: unknown[]): void =>
         appState.mainWindow?.webContents.send(channel, ...args)
       send('suite-updated', suites)
       if (recoveredFromCorrupt) send('suites-recovered', { backupSaved })
-      if (loaded.tooNew) send('suites-too-new')
+      if (loaded.lock === 'tooNew') send('suites-too-new')
       if (loaded.migration) send('tests-migrated', loaded.migration)
     }
     return {

@@ -15,6 +15,7 @@ import {
   writeFileAtomic,
   writeSidecar
 } from './sidecar'
+import { safeError } from '../../utils/safeLog'
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
 import type { Sidecar } from '../../../shared/types/projectTest'
 import type { Test } from '../../../shared/types/test'
@@ -134,13 +135,16 @@ const generate = (test: Test, layout: ProjectLayout, file: string): string =>
     helperPath: layout.helperPath
   })
 
-/** Picks a free `<slug>[_n]_spec.rb` and creates it without ever replacing a file. */
+/**
+ * Picks a free `<slug>[_n]_spec.rb` in `root` (default: the spec folder) and
+ * creates it without ever replacing a file.
+ */
 async function createNewSpec(
   projectPath: string,
   layout: ProjectLayout,
-  test: Test
+  test: Test,
+  root = specRoot(layout)
 ): Promise<{ file: string; content: string; target: string }> {
-  const root = specRoot(layout)
   const slug = slugify(test.name)
   for (let n = 1; n <= MAX_SUFFIX; n++) {
     const name = n === 1 ? `${slug}_spec.rb` : `${slug}_${n}_spec.rb`
@@ -162,6 +166,65 @@ async function createNewSpec(
     return { file, content, target }
   }
   throw new Error(`No free spec file name for ${slug}`)
+}
+
+// The name a new test gets in the Recorder; its file is renamed once the user names it
+const UNTITLED_SLUG = slugify('Untitled Test')
+const UNTITLED_FILE = new RegExp(`^${UNTITLED_SLUG}(?:_\\d+)?_spec\\.rb$`)
+
+const isUntitledFile = (file: string): boolean => UNTITLED_FILE.test(posix.basename(file))
+
+// A blank name (e.g. mid-edit) keeps the file; so does a name that still slugs to "untitled_test"
+const hasRealName = (test: Test): boolean =>
+  /[a-z0-9]/i.test(test.name.normalize('NFKD')) && slugify(test.name) !== UNTITLED_SLUG
+
+const sameRecord = (
+  sidecar: Sidecar,
+  test: Test,
+  layout: ProjectLayout,
+  content: string
+): boolean =>
+  sidecar.name === test.name &&
+  sidecar.url === test.url &&
+  sidecar.automation === layout.automation &&
+  sidecar.hash === hashRuby(content) &&
+  JSON.stringify(sidecar.steps) === JSON.stringify(test.steps)
+
+/**
+ * Moves a still-untitled recorded test to a file named after its real name, in
+ * the same folder, never over an existing file. The caller has already proved
+ * Raider wrote the old file. The new sidecar is written before the old one is
+ * removed, so an interruption leaves a duplicate, never a lost test.
+ */
+async function moveToRealName(
+  projectPath: string,
+  layout: ProjectLayout,
+  test: Test,
+  existing: Sidecar,
+  oldTarget: string,
+  oldExists: boolean,
+  now: string
+): Promise<Sidecar> {
+  const { file, content, target } = await createNewSpec(
+    projectPath,
+    layout,
+    test,
+    posix.dirname(existing.file)
+  )
+  const sidecar = buildSidecar(test, layout, file, content, existing.createdAt, now)
+  try {
+    await writeSidecar(projectPath, sidecar)
+  } catch (error) {
+    await fs.unlink(target).catch(() => undefined)
+    throw error
+  }
+  try {
+    await deleteSidecar(projectPath, existing.file)
+    if (oldExists) await fs.unlink(oldTarget)
+  } catch (error) {
+    safeError(`Could not remove the old file of renamed test ${test.id}:`, error)
+  }
+  return sidecar
 }
 
 // Per test id: the whole read-check-generate-write sequence runs one at a time
@@ -232,7 +295,13 @@ export function saveRecordedTest(
       return refuseAsCodeOwned(projectPath, existing)
     }
 
+    if (isUntitledFile(existing.file) && hasRealName(test)) {
+      return moveToRealName(projectPath, layout, test, existing, target, onDisk !== null, now)
+    }
+
     const content = generate(test, layout, existing.file)
+    // Nothing changed: keep the files and their timestamps as they are
+    if (onDisk === content && sameRecord(existing, test, layout, content)) return existing
     if (onDisk === null) {
       // Sidecar without its file: restore it, but never over a file that appeared meanwhile
       await fs.mkdir(dirname(target), { recursive: true })

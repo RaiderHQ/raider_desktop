@@ -13,7 +13,7 @@ import {
   broadcast,
   filesStore,
   importFailed,
-  LOCKED_ERROR
+  lockedError
 } from '../tests/suiteStore'
 
 export default async function importSuite(
@@ -23,7 +23,7 @@ export default async function importSuite(
     return { success: false, error: 'Main window not found' }
   }
   try {
-    if ((await activeSuiteMode()) === 'locked') return { success: false, error: LOCKED_ERROR }
+    if ((await activeSuiteMode()) === 'locked') return { success: false, error: lockedError() }
     // Taken before the dialog: the import goes to the project that was open when it started
     const store = filesStore()
     const result = await dialog.showOpenDialog(mainWindow, {

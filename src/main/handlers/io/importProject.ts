@@ -14,7 +14,7 @@ import {
   filesStore,
   importFailed,
   isCurrent,
-  LOCKED_ERROR,
+  lockedError,
   PROJECT_CHANGED_ERROR
 } from '../tests/suiteStore'
 
@@ -25,7 +25,7 @@ export default async function importProject(
     return { success: false, error: 'Main window not found' }
   }
   try {
-    if ((await activeSuiteMode()) === 'locked') return { success: false, error: LOCKED_ERROR }
+    if ((await activeSuiteMode()) === 'locked') return { success: false, error: lockedError() }
     // Taken before the dialog: the import goes to the project that was open when it started
     const store = filesStore()
     const result = await dialog.showOpenDialog(mainWindow, {

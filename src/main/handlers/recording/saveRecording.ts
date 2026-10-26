@@ -5,7 +5,7 @@ import {
   activeSuiteMode,
   broadcast,
   filesStore,
-  LOCKED_ERROR,
+  lockedError,
   saveTestInSuite
 } from '../tests/suiteStore'
 import type { Test } from '@foundation/Types/test'
@@ -20,7 +20,7 @@ const handler = async (
   }
 
   const mode = await activeSuiteMode()
-  if (mode === 'locked') return { success: false, error: LOCKED_ERROR }
+  if (mode === 'locked') return { success: false, error: lockedError() }
 
   const store = filesStore()
   if (store) {
