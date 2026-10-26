@@ -16,6 +16,17 @@ const steps: Step[] = [
   { id: '5', kind: 'assert', check: 'titleEquals', expected: 'T' }
 ]
 const test = { name: 'Checkout', steps }
+// Recorded values that contain the word "expect" are not expectations
+const expectWords: Step[] = [
+  { id: 'n', kind: 'navigate', url: 'https://x.io/expect' },
+  {
+    id: 'a',
+    kind: 'assert',
+    check: 'textIncludes',
+    element: { strategy: 'css', value: '#expect' },
+    expected: "expect delays, don't expect(refunds)"
+  }
+]
 const opts = { fileRelPath: 'spec/checkout_spec.rb', helperPath: 'helpers' }
 
 describe('generateProjectSpecFile', () => {
@@ -106,6 +117,23 @@ describe('generateProjectSpecFile', () => {
       expect(directive(out)).toBe('RSpec/MultipleExpectations')
     })
 
+    it('ignores the word expect inside recorded values', () => {
+      const out = generateProjectSpecFile({ name: 'Login', steps: expectWords }, 'selenium', opts)
+      expect(out).not.toContain('rubocop:')
+      const watir = generateProjectSpecFile({ name: 'Login', steps: expectWords }, 'watir', opts)
+      expect(watir).not.toContain('rubocop:')
+    })
+
+    it('ignores the word expect in a comment after code', () => {
+      const custom: Step = { id: 'c', kind: 'custom', code: 'x = 1 # expect it to be 1' }
+      const out = generateProjectSpecFile(
+        { name: 'Login', steps: [assert, custom] },
+        'selenium',
+        opts
+      )
+      expect(out).not.toContain('rubocop:')
+    })
+
     it('counts example lines without blank or comment lines', () => {
       const code = Array.from({ length: 5 }, (_, i) => `x${i} = ${i}`).join('\n')
       const five: Step = { id: 'c', kind: 'custom', code: `${code}\n\n# note` }
@@ -143,58 +171,67 @@ describe('generateProjectSpecFile', () => {
 // Opt-in: point RAIDER_RUBOCOP_PROJECT at a COPY of a generated Ruby Raider project
 const rubocopProject = process.env.RAIDER_RUBOCOP_PROJECT
 describe('rubocop', () => {
-  it.skipIf(!rubocopProject)('rubocop accepts project spec', () => {
-    const env = { ...process.env }
-    for (const k of [
-      'GEM_HOME',
-      'GEM_PATH',
-      'GEM_ROOT',
-      'RUBY_ROOT',
-      'RUBY_ENGINE',
-      'RUBY_VERSION'
-    ])
-      delete env[k]
-    const many: Step[] = [
-      { id: 'n', kind: 'navigate', url: 'https://x.io' },
-      ...Array.from({ length: 12 }, (_, i): Step => ({ id: `c${i}`, kind: 'click', element: el })),
-      { id: 'a1', kind: 'assert', check: 'displayed', element: el },
-      { id: 'a2', kind: 'assert', check: 'textEquals', element: el, expected: 'Hi' },
-      { id: 'a3', kind: 'assert', check: 'urlIncludes', expected: '/home' }
-    ]
-    const short: Step[] = [
-      { id: 'n', kind: 'navigate', url: 'https://x.io' },
-      { id: 'a', kind: 'assert', check: 'displayed', element: el }
-    ]
-    const cases = [
-      { name: 'Many', steps: many },
-      { name: 'Add to cart', steps: many },
-      { name: 'Add to cart', steps: short },
-      { name: 'Login', steps: short }
-    ]
-    for (const [i, c] of cases.entries())
-      for (const automation of ['selenium', 'watir'] as const) {
-        const rel = `spec/zz_recorded_${automation}_${i}_spec.rb`
-        const file = join(rubocopProject!, rel)
-        writeFileSync(
-          file,
-          generateProjectSpecFile(c, automation, {
-            fileRelPath: rel,
-            helperPath: 'helpers'
-          })
-        )
-        try {
-          const r = spawnSync('rbenv', ['exec', 'rubocop', rel], {
-            cwd: rubocopProject,
-            env,
-            encoding: 'utf8'
-          })
-          expect(
-            r.stdout + r.stderr,
-            `${c.name} (${c.steps.length} steps, ${automation})`
-          ).toContain('no offenses detected')
-        } finally {
-          rmSync(file, { force: true })
+  it.skipIf(!rubocopProject)(
+    'rubocop accepts project spec',
+    () => {
+      const env = { ...process.env }
+      for (const k of [
+        'GEM_HOME',
+        'GEM_PATH',
+        'GEM_ROOT',
+        'RUBY_ROOT',
+        'RUBY_ENGINE',
+        'RUBY_VERSION'
+      ])
+        delete env[k]
+      const many: Step[] = [
+        { id: 'n', kind: 'navigate', url: 'https://x.io' },
+        ...Array.from(
+          { length: 12 },
+          (_, i): Step => ({ id: `c${i}`, kind: 'click', element: el })
+        ),
+        { id: 'a1', kind: 'assert', check: 'displayed', element: el },
+        { id: 'a2', kind: 'assert', check: 'textEquals', element: el, expected: 'Hi' },
+        { id: 'a3', kind: 'assert', check: 'urlIncludes', expected: '/home' }
+      ]
+      const short: Step[] = [
+        { id: 'n', kind: 'navigate', url: 'https://x.io' },
+        { id: 'a', kind: 'assert', check: 'displayed', element: el }
+      ]
+      const cases = [
+        { name: 'Many', steps: many },
+        { name: 'Add to cart', steps: many },
+        { name: 'Add to cart', steps: short },
+        { name: 'Login', steps: short },
+        { name: 'Login', steps: expectWords }
+      ]
+      for (const [i, c] of cases.entries())
+        for (const automation of ['selenium', 'watir'] as const) {
+          const rel = `spec/zz_recorded_${automation}_${i}_spec.rb`
+          const file = join(rubocopProject!, rel)
+          writeFileSync(
+            file,
+            generateProjectSpecFile(c, automation, {
+              fileRelPath: rel,
+              helperPath: 'helpers'
+            })
+          )
+          try {
+            const r = spawnSync('rbenv', ['exec', 'rubocop', rel], {
+              cwd: rubocopProject,
+              env,
+              encoding: 'utf8'
+            })
+            expect(
+              r.stdout + r.stderr,
+              `${c.name} (${c.steps.length} steps, ${automation})`
+            ).toContain('no offenses detected')
+          } finally {
+            rmSync(file, { force: true })
+          }
         }
-      }
-  })
+    },
+    // one real rubocop run per case and automation
+    60_000
+  )
 })

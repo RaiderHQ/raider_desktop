@@ -97,6 +97,9 @@ const CONFIG_WAIT = "config.fetch('explicit_wait', config.fetch('timeout', 10))"
 // rubocop-rspec's DescribeClass accepts a describe string only when it reads like a constant
 const CONSTANT_LIKE = /^(?:(?:::)?[A-Z]\w*)+$/
 const EXPECTATION = /\b(?:expect|is_expected|are_expected|expect_any_instance_of)\b/g
+// Ruby string literals and trailing comments, so recorded values like 'expect delays' don't count
+const STRING_LITERAL = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g
+const TRAILING_COMMENT = /#.*$/
 
 /**
  * The cops (at rubocop-rspec defaults) a recorded test would trip. The file is
@@ -111,7 +114,10 @@ function copsToDisable(name: string, body: string[]): string[] {
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0 && !line.startsWith('#'))
-  const expectations = code.reduce((n, line) => n + (line.match(EXPECTATION)?.length ?? 0), 0)
+  const expectations = code.reduce((n, line) => {
+    const bare = line.replace(STRING_LITERAL, "''").replace(TRAILING_COMMENT, '')
+    return n + (bare.match(EXPECTATION)?.length ?? 0)
+  }, 0)
   const cops: string[] = []
   if (!CONSTANT_LIKE.test(name)) cops.push('RSpec/DescribeClass')
   if (code.length > 5) cops.push('RSpec/ExampleLength')
