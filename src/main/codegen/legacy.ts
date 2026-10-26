@@ -14,7 +14,7 @@ import type { Test } from '../../shared/types/test'
 export type MigratedTest = Test
 
 // find_element(:strategy, <ruby string>) — capture groups: strategy, %q(), "…", '…'
-const FE = String.raw`@driver\.find_element\(:?(\w+),\s*(?:%q\((.+?)\)|"((?:\\.|[^"\\])*)"|'([^']*)')\)`
+const FE = String.raw`@?driver\.find_element\(:?(\w+)[,:]\s*(?:%q\((.+?)\)|"((?:\\.|[^"\\])*)"|'([^']*)')\)`
 const STR = String.raw`"((?:\\.|[^"\\])*)"`
 const TAIL = String.raw`(?:\s+#.*)?\s*$`
 
@@ -68,7 +68,7 @@ const el = (m: RegExpMatchArray, kind: 'assert', check: AssertKind, expectedAt?:
 }
 
 const PATTERNS: Array<[RegExp, Builder]> = [
-  [rx(`@driver\\.get\\(${STR}\\)`), (m): Built => ({ kind: 'navigate', url: unescape(m[1]) })],
+  [rx(`@?driver\\.get\\(${STR}\\)`), (m): Built => ({ kind: 'navigate', url: unescape(m[1]) })],
   [
     rx(`@?wait\\.until\\s*\\{\\s*(!?)${FE}\\.displayed\\?\\s*\\}`),
     (m): Built => {
@@ -105,9 +105,9 @@ const PATTERNS: Array<[RegExp, Builder]> = [
       return element ? { kind: 'type', element, text: unescape(m[5]) } : null
     }
   ],
-  [rx(String.raw`@driver\.switch_to\.default_content`), (): Built => ({ kind: 'switchFrame' })],
+  [rx(String.raw`@?driver\.switch_to\.default_content`), (): Built => ({ kind: 'switchFrame' })],
   [
-    rx(`@driver\\.switch_to\\.frame\\(\\s*${FE}\\s*\\)`),
+    rx(`@?driver\\.switch_to\\.frame\\(\\s*${FE}\\s*\\)`),
     (m): Built => {
       const element = target(m, 1)
       return element ? { kind: 'switchFrame', element } : null
@@ -130,11 +130,11 @@ const PATTERNS: Array<[RegExp, Builder]> = [
     (m): Built => el(m, 'assert', 'valueEquals', 5)
   ],
   [
-    rx(`expect\\(@driver\\.title\\)\\.to eq\\(${STR}\\)`),
+    rx(`expect\\(@?driver\\.title\\)\\.to eq\\(${STR}\\)`),
     (m): Built => ({ kind: 'assert', check: 'titleEquals', expected: unescape(m[1]) })
   ],
   [
-    rx(`expect\\(@driver\\.current_url\\)\\.to include\\(${STR}\\)`),
+    rx(`expect\\(@?driver\\.current_url\\)\\.to include\\(${STR}\\)`),
     (m): Built => ({ kind: 'assert', check: 'urlIncludes', expected: unescape(m[1]) })
   ]
 ]

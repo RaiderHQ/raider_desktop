@@ -1,5 +1,6 @@
 import type { RecorderSettings } from '../../shared/types/recorderSettings'
 import type { Step } from '../../shared/types/step'
+import { posix } from 'node:path'
 import { rubyString } from './ruby'
 import { renderStep } from './steps'
 import type { Automation } from './steps'
@@ -86,6 +87,64 @@ export function generateRspecFile(
     ...body,
     '  end',
     'end',
+    ''
+  ].join('\n')
+}
+
+// Same lookup the project's own config uses: explicit_wait, falling back to timeout, then 10
+const CONFIG_WAIT = "config.fetch('explicit_wait', config.fetch('timeout', 10))"
+
+// Cops that fire on long recorded tests; the file is regenerated, so they are disabled around it
+const DISABLED_COPS = 'RSpec/ExampleLength, RSpec/MultipleExpectations'
+
+/**
+ * Builds a recorded spec that lives inside a Ruby Raider project and uses the
+ * project's spec_helper (driver / browser) instead of creating its own session.
+ * `fileRelPath` and `helperPath` are relative to the project root.
+ */
+export function generateProjectSpecFile(
+  test: { name: string; steps: Step[] },
+  automation: Automation,
+  opts: { fileRelPath: string; helperPath: string }
+): string {
+  const watir = automation === 'watir'
+  const name = rubyString(test.name)
+  const toHelper = posix.relative(
+    posix.dirname(opts.fileRelPath.replace(/\\/g, '/')),
+    posix.join(opts.helperPath.replace(/\\/g, '/'), 'spec_helper')
+  )
+  const setup = watir
+    ? [
+        '  before do',
+        "    config = YAML.load_file('config/config.yml')",
+        `    Watir.default_timeout = ${CONFIG_WAIT}`,
+        '  end'
+      ]
+    : [
+        '  let(:wait) do',
+        "    config = YAML.load_file('config/config.yml')",
+        `    Selenium::WebDriver::Wait.new(timeout: ${CONFIG_WAIT})`,
+        '  end'
+      ]
+  const body = test.steps.map((step) =>
+    indent(renderStep(step, automation, { receiver: 'helper' }), 4)
+  )
+
+  return [
+    '# frozen_string_literal: true',
+    '',
+    '# Recorded with Raider. Edit in Raider; editing here makes the test code-owned.',
+    `# rubocop:disable ${DISABLED_COPS}`,
+    `require_relative '${toHelper}'`,
+    '',
+    `describe ${name} do`,
+    ...setup,
+    '',
+    `  it ${name} do`,
+    ...body,
+    '  end',
+    'end',
+    `# rubocop:enable ${DISABLED_COPS}`,
     ''
   ].join('\n')
 }

@@ -263,3 +263,12 @@ describe('migrates the old recorder output', () => {
     expect(strip(key)).toEqual({ kind: 'pressKey', element: id('q'), key: 'ArrowDown' })
   })
 })
+
+describe('helper receiver', () => {
+  it('helper receiver parses back', () => {
+    const click = migrateLegacyStep("driver.find_element(id: 'a').click")
+    expect(strip(click)).toEqual({ kind: 'click', element: id('a') })
+    const wait = migrateLegacyStep("wait.until { driver.find_element(css: '.x').displayed? }")
+    expect(strip(wait)).toEqual({ kind: 'wait', element: css('.x'), until: 'visible' })
+  })
+})
