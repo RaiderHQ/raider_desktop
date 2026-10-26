@@ -8,7 +8,7 @@ import { useSuiteSync } from '../../hooks/useRecorderIPC'
 const Dashboard: React.FC = () => {
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState('project')
-  const { runOutput } = useRunOutputStore()
+  const { runOutput, runFailed } = useRunOutputStore()
 
   // Ensure recorder store suites are loaded so dashboards can look up hasTrace
   useSuiteSync()
@@ -41,7 +41,9 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="pt-4">
             {activeTab === 'project' && <ProjectDashboard />}
-            {activeTab === 'recording' && <RecordingDashboard runOutput={runOutput} />}
+            {activeTab === 'recording' && (
+              <RecordingDashboard runOutput={runOutput} runFailed={runFailed} />
+            )}
           </div>
         </div>
       </div>

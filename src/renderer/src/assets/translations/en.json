@@ -358,6 +358,11 @@
       "step2": "Use the toolbar to choose your browser, run mode, and timeout.",
       "step3": "Click the Run button — then come back here to see the results."
     },
+    "runFailed": {
+      "title": "The test run failed",
+      "subtitle": "Raider couldn't read any test results from this run.",
+      "details": "Show technical details"
+    },
     "noRecordingResults": {
       "title": "No recording results yet",
       "subtitle": "Record and run a test from the Recording tab to see results here.",

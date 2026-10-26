@@ -73,4 +73,41 @@ describe('RecordingDashboard', () => {
     render(<RecordingDashboard runOutput={output} />)
     expect(screen.getByTestId('pie-chart')).toBeInTheDocument()
   })
+
+  describe('after a failed run', () => {
+    const failing = makeRspecOutput(
+      [
+        { id: '1', description: 'logs in', status: 'passed', pending_message: null },
+        { id: '2', description: 'checks out', status: 'failed', pending_message: null }
+      ],
+      { failure_count: 1 }
+    )
+
+    it('shows the examples when the run also wrote to stderr', () => {
+      // What main sends for a non-zero exit with stderr (toRunResult)
+      const output = `Test execution failed.\n\n--- STDERR ---\nWARN Selenium [DEPRECATION] {old} is deprecated\n\n--- STDOUT ---\n${failing}`
+      render(<RecordingDashboard runOutput={output} runFailed />)
+      expect(screen.getByText('logs in')).toBeInTheDocument()
+      expect(screen.getByText('checks out')).toBeInTheDocument()
+    })
+
+    it('shows the examples when the spec printed text before the results', () => {
+      render(<RecordingDashboard runOutput={`Visiting {home}\n${failing}`} runFailed />)
+      expect(screen.getByText('checks out')).toBeInTheDocument()
+    })
+
+    it('says the run failed, with its output, when there are no results to show', () => {
+      const output =
+        'Test execution failed.\n\n--- STDERR ---\ncannot load such file -- spec_helper'
+      render(<RecordingDashboard runOutput={output} runFailed />)
+      expect(screen.getByText('dashboard.runFailed.title')).toBeInTheDocument()
+      expect(screen.getByText(/cannot load such file/)).toBeInTheDocument()
+      expect(screen.queryByText('dashboard.noRecordingResults.title')).not.toBeInTheDocument()
+    })
+
+    it('ignores JSON that is not an rspec result', () => {
+      render(<RecordingDashboard runOutput='{"examples": "nope"}' />)
+      expect(screen.getByText('dashboard.noRecordingResults.title')).toBeInTheDocument()
+    })
+  })
 })

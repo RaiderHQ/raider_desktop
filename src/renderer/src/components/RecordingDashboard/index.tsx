@@ -33,6 +33,43 @@ interface RSpecOutput {
 
 interface RecordingDashboardProps {
   runOutput: string
+  /** The last run failed: without results to show, say so instead of how to record */
+  runFailed?: boolean
+}
+
+const isRspecOutput = (value: unknown): value is RSpecOutput => {
+  const data = value as RSpecOutput | null
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    Array.isArray(data.examples) &&
+    typeof data.summary === 'object' &&
+    data.summary !== null
+  )
+}
+
+const STDOUT_MARKER = '--- STDOUT ---'
+
+/**
+ * rspec's JSON results inside a run's output. A failed run may carry stderr
+ * ahead of it (main's "--- STDOUT ---" section), and a spec may print text
+ * before it, so the JSON is looked for rather than expected to be the whole text.
+ */
+function parseRspecOutput(runOutput: string): RSpecOutput | null {
+  const marker = runOutput.lastIndexOf(STDOUT_MARKER)
+  const text = marker === -1 ? runOutput : runOutput.slice(marker + STDOUT_MARKER.length)
+  const end = text.lastIndexOf('}')
+  let start = text.indexOf('{')
+  for (let tries = 0; start !== -1 && start < end && tries < 50; tries++) {
+    try {
+      const parsed: unknown = JSON.parse(text.slice(start, end + 1))
+      if (isRspecOutput(parsed)) return parsed
+    } catch {
+      // Not the start of the results: try the next brace
+    }
+    start = text.indexOf('{', start + 1)
+  }
+  return null
 }
 
 const EmptyState: React.FC = () => {
@@ -66,7 +103,26 @@ const EmptyState: React.FC = () => {
   )
 }
 
-const RecordingDashboard: React.FC<RecordingDashboardProps> = ({ runOutput }) => {
+const RunFailedState: React.FC<{ output: string }> = ({ output }) => {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-col py-8 px-6 gap-3">
+      <h3 className="text-sm font-semibold text-status-err">{t('dashboard.runFailed.title')}</h3>
+      <p className="text-xs text-neutral-mid">{t('dashboard.runFailed.subtitle')}</p>
+      {/* The raw output is for whoever fixes the project, so it stays folded away */}
+      <details>
+        <summary className="text-xs text-neutral-dk cursor-pointer">
+          {t('dashboard.runFailed.details')}
+        </summary>
+        <pre className="mt-2 text-xs text-neutral-dk bg-neutral-50 border border-neutral-bdr rounded p-3 whitespace-pre-wrap break-words max-h-80 overflow-y-auto">
+          {output}
+        </pre>
+      </details>
+    </div>
+  )
+}
+
+const RecordingDashboard: React.FC<RecordingDashboardProps> = ({ runOutput, runFailed }) => {
   const { t } = useTranslation()
   const suites = useRecorderStore((s) => s.suites)
 
@@ -77,18 +133,13 @@ const RecordingDashboard: React.FC<RecordingDashboardProps> = ({ runOutput }) =>
     }
   }
 
-  let data: RSpecOutput | null = null
-  try {
-    data = JSON.parse(runOutput)
-  } catch (error) {
-    // Not a valid JSON, so we can't display the dashboard
-  }
+  const data = parseRspecOutput(runOutput)
 
   if (!data) {
     return (
       <div className="p-4 w-full">
         <div className="border border-neutral-bdr rounded-lg bg-white">
-          <EmptyState />
+          {runFailed && runOutput ? <RunFailedState output={runOutput} /> : <EmptyState />}
         </div>
       </div>
     )
