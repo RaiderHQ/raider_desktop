@@ -30,7 +30,8 @@ import {
   saveSuites,
   loadSuiteIndex,
   saveSuiteIndex,
-  LegacySuitesFileError
+  LegacySuitesFileError,
+  UnknownSuitesVersionError
 } from '../../src/main/handlers/suitePersistence'
 import type { Suite } from '../../src/shared/types/suite'
 
@@ -288,6 +289,14 @@ describe('suite index (version 3)', () => {
     await write(v2)
     await expect(loadSuiteIndex(a)).rejects.toBeInstanceOf(LegacySuitesFileError)
     expect(await readFile(join(a, '.raider', 'suites.json'), 'utf-8')).toBe(v2)
+    expect((await fsp.readdir(join(a, '.raider'))).filter((f) => f.endsWith('.bak'))).toEqual([])
+  })
+
+  it('a newer version file is neither migrated nor treated as corrupt', async () => {
+    const v4 = JSON.stringify({ version: 4, suites: [{ id: 's', name: 's', testIds: [] }] })
+    await write(v4)
+    await expect(loadSuiteIndex(a)).rejects.toBeInstanceOf(UnknownSuitesVersionError)
+    expect(await readFile(join(a, '.raider', 'suites.json'), 'utf-8')).toBe(v4)
     expect((await fsp.readdir(join(a, '.raider'))).filter((f) => f.endsWith('.bak'))).toEqual([])
   })
 

@@ -8,6 +8,7 @@ import {
   deleteSidecar,
   isSafeRelPath,
   listSidecars,
+  readSidecar,
   resolveInside,
   serialize,
   sidecarPath,
@@ -176,14 +177,40 @@ function testKey(projectPath: string, testId: string): string {
   return `${project}\0${testId}`
 }
 
+/**
+ * The sidecar for `testId` when the caller already knows where it is (`null`: none),
+ * read fresh from that one place; falls back to a full scan if it isn't there.
+ */
+async function sidecarAt(
+  projectPath: string,
+  testId: string,
+  knownFile: string | null
+): Promise<Sidecar | null> {
+  if (knownFile === null) return null
+  const sidecar = isSpecRel(knownFile)
+    ? await readSidecar(projectPath, knownFile).catch(() => null)
+    : null
+  if (sidecar?.id === testId && sidecar.file === knownFile) return sidecar
+  return findSidecarById(projectPath, testId)
+}
+
+/**
+ * Saves `test` as a spec file + sidecar. `knownFile` lets a caller that already
+ * scanned the sidecars (e.g. a bulk migration) skip the per-test scan: the spec
+ * path of the test's sidecar, or null when it has none.
+ */
 export function saveRecordedTest(
   projectPath: string,
   layout: ProjectLayout,
-  test: Test
+  test: Test,
+  options: { knownFile?: string | null } = {}
 ): Promise<Sidecar> {
   return serialize(testQueues, testKey(projectPath, test.id), async () => {
     const now = new Date().toISOString()
-    const existing = await findSidecarById(projectPath, test.id)
+    const existing =
+      options.knownFile !== undefined
+        ? await sidecarAt(projectPath, test.id, options.knownFile)
+        : await findSidecarById(projectPath, test.id)
 
     if (!existing) {
       const { file, content, target } = await createNewSpec(projectPath, layout, test)

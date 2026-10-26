@@ -139,11 +139,15 @@ export function saveSuites(projectPath: string, suites: Suite[]): Promise<void> 
   return writeSuitesFile(projectPath, body)
 }
 
-// Every suites.json write (version 2 or 3) goes through here, so they share one queue
-function writeSuitesFile(projectPath: string, body: string): Promise<void> {
+// Every suites.json write (version 2 or 3) goes through here, so they share one queue.
+// With `ifUnchanged`, the write only happens while the file still holds exactly that text.
+function writeSuitesFile(projectPath: string, body: string, ifUnchanged?: string): Promise<void> {
   const file = suitesFile(projectPath)
   const previous = writeQueues.get(projectPath) ?? Promise.resolve()
   const write = previous.then(async () => {
+    if (ifUnchanged !== undefined && (await readRaw(file)) !== ifUnchanged) {
+      throw new SuitesFileChangedError()
+    }
     await fs.mkdir(raiderDir(projectPath), { recursive: true })
     const tmp = `${file}.tmp`
     await fs.writeFile(tmp, body, 'utf-8')
@@ -175,6 +179,22 @@ export class LegacySuitesFileError extends Error {
   }
 }
 
+/** suites.json is newer than this app understands: leave it alone. */
+export class UnknownSuitesVersionError extends Error {
+  constructor(readonly version: number) {
+    super(`The suites file is version ${version}, made by a newer Raider`)
+    this.name = 'UnknownSuitesVersionError'
+  }
+}
+
+/** suites.json changed since it was read, so a conditional write was skipped. */
+export class SuitesFileChangedError extends Error {
+  constructor() {
+    super('The suites file changed while it was being updated')
+    this.name = 'SuitesFileChangedError'
+  }
+}
+
 const isStr = (v: unknown): v is string => typeof v === 'string'
 const isIndexEntry = (suite: unknown): suite is SuiteIndexEntry => {
   const s = suite as SuiteIndexEntry | null
@@ -192,9 +212,20 @@ export type SuitesFileState =
   | { kind: 'missing' }
   | { kind: 'corrupt' }
   | { kind: 'index'; suites: SuiteIndexEntry[] }
-  | { kind: 'legacy'; version: number; suites: Suite[] }
+  | { kind: 'legacy'; version: number; suites: Suite[]; raw: string }
+  | { kind: 'unknown'; version: number }
 
-function classify(parsed: unknown): SuitesFileState {
+type Classified =
+  | Exclude<SuitesFileState, { kind: 'missing' } | { kind: 'legacy' }>
+  | {
+      kind: 'legacy'
+      version: number
+      suites: Suite[]
+    }
+
+function classify(parsed: unknown): Classified {
+  const version = (parsed as SuiteIndexFile | null)?.version as unknown
+  if (typeof version === 'number' && version > INDEX_VERSION) return { kind: 'unknown', version }
   if (
     parsed &&
     typeof parsed === 'object' &&
@@ -217,10 +248,9 @@ export async function readSuitesFile(projectPath: string): Promise<SuitesFileSta
   const raw = await readRaw(suitesFile(projectPath))
   if (raw === null) return { kind: 'missing' }
   const state = classify(parseJson(raw))
-  if (state.kind === 'legacy' && state.version < WRITE_VERSION) {
-    return { ...state, suites: migrateSuites(state.suites) }
-  }
-  return state
+  if (state.kind !== 'legacy') return state
+  const suites = state.version < WRITE_VERSION ? migrateSuites(state.suites) : state.suites
+  return { ...state, suites, raw }
 }
 
 /**
@@ -236,12 +266,21 @@ export async function loadSuiteIndex(
   const state = classify(parseJson(raw))
   if (state.kind === 'index') return { suites: state.suites, recoveredFromCorrupt: false }
   if (state.kind === 'legacy') throw new LegacySuitesFileError(state.version)
+  if (state.kind === 'unknown') throw new UnknownSuitesVersionError(state.version)
   return recoverCorrupt(file)
 }
 
-export function saveSuiteIndex(projectPath: string, suites: SuiteIndexEntry[]): Promise<void> {
+/**
+ * Writes the version 3 index. With `ifUnchanged`, it only replaces a file that still
+ * holds exactly that text, else rejects with SuitesFileChangedError.
+ */
+export function saveSuiteIndex(
+  projectPath: string,
+  suites: SuiteIndexEntry[],
+  { ifUnchanged }: { ifUnchanged?: string } = {}
+): Promise<void> {
   const body = JSON.stringify({ version: INDEX_VERSION, suites } satisfies SuiteIndexFile, null, 2)
-  return writeSuitesFile(projectPath, body)
+  return writeSuitesFile(projectPath, body, ifUnchanged)
 }
 
 /** Saves appState.suites to the active project. No-op without one; never rejects. */
