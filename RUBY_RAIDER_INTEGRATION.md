@@ -14,10 +14,9 @@ The gem manages `config/config.yml` internally — the desktop app should never 
 4. [Config Updates (Utility Commands)](#4-config-updates-utility-commands)
 5. [Scaffolding Commands](#5-scaffolding-commands)
 6. [Test Execution](#6-test-execution)
-7. [Adopt / Import](#7-adopt--import)
-8. [Plugin Management](#8-plugin-management)
-9. [Config File Schema](#9-config-file-schema)
-10. [Common Pitfalls](#10-common-pitfalls)
+7. [Failure Video](#7-failure-video)
+8. [Config File Schema](#8-config-file-schema)
+9. [Common Pitfalls](#9-common-pitfalls)
 
 ---
 
@@ -47,7 +46,6 @@ const result = await safeExec(command, { timeout: 30_000 })
 | Config updates | 30s (default) |
 | Project creation | 120s |
 | Test execution | 120s |
-| Adopt execute | 120s |
 | Bundle install | 120s |
 
 ---
@@ -65,27 +63,22 @@ raider new "PROJECT_NAME" -p framework:FRAMEWORK automation:AUTOMATION [flags]
 
 | Parameter | Values | Flag |
 |-----------|--------|------|
-| framework | `rspec`, `cucumber`, `minitest` | `-p framework:VALUE` |
-| automation | `selenium`, `capybara`, `watir` | `-p automation:VALUE` |
+| framework | `rspec`, `cucumber` | `-p framework:VALUE` |
+| automation | `selenium`, `watir` | `-p automation:VALUE` |
 | mobile | `ios`, `android`, `cross_platform` | `-p automation:VALUE` (overrides automation) |
-| reporter | `allure`, `junit`, `json`, `both`, `all`, `none` | `-r VALUE` |
-| ruby_version | `3.4`, `3.3`, `3.2`, `3.1` | `--ruby_version VALUE` |
+| ci | `github` (default), `azure` | `-p ci:VALUE` |
 | accessibility | boolean | `--accessibility` |
-| visual | boolean | `--visual` |
-| performance | boolean | `--performance` |
-| skip_ci | boolean | `--skip_ci` |
-| skip_allure | boolean | `--skip_allure` |
-| skip_video | boolean | `--skip_video` |
 
 **Example:**
 ```bash
-raider new "my_project" -p framework:rspec automation:selenium -r allure --ruby_version 3.4 --accessibility --visual
+raider new "my_project" -p framework:rspec automation:selenium --accessibility
 ```
 
 **Important:**
-- `-r` and `--ruby_version` only work when `-p` (parameters hash) is provided. Without `-p`, the gem enters interactive TTY mode and ignores all other flags.
+- `--accessibility` only works when `-p` (parameters hash) is provided. Without `-p`, the gem enters interactive TTY mode and ignores other flags.
 - The gem runs `cd PROJECT_NAME && gem install bundler && bundle install` after creation. The desktop should verify the project directory exists after the command completes.
-- `accessibility`, `visual`, and `performance` are only supported for web automation types (selenium, capybara, watir). They are silently ignored for mobile.
+- `accessibility` is only supported for web automation types (selenium, watir). It is silently ignored for mobile.
+- Invalid `framework`, `automation` or `ci` values make the gem exit non-zero with an error listing the allowed values.
 
 **Verify success:**
 ```typescript
@@ -126,24 +119,14 @@ interface FullProjectConfig {
   browser_arguments?: Record<string, string[]>  // per-browser args
   video?: {
     enabled: boolean
-    strategy: string        // 'auto', 'cdp', 'screen'
-  }
-  debug?: {
-    enabled: boolean
-    console_logs: boolean
-    action_logging: boolean
-    network_logging: boolean
-    log_dir: string
+    fps: number
+    max_width: number
   }
   platform?: string         // 'ios', 'android' (mobile only)
   page_path?: string        // custom page path override
   spec_path?: string        // custom spec path override
   feature_path?: string     // custom feature path override
   helper_path?: string      // custom helper path override
-  llm_provider?: string     // 'openai', 'anthropic', 'ollama'
-  llm_api_key?: string
-  llm_model?: string
-  llm_url?: string          // for ollama
 }
 ```
 
@@ -244,7 +227,7 @@ raider u timeout 60
 
 **Config key affected:** `timeout` (integer, in seconds)
 
-Used for implicit waits and Capybara's `default_max_wait_time`.
+Used for implicit waits and max wait time.
 
 ---
 
@@ -264,18 +247,18 @@ Format must be `WIDTHxHEIGHT` (lowercase x separator).
 
 ---
 
-### 4.7 Debug Mode
-
-**IPC Channel:** `update-debug-mode`
+### 4.7 Failure Video
 
 ```bash
-raider u debug on
-raider u debug off
+raider u video on
+raider u video off
+raider u video status     # prints which ffmpeg is in use
+raider u video install    # downloads ffmpeg
 ```
 
-**Config key affected:** `debug.enabled` (boolean)
+**Config key affected:** `video.enabled` (boolean) for `on` / `off`
 
-Also toggled by `DEBUG=true` env var at runtime. When enabled, captures console logs, action logging, and network requests on test failure.
+Recording needs ffmpeg. `RAIDER_FFMPEG_PATH` points the gem at an existing ffmpeg binary; `raider u video status` reports it as `(RAIDER_FFMPEG_PATH)`. See [Failure Video](#7-failure-video).
 
 ---
 
@@ -313,39 +296,6 @@ Only relevant for cross-platform mobile projects.
 
 ---
 
-### 4.10 LLM Configuration
-
-**IPC Channel:** `update-llm-config`
-
-```bash
-raider u llm openai -k sk-... -m gpt-4
-raider u llm anthropic -k sk-ant-... -m claude-3-opus
-raider u llm ollama -u http://localhost:11434 -m llama3
-raider u llm -s                              # show status only
-```
-
-**Config keys affected:** `llm_provider`, `llm_api_key`, `llm_model`, `llm_url`
-
-**Get status IPC Channel:** `get-llm-status`
-```bash
-raider u llm       # prints current config
-raider u llm -s    # same as above
-```
-
----
-
-### 4.11 Batch Updates
-
-Not available via CLI, but available via Ruby API for direct integration:
-
-```ruby
-Utilities.batch_update(browser: 'firefox', timeout: 30, headless: true)
-```
-
-This writes all changes in a single YAML dump, avoiding multiple file I/O operations.
-
----
-
 ## 5. Scaffolding Commands
 
 **IPC Channel:** `scaffold-generate`
@@ -361,65 +311,25 @@ raider g helper AUTH_HELPER                     # helper module
 raider g component HEADER                       # reusable component
 ```
 
-**Common flags:**
+**Flag (page, spec, feature, steps, helper, component):**
 
 | Flag | Alias | Description |
 |------|-------|-------------|
 | `--path PATH` | `-p` | Custom output directory |
-| `--uses dep1,dep2` | `-u` | Add require statements for dependencies |
-| `--delete` | `-d` | Delete the file instead of generating |
-| `--dry_run` | | Preview files without creating them |
 
-**Examples:**
+**Example:**
 ```bash
-raider g page checkout -p custom/pages -u cart_page,product_page
-raider g spec login --from page_objects/pages/login.rb --ai
-raider g page old_page --delete
+raider g page checkout -p custom/pages
 ```
 
 ### 5.2 Batch Scaffold
 
 ```bash
-raider g scaffold users                          # generates all default components
-raider g scaffold users -w page,spec,helper      # selective components
+raider g scaffold users                          # page + spec (or feature + steps)
 raider g scaffold users accounts products        # multiple resources
-raider g scaffold products --crud                # CRUD pages + tests
-raider g scaffold users --dry_run                # preview only
 ```
 
-**`--with` / `-w` values:** `page`, `spec`, `feature`, `steps`, `helper`, `component`, `model`
-
-**CRUD mode creates:**
-- `{name}_list`, `{name}_create`, `{name}_detail`, `{name}_edit` pages
-- Corresponding tests/features for each
-- Data model YAML at `models/data/{name}.yml`
-
-### 5.3 Destroy (Batch Delete)
-
-```bash
-raider g destroy users                          # delete all files for 'users'
-raider g destroy users -w page,spec             # delete only specific types
-raider g d users accounts                       # alias, multiple names
-```
-
-### 5.4 Generate from URL
-
-```bash
-raider g from_url https://example.com/login
-raider g from_url https://example.com/checkout -n checkout_page
-raider g from_url https://example.com --ai      # LLM-enhanced analysis
-```
-
-Analyzes live page HTML and generates a page object with detected elements + a matching spec/feature.
-
-### 5.5 Generate Spec from Existing Page
-
-```bash
-raider g spec login --from page_objects/pages/login.rb
-raider g spec login --from page_objects/pages/login.rb --ai
-```
-
-Introspects an existing page object file and generates test stubs for its methods. `--ai` uses the configured LLM to generate meaningful test scenarios.
+`scaffold` takes only names and has no flags. For an RSpec project (a `spec/` directory and no `features/`) it generates a spec and a page object. Otherwise it generates a feature, steps and a page object. Missing or unrecognised Gemfile entries produce a warning and default to selenium + rspec.
 
 ---
 
@@ -449,68 +359,23 @@ bundle exec raider u raid -o --seed 42      # with custom options
 **Framework detection is automatic:**
 - `spec/` directory exists → `rspec spec/`
 - `features/` directory exists → `cucumber features`
-- `test/` directory exists → minitest
 
-**Parallel execution requires** `parallel_tests` gem in the project's Gemfile.
-
----
-
-## 7. Adopt / Import
-
-### 7.1 Analyze (Dry Run)
-
-**IPC Channel:** `adopt-analyze`
-
-```bash
-raider adopt project "/path/to/source" -p output_path:/tmp/raider_dry_run target_automation:selenium target_framework:rspec --dry_run
-```
-
-Returns detection results: source automation, framework, page paths, etc. Parse stdout for JSON output.
-
-### 7.2 Execute
-
-**IPC Channel:** `adopt-execute`
-
-```bash
-raider adopt project "/path/to/source" -p output_path:./new_project target_automation:selenium target_framework:rspec [ci_platform:github] [browser:chrome] [url:https://example.com]
-```
-
-**Parameters (all via `-p` hash):**
-
-| Key | Required | Values |
-|-----|----------|--------|
-| `output_path` | yes | destination directory |
-| `target_automation` | yes | `selenium`, `capybara`, `watir` |
-| `target_framework` | yes | `rspec`, `cucumber`, `minitest` |
-| `ci_platform` | no | `github`, `gitlab` |
-| `browser` | no | `chrome`, `firefox`, etc. |
-| `url` | no | base URL |
-
-**Important:**
-- Only web automation sources can be adopted. Mobile projects (appium/ios/android) are blocked.
-- The source project is READ-ONLY. Output goes to the specified `output_path`.
-- Use raw `exec()` (not `safeExec`) for streaming progress via IPC events:
-  - `adopt-progress`: emitted per data chunk during conversion
-  - `adopt-complete`: emitted when finished
+**Parallel execution requires** `parallel_tests` gem in the project's Gemfile (`raid -p` runs `parallel_rspec spec/` or `parallel_cucumber features`).
 
 ---
 
-## 8. Plugin Management
+## 7. Failure Video
 
-**IPC Channel:** `plugin-manager`
+Raider records a video of each test. The desktop shows it for failed tests: open a project, go to the **Dashboard** tab, click a failed result card, then expand **Failure video**.
 
-```bash
-raider pm add great_axe        # install plugin
-raider pm delete great_axe     # remove plugin
-raider pm local                # list installed plugins
-raider pm list                 # list available plugins
-```
-
-Currently only `great_axe` is available. Plugins add gems to the project Gemfile and expose additional CLI commands under `raider plugins` / `raider ps`.
+- Recording needs ffmpeg. Until the bundled-ffmpeg release exists, set `RAIDER_FFMPEG_PATH` to an ffmpeg binary before launching the app and running tests, or run `raider u video install`.
+- `raider u video status` prints the ffmpeg in use.
+- `raider u video on` / `off` toggles `video.enabled` in `config/config.yml`. `VIDEO=off` also disables recording at runtime.
+- Desktop's "push to Longship" (sent by the app after a run it launched) and raider_reporter's upload (run by the generated project's own test run) are separate paths. Enabling one does not enable the other.
 
 ---
 
-## 9. Config File Schema
+## 8. Config File Schema
 
 ### Web Project (`config/config.yml`)
 
@@ -535,36 +400,26 @@ browser_arguments:
     - no-sandbox
 
 video:
-  enabled: false
-  strategy: auto            # auto, cdp, screen
-
-debug:
-  enabled: false
-  console_logs: true
-  action_logging: true
-  network_logging: true
-  log_dir: 'debug_logs'
+  enabled: true
+  fps: 5
+  max_width: 1280
 
 # Optional — only present when explicitly set
 page_path: 'custom/pages'
 spec_path: 'custom/specs'
 feature_path: 'custom/features'
 helper_path: 'custom/helpers'
-
-# LLM — only present when configured
-llm_provider: openai
-llm_api_key: 'sk-...'
-llm_model: 'gpt-4'
-llm_url: 'http://localhost:11434'
 ```
 
-### Mobile Project (`config/capabilities.yml`)
+### Mobile Project (`config/config.yml` and `config/capabilities.yml`)
+
+`config/config.yml` holds `platform` and `video`. 
 
 Appium capabilities are stored separately in `config/capabilities.yml`. The desktop app can read/write this file directly for mobile projects (this is the one exception to the "never write config directly" rule).
 
 ---
 
-## 10. Common Pitfalls
+## 9. Common Pitfalls
 
 ### Browser Value Format
 
@@ -581,7 +436,7 @@ The driver templates call `.to_sym` on the value, so `"chrome".to_sym` → `:chr
 
 All project configuration lives at **`config/config.yml`** inside the project root. There is no `config/browsers/` directory, no `default_browser.yml`. If the desktop needs browser info, read it from `config/config.yml` under the `browser` key.
 
-### Config Memoization (Fixed in v3.0.1+)
+### Config Memoization
 
 The gem's `Utilities` module reloads `config/config.yml` from disk before every write operation. This means:
 - Multiple sequential updates from the desktop are safe
@@ -595,16 +450,17 @@ These env vars override config values at test execution time without modifying f
 | Env Var | Overrides | Example |
 |---------|-----------|---------|
 | `HEADLESS` | `headless` config key | `HEADLESS=true bundle exec rspec` |
-| `DEBUG` | `debug.enabled` config key | `DEBUG=true bundle exec rspec` |
+| `VIDEO` | `video.enabled` config key (`off` disables recording) | `VIDEO=off bundle exec rspec` |
+| `RAIDER_FFMPEG_PATH` | Which ffmpeg binary recording uses | `RAIDER_FFMPEG_PATH=/opt/homebrew/bin/ffmpeg bundle exec rspec` |
 
 Pass these when spawning test processes:
 ```typescript
 const command = buildShellCommand(projectPath, 'HEADLESS=true bundle exec raider u raid')
 ```
 
-### `-r` and `--ruby_version` Require `-p`
+### `--accessibility` Requires `-p`
 
-These flags only work when the `-p` (parameters) flag is also provided. Without `-p`, the gem enters the interactive TTY menu and silently ignores `-r` and `--ruby_version`. The desktop should always use `-p` for project creation.
+This flag only works when the `-p` (parameters) flag is also provided. Without `-p`, the gem enters the interactive TTY menu and ignores it. The desktop should always use `-p` for project creation.
 
 ### Name Normalization
 
@@ -614,6 +470,7 @@ The gem's `NameNormalizer` strips common suffixes from scaffold names:
 - `_test` → stripped
 - `_steps` → stripped
 - `_helper` → stripped
+- `_feature` → stripped
 
 The desktop should pass clean resource names (e.g. `login`, not `login_page`). The gem adds appropriate suffixes based on the file type being generated.
 
@@ -623,17 +480,10 @@ Users can override default templates by placing `.tt` files in `.ruby_raider/tem
 
 ### Project Detection
 
-The gem auto-detects the project's automation type and framework by reading the Gemfile:
+The gem auto-detects the project's automation type and framework by reading the Gemfile when scaffolding:
 - `selenium-webdriver` gem → selenium
-- `capybara` gem → capybara
 - `watir` gem → watir
 - `rspec` gem → rspec
 - `cucumber` gem → cucumber
-- `minitest` gem → minitest
 
-The desktop can read this detection via:
-```bash
-raider adopt project "." -p output_path:/tmp/detect target_automation:selenium target_framework:rspec --dry_run
-```
-
-Or read the Gemfile directly and match against these gem names.
+If nothing matches, it warns and defaults to selenium + rspec. The desktop can read the Gemfile directly and match against these gem names.
