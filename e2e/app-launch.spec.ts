@@ -38,9 +38,8 @@ test.describe('App Launch', () => {
     expect(criticalErrors).toHaveLength(0)
   })
 
-  test('default route loads the Recorder page', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).toBeVisible()
-    await expect(page.getByText('Recorded Steps')).toBeVisible()
+  test('default route loads the Welcome page', async ({ page }) => {
+    await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
   })
 
   test('all navigation links are present on initial load', async ({ page }) => {

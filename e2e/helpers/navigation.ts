@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test'
+import { mockSelectFolder } from './ipc-mock'
 
 /**
  * Navigate to a page via hash router and wait for it to settle.
@@ -8,6 +9,21 @@ export async function navigateTo(page: Page, route: string): Promise<void> {
     window.location.hash = `#${r}`
   }, route)
   await page.waitForTimeout(800)
+}
+
+/**
+ * Get from the Welcome page (the app's start screen) into the main layout.
+ * Mocks the folder picker, clicks "Open" on the Welcome page and waits for the
+ * Overview route, after which the header nav (Recorder link) is available.
+ */
+export async function enterMainLayout(
+  page: Page,
+  projectPath = '/mock/test-project'
+): Promise<void> {
+  await mockSelectFolder(page, projectPath)
+  await page.getByRole('button', { name: 'Open', exact: true }).click()
+  await page.waitForURL('**/#/overview')
+  await page.waitForTimeout(500)
 }
 
 export async function goToLanding(page: Page): Promise<void> {
