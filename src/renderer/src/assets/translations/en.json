@@ -390,7 +390,12 @@
     "recovered": {
       "backupSaved": "Your saved suites couldn't be read, so this project opened with no suites. A copy of the old file was kept in the project's .raider folder.",
       "backupFailed": "Your saved suites couldn't be read, so this project opened with no suites. The app couldn't keep a copy of the old file."
-    }
+    },
+    "migrated": {
+      "done": "Your recorded tests are now saved as project files.",
+      "postponed": "Raider couldn't move your recorded tests into the project yet. They're safe and Raider will try again next time."
+    },
+    "tooNew": "This project's suites were saved by a newer version of Raider. Update Raider to see and change them."
   },
   "errors": {
     "ruby": {

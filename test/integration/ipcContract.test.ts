@@ -121,6 +121,10 @@ describe('IPC Contract', () => {
     // Event Listeners
     'onTestRunStatus',
     'removeTestRunStatusListener',
+    'onTestsMigrated',
+    'removeTestsMigratedListener',
+    'onSuitesTooNew',
+    'removeSuitesTooNewListener',
 
     // Scaffolding
     'scaffoldGenerate',

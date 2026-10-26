@@ -113,11 +113,13 @@ export interface WindowApi {
     folderPath: string,
     rubyCommand: string
   ) => Promise<{ success: boolean; output?: string; error?: string }>
+  /** `test`, when given, is saved before it runs, so the run never lags behind the editor */
   runTest: (
     suiteId: string,
     testId: string,
     projectPath: string,
-    rubyCommand: string
+    rubyCommand: string,
+    test?: Test
   ) => Promise<{ success: boolean; output: string }>
   runSuite: (
     suiteId: string,
@@ -194,6 +196,16 @@ export interface WindowApi {
   removeTestRunStatusListener: (
     callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
   ) => Electron.IpcRenderer
+  /** Sent once when opening a project moved (or could not yet move) its recorded tests into project files */
+  onTestsMigrated: (
+    callback: (event: IpcRendererEvent, info: { migrated: number; postponed: boolean }) => void
+  ) => Electron.IpcRenderer
+  removeTestsMigratedListener: (
+    callback: (event: IpcRendererEvent, info: { migrated: number; postponed: boolean }) => void
+  ) => Electron.IpcRenderer
+  /** Sent when the project's suites were saved by a newer Raider and are left untouched */
+  onSuitesTooNew: (callback: (event: IpcRendererEvent) => void) => Electron.IpcRenderer
+  removeSuitesTooNewListener: (callback: (event: IpcRendererEvent) => void) => Electron.IpcRenderer
 
   // --- Scaffolding ---
   scaffoldGenerate: (

@@ -283,10 +283,13 @@ export function saveSuiteIndex(
   return writeSuitesFile(projectPath, body, ifUnchanged)
 }
 
-/** Saves appState.suites to the active project. No-op without one; never rejects. */
+/**
+ * Saves appState.suites to the active project as version 2. No-op without one, and
+ * for a project that keeps its tests as files (it would overwrite the index); never rejects.
+ */
 export async function persistActiveSuites(): Promise<void> {
   const projectPath = appState.projectPath
-  if (!projectPath) return
+  if (!projectPath || appState.suiteMode !== 'legacy') return
   try {
     await saveSuites(projectPath, Array.from(appState.suites.values()))
   } catch (error) {

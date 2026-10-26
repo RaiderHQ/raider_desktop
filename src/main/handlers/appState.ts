@@ -3,7 +3,17 @@ import type { Suite } from '@foundation/Types/suite'
 import type { ChildProcess } from 'child_process'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
+import type { SuiteIndexEntry } from './suitePersistence'
 import { DEFAULT_RECORDER_SETTINGS } from './config/projectSettings'
+
+/**
+ * Where the active project keeps its suites:
+ * - legacy: suites.json version 2 holds every test (Cucumber, non-recordable,
+ *   or an RSpec project whose move to project files was postponed)
+ * - files: recorded tests are spec files + sidecars, suites.json is a version 3 index
+ * - locked: suites.json was written by a newer Raider; nothing is shown or written
+ */
+export type SuiteMode = 'legacy' | 'files' | 'locked'
 
 interface AppState {
   mainWindow: BrowserWindow | null
@@ -15,7 +25,11 @@ interface AppState {
   projectFramework: string | null
   layout: ProjectLayout | null
   rubyVersion: string | null
+  /** The suites as the renderer sees them (in files mode, assembled from the index and sidecars) */
   suites: Map<string, Suite>
+  suiteMode: SuiteMode
+  /** Files mode only: the version 3 index. Keeps ids whose sidecar is missing, which `suites` leaves out */
+  suiteIndex: Map<string, SuiteIndexEntry>
   recorderSettings: RecorderSettings
   activeTraceDir: string | null
   activeReplayProcess: ChildProcess | null
@@ -33,6 +47,8 @@ export const appState: AppState = {
   layout: null,
   rubyVersion: null,
   suites: new Map(),
+  suiteMode: 'legacy',
+  suiteIndex: new Map(),
   recorderSettings: { ...DEFAULT_RECORDER_SETTINGS },
   activeTraceDir: null,
   activeReplayProcess: null,

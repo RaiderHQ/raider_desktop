@@ -7,6 +7,14 @@ import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
 import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
+import {
+  activeSuiteMode,
+  addSuites,
+  broadcast,
+  filesStore,
+  importFailed,
+  LOCKED_ERROR
+} from '../tests/suiteStore'
 
 export default async function importSuite(
   mainWindow: BrowserWindow
@@ -15,6 +23,9 @@ export default async function importSuite(
     return { success: false, error: 'Main window not found' }
   }
   try {
+    if ((await activeSuiteMode()) === 'locked') return { success: false, error: LOCKED_ERROR }
+    // Taken before the dialog: the import goes to the project that was open when it started
+    const store = filesStore()
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory']
     })
@@ -54,6 +65,13 @@ export default async function importSuite(
         }
         newSuite.tests.push(newTest)
       }
+    }
+
+    if (store) {
+      const { suites, failed } = await addSuites(store, [newSuite])
+      broadcast(store)
+      if (failed > 0) return { success: false, error: importFailed(failed) }
+      return { success: true, suite: suites[0] }
     }
 
     appState.suites.set(newSuite.id, newSuite)

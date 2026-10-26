@@ -1,6 +1,13 @@
 import { BrowserWindow } from 'electron'
 import { appState } from '../appState'
 import { persistActiveSuites } from '../suitePersistence'
+import {
+  activeSuiteMode,
+  broadcast,
+  filesStore,
+  LOCKED_ERROR,
+  saveTestInSuite
+} from '../tests/suiteStore'
 import type { Test } from '@foundation/Types/test'
 
 const handler = async (
@@ -10,6 +17,21 @@ const handler = async (
 ): Promise<{ success: boolean; error?: string }> => {
   if (!mainWindow) {
     return { success: false, error: 'Main window is not available.' }
+  }
+
+  const mode = await activeSuiteMode()
+  if (mode === 'locked') return { success: false, error: LOCKED_ERROR }
+
+  const store = filesStore()
+  if (store) {
+    try {
+      const result = await saveTestInSuite(store, suiteId, testData)
+      if (!result.success) return result
+      broadcast(store)
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: (error as Error).message }
+    }
   }
 
   const suite = appState.suites.get(suiteId)

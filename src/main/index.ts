@@ -32,11 +32,11 @@ import isRvmRubyInstalled from './handlers/ruby/isRvmRubyInstalled'
 import isSystemRubyInstalled from './handlers/ruby/isSystemRubyInstalled'
 import installRbenvAndRuby from './handlers/ruby/installRbenvAndRuby'
 import installGems from './handlers/ruby/installGems'
-import runRecording from './handlers/testing/runRecording'
 import getSuites from './handlers/getSuites'
 import createSuite from './handlers/createSuite'
 import deleteSuite from './handlers/deleteSuite'
-import runSuite from './handlers/testing/runSuite'
+import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTests'
+import { isListed } from './handlers/tests/suiteStore'
 import exportTest from './handlers/io/exportTest'
 import exportSuite from './handlers/io/exportSuite'
 import exportProject from './handlers/io/exportProject'
@@ -208,27 +208,14 @@ app.whenReady().then(() => {
   )
   ipcMain.handle(
     'run-test',
-    (_event, suiteId: string, testId: string, projectPath: string, rubyCommand: string) => {
-      const suite = appState.suites.get(suiteId)
-      const test = suite?.tests.find((t) => t.id === testId)
-
-      if (!test) {
-        return { success: false, output: `Test with ID ${testId} not found.` }
-      }
-
-      const { implicitWait, explicitWait, browser, headless } = appState.recorderSettings
-      return runRecording({
-        savedTest: test,
-        implicitWait,
-        explicitWait,
-        browser,
-        headless,
-        projectPath,
-        rubyCommand,
-        projectAutomation: appState.projectAutomation,
-        projectFramework: appState.projectFramework
-      })
-    }
+    (
+      _event,
+      suiteId: string,
+      testId: string,
+      projectPath: string,
+      rubyCommand: string,
+      test?: Test
+    ) => runTestHandler(suiteId, testId, projectPath, rubyCommand, test)
   )
   ipcMain.handle(
     'update-recording-settings',
@@ -244,8 +231,8 @@ app.whenReady().then(() => {
     }
   )
 
-  ipcMain.handle('run-suite', (_event, suiteId: string, _projectPath: string, rubyCommand: string) =>
-    runSuite(suiteId, rubyCommand)
+  ipcMain.handle('run-suite', (_event, suiteId: string, projectPath: string, rubyCommand: string) =>
+    runSuiteHandler(suiteId, projectPath, rubyCommand)
   )
   ipcMain.handle('export-test', (_event, testData: TestData) => exportTest(testData))
   ipcMain.handle('export-suite', (_event, suiteId: string) => exportSuite(suiteId))
@@ -257,7 +244,8 @@ app.whenReady().then(() => {
   )
   ipcMain.handle('delete-test', async (_event, args) => {
     const result = await deleteTest(appState.mainWindow!, args)
-    deleteTrace(args.testId)
+    // A test listed in another suite keeps its trace
+    if (result.success && !isListed(args.testId)) deleteTrace(args.testId)
     return result
   })
   ipcMain.handle('set-active-project', (_event, projectPath: string | null) =>

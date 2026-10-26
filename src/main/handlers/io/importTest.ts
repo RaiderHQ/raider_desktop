@@ -5,6 +5,15 @@ import { persistActiveSuites } from '../suitePersistence'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
 import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
+import {
+  activeSuiteMode,
+  broadcast,
+  filesStore,
+  isCurrent,
+  LOCKED_ERROR,
+  PROJECT_CHANGED_ERROR,
+  saveTestInSuite
+} from '../tests/suiteStore'
 
 export default async function importTest(
   mainWindow: BrowserWindow,
@@ -17,6 +26,9 @@ export default async function importTest(
     if (!suiteId) {
       return { success: false, error: 'No suite selected' }
     }
+    if ((await activeSuiteMode()) === 'locked') return { success: false, error: LOCKED_ERROR }
+    // Taken before the dialog: the import goes to the project that was open when it started
+    const store = filesStore()
 
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openFile'],
@@ -30,7 +42,8 @@ export default async function importTest(
     const filePath = result.filePaths[0]
     const fileContent = fs.readFileSync(filePath, 'utf-8')
 
-    const suite = appState.suites.get(suiteId)
+    if (store && !isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
+    const suite = (store?.suites ?? appState.suites).get(suiteId)
     if (!suite) {
       return { success: false, error: 'Suite not found' }
     }
@@ -48,6 +61,14 @@ export default async function importTest(
 
     if (suite.tests.some((t) => t.name === newTest.name)) {
       return { success: false, error: 'A test with this name already exists in the suite.' }
+    }
+
+    if (store) {
+      // A fresh id always gets a new file: an import never replaces one
+      const saved = await saveTestInSuite(store, suiteId, newTest)
+      if (!saved.success) return saved
+      broadcast(store)
+      return { success: true, test: saved.test }
     }
 
     suite.tests.push(newTest)

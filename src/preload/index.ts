@@ -228,9 +228,10 @@ const api = {
     suiteId: string,
     testId: string,
     projectPath: string,
-    rubyCommand: string
+    rubyCommand: string,
+    test?: Test
   ): Promise<{ success: boolean; output: string }> =>
-    ipcRenderer.invoke('run-test', suiteId, testId, projectPath, rubyCommand),
+    ipcRenderer.invoke('run-test', suiteId, testId, projectPath, rubyCommand, test),
   updateRecordingSettings: (
     settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
   ): Promise<{ success: boolean; error?: string }> =>
@@ -250,6 +251,16 @@ const api = {
   removeTestRunStatusListener: (
     callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
   ): Electron.IpcRenderer => ipcRenderer.removeListener('test-run-status', callback),
+  onTestsMigrated: (
+    callback: (event: IpcRendererEvent, info: { migrated: number; postponed: boolean }) => void
+  ): Electron.IpcRenderer => ipcRenderer.on('tests-migrated', callback),
+  removeTestsMigratedListener: (
+    callback: (event: IpcRendererEvent, info: { migrated: number; postponed: boolean }) => void
+  ): Electron.IpcRenderer => ipcRenderer.removeListener('tests-migrated', callback),
+  onSuitesTooNew: (callback: (event: IpcRendererEvent) => void): Electron.IpcRenderer =>
+    ipcRenderer.on('suites-too-new', callback),
+  removeSuitesTooNewListener: (callback: (event: IpcRendererEvent) => void): Electron.IpcRenderer =>
+    ipcRenderer.removeListener('suites-too-new', callback),
   closeApp: (): Promise<void> => ipcRenderer.invoke('close-app'),
 
   // --- Scaffolding APIs ---

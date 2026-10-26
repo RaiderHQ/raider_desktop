@@ -60,6 +60,25 @@ const MainTemplate: React.FC = (): JSX.Element => {
     return (): void => cleanup?.()
   }, [])
 
+  useEffect(() => {
+    const onMigrated = (_event: unknown, info: { migrated: number; postponed: boolean }): void => {
+      if (info.postponed) {
+        toast(t('suites.migrated.postponed'), { icon: '\u26A0\uFE0F', duration: 10000 })
+      } else {
+        toast.success(t('suites.migrated.done', { count: info.migrated }), { duration: 6000 })
+      }
+    }
+    const onTooNew = (): void => {
+      toast.error(t('suites.tooNew'), { duration: 10000 })
+    }
+    window.api.onTestsMigrated(onMigrated)
+    window.api.onSuitesTooNew(onTooNew)
+    return (): void => {
+      window.api.removeTestsMigratedListener(onMigrated)
+      window.api.removeSuitesTooNewListener(onTooNew)
+    }
+  }, [])
+
   const { rubyCommand } = useRubyStore()
 
   const handleInstallGems = async (): Promise<void> => {

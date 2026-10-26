@@ -179,7 +179,8 @@ const Recorder: React.FC = (): JSX.Element => {
     if (suiteId && test?.id && cmd) {
       setIsRunning(true)
       setRunOutput(`Running test: ${test.name}...`)
-      const result = await window.api.runTest(suiteId, test.id, path || '.', cmd)
+      // The test itself goes along, so a pending autosave can't make the run use older steps
+      const result = await window.api.runTest(suiteId, test.id, path || '.', cmd, test)
       setRunOutput(result.output)
       setIsRunning(false)
     }
