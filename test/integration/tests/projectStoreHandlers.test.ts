@@ -30,6 +30,7 @@ import * as migration from '../../../src/main/handlers/tests/migrateToProjectFil
 import * as assembly from '../../../src/main/handlers/tests/assembleSuites'
 import { saveRecordedTest } from '../../../src/main/handlers/tests/recordedTests'
 import * as persistence from '../../../src/main/handlers/suitePersistence'
+import * as sidecars from '../../../src/main/handlers/tests/sidecar'
 import { saveSuites, saveSuiteIndex } from '../../../src/main/handlers/suitePersistence'
 import type { Suite } from '../../../src/shared/types/suite'
 import type { Test } from '../../../src/shared/types/test'
@@ -127,6 +128,26 @@ describe('recorded tests as project files', () => {
       'Checkout renamed'
     )
     expect(lastSuites()[0].tests).toHaveLength(1)
+  })
+
+  it('autosaving a listed test reads only its own sidecar, not every one', async () => {
+    await setActiveProject(project)
+    const suiteId = await newSuite()
+    await saveRecording(win, suiteId, checkout())
+    const scan = vi.spyOn(sidecars, 'listSidecars')
+
+    await saveRecording(win, suiteId, { ...checkout(), name: 'Checkout renamed' })
+    await saveRecording(win, suiteId, {
+      ...checkout(),
+      name: 'Checkout renamed',
+      url: 'https://b.test'
+    })
+
+    expect(scan).not.toHaveBeenCalled()
+    expect((await readdir(join(project, 'spec'))).sort()).toEqual(['checkout_spec.rb'])
+    expect(await readFile(join(project, 'spec', 'checkout_spec.rb'), 'utf-8')).toContain(
+      'Checkout renamed'
+    )
   })
 
   it('save of code-owned returns codeOwned', async () => {

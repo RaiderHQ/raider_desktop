@@ -127,9 +127,15 @@ export async function saveTestInSuite(
   if (!isStorableTest(input)) return { success: false, error: INVALID_TEST_ERROR }
   const test: Test = { id: input.id, name: input.name, url: input.url ?? '', steps: input.steps }
 
+  // Where a listed test's file is, so the save reads that one sidecar instead of scanning them all.
+  // Unknown (undefined) still scans: null would mean "no sidecar" and create a second file
+  const knownFile = Array.from(store.suites.values())
+    .flatMap((s) => s.tests)
+    .find((t) => t.id === test.id)?.file
+
   let sidecar: Sidecar
   try {
-    sidecar = await saveRecordedTest(store.projectPath, store.layout, test)
+    sidecar = await saveRecordedTest(store.projectPath, store.layout, test, { knownFile })
   } catch (error) {
     if (!(error instanceof CodeOwnedError)) throw error
     // Tell the renderer once: re-sending on every refused autosave would keep resetting its test
