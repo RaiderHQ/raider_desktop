@@ -376,7 +376,7 @@
       "commandFailed": "Ruby command failed.\nCommand: {{command}}\nOutput: {{output}}\nDebug Info:\n{{debugInfo}}",
       "unexpectedOutput": "Unexpected ruby version output: {{output}}\nDebug Info:\n{{debugInfo}}",
       "failedToParse": "Failed to parse Ruby version from output: {{output}}\nDebug Info:\n{{debugInfo}}",
-      "outdated": "Ruby version {{version}} is outdated. Please install Ruby 3.0.0 or higher.\nCommand output: {{output}}\nDebug Info:\n{{debugInfo}}",
+      "outdated": "Ruby version {{version}} is outdated. Please install Ruby 3.2 or higher.\nCommand output: {{output}}\nDebug Info:\n{{debugInfo}}",
       "unknown": "An error occurred: {{error}}\nDebug Info:\n{{debugInfo}}"
     }
   },
@@ -430,7 +430,7 @@
     },
     "rubyInstallModal": {
       "title": "Ruby Not Found",
-      "message": "Ruby Raider needs Ruby 3+ installed via rbenv. Follow the steps below to get set up.",
+      "message": "Ruby Raider needs Ruby 3.2 or higher installed via rbenv. Follow the steps below to get set up.",
       "continue": "Continue",
       "close": "Close App"
     },
@@ -552,12 +552,12 @@
     "install": {
       "mac": {
         "step1": { "title": "1. Install rbenv (via Homebrew)", "desc": "rbenv manages Ruby versions. Homebrew must be installed first (brew.sh)." },
-        "step2": { "title": "2. Install Ruby 3+", "desc": "Install Ruby 3 or higher and set it as the global version." },
+        "step2": { "title": "2. Install Ruby 3.2+", "desc": "Install Ruby 3.2 or higher and set it as the global version." },
         "step3": { "title": "3. Install ruby_raider", "desc": "Install the gem from RubyGems." }
       },
       "linux": {
         "step1": { "title": "1. Install rbenv (via git)", "desc": "Clone rbenv and ruby-build into your home directory, then reload your shell." },
-        "step2": { "title": "2. Install Ruby 3+", "desc": "Install Ruby 3 or higher and set it as the global version." },
+        "step2": { "title": "2. Install Ruby 3.2+", "desc": "Install Ruby 3.2 or higher and set it as the global version." },
         "step3": { "title": "3. Install ruby_raider", "desc": "Install the gem from RubyGems." }
       },
       "windows": {
@@ -572,8 +572,8 @@
         "command": "brew install rbenv ruby-build && rbenv init"
       },
       "ruby": {
-        "title": "2. Install Ruby 3+",
-        "message": "Once rbenv is set up, install Ruby 3 or higher:",
+        "title": "2. Install Ruby 3.2+",
+        "message": "Once rbenv is set up, install Ruby 3.2 or higher:",
         "command": "rbenv install 3.4.1 && rbenv global 3.4.1"
       },
       "gem": {

@@ -8,12 +8,12 @@ const handler = (): Promise<{ success: boolean; output?: string; error?: string 
         /bin/bash -c "$(curl -fsSL https://github.com/rbenv/rbenv-installer/raw/HEAD/bin/rbenv-installer)"
       fi
 
-      if ! rbenv versions | grep -q "3.1.6"; then
-        echo "Ruby 3.1.6 not found, installing..."
-        rbenv install 3.1.6
+      if ! rbenv versions | grep -q "3.4.1"; then
+        echo "Ruby 3.4.1 not found, installing..."
+        rbenv install 3.4.1
       fi
 
-      rbenv shell 3.1.6
+      rbenv shell 3.4.1
       gem install bundler
     `
 

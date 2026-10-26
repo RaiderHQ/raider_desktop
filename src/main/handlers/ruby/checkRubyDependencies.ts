@@ -3,7 +3,7 @@ import { safeExec } from '../../utils/safeExec'
 const handler = async (
   rubyCommandPrefix: string
 ): Promise<{ success: boolean; missingGems: string[] }> => {
-  const gems = ['selenium-webdriver', 'ruby_raider', 'rspec']
+  const gems = ['selenium-webdriver', 'ruby_raider', 'rspec', 'watir']
   const checks = gems.map(async (gem) => {
     const command = `${rubyCommandPrefix} gem list -i ${gem}`
     const result = await safeExec(command, { timeout: 10_000 })

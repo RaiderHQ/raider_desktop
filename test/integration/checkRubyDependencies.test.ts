@@ -31,6 +31,18 @@ describe('checkRubyDependencies handler (integration)', () => {
     expect(result.missingGems).toContain('selenium-webdriver')
   })
 
+  it('reports watir as missing when it is not installed', async () => {
+    mockSafeExec.mockImplementation((cmd: string) => {
+      if (cmd.includes('watir')) {
+        return Promise.resolve({ stdout: 'false', stderr: '', exitCode: 0 })
+      }
+      return Promise.resolve({ stdout: 'true', stderr: '', exitCode: 0 })
+    })
+    const result = await handler('ruby')
+    expect(result.success).toBe(false)
+    expect(result.missingGems).toEqual(['watir'])
+  })
+
   it('reports gem as missing when exec returns an error', async () => {
     mockSafeExec.mockImplementation((cmd: string) => {
       if (cmd.includes('rspec')) {
@@ -47,7 +59,7 @@ describe('checkRubyDependencies handler (integration)', () => {
     mockSafeExec.mockResolvedValue({ stdout: '', stderr: 'no ruby', exitCode: 1 })
     const result = await handler('ruby')
     expect(result.success).toBe(false)
-    expect(result.missingGems.length).toBe(3)
+    expect(result.missingGems.length).toBe(4)
   })
 
   it('uses the provided rubyCommandPrefix in the gem check command', async () => {
