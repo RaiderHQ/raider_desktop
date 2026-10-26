@@ -26,6 +26,11 @@ const hasAttachmentsShape = (rawPath: string): boolean => {
   )
 }
 
+const isServable = (p: path.PlatformPath, filePath: string): boolean =>
+  p.isAbsolute(filePath) &&
+  hasAttachmentsShape(filePath) &&
+  p.extname(filePath).toLowerCase() in CONTENT_TYPES
+
 export const resolveMediaPath = async (
   requestUrl: string,
   platform: NodeJS.Platform = process.platform
@@ -41,14 +46,15 @@ export const resolveMediaPath = async (
     const win = platform === 'win32'
     const p = win ? path.win32 : path.posix
     if (win && !/^[A-Za-z]:[\\/]/.test(decoded)) return null
-    if (!p.isAbsolute(decoded) || !hasAttachmentsShape(decoded)) return null
-    if (!(p.extname(decoded).toLowerCase() in CONTENT_TYPES)) return null
-    const normalized = p.normalize(decoded)
-    // Rejects a symlink at any level of the path, ancestors included.
-    const real = await fs.promises.realpath(normalized)
-    if (win ? real.toLowerCase() !== normalized.toLowerCase() : real !== normalized) return null
-    if (!(await fs.promises.lstat(normalized)).isFile()) return null
-    return normalized
+    if (!isServable(p, decoded)) return null
+    const requested = p.normalize(decoded)
+    // The file itself must not be a link; its ancestors may be (macOS /var -> /private/var).
+    if ((await fs.promises.lstat(requested)).isSymbolicLink()) return null
+    // The checks that matter run on the real path, which is also what gets opened.
+    const real = await fs.promises.realpath(requested)
+    if (!isServable(p, real)) return null
+    if (!(await fs.promises.lstat(real)).isFile()) return null
+    return real
   } catch {
     return null
   }

@@ -84,10 +84,20 @@ describe('resolveMediaPath', () => {
     expect(await resolveMediaPath('raider-media://file/%E0%A4%A')).toBeNull()
   })
 
-  it('rejects a symlinked attachments dir and a symlinked file', async () => {
+  it('rejects an attachments dir that links outside a raider-results/attachments real path', async () => {
     const viaDir = path.join(root, 'raider-results', 'attachments-3', 'clip.webm')
+    expect(fs.existsSync(viaDir)).toBe(true)
     expect(await resolveMediaPath(url(viaDir))).toBeNull()
+  })
+
+  it('rejects a symlinked file, even one pointing at a valid video', async () => {
     expect(await resolveMediaPath(url(path.join(path.dirname(clip), 'link.webm')))).toBeNull()
+  })
+
+  it('rejects a link into attachments from a path without the attachments shape', async () => {
+    const holder = fs.mkdtempSync(path.join(root, 'shape-'))
+    fs.symlinkSync(path.dirname(clip), path.join(holder, 'videos'))
+    expect(await resolveMediaPath(url(path.join(holder, 'videos', 'clip.webm')))).toBeNull()
   })
 
   it('rejects a file outside raider-results even if named attachments', async () => {
@@ -96,13 +106,41 @@ describe('resolveMediaPath', () => {
     ).toBeNull()
   })
 
-  it('rejects a path with a symlinked ancestor (e.g. macOS /var -> /private/var)', async () => {
+  it('resolves a project under a symlinked ancestor (e.g. macOS /var -> /private/var) to the real path', async () => {
     const holder = fs.mkdtempSync(path.join(root, 'holder-'))
     const linkRoot = path.join(holder, 'link')
     fs.symlinkSync(root, linkRoot)
     const viaAncestor = path.join(linkRoot, 'raider-results', 'attachments', 'clip.webm')
     expect(fs.existsSync(viaAncestor)).toBe(true)
-    expect(await resolveMediaPath(url(viaAncestor))).toBeNull()
+    expect(await resolveMediaPath(url(viaAncestor))).toBe(clip)
+  })
+
+  it('resolves an un-realpathed os.tmpdir() project', async () => {
+    const raw = fs.mkdtempSync(path.join(os.tmpdir(), 'media-raw-'))
+    try {
+      const dir = path.join(raw, 'raider-results', 'attachments')
+      fs.mkdirSync(dir, { recursive: true })
+      fs.writeFileSync(path.join(dir, 'clip.webm'), bytes)
+      expect(await resolveMediaPath(url(path.join(dir, 'clip.webm')))).toBe(
+        fs.realpathSync(path.join(dir, 'clip.webm'))
+      )
+    } finally {
+      fs.rmSync(raw, { recursive: true, force: true })
+    }
+  })
+
+  it('serves a project under a symlinked ancestor but not a symlinked file', async () => {
+    const holder = fs.mkdtempSync(path.join(root, 'serve-'))
+    fs.symlinkSync(root, path.join(holder, 'link'))
+    const ok = await handleMediaRequest(
+      new Request(url(path.join(holder, 'link', 'raider-results', 'attachments', 'clip.webm')))
+    )
+    expect(ok.status).toBe(200)
+    expect(Buffer.from(await ok.arrayBuffer()).equals(bytes)).toBe(true)
+    const bad = await handleMediaRequest(
+      new Request(url(path.join(path.dirname(clip), 'link.webm')))
+    )
+    expect(bad.status).toBe(404)
   })
 })
 
