@@ -74,15 +74,28 @@ test.describe('Overview settings toolbar - functional', () => {
     page
   }) => {
     await expect(page.getByText('no-sandbox')).toBeVisible()
-    const tagInput = page.getByPlaceholder(/Add option/).or(
-      page.locator('input[type="text"]').last()
-    )
-    await tagInput.first().fill('disable-gpu')
-    await tagInput.first().press('Enter')
+    const tagInput = page.getByPlaceholder(/^Add option/)
+    await tagInput.fill('disable-gpu')
+    await tagInput.press('Enter')
     await expect
       .poll(async () => (await getMainIPCCalls(electronApp, 'update-browser-options')).length)
       .toBe(1)
     const calls = await getMainIPCCalls(electronApp, 'update-browser-options')
     expect(calls[0]).toEqual([PROJECT, ['no-sandbox', 'disable-gpu']])
+  })
+  test('paths on the Scaffolding tab trigger update-paths on blur', async ({
+    electronApp,
+    page
+  }) => {
+    await mockMainIPCCapture(electronApp, 'update-paths', { success: true })
+    await page.getByText('Scaffolding', { exact: true }).first().click()
+    const pageInput = page.getByPlaceholder('e.g. pages')
+    await pageInput.fill('my_pages')
+    await pageInput.blur()
+    await expect
+      .poll(async () => (await getMainIPCCalls(electronApp, 'update-paths')).length)
+      .toBeGreaterThanOrEqual(1)
+    const calls = await getMainIPCCalls(electronApp, 'update-paths')
+    expect(calls[0].slice(0, 2)).toEqual([PROJECT, 'my_pages'])
   })
 })

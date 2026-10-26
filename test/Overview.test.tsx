@@ -404,4 +404,41 @@ describe('Overview Settings Toolbar', (): void => {
     })
     expect(screen.getByText('no-sandbox')).toBeInTheDocument()
   })
+
+  it("shows the new browser's arguments after switching browsers", async () => {
+    mockApi.getProjectConfig
+      .mockResolvedValueOnce({
+        success: true,
+        config: { browser: 'chrome', browserArguments: ['no-sandbox'] }
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        config: { browser: 'firefox', browserArguments: ['-private'] }
+      })
+    await renderOverview()
+    await waitFor(() => expect(screen.getByText('no-sandbox')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByTestId('overview-browser-select'), {
+      target: { value: 'firefox' }
+    })
+
+    await waitFor(() => expect(screen.getByText('-private')).toBeInTheDocument())
+    expect(screen.queryByText('no-sandbox')).not.toBeInTheDocument()
+  })
+
+  it('shows a legacy saved browser as an extra option', async () => {
+    mockApi.getProjectConfig.mockResolvedValueOnce({ success: true, config: { browser: 'safari' } })
+    await renderOverview()
+
+    const select = screen.getByTestId('overview-browser-select')
+    await waitFor(() => expect(select).toHaveValue('safari'))
+    expect(select.querySelectorAll('option')).toHaveLength(3)
+  })
+
+  it('does not allow a timeout edit before the config has loaded', async () => {
+    mockApi.getProjectConfig.mockReturnValueOnce(new Promise(() => {}))
+    await renderOverview()
+
+    expect(screen.getByLabelText('settings.timeout.label')).toBeDisabled()
+  })
 })

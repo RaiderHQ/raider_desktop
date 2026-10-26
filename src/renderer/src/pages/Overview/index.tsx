@@ -42,6 +42,7 @@ const Overview: React.FC = () => {
   const [timeout, setTimeout_] = useState(30)
 
   const [browserOptions, setBrowserOptions] = useState<string[]>([])
+  const [configLoaded, setConfigLoaded] = useState(false)
   const [pagePath, setPagePath] = useState('')
   const [specPath, setSpecPath] = useState('')
   const [featurePath, setFeaturePath] = useState('')
@@ -75,11 +76,18 @@ const Overview: React.FC = () => {
   // Load test settings from config files, falling back to localStorage
   useEffect(() => {
     if (!projectPath) return
+    setConfigLoaded(false)
     const loadSettings = async (): Promise<void> => {
       try {
         const result = await window.api.getProjectConfig(projectPath)
         if (result.success && result.config) {
-          const { baseUrl, browser, headless: headlessVal, timeout: timeoutVal, browserArguments } = result.config
+          const {
+            baseUrl,
+            browser,
+            headless: headlessVal,
+            timeout: timeoutVal,
+            browserArguments
+          } = result.config
           if (baseUrl) {
             setBrowserUrl(baseUrl)
             localStorage.setItem('browserUrl', baseUrl)
@@ -94,8 +102,8 @@ const Overview: React.FC = () => {
             const storedBrowser = localStorage.getItem('selectedBrowser')
             if (storedBrowser) setSelectedBrowser(storedBrowser)
           }
-          if (typeof timeoutVal === 'number') setTimeout_(timeoutVal)
-          if (browserArguments) setBrowserOptions(browserArguments)
+          setTimeout_(typeof timeoutVal === 'number' ? timeoutVal : 30)
+          setBrowserOptions(browserArguments ?? [])
           if (typeof headlessVal === 'boolean') {
             setHeadless(headlessVal)
             localStorage.setItem('headless', String(headlessVal))
@@ -122,7 +130,7 @@ const Overview: React.FC = () => {
         if (storedHeadless !== null) setHeadless(storedHeadless === 'true')
       }
     }
-    void loadSettings()
+    void loadSettings().finally(() => setConfigLoaded(true))
   }, [projectPath])
 
   // Detect mobile project
@@ -171,6 +179,9 @@ const Overview: React.FC = () => {
       }
       localStorage.setItem('selectedBrowser', browser)
       toast.success(t('overview.settings.browserUpdateSuccess'))
+      // browser_arguments are kept per browser, so show the new browser's list
+      const config = await window.api.getProjectConfig(projectPath)
+      if (config.success) setBrowserOptions(config.config?.browserArguments ?? [])
     } catch (error) {
       toast.error(`${t('overview.settings.browserUpdateFailed')}: ${(error as Error).message}`)
     }
@@ -523,6 +534,9 @@ const Overview: React.FC = () => {
                   >
                     <option value="chrome">{t('settings.browser.chrome')}</option>
                     <option value="firefox">{t('settings.browser.firefox')}</option>
+                    {selectedBrowser !== 'chrome' && selectedBrowser !== 'firefox' && (
+                      <option value={selectedBrowser}>{selectedBrowser}</option>
+                    )}
                   </select>
                 </div>
               </Tooltip>
@@ -572,6 +586,7 @@ const Overview: React.FC = () => {
                       value={timeout}
                       onChange={(e) => setTimeout_(Number(e.target.value))}
                       onBlur={handleTimeoutUpdate}
+                      disabled={!configLoaded}
                       min={1}
                       max={300}
                       className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
