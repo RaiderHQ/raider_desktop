@@ -21,7 +21,8 @@ import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import DeleteModal from '@components/DeleteModal'
 import RecordingDashboard from '@components/RecordingDashboard'
-
+import ReadOnlyTestView from '@components/ReadOnlyTestView'
+import { handleSaveResult } from '@foundation/saveResult'
 
 type RecorderTab = 'recording' | 'dashboard'
 
@@ -36,6 +37,9 @@ const Recorder: React.FC = (): JSX.Element => {
   const isOutputVisible = useRecorderStore((s) => s.isOutputVisible)
   const breakpointIndex = useRecorderStore((s) => s.breakpointIndex)
   const isReplayingToBreakpoint = useRecorderStore((s) => s.isReplayingToBreakpoint)
+  const readOnlyView = useRecorderStore((s) => s.readOnlyView)
+  const readOnlyTitle = useRecorderStore((s) => s.readOnlyTitle)
+  const layout = useProjectStore((s) => s.layout)
   const {
     setActiveSuiteId,
     setActiveTest,
@@ -49,6 +53,12 @@ const Recorder: React.FC = (): JSX.Element => {
   } = useRecorderStore.getState()
 
   const { runOutput, setRunOutput } = useRunOutputStore()
+
+  // Hand-written tests, and recorded ones a developer has taken over, can only be viewed and run
+  const readOnly =
+    readOnlyView !== null || (!!activeTest?.ownership && activeTest.ownership !== 'recorded')
+  const recordingDisabled = layout ? !layout.recordable : false
+  const isCucumber = layout?.framework === 'cucumber'
 
   // Tab state
   const [activeTab, setActiveTab] = useState<RecorderTab>('recording')
@@ -100,9 +110,18 @@ const Recorder: React.FC = (): JSX.Element => {
   // Auto-save debounce
   useEffect((): (() => void) => {
     const handler = setTimeout(() => {
-      const { activeSuiteId: suiteId, activeTest: test } = useRecorderStore.getState()
+      const {
+        activeSuiteId: suiteId,
+        activeTest: test,
+        readOnlyView: view
+      } = useRecorderStore.getState()
+      // Read-only tests are never written back
+      if (view || (test?.ownership && test.ownership !== 'recorded')) return
       if (suiteId && test) {
-        window.api.saveRecording(suiteId, test)
+        window.api
+          .saveRecording(suiteId, test)
+          .then((result) => handleSaveResult(result, test.id, t))
+          .catch((error: unknown) => console.error('Saving the test failed:', error))
       }
     }, 500)
     return () => clearTimeout(handler)
@@ -140,12 +159,14 @@ const Recorder: React.FC = (): JSX.Element => {
   }, [activeSuiteId, testToDelete])
 
   const handleSuiteChange = (suiteId: string): void => {
+    useRecorderStore.getState().setReadOnlyView(null)
     setActiveSuiteId(suiteId)
     const suite = suites.find((s) => s.id === suiteId)
     setActiveTest(suite?.tests[0] ?? null)
   }
 
   const handleTestSelect = (testId: string): void => {
+    useRecorderStore.getState().setReadOnlyView(null)
     const test = activeSuite?.tests.find((t) => t.id === testId)
     if (test) {
       setActiveTest(test)
@@ -154,7 +175,7 @@ const Recorder: React.FC = (): JSX.Element => {
 
   const handleStartRecording = useCallback(async (): Promise<void> => {
     const test = useRecorderStore.getState().activeTest
-    if (!test) return
+    if (!test || useProjectStore.getState().layout?.recordable === false) return
     // An empty URL clears any earlier one, so main falls back to the project base URL
     await window.api.loadUrlRequest(test.url ?? '')
     const result = await window.api.startRecordingMain()
@@ -173,9 +194,29 @@ const Recorder: React.FC = (): JSX.Element => {
   }, [])
 
   const handleRunTest = useCallback(async (): Promise<void> => {
-    const { activeSuiteId: suiteId, activeTest: test } = useRecorderStore.getState()
+    const {
+      activeSuiteId: suiteId,
+      activeTest: test,
+      readOnlyView: view
+    } = useRecorderStore.getState()
     const cmd = useRubyStore.getState().rubyCommand
     const path = useProjectStore.getState().projectPath
+    // Tests that are code run straight from their file, never from a copy of the steps
+    const codeFile =
+      view?.file ?? (test?.ownership && test.ownership !== 'recorded' ? test.file : undefined)
+    if (codeFile && cmd) {
+      setIsRunning(true)
+      setRunOutput(`Running test: ${test?.name ?? ''}...`)
+      try {
+        const result = await window.api.runProjectFile(codeFile, cmd)
+        setRunOutput(result.output)
+      } catch (error) {
+        console.error('Running the test failed:', error)
+        setRunOutput(t('recorder.runFailed'))
+      }
+      setIsRunning(false)
+      return
+    }
     if (suiteId && test?.id && cmd) {
       setIsRunning(true)
       setRunOutput(`Running test: ${test.name}...`)
@@ -196,7 +237,7 @@ const Recorder: React.FC = (): JSX.Element => {
 
   const handleRecordFromHere = useCallback(async (index: number): Promise<void> => {
     const { activeTest: test } = useRecorderStore.getState()
-    if (!test) return
+    if (!test || useProjectStore.getState().layout?.recordable === false) return
 
     const stepsToReplay = test.steps.slice(0, index + 1)
     setBreakpointIndex(index)
@@ -347,13 +388,46 @@ const Recorder: React.FC = (): JSX.Element => {
             onStartRecording={handleStartRecording}
             onRunTest={handleRunTest}
             onStopRecording={handleStopRecording}
+            readOnly={readOnly}
+            readOnlyTitle={readOnlyTitle}
+            recordingDisabled={recordingDisabled}
           />
+
+          {readOnly && (
+            <div className="flex items-center justify-between gap-3 px-3 py-2 rounded border border-amber-200 bg-amber-50 text-sm text-amber-700">
+              <span>{t('recorder.readOnly.banner')}</span>
+              {readOnlyView && (
+                <button
+                  onClick={() => useRecorderStore.getState().setReadOnlyView(null)}
+                  className="text-xs px-2.5 py-1 rounded border border-amber-300 bg-white hover:bg-amber-100 font-medium"
+                >
+                  {t('recorder.readOnly.close')}
+                </button>
+              )}
+            </div>
+          )}
+
+          {recordingDisabled && layout && (
+            <div className="px-3 py-2 rounded border border-neutral-bdr bg-neutral-lt text-sm text-neutral-dk space-y-0.5">
+              <p className="font-semibold">{t('recorder.unsupported.title')}</p>
+              <p>{t(`recorder.unsupported.${layout.unsupportedReason ?? 'generic'}`)}</p>
+            </div>
+          )}
+
+          {isCucumber && (
+            <div className="px-3 py-2 rounded border border-neutral-bdr bg-neutral-lt text-sm text-neutral-dk">
+              {t('recorder.cucumberNotice')}
+            </div>
+          )}
 
           {/* Inline wait settings */}
           <div className="flex items-center gap-4 px-1">
             <Tooltip content={t('tooltips.recorder.implicitWait')} position="right">
               <div className="flex items-center gap-2">
-                <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                <label
+                  htmlFor="implicit-wait"
+                  className="text-sm font-medium text-neutral-dk whitespace-nowrap"
+                >
                   {t('settings.recording.implicitWait.label')}
                 </label>
                 <input
@@ -369,7 +443,10 @@ const Recorder: React.FC = (): JSX.Element => {
             </Tooltip>
             <Tooltip content={t('tooltips.recorder.explicitWait')} position="right">
               <div className="flex items-center gap-2">
-                <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                <label
+                  htmlFor="explicit-wait"
+                  className="text-sm font-medium text-neutral-dk whitespace-nowrap"
+                >
                   {t('settings.recording.explicitWait.label')}
                 </label>
                 <input
@@ -397,7 +474,14 @@ const Recorder: React.FC = (): JSX.Element => {
                   <StyledPanel>
                     <>
                       <div className="flex items-center p-1 border-b border-neutral-bdr">
-                        <Tooltip content={t(showCode ? 'tooltips.recorder.friendlyView' : 'tooltips.recorder.codeView')} position="right">
+                        <Tooltip
+                          content={t(
+                            showCode
+                              ? 'tooltips.recorder.friendlyView'
+                              : 'tooltips.recorder.codeView'
+                          )}
+                          position="right"
+                        >
                           <button
                             onClick={() => setShowCode(!showCode)}
                             className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
@@ -440,6 +524,7 @@ const Recorder: React.FC = (): JSX.Element => {
                         onSetBreakpoint={handleSetBreakpoint}
                         onClearBreakpoint={handleClearBreakpoint}
                         onRecordFromHere={handleRecordFromHere}
+                        readOnly={readOnly}
                       />
                     </>
                   </StyledPanel>
@@ -448,71 +533,110 @@ const Recorder: React.FC = (): JSX.Element => {
 
               {/* Embedded browser or replay progress — right */}
               <div className="w-[60%] flex flex-col min-h-0">
-                  <div className="flex-1 border border-neutral-bdr rounded-lg overflow-hidden bg-white relative">
-                    <webview
-                      ref={(el: HTMLElement | null) => {
-                        const wv = el as unknown as Electron.WebviewTag | null
-                        if (wv && wv !== webviewRef.current) {
-                          webviewRef.current = wv
-                          wv.addEventListener('dom-ready', () => {
-                            const wcId = wv.getWebContentsId()
-                            window.api.registerRecorderWebContents(wcId)
-                          })
-                        }
-                      }}
-                      src={recordingUrl!}
-                      preload={`file://${preloadPath}`}
-                      style={{ width: '100%', height: '100%' }}
-                    />
-                    {isReplayingToBreakpoint && (
-                      <div className="absolute inset-0 bg-amber-50/60 flex flex-col items-center justify-center gap-3 z-10 pointer-events-auto">
-                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin text-amber-700">
-                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round"/>
-                        </svg>
-                        <p className="text-sm font-medium text-amber-700">{t('recorder.mainRecorderPanel.replaying')}</p>
-                        <button
-                          onClick={handleCancelReplay}
-                          className="px-4 py-1.5 text-sm rounded border border-amber-400 bg-white text-amber-700 hover:bg-amber-50 font-medium transition-colors"
-                        >
-                          {t('recorder.breakpoint.stopReplay')}
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                <div className="flex-1 border border-neutral-bdr rounded-lg overflow-hidden bg-white relative">
+                  <webview
+                    ref={(el: HTMLElement | null) => {
+                      const wv = el as unknown as Electron.WebviewTag | null
+                      if (wv && wv !== webviewRef.current) {
+                        webviewRef.current = wv
+                        wv.addEventListener('dom-ready', () => {
+                          const wcId = wv.getWebContentsId()
+                          window.api.registerRecorderWebContents(wcId)
+                        })
+                      }
+                    }}
+                    src={recordingUrl!}
+                    preload={`file://${preloadPath}`}
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                  {isReplayingToBreakpoint && (
+                    <div className="absolute inset-0 bg-amber-50/60 flex flex-col items-center justify-center gap-3 z-10 pointer-events-auto">
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="28"
+                        height="28"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="animate-spin text-amber-700"
+                      >
+                        <path
+                          d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <p className="text-sm font-medium text-amber-700">
+                        {t('recorder.mainRecorderPanel.replaying')}
+                      </p>
+                      <button
+                        onClick={handleCancelReplay}
+                        className="px-4 py-1.5 text-sm rounded border border-amber-400 bg-white text-amber-700 hover:bg-amber-50 font-medium transition-colors"
+                      >
+                        {t('recorder.breakpoint.stopReplay')}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ) : (
             /* Normal view: suites + steps */
             <>
               <div className="flex-1 flex flex-row min-h-0">
-                <div className="w-[30%] flex flex-col space-y-2 pr-4 border-r border-neutral-bdr">
-                  <h3 className="px-1 text-sm font-semibold text-neutral-dark">
-                    {t('recorder.recorderPage.testSuites')}
-                  </h3>
-                  <div className="flex-1 min-h-0">
-                    <StyledPanel>
-                      <TestSuitePanel
-                        suites={suites}
-                        activeSuiteId={activeSuiteId}
-                        activeTestId={activeTest?.id ?? null}
-                        onSuiteChange={handleSuiteChange}
-                        onTestSelect={handleTestSelect}
-                        onCreateSuite={handleCreateSuite}
-                        onDeleteSuite={handleDeleteSuite}
-                        onTestDeleteRequest={handleTestDeleteRequest}
-                        onRunAllTests={handleRunAllTests}
-                        onReorderTests={() => {}}
-                      />
-                    </StyledPanel>
+                {!readOnlyView && (
+                  <div className="w-[30%] flex flex-col space-y-2 pr-4 border-r border-neutral-bdr">
+                    <h3 className="px-1 text-sm font-semibold text-neutral-dark">
+                      {t('recorder.recorderPage.testSuites')}
+                    </h3>
+                    <div className="flex-1 min-h-0">
+                      <StyledPanel>
+                        <TestSuitePanel
+                          suites={suites}
+                          activeSuiteId={activeSuiteId}
+                          activeTestId={activeTest?.id ?? null}
+                          onSuiteChange={handleSuiteChange}
+                          onTestSelect={handleTestSelect}
+                          onCreateSuite={handleCreateSuite}
+                          onDeleteSuite={handleDeleteSuite}
+                          onTestDeleteRequest={handleTestDeleteRequest}
+                          onRunAllTests={handleRunAllTests}
+                          onReorderTests={() => {}}
+                        />
+                      </StyledPanel>
+                    </div>
                   </div>
-                </div>
-                <div className="w-[70%] flex flex-col space-y-2 pl-4">
+                )}
+                <div
+                  className={`${readOnlyView ? 'w-full' : 'w-[70%] pl-4'} flex flex-col space-y-2`}
+                >
                   <h3 className="px-1 text-sm font-semibold text-neutral-dark">
                     {t('recorder.recorderPage.recordedSteps')}
                   </h3>
                   <div className="flex-1 min-h-0">
                     <StyledPanel>
-                      {!activeTest && !activeSuiteId ? (
+                      {readOnlyView ? (
+                        <>
+                          <div className="flex justify-between items-center p-1 border-b border-neutral-bdr">
+                            <button
+                              onClick={() => setShowCode(!showCode)}
+                              className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
+                            >
+                              {showCode
+                                ? t('recorder.recorderPage.friendlyView')
+                                : t('recorder.recorderPage.codeView')}
+                            </button>
+                            <button
+                              onClick={() => setIsOutputVisible(!isOutputVisible)}
+                              className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
+                            >
+                              {isOutputVisible
+                                ? t('recorder.recorderPage.hideOutput')
+                                : t('recorder.recorderPage.testOutput')}
+                            </button>
+                          </div>
+                          <ReadOnlyTestView view={readOnlyView} showCode={showCode} />
+                        </>
+                      ) : !activeTest && !activeSuiteId ? (
                         <div className="flex items-center justify-center h-full text-neutral-mid text-sm p-8 text-center">
                           {t('recorder.recorderPage.noSuiteSteps')}
                         </div>
@@ -523,7 +647,14 @@ const Recorder: React.FC = (): JSX.Element => {
                       ) : (
                         <>
                           <div className="flex justify-between items-center p-1 border-b border-neutral-bdr">
-                            <Tooltip content={t(showCode ? 'tooltips.recorder.friendlyView' : 'tooltips.recorder.codeView')} position="right">
+                            <Tooltip
+                              content={t(
+                                showCode
+                                  ? 'tooltips.recorder.friendlyView'
+                                  : 'tooltips.recorder.codeView'
+                              )}
+                              position="right"
+                            >
                               <button
                                 onClick={() => setShowCode(!showCode)}
                                 className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
@@ -533,7 +664,14 @@ const Recorder: React.FC = (): JSX.Element => {
                                   : t('recorder.recorderPage.codeView')}
                               </button>
                             </Tooltip>
-                            <Tooltip content={t(isOutputVisible ? 'tooltips.recorder.hideOutput' : 'tooltips.recorder.testOutput')} position="right">
+                            <Tooltip
+                              content={t(
+                                isOutputVisible
+                                  ? 'tooltips.recorder.hideOutput'
+                                  : 'tooltips.recorder.testOutput'
+                              )}
+                              position="right"
+                            >
                               <button
                                 onClick={() => setIsOutputVisible(!isOutputVisible)}
                                 className="text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium"
@@ -550,7 +688,9 @@ const Recorder: React.FC = (): JSX.Element => {
                               updateActiveTest((prevTest) => {
                                 if (!prevTest) return null
                                 const updatedSteps =
-                                  typeof newSteps === 'function' ? newSteps(prevTest.steps) : newSteps
+                                  typeof newSteps === 'function'
+                                    ? newSteps(prevTest.steps)
+                                    : newSteps
                                 return { ...prevTest, steps: updatedSteps }
                               })
                             }
@@ -576,6 +716,7 @@ const Recorder: React.FC = (): JSX.Element => {
                             onSetBreakpoint={handleSetBreakpoint}
                             onClearBreakpoint={handleClearBreakpoint}
                             onRecordFromHere={handleRecordFromHere}
+                            readOnly={readOnly}
                           />
                         </>
                       )}

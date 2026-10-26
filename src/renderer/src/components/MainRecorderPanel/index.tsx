@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import InputField from '@components/InputField'
 import Dropdown from '@components/Dropdown'
 import Tooltip from '@components/Tooltip'
@@ -8,17 +8,27 @@ import toast from 'react-hot-toast'
 import { useTranslation } from 'react-i18next'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { createNewTest } from '@foundation/recorderUtils'
+import { handleSaveResult } from '@foundation/saveResult'
 
 interface MainRecorderPanelProps {
   onStartRecording: () => void
   onRunTest: () => void
   onStopRecording: () => void
+  /** View-only: name shown as text, no recording or new tests */
+  readOnly?: boolean
+  /** Shown as the heading in read-only mode when there is no active test */
+  readOnlyTitle?: string | null
+  /** Recording isn't available for this project (Run still works) */
+  recordingDisabled?: boolean
 }
 
 const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
   onStartRecording,
   onRunTest,
-  onStopRecording
+  onStopRecording,
+  readOnly = false,
+  readOnlyTitle = null,
+  recordingDisabled = false
 }) => {
   const { t } = useTranslation()
   const activeTest = useRecorderStore((s) => s.activeTest)
@@ -30,16 +40,30 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
 
   const { setActiveTest } = useRecorderStore.getState()
 
-  const onTestNameChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    useRecorderStore.getState().updateActiveTest((p) =>
-      p ? { ...p, name: e.target.value } : null
-    )
+  // The name is kept here while typing and saved on blur or Enter: main renames the
+  // test's file on a real rename, so a half-typed name must never reach it
+  const [nameDraft, setNameDraft] = useState(activeTest?.name ?? '')
+  useEffect(() => {
+    setNameDraft(activeTest?.name ?? '')
+  }, [activeTest?.id, activeTest?.name])
+
+  const commitName = (): void => {
+    const name = nameDraft.trim()
+    if (!name) {
+      setNameDraft(activeTest?.name ?? '')
+      return
+    }
+    if (name !== activeTest?.name) {
+      useRecorderStore.getState().updateActiveTest((p) => (p ? { ...p, name } : null))
+    }
+  }
+
+  const onTestNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === 'Enter') commitName()
   }
 
   const onUrlChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    useRecorderStore.getState().updateActiveTest((p) =>
-      p ? { ...p, url: e.target.value } : null
-    )
+    useRecorderStore.getState().updateActiveTest((p) => (p ? { ...p, url: e.target.value } : null))
   }
 
   const onNewTest = (): void => {
@@ -47,7 +71,10 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
     if (suiteId) {
       const newTest = createNewTest()
       setActiveTest(newTest)
-      window.api.saveRecording(suiteId, newTest)
+      window.api
+        .saveRecording(suiteId, newTest)
+        .then((result) => handleSaveResult(result, newTest.id, t))
+        .catch((error: unknown) => console.error('Saving the new test failed:', error))
     }
   }
 
@@ -142,10 +169,12 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
     }
   ]
 
-  if (!activeSuiteName) {
+  if (!activeSuiteName && !readOnly) {
     return (
       <div className="flex-none border-b border-neutral-bdr pb-4 space-y-1">
-        <h2 className="text-sm font-semibold text-neutral-dark">{t('recorder.mainRecorderPanel.noSuite')}</h2>
+        <h2 className="text-sm font-semibold text-neutral-dark">
+          {t('recorder.mainRecorderPanel.noSuite')}
+        </h2>
         <p className="text-sm text-neutral-mid">{t('recorder.mainRecorderPanel.emptyHelper')}</p>
       </div>
     )
@@ -155,50 +184,69 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
     <div className="flex-none border-b border-neutral-bdr pb-4 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-neutral-dark">
-          {t('recorder.mainRecorderPanel.suite', { activeSuiteName })}
+          {readOnly
+            ? (readOnlyTitle ?? activeTest?.name ?? '')
+            : t('recorder.mainRecorderPanel.suite', { activeSuiteName })}
         </h2>
         {isReplayingToBreakpoint && (
           <span className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5 font-medium">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin">
-              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round"/>
+            <svg
+              viewBox="0 0 24 24"
+              width="12"
+              height="12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              className="animate-spin"
+            >
+              <path
+                d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
+                strokeLinecap="round"
+              />
             </svg>
             {t('recorder.mainRecorderPanel.replaying')}
           </span>
         )}
       </div>
-      <div className="flex items-center space-x-4">
-        <Tooltip content={t('tooltips.recorder.testName')} position="right" className="flex-1">
-          <InputField
-            value={activeTest?.name ?? ''}
-            onChange={onTestNameChange}
-            placeholder={t('recorder.mainRecorderPanel.testName')}
-            disabled={!activeTest}
-          />
-        </Tooltip>
-        <Tooltip content={t('tooltips.recorder.urlToRecord')} position="left" className="flex-1">
-          <InputField
-            value={activeTest?.url ?? ''}
-            onChange={onUrlChange}
-            placeholder={t('recorder.mainRecorderPanel.url')}
-            disabled={!activeTest}
-          />
-        </Tooltip>
-      </div>
+      {!readOnly && (
+        <div className="flex items-center space-x-4">
+          <Tooltip content={t('tooltips.recorder.testName')} position="right" className="flex-1">
+            <InputField
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+              onBlur={commitName}
+              onKeyDown={onTestNameKeyDown}
+              placeholder={t('recorder.mainRecorderPanel.testName')}
+              disabled={!activeTest}
+            />
+          </Tooltip>
+          <Tooltip content={t('tooltips.recorder.urlToRecord')} position="left" className="flex-1">
+            <InputField
+              value={activeTest?.url ?? ''}
+              onChange={onUrlChange}
+              placeholder={t('recorder.mainRecorderPanel.url')}
+              disabled={!activeTest}
+            />
+          </Tooltip>
+        </div>
+      )}
       <div className="flex items-center justify-between pt-2">
         <div className="flex items-center space-x-2">
-          <Tooltip content={t('tooltips.recorder.newTest')} position="right">
-            <button
-              onClick={onNewTest}
-              disabled={!activeSuiteId}
-              className={`text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors ${
-                !activeSuiteId
-                  ? 'text-neutral-mid cursor-not-allowed bg-white'
-                  : 'text-neutral-dk bg-white hover:bg-neutral-50'
-              }`}
-            >
-              {t('recorder.mainRecorderPanel.newTest')}
-            </button>
-          </Tooltip>
+          {!readOnly && (
+            <Tooltip content={t('tooltips.recorder.newTest')} position="right">
+              <button
+                onClick={onNewTest}
+                disabled={!activeSuiteId}
+                className={`text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors ${
+                  !activeSuiteId
+                    ? 'text-neutral-mid cursor-not-allowed bg-white'
+                    : 'text-neutral-dk bg-white hover:bg-neutral-50'
+                }`}
+              >
+                {t('recorder.mainRecorderPanel.newTest')}
+              </button>
+            </Tooltip>
+          )}
           <Tooltip content={t('tooltips.recorder.more')} position="right">
             <Dropdown
               buttonText={t('recorder.mainRecorderPanel.more')}
@@ -209,29 +257,35 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
           </Tooltip>
         </div>
         <div className="flex items-center space-x-2">
-          <Tooltip content={t('tooltips.recorder.record')} position="top">
-            <button
-              onClick={onStartRecording}
-              disabled={!activeTest || isRecording || isReplayingToBreakpoint}
-              aria-label={t('recorder.mainRecorderPanel.record')}
-              className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
-                !activeTest || isRecording || isReplayingToBreakpoint
-                  ? 'text-neutral-300 cursor-not-allowed'
-                  : 'text-red-500 hover:bg-red-50'
-              }`}
-            >
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                <circle cx="12" cy="12" r="8" />
-              </svg>
-            </button>
-          </Tooltip>
+          {!readOnly && (
+            <Tooltip content={t('tooltips.recorder.record')} position="top">
+              <button
+                onClick={onStartRecording}
+                disabled={
+                  !activeTest || isRecording || isReplayingToBreakpoint || recordingDisabled
+                }
+                aria-label={t('recorder.mainRecorderPanel.record')}
+                className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
+                  !activeTest || isRecording || isReplayingToBreakpoint || recordingDisabled
+                    ? 'text-neutral-300 cursor-not-allowed'
+                    : 'text-red-500 hover:bg-red-50'
+                }`}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <circle cx="12" cy="12" r="8" />
+                </svg>
+              </button>
+            </Tooltip>
+          )}
           <Tooltip content={t('tooltips.recorder.run')} position="top">
             <button
               onClick={onRunTest}
-              disabled={!activeTest || isRecording || isRunning || isReplayingToBreakpoint}
+              disabled={
+                (!activeTest && !readOnly) || isRecording || isRunning || isReplayingToBreakpoint
+              }
               aria-label={t('recorder.mainRecorderPanel.run')}
               className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
-                !activeTest || isRecording || isRunning || isReplayingToBreakpoint
+                (!activeTest && !readOnly) || isRecording || isRunning || isReplayingToBreakpoint
                   ? 'text-neutral-300 cursor-not-allowed'
                   : 'text-green-600 hover:bg-green-50'
               }`}
@@ -241,22 +295,24 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
               </svg>
             </button>
           </Tooltip>
-          <Tooltip content={t('tooltips.recorder.stop')} position="left">
-            <button
-              onClick={onStopRecording}
-              disabled={!isRecording || isReplayingToBreakpoint}
-              aria-label={t('recorder.mainRecorderPanel.stop')}
-              className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
-                !isRecording || isReplayingToBreakpoint
-                  ? 'text-neutral-300 cursor-not-allowed'
-                  : 'text-neutral-dark hover:bg-neutral-100'
-              }`}
-            >
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <rect x="4" y="4" width="16" height="16" rx="2" />
-              </svg>
-            </button>
-          </Tooltip>
+          {!readOnly && (
+            <Tooltip content={t('tooltips.recorder.stop')} position="left">
+              <button
+                onClick={onStopRecording}
+                disabled={!isRecording || isReplayingToBreakpoint}
+                aria-label={t('recorder.mainRecorderPanel.stop')}
+                className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
+                  !isRecording || isReplayingToBreakpoint
+                    ? 'text-neutral-300 cursor-not-allowed'
+                    : 'text-neutral-dark hover:bg-neutral-100'
+                }`}
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <rect x="4" y="4" width="16" height="16" rx="2" />
+                </svg>
+              </button>
+            </Tooltip>
+          )}
         </div>
       </div>
     </div>

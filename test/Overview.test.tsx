@@ -51,7 +51,15 @@ vi.mock('@foundation/Stores/rubyStore', () => ({
   }))
 }))
 
+// The project opens on the Tests tab; most of these tests are about the Files tab
+const openFilesTab = async (): Promise<void> => {
+  await act(async () => {
+    fireEvent.click(screen.getByText('overview.tabs.files'))
+  })
+}
+
 const mockApi = {
+  listProjectTests: vi.fn().mockResolvedValue([]),
   readDirectory: vi.fn().mockResolvedValue([]),
   setActiveProject: vi.fn().mockResolvedValue({ success: true }),
   onTestRunStatus: vi.fn(),
@@ -97,6 +105,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     expect(screen.getByTestId('folder')).toHaveTextContent('project')
   })
@@ -110,8 +119,24 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     expect(mockNavigate).toHaveBeenCalledWith('/start-project')
+  })
+
+  it('opens on the Tests tab first', async (): Promise<void> => {
+    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+    const tabs = screen.getAllByRole('button').map((b) => b.textContent)
+    expect(tabs[0]).toBe('overview.tabs.tests')
+    expect(screen.getByText('tests.empty')).toBeInTheDocument()
+    expect(screen.queryByTestId('folder')).not.toBeInTheDocument()
   })
 
   it('renders Files, Scaffolding, and Dashboard tabs', async (): Promise<void> => {
@@ -123,6 +148,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     expect(screen.getByText('overview.tabs.files')).toBeInTheDocument()
     expect(screen.getByText('Scaffolding')).toBeInTheDocument()
@@ -138,6 +164,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     expect(screen.getByTestId('folder')).toBeInTheDocument()
     expect(screen.queryByTestId('scaffold-panel')).not.toBeInTheDocument()
@@ -152,6 +179,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     fireEvent.click(screen.getByText('Scaffolding'))
 
@@ -168,6 +196,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     fireEvent.click(screen.getByText('Scaffolding'))
     expect(screen.getByTestId('scaffold-panel')).toBeInTheDocument()
@@ -186,6 +215,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     fireEvent.click(screen.getByText('overview.tabs.dashboard'))
 
@@ -206,6 +236,7 @@ describe('Overview Settings Toolbar', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
   }
 
   it('renders base URL input, browser select, and headless toggle on Files tab', async () => {
@@ -284,6 +315,7 @@ describe('Overview Settings Toolbar', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     // The component redirects when no project, so the input won't be there
     expect(mockApi.updateBrowserUrl).not.toHaveBeenCalled()

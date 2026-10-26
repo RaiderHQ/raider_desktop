@@ -1,4 +1,4 @@
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import MainRecorderPanel from '@components/MainRecorderPanel'
 import '@testing-library/jest-dom'
 
@@ -91,5 +91,57 @@ describe('MainRecorderPanel', () => {
       render(<MainRecorderPanel {...baseProps} />)
     })
     expect(screen.getByLabelText('recorder.mainRecorderPanel.run')).toBeDisabled()
+  })
+
+  describe('readOnly', () => {
+    it('hides record, stop and new test but keeps run', async () => {
+      await act(async () => {
+        render(<MainRecorderPanel {...baseProps} readOnly />)
+      })
+      expect(screen.queryByLabelText('recorder.mainRecorderPanel.record')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('recorder.mainRecorderPanel.stop')).not.toBeInTheDocument()
+      expect(screen.queryByText('recorder.mainRecorderPanel.newTest')).not.toBeInTheDocument()
+      expect(screen.getByLabelText('recorder.mainRecorderPanel.run')).not.toBeDisabled()
+    })
+
+    it('shows the title instead of editable fields', async () => {
+      await act(async () => {
+        render(<MainRecorderPanel {...baseProps} readOnly readOnlyTitle="Checkout flow" />)
+      })
+      expect(screen.getByText('Checkout flow')).toBeInTheDocument()
+      expect(screen.queryByDisplayValue('Test 1')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('test name', () => {
+    it('is saved on blur, not on every keystroke', async () => {
+      storeState.updateActiveTest.mockClear()
+      await act(async () => {
+        render(<MainRecorderPanel {...baseProps} />)
+      })
+      const input = screen.getByDisplayValue('Test 1')
+      fireEvent.change(input, { target: { value: 'Checkout fl' } })
+      expect(storeState.updateActiveTest).not.toHaveBeenCalled()
+      fireEvent.blur(input)
+      expect(storeState.updateActiveTest).toHaveBeenCalledTimes(1)
+    })
+
+    it('is saved on Enter', async () => {
+      storeState.updateActiveTest.mockClear()
+      await act(async () => {
+        render(<MainRecorderPanel {...baseProps} />)
+      })
+      const input = screen.getByDisplayValue('Test 1')
+      fireEvent.change(input, { target: { value: 'Checkout' } })
+      fireEvent.keyDown(input, { key: 'Enter' })
+      expect(storeState.updateActiveTest).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('disables Record when recording is not supported', async () => {
+    await act(async () => {
+      render(<MainRecorderPanel {...baseProps} recordingDisabled />)
+    })
+    expect(screen.getByLabelText('recorder.mainRecorderPanel.record')).toBeDisabled()
   })
 })

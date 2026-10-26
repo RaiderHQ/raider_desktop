@@ -13,13 +13,14 @@ import ProjectDashboard from '@components/ProjectDashboard'
 import Editor from '@components/Editor'
 import Terminal from '@components/Terminal'
 import Tooltip from '@components/Tooltip'
+import ProjectTestsPanel from '@components/ProjectTestsPanel'
 import InfoButton from '@components/InfoButton'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { FileNode } from '@foundation/Types/fileNode'
 import { getFileLanguage } from '@foundation/helpers'
 
-type OverviewTab = 'files' | 'scaffold' | 'dashboard'
+type OverviewTab = 'tests' | 'files' | 'scaffold' | 'dashboard'
 
 
 const Overview: React.FC = () => {
@@ -29,7 +30,7 @@ const Overview: React.FC = () => {
   const { rubyCommand } = useRubyStore()
   const navigate = useNavigate()
   const toastIdRef = useRef<string | null>(null)
-  const [activeTab, setActiveTab] = useState<OverviewTab>('files')
+  const [activeTab, setActiveTab] = useState<OverviewTab>('tests')
   const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression' | 'custom'>('all')
   const [customTag, setCustomTag] = useState('')
 
@@ -484,6 +485,16 @@ const Overview: React.FC = () => {
       {/* Tabs */}
       <div className="flex items-center border-b border-neutral-bdr mb-4">
         <button
+          onClick={() => setActiveTab('tests')}
+          className={`px-5 py-2 text-sm font-semibold transition-colors ${
+            activeTab === 'tests'
+              ? 'text-neutral-dark border-b-2 border-ruby'
+              : 'text-neutral-mid hover:text-neutral-dk'
+          }`}
+        >
+          {t('overview.tabs.tests')}
+        </button>
+        <button
           onClick={() => setActiveTab('files')}
           className={`px-5 py-2 text-sm font-semibold transition-colors ${
             activeTab === 'files'
@@ -530,6 +541,14 @@ const Overview: React.FC = () => {
           />
         </div>
       </div>
+
+      {activeTab === 'tests' && (
+        <div className="relative w-full">
+          <div className="relative h-[70vh] border border-neutral-bdr rounded-lg shadow-card overflow-y-auto bg-white p-4">
+            <ProjectTestsPanel />
+          </div>
+        </div>
+      )}
 
       {activeTab === 'files' && (
         <div className="relative w-full">

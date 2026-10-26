@@ -282,6 +282,7 @@
     "rerunning": "Re-running failed tests...",
     "rerunSuccess": "Failed tests re-run completed!",
     "tabs": {
+      "tests": "Tests",
       "files": "Files",
       "dashboard": "Dashboard",
       "settings": "Settings"
@@ -406,7 +407,36 @@
       "unknown": "An error occurred: {{error}}\nDebug Info:\n{{debugInfo}}"
     }
   },
+  "tests": {
+    "badge": {
+      "recorded": "Recorded",
+      "codeOwned": "Code-owned (was recorded)",
+      "code": "Code"
+    },
+    "edit": "Edit",
+    "view": "View",
+    "restore": "Restore",
+    "fileMissing": "File missing",
+    "restored": "The test was restored.",
+    "empty": "No tests yet \u2014 record one",
+    "actionFailed": "Raider couldn't open this test. Nothing was changed."
+  },
   "recorder": {
+    "readOnly": {
+      "banner": "Edited in code by a developer \u2014 view and run only.",
+      "close": "Back to the recorder"
+    },
+    "unsupported": {
+      "title": "This project needs an upgrade for recording",
+      "mobile": "Mobile projects can't be recorded yet.",
+      "minitest": "This project uses a test style Raider can't record into yet.",
+      "capybara": "This project uses a test style Raider can't record into yet.",
+      "noGemfile": "Raider couldn't find the files it needs to set up this project.",
+      "generic": "Raider can't record into this project yet."
+    },
+    "cucumberNotice": "Recorded tests become project files when Gherkin support arrives.",
+    "saveFailed": "Raider couldn't save this test. Your work is still here.",
+    "runFailed": "Raider couldn't run this test.",
     "noStartUrl": "There's no page to start recording on. Enter a URL for this test, or set the project's base URL in Settings.",
     "placeholder": {
       "url": "Enter URL to record",

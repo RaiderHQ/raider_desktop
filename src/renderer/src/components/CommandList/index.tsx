@@ -13,6 +13,7 @@ interface CommandListProps {
   onSetBreakpoint?: (index: number) => void
   onClearBreakpoint?: () => void
   onRecordFromHere?: (index: number) => void
+  readOnly?: boolean
 }
 
 const CommandList: React.FC<CommandListProps> = ({
@@ -24,17 +25,19 @@ const CommandList: React.FC<CommandListProps> = ({
   breakpointIndex,
   onSetBreakpoint,
   onClearBreakpoint,
-  onRecordFromHere
+  onRecordFromHere,
+  readOnly = false
 }) => {
   const { t } = useTranslation()
   const dragItemIndex = useRef<number | null>(null)
 
   const handleDragStart = (index: number): void => {
+    if (readOnly) return
     dragItemIndex.current = index
   }
 
   const handleDragEnter = (index: number): void => {
-    if (dragItemIndex.current === null || dragItemIndex.current === index) return
+    if (readOnly || dragItemIndex.current === null || dragItemIndex.current === index) return
 
     const newSteps = [...steps]
     const [draggedItem] = newSteps.splice(dragItemIndex.current, 1)
@@ -66,6 +69,7 @@ const CommandList: React.FC<CommandListProps> = ({
               onSetBreakpoint={onSetBreakpoint}
               onClearBreakpoint={onClearBreakpoint}
               onRecordFromHere={onRecordFromHere}
+              readOnly={readOnly}
             />
           ))
         ) : (

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
+import type { CodeTestView } from '@shared/types/projectTest'
 
 interface RecorderStore {
   suites: Suite[]
@@ -13,6 +14,12 @@ interface RecorderStore {
   breakpointIndex: number | null
   isReplayingToBreakpoint: boolean
   failedStepId: string | null
+  /** A hand-written spec shown view-only; replaces the editable steps while set */
+  readOnlyView: CodeTestView | null
+  /** Friendly name of the test in `readOnlyView` */
+  readOnlyTitle: string | null
+  /** Test the Tests tab asked the Recorder to open once its suites have loaded */
+  openTarget: { suiteId: string; testId: string } | null
 
   setSuites: (suites: Suite[]) => void
   setActiveSuiteId: (id: string | null) => void
@@ -25,6 +32,8 @@ interface RecorderStore {
   setBreakpointIndex: (index: number | null) => void
   setIsReplayingToBreakpoint: (value: boolean) => void
   setFailedStepId: (id: string | null) => void
+  setReadOnlyView: (view: CodeTestView | null, title?: string | null) => void
+  setOpenTarget: (target: { suiteId: string; testId: string } | null) => void
 
   activeSuite: () => Suite | undefined
 }
@@ -40,6 +49,9 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   breakpointIndex: null,
   isReplayingToBreakpoint: false,
   failedStepId: null,
+  readOnlyView: null,
+  readOnlyTitle: null,
+  openTarget: null,
 
   setSuites: (suites) => set({ suites }),
   setActiveSuiteId: (id) => set({ activeSuiteId: id }),
@@ -52,6 +64,9 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   setBreakpointIndex: (index) => set({ breakpointIndex: index }),
   setIsReplayingToBreakpoint: (value) => set({ isReplayingToBreakpoint: value }),
   setFailedStepId: (id): void => set({ failedStepId: id }),
+  setReadOnlyView: (view, title = null): void =>
+    set({ readOnlyView: view, readOnlyTitle: view ? title : null }),
+  setOpenTarget: (target): void => set({ openTarget: target }),
 
   activeSuite: () => {
     const { suites, activeSuiteId } = get()

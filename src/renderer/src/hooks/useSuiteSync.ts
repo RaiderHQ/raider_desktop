@@ -8,6 +8,22 @@ export function useSuiteSync(): void {
   useEffect(() => {
     window.api.getSuites().then((initialSuites: Suite[]) => {
       setSuites(initialSuites)
+      const { openTarget, readOnlyView } = useRecorderStore.getState()
+      // The Tests tab chose what to show; don't replace it with the first suite
+      if (openTarget) {
+        const suite = initialSuites.find((s) => s.id === openTarget.suiteId)
+        const test = suite?.tests.find((x) => x.id === openTarget.testId)
+        useRecorderStore.getState().setOpenTarget(null)
+        if (suite && test) {
+          setActiveSuiteId(suite.id)
+          setActiveTest(test)
+          return
+        }
+      }
+      if (readOnlyView) {
+        if (initialSuites.length > 0) setActiveSuiteId(initialSuites[0].id)
+        return
+      }
       if (initialSuites.length > 0) {
         const firstSuite = initialSuites[0]
         setActiveSuiteId(firstSuite.id)
@@ -18,16 +34,17 @@ export function useSuiteSync(): void {
     const suiteUpdatedCleanup = window.electron.ipcRenderer.on(
       'suite-updated',
       (_event, updatedSuites: Suite[]) => {
-        const { suites: previousSuites, activeSuiteId: currentSuiteId, activeTest: currentTest } =
-          useRecorderStore.getState()
+        const {
+          suites: previousSuites,
+          activeSuiteId: currentSuiteId,
+          activeTest: currentTest
+        } = useRecorderStore.getState()
         const currentTestId = currentTest?.id
 
         setSuites(updatedSuites)
 
         if (updatedSuites.length > previousSuites.length) {
-          const newSuite = updatedSuites.find(
-            (s) => !previousSuites.some((ps) => ps.id === s.id)
-          )
+          const newSuite = updatedSuites.find((s) => !previousSuites.some((ps) => ps.id === s.id))
           if (newSuite) {
             setActiveSuiteId(newSuite.id)
             setActiveTest(newSuite.tests[0] ?? null)

@@ -1,9 +1,10 @@
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import Recorder from '@pages/Recorder'
 import '@testing-library/jest-dom'
-import { vi } from 'vitest'
+import { vi, afterEach } from 'vitest'
 import { IpcRendererEvent } from 'electron'
 import useRecorderStore from '@foundation/Stores/recorderStore'
+import useProjectStoreMock from '@foundation/Stores/projectStore'
 import type { Test } from '@foundation/Types/test'
 
 // Mocking necessary modules and hooks
@@ -23,7 +24,10 @@ vi.mock('react-hot-toast', () => ({
 }))
 
 vi.mock('@foundation/Stores/projectStore', () => {
-  const store = { projectPath: '/fake/project/path' }
+  const store: { projectPath: string; layout: unknown } = {
+    projectPath: '/fake/project/path',
+    layout: null
+  }
   const useProjectStore = (selector?: (s: typeof store) => unknown) =>
     selector ? selector(store) : store
   useProjectStore.getState = () => store
@@ -548,6 +552,147 @@ describe('Recorder Page', (): void => {
       await recordFromHere({ success: true, skippedStepIds: [] })
       expect(mockApi.replayInWebview).toHaveBeenCalled()
       expect(mockToast).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('read-only and project support', () => {
+    const codeSteps = [{ id: 'k', kind: 'click', element: { strategy: 'id', value: 'go' } }]
+    const recordedTest: Test = {
+      id: 't1',
+      name: 'Recorded one',
+      url: 'https://x.test',
+      steps: [{ id: 'k', kind: 'click', element: { strategy: 'id', value: 'go' } }] as Test['steps']
+    }
+
+    beforeEach(() => {
+      vi.clearAllMocks()
+      mockApi.getSuites.mockResolvedValue([])
+      mockApi.saveRecording.mockResolvedValue({ success: true })
+      ;(useProjectStoreMock.getState() as { layout: unknown }).layout = null
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+      useRecorderStore.setState({ readOnlyView: null })
+    })
+
+    const openView = async (): Promise<void> => {
+      useRecorderStore.setState({
+        suites: [],
+        activeSuiteId: null,
+        activeTest: null,
+        readOnlyView: {
+          file: 'spec/api_spec.rb',
+          examples: [{ name: 'responds quickly', steps: codeSteps as never }]
+        }
+      })
+      await act(async () => {
+        render(<Recorder />)
+      })
+    }
+
+    it('view opens read-only', async () => {
+      await openView()
+      expect(screen.getByText('recorder.readOnly.banner')).toBeInTheDocument()
+      expect(screen.getByText('responds quickly')).toBeInTheDocument()
+      expect(screen.getByLabelText('recorder.mainRecorderPanel.run')).toBeInTheDocument()
+      expect(screen.queryByLabelText('recorder.mainRecorderPanel.record')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Delete step')).not.toBeInTheDocument()
+      expect(screen.queryByText('recorder.mainRecorderPanel.newTest')).not.toBeInTheDocument()
+    })
+
+    it('read-only run uses the project file', async () => {
+      mockApi.runProjectFile.mockResolvedValue({ success: true, output: 'ok' })
+      await openView()
+      await act(async () => {
+        fireEvent.click(screen.getByLabelText('recorder.mainRecorderPanel.run'))
+      })
+      expect(mockApi.runProjectFile).toHaveBeenCalledWith('spec/api_spec.rb', '/usr/bin/ruby')
+      expect(mockApi.runTest).not.toHaveBeenCalled()
+    })
+
+    it('read-only never autosaves', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout'] })
+      await openView()
+      useRecorderStore.setState({ activeSuiteId: 's1', activeTest: recordedTest })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(mockApi.saveRecording).not.toHaveBeenCalled()
+    })
+
+    it('codeOwned save flips to read-only', async () => {
+      mockApi.saveRecording.mockResolvedValue({ success: false, error: 'codeOwned' })
+      const suites = [{ id: 's1', name: 'Suite', tests: [recordedTest] }]
+      mockApi.getSuites.mockResolvedValue(suites)
+      useRecorderStore.setState({ suites, activeSuiteId: 's1', activeTest: recordedTest })
+      vi.useFakeTimers({ toFake: ['setTimeout'] })
+      await act(async () => {
+        render(<Recorder />)
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(screen.getByText('recorder.readOnly.banner')).toBeInTheDocument()
+      expect(mockToast.error).not.toHaveBeenCalled()
+      expect(screen.queryByLabelText('recorder.mainRecorderPanel.record')).not.toBeInTheDocument()
+      expect(mockApi.saveRecording).toHaveBeenCalledTimes(1)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000)
+      })
+      expect(mockApi.saveRecording).toHaveBeenCalledTimes(1)
+    })
+
+    it('shows a plain message, not the raw error, when a save fails', async () => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockApi.saveRecording.mockResolvedValue({ success: false, error: 'EACCES: /secret/path' })
+      const suites = [{ id: 's1', name: 'Suite', tests: [recordedTest] }]
+      mockApi.getSuites.mockResolvedValue(suites)
+      useRecorderStore.setState({ suites, activeSuiteId: 's1', activeTest: recordedTest })
+      vi.useFakeTimers({ toFake: ['setTimeout'] })
+      await act(async () => {
+        render(<Recorder />)
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(mockToast.error).toHaveBeenCalledWith(
+        'recorder.saveFailed',
+        expect.anything()
+      )
+      expect(JSON.stringify(mockToast.error.mock.calls)).not.toContain('EACCES')
+      expect(spy).toHaveBeenCalled()
+      spy.mockRestore()
+    })
+
+    it('unsupported project shows upgrade message', async () => {
+      ;(useProjectStoreMock.getState() as { layout: unknown }).layout = {
+        framework: 'rspec',
+        automation: 'selenium',
+        recordable: false,
+        unsupportedReason: 'minitest'
+      }
+      const suites = [{ id: 's1', name: 'Suite', tests: [recordedTest] }]
+      mockApi.getSuites.mockResolvedValue(suites)
+      useRecorderStore.setState({ suites, activeSuiteId: 's1', activeTest: recordedTest })
+      await act(async () => {
+        render(<Recorder />)
+      })
+      expect(screen.getByText('recorder.unsupported.title')).toBeInTheDocument()
+      expect(screen.getByText('recorder.unsupported.minitest')).toBeInTheDocument()
+      expect(screen.getByLabelText('recorder.mainRecorderPanel.record')).toBeDisabled()
+    })
+
+    it('cucumber project shows the notice', async () => {
+      ;(useProjectStoreMock.getState() as { layout: unknown }).layout = {
+        framework: 'cucumber',
+        automation: 'selenium',
+        recordable: true
+      }
+      await act(async () => {
+        render(<Recorder />)
+      })
+      expect(screen.getByText('recorder.cucumberNotice')).toBeInTheDocument()
     })
   })
 })
