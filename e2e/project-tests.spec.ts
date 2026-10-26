@@ -1,5 +1,5 @@
 import { test, expect } from './electronApp'
-import type { ElectronApplication, Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { goToOverview, goToRecorder } from './helpers/navigation'
 import {
   setupProjectContext,
@@ -7,7 +7,9 @@ import {
   mockIPCCapture,
   mockProjectTests,
   getIPCCalls,
-  sendMainEvent
+  sendMainEvent,
+  setProjectLayout,
+  editOpenTest
 } from './helpers/ipc-mock'
 
 const entries: Parameters<typeof mockProjectTests>[1] = [
@@ -106,10 +108,36 @@ test.describe('Project Tests tab', () => {
     await expect(page.getByText('help.overview', { exact: false })).toHaveCount(0)
   })
 
+  const recordable = {
+    framework: 'rspec',
+    automation: 'selenium',
+    specPath: 'spec',
+    featurePath: 'features',
+    helperPath: 'helpers',
+    recordable: true
+  }
+
   test('shows an empty state when the project has no tests', async ({ page }) => {
     await mockProjectTests(page, [])
+    await setProjectLayout(page, recordable)
     await goToOverview(page)
     await expect(page.getByText('No tests yet — record one')).toBeVisible()
+  })
+
+  test('does not offer to record into a project Raider cannot record into', async ({ page }) => {
+    // The mocked project folder has no Gemfile, so activation finds it can't record
+    await mockProjectTests(page, [])
+    await goToOverview(page)
+    await expect(page.getByText('No tests found in this project yet.')).toBeVisible()
+    await expect(page.getByText('No tests yet — record one')).toHaveCount(0)
+  })
+
+  test('a Cucumber project explains where its tests are', async ({ page }) => {
+    await mockProjectTests(page, [])
+    await setProjectLayout(page, { ...recordable, framework: 'cucumber' })
+    await goToOverview(page)
+    await expect(page.getByText(/tests are Cucumber features/)).toBeVisible()
+    await expect(page.getByText('No tests yet — record one')).toHaveCount(0)
   })
 
   test('Edit opens a recorded test in the recorder', async ({ page }) => {
@@ -175,40 +203,47 @@ test.describe('Project Tests tab', () => {
     await expect(page.getByText('logs in with right credentials')).toHaveCount(0)
   })
 
-  // A suite update that changes the open test is what starts the recorder's 500ms autosave
-  const changeOpenTest = async (
-    electronApp: ElectronApplication,
-    test: (typeof suites)[0]['tests'][0]
-  ): Promise<void> => {
-    await sendMainEvent(electronApp, 'suite-updated', [
-      { ...suites[0], tests: [{ ...test, name: `${test.name} (changed)` }] }
-    ])
-  }
-
-  test('a change to a recorded test is autosaved', async ({ page, electronApp }) => {
+  // A change to the open test starts the recorder's 500ms autosave. Main's echo of a
+  // save no longer carries edits into the open test, so changes are made in the recorder.
+  test('a change to a recorded test is autosaved', async ({ page }) => {
     // Control for the next test: the same change does reach saveRecording when editable
     await mockIPCCapture(page, 'saveRecording', { success: true })
     await mockIPC(page, 'getSuites', [{ ...suites[0], tests: [suites[0].tests[0]] }])
     await goToRecorder(page)
     await expect(page.getByPlaceholder('Test Name')).toHaveValue('Search products')
+    // Opening the test may autosave it once; count only what the changes add
+    await page.waitForTimeout(1000)
+    const saves = async (): Promise<number> => (await getIPCCalls(page, 'saveRecording')).length
+    const before = await saves()
 
-    await changeOpenTest(electronApp, suites[0].tests[0])
+    // Through the UI: a new start URL
+    await page.getByPlaceholder('URL to Record').fill('https://example.com/search')
+    await expect.poll(saves).toBe(before + 1)
+    expect((await getIPCCalls(page, 'saveRecording')).at(-1)![1]).toMatchObject({
+      id: 't1',
+      url: 'https://example.com/search'
+    })
+
+    // The change the read-only test gets below, made the same way
+    await editOpenTest(page, { name: 'Search products (changed)' })
     await expect(page.getByPlaceholder('Test Name')).toHaveValue('Search products (changed)')
-    await expect.poll(async () => (await getIPCCalls(page, 'saveRecording')).length).toBe(1)
+    await expect.poll(saves).toBe(before + 2)
+    expect((await getIPCCalls(page, 'saveRecording')).at(-1)![1]).toMatchObject({
+      name: 'Search products (changed)'
+    })
   })
 
-  test('a recorded test taken over in code is read-only and never saved', async ({
-    page,
-    electronApp
-  }) => {
+  test('a recorded test taken over in code is read-only and never saved', async ({ page }) => {
     await mockIPCCapture(page, 'saveRecording', { success: false, error: 'codeOwned' })
     await mockIPC(page, 'getSuites', [{ ...suites[0], tests: [suites[0].tests[1]] }])
     await goToRecorder(page)
 
     await expect(page.getByText('Edited in code by a developer — view and run only.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Record', exact: true })).toHaveCount(0)
+    // Read-only offers no fields to change, so the open test is changed as the recorder would
+    await expect(page.getByPlaceholder('URL to Record')).toHaveCount(0)
 
-    await changeOpenTest(electronApp, suites[0].tests[1])
+    await editOpenTest(page, { name: 'Add to cart (changed)' })
     // The change reached the recorder, which would autosave it 500ms later if it could
     await expect(page.getByRole('heading', { name: 'Add to cart (changed)' })).toBeVisible()
     await page.waitForTimeout(1500)

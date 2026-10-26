@@ -356,6 +356,46 @@ export async function mockProjectLayout(
 }
 
 /**
+ * Give the open project a layout, once its activation has set the real one
+ * (the mocked project folder has no Gemfile, so activation finds it can't record).
+ */
+export async function setProjectLayout(page: Page, layout: Record<string, unknown>): Promise<void> {
+  await page.waitForFunction(() => {
+    const stores = (window as unknown as TestStoresWindow).__TEST_STORES__
+    return stores?.projectStore?.getState().layout !== null
+  })
+  await page.evaluate((l) => {
+    ;(window as unknown as TestStoresWindow).__TEST_STORES__.projectStore.setState({ layout: l })
+  }, layout)
+}
+
+type Patchable = Record<string, unknown>
+interface TestStoresWindow {
+  __TEST_STORES__: {
+    projectStore: {
+      getState: () => { layout: unknown }
+      setState: (state: Patchable) => void
+    }
+    recorderStore: {
+      getState: () => {
+        updateActiveTest: (updater: (test: Patchable | null) => Patchable | null) => void
+      }
+    }
+  }
+}
+
+/**
+ * Change the recorder's open test the way an edit in the recorder does.
+ */
+export async function editOpenTest(page: Page, patch: Patchable): Promise<void> {
+  await page.evaluate((p) => {
+    ;(window as unknown as TestStoresWindow).__TEST_STORES__.recorderStore
+      .getState()
+      .updateActiveTest((test) => (test ? { ...test, ...p } : null))
+  }, patch)
+}
+
+/**
  * Send an event from the main process to the window, e.g. 'tests-migrated'
  * or 'suites-too-new', as project activation does.
  */
