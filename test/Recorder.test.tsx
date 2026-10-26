@@ -528,6 +528,38 @@ describe('Recorder Page', (): void => {
         expect(mockApi.saveRecording).toHaveBeenCalledTimes(2)
       })
 
+      it('keeps steps that arrive while the trace is saved on stop', async () => {
+        let finishTrace: (value: unknown) => void = () => {}
+        mockApi.saveTrace.mockImplementationOnce(
+          () => new Promise((resolve) => (finishTrace = resolve))
+        )
+        mockApi.saveRecording.mockResolvedValue({ success: true })
+        await act(async () => {
+          render(<Recorder />)
+        })
+        const first = { id: 'c1', kind: 'click', element: el }
+        const last = { id: 'c2', kind: 'click', element: el }
+        const traceStep = { id: 'tr1', command: 'click', timestamp: 1, url: 'https://x.test' }
+        await emit('new-recorded-step', first)
+        await emit('new-trace-step', traceStep)
+        // Not awaited: the handler waits for the trace save, which is still pending
+        let stopped: unknown
+        await act(async () => {
+          stopped = ipcListeners.get('recording-stopped')?.({} as IpcRendererEvent)
+        })
+        // The last click was sent just before Stop and lands while the trace is saved
+        await emit('new-recorded-step', last)
+        await act(async () => {
+          finishTrace({ success: true })
+          await stopped
+        })
+
+        const test = useRecorderStore.getState().activeTest!
+        expect(test.steps).toEqual([first, last])
+        expect(test.hasTrace).toBe(true)
+        expect(test.trace).toEqual([traceStep])
+      })
+
       it('turns read-only when main says a developer took the test over', async () => {
         mockApi.saveRecording.mockResolvedValue({ success: true })
         mockApi.openCodeTest.mockResolvedValue({ file: 'spec/test_spec.rb', examples: [] })
