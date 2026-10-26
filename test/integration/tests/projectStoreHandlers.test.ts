@@ -784,6 +784,20 @@ describe('recorded tests no suite lists', () => {
     expect(bucketOf(await getSuites())[0].tests.map((t) => t.id)).toEqual(['loose'])
   })
 
+  it('the "Not in a suite" suite cannot be deleted, so its files stay', async () => {
+    await saveRecordedTest(project, layout, checkout('loose'))
+    await setActiveProject(project)
+    const bucketId = bucketOf(await getSuites())[0].id
+    const indexBefore = await readFile(suitesJson(project), 'utf-8')
+
+    expect(await deleteSuite(win, bucketId)).toEqual({ success: false })
+
+    expect(await exists(join(project, 'spec', 'checkout_spec.rb'))).toBe(true)
+    expect(await exists(sidecarJson('spec/checkout_spec.rb'))).toBe(true)
+    expect(await readFile(suitesJson(project), 'utf-8')).toBe(indexBefore)
+    expect(bucketOf(await getSuites())[0].tests.map((t) => t.id)).toEqual(['loose'])
+  })
+
   it('nothing is added when every recorded test is in a suite', async () => {
     await saveRecordedTest(project, layout, checkout('listed'))
     await saveSuiteIndex(project, [{ id: 's1', name: 'Smoke', testIds: ['listed'] }])

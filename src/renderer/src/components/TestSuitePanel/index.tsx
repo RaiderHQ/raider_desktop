@@ -4,6 +4,7 @@ import type { Test } from '@foundation/Types/test'
 import { useTranslation } from 'react-i18next'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import Tooltip from '@components/Tooltip'
+import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 
 interface TestSuitePanelProps {
   suites: Suite[]
@@ -54,7 +55,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
   }
 
   const handleDeleteSuite = (): void => {
-    if (activeSuiteId && activeSuite) {
+    if (activeSuiteId && activeSuite && activeSuiteId !== UNLISTED_SUITE_ID) {
       if (
         window.confirm(
           t('recorder.testSuitePanel.deleteConfirmation', { suiteName: activeSuite.name })
@@ -201,7 +202,8 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
                 ))}
                 <option disabled>──────────</option>
                 <option value="__new__">{t('recorder.testSuitePanel.newSuite')}</option>
-                {activeSuiteId && (
+                {/* Raider's "Not in a suite" list holds tests no one grouped: it can't be deleted */}
+                {activeSuiteId && activeSuiteId !== UNLISTED_SUITE_ID && (
                   <option value="__delete__">{t('recorder.testSuitePanel.deleteSuite')}</option>
                 )}
               </select>

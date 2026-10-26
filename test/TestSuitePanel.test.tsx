@@ -212,6 +212,19 @@ describe('TestSuitePanel', () => {
       expect(screen.getByText('recorder.testSuitePanel.deleteSuite')).toBeInTheDocument()
     })
 
+    it('offers no delete for the "Not in a suite" suite', () => {
+      const unlisted = [{ ...mockSuites[0], id: 'not-in-a-suite', name: 'Not in a suite' }]
+      render(
+        <TestSuitePanel
+          {...baseProps}
+          suites={unlisted}
+          activeSuiteId="not-in-a-suite"
+          activeTestId={null}
+        />
+      )
+      expect(screen.queryByText('recorder.testSuitePanel.deleteSuite')).not.toBeInTheDocument()
+    })
+
     it('shows Run All button', () => {
       render(
         <TestSuitePanel

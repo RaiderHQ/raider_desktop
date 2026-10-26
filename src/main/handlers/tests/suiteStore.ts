@@ -10,6 +10,7 @@ import { safeError } from '../../utils/safeLog'
 import { isStep } from '../../../shared/types/step'
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
 import type { Sidecar } from '../../../shared/types/projectTest'
+import { UNLISTED_SUITE_ID } from '../../../shared/types/suite'
 import type { Suite } from '../../../shared/types/suite'
 import type { Test } from '../../../shared/types/test'
 
@@ -255,9 +256,6 @@ export async function releaseTests(store: FilesStore, testIds: string[]): Promis
     }
   }
 }
-
-/** The suite that collects recorded tests no other suite lists. */
-export const UNLISTED_SUITE_ID = 'not-in-a-suite'
 
 /**
  * Lists recorded tests that no suite lists (left by a replacing import, a

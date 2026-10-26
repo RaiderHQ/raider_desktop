@@ -3,6 +3,7 @@ import { BrowserWindow } from 'electron'
 import { persistActiveSuites } from './suitePersistence'
 import { safeError } from '../utils/safeLog'
 import { activeSuiteMode, filesStore, putBack, releaseTests, saveIndex } from './tests/suiteStore'
+import { UNLISTED_SUITE_ID } from '../../shared/types/suite'
 
 export default async (
   mainWindow: BrowserWindow | null,
@@ -10,6 +11,8 @@ export default async (
 ): Promise<{ success: boolean }> => {
   const mode = await activeSuiteMode()
   if (mode === 'locked') return { success: false }
+  // Raider's own list of tests in no other suite: deleting it would delete their files
+  if (suiteId === UNLISTED_SUITE_ID) return { success: false }
 
   const store = filesStore()
   if (store) {
