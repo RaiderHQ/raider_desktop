@@ -1,0 +1,112 @@
+import fs from 'fs/promises'
+import { posix } from 'path'
+import { isRaiderFile, markCodeOwned } from './recordedTests'
+import { assertRealInside, isSafeRelPath, listSidecars, resolveInside } from './sidecar'
+import { safeError } from '../../utils/safeLog'
+import type { ProjectLayout } from '../../../shared/types/projectLayout'
+import type { ProjectTestEntry, Sidecar } from '../../../shared/types/projectTest'
+
+const isSpecRel = (rel: unknown): rel is string => isSafeRelPath(rel) && rel.endsWith('_spec.rb')
+const DESCRIBE = /^\s*(?:RSpec\.)?describe\s*\(?\s*(['"])(.+?)\1/m
+
+// Symlinks (files and folders) are never followed
+async function walkSpecs(dir: string, prefix: string): Promise<string[]> {
+  const out: string[] = []
+  for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+    const rel = `${prefix}/${entry.name}`
+    if (entry.isDirectory()) out.push(...(await walkSpecs(`${dir}/${entry.name}`, rel)))
+    else if (entry.isFile() && entry.name.endsWith('_spec.rb')) out.push(rel)
+  }
+  return out
+}
+
+async function specFilesUnder(projectPath: string, specPath: string): Promise<string[]> {
+  const root = posix.normalize(specPath.replace(/\\/g, '/')).replace(/\/+$/, '')
+  if (!isSafeRelPath(root)) return []
+  try {
+    const abs = resolveInside(projectPath, root)
+    await assertRealInside(projectPath, abs)
+    return await walkSpecs(abs, root)
+  } catch {
+    return []
+  }
+}
+
+async function sidecarsOrNone(projectPath: string): ReturnType<typeof listSidecars> {
+  try {
+    return await listSidecars(projectPath)
+  } catch (error) {
+    safeError('Could not read recorded test records:', error)
+    return []
+  }
+}
+
+// null when the file is missing; throws for anything unreadable or a symlink
+async function readSpec(projectPath: string, fileRel: string): Promise<string | null> {
+  const target = resolveInside(projectPath, fileRel)
+  await assertRealInside(projectPath, target)
+  const stat = await fs.lstat(target).catch((e: NodeJS.ErrnoException) => {
+    if (e.code === 'ENOENT') return null
+    throw e
+  })
+  if (!stat) return null
+  if (!stat.isFile()) throw new Error(`Not a regular file: ${fileRel}`)
+  return fs.readFile(target, 'utf-8')
+}
+
+const fallbackName = (content: string | null, file: string): string =>
+  (content && DESCRIBE.exec(content)?.[2]) || posix.basename(file)
+
+async function entryFor(
+  projectPath: string,
+  file: string,
+  sidecar: Sidecar | null
+): Promise<ProjectTestEntry> {
+  let content: string | null = null
+  try {
+    content = await readSpec(projectPath, file)
+  } catch (error) {
+    safeError(`Could not read ${file}:`, error)
+    return { file, name: sidecar?.name ?? posix.basename(file), ownership: 'code' }
+  }
+  if (!sidecar) return { file, name: fallbackName(content, file), ownership: 'code' }
+
+  const base = { file, name: sidecar.name, testId: sidecar.id }
+  if (content === null) return { ...base, ownership: 'recorded', missingFile: true }
+  if (sidecar.codeOwned) return { ...base, ownership: 'codeOwnedWasRecorded' }
+  // Same proof the writer uses, so "Recorded" never names a file Raider would refuse
+  if (isRaiderFile(content, sidecar)) return { ...base, ownership: 'recorded' }
+  try {
+    if (!(await markCodeOwned(projectPath, sidecar.id))) return { ...base, ownership: 'recorded' }
+  } catch (error) {
+    safeError(`Could not mark ${file} as edited in code:`, error)
+  }
+  return { ...base, ownership: 'codeOwnedWasRecorded' }
+}
+
+export async function listProjectTests(
+  projectPath: string,
+  layout: ProjectLayout
+): Promise<ProjectTestEntry[]> {
+  if (layout.framework !== 'rspec') return []
+
+  // A sidecar only counts when it sits where its own `file` says
+  const sidecars = new Map<string, Sidecar>()
+  for (const { fileRel, sidecar } of await sidecarsOrNone(projectPath)) {
+    if (sidecar && sidecar.file === fileRel && isSpecRel(fileRel)) sidecars.set(fileRel, sidecar)
+  }
+  const files = new Set<string>(await specFilesUnder(projectPath, layout.specPath))
+  for (const file of sidecars.keys()) files.add(file)
+
+  const entries = await Promise.all(
+    [...files].map(async (file) => {
+      try {
+        return await entryFor(projectPath, file, sidecars.get(file) ?? null)
+      } catch (error) {
+        safeError(`Could not list ${file}:`, error)
+        return { file, name: posix.basename(file), ownership: 'code' } as ProjectTestEntry
+      }
+    })
+  )
+  return entries.sort((a, b) => a.name.localeCompare(b.name) || a.file.localeCompare(b.file))
+}

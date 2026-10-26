@@ -97,12 +97,12 @@ async function recordedFilePath(projectPath: string, fileRel: string): Promise<s
  * to the sidecar's hash and carry the generator's header (hashRuby ignores
  * comments, so a sidecar can't claim a hand-written spec just by its hash).
  */
-const isRaiderFile = (content: string, sidecar: Sidecar): boolean =>
+export const isRaiderFile = (content: string, sidecar: Sidecar): boolean =>
   hashRuby(content) === sidecar.hash &&
   content.split(/\r?\n/).some((line) => line.trimStart().startsWith(RECORDED_MARKER))
 
 // Marks the sidecar so the edited file is never touched again, then refuses
-async function markCodeOwned(projectPath: string, sidecar: Sidecar): Promise<never> {
+async function refuseAsCodeOwned(projectPath: string, sidecar: Sidecar): Promise<never> {
   await writeSidecar(projectPath, { ...sidecar, codeOwned: true })
   throw new CodeOwnedError(sidecar.file)
 }
@@ -202,7 +202,7 @@ export function saveRecordedTest(
     const target = await recordedFilePath(projectPath, existing.file)
     const onDisk = await readIfExists(target)
     if (onDisk !== null && !isRaiderFile(onDisk, existing)) {
-      return markCodeOwned(projectPath, existing)
+      return refuseAsCodeOwned(projectPath, existing)
     }
 
     const content = generate(test, layout, existing.file)
@@ -219,6 +219,24 @@ export function saveRecordedTest(
   })
 }
 
+/**
+ * Persists `codeOwned` for a test whose file no longer proves Raider wrote it.
+ * Runs in the test's queue and re-checks first, so it can't race a save that
+ * just rewrote the file. Returns whether the test is now code-owned.
+ */
+export function markCodeOwned(projectPath: string, testId: string): Promise<boolean> {
+  return serialize(testQueues, testKey(projectPath, testId), async () => {
+    const existing = await findSidecarById(projectPath, testId)
+    if (!existing) return false
+    if (existing.codeOwned) return true
+    const target = await recordedFilePath(projectPath, existing.file)
+    const onDisk = await readIfExists(target)
+    if (onDisk === null || isRaiderFile(onDisk, existing)) return false
+    await writeSidecar(projectPath, { ...existing, codeOwned: true })
+    return true
+  })
+}
+
 /** Removes a recorded test's spec file and sidecar. Refuses if the file was edited in code. */
 export function deleteRecordedTest(projectPath: string, testId: string): Promise<void> {
   return serialize(testQueues, testKey(projectPath, testId), async () => {
@@ -229,7 +247,7 @@ export function deleteRecordedTest(projectPath: string, testId: string): Promise
     const target = await recordedFilePath(projectPath, existing.file)
     const onDisk = await readIfExists(target)
     if (onDisk !== null) {
-      if (!isRaiderFile(onDisk, existing)) return markCodeOwned(projectPath, existing)
+      if (!isRaiderFile(onDisk, existing)) return refuseAsCodeOwned(projectPath, existing)
       try {
         await fs.unlink(target)
       } catch (error) {

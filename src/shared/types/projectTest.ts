@@ -19,3 +19,20 @@ export interface Sidecar {
 }
 
 export type Ownership = 'recorded' | 'codeOwnedWasRecorded' | 'code'
+
+export interface ProjectTestEntry {
+  /** Relative POSIX path */
+  file: string
+  /** Sidecar name, else the first describe string, else the file name */
+  name: string
+  ownership: Ownership
+  /** Present when a sidecar exists */
+  testId?: string
+  /** Sidecar exists but the file is gone */
+  missingFile?: true
+}
+
+export interface CodeTestView {
+  file: string
+  examples: { name: string; steps: Step[] }[]
+}
