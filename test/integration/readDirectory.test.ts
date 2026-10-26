@@ -62,10 +62,10 @@ describe('readDirectory handler', () => {
 
   it('hides .raider', async () => {
     mockReaddir.mockResolvedValueOnce([
-      { name: '.raider', isDirectory: () => true },
-      { name: 'spec', isDirectory: () => true }
+      { name: '.raider', isDirectory: (): boolean => true },
+      { name: 'spec', isDirectory: (): boolean => true }
     ])
-    mockReaddir.mockResolvedValueOnce([{ name: '.raider', isDirectory: () => true }])
+    mockReaddir.mockResolvedValueOnce([{ name: '.raider', isDirectory: (): boolean => true }])
     mockReaddir.mockResolvedValueOnce([])
 
     const result = await readDirectory(fakeEvent, '/tmp/project')

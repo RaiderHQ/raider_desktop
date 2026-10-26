@@ -17,7 +17,11 @@ vi.mock('react-router-dom', () => ({
 const mockToast = vi.hoisted(() =>
   Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), loading: vi.fn() })
 )
-vi.mock('react-hot-toast', () => ({ default: mockToast, toast: mockToast, Toaster: (): null => null }))
+vi.mock('react-hot-toast', () => ({
+  default: mockToast,
+  toast: mockToast,
+  Toaster: (): null => null
+}))
 
 const entries: ProjectTestEntry[] = [
   { file: 'spec/login_spec.rb', name: 'Login works', ownership: 'recorded', testId: 't1' },
