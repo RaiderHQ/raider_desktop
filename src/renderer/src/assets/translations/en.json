@@ -174,23 +174,16 @@
       "save": "Save"
     },
     "recording": {
-      "title": "Recording Settings",
-      "description": "Adjust the settings for test recording and playback.",
       "error": {
         "recordingUpdateFailed": "Failed to update recording settings.",
-        "unexpected": "An unexpected error occurred. Please try again.",
-        "notLoaded": "This project's recording settings haven't loaded, so they can't be saved yet. Open the project again and retry."
+        "unexpected": "An unexpected error occurred. Please try again."
       },
       "implicitWait": {
-        "label": "Implicit Wait",
-        "description": "The default time to wait for elements to appear during playback."
+        "label": "Implicit Wait"
       },
       "explicitWait": {
-        "label": "Explicit Wait",
-        "description": "The maximum time to wait for a specific condition to be met."
-      },
-      "recordingUpdateSuccess": "Recording settings updated successfully!",
-      "updateRecordingSettingsButton": "Update Settings"
+        "label": "Explicit Wait"
+      }
     },
     "timeout": {
       "label": "Test timeout",
