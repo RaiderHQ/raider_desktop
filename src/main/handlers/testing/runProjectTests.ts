@@ -116,7 +116,29 @@ export async function runSuiteHandler(
 
   const suite = store.suites.get(suiteId)
   if (!suite) return { success: false, output: `Suite with ID ${suiteId} not found.` }
-  const files = Array.from(new Set(suite.tests.flatMap((t) => (t.file ? [t.file] : []))))
+  // Put back any recorded file that went missing (from its sidecar), like run-test does.
+  // Code-owned tests are never rewritten
+  let restored = false
+  for (const test of suite.tests) {
+    if (test.ownership !== 'recorded') continue
+    if (test.file && (await fileExists(store.projectPath, test.file))) continue
+    try {
+      const saved = await saveTestInSuite(store, suiteId, test)
+      restored = true
+      if (!saved.success && saved.error !== 'codeOwned')
+        return { success: false, output: NOT_SAVED }
+    } catch (error) {
+      safeError('Could not restore a test file before running the suite:', error)
+      return { success: false, output: NOT_SAVED }
+    }
+  }
+  if (restored) broadcast(store)
+
+  const current = store.suites.get(suiteId) ?? suite
+  const listed = Array.from(new Set(current.tests.flatMap((t) => (t.file ? [t.file] : []))))
+  // A file gone from a code-owned test can't be put back, and would fail the whole run
+  const files: string[] = []
+  for (const file of listed) if (await fileExists(store.projectPath, file)) files.push(file)
   if (files.length === 0) return { success: false, output: 'This suite has no tests to run.' }
 
   try {

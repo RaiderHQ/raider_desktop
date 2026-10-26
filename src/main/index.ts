@@ -35,6 +35,12 @@ import installGems from './handlers/ruby/installGems'
 import getSuites from './handlers/getSuites'
 import createSuite from './handlers/createSuite'
 import deleteSuite from './handlers/deleteSuite'
+import {
+  getProjectLayoutHandler,
+  listProjectTestsHandler,
+  openCodeTestHandler,
+  runProjectFileHandler
+} from './handlers/tests/projectTestIpc'
 import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTests'
 import { isListed } from './handlers/tests/suiteStore'
 import exportTest from './handlers/io/exportTest'
@@ -200,6 +206,12 @@ app.whenReady().then(() => {
     renderStep(step, toAutomation(appState.projectAutomation))
   )
   ipcMain.handle('get-suites', getSuites)
+  ipcMain.handle('list-project-tests', listProjectTestsHandler)
+  ipcMain.handle('open-code-test', (_event, file: string) => openCodeTestHandler(file))
+  ipcMain.handle('get-project-layout', getProjectLayoutHandler)
+  ipcMain.handle('run-project-file', (_event, file: string, rubyCommand: string) =>
+    runProjectFileHandler(file, rubyCommand)
+  )
   ipcMain.handle('create-suite', (_event, suiteName: string) =>
     createSuite(appState.mainWindow!, suiteName)
   )

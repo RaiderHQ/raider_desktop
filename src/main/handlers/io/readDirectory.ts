@@ -5,15 +5,19 @@ import { FileNode } from '@foundation/Types/fileNode'
 
 const EXCLUDED_FILES: string[] = ['.DS_Store', 'Thumbs.db', 'desktop.ini']
 
+// Raider's own records (.raider) are not project files; hidden at the folder that was asked for
+const RAIDER_DIR = '.raider'
+
 const readDirectory = async (
   _event: IpcMainInvokeEvent,
-  folderPath: string
+  folderPath: string,
+  isNested = false
 ): Promise<FileNode[]> => {
   const contents = await fs.promises.readdir(folderPath, { withFileTypes: true })
 
   const nodes = await Promise.all(
     contents.map(async (content) => {
-      if (EXCLUDED_FILES.includes(content.name)) {
+      if (EXCLUDED_FILES.includes(content.name) || (!isNested && content.name === RAIDER_DIR)) {
         return null
       }
 
@@ -23,7 +27,7 @@ const readDirectory = async (
           name: content.name,
           isDirectory: true,
           type: 'folder' as const,
-          children: await readDirectory(_event, entryPath)
+          children: await readDirectory(_event, entryPath, true)
         }
       }
 

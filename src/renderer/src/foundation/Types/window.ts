@@ -7,6 +7,7 @@ import type { Step } from '@shared/types/step'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
+import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { IpcRendererEvent } from 'electron'
 
 export interface WindowApi {
@@ -133,6 +134,16 @@ export interface WindowApi {
 
   // --- Suite Management ---
   getSuites: () => Promise<Suite[]>
+  /** Every spec file of the active project (recorded or hand-written); [] without a project */
+  listProjectTests: () => Promise<ProjectTestEntry[]>
+  /** Read-only view of a listed spec file; rejects for any other path */
+  openCodeTest: (file: string) => Promise<CodeTestView>
+  getProjectLayout: () => Promise<ProjectLayout | null>
+  /** Runs one listed spec file from the active project (same result as runTest) */
+  runProjectFile: (
+    file: string,
+    rubyCommand: string
+  ) => Promise<{ success: boolean; output: string }>
   createSuite: (suiteName: string) => Promise<{ success: boolean; suite?: Suite; error?: string }>
   deleteSuite: (suiteId: string) => Promise<{ success: boolean }>
   exportSuite: (suiteId: string) => Promise<{ success: boolean; path?: string; error?: string }>

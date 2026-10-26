@@ -60,6 +60,21 @@ describe('readDirectory handler', () => {
     )
   })
 
+  it('hides .raider', async () => {
+    mockReaddir.mockResolvedValueOnce([
+      { name: '.raider', isDirectory: () => true },
+      { name: 'spec', isDirectory: () => true }
+    ])
+    mockReaddir.mockResolvedValueOnce([{ name: '.raider', isDirectory: () => true }])
+    mockReaddir.mockResolvedValueOnce([])
+
+    const result = await readDirectory(fakeEvent, '/tmp/project')
+
+    expect(result.map((n) => n.name)).toEqual(['spec'])
+    // Only the project root is cleaned up
+    expect(result[0].children?.map((n) => n.name)).toEqual(['.raider'])
+  })
+
   it('excludes .DS_Store files', async () => {
     mockReaddir.mockResolvedValue([
       { name: '.DS_Store', isDirectory: () => false },

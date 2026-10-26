@@ -341,6 +341,28 @@ describe('recorded tests as project files', () => {
     expect(options.cwd).toBe(project)
   })
 
+  it('run suite restores a missing recorded file but not a code-owned one', async () => {
+    await setActiveProject(project)
+    const suiteId = await newSuite()
+    await saveRecording(win, suiteId, checkout())
+    await saveRecording(win, suiteId, { ...checkout('t-login'), name: 'Login' })
+    await rm(join(project, 'spec', 'checkout_spec.rb'))
+    const login = join(project, 'spec', 'login_spec.rb')
+    await writeFile(login, (await readFile(login, 'utf-8')) + '\nputs "hand edit"\n')
+    // Loading the project notices the hand edit and marks the test code-owned
+    await setActiveProject(project)
+    await rm(login)
+    await setActiveProject(project)
+    const result = await runSuiteHandler(suiteId, '', 'ruby')
+
+    expect(result.success).toBe(true)
+    expect(await exists(join(project, 'spec', 'checkout_spec.rb'))).toBe(true)
+    expect(await exists(login)).toBe(false)
+    const [command] = mockSafeExec.mock.calls[0]
+    expect(command).toContain('spec/checkout_spec.rb')
+    expect(command).not.toContain('spec/login_spec.rb')
+  })
+
   it('restart round trip', async () => {
     await setActiveProject(project)
     const suiteId = await newSuite()

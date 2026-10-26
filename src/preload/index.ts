@@ -9,6 +9,7 @@ import type { Step } from '@shared/types/step'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
+import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 
 declare global {
   interface Window {
@@ -153,6 +154,14 @@ const api = {
 
   // Suite Management
   getSuites: async (): Promise<Suite[]> => ipcRenderer.invoke('get-suites'),
+  listProjectTests: (): Promise<ProjectTestEntry[]> => ipcRenderer.invoke('list-project-tests'),
+  openCodeTest: (file: string): Promise<CodeTestView> => ipcRenderer.invoke('open-code-test', file),
+  getProjectLayout: (): Promise<ProjectLayout | null> => ipcRenderer.invoke('get-project-layout'),
+  runProjectFile: (
+    file: string,
+    rubyCommand: string
+  ): Promise<{ success: boolean; output: string }> =>
+    ipcRenderer.invoke('run-project-file', file, rubyCommand),
   createSuite: async (
     suiteName: string
   ): Promise<{ success: boolean; suite?: Suite; error?: string }> =>

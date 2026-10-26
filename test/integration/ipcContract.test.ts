@@ -88,6 +88,10 @@ describe('IPC Contract', () => {
 
     // Suite Management
     'getSuites',
+    'listProjectTests',
+    'openCodeTest',
+    'getProjectLayout',
+    'runProjectFile',
     'createSuite',
     'deleteSuite',
     'exportSuite',
