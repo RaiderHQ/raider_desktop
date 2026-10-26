@@ -218,6 +218,39 @@ describe('receiver option', () => {
   })
 })
 
+describe('helper receiver has no instance variables', () => {
+  it('every step kind x automation', () => {
+    const e = css('.x')
+    const checks: AssertKind[] = [
+      'displayed',
+      'notDisplayed',
+      'enabled',
+      'checked',
+      'textEquals',
+      'textIncludes',
+      'valueEquals',
+      'titleEquals',
+      'urlIncludes'
+    ]
+    const steps: Step[] = [
+      { id: '1', kind: 'navigate', url: 'https://x.io' },
+      { id: '2', kind: 'click', element: e },
+      { id: '3', kind: 'type', element: e, text: 't' },
+      { id: '4', kind: 'pressKey', element: e, key: 'Enter' },
+      ...(['visible', 'hidden', 'enabled'] as const).map(
+        (until, i): Step => ({ id: `w${i}`, kind: 'wait', element: e, until })
+      ),
+      ...checks.map(
+        (c, i): Step => ({ id: `a${i}`, kind: 'assert', check: c, element: e, expected: 'v' })
+      ),
+      { id: '5', kind: 'switchFrame' },
+      { id: '6', kind: 'switchFrame', element: e }
+    ]
+    for (const a of ['selenium', 'watir'] as const)
+      for (const s of steps) expect(renderStep(s, a, { receiver: 'helper' })).not.toContain('@')
+  })
+})
+
 describe('ruby syntax', () => {
   it.skipIf(!rubyBin)('every kind passes ruby -c', () => {
     const el = css('.x')

@@ -14,10 +14,12 @@ import type { Test } from '../../shared/types/test'
 export type MigratedTest = Test
 
 // find_element(:strategy, <ruby string>) — capture groups: strategy, %q(), "…", '…'
-const FE = String.raw`@?driver\.find_element\(:?(\w+)[,:]\s*(?:%q\((.+?)\)|"((?:\\.|[^"\\])*)"|'([^']*)')\)`
+const FE = String.raw`@?driver\.find_element\(:?(\w+)[,:]\s*(?:%q\((.+?)\)|"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)')\)`
 const STR = String.raw`"((?:\\.|[^"\\])*)"`
 const TAIL = String.raw`(?:\s+#.*)?\s*$`
 
+// Ruby single-quoted strings only treat \\ and \' as escapes
+const unescapeSingle = (s: string): string => s.replace(/\\([\\'])/g, '$1')
 const unescape = (s: string): string => s.replace(/\\(["\\])/g, '$1')
 
 const KEYS: Record<string, string> = {
@@ -45,7 +47,8 @@ const rx = (body: string): RegExp => new RegExp(`^\\s*${body}${TAIL}`)
 function target(m: RegExpMatchArray, at: number): ElementTarget | null {
   const strategy = m[at]
   if (strategy !== 'id' && strategy !== 'css' && strategy !== 'xpath') return null
-  const value = m[at + 1] ?? (m[at + 2] !== undefined ? unescape(m[at + 2]) : m[at + 3])
+  const value =
+    m[at + 1] ?? (m[at + 2] !== undefined ? unescape(m[at + 2]) : unescapeSingle(m[at + 3]))
   return value === undefined ? null : { strategy, value }
 }
 

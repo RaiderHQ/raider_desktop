@@ -109,13 +109,20 @@ export function generateProjectSpecFile(
 ): string {
   const watir = automation === 'watir'
   const name = rubyString(test.name)
-  const toHelper = posix.relative(
-    posix.dirname(opts.fileRelPath.replace(/\\/g, '/')),
-    posix.join(opts.helperPath.replace(/\\/g, '/'), 'spec_helper')
+  const fileRel = opts.fileRelPath.replace(/\\/g, '/')
+  const helperRel = opts.helperPath.replace(/\\/g, '/')
+  if (
+    posix.isAbsolute(fileRel) ||
+    posix.isAbsolute(helperRel) ||
+    /^[A-Za-z]:/.test(fileRel + helperRel)
   )
+    throw new Error('Project spec paths must be relative to the project root')
+  const toHelper = posix.relative(posix.dirname(fileRel), posix.join(helperRel, 'spec_helper'))
   const setup = watir
     ? [
         '  before do',
+        '    # touch browser first: the helper resets the timeout when it creates the browser',
+        '    browser',
         "    config = YAML.load_file('config/config.yml')",
         `    Watir.default_timeout = ${CONFIG_WAIT}`,
         '  end'
@@ -135,7 +142,7 @@ export function generateProjectSpecFile(
     '',
     '# Recorded with Raider. Edit in Raider; editing here makes the test code-owned.',
     `# rubocop:disable ${DISABLED_COPS}`,
-    `require_relative '${toHelper}'`,
+    `require_relative ${rubyString(toHelper)}`,
     '',
     `describe ${name} do`,
     ...setup,

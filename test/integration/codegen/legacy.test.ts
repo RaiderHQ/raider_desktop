@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { renderStep } from '../../../src/main/codegen/steps'
 import { migrateLegacyStep, migrateLegacyTest } from '../../../src/main/codegen/legacy'
 import { isStep } from '../../../src/shared/types/step'
 import type { Step } from '../../../src/shared/types/step'
@@ -270,5 +271,15 @@ describe('helper receiver', () => {
     expect(strip(click)).toEqual({ kind: 'click', element: id('a') })
     const wait = migrateLegacyStep("wait.until { driver.find_element(css: '.x').displayed? }")
     expect(strip(wait)).toEqual({ kind: 'wait', element: css('.x'), until: 'visible' })
+  })
+})
+
+describe('escaped selector values round-trip', () => {
+  it.each(['a\\:b', "it's", "a\\'b", '#x\\\\y'])('value %s', (value) => {
+    for (const receiver of ['ivar', 'helper'] as const) {
+      const step: Step = { id: '1', kind: 'click', element: css(value) }
+      const code = renderStep(step, 'selenium', { receiver }).split('\n').pop()!
+      expect(strip(migrateLegacyStep(code))).toEqual({ kind: 'click', element: css(value) })
+    }
   })
 })

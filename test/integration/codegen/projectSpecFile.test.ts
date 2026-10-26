@@ -34,6 +34,8 @@ describe('generateProjectSpecFile', () => {
     expect(out).toContain('browser.goto(')
     expect(out).toContain('Watir.default_timeout =')
     expect(out).not.toContain('@browser')
+    // browser first, so the helper's own create_browser cannot reset the timeout afterwards
+    expect(out).toMatch(/\n {4}browser\n[\s\S]*Watir\.default_timeout =/)
     expect(out).not.toContain('let(:wait)')
   })
 
@@ -43,6 +45,26 @@ describe('generateProjectSpecFile', () => {
       helperPath: 'helpers'
     })
     expect(out).toContain("require_relative '../../helpers/spec_helper'")
+  })
+
+  it('quotes the require path and rejects absolute paths', () => {
+    const out = generateProjectSpecFile(test, 'selenium', {
+      fileRelPath: 'spec/a_spec.rb',
+      helperPath: "he'lpers"
+    })
+    expect(out).toContain("require_relative '../he\\'lpers/spec_helper'")
+    expect(() =>
+      generateProjectSpecFile(test, 'selenium', {
+        fileRelPath: 'spec/a_spec.rb',
+        helperPath: '/abs'
+      })
+    ).toThrow(/relative/)
+    expect(() =>
+      generateProjectSpecFile(test, 'selenium', {
+        fileRelPath: '/abs/a_spec.rb',
+        helperPath: 'helpers'
+      })
+    ).toThrow(/relative/)
   })
 
   it('no step header', () => {
