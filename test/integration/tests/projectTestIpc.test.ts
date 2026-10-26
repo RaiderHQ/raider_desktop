@@ -133,6 +133,16 @@ describe('project test IPC', () => {
     expect(mockSafeExec).not.toHaveBeenCalled()
   })
 
+  it('a non-zero exit with nothing on stderr is a failed run', async () => {
+    await setActiveProject(project)
+    const stdout = 'LoadError: cannot load such file -- allure\n0 examples, 0 failures, 1 error'
+    mockSafeExec.mockResolvedValue({ stdout, stderr: '', exitCode: 1 })
+    expect(await runProjectFileHandler('spec/a_spec.rb', 'ruby')).toEqual({
+      success: false,
+      output: stdout
+    })
+  })
+
   it('reports a failed run', async () => {
     await setActiveProject(project)
     mockSafeExec.mockResolvedValue({ stdout: 'o', stderr: 'boom', exitCode: 1 })

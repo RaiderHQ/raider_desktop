@@ -11,6 +11,7 @@ import AssertionTextModal from '@components/AssertionTextModal'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import { runStatusOf } from '@foundation/runStatus'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { buildAssertionStep, assertionModalType } from '@foundation/assertionStep'
 import type { Step } from '@shared/types/step'
@@ -52,7 +53,7 @@ const Recorder: React.FC = (): JSX.Element => {
     setFailedStepId
   } = useRecorderStore.getState()
 
-  const { runOutput, setRunOutput } = useRunOutputStore()
+  const { runOutput, runFailed, setRunOutput, setRunResult } = useRunOutputStore()
 
   // Hand-written tests, and recorded ones a developer has taken over, can only be viewed and run
   const readOnly =
@@ -221,10 +222,10 @@ const Recorder: React.FC = (): JSX.Element => {
       )
       try {
         const result = await window.api.runProjectFile(codeFile, cmd)
-        setRunOutput(result.output)
+        setRunResult(result.output, result.success)
       } catch (error) {
         console.error('Running the test failed:', error)
-        setRunOutput(t('recorder.runFailed'))
+        setRunResult(t('recorder.runFailed'), false)
       }
       setIsRunning(false)
       return
@@ -234,7 +235,7 @@ const Recorder: React.FC = (): JSX.Element => {
       setRunOutput(`Running test: ${test.name}...`)
       // The test itself goes along, so a pending autosave can't make the run use older steps
       const result = await window.api.runTest(suiteId, test.id, path || '.', cmd, test)
-      setRunOutput(result.output)
+      setRunResult(result.output, result.success)
       setIsRunning(false)
     }
   }, [])
@@ -316,7 +317,7 @@ const Recorder: React.FC = (): JSX.Element => {
       setIsRunning(true)
       setRunOutput(`Running suite: ${suiteToRun.name}...`)
       const result = await window.api.runSuite(suiteToRun.id, path || '', cmd)
-      setRunOutput(result.output)
+      setRunResult(result.output, result.success)
       setIsRunning(false)
     }
   }, [])
@@ -333,12 +334,7 @@ const Recorder: React.FC = (): JSX.Element => {
     setAssertionInfo(null)
   }
 
-  const runStatus: 'pass' | 'fail' | null = React.useMemo(() => {
-    if (!runOutput || runOutput.startsWith('Running')) return null
-    if (/0 failures?/i.test(runOutput) || /\bpassed\b/i.test(runOutput)) return 'pass'
-    if (/\d+ failures?/i.test(runOutput) || /\bfailed\b/i.test(runOutput)) return 'fail'
-    return null
-  }, [runOutput])
+  const runStatus = React.useMemo(() => runStatusOf(runOutput, runFailed), [runOutput, runFailed])
 
   return (
     <div className="flex flex-col h-screen w-screen p-4 space-y-4 bg-white">

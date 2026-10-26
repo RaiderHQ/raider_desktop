@@ -611,3 +611,30 @@ describe('fix round 1', () => {
     expect((await readJson(suitesJson(project))).version).toBe(3)
   })
 })
+
+describe('task 11 fix round 1', () => {
+  // rspec prints load errors and failing examples to stdout, so stderr can be empty
+  const stdout = 'LoadError: cannot load such file -- allure\n0 examples, 0 failures, 1 error'
+
+  it('run reports a non-zero exit as failed even with nothing on stderr', async () => {
+    await setActiveProject(project)
+    const suiteId = await newSuite()
+    await saveRecording(win, suiteId, checkout())
+    mockSafeExec.mockResolvedValue({ stdout, stderr: '', exitCode: 1 })
+
+    const result = await runTestHandler(suiteId, 't-checkout', project, 'ruby')
+
+    expect(result).toEqual({ success: false, output: stdout })
+  })
+
+  it('run suite reports a non-zero exit as failed even with nothing on stderr', async () => {
+    await setActiveProject(project)
+    const suiteId = await newSuite()
+    await saveRecording(win, suiteId, checkout())
+    mockSafeExec.mockResolvedValue({ stdout, stderr: '', exitCode: 1 })
+
+    const result = await runSuiteHandler(suiteId, '', 'ruby')
+
+    expect(result).toEqual({ success: false, output: stdout })
+  })
+})

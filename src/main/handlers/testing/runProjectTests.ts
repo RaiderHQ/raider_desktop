@@ -3,7 +3,7 @@ import path from 'path'
 import { appState } from '../appState'
 import runRecording from './runRecording'
 import runSuite from './runSuite'
-import { runSpecFiles } from './runSpecFiles'
+import { runSpecFiles, toRunResult } from './runSpecFiles'
 import { activeSuiteMode, broadcast, filesStore, saveTestInSuite } from '../tests/suiteStore'
 import type { FilesStore } from '../tests/suiteStore'
 import { safeError } from '../../utils/safeLog'
@@ -89,12 +89,7 @@ async function runRecordedFile(
   if (!file) return { success: false, output: `Test with ID ${testId} has no file to run.` }
 
   try {
-    const result = await runSpecFiles(store.projectPath, [file], rubyCommand)
-    if (result.exitCode !== 0 && result.stderr) {
-      const fullErrorOutput = `Test execution failed.\n\n--- STDERR ---\n${result.stderr}\n\n--- STDOUT ---\n${result.stdout}`
-      return { success: false, output: fullErrorOutput }
-    }
-    return { success: true, output: result.stdout }
+    return toRunResult(await runSpecFiles(store.projectPath, [file], rubyCommand))
   } catch (error) {
     return { success: false, output: error instanceof Error ? error.message : String(error) }
   }
@@ -142,10 +137,7 @@ export async function runSuiteHandler(
   if (files.length === 0) return { success: false, output: 'This suite has no tests to run.' }
 
   try {
-    const result = await runSpecFiles(store.projectPath, files, rubyCommand)
-    return result.stdout
-      ? { success: true, output: result.stdout }
-      : { success: false, output: result.stderr }
+    return toRunResult(await runSpecFiles(store.projectPath, files, rubyCommand))
   } catch (error) {
     return { success: false, output: error instanceof Error ? error.message : String(error) }
   }

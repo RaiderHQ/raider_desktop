@@ -4,7 +4,7 @@ const mockSafeExec = vi.hoisted(() => vi.fn())
 vi.mock('electron', () => ({ BrowserWindow: class {} }))
 vi.mock('../../src/main/utils/safeExec', () => ({ safeExec: mockSafeExec }))
 
-import { runSpecFiles } from '../../src/main/handlers/testing/runSpecFiles'
+import { runSpecFiles, toRunResult } from '../../src/main/handlers/testing/runSpecFiles'
 
 beforeEach(() => {
   mockSafeExec.mockReset()
@@ -44,5 +44,30 @@ describe('runSpecFiles ruby command', () => {
       /Ruby command/
     )
     expect(mockSafeExec).not.toHaveBeenCalled()
+  })
+})
+
+describe('toRunResult', () => {
+  it('a zero exit is a passed run with rspec output', () => {
+    expect(toRunResult({ stdout: '{}', stderr: 'warning', exitCode: 0 })).toEqual({
+      success: true,
+      output: '{}'
+    })
+  })
+
+  it('a non-zero exit is a failed run even with nothing on stderr', () => {
+    // rspec prints load errors and failing examples to stdout
+    const stdout = 'LoadError: cannot load such file -- allure\n0 examples, 0 failures, 1 error'
+    expect(toRunResult({ stdout, stderr: '', exitCode: 1 })).toEqual({
+      success: false,
+      output: stdout
+    })
+  })
+
+  it('a failed run keeps stderr and stdout', () => {
+    const result = toRunResult({ stdout: 'out', stderr: 'boom', exitCode: 1 })
+    expect(result.success).toBe(false)
+    expect(result.output).toContain('boom')
+    expect(result.output).toContain('out')
   })
 })

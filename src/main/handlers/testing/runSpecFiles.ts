@@ -33,3 +33,18 @@ export function runSpecFiles(
     timeout: 120_000
   })
 }
+
+/**
+ * What a project spec run tells the renderer. Any non-zero exit is a failed
+ * run: rspec prints load errors and failing examples to stdout, so stderr may
+ * be empty. stdout is passed on as is so the dashboard can still read rspec's
+ * JSON; stderr, when there is some, is added so the user sees why it failed.
+ */
+export function toRunResult(result: SafeExecResult): { success: boolean; output: string } {
+  if (result.exitCode === 0) return { success: true, output: result.stdout }
+  if (!result.stderr) return { success: false, output: result.stdout }
+  return {
+    success: false,
+    output: `Test execution failed.\n\n--- STDERR ---\n${result.stderr}\n\n--- STDOUT ---\n${result.stdout}`
+  }
+}

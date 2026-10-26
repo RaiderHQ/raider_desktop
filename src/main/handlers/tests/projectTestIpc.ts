@@ -1,6 +1,6 @@
 import { appState } from '../appState'
 import { activationSettled } from '../project/setActiveProject'
-import { runSpecFiles } from '../testing/runSpecFiles'
+import { runSpecFiles, toRunResult } from '../testing/runSpecFiles'
 import { listProjectTests } from './listProjectTests'
 import { assertSpecFile, readCodeTest } from './readCodeTest'
 import type { CodeTestView, ProjectTestEntry } from '../../../shared/types/projectTest'
@@ -46,14 +46,7 @@ export async function runProjectFileHandler(file: string, rubyCommand: string): 
   try {
     const target = await listedFile(file)
     await assertSpecFile(target.projectPath, target.file)
-    const result = await runSpecFiles(target.projectPath, [target.file], rubyCommand)
-    if (result.exitCode !== 0 && result.stderr) {
-      return {
-        success: false,
-        output: `Test execution failed.\n\n--- STDERR ---\n${result.stderr}\n\n--- STDOUT ---\n${result.stdout}`
-      }
-    }
-    return { success: true, output: result.stdout }
+    return toRunResult(await runSpecFiles(target.projectPath, [target.file], rubyCommand))
   } catch (error) {
     return { success: false, output: error instanceof Error ? error.message : String(error) }
   }

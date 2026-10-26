@@ -43,7 +43,12 @@ vi.mock('@foundation/Stores/rubyStore', () => {
   return { __esModule: true, default: useRubyStore }
 })
 
-const mockRunOutput = vi.hoisted(() => ({ runOutput: '', setRunOutput: vi.fn() }))
+const mockRunOutput = vi.hoisted(() => ({
+  runOutput: '',
+  runFailed: false,
+  setRunOutput: vi.fn(),
+  setRunResult: vi.fn()
+}))
 vi.mock('@foundation/Stores/runOutputStore', () => {
   const store = mockRunOutput
   const useRunOutputStore = (selector?: (s: typeof store) => unknown) =>
@@ -612,6 +617,29 @@ describe('Recorder Page', (): void => {
       })
       expect(mockApi.runProjectFile).toHaveBeenCalledWith('spec/api_spec.rb', '/usr/bin/ruby')
       expect(mockApi.runTest).not.toHaveBeenCalled()
+    })
+
+    it('a failed read-only run is kept as failed', async () => {
+      const output = '0 examples, 0 failures, 1 error occurred outside of examples'
+      mockApi.runProjectFile.mockResolvedValue({ success: false, output })
+      await openView()
+      await act(async () => {
+        fireEvent.click(screen.getByLabelText('recorder.mainRecorderPanel.run'))
+      })
+      expect(mockRunOutput.setRunResult).toHaveBeenCalledWith(output, false)
+    })
+
+    it('shows Failed for a failed run that rspec counted as 0 failures', async () => {
+      mockRunOutput.runOutput = '0 examples, 0 failures, 1 error occurred outside of examples'
+      mockRunOutput.runFailed = true
+      try {
+        await openView()
+        expect(screen.getByText('Failed')).toBeInTheDocument()
+        expect(screen.queryByText('Passed')).not.toBeInTheDocument()
+      } finally {
+        mockRunOutput.runOutput = ''
+        mockRunOutput.runFailed = false
+      }
     })
 
     it('read-only never autosaves', async () => {
