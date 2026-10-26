@@ -36,15 +36,6 @@
       "accessibilityHelp": "Adds axe-core for automated accessibility checks",
       "disabledMobile": "Add-ons are not available for mobile (Appium) projects"
     },
-    "reporter": {
-      "label": "Reporter"
-    },
-    "advanced": {
-      "title": "Advanced",
-      "skipCi": "Skip CI configuration",
-      "rubyVersion": "Ruby Version",
-      "rubyVersionPlaceholder": "Auto-detected from system"
-    },
     "versionWarning": "Your Ruby version may not be compatible with Ruby Raider v3"
   },
   "button": {

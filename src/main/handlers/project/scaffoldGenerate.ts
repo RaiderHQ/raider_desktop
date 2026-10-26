@@ -4,6 +4,7 @@ import { safeExec } from '../../utils/safeExec'
 import { buildShellCommand } from '../../utils/shellCommand'
 import type { ScaffoldParams } from '@shared/types/scaffoldTypes'
 import { SCAFFOLD_GENERATE_TYPES as GENERATE_TYPES } from '@shared/types/scaffoldTypes'
+import { quoteShellArg } from '../../utils/shellQuote'
 import { CommandType } from '@foundation/Types/commandType'
 
 function buildCommand(params: ScaffoldParams): string {
@@ -13,8 +14,8 @@ function buildCommand(params: ScaffoldParams): string {
   if (!GENERATE_TYPES.includes(params.type)) {
     throw new Error(`Unsupported type: ${params.type}`)
   }
-  const args = ['raider', 'g', params.type, params.name]
-  if (params.path) args.push('--path', params.path)
+  const args = ['raider', 'g', params.type, quoteShellArg(params.name)]
+  if (params.path) args.push('--path', quoteShellArg(params.path))
   return args.join(' ')
 }
 

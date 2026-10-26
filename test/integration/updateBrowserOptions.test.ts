@@ -36,4 +36,10 @@ describe('updateBrowserOptions handler', () => {
     const cmd = mockSafeExec.mock.calls[0][0] as string
     expect(cmd).toContain('raider u browser_options --delete')
   })
+
+  it('neutralises shell metacharacters in options', async () => {
+    await handler(mockEvent, '/project', ['a; rm x', '$(whoami)'])
+    const cmd = mockSafeExec.mock.calls[0][0] as string
+    expect(cmd).toContain("raider u browser_options 'a; rm x' '$(whoami)'")
+  })
 })

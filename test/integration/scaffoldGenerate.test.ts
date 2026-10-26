@@ -181,4 +181,27 @@ describe('scaffoldGenerate handler', () => {
     expect(result.success).toBe(false)
     expect(result.error).toContain('Project path does not exist')
   })
+
+  it('quotes name and drops every extra field', async () => {
+    mockSafeExec.mockResolvedValue({ stdout: 'Created', stderr: '', exitCode: 0 })
+
+    await handler(
+      mockEvent,
+      {
+        operation: 'generate',
+        type: 'page',
+        name: 'login page; rm x',
+        path: 'pages',
+        uses: 'a',
+        from: 'b',
+        ai: true,
+        crud: true
+      } as never,
+      '/project',
+      'ruby'
+    )
+
+    const calledCmd = mockSafeExec.mock.calls[0][0] as string
+    expect(calledCmd).toMatch(/&& raider g page 'login page; rm x' --path pages$/)
+  })
 })

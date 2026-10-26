@@ -48,14 +48,6 @@ const Overview: React.FC = () => {
   const [featurePath, setFeaturePath] = useState('')
   const [helperPath, setHelperPath] = useState('')
 
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{
-    x: number
-    y: number
-    filePath: string
-    pageName: string
-  } | null>(null)
-
   // File context menu state
   const [fileContextMenu, setFileContextMenu] = useState<{
     x: number
@@ -320,42 +312,6 @@ const Overview: React.FC = () => {
       toastIdRef.current = null
       if (toastId) toast.dismiss(toastId)
       toast.error(`${t('overview.error.rerun')}: ${(error as Error).message}`)
-    }
-  }
-
-  const handleGenerateSpec = (filePath: string, pageName: string): void => {
-    const mouseEvent = window.event as MouseEvent | undefined
-    setContextMenu({
-      x: mouseEvent?.clientX ?? 200,
-      y: mouseEvent?.clientY ?? 200,
-      filePath,
-      pageName
-    })
-  }
-
-  const handleContextMenuAction = async (): Promise<void> => {
-    if (!contextMenu || !projectPath || !rubyCommand) return
-
-    try {
-      const res = await window.api.scaffoldGenerate(
-        {
-          operation: 'generate',
-          type: 'spec',
-          name: contextMenu.pageName,
-          from: contextMenu.filePath,
-          ai: true
-        },
-        projectPath,
-        rubyCommand
-      )
-      if (res.success) {
-        toast.success(`Spec generated for ${contextMenu.pageName}`)
-        useProjectStore.getState().loadFiles(projectPath)
-      } else {
-        toast.error(`Failed: ${res.error || res.output}`)
-      }
-    } catch (error) {
-      toast.error(`Error: ${error}`)
     }
   }
 
@@ -672,7 +628,6 @@ const Overview: React.FC = () => {
                   onFileClick={handleOpenFile}
                   isRoot={true}
                   onRunTests={handleRunRaiderTests}
-                  onGenerateSpec={handleGenerateSpec}
                   onFileContextMenu={handleFileContextMenu}
                   onFolderContextMenu={handleFolderContextMenu}
                 />
@@ -760,21 +715,6 @@ const Overview: React.FC = () => {
             <ProjectDashboard />
           </div>
         </div>
-      )}
-
-      {/* Context menu for page files (generate spec) */}
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          items={[
-            {
-              label: `Generate spec from ${contextMenu.pageName}`,
-              onClick: handleContextMenuAction
-            }
-          ]}
-          onClose={() => setContextMenu(null)}
-        />
       )}
 
       {/* Context menu for all files (copy/rename/delete) */}
