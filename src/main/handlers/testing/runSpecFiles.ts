@@ -2,18 +2,10 @@ import path from 'path'
 import { safeExec } from '../../utils/safeExec'
 import type { SafeExecResult } from '../../utils/safeExec'
 import { buildShellCommand } from '../../utils/shellCommand'
+import { isValidRubyCommand } from '../../utils/rubyCommand'
 
 // Single quotes keep spaces and shell characters in a spec path literal
 const shellQuote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`
-
-// The shapes the app itself produces (see isRubyInstalled): plain `ruby`, a path to a
-// ruby binary, or the rbenv preamble pinned to one version. Anything else is refused,
-// because the command is spliced into a shell line.
-const RUBY_COMMAND = [/^[\w./~@+-]+$/, /^eval "\$\(rbenv init -\)" && rbenv shell [\w.-]+ && ruby$/]
-
-export function isValidRubyCommand(command: unknown): command is string {
-  return typeof command === 'string' && RUBY_COMMAND.some((shape) => shape.test(command))
-}
 
 /**
  * Runs spec files of a project in one `rspec --format json` call, from the

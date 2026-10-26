@@ -17,7 +17,9 @@ describe('runSpecFiles ruby command', () => {
     '/Users/me/.rbenv/shims/ruby',
     '~/.rbenv/shims/ruby',
     'eval "$(rbenv init -)" && rbenv shell 3.3.0 && ruby',
-    'eval "$(rbenv init -)" && rbenv shell jruby-9.4.0.0 && ruby'
+    'eval "$(rbenv init -)" && rbenv shell jruby-9.4.0.0 && ruby',
+    'source $(brew --prefix rvm)/scripts/rvm && rvm 3.3.0 do ruby',
+    'source $(brew --prefix rvm)/scripts/rvm && rvm ruby-3.3.0@gemset do ruby'
   ])('accepts %s', async (cmd) => {
     await runSpecFiles('/p', ['spec/a_spec.rb'], cmd)
     expect(mockSafeExec).toHaveBeenCalledTimes(1)
@@ -32,6 +34,8 @@ describe('runSpecFiles ruby command', () => {
     'ruby > /tmp/x',
     "ruby 'x'",
     'eval "$(rbenv init -)" && rbenv shell 3.3.0; id && ruby',
+    'source $(brew --prefix rvm)/scripts/rvm && rvm 3.3.0; id do ruby',
+    'source $(brew --prefix rvm)/scripts/rvm && rvm $(id) do ruby',
     '',
     undefined,
     42
