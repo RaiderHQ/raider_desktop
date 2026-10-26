@@ -9,7 +9,7 @@ test.describe('Overview settings toolbar - functional', () => {
     await mockRubyReady(electronApp, page)
     await mockMainIPCCapture(electronApp, 'get-project-config', {
       success: true,
-      config: { browser: 'chrome', timeout: 10, browserArguments: ['no-sandbox'] }
+      config: { browser: 'chrome', headless: false, timeout: 10, browserArguments: ['no-sandbox'] }
     })
     await mockMainIPCCapture(electronApp, 'is-mobile-project', {
       success: true,
@@ -49,7 +49,7 @@ test.describe('Overview settings toolbar - functional', () => {
   })
 
   test('headless toggle triggers update-headless-mode', async ({ electronApp, page }) => {
-    await page.locator('[role="switch"]').first().click()
+    await page.getByTestId('overview-headless-toggle').click()
     await expect
       .poll(async () => (await getMainIPCCalls(electronApp, 'update-headless-mode')).length)
       .toBe(1)
