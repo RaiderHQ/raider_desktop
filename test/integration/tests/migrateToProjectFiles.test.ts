@@ -217,4 +217,23 @@ describe('migrateToProjectFiles', () => {
     const index = (await readJson(suitesPath())) as { suites: { testIds: string[] }[] }
     expect(index.suites.map((s) => s.testIds)).toEqual([['t1'], ['t1']])
   })
+
+  it('a different test reusing an id is counted as failed, not silently dropped', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const edited = {
+      ...test('t1', 'Login'),
+      steps: [{ id: 'x', kind: 'navigate', url: 'https://y.test' }]
+    }
+    await writeSuites({
+      version: 2,
+      suites: [
+        { id: 's1', name: 'A', tests: [test('t1', 'Login')] },
+        { id: 's2', name: 'B', tests: [edited] }
+      ]
+    })
+    const result = await migrateToProjectFiles(project, layout)
+    expect(result).toMatchObject({ migrated: 1, failed: 1 })
+    const backup = (await readJson(result.backup!)) as typeof v2
+    expect(backup.suites[1].tests[0].steps).toEqual(edited.steps)
+  })
 })

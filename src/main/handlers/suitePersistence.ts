@@ -188,7 +188,7 @@ const isIndexEntry = (suite: unknown): suite is SuiteIndexEntry => {
   )
 }
 
-type SuitesFileState =
+export type SuitesFileState =
   | { kind: 'missing' }
   | { kind: 'corrupt' }
   | { kind: 'index'; suites: SuiteIndexEntry[] }

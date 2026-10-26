@@ -58,7 +58,8 @@ export async function migrateToProjectFiles(
 
   let migrated = 0
   let failed = 0
-  const done = new Set<string>()
+  // Test id → the first saved version, to spot a different test reusing an id
+  const done = new Map<string, string>()
   const index: SuiteIndexEntry[] = []
 
   for (const suite of state.suites) {
@@ -72,9 +73,17 @@ export async function migrateToProjectFiles(
         continue
       }
       testIds.push(test.id)
-      // The same test listed in two suites is one file
-      if (done.has(test.id)) continue
-      done.add(test.id)
+      // The same test listed in two suites is one file. A different test reusing the
+      // id can't get its own file: count it as failed (the backup keeps its steps)
+      const first = done.get(test.id)
+      if (first !== undefined) {
+        if (first !== JSON.stringify(test)) {
+          safeError(`Recorded test ${test.id} appears twice with different steps`)
+          failed++
+        }
+        continue
+      }
+      done.set(test.id, JSON.stringify(test))
       try {
         if (!(await findSidecarById(projectPath, test.id))) {
           await saveRecordedTest(projectPath, layout, test)
