@@ -3,6 +3,7 @@ import path from 'path'
 import { IpcMainInvokeEvent } from 'electron'
 import { safeExec } from '../../utils/safeExec'
 import { buildShellCommand } from '../../utils/shellCommand'
+import { quoteShellArg } from '../../utils/shellQuote'
 import { CommandType } from '@foundation/Types/commandType'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import { safeLog, safeError } from '../../utils/safeLog'
@@ -49,7 +50,7 @@ const handler = async (
       formattedAutomation = mobile.toLowerCase()
     }
 
-    let raiderCommand = `raider new "${projectName}" -p framework:${formattedFramework} automation:${formattedAutomation}`
+    let raiderCommand = `raider new ${quoteShellArg(projectName)} -p framework:${formattedFramework} automation:${formattedAutomation}`
 
     // Azure Pipelines is web-only for now; github is ruby_raider's default so nothing is passed.
     const isMobile = typeof mobile === 'string' && mobile.trim() !== ''

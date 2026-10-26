@@ -635,6 +635,11 @@ const Overview: React.FC = () => {
                       setBrowserOptions(tags)
                       if (projectPath) {
                         window.api.updateBrowserOptions(projectPath, tags)
+                          .then((result) => {
+                            if (!result.success) {
+                              toast.error(result.error || t('settings.error.unexpected'))
+                            }
+                          })
                           .catch(() => toast.error(t('settings.error.unexpected')))
                       }
                     }}

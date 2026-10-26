@@ -37,6 +37,19 @@ describe('updateBrowserUrl handler', () => {
     expect(call).toContain('/my/project')
   })
 
+  it.each([
+    ['ampersand', 'https://shop.test/?a=1&b=2', "'https://shop.test/?a=1&b=2'"],
+    ['command substitution', '$(whoami)', "'$(whoami)'"],
+    ['backticks', '`id`', "'`id`'"],
+    ['spaces', 'my pages', "'my pages'"],
+    ['single quote', "it's", "'it'\\''s'"]
+  ])('quotes %s', async (_n, input, quoted) => {
+    mockExecSuccess()
+    await handler({} as any, '/my/project', input)
+    const call = mockExec.mock.calls[0][0] as string
+    expect(call).toContain(`raider u url ${quoted}`)
+  })
+
   it('returns success when command succeeds', async () => {
     mockExecSuccess('URL set to https://example.com')
     const result = await handler({} as any, '/my/project', 'https://example.com')
