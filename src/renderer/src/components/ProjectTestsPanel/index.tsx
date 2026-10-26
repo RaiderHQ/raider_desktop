@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import Tooltip from '@components/Tooltip'
 import useRecorderStore from '@foundation/Stores/recorderStore'
+import useProjectStore from '@foundation/Stores/projectStore'
 import type { Ownership, ProjectTestEntry } from '@shared/types/projectTest'
 import type { Test } from '@foundation/Types/test'
 
@@ -24,6 +25,7 @@ const ProjectTestsPanel: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [entries, setEntries] = useState<ProjectTestEntry[] | null>(null)
+  const layout = useProjectStore((s) => s.layout)
 
   const load = useCallback(async (): Promise<void> => {
     try {
@@ -102,9 +104,16 @@ const ProjectTestsPanel: React.FC = () => {
   if (entries === null) return <div />
 
   if (entries.length === 0) {
+    // "Record one" only where recording is possible; Cucumber tests aren't listed here yet
+    const emptyKey =
+      layout?.framework === 'cucumber'
+        ? 'tests.cucumber'
+        : layout && !layout.recordable
+          ? 'tests.emptyNoRecording'
+          : 'tests.empty'
     return (
       <div className="flex items-center justify-center h-full text-neutral-mid text-sm p-8 text-center">
-        {t('tests.empty')}
+        {t(emptyKey)}
       </div>
     )
   }

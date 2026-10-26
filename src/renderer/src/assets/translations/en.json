@@ -425,6 +425,8 @@
     "restored": "The test was restored.",
     "restoreFailed": "Raider couldn't restore this test. Nothing was changed.",
     "empty": "No tests yet \u2014 record one",
+    "emptyNoRecording": "No tests found in this project yet.",
+    "cucumber": "This project's tests are Cucumber features: find them in the Files tab. Recorded tests become project files when Gherkin support arrives.",
     "actionFailed": "Raider couldn't open this test. Nothing was changed."
   },
   "recorder": {

@@ -1,8 +1,9 @@
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import ProjectTestsPanel from '@components/ProjectTestsPanel'
 import '@testing-library/jest-dom'
-import { vi, describe, it, expect, beforeEach } from 'vitest'
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import useRecorderStore from '@foundation/Stores/recorderStore'
+import useProjectStore from '@foundation/Stores/projectStore'
 import type { ProjectTestEntry } from '@shared/types/projectTest'
 
 vi.mock('react-i18next', () => ({
@@ -127,6 +128,32 @@ describe('ProjectTestsPanel', () => {
     api.listProjectTests.mockResolvedValue([])
     await renderPanel()
     expect(screen.getByText('tests.empty')).toBeInTheDocument()
+  })
+
+  describe('with no tests to list', () => {
+    afterEach(() => {
+      useProjectStore.setState({ layout: null })
+    })
+
+    it('a Cucumber project explains where its tests are, not "record one"', async () => {
+      useProjectStore.setState({
+        layout: { framework: 'cucumber', automation: 'selenium', recordable: true } as never
+      })
+      api.listProjectTests.mockResolvedValue([])
+      await renderPanel()
+      expect(screen.getByText('tests.cucumber')).toBeInTheDocument()
+      expect(screen.queryByText('tests.empty')).not.toBeInTheDocument()
+    })
+
+    it('a project Raider cannot record into does not offer to record one', async () => {
+      useProjectStore.setState({
+        layout: { framework: 'rspec', automation: 'selenium', recordable: false } as never
+      })
+      api.listProjectTests.mockResolvedValue([])
+      await renderPanel()
+      expect(screen.getByText('tests.emptyNoRecording')).toBeInTheDocument()
+      expect(screen.queryByText('tests.empty')).not.toBeInTheDocument()
+    })
   })
 
   it('no raw paths in default view', async () => {
