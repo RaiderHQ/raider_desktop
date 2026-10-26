@@ -79,7 +79,10 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
       openTarget: null,
       breakpointIndex: null,
       failedStepId: null,
-      isReplayingToBreakpoint: false
+      isReplayingToBreakpoint: false,
+      // The new project's Recorder must not open with Record and Run locked
+      isRecording: false,
+      isRunning: false
     }),
 
   activeSuite: () => {
