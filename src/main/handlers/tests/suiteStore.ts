@@ -129,8 +129,14 @@ export async function saveTestInSuite(
     sidecar = await saveRecordedTest(store.projectPath, store.layout, test)
   } catch (error) {
     if (!(error instanceof CodeOwnedError)) throw error
-    updateCopies(store, test.id, (t) => ({ ...t, ownership: 'codeOwnedWasRecorded' }))
-    broadcast(store)
+    // Tell the renderer once: re-sending on every refused autosave would keep resetting its test
+    const known = Array.from(store.suites.values()).some((s) =>
+      s.tests.some((t) => t.id === test.id && t.ownership !== 'codeOwnedWasRecorded')
+    )
+    if (known) {
+      updateCopies(store, test.id, (t) => ({ ...t, ownership: 'codeOwnedWasRecorded' }))
+      broadcast(store)
+    }
     return { success: false, error: 'codeOwned' }
   }
 

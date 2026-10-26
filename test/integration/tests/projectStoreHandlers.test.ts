@@ -139,6 +139,11 @@ describe('recorded tests as project files', () => {
     expect(result).toEqual({ success: false, error: 'codeOwned' })
     expect(await readFile(spec, 'utf-8')).toContain('hand edit')
     expect(lastSuites()[0].tests[0].ownership).toBe('codeOwnedWasRecorded')
+
+    // Later refused autosaves don't re-send the suites (the renderer would reset its test each time)
+    send.mockClear()
+    await saveRecording(win, suiteId, { ...checkout(), name: 'Changed again' })
+    expect(send).not.toHaveBeenCalled()
   })
 
   it('refuses a test whose steps it cannot store', async () => {
