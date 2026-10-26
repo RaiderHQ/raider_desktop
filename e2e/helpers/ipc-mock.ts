@@ -16,10 +16,7 @@ export async function mockIPC(page: Page, method: string, returnValue: unknown):
 /**
  * Mock multiple window.api methods at once.
  */
-export async function mockIPCMultiple(
-  page: Page,
-  mocks: Record<string, unknown>
-): Promise<void> {
+export async function mockIPCMultiple(page: Page, mocks: Record<string, unknown>): Promise<void> {
   await page.evaluate((mocksJson) => {
     const parsed = JSON.parse(mocksJson) as Record<string, unknown>
     for (const [method, value] of Object.entries(parsed)) {
@@ -31,7 +28,11 @@ export async function mockIPCMultiple(
 /**
  * Mock a window.api method to throw an error.
  */
-export async function mockIPCError(page: Page, method: string, errorMessage: string): Promise<void> {
+export async function mockIPCError(
+  page: Page,
+  method: string,
+  errorMessage: string
+): Promise<void> {
   await page.evaluate(
     ([m, msg]) => {
       ;(window as any).api[m] = async () => {
@@ -115,10 +116,7 @@ export async function mockAdoptAnalyze(
 /**
  * Mock readDirectory to return a file tree.
  */
-export async function mockReadDirectory(
-  page: Page,
-  tree: unknown[]
-): Promise<void> {
+export async function mockReadDirectory(page: Page, tree: unknown[]): Promise<void> {
   await mockIPC(page, 'readDirectory', tree)
 }
 
@@ -142,10 +140,7 @@ export async function mockRubyInstalledWithWarning(
 /**
  * Mock getLlmStatus with a config result.
  */
-export async function mockLlmStatus(
-  page: Page,
-  config: Record<string, unknown>
-): Promise<void> {
+export async function mockLlmStatus(page: Page, config: Record<string, unknown>): Promise<void> {
   await mockIPC(page, 'getLlmStatus', { success: true, ...config })
 }
 
@@ -273,6 +268,7 @@ export async function setupProjectContext(
     rubyCommand?: string
     isMobile?: boolean
     files?: unknown[]
+    tests?: unknown[]
   }
 ): Promise<void> {
   const projectPath = opts?.projectPath || '/mock/test-project'
@@ -284,6 +280,8 @@ export async function setupProjectContext(
     isMobileProject: opts?.isMobile || false
   })
   await mockIPC(page, 'readDirectory', opts?.files || [])
+  // The Overview opens on the Tests tab, which lists the project's spec files
+  await mockIPC(page, 'listProjectTests', opts?.tests || [])
   await mockIPCSync(page, 'onTestRunStatus')
   await mockIPCSync(page, 'removeTestRunStatusListener')
 
@@ -327,4 +325,52 @@ export async function getMainIPCCalls(
     const g = global as any
     return g.__IPC_CAPTURE__?.[ch] || []
   }, channel)
+}
+
+// ─── Project tests (recorded files and hand-written specs) ──
+
+/**
+ * Mock listProjectTests: the Tests tab listing of the project's spec files.
+ */
+export async function mockProjectTests(
+  page: Page,
+  entries: Array<{
+    file: string
+    name: string
+    ownership: 'recorded' | 'codeOwnedWasRecorded' | 'code'
+    testId?: string
+    missingFile?: true
+  }>
+): Promise<void> {
+  await mockIPC(page, 'listProjectTests', entries)
+}
+
+/**
+ * Mock getProjectLayout with what activation detected for the project.
+ */
+export async function mockProjectLayout(
+  page: Page,
+  layout: Record<string, unknown> | null
+): Promise<void> {
+  await mockIPC(page, 'getProjectLayout', layout)
+}
+
+/**
+ * Send an event from the main process to the window, e.g. 'tests-migrated'
+ * or 'suites-too-new', as project activation does.
+ */
+export async function sendMainEvent(
+  electronApp: ElectronApplication,
+  channel: string,
+  payload?: unknown
+): Promise<void> {
+  await electronApp.evaluate(
+    ({ BrowserWindow }, { ch, body }) => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (body === undefined) win.webContents.send(ch)
+        else win.webContents.send(ch, JSON.parse(body))
+      }
+    },
+    { ch: channel, body: payload === undefined ? undefined : JSON.stringify(payload) }
+  )
 }

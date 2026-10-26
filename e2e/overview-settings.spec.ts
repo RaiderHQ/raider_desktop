@@ -1,11 +1,11 @@
 import { test, expect } from './electronApp'
-import { goToOverview } from './helpers/navigation'
+import { goToOverviewFiles } from './helpers/navigation'
 import { setupProjectContext, mockIPCCapture, getIPCCalls } from './helpers/ipc-mock'
 
 test.describe('Overview Settings Toolbar', () => {
   test.beforeEach(async ({ page }) => {
     await setupProjectContext(page)
-    await goToOverview(page)
+    await goToOverviewFiles(page)
   })
 
   test('base URL input is visible on Overview Files tab', async ({ page }) => {

@@ -26,6 +26,15 @@ export async function goToOverview(page: Page): Promise<void> {
   await navigateTo(page, '/overview')
 }
 
+/**
+ * Navigate to Overview page and click the Files tab (the Overview opens on Tests).
+ */
+export async function goToOverviewFiles(page: Page): Promise<void> {
+  await navigateTo(page, '/overview')
+  await page.getByRole('button', { name: 'Files', exact: true }).click()
+  await page.waitForTimeout(300)
+}
+
 export async function goToFileEditor(page: Page): Promise<void> {
   await navigateTo(page, '/file-editor')
 }
