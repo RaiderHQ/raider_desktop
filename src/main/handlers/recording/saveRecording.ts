@@ -1,12 +1,13 @@
 import { BrowserWindow } from 'electron'
 import { appState } from '../appState'
+import { persistActiveSuites } from '../suitePersistence'
 import type { Test } from '@foundation/Types/test'
 
-const handler = (
+const handler = async (
   mainWindow: BrowserWindow | null,
   suiteId: string,
   testData: Test
-): { success: boolean; error?: string } => {
+): Promise<{ success: boolean; error?: string }> => {
   if (!mainWindow) {
     return { success: false, error: 'Main window is not available.' }
   }
@@ -32,6 +33,7 @@ const handler = (
 
   // Persist the updated suites map
   appState.suites.set(suiteId, suite)
+  await persistActiveSuites()
   mainWindow.webContents.send('suite-updated', Array.from(appState.suites.values()))
 
   return { success: true }

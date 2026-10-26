@@ -1,12 +1,13 @@
 import React, { useRef } from 'react'
 import CommandBlock from '@components/CommandBlock'
 import { useTranslation } from 'react-i18next'
+import type { Step } from '@shared/types/step'
 
 interface CommandListProps {
-  steps: string[]
-  setSteps: React.Dispatch<React.SetStateAction<string[]>>
+  steps: Step[]
+  setSteps: React.Dispatch<React.SetStateAction<Step[]>>
   onDeleteStep: (index: number) => void
-  onEditStep?: (index: number, newCommand: string) => void
+  onEditStep?: (index: number, step: Step) => void
   showCode: boolean
   breakpointIndex?: number | null
   onSetBreakpoint?: (index: number) => void
@@ -52,8 +53,8 @@ const CommandList: React.FC<CommandListProps> = ({
         {steps.length > 0 ? (
           steps.map((step, index) => (
             <CommandBlock
-              key={index}
-              command={step}
+              key={step.id}
+              step={step}
               index={index}
               showCode={showCode}
               onDragStart={handleDragStart}

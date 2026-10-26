@@ -1,0 +1,156 @@
+import type { ElementTarget, Step } from '../../shared/types/step'
+import { rubyString } from './ruby'
+
+export type Automation = 'selenium' | 'watir'
+
+const KEY_SYMBOLS: Record<string, string> = {
+  Enter: 'enter',
+  Escape: 'escape',
+  Tab: 'tab',
+  Backspace: 'backspace',
+  Delete: 'delete',
+  Home: 'home',
+  End: 'end',
+  PageUp: 'page_up',
+  PageDown: 'page_down',
+  ArrowUp: 'arrow_up',
+  ArrowDown: 'arrow_down',
+  ArrowLeft: 'arrow_left',
+  ArrowRight: 'arrow_right',
+  ' ': 'space'
+}
+
+const keyArg = (key: string): string =>
+  Object.hasOwn(KEY_SYMBOLS, key) ? `:${KEY_SYMBOLS[key]}` : rubyString(key)
+
+const locator = (el: ElementTarget): string => `${el.strategy}: ${rubyString(el.value)}`
+const sel = (el: ElementTarget): string => `@driver.find_element(${locator(el)})`
+const sels = (el: ElementTarget): string => `@driver.find_elements(${locator(el)})`
+const wat = (el: ElementTarget): string => `@browser.element(${locator(el)})`
+
+function need<T>(value: T | undefined, what: string, check: string): T {
+  if (value === undefined) throw new Error(`Invalid assert step: '${check}' requires ${what}`)
+  return value
+}
+
+// Each check first waits (up to the explicit wait) for its condition, then asserts it,
+// so content that renders late passes on Run just as it does in in-app replay
+function renderAssert(step: Extract<Step, { kind: 'assert' }>, automation: Automation): string {
+  const { check } = step
+  const selenium = automation === 'selenium'
+  // Selenium waits on @wait with a plain condition; Watir waits on the element (or browser) itself
+  const lines = (condition: string, assertion: string): string =>
+    `${selenium ? `@wait.until { ${condition} }` : condition}\n${assertion}`
+
+  if (check === 'titleEquals' || check === 'urlIncludes') {
+    const expected = rubyString(need(step.expected, 'an expected string', check))
+    const title = check === 'titleEquals'
+    const subject = title ? 'title' : selenium ? 'current_url' : 'url'
+    const matches = title ? ` == ${expected}` : `.include?(${expected})`
+    const matcher = title ? 'eq' : 'include'
+    return selenium
+      ? lines(
+          `@driver.${subject}${matches}`,
+          `expect(@driver.${subject}).to ${matcher}(${expected})`
+        )
+      : lines(
+          `@browser.wait_until { |b| b.${subject}${matches} }`,
+          `expect(@browser.${subject}).to ${matcher}(${expected})`
+        )
+  }
+  const el = need(step.element, 'an element', check)
+  const target = selenium ? sel(el) : wat(el)
+  switch (check) {
+    case 'displayed':
+      return selenium
+        ? lines(`${target}.displayed?`, `expect(${target}).to be_displayed`)
+        : lines(`${target}.wait_until(&:present?)`, `expect(${target}).to be_present`)
+    case 'notDisplayed':
+      return selenium
+        ? lines(
+            `${sels(el)}.none?(&:displayed?)`,
+            `expect(${sels(el)}.none?(&:displayed?)).to be(true)`
+          )
+        : lines(`${target}.wait_while(&:present?)`, `expect(${target}).not_to be_present`)
+    case 'enabled':
+      return lines(
+        selenium ? `${target}.enabled?` : `${target}.wait_until(&:enabled?)`,
+        `expect(${target}).to be_enabled`
+      )
+    case 'checked':
+      return selenium
+        ? lines(`${target}.selected?`, `expect(${target}).to be_selected`)
+        : lines(`${target}.to_subtype.wait_until(&:set?)`, `expect(${target}.to_subtype).to be_set`)
+    case 'textEquals':
+    case 'textIncludes': {
+      const expected = rubyString(need(step.expected, 'an expected string', check))
+      const equals = check === 'textEquals'
+      const text = (subject: string): string =>
+        equals ? `${subject}.text == ${expected}` : `${subject}.text.include?(${expected})`
+      return lines(
+        selenium ? text(target) : `${target}.wait_until { |el| ${text('el')} }`,
+        `expect(${target}.text).to ${equals ? 'eq' : 'include'}(${expected})`
+      )
+    }
+    case 'valueEquals': {
+      const expected = rubyString(need(step.expected, 'an expected string', check))
+      return selenium
+        ? lines(
+            `${target}.attribute('value') == ${expected}`,
+            `expect(${target}.attribute('value')).to eq(${expected})`
+          )
+        : lines(
+            `${target}.to_subtype.wait_until { |el| el.value == ${expected} }`,
+            `expect(${target}.to_subtype.value).to eq(${expected})`
+          )
+    }
+  }
+}
+
+/** Ruby for one step: one or more lines, no trailing newline, no indentation. */
+export function renderStep(step: Step, automation: Automation): string {
+  const selenium = automation === 'selenium'
+  switch (step.kind) {
+    case 'navigate':
+      return selenium
+        ? `@driver.navigate.to(${rubyString(step.url)})`
+        : `@browser.goto(${rubyString(step.url)})`
+    case 'click':
+      return selenium
+        ? `@wait.until { ${sel(step.element)}.displayed? }\n${sel(step.element)}.click`
+        : `${wat(step.element)}.click`
+    case 'type': {
+      const text = rubyString(step.text)
+      return selenium
+        ? [
+            `@wait.until { ${sel(step.element)}.displayed? }`,
+            `${sel(step.element)}.clear`,
+            `${sel(step.element)}.send_keys(${text})`
+          ].join('\n')
+        : `${wat(step.element)}.to_subtype.set(${text})`
+    }
+    case 'pressKey':
+      return `${selenium ? sel(step.element) : wat(step.element)}.send_keys(${keyArg(step.key)})`
+    case 'wait':
+      if (selenium) {
+        if (step.until === 'hidden')
+          return `@wait.until { ${sels(step.element)}.none?(&:displayed?) }`
+        return `@wait.until { ${sel(step.element)}.${step.until === 'visible' ? 'displayed?' : 'enabled?'} }`
+      }
+      if (step.until === 'hidden') return `${wat(step.element)}.wait_while(&:present?)`
+      return `${wat(step.element)}.wait_until(&:${step.until === 'visible' ? 'present?' : 'enabled?'})`
+    case 'assert':
+      return renderAssert(step, automation)
+    case 'switchFrame':
+      if (selenium) {
+        return step.element
+          ? `@driver.switch_to.frame(${sel(step.element)})`
+          : '@driver.switch_to.default_content'
+      }
+      return step.element
+        ? `# Watir iframe objects scope only their own calls, so switch the underlying driver\n@browser.wd.switch_to.frame(${wat(step.element)}.wd)`
+        : '@browser.wd.switch_to.default_content'
+    case 'custom':
+      return step.code
+  }
+}

@@ -49,6 +49,9 @@ beforeAll(() => {
     isRubyInstalled: vi.fn().mockResolvedValue({ success: true, rubyCommand: 'ruby', rubyVersion: '3.2.0' }),
     closeApp: vi.fn()
   }
+  ;(window as unknown as Record<string, unknown>).electron = {
+    ipcRenderer: { on: vi.fn().mockReturnValue(() => {}) }
+  }
 })
 
 describe('MainTemplate Navigation', () => {
@@ -104,5 +107,43 @@ describe('MainTemplate Navigation', () => {
     )
 
     expect(screen.getByText(/version/)).toBeInTheDocument()
+  })
+})
+
+describe('MainTemplate suites recovered toast', () => {
+  const recoveredListener = (): ((event: unknown, info?: { backupSaved?: boolean }) => void) => {
+    const on = (
+      window as unknown as { electron: { ipcRenderer: { on: ReturnType<typeof vi.fn> } } }
+    ).electron.ipcRenderer.on
+    const call = on.mock.calls.find(([channel]) => channel === 'suites-recovered')
+    return call![1]
+  }
+
+  it('says a copy was kept when the backup was saved', async () => {
+    const toast = (await import('react-hot-toast')).default as unknown as {
+      error: ReturnType<typeof vi.fn>
+    }
+    toast.error.mockClear()
+    render(
+      <MemoryRouter initialEntries={['/overview']}>
+        <MainTemplate />
+      </MemoryRouter>
+    )
+    recoveredListener()({}, { backupSaved: true })
+    expect(toast.error).toHaveBeenCalledWith('suites.recovered.backupSaved', expect.anything())
+  })
+
+  it('says no copy could be kept when the backup failed', async () => {
+    const toast = (await import('react-hot-toast')).default as unknown as {
+      error: ReturnType<typeof vi.fn>
+    }
+    toast.error.mockClear()
+    render(
+      <MemoryRouter initialEntries={['/overview']}>
+        <MainTemplate />
+      </MemoryRouter>
+    )
+    recoveredListener()({}, { backupSaved: false })
+    expect(toast.error).toHaveBeenCalledWith('suites.recovered.backupFailed', expect.anything())
   })
 })

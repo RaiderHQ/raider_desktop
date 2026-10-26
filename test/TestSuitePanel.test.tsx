@@ -28,7 +28,12 @@ const mockSuites = [
     id: 'suite-1',
     name: 'Login Suite',
     tests: [
-      { id: 'test-1', name: 'Login Test', url: 'http://example.com', steps: ['step 1'] },
+      {
+        id: 'test-1',
+        name: 'Login Test',
+        url: 'http://example.com',
+        steps: [{ id: 'step-1', kind: 'navigate' as const, url: 'http://example.com' }]
+      },
       { id: 'test-2', name: 'Logout Test', url: 'http://example.com', steps: [] }
     ]
   },

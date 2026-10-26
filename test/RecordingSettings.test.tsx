@@ -2,6 +2,11 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import RecordingSettings from '@pages/RecorderSettings'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
+import toast from 'react-hot-toast'
+
+vi.mock('react-hot-toast', () => ({
+  default: { success: vi.fn(), error: vi.fn() }
+}))
 
 vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string) => string } => ({
@@ -10,17 +15,41 @@ vi.mock('react-i18next', () => ({
 }))
 
 const mockApi = {
-  updateRecordingSettings: vi.fn().mockResolvedValue(undefined)
+  updateRecordingSettings: vi.fn().mockResolvedValue({ success: true }),
+  getRecorderSettings: vi.fn().mockResolvedValue({ implicitWait: 3, explicitWait: 25 })
 }
 
 beforeEach(() => {
   // @ts-expect-error - Mocking window.api
   window.api = mockApi
   vi.clearAllMocks()
-  localStorage.clear()
+  mockApi.updateRecordingSettings.mockResolvedValue({ success: true })
+  mockApi.getRecorderSettings.mockResolvedValue({ implicitWait: 3, explicitWait: 25 })
 })
 
 describe('RecordingSettings Page', (): void => {
+  it('starts from the spec default explicit wait of 10 before settings load', async () => {
+    mockApi.getRecorderSettings.mockReturnValue(new Promise(() => {}))
+    await act(async () => {
+      render(<RecordingSettings />)
+    })
+    expect(screen.getByLabelText('settings.recording.explicitWait.label')).toHaveValue(10)
+  })
+
+  it('never writes defaults to the config when settings failed to load', async () => {
+    mockApi.getRecorderSettings.mockRejectedValue(new Error('no project'))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await act(async () => {
+      render(<RecordingSettings />)
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByText('settings.recording.updateRecordingSettingsButton'))
+    })
+    expect(mockApi.updateRecordingSettings).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('settings.recording.error.notLoaded')
+    consoleError.mockRestore()
+  })
+
   it('renders correctly', async (): Promise<void> => {
     await act(async () => {
       render(<RecordingSettings />)
@@ -61,7 +90,33 @@ describe('RecordingSettings Page', (): void => {
 
     expect(mockApi.updateRecordingSettings).toHaveBeenCalledWith({
       implicitWait: 5,
-      explicitWait: 30
+      explicitWait: 25
     })
+  })
+
+  it('shows wait values from project settings and never reads localStorage', async () => {
+    const getItem = vi.spyOn(Storage.prototype, 'getItem')
+    await act(async () => {
+      render(<RecordingSettings />)
+    })
+
+    expect(screen.getByLabelText('settings.recording.implicitWait.label')).toHaveValue(3)
+    expect(screen.getByLabelText('settings.recording.explicitWait.label')).toHaveValue(25)
+    expect(getItem).not.toHaveBeenCalledWith('implicitWait')
+    expect(getItem).not.toHaveBeenCalledWith('explicitWait')
+    getItem.mockRestore()
+  })
+
+  it('shows an error toast when saving fails', async () => {
+    mockApi.updateRecordingSettings.mockResolvedValue({ success: false, error: 'No project open' })
+    await act(async () => {
+      render(<RecordingSettings />)
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByText('settings.recording.updateRecordingSettingsButton'))
+    })
+
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('No project open'))
+    expect(toast.success).not.toHaveBeenCalled()
   })
 })

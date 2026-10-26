@@ -188,7 +188,8 @@
       "description": "Adjust the settings for test recording and playback.",
       "error": {
         "recordingUpdateFailed": "Failed to update recording settings.",
-        "unexpected": "An unexpected error occurred. Please try again."
+        "unexpected": "An unexpected error occurred. Please try again.",
+        "notLoaded": "This project's recording settings haven't loaded, so they can't be saved yet. Open the project again and retry."
       },
       "implicitWait": {
         "label": "Implicit Wait",
@@ -382,6 +383,15 @@
   "errorPage": {
     "title": "Pre-requisites not installed"
   },
+  "project": {
+    "activationFailed": "This project's saved tests and recorder settings couldn't be loaded, so nothing will be recorded or saved for it. Fix the problem and open the project again. Details: {{error}}"
+  },
+  "suites": {
+    "recovered": {
+      "backupSaved": "Your saved suites couldn't be read, so this project opened with no suites. A copy of the old file was kept in the project's .raider folder.",
+      "backupFailed": "Your saved suites couldn't be read, so this project opened with no suites. The app couldn't keep a copy of the old file."
+    }
+  },
   "errors": {
     "ruby": {
       "commandFailed": "Ruby command failed.\nCommand: {{command}}\nOutput: {{output}}\nDebug Info:\n{{debugInfo}}",
@@ -392,6 +402,7 @@
     }
   },
   "recorder": {
+    "noStartUrl": "There's no page to start recording on. Enter a URL for this test, or set the project's base URL in Settings.",
     "placeholder": {
       "url": "Enter URL to record",
       "commands": "Recorded Selenium Ruby commands will appear here..."
@@ -478,6 +489,8 @@
     "breakpoint": {
       "recordFromHere": "Record from here",
       "replayFailed": "Replay failed",
+      "skippedSteps_one": "1 step couldn't run during replay (custom code or a frame switch), so the page may not match your steps.",
+      "skippedSteps_other": "{{count}} steps couldn't run during replay (custom code or frame switches), so the page may not match your steps.",
       "stopReplay": "Stop Replay"
     },
     "outputPanel": {
@@ -528,25 +541,27 @@
     },
     "commandParser": {
       "visit": "Visit {{url}}",
-      "waitForElementDisplayed": "Wait for element with {{strategy}} \"{{value}}\" to be displayed",
-      "waitForElementEnabled": "Wait for element with {{strategy}} \"{{value}}\" to be enabled",
-      "clickElement": "Click element with {{strategy}} \"{{value}}\"",
-      "pressKey": "Press the {{key}} key on element with {{strategy}} \"{{value}}\"",
-      "typeText": "Type \"{{text}}\" into element with {{strategy}} \"{{value}}\"",
-      "wait": "Wait for {{seconds}} seconds",
-      "executeScript": "Execute script: {{script}}",
-      "switchToFrame": "Switch to frame identified by {{frame}}",
+      "waitForElementDisplayed": "Wait for \"{{element}}\" to be displayed",
+      "waitForElementEnabled": "Wait for \"{{element}}\" to be enabled",
+      "clickElement": "Click \"{{element}}\"",
+      "pressKey": "Press the {{key}} key on \"{{element}}\"",
+      "typeText": "Type \"{{text}}\" into \"{{element}}\"",
+      "switchToFrame": "Switch to frame \"{{element}}\"",
       "switchToDefaultContent": "Switch back to main content",
-      "assertElementDisplayed": "Assert that element with {{strategy}} \"{{value}}\" is displayed",
-      "assertElementNotDisplayed": "Assert that element with {{strategy}} \"{{value}}\" is NOT displayed",
-      "assertElementEnabled": "Assert that element with {{strategy}} \"{{value}}\" is enabled",
-      "assertElementChecked": "Assert that element with {{strategy}} \"{{value}}\" is checked",
-      "assertElementTextEquals": "Assert that element with {{strategy}} \"{{value}}\" has text equal to \"{{text}}\"",
-      "assertElementTextIncludes": "Assert that element with {{strategy}} \"{{value}}\" has text including \"{{text}}\"",
-      "assertElementValue": "Assert that element with {{strategy}} \"{{value}}\" has value \"{{text}}\"",
+      "assertElementDisplayed": "Assert that \"{{element}}\" is displayed",
+      "assertElementNotDisplayed": "Assert that \"{{element}}\" is NOT displayed",
+      "assertElementEnabled": "Assert that \"{{element}}\" is enabled",
+      "assertElementChecked": "Assert that \"{{element}}\" is checked",
+      "assertElementTextEquals": "Assert that \"{{element}}\" has text equal to \"{{text}}\"",
+      "assertElementTextIncludes": "Assert that \"{{element}}\" has text including \"{{text}}\"",
+      "assertElementValue": "Assert that \"{{element}}\" has value \"{{text}}\"",
       "assertPageTitle": "Assert that page title equals \"{{title}}\"",
       "assertUrlContains": "Assert that current URL contains \"{{url}}\"",
-      "waitForElementDisappear": "Wait for element with {{strategy}} \"{{value}}\" to disappear"
+      "waitForElementDisappear": "Wait for \"{{element}}\" to disappear"
+    },
+    "step": {
+      "custom": "Custom code step",
+      "renderFailed": "Couldn't render code"
     }
   },
   "concepts": {

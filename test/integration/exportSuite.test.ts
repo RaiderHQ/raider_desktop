@@ -26,12 +26,17 @@ vi.mock('../../src/main/handlers/appState', () => ({
   appState: {
     suites: new Map(),
     projectFramework: 'rspec',
-    projectAutomation: 'selenium'
+    projectAutomation: 'selenium',
+    recorderSettings: { browser: 'chrome', headless: false, implicitWait: 0, explicitWait: 30 }
   }
 }))
 
+vi.mock('../../src/main/codegen/testFile', () => ({
+  generateRspecFile: vi.fn(() => '# generated test content'),
+  toAutomation: vi.fn(() => 'selenium')
+}))
+
 vi.mock('../../src/main/handlers/frameworkTemplates', () => ({
-  generateExportContent: vi.fn(() => '# generated test content'),
   getExportExtension: vi.fn(() => 'rb')
 }))
 
@@ -53,8 +58,18 @@ const fakeSuite = {
   id: 'suite-1',
   name: 'Login Suite',
   tests: [
-    { id: 'test-1', name: 'Login test', url: 'http://example.com', steps: ['@driver.get("http://example.com")'] },
-    { id: 'test-2', name: 'Logout test', url: 'http://example.com', steps: ['@driver.get("http://example.com/logout")'] }
+    {
+      id: 'test-1',
+      name: 'Login test',
+      url: 'http://example.com',
+      steps: ['@driver.get("http://example.com")']
+    },
+    {
+      id: 'test-2',
+      name: 'Logout test',
+      url: 'http://example.com',
+      steps: ['@driver.get("http://example.com/logout")']
+    }
   ]
 }
 

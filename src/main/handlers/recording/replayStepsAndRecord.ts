@@ -2,8 +2,10 @@ import { promises as fs } from 'fs'
 import { exec } from 'child_process'
 import os from 'os'
 import path from 'path'
-import { appState, getRecordingSettings } from '../appState'
+import { appState } from '../appState'
 import startRecordingMain from './startRecordingMain'
+import { generateRspecFile, toAutomation } from '../../codegen/testFile'
+import type { Step } from '../../../shared/types/step'
 
 interface ReplayResult {
   success: boolean
@@ -21,32 +23,26 @@ interface ReplayResult {
 async function replayStepsAndRecord(
   _event: Electron.IpcMainInvokeEvent,
   _testName: string,
-  stepsToReplay: string[],
+  stepsToReplay: Step[],
   rubyCommand: string
 ): Promise<ReplayResult> {
-  const { implicitWait, explicitWait } = getRecordingSettings()
-  const tempFilePath = path.join(os.tmpdir(), `replay_${Date.now()}.rb`)
+  const { implicitWait, explicitWait } = appState.recorderSettings
+  const tempFilePath = path.join(os.tmpdir(), `replay_${Date.now()}_spec.rb`)
 
-  const formattedSteps = stepsToReplay.map((step) => `  ${step}`).join('\n  sleep(1)\n')
-
-  const script = `require 'selenium-webdriver'
-
-opts = Selenium::WebDriver::Chrome::Options.new(args: ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage'])
-@driver = Selenium::WebDriver.for :chrome, options: opts
-@driver.manage.timeouts.implicit_wait = ${implicitWait}
-@wait = Selenium::WebDriver::Wait.new(timeout: ${explicitWait})
-@vars = {}
-
-begin
-  ${formattedSteps}
-  puts "RAIDER_FINAL_URL:\#{@driver.current_url}"
-rescue => e
-  puts "RAIDER_REPLAY_ERROR:\#{e.message}"
-  exit 1
-ensure
-  @driver.quit
-end
-`
+  // Replay headlessly in Chrome, then print the final URL for the recorder to resume from.
+  const automation = toAutomation(appState.projectAutomation)
+  const currentUrl = automation === 'watir' ? '@browser.url' : '@driver.current_url'
+  const script = generateRspecFile(
+    {
+      name: 'replay',
+      steps: [
+        ...stepsToReplay,
+        { id: 'replay-final-url', kind: 'custom', code: `puts "RAIDER_FINAL_URL:#{${currentUrl}}"` }
+      ]
+    },
+    automation,
+    { browser: 'chrome', headless: true, implicitWait, explicitWait }
+  )
 
   try {
     const newPath = (process.env.PATH || '')
@@ -58,16 +54,25 @@ end
 
     await fs.writeFile(tempFilePath, script)
 
-    const result = await new Promise<{ stdout: string; stderr: string; exitCode: number | null; cancelled?: boolean }>((resolve) => {
+    const result = await new Promise<{
+      stdout: string
+      stderr: string
+      exitCode: number | null
+      cancelled?: boolean
+    }>((resolve) => {
       const child = exec(
-        `${rubyCommand} ${tempFilePath}`,
+        `${rubyCommand} -S rspec ${tempFilePath}`,
         { env: executionEnv, timeout: 120_000, encoding: 'utf8' },
         (error, stdout, stderr) => {
           appState.activeReplayProcess = null
           if (error?.killed) {
             resolve({ stdout: stdout ?? '', stderr: '', exitCode: null, cancelled: true })
           } else if (error) {
-            resolve({ stdout: stdout ?? '', stderr: stderr ?? error.message, exitCode: error.code ?? 1 })
+            resolve({
+              stdout: stdout ?? '',
+              stderr: stderr ?? error.message,
+              exitCode: error.code ?? 1
+            })
           } else {
             resolve({ stdout: stdout ?? '', stderr: stderr ?? '', exitCode: 0 })
           }
@@ -81,25 +86,18 @@ end
     }
 
     if (result.exitCode !== 0) {
-      const errorLine = result.stdout
-        .split('\n')
-        .find((l) => l.startsWith('RAIDER_REPLAY_ERROR:'))
-      const errorMsg = errorLine
-        ? errorLine.replace('RAIDER_REPLAY_ERROR:', '')
-        : result.stderr || 'Replay failed'
+      const errorMsg = result.stdout.trim() || result.stderr || 'Replay failed'
 
       appState.mainWindow?.webContents.send('replay-failed', errorMsg)
       return { success: false, error: errorMsg }
     }
 
-    const finalUrlLine = result.stdout
-      .split('\n')
-      .find((l) => l.startsWith('RAIDER_FINAL_URL:'))
+    const finalUrlLine = result.stdout.split('\n').find((l) => l.startsWith('RAIDER_FINAL_URL:'))
     const finalUrl = finalUrlLine
       ? finalUrlLine.replace('RAIDER_FINAL_URL:', '').trim()
-      : appState.projectBaseUrl
+      : (appState.sessionUrl ?? appState.recorderSettings.baseUrl)
 
-    appState.projectBaseUrl = finalUrl
+    appState.sessionUrl = finalUrl
 
     const recordingResult = startRecordingMain()
     return {

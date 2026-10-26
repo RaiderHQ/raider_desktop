@@ -1,21 +1,29 @@
 import { test, expect } from './electronApp'
 import { goToRecorder } from './helpers/navigation'
-import { mockIPCCapture, mockIPCCaptureError, getIPCCalls, mockIPC, mockIPCSync } from './helpers/ipc-mock'
+import {
+  mockIPC,
+  mockIPCCapture,
+  mockIPCCaptureError,
+  mockIPCCaptureFailure,
+  getIPCCalls
+} from './helpers/ipc-mock'
+
+// Wait settings live inline on the Recorder page and are read from / written to the
+// project's config/config.yml through the main process.
+const projectSettings = {
+  baseUrl: 'https://example.com',
+  browser: 'chrome',
+  headless: false,
+  implicitWait: 4,
+  explicitWait: 12,
+  selectorPriority: ['id', 'css']
+}
 
 test.describe('Recording Settings', () => {
   test.beforeEach(async ({ page }) => {
-    // Mock IPC methods used on Recorder mount
-    await mockIPC(page, 'getSelectorPriorities', [])
-    await mockIPC(page, 'getSuites', [])
-    await mockIPCSync(page, 'onTestRunStatus')
-    await mockIPCSync(page, 'removeTestRunStatusListener')
+    // Must be mocked before the Recorder mounts, which loads the settings
+    await mockIPC(page, 'getRecorderSettings', projectSettings)
     await goToRecorder(page)
-    await page.waitForTimeout(500)
-
-    // Click the "Settings" tab button on the Recorder page
-    // Use a button locator to avoid matching nav link
-    const settingsTabBtn = page.locator('button').filter({ hasText: 'Settings' })
-    await settingsTabBtn.click()
     await page.waitForTimeout(500)
   })
 
@@ -24,10 +32,14 @@ test.describe('Recording Settings', () => {
     await expect(page.getByText('Explicit Wait')).toBeVisible()
   })
 
-  test('wait fields have number inputs', async ({ page }) => {
-    const numberInputs = page.locator('input[type="number"]')
-    const count = await numberInputs.count()
-    expect(count).toBeGreaterThanOrEqual(2)
+  test('wait fields are number inputs', async ({ page }) => {
+    await expect(page.locator('#implicit-wait')).toHaveAttribute('type', 'number')
+    await expect(page.locator('#explicit-wait')).toHaveAttribute('type', 'number')
+  })
+
+  test('wait fields show the values from the project config', async ({ page }) => {
+    await expect(page.locator('#implicit-wait')).toHaveValue('4')
+    await expect(page.locator('#explicit-wait')).toHaveValue('12')
   })
 
   test('wait values can be changed', async ({ page }) => {
@@ -40,176 +52,43 @@ test.describe('Recording Settings', () => {
     await expect(explicitInput).toHaveValue('60')
   })
 
-  test('Selector Priorities section is visible', async ({ page }) => {
-    await expect(page.getByText('Selector Priorities')).toBeVisible()
-  })
-
-  test('shows quick add buttons for common selectors', async ({ page }) => {
-    const commonSelectors = ['id', 'name', 'css', 'xpath', 'class']
-    let foundCount = 0
-    for (const sel of commonSelectors) {
-      const btn = page.getByRole('button', { name: `+ ${sel}` })
-      if (await btn.isVisible().catch(() => false)) {
-        foundCount++
-      }
-    }
-    expect(foundCount).toBeGreaterThanOrEqual(1)
-  })
-
-  test('clicking quick add button adds selector to list', async ({ page }) => {
-    const quickAddBtns = page.locator('button:has-text("+ id")')
-    const firstBtn = quickAddBtns.first()
-    if (await firstBtn.isVisible().catch(() => false)) {
-      await firstBtn.click()
-      await page.waitForTimeout(300)
-      // Verify "id" appears in the list
-      const listItems = page.locator('[role="listitem"]')
-      const count = await listItems.count()
-      expect(count).toBeGreaterThanOrEqual(1)
-    }
-  })
-
-  test('custom selector can be added via input', async ({ page }) => {
-    const addInput = page.getByPlaceholder('e.g., data-testid')
-    if (await addInput.isVisible().catch(() => false)) {
-      await addInput.fill('data-cy')
-      const addBtn = page.getByRole('button', { name: 'Add' })
-      if (await addBtn.isVisible().catch(() => false)) {
-        await addBtn.click()
-        await page.waitForTimeout(300)
-        await expect(page.getByText('data-cy')).toBeVisible()
-      }
-    }
-  })
-
-  test('selector can be deleted from list', async ({ page }) => {
-    const addInput = page.getByPlaceholder('e.g., data-testid')
-    if (await addInput.isVisible().catch(() => false)) {
-      await addInput.fill('to-delete')
-      const addBtn = page.getByRole('button', { name: 'Add' })
-      if (await addBtn.isVisible().catch(() => false)) {
-        await addBtn.click()
-        await page.waitForTimeout(300)
-        const deleteBtn = page.getByRole('button', { name: 'Delete' }).last()
-        if (await deleteBtn.isVisible().catch(() => false)) {
-          await deleteBtn.click()
-          await page.waitForTimeout(300)
-        }
-      }
-    }
-  })
-
-  test('move up and move down buttons exist for selectors', async ({ page }) => {
-    const addInput = page.getByPlaceholder('e.g., data-testid')
-    if (await addInput.isVisible().catch(() => false)) {
-      await addInput.fill('sel-one')
-      await page.getByRole('button', { name: 'Add' }).click()
-      await page.waitForTimeout(200)
-      await addInput.fill('sel-two')
-      await page.getByRole('button', { name: 'Add' }).click()
-      await page.waitForTimeout(200)
-
-      const upButtons = page.locator('button:has-text("▲")')
-      const downButtons = page.locator('button:has-text("▼")')
-      const upCount = await upButtons.count()
-      const downCount = await downButtons.count()
-      expect(upCount + downCount).toBeGreaterThanOrEqual(1)
-    }
-  })
-
-  test('Update button exists', async ({ page }) => {
-    const updateBtn = page.getByRole('button', { name: /update/i })
-    await expect(updateBtn).toBeVisible()
-  })
-
-  test('empty selector list shows empty state', async ({ page }) => {
-    await expect(page.getByText('Selector Priorities')).toBeVisible()
-  })
-
-  // ── Action verification tests ────────────────
-
-  test('Update triggers updateRecordingSettings IPC with wait values', async ({ page }) => {
+  test('leaving the implicit wait field saves it to the project config', async ({ page }) => {
     await mockIPCCapture(page, 'updateRecordingSettings', { success: true })
-    await mockIPCCapture(page, 'saveSelectorPriorities', { success: true })
 
     await page.locator('#implicit-wait').fill('10')
+    await page.locator('#implicit-wait').blur()
+
+    await expect
+      .poll(() => getIPCCalls(page, 'updateRecordingSettings'))
+      .toEqual([[{ implicitWait: 10 }]])
+  })
+
+  test('leaving the explicit wait field saves it to the project config', async ({ page }) => {
+    await mockIPCCapture(page, 'updateRecordingSettings', { success: true })
+
     await page.locator('#explicit-wait').fill('60')
+    await page.locator('#explicit-wait').blur()
 
-    const updateBtn = page.getByRole('button', { name: /update/i })
-    await updateBtn.click()
-    await page.waitForTimeout(500)
-
-    const calls = await getIPCCalls(page, 'updateRecordingSettings')
-    expect(calls.length).toBe(1)
-    const settings = calls[0][0] as Record<string, number>
-    expect(settings.implicitWait).toBe(10)
-    expect(settings.explicitWait).toBe(60)
+    await expect
+      .poll(() => getIPCCalls(page, 'updateRecordingSettings'))
+      .toEqual([[{ explicitWait: 60 }]])
   })
 
-  test('Update triggers saveSelectorPriorities with selector list', async ({ page }) => {
-    await mockIPCCapture(page, 'updateRecordingSettings', { success: true })
-    await mockIPCCapture(page, 'saveSelectorPriorities', { success: true })
+  test('error toast when saving fails', async ({ page }) => {
+    await mockIPCCaptureFailure(page, 'updateRecordingSettings', 'No project open')
 
-    const addInput = page.getByPlaceholder('e.g., data-testid')
-    await addInput.fill('id')
-    await page.getByRole('button', { name: 'Add' }).click()
-    await page.waitForTimeout(200)
-    await addInput.fill('css')
-    await page.getByRole('button', { name: 'Add' }).click()
-    await page.waitForTimeout(200)
+    await page.locator('#implicit-wait').fill('10')
+    await page.locator('#implicit-wait').blur()
 
-    const updateBtn = page.getByRole('button', { name: /update/i })
-    await updateBtn.click()
-    await page.waitForTimeout(500)
-
-    const calls = await getIPCCalls(page, 'saveSelectorPriorities')
-    expect(calls.length).toBe(1)
-    const selectors = calls[0][0] as string[]
-    expect(selectors).toContain('id')
-    expect(selectors).toContain('css')
+    await expect(page.getByText(/No project open/)).toBeVisible({ timeout: 5000 })
   })
 
-  test('success toast after update', async ({ page }) => {
-    await mockIPCCapture(page, 'updateRecordingSettings', { success: true })
-    await mockIPCCapture(page, 'saveSelectorPriorities', { success: true })
+  test('error toast when the save call throws', async ({ page }) => {
+    await mockIPCCaptureError(page, 'updateRecordingSettings', 'IPC exploded')
 
-    const updateBtn = page.getByRole('button', { name: /update/i })
-    await updateBtn.click()
-    await page.waitForTimeout(500)
+    await page.locator('#explicit-wait').fill('60')
+    await page.locator('#explicit-wait').blur()
 
-    const toast = page.locator('[role="status"]').first()
-    await expect(toast).toBeVisible({ timeout: 5000 })
-  })
-
-  test('error toast on failure', async ({ page }) => {
-    await mockIPCCaptureError(page, 'updateRecordingSettings', 'Failed to update')
-    await mockIPCCapture(page, 'saveSelectorPriorities', { success: true })
-
-    const updateBtn = page.getByRole('button', { name: /update/i })
-    await updateBtn.click()
-    await page.waitForTimeout(500)
-
-    const toast = page.locator('[role="status"]').first()
-    await expect(toast).toBeVisible({ timeout: 5000 })
-  })
-
-  test('selector reorder via move up changes order', async ({ page }) => {
-    const addInput = page.getByPlaceholder('e.g., data-testid')
-    await addInput.fill('first')
-    await page.getByRole('button', { name: 'Add' }).click()
-    await page.waitForTimeout(200)
-    await addInput.fill('second')
-    await page.getByRole('button', { name: 'Add' }).click()
-    await page.waitForTimeout(200)
-
-    const moveUpBtn = page.locator('[aria-label="Move second up"]')
-    if (await moveUpBtn.isVisible().catch(() => false)) {
-      await moveUpBtn.click()
-      await page.waitForTimeout(300)
-
-      const items = page.locator('[role="listitem"]')
-      const firstItemText = await items.first().textContent()
-      expect(firstItemText).toContain('second')
-    }
+    await expect(page.getByText(/IPC exploded/)).toBeVisible({ timeout: 5000 })
   })
 })

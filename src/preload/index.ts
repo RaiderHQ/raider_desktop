@@ -5,7 +5,9 @@ import type { CommandType } from '@foundation/Types/commandType'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import type { TraceStep } from '@foundation/Types/traceStep'
+import type { Step } from '@shared/types/step'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
+import type { RecorderSettings } from '@shared/types/recorderSettings'
 
 declare global {
   interface Window {
@@ -194,30 +196,30 @@ const api = {
     ipcRenderer.invoke('start-recording-main'),
   replayStepsAndRecord: async (
     testName: string,
-    stepsToReplay: string[],
+    stepsToReplay: Step[],
     rubyCommand: string
   ): Promise<{ success: boolean; url?: string; preloadPath?: string; error?: string; cancelled?: boolean }> =>
     ipcRenderer.invoke('replay-steps-and-record', testName, stepsToReplay, rubyCommand),
   cancelReplay: async (): Promise<{ success: boolean }> =>
     ipcRenderer.invoke('cancel-replay'),
   replayInWebview: async (
-    steps: string[]
-  ): Promise<{ success: boolean; error?: string; cancelled?: boolean }> =>
-    ipcRenderer.invoke('replay-in-webview', steps),
+    steps: Step[]
+  ): Promise<{
+    success: boolean
+    error?: string
+    failedStepId?: string
+    cancelled?: boolean
+    skippedStepIds?: string[]
+  }> => ipcRenderer.invoke('replay-in-webview', steps),
   registerRecorderWebContents: async (webContentsId: number): Promise<void> =>
     ipcRenderer.invoke('register-recorder-webcontents', webContentsId),
   stopRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('stop-recording-main'),
   loadUrlRequest: async (url: string): Promise<CommandType> =>
     ipcRenderer.invoke('load-url-request', url),
-  xpathParser: (command: string): Promise<string> => {
-    return ipcRenderer.invoke('xpath-parser', command)
-  },
-  commandParser: (command: string): Promise<string> => {
-    return ipcRenderer.invoke('command-parser', command)
-  },
+  renderStep: (step: Step): Promise<string> => ipcRenderer.invoke('render-step', step),
   exportTest: (
     testName: string,
-    steps: string[]
+    steps: Step[]
   ): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('export-test', { testName, steps }),
   runTest: async (
@@ -227,11 +229,16 @@ const api = {
     rubyCommand: string
   ): Promise<{ success: boolean; output: string }> =>
     ipcRenderer.invoke('run-test', suiteId, testId, projectPath, rubyCommand),
-  updateRecordingSettings: (settings: {
-    implicitWait: number
-    explicitWait: number
-  }): Promise<{ success: boolean; error?: string }> =>
+  updateRecordingSettings: (
+    settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
+  ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('update-recording-settings', settings),
+  setActiveProject: (
+    projectPath: string | null
+  ): Promise<{ success: boolean; settings?: RecorderSettings; error?: string }> =>
+    ipcRenderer.invoke('set-active-project', projectPath),
+  getRecorderSettings: (): Promise<RecorderSettings> =>
+    ipcRenderer.invoke('get-recorder-settings'),
   onTestRunStatus: (
     callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
   ): Electron.IpcRenderer => ipcRenderer.on('test-run-status', callback),

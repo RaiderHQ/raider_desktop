@@ -2,7 +2,10 @@ import { BrowserWindow, dialog } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import { appState } from '../appState'
-import { generateExportContent, getExportExtension } from '../frameworkTemplates'
+import { getExportExtension } from '../frameworkTemplates'
+import { generateRspecFile, toAutomation } from '../../codegen/testFile'
+import { migrateLegacyTest } from '../../codegen/legacy'
+import { writeExportHeader } from '../../codegen/exportHeader'
 import { safeError } from '../../utils/safeLog'
 
 export default async (
@@ -30,7 +33,7 @@ export default async (
   }
 
   const framework = appState.projectFramework
-  const automation = appState.projectAutomation
+  const automation = toAutomation(appState.projectAutomation)
   const ext = getExportExtension(framework)
 
   try {
@@ -41,12 +44,10 @@ export default async (
     for (const test of suite.tests) {
       const testFileName = `${test.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${ext}`
       const testFilePath = path.join(filePath, testFileName)
-      const scriptContent = generateExportContent(framework, {
-        testName: test.name,
-        suiteName: suite.name,
-        steps: test.steps,
-        automation
-      })
+      const migrated = migrateLegacyTest(test)
+      const scriptContent =
+        writeExportHeader({ testName: test.name, suiteName: suite.name, steps: migrated.steps }) +
+        generateRspecFile(migrated, automation, appState.recorderSettings)
       fs.writeFileSync(testFilePath, scriptContent, 'utf8')
       if (process.platform !== 'win32') {
         fs.chmodSync(testFilePath, '755')

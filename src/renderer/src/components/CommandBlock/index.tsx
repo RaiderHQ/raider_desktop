@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ParsedCommand } from '@foundation/Types/command'
 import Tooltip from '@components/Tooltip'
+import type { Step } from '@shared/types/step'
+import { describeStep } from '@shared/describeStep'
 
 interface CommandBlockProps {
-  command: string
+  step: Step
   index: number
   showCode: boolean
   onDragStart: (index: number) => void
   onDragEnter: (index: number) => void
   onDragEnd: () => void
   onDelete: (index: number) => void
-  onEdit?: (index: number, newCommand: string) => void
+  onEdit?: (index: number, step: Step) => void
   isBreakpoint?: boolean
   onSetBreakpoint?: (index: number) => void
   onClearBreakpoint?: () => void
@@ -19,7 +20,7 @@ interface CommandBlockProps {
 }
 
 const CommandBlock: React.FC<CommandBlockProps> = ({
-  command,
+  step,
   index,
   showCode,
   onDragStart,
@@ -33,38 +34,32 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   onRecordFromHere
 }) => {
   const { t } = useTranslation()
-  const [mainCommand, comment] = command.split(' # ')
-  const [parsedCommand, setParsedCommand] = useState<string | ParsedCommand>('Loading...')
+  // Ruby for the code view, rendered by the main process for the project's automation
+  const [code, setCode] = useState<string | null>(null)
+  const [renderFailed, setRenderFailed] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(command)
-  const editValueRef = useRef(command)
+  const [editValue, setEditValue] = useState('')
+  const editValueRef = useRef('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isCancellingRef = useRef(false)
 
-  useEffect((): (() => void) => {
+  useEffect((): (() => void) | undefined => {
+    if (!showCode) return undefined
     let isMounted = true
-
-    if (!showCode) {
-      setParsedCommand('Loading...')
-      const parser = mainCommand.includes(':xpath,')
-        ? window.api.xpathParser
-        : window.api.commandParser
-      parser(mainCommand).then((result: string | ParsedCommand) => {
-        if (isMounted) {
-          setParsedCommand(result)
-        }
+    setCode(null)
+    setRenderFailed(false)
+    window.api
+      .renderStep(step)
+      .then((ruby) => {
+        if (isMounted) setCode(ruby)
       })
-    }
-
+      .catch(() => {
+        if (isMounted) setRenderFailed(true)
+      })
     return (): void => {
       isMounted = false
     }
-  }, [mainCommand, showCode])
-
-  useEffect(() => {
-    editValueRef.current = command
-    setEditValue(command)
-  }, [command])
+  }, [step, showCode])
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -74,9 +69,10 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   }, [isEditing])
 
   const handleEditStart = (): void => {
-    if (showCode && onEdit) {
-      editValueRef.current = command
-      setEditValue(command)
+    // Editing starts from the rendered Ruby, so wait until it has arrived
+    if (showCode && onEdit && code !== null) {
+      editValueRef.current = code
+      setEditValue(code)
       setIsEditing(true)
     }
   }
@@ -92,8 +88,9 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
       return
     }
     const trimmed = editValueRef.current.trim()
-    if (trimmed && trimmed !== command && onEdit) {
-      onEdit(index, trimmed)
+    // Hand-edited Ruby can't be mapped back to a structured step, so it becomes custom code
+    if (trimmed && trimmed !== code && onEdit) {
+      onEdit(index, { id: step.id, kind: 'custom', code: trimmed })
     }
     setIsEditing(false)
   }
@@ -105,8 +102,6 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
     }
     if (e.key === 'Escape') {
       isCancellingRef.current = true
-      editValueRef.current = command
-      setEditValue(command)
       setIsEditing(false)
     }
   }
@@ -130,21 +125,21 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
 
       return (
         <div
-          className="font-mono text-sm cursor-text"
+          className="font-mono text-sm cursor-text whitespace-pre-wrap text-ruby"
           onDoubleClick={handleEditStart}
           title={onEdit ? 'Double-click to edit' : undefined}
         >
-          <span className="text-ruby">{mainCommand}</span>
-          {comment && <span className="text-neutral-mid ml-2"># {comment}</span>}
+          {renderFailed ? (
+            <span className="text-neutral-mid font-sans">{t('recorder.step.renderFailed')}</span>
+          ) : (
+            (code ?? '\u00a0')
+          )}
         </div>
       )
     }
 
     // Friendly view
-    if (typeof parsedCommand === 'string') {
-      return <span className="text-neutral-dark">{parsedCommand}</span>
-    }
-    const { key, values } = parsedCommand
+    const { key, values } = describeStep(step)
     return <span className="text-neutral-dark">{t(key, values)}</span>
   }
 
@@ -162,13 +157,17 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
       <div
         className="absolute left-0 top-0 bottom-0 w-5 flex items-center justify-center cursor-pointer z-20"
         onClick={handleGutterClick}
-        title={isBreakpoint ? t('tooltips.recorder.clearBreakpoint') : t('tooltips.recorder.setBreakpoint')}
-      >
-        <div className={`w-2.5 h-2.5 rounded-full transition-colors ${
+        title={
           isBreakpoint
-            ? 'bg-amber-400'
-            : 'bg-transparent group-hover/block:bg-amber-200'
-        }`} />
+            ? t('tooltips.recorder.clearBreakpoint')
+            : t('tooltips.recorder.setBreakpoint')
+        }
+      >
+        <div
+          className={`w-2.5 h-2.5 rounded-full transition-colors ${
+            isBreakpoint ? 'bg-amber-400' : 'bg-transparent group-hover/block:bg-amber-200'
+          }`}
+        />
       </div>
 
       <div

@@ -174,7 +174,7 @@ describe('importProject handler', () => {
     expect(result.error).toContain('Permission denied')
   })
 
-  it('parses steps from file content between begin and puts', async () => {
+  it('parses steps from file content between begin and puts, as Steps', async () => {
     mockShowOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/tmp/project'] })
     mockReaddirSync
       .mockReturnValueOnce([{ name: 'suite1', isDirectory: () => true }])
@@ -187,8 +187,8 @@ describe('importProject handler', () => {
 
     const suite = Array.from(appState.suites.values())[0]
     expect(suite.tests[0].steps).toEqual([
-      '@driver.get("http://x.com")',
-      '@driver.find_element(:id, "btn").click'
+      { id: expect.any(String), kind: 'navigate', url: 'http://x.com' },
+      { id: expect.any(String), kind: 'click', element: { strategy: 'id', value: 'btn' } }
     ])
   })
 })

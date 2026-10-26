@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import toast from 'react-hot-toast'
+import i18n from 'i18next'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { FileNode } from '@foundation/Types/fileNode'
 import { RaiderConfig } from '@foundation/Types/raiderConfig'
@@ -26,7 +28,12 @@ const useProjectStore = create(
     projectFramework: null,
     files: [],
     selectedFiles: [],
-    setProjectPath: (path: string): void => set({ projectPath: path }),
+    setProjectPath: (path: string): void => {
+      // The same path doesn't trigger the subscription, so re-activate directly: this is how
+      // a project that failed to load (e.g. after fixing permissions) gets another try
+      if (path === get().projectPath) syncActiveProject(path)
+      else set({ projectPath: path })
+    },
     setProjectAutomation: (automation: string | null): void => set({ projectAutomation: automation }),
     setProjectFramework: (framework: string | null): void => set({ projectFramework: framework }),
 
@@ -101,5 +108,29 @@ useProjectStore.subscribe(
     useProjectStore.setState({ files: [] })
   }
 )
+
+// Main process owns the recorder settings in the project's config, so it must know the open project
+const syncActiveProject = (projectPath: string | null): void => {
+  window.api
+    .setActiveProject(projectPath)
+    .then((result) => {
+      if (!result.success) {
+        // Main has closed the project, so nothing is saved until it opens cleanly
+        toast.error(i18n.t('project.activationFailed', { error: result.error }), {
+          duration: 10000
+        })
+      }
+    })
+    .catch((error: unknown) => {
+      console.error('Error setting active project:', error)
+    })
+}
+
+useProjectStore.subscribe((state) => state.projectPath, syncActiveProject)
+
+const initialProjectPath = useProjectStore.getState().projectPath
+if (initialProjectPath) {
+  syncActiveProject(initialProjectPath)
+}
 
 export default useProjectStore

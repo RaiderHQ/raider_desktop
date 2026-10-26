@@ -1,22 +1,23 @@
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import CommandBlock from '@components/CommandBlock'
 import '@testing-library/jest-dom'
+import type { Step } from '@shared/types/step'
 
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, vals?: Record<string, string>) =>
-      vals ? `${key} ${JSON.stringify(vals)}` : key
+  useTranslation: (): { t: (key: string, vals?: Record<string, string>) => string } => ({
+    t: (key: string, vals?: Record<string, string>): string =>
+      vals && Object.keys(vals).length ? `${key} ${JSON.stringify(vals)}` : key
   })
 }))
 
-const mockApi = {
-  commandParser: vi.fn().mockResolvedValue('Visited https://example.com'),
-  xpathParser: vi.fn().mockResolvedValue('Clicked xpath element')
-}
+const renderStep = vi.fn()
 
 beforeEach(() => {
-  window.api = mockApi as any
   vi.clearAllMocks()
+  renderStep.mockImplementation(async (step: Step) =>
+    step.kind === 'custom' ? step.code : `ruby for ${step.id}`
+  )
+  window.api = { renderStep } as unknown as typeof window.api
 })
 
 const baseProps = {
@@ -28,163 +29,140 @@ const baseProps = {
   onDelete: vi.fn()
 }
 
+const watirClick: Step = {
+  id: 'c1',
+  kind: 'click',
+  element: { strategy: 'id', value: 'login', label: 'Log in' }
+}
+const navigate: Step = { id: 'n1', kind: 'navigate', url: 'https://example.com' }
+
+const renderBlock = async (
+  props: Partial<React.ComponentProps<typeof CommandBlock>>
+): Promise<void> => {
+  await act(async () => {
+    render(<CommandBlock {...baseProps} step={navigate} {...props} />)
+  })
+}
+
+const startEditing = async (text: string): Promise<HTMLElement> => {
+  await act(async () => {
+    fireEvent.doubleClick(screen.getByText(text).closest('.cursor-text')!)
+  })
+  return screen.getByLabelText('Edit command')
+}
+
 describe('CommandBlock', () => {
-  it('shows code view when showCode=true', async () => {
-    await act(async () => {
-      render(
-        <CommandBlock
-          {...baseProps}
-          command='@driver.get("https://example.com")'
-          showCode={true}
-        />
+  describe('friendly view', () => {
+    it('shows the element label of a click, not Ruby', async () => {
+      await renderBlock({ step: watirClick })
+      expect(
+        screen.getByText('recorder.commandParser.clickElement {"element":"Log in"}')
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/@browser|@driver/)).not.toBeInTheDocument()
+      expect(renderStep).not.toHaveBeenCalled()
+    })
+
+    it('shows "Custom code step" for custom steps instead of their code', async () => {
+      await renderBlock({ step: { id: 'x', kind: 'custom', code: 'puts "secret ruby"' } })
+      expect(screen.getByText('recorder.step.custom')).toBeInTheDocument()
+      expect(screen.queryByText(/secret ruby/)).not.toBeInTheDocument()
+    })
+
+    it('does not enter edit mode', async () => {
+      await renderBlock({ step: watirClick, onEdit: vi.fn() })
+      fireEvent.doubleClick(
+        screen.getByText('recorder.commandParser.clickElement {"element":"Log in"}')
       )
-    })
-    expect(screen.getByText('@driver.get("https://example.com")')).toBeInTheDocument()
-  })
-
-  it('shows friendly view loading state then result when showCode=false', async () => {
-    await act(async () => {
-      render(
-        <CommandBlock
-          {...baseProps}
-          command='@driver.get("https://example.com")'
-          showCode={false}
-        />
-      )
-    })
-    expect(await screen.findByText('Visited https://example.com')).toBeInTheDocument()
-    expect(mockApi.commandParser).toHaveBeenCalledWith('@driver.get("https://example.com")')
-  })
-
-  it('uses xpathParser for xpath commands', async () => {
-    await act(async () => {
-      render(
-        <CommandBlock
-          {...baseProps}
-          command="@driver.find_element(:xpath, '//div').click"
-          showCode={false}
-        />
-      )
-    })
-    expect(mockApi.xpathParser).toHaveBeenCalled()
-  })
-
-  it('calls onDelete with the correct index when delete button is clicked', async () => {
-    const onDelete = vi.fn()
-    await act(async () => {
-      render(
-        <CommandBlock {...baseProps} command="step" showCode={true} onDelete={onDelete} index={2} />
-      )
-    })
-    fireEvent.click(screen.getByLabelText('Delete step'))
-    expect(onDelete).toHaveBeenCalledWith(2)
-  })
-
-  it('shows a comment in code view when the command contains " # "', async () => {
-    await act(async () => {
-      render(
-        <CommandBlock {...baseProps} command='@driver.get("url") # navigate' showCode={true} />
-      )
-    })
-    expect(screen.getByText(/navigate/)).toBeInTheDocument()
-  })
-
-  describe('Editable code view', () => {
-    it('enters edit mode on double-click in code view', async () => {
-      const onEdit = vi.fn()
-      await act(async () => {
-        render(
-          <CommandBlock
-            {...baseProps}
-            command='@driver.get("https://example.com")'
-            showCode={true}
-            onEdit={onEdit}
-          />
-        )
-      })
-
-      const codeElement = screen.getByText('@driver.get("https://example.com")')
-      fireEvent.doubleClick(codeElement.closest('.cursor-text')!)
-
-      expect(screen.getByLabelText('Edit command')).toBeInTheDocument()
-    })
-
-    it('does not enter edit mode when onEdit is not provided', async () => {
-      await act(async () => {
-        render(
-          <CommandBlock
-            {...baseProps}
-            command='@driver.get("https://example.com")'
-            showCode={true}
-          />
-        )
-      })
-
-      const codeElement = screen.getByText('@driver.get("https://example.com")')
-      fireEvent.doubleClick(codeElement.closest('div')!)
-
       expect(screen.queryByLabelText('Edit command')).not.toBeInTheDocument()
     })
+  })
 
-    it('does not enter edit mode in friendly view', async () => {
-      const onEdit = vi.fn()
-      await act(async () => {
-        render(
-          <CommandBlock
-            {...baseProps}
-            command='@driver.get("https://example.com")'
-            showCode={false}
-            onEdit={onEdit}
-          />
-        )
-      })
-
-      expect(screen.queryByLabelText('Edit command')).not.toBeInTheDocument()
+  describe('code view', () => {
+    it('shows the Ruby rendered by the main process', async () => {
+      await renderBlock({ step: watirClick, showCode: true })
+      expect(renderStep).toHaveBeenCalledWith(watirClick)
+      expect(await screen.findByText('ruby for c1')).toBeInTheDocument()
     })
 
-    it('saves edit on Enter key', async () => {
-      const onEdit = vi.fn()
+    it('shows a short message and stays usable when rendering fails', async () => {
+      renderStep.mockRejectedValue(new Error('bad step'))
+      const onDelete = vi.fn()
+      await renderBlock({ step: watirClick, showCode: true, onDelete, onEdit: vi.fn() })
+      expect(await screen.findByText('recorder.step.renderFailed')).toBeInTheDocument()
+      fireEvent.doubleClick(screen.getByText('recorder.step.renderFailed'))
+      expect(screen.queryByLabelText('Edit command')).not.toBeInTheDocument()
+      fireEvent.click(screen.getByLabelText('Delete step'))
+      expect(onDelete).toHaveBeenCalledWith(0)
+    })
+
+    it('re-renders when the step changes', async () => {
+      const { rerender } = render(<CommandBlock {...baseProps} step={navigate} showCode />)
+      expect(await screen.findByText('ruby for n1')).toBeInTheDocument()
       await act(async () => {
-        render(
-          <CommandBlock
-            {...baseProps}
-            command='@driver.get("old")'
-            showCode={true}
-            onEdit={onEdit}
-            index={3}
-          />
-        )
+        rerender(<CommandBlock {...baseProps} step={watirClick} showCode />)
       })
+      expect(await screen.findByText('ruby for c1')).toBeInTheDocument()
+    })
 
-      const codeElement = screen.getByText('@driver.get("old")')
-      fireEvent.doubleClick(codeElement.closest('.cursor-text')!)
+    it('calls onDelete with the correct index', async () => {
+      const onDelete = vi.fn()
+      await renderBlock({ showCode: true, onDelete, index: 2 })
+      fireEvent.click(screen.getByLabelText('Delete step'))
+      expect(onDelete).toHaveBeenCalledWith(2)
+    })
+  })
 
-      const textarea = screen.getByLabelText('Edit command')
-      fireEvent.change(textarea, { target: { value: '@driver.get("new")' } })
+  describe('editing code', () => {
+    it('saves edited Ruby as a custom step with the same id (Enter)', async () => {
+      const onEdit = vi.fn()
+      await renderBlock({ step: watirClick, showCode: true, onEdit, index: 3 })
+      await screen.findByText('ruby for c1')
+
+      const textarea = await startEditing('ruby for c1')
+      expect(textarea).toHaveValue('ruby for c1')
+      fireEvent.change(textarea, { target: { value: '@browser.button(id: "x").click' } })
       fireEvent.keyDown(textarea, { key: 'Enter' })
 
-      expect(onEdit).toHaveBeenCalledWith(3, '@driver.get("new")')
+      expect(onEdit).toHaveBeenCalledWith(3, {
+        id: 'c1',
+        kind: 'custom',
+        code: '@browser.button(id: "x").click'
+      })
     })
 
-    it('cancels edit on Escape key', async () => {
+    it('saves on blur', async () => {
       const onEdit = vi.fn()
+      await renderBlock({ showCode: true, onEdit, index: 1 })
+      await screen.findByText('ruby for n1')
+
+      const textarea = await startEditing('ruby for n1')
       await act(async () => {
-        render(
-          <CommandBlock
-            {...baseProps}
-            command='@driver.get("original")'
-            showCode={true}
-            onEdit={onEdit}
-          />
-        )
+        fireEvent.change(textarea, { target: { value: 'puts 1' } })
+      })
+      await act(async () => {
+        fireEvent.blur(textarea)
       })
 
-      const codeElement = screen.getByText('@driver.get("original")')
-      await act(async () => {
-        fireEvent.doubleClick(codeElement.closest('.cursor-text')!)
-      })
+      expect(onEdit).toHaveBeenCalledWith(1, { id: 'n1', kind: 'custom', code: 'puts 1' })
+    })
 
-      const textarea = screen.getByLabelText('Edit command')
+    it('keeps the step when the rendered text is unchanged', async () => {
+      const onEdit = vi.fn()
+      await renderBlock({ showCode: true, onEdit })
+      await screen.findByText('ruby for n1')
+
+      const textarea = await startEditing('ruby for n1')
+      fireEvent.keyDown(textarea, { key: 'Enter' })
+
+      expect(onEdit).not.toHaveBeenCalled()
+    })
+
+    it('cancels on Escape', async () => {
+      const onEdit = vi.fn()
+      await renderBlock({ showCode: true, onEdit })
+      await screen.findByText('ruby for n1')
+
+      const textarea = await startEditing('ruby for n1')
       await act(async () => {
         fireEvent.change(textarea, { target: { value: 'changed' } })
       })
@@ -193,85 +171,31 @@ describe('CommandBlock', () => {
       })
 
       expect(onEdit).not.toHaveBeenCalled()
-      // Should be back to code view (not editing)
       expect(screen.queryByLabelText('Edit command')).not.toBeInTheDocument()
-      expect(screen.getByText('@driver.get("original")')).toBeInTheDocument()
+      expect(screen.getByText('ruby for n1')).toBeInTheDocument()
     })
 
-    it('saves edit on blur', async () => {
-      const onEdit = vi.fn()
-      await act(async () => {
-        render(
-          <CommandBlock
-            {...baseProps}
-            command='@driver.get("old")'
-            showCode={true}
-            onEdit={onEdit}
-            index={1}
-          />
-        )
-      })
-
-      const codeElement = screen.getByText('@driver.get("old")')
-      await act(async () => {
-        fireEvent.doubleClick(codeElement.closest('.cursor-text')!)
-      })
-
-      const textarea = screen.getByLabelText('Edit command')
-      await act(async () => {
-        fireEvent.change(textarea, { target: { value: '@driver.get("blurred")' } })
-      })
-      await act(async () => {
-        fireEvent.blur(textarea)
-      })
-
-      expect(onEdit).toHaveBeenCalledWith(1, '@driver.get("blurred")')
+    it('does not enter edit mode without onEdit', async () => {
+      await renderBlock({ showCode: true })
+      await screen.findByText('ruby for n1')
+      fireEvent.doubleClick(screen.getByText('ruby for n1'))
+      expect(screen.queryByLabelText('Edit command')).not.toBeInTheDocument()
     })
 
-    it('does not call onEdit when value is unchanged', async () => {
-      const onEdit = vi.fn()
-      await act(async () => {
-        render(
-          <CommandBlock
-            {...baseProps}
-            command='@driver.get("same")'
-            showCode={true}
-            onEdit={onEdit}
-          />
-        )
-      })
-
-      const codeElement = screen.getByText('@driver.get("same")')
-      fireEvent.doubleClick(codeElement.closest('.cursor-text')!)
-
-      const textarea = screen.getByLabelText('Edit command')
-      fireEvent.keyDown(textarea, { key: 'Enter' })
-
-      expect(onEdit).not.toHaveBeenCalled()
+    it('does not enter edit mode before the Ruby has loaded', async () => {
+      renderStep.mockReturnValue(new Promise(() => {}))
+      await renderBlock({ showCode: true, onEdit: vi.fn() })
+      fireEvent.doubleClick(document.querySelector('.cursor-text')!)
+      expect(screen.queryByLabelText('Edit command')).not.toBeInTheDocument()
     })
 
-    it('disables drag when editing', async () => {
-      const onEdit = vi.fn()
-      await act(async () => {
-        render(
-          <CommandBlock
-            {...baseProps}
-            command='@driver.get("test")'
-            showCode={true}
-            onEdit={onEdit}
-          />
-        )
-      })
+    it('disables drag while editing', async () => {
+      await renderBlock({ showCode: true, onEdit: vi.fn() })
+      await screen.findByText('ruby for n1')
 
-      const codeElement = screen.getByText('@driver.get("test")')
-      await act(async () => {
-        fireEvent.doubleClick(codeElement.closest('.cursor-text')!)
-      })
-
-      const draggableDiv = screen
-        .getByLabelText('Edit command')
-        .closest('[class*="rounded-lg"]') as HTMLElement
-      expect(draggableDiv?.getAttribute('draggable')).toBe('false')
+      const textarea = await startEditing('ruby for n1')
+      const draggable = textarea.closest('[class*="rounded-lg"]') as HTMLElement
+      expect(draggable.getAttribute('draggable')).toBe('false')
     })
   })
 })

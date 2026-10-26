@@ -49,6 +49,17 @@ const MainTemplate: React.FC = (): JSX.Element => {
     checkRuby()
   }, [])
 
+  useEffect(() => {
+    const cleanup = window.electron.ipcRenderer.on(
+      'suites-recovered',
+      (_event, info?: { backupSaved?: boolean }) => {
+        const key = info?.backupSaved === false ? 'backupFailed' : 'backupSaved'
+        toast.error(t(`suites.recovered.${key}`), { duration: 10000 })
+      }
+    )
+    return (): void => cleanup?.()
+  }, [])
+
   const { rubyCommand } = useRubyStore()
 
   const handleInstallGems = async (): Promise<void> => {

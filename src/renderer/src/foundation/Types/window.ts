@@ -3,7 +3,9 @@ import type { CommandType } from '@shared/types/commandType'
 import type { Suite } from '@shared/types/suite'
 import type { Test } from '@shared/types/test'
 import type { TraceStep } from '@shared/types/traceStep'
+import type { Step } from '@shared/types/step'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
+import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { IpcRendererEvent } from 'electron'
 
 export interface WindowApi {
@@ -117,9 +119,9 @@ export interface WindowApi {
     rubyCommand: string
   ) => Promise<{ success: boolean; output: string }>
 
-  // --- Command Parsing ---
-  xpathParser: (command: string) => Promise<string>
-  commandParser: (command: string) => Promise<string>
+  // --- Step Rendering ---
+  /** Ruby for one step, in the active project's automation (Selenium or Watir). */
+  renderStep: (step: Step) => Promise<string>
 
   // --- Suite Management ---
   getSuites: () => Promise<Suite[]>
@@ -136,25 +138,34 @@ export interface WindowApi {
   deleteTest: (suiteId: string, testId: string) => Promise<void>
   exportTest: (
     testName: string,
-    steps: string[]
+    steps: Step[]
   ) => Promise<{ success: boolean; path?: string; error?: string }>
 
   // --- Recording Session ---
   startRecordingMain: () => Promise<{ success: boolean; url: string; preloadPath: string }>
   replayStepsAndRecord: (
     testName: string,
-    stepsToReplay: string[],
+    stepsToReplay: Step[],
     rubyCommand: string
   ) => Promise<{ success: boolean; url?: string; preloadPath?: string; error?: string; cancelled?: boolean }>
   cancelReplay: () => Promise<{ success: boolean }>
-  replayInWebview: (steps: string[]) => Promise<{ success: boolean; error?: string; cancelled?: boolean }>
+  replayInWebview: (steps: Step[]) => Promise<{
+    success: boolean
+    error?: string
+    failedStepId?: string
+    cancelled?: boolean
+    skippedStepIds?: string[]
+  }>
   registerRecorderWebContents: (webContentsId: number) => Promise<void>
   stopRecordingMain: () => Promise<CommandType>
   loadUrlRequest: (url: string) => Promise<CommandType>
-  updateRecordingSettings: (settings: {
-    implicitWait: number
-    explicitWait: number
-  }) => Promise<{ success: boolean; error?: string }>
+  updateRecordingSettings: (
+    settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
+  ) => Promise<{ success: boolean; error?: string }>
+  setActiveProject: (
+    projectPath: string | null
+  ) => Promise<{ success: boolean; settings?: RecorderSettings; error?: string }>
+  getRecorderSettings: () => Promise<RecorderSettings>
 
   // --- Trace Management ---
   saveTrace: (testId: string, trace: TraceStep[]) => Promise<{ success: boolean; error?: string }>

@@ -1,14 +1,17 @@
 import { appState } from '../appState'
+import { writeRecorderSettings } from './projectSettings'
+import type { RecorderSettings } from '@shared/types/recorderSettings'
 
-interface RecordingSettings {
-  implicitWait: number
-  explicitWait: number
-}
+type SettingsPatch = Partial<
+  Pick<RecorderSettings, 'implicitWait' | 'explicitWait' | 'selectorPriority'>
+>
 
-const handler = (settings: RecordingSettings): { success: boolean; error?: string } => {
+const handler = async (patch: SettingsPatch): Promise<{ success: boolean; error?: string }> => {
+  const projectPath = appState.projectPath
+  if (!projectPath) return { success: false, error: 'No project open' }
   try {
-    appState.recordingSettings.implicitWait = settings.implicitWait
-    appState.recordingSettings.explicitWait = settings.explicitWait
+    await writeRecorderSettings(projectPath, patch)
+    appState.recorderSettings = { ...appState.recorderSettings, ...patch }
     return { success: true }
   } catch (error) {
     return { success: false, error: (error as Error).message }

@@ -117,16 +117,10 @@ export async function createSuiteViaUI(page: Page, suiteName: string): Promise<v
     // Empty state - click "Create Suite" to show input
     await createSuiteBtn.click()
   } else {
-    // Has suites already - open the suite dropdown button (has aria-label "Select a Suite")
-    const suiteDropdownBtn = page.locator('button[aria-label="Select a Suite"]')
-    if (await suiteDropdownBtn.isVisible().catch(() => false)) {
-      await suiteDropdownBtn.click()
-      await page.waitForTimeout(300)
-      // Click "+ New Suite..." option in the dropdown
-      const newSuiteOption = page.getByText('+ New Suite...')
-      if (await newSuiteOption.isVisible().catch(() => false)) {
-        await newSuiteOption.click()
-      }
+    // Has suites already - pick "+ New Suite..." in the suite <select>
+    const suiteSelect = page.locator('select[aria-label="Select a Suite"]')
+    if (await suiteSelect.isVisible().catch(() => false)) {
+      await suiteSelect.selectOption('__new__')
     }
   }
 

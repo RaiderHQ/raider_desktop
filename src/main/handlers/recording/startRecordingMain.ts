@@ -5,6 +5,10 @@ import { randomUUID } from 'crypto'
 import { appState } from '../appState'
 
 function startRecordingMain(): { success: boolean; url: string; preloadPath: string } {
+  const url = appState.sessionUrl ?? appState.recorderSettings.baseUrl
+  // Nothing to open: the renderer tells the user to set a URL
+  if (!url) return { success: false, url: '', preloadPath: '' }
+
   // Create trace temp directory
   const traceDir = join(tmpdir(), 'raider-traces', randomUUID())
   mkdirSync(traceDir, { recursive: true })
@@ -13,9 +17,9 @@ function startRecordingMain(): { success: boolean; url: string; preloadPath: str
   // Return the URL and preload path so the renderer can create an embedded webview
   const preloadPath = join(__dirname, '../preload/recorderPreload.js')
 
-  appState.mainWindow?.webContents.send('recording-started', appState.projectBaseUrl)
+  appState.mainWindow?.webContents.send('recording-started', url)
 
-  return { success: true, url: appState.projectBaseUrl, preloadPath }
+  return { success: true, url, preloadPath }
 }
 
 export default startRecordingMain

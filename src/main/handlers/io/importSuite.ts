@@ -2,9 +2,11 @@ import { dialog, BrowserWindow } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import { appState } from '../appState'
+import { persistActiveSuites } from '../suitePersistence'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
+import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
 
 export default async function importSuite(
   mainWindow: BrowserWindow
@@ -34,36 +36,28 @@ export default async function importSuite(
       tests: []
     }
 
+    const stepIds = new Set<string>()
     const files = fs.readdirSync(directoryPath)
     for (const file of files) {
       if (path.extname(file) === '.rb') {
         const filePath = path.join(directoryPath, file)
         const fileContent = fs.readFileSync(filePath, 'utf-8')
 
-        const testNameMatch = fileContent.match(/# Test: (.*)/)
-        const testName = testNameMatch ? testNameMatch[1] : path.basename(file, '.rb')
-
-        const stepsMatch = fileContent.match(
-          /begin\n([\s\S]*?)\n {2}puts "Test '.*' passed successfully!"/
-        )
-        const steps = stepsMatch
-          ? stepsMatch[1]
-              .trim()
-              .split('\n')
-              .map((step) => step.trim())
-          : []
-
+        // Exported files carry their steps as JSON; older files hold Ruby lines
+        const header = readExportHeader(fileContent)
+        const steps = withUniqueIds(header.steps ?? [], stepIds)
         const newTest: Test = {
           id: randomUUID(),
-          name: testName,
-          url: '',
-          steps: steps
+          name: header.testName ?? path.basename(file, '.rb'),
+          url: startUrl(steps),
+          steps
         }
         newSuite.tests.push(newTest)
       }
     }
 
     appState.suites.set(newSuite.id, newSuite)
+    await persistActiveSuites()
     mainWindow.webContents.send('suite-updated', Array.from(appState.suites.values()))
 
     return { success: true, suite: newSuite }

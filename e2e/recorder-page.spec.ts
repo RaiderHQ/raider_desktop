@@ -47,11 +47,9 @@ test.describe('Recorder Page', () => {
     // The active suite name is shown in the dropdown button
     await expect(page.getByRole('heading', { name: 'Suite: Suite Beta' })).toBeVisible()
 
-    // Open the dropdown to verify Suite Alpha is listed
-    const suiteDropdownBtn = page.locator('button[aria-label="Select a Suite"]')
-    await suiteDropdownBtn.click()
-    await page.waitForTimeout(300)
-    await expect(page.getByText('Suite Alpha')).toBeVisible()
+    // Suite Alpha is still listed in the suite selector
+    const options = page.locator('select[aria-label="Select a Suite"] option')
+    await expect(options.filter({ hasText: 'Suite Alpha' })).toHaveCount(1)
   })
 
   test('suite creation shows "No Suite Selected" message initially', async ({ page }) => {

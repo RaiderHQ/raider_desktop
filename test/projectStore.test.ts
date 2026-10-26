@@ -1,15 +1,20 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
+const toastError = vi.hoisted(() => vi.fn())
+vi.mock('react-hot-toast', () => ({ default: { error: toastError } }))
+vi.mock('i18next', () => ({
+  default: { t: (key: string, opts?: object): string => `${key} ${JSON.stringify(opts ?? {})}` }
+}))
+
 // Mock window.api before importing the store
 vi.stubGlobal('window', {
   api: {
-    readDirectory: vi.fn().mockResolvedValue([])
+    readDirectory: vi.fn().mockResolvedValue([]),
+    setActiveProject: vi.fn().mockResolvedValue({ success: true })
   }
 })
 
-const { default: useProjectStore } = await import(
-  '@foundation/Stores/projectStore'
-)
+const { default: useProjectStore } = await import('@foundation/Stores/projectStore')
 
 describe('projectStore', () => {
   beforeEach(() => {
@@ -34,6 +39,39 @@ describe('projectStore', () => {
   it('sets project path', () => {
     useProjectStore.getState().setProjectPath('/test/path')
     expect(useProjectStore.getState().projectPath).toBe('/test/path')
+  })
+
+  it('tells main about the active project when projectPath changes', () => {
+    useProjectStore.getState().setProjectPath('/test/path')
+    expect(window.api.setActiveProject).toHaveBeenCalledWith('/test/path')
+  })
+
+  it('tells main the project closed when projectPath becomes null', () => {
+    useProjectStore.getState().setProjectPath('/test/path')
+    useProjectStore.setState({ projectPath: null })
+    expect(window.api.setActiveProject).toHaveBeenLastCalledWith(null)
+  })
+
+  it('shows an error toast when main fails to activate the project', async () => {
+    vi.clearAllMocks()
+    vi.mocked(window.api.setActiveProject).mockResolvedValueOnce({
+      success: false,
+      error: 'bad config'
+    })
+    useProjectStore.getState().setProjectPath('/broken')
+    await vi.waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(
+        'project.activationFailed {"error":"bad config"}',
+        expect.anything()
+      )
+    )
+  })
+
+  it('choosing the same project again retries activation', () => {
+    useProjectStore.getState().setProjectPath('/broken')
+    useProjectStore.getState().setProjectPath('/broken')
+    expect(window.api.setActiveProject).toHaveBeenCalledTimes(2)
+    expect(window.api.setActiveProject).toHaveBeenLastCalledWith('/broken')
   })
 
   it('sets project automation', () => {
@@ -97,9 +135,7 @@ describe('projectStore', () => {
             isDirectory: true,
             type: 'folder',
             path: '/test/dir',
-            children: [
-              { name: 'c.rb', isDirectory: false, type: 'file', path: '/test/dir/c.rb' }
-            ]
+            children: [{ name: 'c.rb', isDirectory: false, type: 'file', path: '/test/dir/c.rb' }]
           }
         ]
       })

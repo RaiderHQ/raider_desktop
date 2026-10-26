@@ -12,19 +12,16 @@ import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
-import { formatLocator } from '@foundation/recorderUtils'
+import { buildAssertionStep, assertionModalType } from '@foundation/assertionStep'
+import type { Step } from '@shared/types/step'
+import type { PendingAssertion } from '@shared/types/pendingAssertion'
+import { useRecorderSettings } from '../../hooks/useRecorderSettings'
 import { useSuiteSync, useRecordingIPC } from '../../hooks/useRecorderIPC'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import DeleteModal from '@components/DeleteModal'
 import RecordingDashboard from '@components/RecordingDashboard'
 
-
-interface AssertionInfo {
-  selector: string
-  text: string
-  assertionType?: string
-}
 
 type RecorderTab = 'recording' | 'dashboard'
 
@@ -47,7 +44,8 @@ const Recorder: React.FC = (): JSX.Element => {
     setShowCode,
     setIsOutputVisible,
     setBreakpointIndex,
-    setIsReplayingToBreakpoint
+    setIsReplayingToBreakpoint,
+    setFailedStepId
   } = useRecorderStore.getState()
 
   const { runOutput, setRunOutput } = useRunOutputStore()
@@ -56,7 +54,7 @@ const Recorder: React.FC = (): JSX.Element => {
   const [activeTab, setActiveTab] = useState<RecorderTab>('recording')
 
   // Local modal state
-  const [assertionInfo, setAssertionInfo] = useState<AssertionInfo | null>(null)
+  const [assertionInfo, setAssertionInfo] = useState<PendingAssertion | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [testToDelete, setTestToDelete] = useState<Test | null>(null)
 
@@ -66,21 +64,14 @@ const Recorder: React.FC = (): JSX.Element => {
   const webviewRef = useRef<Electron.WebviewTag | null>(null)
 
   // Recording settings state
-  const [implicitWait, setImplicitWait] = useState(0)
-  const [explicitWait, setExplicitWait] = useState(30)
+  const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
+    useRecorderSettings()
 
   // IPC hooks
   useSuiteSync()
   useRecordingIPC({ setAssertionInfo })
 
-  // Load recording settings on mount
-  useEffect(() => {
-    const savedImplicitWait = localStorage.getItem('implicitWait')
-    if (savedImplicitWait) setImplicitWait(Number(savedImplicitWait))
-    const savedExplicitWait = localStorage.getItem('explicitWait')
-    if (savedExplicitWait) setExplicitWait(Number(savedExplicitWait))
-  }, [])
-
+  // Load recording settings from the project config whenever the project changes
   const handleImplicitWaitChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const val = Number(event.target.value)
     if (val >= 0) setImplicitWait(val)
@@ -91,11 +82,16 @@ const Recorder: React.FC = (): JSX.Element => {
     if (val >= 0) setExplicitWait(val)
   }
 
-  const handleUpdateSettings = async (): Promise<void> => {
+  const saveWait = async (
+    patch: { implicitWait: number } | { explicitWait: number }
+  ): Promise<void> => {
+    // Until the project's settings load, the fields hold defaults that must not overwrite the config
+    if (!loaded) return
     try {
-      await window.api.updateRecordingSettings({ implicitWait, explicitWait })
-      localStorage.setItem('implicitWait', implicitWait.toString())
-      localStorage.setItem('explicitWait', explicitWait.toString())
+      const result = await window.api.updateRecordingSettings(patch)
+      if (!result.success) {
+        toast.error(`${t('settings.recording.error.unexpected')} : ${result.error}`)
+      }
     } catch (error) {
       toast.error(`${t('settings.recording.error.unexpected')} : ${error}`)
     }
@@ -158,13 +154,15 @@ const Recorder: React.FC = (): JSX.Element => {
 
   const handleStartRecording = useCallback(async (): Promise<void> => {
     const test = useRecorderStore.getState().activeTest
-    if (test?.url) {
-      await window.api.loadUrlRequest(test.url)
-      const result = await window.api.startRecordingMain()
-      if (result.success) {
-        setRecordingUrl(result.url)
-        setPreloadPath(result.preloadPath)
-      }
+    if (!test) return
+    // An empty URL clears any earlier one, so main falls back to the project base URL
+    await window.api.loadUrlRequest(test.url ?? '')
+    const result = await window.api.startRecordingMain()
+    if (result.success) {
+      setRecordingUrl(result.url)
+      setPreloadPath(result.preloadPath)
+    } else {
+      toast.error(t('recorder.noStartUrl'))
     }
   }, [])
 
@@ -201,17 +199,16 @@ const Recorder: React.FC = (): JSX.Element => {
 
     const stepsToReplay = test.steps.slice(0, index + 1)
     setBreakpointIndex(index)
+    setFailedStepId(null)
     setIsReplayingToBreakpoint(true)
 
     // Start recording to show the embedded webview immediately
-    if (test.url) {
-      await window.api.loadUrlRequest(test.url)
-    }
+    await window.api.loadUrlRequest(test.url ?? '')
     const recResult = await window.api.startRecordingMain()
     if (!recResult.success) {
       setIsReplayingToBreakpoint(false)
       setBreakpointIndex(null)
-      toast.error(t('recorder.breakpoint.replayFailed'))
+      toast.error(t('recorder.noStartUrl'))
       return
     }
 
@@ -231,9 +228,19 @@ const Recorder: React.FC = (): JSX.Element => {
     if (!result.success) {
       setIsReplayingToBreakpoint(false)
       setBreakpointIndex(null)
+      // Highlighting the failed step is UI work for plan 3; the store carries the id until then
+      setFailedStepId(result.failedStepId ?? null)
       toast.error(`${t('recorder.breakpoint.replayFailed')}: ${result.error ?? ''}`)
     } else {
       setIsReplayingToBreakpoint(false)
+      // Replay can't run custom code or switch frames, so the page may not match the steps
+      const skipped = result.skippedStepIds?.length ?? 0
+      if (skipped > 0) {
+        toast(t('recorder.breakpoint.skippedSteps', { count: skipped }), {
+          icon: '\u26A0\uFE0F',
+          duration: 8000
+        })
+      }
     }
   }, [])
 
@@ -262,28 +269,12 @@ const Recorder: React.FC = (): JSX.Element => {
 
   const handleSaveAssertionText = (expectedText: string): void => {
     if (assertionInfo) {
-      const { strategy, value } = formatLocator(assertionInfo.selector)
-      let newStep = ''
-
-      switch (assertionInfo.assertionType) {
-        case 'text-includes':
-          newStep = `expect(@driver.find_element(:${strategy}, ${value}).text).to include("${expectedText}")`
-          break
-        case 'value':
-          newStep = `expect(@driver.find_element(:${strategy}, ${value}).attribute("value")).to eq("${expectedText}")`
-          break
-        case 'page-title':
-          newStep = `expect(@driver.title).to eq("${expectedText}")`
-          break
-        case 'page-url':
-          newStep = `expect(@driver.current_url).to include("${expectedText}")`
-          break
-        default:
-          newStep = `expect(@driver.find_element(:${strategy}, ${value}).text).to eq("${expectedText}")`
-          break
-      }
-
-      updateActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : null))
+      const step = buildAssertionStep(
+        assertionInfo.pendingAssertion,
+        assertionInfo.element,
+        expectedText
+      )
+      updateActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, step] } : null))
     }
     setAssertionInfo(null)
   }
@@ -369,7 +360,7 @@ const Recorder: React.FC = (): JSX.Element => {
                   id="implicit-wait"
                   value={implicitWait}
                   onChange={handleImplicitWaitChange}
-                  onBlur={handleUpdateSettings}
+                  onBlur={() => saveWait({ implicitWait })}
                   className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
                   min="0"
                 />
@@ -385,7 +376,7 @@ const Recorder: React.FC = (): JSX.Element => {
                   id="explicit-wait"
                   value={explicitWait}
                   onChange={handleExplicitWaitChange}
-                  onBlur={handleUpdateSettings}
+                  onBlur={() => saveWait({ explicitWait })}
                   className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
                   min="0"
                 />
@@ -418,7 +409,7 @@ const Recorder: React.FC = (): JSX.Element => {
                       </div>
                       <CommandList
                         steps={activeTest?.steps ?? []}
-                        setSteps={(newSteps: SetStateAction<string[]>) =>
+                        setSteps={(newSteps: SetStateAction<Step[]>) =>
                           updateActiveTest((prevTest) => {
                             if (!prevTest) return null
                             const updatedSteps =
@@ -433,12 +424,12 @@ const Recorder: React.FC = (): JSX.Element => {
                               : null
                           )
                         }
-                        onEditStep={(editIndex, newCommand) =>
+                        onEditStep={(editIndex, newStep) =>
                           updateActiveTest((p) =>
                             p
                               ? {
                                   ...p,
-                                  steps: p.steps.map((s, i) => (i === editIndex ? newCommand : s))
+                                  steps: p.steps.map((s, i) => (i === editIndex ? newStep : s))
                                 }
                               : null
                           )
@@ -554,7 +545,7 @@ const Recorder: React.FC = (): JSX.Element => {
                           </div>
                           <CommandList
                             steps={activeTest?.steps ?? []}
-                            setSteps={(newSteps: SetStateAction<string[]>) =>
+                            setSteps={(newSteps: SetStateAction<Step[]>) =>
                               updateActiveTest((prevTest) => {
                                 if (!prevTest) return null
                                 const updatedSteps =
@@ -569,12 +560,12 @@ const Recorder: React.FC = (): JSX.Element => {
                                   : null
                               )
                             }
-                            onEditStep={(editIndex, newCommand) =>
+                            onEditStep={(editIndex, newStep) =>
                               updateActiveTest((p) =>
                                 p
                                   ? {
                                       ...p,
-                                      steps: p.steps.map((s, i) => (i === editIndex ? newCommand : s))
+                                      steps: p.steps.map((s, i) => (i === editIndex ? newStep : s))
                                     }
                                   : null
                               )
@@ -620,7 +611,7 @@ const Recorder: React.FC = (): JSX.Element => {
       {assertionInfo && (
         <AssertionTextModal
           initialText={assertionInfo.text}
-          assertionType={assertionInfo.assertionType}
+          assertionType={assertionModalType(assertionInfo.pendingAssertion)}
           onSave={handleSaveAssertionText}
           onClose={() => setAssertionInfo(null)}
         />

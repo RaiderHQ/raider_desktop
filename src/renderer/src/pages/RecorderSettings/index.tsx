@@ -1,24 +1,14 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import Button from '@components/Button'
+import { useRecorderSettings } from '../../hooks/useRecorderSettings'
 
 const RecordingSettings: React.FC = () => {
   const { t } = useTranslation()
-  const [implicitWait, setImplicitWait] = useState(0)
-  const [explicitWait, setExplicitWait] = useState(30)
+  const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
+    useRecorderSettings()
   const [isUpdating, setIsUpdating] = useState(false)
-
-  useEffect(() => {
-    const savedImplicitWait = localStorage.getItem('implicitWait')
-    if (savedImplicitWait) {
-      setImplicitWait(Number(savedImplicitWait))
-    }
-    const savedExplicitWait = localStorage.getItem('explicitWait')
-    if (savedExplicitWait) {
-      setExplicitWait(Number(savedExplicitWait))
-    }
-  }, [])
 
   const handleImplicitWaitChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const val = Number(event.target.value)
@@ -31,12 +21,19 @@ const RecordingSettings: React.FC = () => {
   }
 
   const handleUpdateClick = async (): Promise<void> => {
+    // Until the project's settings load, the fields hold defaults that must not overwrite the config
+    if (!loaded) {
+      toast.error(t('settings.recording.error.notLoaded'))
+      return
+    }
     setIsUpdating(true)
     try {
-      await window.api.updateRecordingSettings({ implicitWait, explicitWait })
-      localStorage.setItem('implicitWait', implicitWait.toString())
-      localStorage.setItem('explicitWait', explicitWait.toString())
-      toast.success(t('settings.recording.recordingUpdateSuccess'))
+      const result = await window.api.updateRecordingSettings({ implicitWait, explicitWait })
+      if (result.success) {
+        toast.success(t('settings.recording.recordingUpdateSuccess'))
+      } else {
+        toast.error(`${t('settings.recording.error.unexpected')} : ${result.error}`)
+      }
     } catch (error) {
       toast.error(`${t('settings.recording.error.unexpected')} : ${error}`)
     } finally {

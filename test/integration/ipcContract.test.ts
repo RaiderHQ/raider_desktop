@@ -83,9 +83,8 @@ describe('IPC Contract', () => {
     'runTest',
     'runSuite',
 
-    // Command Parsing
-    'xpathParser',
-    'commandParser',
+    // Step Rendering
+    'renderStep',
 
     // Suite Management
     'getSuites',
@@ -111,6 +110,8 @@ describe('IPC Contract', () => {
     'stopRecordingMain',
     'loadUrlRequest',
     'updateRecordingSettings',
+    'setActiveProject',
+    'getRecorderSettings',
 
     // Trace Management
     'saveTrace',
