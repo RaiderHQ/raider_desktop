@@ -19,7 +19,7 @@ export async function readCodeTest(projectPath: string, fileRel: string): Promis
   const target = resolveInside(projectPath, fileRel)
   await assertRealInside(projectPath, target)
   // Never open a FIFO or device: reading it could block forever
-  if (!(await fs.lstat(target)).isFile()) throw new Error(`Not a regular file: ${fileRel}`)
+  if (!(await fs.stat(target)).isFile()) throw new Error(`Not a regular file: ${fileRel}`)
   const lines = (await fs.readFile(target, 'utf-8')).split(/\r?\n/)
 
   const examples: CodeTestView['examples'] = []
