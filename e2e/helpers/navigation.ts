@@ -23,26 +23,24 @@ export function openProjectButton(page: Page): Locator {
 }
 
 /**
- * Dismiss the "Missing Gems" modal when the machine running the tests lacks a gem
- * the app checks for. The modal overlays the whole window and swallows clicks, so
- * specs that click through the UI call this first. The app's startup check is
- * slow, so ask the main process the same question and only wait for the modal if
- * it will appear. A no-op on a machine with all gems.
+ * Make the app's startup Ruby check succeed regardless of the host's Ruby setup.
+ * Without it a host missing a gem shows a "Missing Gems" modal that swallows
+ * every click. The check runs once at startup, before a test can install a mock,
+ * so mock it in the main process and reload to re-run it.
  */
-export async function dismissRubyModals(page: Page): Promise<void> {
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  const alreadyDismissed = await page.evaluate(() => (window as any).__rubyModalDismissed === true)
-  if (alreadyDismissed) return
-  const result = await page.evaluate(() => (window as any).api.isRubyInstalled())
-  if (!result.success) {
-    const skip = page.getByRole('button', { name: 'Skip', exact: true })
-    await skip.click({ timeout: 10000 })
-    await expect(skip).toBeHidden()
-  }
-  await page.evaluate(() => {
-    ;(window as any).__rubyModalDismissed = true
+export async function mockRubyReady(electronApp: ElectronApplication, page: Page): Promise<void> {
+  await electronApp.evaluate(async ({ ipcMain }) => {
+    ipcMain.removeHandler('is-ruby-installed')
+    ipcMain.handle('is-ruby-installed', async () => ({
+      success: true,
+      rubyVersion: '3.2.0',
+      rubyCommand: 'ruby',
+      missingGems: []
+    }))
   })
-  /* eslint-enable @typescript-eslint/no-explicit-any */
+  await page.reload()
+  await page.waitForLoadState('domcontentloaded')
+  await page.waitForTimeout(1500)
 }
 
 /**
@@ -57,7 +55,6 @@ export async function enterMainLayout(
   page: Page,
   projectPath = '/mock/test-project'
 ): Promise<void> {
-  await dismissRubyModals(page)
   await electronApp.evaluate(async ({ ipcMain }, folder) => {
     ipcMain.removeHandler('select-folder')
     ipcMain.handle('select-folder', async () => folder)

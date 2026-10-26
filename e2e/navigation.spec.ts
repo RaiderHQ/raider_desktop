@@ -1,9 +1,10 @@
 import { test, expect } from './electronApp'
-import { enterMainLayout } from './helpers/navigation'
+import { enterMainLayout, mockRubyReady } from './helpers/navigation'
 
 test.describe('Navigation', () => {
   // The header nav only exists once a project is open
   test.beforeEach(async ({ electronApp, page }) => {
+    await mockRubyReady(electronApp, page)
     await enterMainLayout(electronApp, page)
   })
 

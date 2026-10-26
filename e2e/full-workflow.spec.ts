@@ -4,13 +4,13 @@ import {
   goToRecorder,
   createSuiteViaUI,
   enterMainLayout,
-  dismissRubyModals
+  mockRubyReady
 } from './helpers/navigation'
 import { mockIPC, mockIPCSync } from './helpers/ipc-mock'
 
 test.describe('User Workflows', () => {
-  test.beforeEach(async ({ page }) => {
-    await dismissRubyModals(page)
+  test.beforeEach(async ({ electronApp, page }) => {
+    await mockRubyReady(electronApp, page)
   })
 
   test('new user flow: landing -> create project form -> back', async ({ page }) => {
@@ -40,6 +40,7 @@ test.describe('User Workflows', () => {
 
     await page.locator('a[href="#/overview"]').click()
     await page.waitForTimeout(500)
+    await expect(page).toHaveURL(/#\/overview/)
   })
 
   test('recorder suite management workflow', async ({ page }) => {
@@ -117,6 +118,7 @@ test.describe('User Workflows', () => {
 
     await page.locator('a[href="#/overview"]').click()
     await page.waitForTimeout(500)
+    await expect(page).toHaveURL(/#\/overview/)
   })
 
   test('multiple suites can be created and are all visible', async ({ page }) => {

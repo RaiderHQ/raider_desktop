@@ -1,5 +1,5 @@
 import { test, expect } from './electronApp'
-import { goToRecorder, createSuiteViaUI, dismissRubyModals } from './helpers/navigation'
+import { goToRecorder, createSuiteViaUI, mockRubyReady } from './helpers/navigation'
 
 const fakeTrace = [
   {
@@ -85,8 +85,8 @@ async function goToRecorderDashboardTab(page: import('@playwright/test').Page): 
 }
 
 test.describe('Dashboard Trace Viewer - Full Flow', () => {
-  test.beforeEach(async ({ page }) => {
-    await dismissRubyModals(page)
+  test.beforeEach(async ({ electronApp, page }) => {
+    await mockRubyReady(electronApp, page)
   })
 
   test('run test from recorder, then view trace on Recording Dashboard', async ({
@@ -210,8 +210,8 @@ test.describe('Dashboard Trace Viewer - Full Flow', () => {
 })
 
 test.describe('Dashboard Trace Viewer - Basic Scenarios', () => {
-  test.beforeEach(async ({ page }) => {
-    await dismissRubyModals(page)
+  test.beforeEach(async ({ electronApp, page }) => {
+    await mockRubyReady(electronApp, page)
   })
 
   test('Recording Dashboard shows no results when no tests run', async ({ page }) => {

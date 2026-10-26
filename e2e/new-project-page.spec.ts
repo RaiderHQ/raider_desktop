@@ -1,10 +1,10 @@
 import { test, expect } from './electronApp'
-import { goToNewProject, dismissRubyModals } from './helpers/navigation'
+import { goToNewProject, mockRubyReady } from './helpers/navigation'
 
 test.describe('New Project Page', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ electronApp, page }) => {
     await goToNewProject(page)
-    await dismissRubyModals(page)
+    await mockRubyReady(electronApp, page)
   })
 
   test('shows create project title', async ({ page }) => {

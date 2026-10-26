@@ -1,9 +1,9 @@
 import { test, expect } from './electronApp'
-import { navigateTo, goToRecorder, enterMainLayout, dismissRubyModals } from './helpers/navigation'
+import { navigateTo, goToRecorder, enterMainLayout, mockRubyReady } from './helpers/navigation'
 
 test.describe('Error States & Edge Cases', () => {
-  test.beforeEach(async ({ page }) => {
-    await dismissRubyModals(page)
+  test.beforeEach(async ({ electronApp, page }) => {
+    await mockRubyReady(electronApp, page)
   })
 
   test('navigating to file-editor without state does not crash', async ({ page }) => {
@@ -57,7 +57,6 @@ test.describe('Error States & Edge Cases', () => {
 
   test('back button on new project page navigates away', async ({ page }) => {
     await navigateTo(page, '/start-project')
-    await dismissRubyModals(page)
     await page.getByRole('button', { name: 'Create', exact: true }).click()
     await expect(page).toHaveURL(/#\/new/)
 

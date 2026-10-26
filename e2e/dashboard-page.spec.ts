@@ -1,12 +1,11 @@
 import { test, expect } from './electronApp'
-import { goToRecorder, dismissRubyModals } from './helpers/navigation'
+import { goToRecorder, mockRubyReady } from './helpers/navigation'
 import { mockIPC, mockIPCSync } from './helpers/ipc-mock'
 
 test.describe('Dashboard Tab (Recorder)', () => {
-  test.beforeEach(async ({ page }) => {
-    await dismissRubyModals(page)
+  test.beforeEach(async ({ electronApp, page }) => {
+    await mockRubyReady(electronApp, page)
     // Mock IPC methods used on Recorder mount
-    await mockIPC(page, 'getSelectorPriorities', [])
     await mockIPC(page, 'getSuites', [])
     await mockIPCSync(page, 'onTestRunStatus')
     await mockIPCSync(page, 'removeTestRunStatusListener')

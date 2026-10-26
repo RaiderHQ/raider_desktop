@@ -1,10 +1,10 @@
 import { test, expect } from './electronApp'
-import { goToLanding, dismissRubyModals, openProjectButton } from './helpers/navigation'
+import { goToLanding, mockRubyReady, openProjectButton } from './helpers/navigation'
 
 test.describe('Landing Page', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ electronApp, page }) => {
     await goToLanding(page)
-    await dismissRubyModals(page)
+    await mockRubyReady(electronApp, page)
   })
 
   test('shows welcome title', async ({ page }) => {
