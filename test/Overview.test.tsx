@@ -192,7 +192,6 @@ describe('Overview Page', (): void => {
     expect(screen.queryByTestId('folder')).not.toBeInTheDocument()
     expect(screen.queryByTestId('scaffold-panel')).not.toBeInTheDocument()
   })
-
 })
 
 describe('Overview Settings Toolbar', (): void => {
@@ -363,7 +362,7 @@ describe('Overview Settings Toolbar', (): void => {
     await renderOverview()
 
     const browserSelect = screen.getByTestId('overview-browser-select')
-    fireEvent.change(browserSelect, { target: { value: 'safari' } })
+    fireEvent.change(browserSelect, { target: { value: 'firefox' } })
 
     await waitFor(() => {
       expect(mockApi.updateBrowserType).toHaveBeenCalled()
@@ -372,15 +371,37 @@ describe('Overview Settings Toolbar', (): void => {
     expect(localStorage.getItem('selectedBrowser')).toBeNull()
   })
 
-  it('renders all four browser options in dropdown', async () => {
+  it('offers only Chrome and Firefox in the browser dropdown', async () => {
     await renderOverview()
 
     const select = screen.getByTestId('overview-browser-select')
     const options = select.querySelectorAll('option')
-    expect(options).toHaveLength(4)
+    expect(options).toHaveLength(2)
     expect(options[0]).toHaveValue('chrome')
-    expect(options[1]).toHaveValue('safari')
-    expect(options[2]).toHaveValue('firefox')
-    expect(options[3]).toHaveValue('edge')
+    expect(options[1]).toHaveValue('firefox')
+  })
+
+  it('offers only All, Smoke and Regression run modes', async () => {
+    await renderOverview()
+
+    const select = screen.getByTestId('overview-run-mode-select')
+    const values = Array.from(select.querySelectorAll('option')).map(
+      (o) => (o as HTMLOptionElement).value
+    )
+    expect(values).toEqual(['all', 'smoke', 'regression'])
+    expect(screen.queryByTestId('overview-custom-tag-input')).not.toBeInTheDocument()
+  })
+
+  it('reads the timeout and browser arguments back from the project config', async () => {
+    mockApi.getProjectConfig.mockResolvedValueOnce({
+      success: true,
+      config: { timeout: 10, browser: 'chrome', browserArguments: ['no-sandbox'] }
+    })
+    await renderOverview()
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('settings.timeout.label')).toHaveValue(10)
+    })
+    expect(screen.getByText('no-sandbox')).toBeInTheDocument()
   })
 })

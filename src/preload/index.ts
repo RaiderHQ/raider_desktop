@@ -286,6 +286,8 @@ const api = {
       baseUrl?: string
       browser?: string
       headless?: boolean
+      timeout?: number
+      browserArguments?: string[]
     }
     error?: string
   }> => ipcRenderer.invoke('get-project-config', projectPath),

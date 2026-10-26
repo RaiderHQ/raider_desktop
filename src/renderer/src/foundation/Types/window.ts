@@ -202,6 +202,8 @@ export interface WindowApi {
       baseUrl?: string
       browser?: string
       headless?: boolean
+      timeout?: number
+      browserArguments?: string[]
     }
     error?: string
   }>

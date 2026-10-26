@@ -25,8 +25,14 @@ describe('getProjectConfig handler', () => {
   })
 
   it('reads url, browser, and headless from config.yml', async () => {
-    mockReadFile.mockResolvedValueOnce('url: https://example.com\nbrowser: firefox\nheadless: true\n')
-    mockYamlLoad.mockReturnValueOnce({ url: 'https://example.com', browser: 'firefox', headless: true })
+    mockReadFile.mockResolvedValueOnce(
+      'url: https://example.com\nbrowser: firefox\nheadless: true\n'
+    )
+    mockYamlLoad.mockReturnValueOnce({
+      url: 'https://example.com',
+      browser: 'firefox',
+      headless: true
+    })
 
     const result = await handler('/my/project')
 
@@ -36,6 +42,20 @@ describe('getProjectConfig handler', () => {
       browser: 'firefox',
       headless: true
     })
+  })
+
+  it("reads timeout and the current browser's arguments", async () => {
+    mockReadFile.mockResolvedValueOnce('')
+    mockYamlLoad.mockReturnValueOnce({
+      timeout: 10,
+      browser: 'chrome',
+      browser_arguments: { chrome: ['no-sandbox'], firefox: ['-headless'] }
+    })
+
+    const result = await handler('/my/project')
+
+    expect(result.config?.timeout).toBe(10)
+    expect(result.config?.browserArguments).toEqual(['no-sandbox'])
   })
 
   it('supports legacy base_url key', async () => {

@@ -30,8 +30,7 @@ const Overview: React.FC = () => {
   const navigate = useNavigate()
   const toastIdRef = useRef<string | null>(null)
   const [activeTab, setActiveTab] = useState<OverviewTab>('files')
-  const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression' | 'custom'>('all')
-  const [customTag, setCustomTag] = useState('')
+  const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression'>('all')
 
   // Test settings state
   const [browserUrl, setBrowserUrl] = useState('')
@@ -80,7 +79,7 @@ const Overview: React.FC = () => {
       try {
         const result = await window.api.getProjectConfig(projectPath)
         if (result.success && result.config) {
-          const { baseUrl, browser, headless: headlessVal } = result.config
+          const { baseUrl, browser, headless: headlessVal, timeout: timeoutVal, browserArguments } = result.config
           if (baseUrl) {
             setBrowserUrl(baseUrl)
             localStorage.setItem('browserUrl', baseUrl)
@@ -95,6 +94,8 @@ const Overview: React.FC = () => {
             const storedBrowser = localStorage.getItem('selectedBrowser')
             if (storedBrowser) setSelectedBrowser(storedBrowser)
           }
+          if (typeof timeoutVal === 'number') setTimeout_(timeoutVal)
+          if (browserArguments) setBrowserOptions(browserArguments)
           if (typeof headlessVal === 'boolean') {
             setHeadless(headlessVal)
             localStorage.setItem('headless', String(headlessVal))
@@ -272,8 +273,6 @@ const Overview: React.FC = () => {
         result = await window.api.runRaiderTests(
           projectPath || '', rubyCommand || '', false
         )
-      } else if (runMode === 'custom' && customTag.trim()) {
-        result = await window.api.runRakeTask(projectPath || '', rubyCommand || '', customTag.trim())
       } else {
         result = await window.api.runRakeTask(projectPath || '', rubyCommand || '', runMode)
       }
@@ -523,9 +522,7 @@ const Overview: React.FC = () => {
                     data-testid="overview-browser-select"
                   >
                     <option value="chrome">{t('settings.browser.chrome')}</option>
-                    <option value="safari">{t('settings.browser.safari')}</option>
                     <option value="firefox">{t('settings.browser.firefox')}</option>
-                    <option value="edge">{t('settings.browser.edge')}</option>
                   </select>
                 </div>
               </Tooltip>
@@ -544,25 +541,14 @@ const Overview: React.FC = () => {
                   </label>
                   <select
                     value={runMode}
-                    onChange={(e) => setRunMode(e.target.value as 'all' | 'smoke' | 'regression' | 'custom')}
+                    onChange={(e) => setRunMode(e.target.value as 'all' | 'smoke' | 'regression')}
                     className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[140px]"
                     data-testid="overview-run-mode-select"
                   >
                     <option value="all">{t('overview.settings.runMode.all')}</option>
                     <option value="smoke">{t('overview.settings.runMode.smoke')}</option>
                     <option value="regression">{t('overview.settings.runMode.regression')}</option>
-                    <option value="custom">{t('overview.settings.runMode.custom')}</option>
                   </select>
-                  {runMode === 'custom' && (
-                    <input
-                      type="text"
-                      value={customTag}
-                      onChange={(e) => setCustomTag(e.target.value)}
-                      placeholder={t('overview.settings.customTagPlaceholder')}
-                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-32"
-                      data-testid="overview-custom-tag-input"
-                    />
-                  )}
                 </div>
               </Tooltip>
               <Tooltip content={t('tooltips.overview.rerunFailed')} position="right">

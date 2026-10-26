@@ -282,8 +282,7 @@
       "runMode": {
         "all": "All Tests",
         "smoke": "Smoke",
-        "regression": "Regression",
-        "custom": "Custom Tag"
+        "regression": "Regression"
       },
       "customTagPlaceholder": "Tag name...",
       "rerunFailed": "Re-run Failed"
