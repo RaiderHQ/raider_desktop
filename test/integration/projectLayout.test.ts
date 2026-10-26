@@ -76,6 +76,28 @@ describe('detectProjectLayout', () => {
     expect(await detectProjectLayout(dir)).toMatchObject({ unsupportedReason: 'capybara' })
   })
 
+  it('ignores commented-out gems', async () => {
+    await project("# gem 'appium_lib'\n  # gem 'watir'\ngem 'rspec'\n")
+    expect(await detectProjectLayout(dir)).toMatchObject({
+      automation: 'selenium',
+      recordable: true
+    })
+  })
+
+  it('rspec-retry alone does not count as rspec', async () => {
+    await project("gem 'minitest'\ngem 'rspec-retry'\n")
+    expect(await detectProjectLayout(dir)).toMatchObject({ unsupportedReason: 'minitest' })
+  })
+
+  it('root-pointing paths fall back to defaults', async () => {
+    await project("gem 'rspec'\n", 'spec_path: .\nfeature_path: ./\nhelper_path: sub/..\n')
+    expect(await detectProjectLayout(dir)).toMatchObject({
+      specPath: 'spec',
+      featurePath: 'features',
+      helperPath: 'helpers'
+    })
+  })
+
   it('no Gemfile', async () => {
     expect(await detectProjectLayout(dir)).toMatchObject({
       recordable: false,
@@ -95,5 +117,20 @@ describe('setActiveProject layout', () => {
     await setActiveProject(null)
     expect(appState.layout).toBeNull()
     expect(appState.projectAutomation).toBeNull()
+  })
+
+  it('failed activation clears layout, automation and framework', async () => {
+    await project("gem 'watir'\ngem 'rspec'\n")
+    await setActiveProject(dir)
+    expect(appState.layout).not.toBeNull()
+    // A Gemfile that is a directory makes reading it fail with something other than ENOENT
+    await rm(join(dir, 'Gemfile'))
+    await mkdir(join(dir, 'Gemfile'))
+    const result = await setActiveProject(dir)
+    expect(result.success).toBe(false)
+    expect(appState.layout).toBeNull()
+    expect(appState.projectAutomation).toBeNull()
+    expect(appState.projectFramework).toBeNull()
+    expect(appState.projectPath).toBeNull()
   })
 })

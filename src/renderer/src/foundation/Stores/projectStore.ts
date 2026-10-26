@@ -93,11 +93,13 @@ const useProjectStore = create(
 useProjectStore.subscribe(
   (state) => state.projectPath,
   (projectPath) => {
+    // The layout belongs to one project, so it never outlives a switch
+    useProjectStore.setState({ layout: null })
     if (projectPath) {
       return
     }
 
-    useProjectStore.setState({ projectConfig: null, layout: null })
+    useProjectStore.setState({ projectConfig: null })
   }
 )
 
@@ -130,6 +132,9 @@ const syncActiveProject = (projectPath: string | null): void => {
       }
     })
     .catch((error: unknown) => {
+      if (useProjectStore.getState().projectPath === projectPath) {
+        useProjectStore.setState({ layout: null })
+      }
       console.error('Error setting active project:', error)
     })
 }

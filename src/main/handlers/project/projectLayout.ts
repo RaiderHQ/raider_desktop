@@ -1,5 +1,5 @@
 import { readFile } from 'fs/promises'
-import { isAbsolute, join } from 'path'
+import { isAbsolute, join, normalize } from 'path'
 import yaml from 'js-yaml'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 
@@ -19,6 +19,8 @@ function safeRelativePath(value: unknown, fallback: string): string {
   if (typeof value !== 'string' || value.trim() === '') return fallback
   const path = value.trim()
   if (isAbsolute(path) || path.split(/[\\/]/).includes('..')) return fallback
+  // '.' or './' would point at the project root itself
+  if (normalize(path).replace(/[\\/]+$/, '') === '.') return fallback
   return path
 }
 
@@ -54,7 +56,12 @@ export async function detectProjectLayout(projectPath: string): Promise<ProjectL
   }
   if (gemfile === null) return { ...base, recordable: false, unsupportedReason: 'noGemfile' }
 
-  const has = (gem: string): boolean => gemfile.includes(`'${gem}'`) || gemfile.includes(`"${gem}"`)
+  // Commented-out lines don't install anything
+  const active = gemfile
+    .split('\n')
+    .filter((line) => !line.trimStart().startsWith('#'))
+    .join('\n')
+  const has = (gem: string): boolean => active.includes(`'${gem}'`) || active.includes(`"${gem}"`)
   // Cucumber Gemfiles often also list rspec, so cucumber wins
   const framework = has('cucumber') ? 'cucumber' : 'rspec'
   const unsupported = (reason: NonNullable<ProjectLayout['unsupportedReason']>): ProjectLayout => ({
