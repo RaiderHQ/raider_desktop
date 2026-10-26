@@ -76,7 +76,7 @@ raider new "my_project" -p framework:rspec automation:selenium --accessibility
 
 **Important:**
 - `--accessibility` only works when `-p` (parameters hash) is provided. Without `-p`, the gem enters interactive TTY mode and ignores other flags.
-- The gem runs `cd PROJECT_NAME && gem install bundler && bundle install` after creation. The desktop should verify the project directory exists after the command completes.
+- With `-p`, the gem does not run `bundle install`. Only the interactive menu path (`MenuGenerator#set_up_framework`) runs `cd PROJECT_NAME && gem install bundler && bundle install`. The desktop should verify the project directory exists after the command completes.
 - `accessibility` is only supported for web automation types (selenium, watir). It is silently ignored for mobile.
 - Invalid `framework`, `automation` or `ci` values make the gem exit non-zero with an error listing the allowed values.
 
@@ -108,7 +108,7 @@ const config = yaml.load(content) as Record<string, unknown>
 
 ```typescript
 interface FullProjectConfig {
-  browser?: string          // 'chrome', 'firefox', 'safari', 'edge'
+  browser?: string          // 'chrome', 'firefox' (safari and edge also work once `raider u browser` seeds an empty `browser_arguments` entry)
   url?: string              // base URL for tests
   timeout?: number          // seconds (default 10)
   headless?: boolean        // true/false
@@ -155,7 +155,7 @@ raider u browser edge
 
 **Config key affected:** `browser`
 
-The gem strips any `:` prefix automatically, so both `raider u browser :firefox` and `raider u browser firefox` store `firefox`.
+Switching browser also ensures `browser_arguments[<name>]` exists (defaulting to `[]`), so safari and edge work like chrome and firefox. The gem strips any `:` prefix automatically, so both `raider u browser :firefox` and `raider u browser firefox` store `firefox`.
 
 ---
 
@@ -212,7 +212,7 @@ raider u browser --delete
 
 **Config key affected:** `browser_arguments[BROWSER_NAME]` (array of strings)
 
-The arguments are stored per-browser. Setting arguments for `chrome` doesn't affect `firefox`'s arguments. The `--delete` flag removes arguments for the current browser only.
+The arguments are stored per-browser. Setting arguments for `chrome` doesn't affect `firefox`'s arguments. The `--delete` flag clears arguments for the current browser only: it writes `[]` for that browser rather than removing the key, so the generated driver keeps working.
 
 ---
 
@@ -253,7 +253,7 @@ Format must be `WIDTHxHEIGHT` (lowercase x separator).
 raider u video on
 raider u video off
 raider u video status     # prints which ffmpeg is in use
-raider u video install    # downloads ffmpeg
+raider u video install    # not usable yet: assets have sha256: nil, so it fails until the release exists
 ```
 
 **Config key affected:** `video.enabled` (boolean) for `on` / `off`
@@ -368,7 +368,7 @@ bundle exec raider u raid -o --seed 42      # with custom options
 
 Raider records a video of each test. The desktop shows it for failed tests: open a project, go to the **Dashboard** tab, click a failed result card, then expand **Failure video**.
 
-- Recording needs ffmpeg. Until the bundled-ffmpeg release exists, set `RAIDER_FFMPEG_PATH` to an ffmpeg binary before launching the app and running tests, or run `raider u video install`.
+- Recording needs ffmpeg. Until the bundled-ffmpeg release exists, set `RAIDER_FFMPEG_PATH` to an ffmpeg binary before launching the app and running tests. `raider u video install` is not usable yet because every asset in `lib/ruby_raider/ffmpeg.rb` has `sha256: nil`.
 - `raider u video status` prints the ffmpeg in use.
 - `raider u video on` / `off` toggles `video.enabled` in `config/config.yml`. `VIDEO=off` also disables recording at runtime.
 - Desktop's "push to Longship" (sent by the app after a run it launched) and raider_reporter's upload (run by the generated project's own test run) are separate paths. Enabling one does not enable the other.
@@ -474,10 +474,6 @@ The gem's `NameNormalizer` strips common suffixes from scaffold names:
 
 The desktop should pass clean resource names (e.g. `login`, not `login_page`). The gem adds appropriate suffixes based on the file type being generated.
 
-### Template Overrides
-
-Users can override default templates by placing `.tt` files in `.ruby_raider/templates/` inside their project. The desktop should be aware that generated file content may differ from defaults if overrides exist.
-
 ### Project Detection
 
 The gem auto-detects the project's automation type and framework by reading the Gemfile when scaffolding:
@@ -485,5 +481,6 @@ The gem auto-detects the project's automation type and framework by reading the 
 - `watir` gem → watir
 - `rspec` gem → rspec
 - `cucumber` gem → cucumber
+- `appium_lib`, `eyes_selenium` and `axe-core-*` gems are also mapped (`project_detector.rb`)
 
 If nothing matches, it warns and defaults to selenium + rspec. The desktop can read the Gemfile directly and match against these gem names.

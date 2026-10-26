@@ -130,7 +130,7 @@ jobs:
             | Linux (Debian) | `ruby-raider-*.deb` |
 
             ### Prerequisites
-            - [rbenv](https://github.com/rbenv/rbenv) with Ruby 3.0.0+
+            - [rbenv](https://github.com/rbenv/rbenv) with Ruby 3.2+
             - `gem install ruby_raider`
 
             ---

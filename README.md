@@ -49,7 +49,7 @@ Raider Desktop is the UI companion for [Ruby Raider](https://github.com/RaiderHQ
 - [**rbenv**](https://github.com/rbenv/rbenv) with **Ruby 3.2+** installed
 - The [**ruby_raider**](https://github.com/RaiderHQ/ruby_raider) gem (`gem install ruby_raider`)
 
-If these are missing, the app will show a setup guide on launch. If no suitable Ruby is found, the app installs Ruby 3.4.1 through rbenv.
+If these are missing, the app will show a setup guide on launch. The app does not install Ruby for you; follow the guide to install Ruby 3.2 or higher.
 
 The version shown in the app footer is the **globally installed `raider` gem** (the output of `raider version`), not a version bundled with the app.
 
@@ -73,13 +73,13 @@ The main hub for working with your project, organized into tabs:
 | **Files** | Browse and edit project files with the built-in Monaco editor |
 | **Scaffolding** | Generate new specs, page objects, and helpers |
 | **Dashboard** | View test results with pass/fail stats, pie charts, and accessibility violation reports |
-| **Settings** | Configure browser options, timeouts, mobile (Appium) capabilities for mobile projects, and file paths |
 
 The **toolbar** at the top of the Files tab gives you quick access to:
 - **Base URL** — Set the URL your tests navigate to
 - **Browser** — Chrome or Firefox
 - **Headless mode** — Toggle on/off
-- **Run mode** — All tests, smoke, regression, or custom tags
+- **Run mode** — All tests, smoke, or regression
+- **Browser options, timeout and file paths** — Edited in the same toolbar
 - **Integrated terminal** — Run commands without leaving the app
 
 #### Recorder
@@ -106,7 +106,7 @@ Recording needs ffmpeg. Until the bundled-ffmpeg release exists, point the app a
 
 #### Uploading Results
 
-Raider Desktop's **push to Longship** setting sends results to Longship after a run launched from the app. It is separate from raider_reporter's upload, which runs from the generated project's own test run. Configure each one on its own; one does not enable the other.
+Raider Desktop can push results to Longship after a run launched from the app. There is no setting for it in the UI; it is configured through `longship-config.json` in the app's user data folder. It is separate from raider_reporter's upload, which runs from the generated project's own test run. Configure each one on its own; one does not enable the other.
 
 ### Common Errors
 
