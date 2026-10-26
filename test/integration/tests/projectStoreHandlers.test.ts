@@ -659,3 +659,151 @@ describe('task 11 fix round 1', () => {
     expect(result).toEqual({ success: false, output: stdout })
   })
 })
+
+describe('recorded tests no suite lists', () => {
+  const layout = {
+    framework: 'rspec',
+    automation: 'selenium',
+    specPath: 'spec',
+    featurePath: 'features',
+    helperPath: 'helpers',
+    recordable: true
+  } as const
+  const NOT_IN_A_SUITE = 'Not in a suite'
+  const sidecarJson = (file: string): string => join(project, '.raider', 'tests', `${file}.json`)
+  const bucketOf = (suites: Suite[]): Suite[] => suites.filter((s) => s.name === NOT_IN_A_SUITE)
+
+  it('are listed in a "Not in a suite" suite when the project opens', async () => {
+    await saveRecordedTest(project, layout, checkout('listed'))
+    await saveRecordedTest(project, layout, { ...checkout('loose'), name: 'Loose one' })
+    await saveSuiteIndex(project, [{ id: 's1', name: 'Smoke', testIds: ['listed'] }])
+    const specBefore = await readFile(join(project, 'spec', 'loose_one_spec.rb'), 'utf-8')
+    const sidecarBefore = await readFile(sidecarJson('spec/loose_one_spec.rb'), 'utf-8')
+
+    await setActiveProject(project)
+
+    const suites = await getSuites()
+    expect(suites.map((s) => s.name)).toEqual(['Smoke', NOT_IN_A_SUITE])
+    expect(bucketOf(suites)[0].tests).toEqual([
+      expect.objectContaining({
+        id: 'loose',
+        file: 'spec/loose_one_spec.rb',
+        ownership: 'recorded'
+      })
+    ])
+    expect(lastSuites()).toEqual(suites)
+    expect((await readJson(suitesJson(project))).suites).toEqual([
+      { id: 's1', name: 'Smoke', testIds: ['listed'] },
+      { id: bucketOf(suites)[0].id, name: NOT_IN_A_SUITE, testIds: ['loose'] }
+    ])
+    // Only the index changes: the test's own files are left as they were
+    expect(await readFile(join(project, 'spec', 'loose_one_spec.rb'), 'utf-8')).toBe(specBefore)
+    expect(await readFile(sidecarJson('spec/loose_one_spec.rb'), 'utf-8')).toBe(sidecarBefore)
+  })
+
+  it('reopening the project keeps one such suite and lists each test once', async () => {
+    await saveRecordedTest(project, layout, checkout('loose'))
+    await setActiveProject(project)
+    await setActiveProject(null)
+    await saveRecordedTest(project, layout, { ...checkout('later'), name: 'Later one' })
+
+    await setActiveProject(project)
+
+    const bucket = bucketOf(await getSuites())
+    expect(bucket).toHaveLength(1)
+    expect(bucket[0].tests.map((t) => t.id)).toEqual(['loose', 'later'])
+  })
+
+  it('after a damaged suites file, every recorded test can be reached again', async () => {
+    await saveRecordedTest(project, layout, checkout('one'))
+    await saveRecordedTest(project, layout, { ...checkout('two'), name: 'Two' })
+    await writeFile(suitesJson(project), '{ not json')
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    await setActiveProject(project)
+
+    const suites = await getSuites()
+    expect(suites).toHaveLength(1)
+    expect(suites[0].name).toBe(NOT_IN_A_SUITE)
+    expect(suites[0].tests.map((t) => t.id).sort()).toEqual(['one', 'two'])
+  })
+
+  it('a test edited in code is listed too, still view-only', async () => {
+    await saveRecordedTest(project, layout, checkout('loose'))
+    const spec = join(project, 'spec', 'checkout_spec.rb')
+    await writeFile(spec, (await readFile(spec, 'utf-8')) + '\nputs "hand edit"\n')
+
+    await setActiveProject(project)
+
+    expect(bucketOf(await getSuites())[0].tests[0]).toMatchObject({
+      id: 'loose',
+      ownership: 'codeOwnedWasRecorded'
+    })
+    expect(await readFile(spec, 'utf-8')).toContain('hand edit')
+  })
+
+  it('two records with the same id resolve to the same file every time', async () => {
+    await saveRecordedTest(project, layout, checkout('dup'))
+    // A copy left behind by a crash mid-rename: same id, another file
+    const sidecar = JSON.parse(await readFile(sidecarJson('spec/checkout_spec.rb'), 'utf-8'))
+    await mkdir(join(project, 'spec', 'a'), { recursive: true })
+    await mkdir(join(project, '.raider', 'tests', 'spec', 'a'), { recursive: true })
+    await writeFile(
+      join(project, 'spec', 'a', 'checkout_spec.rb'),
+      await readFile(join(project, 'spec', 'checkout_spec.rb'), 'utf-8')
+    )
+    await writeFile(
+      sidecarJson('spec/a/checkout_spec.rb'),
+      JSON.stringify({ ...sidecar, file: 'spec/a/checkout_spec.rb' })
+    )
+
+    await setActiveProject(project)
+    const first = bucketOf(await getSuites())
+    await setActiveProject(null)
+    await setActiveProject(project)
+    const second = bucketOf(await getSuites())
+
+    expect(first[0].tests).toHaveLength(1)
+    expect(first[0].tests[0].file).toBe('spec/a/checkout_spec.rb')
+    expect(second[0].tests.map((t) => t.file)).toEqual(['spec/a/checkout_spec.rb'])
+    expect(await exists(join(project, 'spec', 'checkout_spec.rb'))).toBe(true)
+  })
+
+  it('the project still opens, with the test reachable, if the index cannot be written', async () => {
+    await saveRecordedTest(project, layout, checkout('loose'))
+    vi.spyOn(persistence, 'saveSuiteIndex').mockRejectedValueOnce(new Error('read-only disk'))
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const result = await setActiveProject(project)
+
+    expect(result.success).toBe(true)
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining('in no suite'),
+      expect.objectContaining({ message: 'read-only disk' })
+    )
+    expect(bucketOf(await getSuites())[0].tests.map((t) => t.id)).toEqual(['loose'])
+  })
+
+  it('nothing is added when every recorded test is in a suite', async () => {
+    await saveRecordedTest(project, layout, checkout('listed'))
+    await saveSuiteIndex(project, [{ id: 's1', name: 'Smoke', testIds: ['listed'] }])
+    const before = await readFile(suitesJson(project), 'utf-8')
+
+    await setActiveProject(project)
+
+    expect((await getSuites()).map((s) => s.name)).toEqual(['Smoke'])
+    expect(await readFile(suitesJson(project), 'utf-8')).toBe(before)
+  })
+
+  it('a project that can no longer record is left unchanged', async () => {
+    await saveRecordedTest(project, layout, checkout('loose'))
+    await saveSuiteIndex(project, [])
+    await writeFile(join(project, 'Gemfile'), "gem 'rspec'\ngem 'capybara'\n")
+    const before = await readFile(suitesJson(project), 'utf-8')
+
+    await setActiveProject(project)
+
+    expect(await getSuites()).toEqual([])
+    expect(await readFile(suitesJson(project), 'utf-8')).toBe(before)
+  })
+})

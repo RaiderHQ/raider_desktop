@@ -12,6 +12,7 @@ import type { SuiteLock, SuiteMode } from '../appState'
 import { detectProjectLayout } from './projectLayout'
 import { migrateToProjectFiles } from '../tests/migrateToProjectFiles'
 import { assembleFromIndex } from '../tests/assembleSuites'
+import { adoptUnlistedTests, filesStore } from '../tests/suiteStore'
 import { safeError } from '../../utils/safeLog'
 import type { Suite } from '@foundation/Types/suite'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
@@ -164,7 +165,7 @@ async function activate(projectPath: string | null): Promise<ActivationResult> {
       const layout = await detectProjectLayout(projectPath)
       // Runs before projectPath is published, so no handler writes suites meanwhile
       const loaded = await loadProjectSuites(projectPath, layout)
-      const { suites, recoveredFromCorrupt, backupSaved } = loaded
+      const { recoveredFromCorrupt, backupSaved } = loaded
       appState.recorderSettings = settings
       appState.projectPath = projectPath
       appState.layout = layout
@@ -173,10 +174,13 @@ async function activate(projectPath: string | null): Promise<ActivationResult> {
       appState.suiteMode = loaded.mode
       appState.suiteLock = loaded.lock ?? null
       appState.suiteIndex = new Map(loaded.index.map((entry) => [entry.id, entry]))
-      appState.suites = new Map(suites.map((suite) => [suite.id, suite]))
+      appState.suites = new Map(loaded.suites.map((suite) => [suite.id, suite]))
+      // Still part of the activation, so no handler changes the suites meanwhile
+      const store = filesStore()
+      if (store) await adoptUnlistedTests(store)
       const send = (channel: string, ...args: unknown[]): void =>
         appState.mainWindow?.webContents.send(channel, ...args)
-      send('suite-updated', suites)
+      send('suite-updated', Array.from(appState.suites.values()))
       if (recoveredFromCorrupt) send('suites-recovered', { backupSaved })
       if (loaded.lock === 'tooNew') send('suites-too-new')
       if (loaded.migration) send('tests-migrated', loaded.migration)

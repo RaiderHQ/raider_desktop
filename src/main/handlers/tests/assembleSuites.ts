@@ -71,3 +71,19 @@ export async function assembleFromIndex(
     })
   )
 }
+
+/**
+ * Recorded tests whose id no suite in `index` lists, one per id, in file order
+ * (a duplicate id resolves to the same sidecar as everywhere else).
+ */
+export async function unlistedTests(
+  projectPath: string,
+  index: SuiteIndexEntry[]
+): Promise<Test[]> {
+  const listed = new Set(index.flatMap((entry) => entry.testIds))
+  const tests: Test[] = []
+  for (const sidecar of (await sidecarsById(projectPath)).values()) {
+    if (!listed.has(sidecar.id)) tests.push(await testFor(projectPath, sidecar))
+  }
+  return tests
+}

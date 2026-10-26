@@ -4,6 +4,8 @@ import { activationSettled } from '../project/setActiveProject'
 import { saveSuiteIndex } from '../suitePersistence'
 import type { SuiteIndexEntry } from '../suitePersistence'
 import { CodeOwnedError, deleteRecordedTest, saveRecordedTest } from './recordedTests'
+import { unlistedTests } from './assembleSuites'
+import en from '../../../renderer/src/assets/translations/en.json'
 import { safeError } from '../../utils/safeLog'
 import { isStep } from '../../../shared/types/step'
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
@@ -251,6 +253,40 @@ export async function releaseTests(store: FilesStore, testIds: string[]): Promis
         safeError(`Could not delete the file of recorded test ${testId}:`, error)
       }
     }
+  }
+}
+
+/** The suite that collects recorded tests no other suite lists. */
+export const UNLISTED_SUITE_ID = 'not-in-a-suite'
+
+/**
+ * Lists recorded tests that no suite lists (left by a replacing import, a
+ * damaged suites file or an interrupted save) in the "Not in a suite" suite,
+ * so none is out of reach. Only the index is written; the tests' files are not
+ * touched. A failure is logged and leaves the project as it opened.
+ */
+export async function adoptUnlistedTests(store: FilesStore): Promise<void> {
+  try {
+    const tests = await unlistedTests(store.projectPath, Array.from(store.index.values()))
+    if (tests.length === 0 || !isCurrent(store)) return
+    const entry = store.index.get(UNLISTED_SUITE_ID) ?? {
+      id: UNLISTED_SUITE_ID,
+      name: en.tests.notInSuite,
+      testIds: []
+    }
+    const suite = store.suites.get(UNLISTED_SUITE_ID) ?? {
+      id: UNLISTED_SUITE_ID,
+      name: entry.name,
+      tests: []
+    }
+    entry.testIds = [...entry.testIds, ...tests.map((t) => t.id)]
+    suite.tests = [...suite.tests, ...tests]
+    store.index.set(UNLISTED_SUITE_ID, entry)
+    store.suites.set(UNLISTED_SUITE_ID, suite)
+    // Kept in memory even if the write fails: the next index save stores it
+    await saveIndex(store)
+  } catch (error) {
+    safeError('Could not list the recorded tests that are in no suite:', error)
   }
 }
 
