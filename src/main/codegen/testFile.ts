@@ -94,8 +94,30 @@ export function generateRspecFile(
 // Same lookup the project's own config uses: explicit_wait, falling back to timeout, then 10
 const CONFIG_WAIT = "config.fetch('explicit_wait', config.fetch('timeout', 10))"
 
-// Cops that fire on long recorded tests; the file is regenerated, so they are disabled around it
-const DISABLED_COPS = 'RSpec/ExampleLength, RSpec/MultipleExpectations'
+// rubocop-rspec's DescribeClass accepts a describe string only when it reads like a constant
+const CONSTANT_LIKE = /^(?:(?:::)?[A-Z]\w*)+$/
+const EXPECTATION = /\b(?:expect|is_expected|are_expected|expect_any_instance_of)\b/g
+
+/**
+ * The cops (at rubocop-rspec defaults) a recorded test would trip. The file is
+ * regenerated, so they are disabled around it; disabling one that would not
+ * fire is itself an offense (Lint/RedundantCopDisableDirective), so the list
+ * must match the test.
+ */
+function copsToDisable(name: string, body: string[]): string[] {
+  // ExampleLength counts code lines only, like rubocop with CountComments off
+  const code = body
+    .join('\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith('#'))
+  const expectations = code.reduce((n, line) => n + (line.match(EXPECTATION)?.length ?? 0), 0)
+  const cops: string[] = []
+  if (!CONSTANT_LIKE.test(name)) cops.push('RSpec/DescribeClass')
+  if (code.length > 5) cops.push('RSpec/ExampleLength')
+  if (expectations > 1) cops.push('RSpec/MultipleExpectations')
+  return cops
+}
 
 /**
  * Builds a recorded spec that lives inside a Ruby Raider project and uses the
@@ -139,12 +161,13 @@ export function generateProjectSpecFile(
   const body = test.steps.map((step) =>
     indent(renderStep(step, automation, { receiver: 'helper' }), 4)
   )
+  const cops = copsToDisable(test.name, body).join(', ')
 
   return [
     '# frozen_string_literal: true',
     '',
     `${RECORDED_MARKER} Edit in Raider; editing here makes the test code-owned.`,
-    `# rubocop:disable ${DISABLED_COPS}`,
+    ...(cops ? [`# rubocop:disable ${cops}`] : []),
     `require_relative ${rubyString(toHelper)}`,
     '',
     `describe ${name} do`,
@@ -154,7 +177,7 @@ export function generateProjectSpecFile(
     ...body,
     '  end',
     'end',
-    `# rubocop:enable ${DISABLED_COPS}`,
+    ...(cops ? [`# rubocop:enable ${cops}`] : []),
     ''
   ].join('\n')
 }
