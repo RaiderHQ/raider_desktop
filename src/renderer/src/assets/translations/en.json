@@ -418,6 +418,7 @@
     "restore": "Restore",
     "fileMissing": "File missing",
     "restored": "The test was restored.",
+    "restoreFailed": "Raider couldn't restore this test. Nothing was changed.",
     "empty": "No tests yet \u2014 record one",
     "actionFailed": "Raider couldn't open this test. Nothing was changed."
   },
@@ -437,6 +438,7 @@
     "cucumberNotice": "Recorded tests become project files when Gherkin support arrives.",
     "saveFailed": "Raider couldn't save this test. Your work is still here.",
     "runFailed": "Raider couldn't run this test.",
+    "noRuby": "Raider can't find Ruby on this computer, so it can't run tests yet.",
     "noStartUrl": "There's no page to start recording on. Enter a URL for this test, or set the project's base URL in Settings.",
     "placeholder": {
       "url": "Enter URL to record",

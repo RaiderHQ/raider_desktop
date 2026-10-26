@@ -277,4 +277,24 @@ describe('TestSuitePanel', () => {
       expect(screen.getByLabelText('recorder.testSuitePanel.runAll')).toBeDisabled()
     })
   })
+
+  describe('code-owned tests', () => {
+    const owned = [
+      {
+        id: 'suite-1',
+        name: 'Login Suite',
+        tests: [
+          { id: 'o1', name: 'Taken over', url: '', steps: [], ownership: 'codeOwnedWasRecorded' as const },
+          { id: 'r1', name: 'Still recorded', url: '', steps: [], ownership: 'recorded' as const }
+        ]
+      }
+    ]
+
+    it('shows a Code-owned badge and no Delete for them', () => {
+      render(<TestSuitePanel {...baseProps} suites={owned} activeSuiteId="suite-1" activeTestId="r1" />)
+      expect(screen.getAllByText('tests.badge.codeOwned')).toHaveLength(1)
+      expect(screen.queryByLabelText('Delete test Taken over')).not.toBeInTheDocument()
+      expect(screen.getByLabelText('Delete test Still recorded')).toBeInTheDocument()
+    })
+  })
 })

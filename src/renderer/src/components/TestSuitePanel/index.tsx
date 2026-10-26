@@ -282,6 +282,12 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
               >
                 {test.name}
               </button>
+              {test.ownership && test.ownership !== 'recorded' && (
+                <span className="mr-2 flex-shrink-0 text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-medium">
+                  {t('tests.badge.codeOwned')}
+                </span>
+              )}
+              {(!test.ownership || test.ownership === 'recorded') && (
               <Tooltip content={t('tooltips.recorder.deleteTest')} position="top">
               <button
                 onClick={(e) => {
@@ -302,6 +308,7 @@ const TestSuitePanel: React.FC<TestSuitePanelProps> = ({
                 </svg>
               </button>
               </Tooltip>
+              )}
             </li>
           ))}
         </ul>

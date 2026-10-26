@@ -113,6 +113,40 @@ describe('MainRecorderPanel', () => {
     })
   })
 
+  describe('test name saving', () => {
+    it('saves the renamed test straight away on blur', async () => {
+      const saveRecording = vi.fn().mockResolvedValue({ success: true })
+      // @ts-expect-error - Mocking window.api
+      window.api = { saveRecording }
+      await act(async () => {
+        render(<MainRecorderPanel {...baseProps} />)
+      })
+      const input = screen.getByDisplayValue('Test 1')
+      fireEvent.change(input, { target: { value: 'Checkout' } })
+      fireEvent.blur(input)
+      expect(saveRecording).toHaveBeenCalledWith(
+        'suite-1',
+        expect.objectContaining({ id: 't1', name: 'Checkout' })
+      )
+    })
+
+    it('copes with a save that returns nothing', async () => {
+      // @ts-expect-error - Mocking window.api
+      window.api = { saveRecording: vi.fn() }
+      await act(async () => {
+        render(<MainRecorderPanel {...baseProps} />)
+      })
+      fireEvent.click(screen.getByText('recorder.mainRecorderPanel.newTest'))
+    })
+
+    it('hides More (import/export) when read-only', async () => {
+      await act(async () => {
+        render(<MainRecorderPanel {...baseProps} readOnly />)
+      })
+      expect(screen.queryByText('recorder.mainRecorderPanel.more')).not.toBeInTheDocument()
+    })
+  })
+
   describe('test name', () => {
     it('is saved on blur, not on every keystroke', async () => {
       storeState.updateActiveTest.mockClear()

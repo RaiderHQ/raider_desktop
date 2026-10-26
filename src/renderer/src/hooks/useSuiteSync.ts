@@ -21,7 +21,9 @@ export function useSuiteSync(): void {
         }
       }
       if (readOnlyView) {
-        if (initialSuites.length > 0) setActiveSuiteId(initialSuites[0].id)
+        // Whatever was open before must not linger behind the view
+        setActiveSuiteId(initialSuites[0]?.id ?? null)
+        setActiveTest(initialSuites[0]?.tests[0] ?? null)
         return
       }
       if (initialSuites.length > 0) {

@@ -5,6 +5,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { FileNode } from '@foundation/Types/fileNode'
 import { RaiderConfig } from '@foundation/Types/raiderConfig'
 import type { ProjectLayout } from '@shared/types/projectLayout'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 
 interface ProjectStore {
   projectPath: string | null
@@ -95,6 +96,8 @@ useProjectStore.subscribe(
   (projectPath) => {
     // The layout belongs to one project, so it never outlives a switch
     useProjectStore.setState({ layout: null })
+    // Nor does the recorder's open test: saving it would write it into the new project
+    useRecorderStore.getState().resetForProject()
     if (projectPath) {
       return
     }

@@ -5,6 +5,7 @@ import { vi, afterEach } from 'vitest'
 import { IpcRendererEvent } from 'electron'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStoreMock from '@foundation/Stores/projectStore'
+import useRubyStoreMock from '@foundation/Stores/rubyStore'
 import type { Test } from '@foundation/Types/test'
 
 // Mocking necessary modules and hooks
@@ -42,8 +43,9 @@ vi.mock('@foundation/Stores/rubyStore', () => {
   return { __esModule: true, default: useRubyStore }
 })
 
+const mockRunOutput = vi.hoisted(() => ({ runOutput: '', setRunOutput: vi.fn() }))
 vi.mock('@foundation/Stores/runOutputStore', () => {
-  const store = { runOutput: '', setRunOutput: vi.fn() }
+  const store = mockRunOutput
   const useRunOutputStore = (selector?: (s: typeof store) => unknown) =>
     selector ? selector(store) : store
   useRunOutputStore.getState = () => store
@@ -333,6 +335,7 @@ describe('Recorder Page', (): void => {
       render(<Recorder />)
     })
 
+    mockApi.saveRecording.mockResolvedValue({ success: true })
     const newTestButton = screen.getByText('recorder.mainRecorderPanel.newTest')
     await act(async () => {
       fireEvent.click(newTestButton)
@@ -681,6 +684,90 @@ describe('Recorder Page', (): void => {
       expect(screen.getByText('recorder.unsupported.title')).toBeInTheDocument()
       expect(screen.getByText('recorder.unsupported.minitest')).toBeInTheDocument()
       expect(screen.getByLabelText('recorder.mainRecorderPanel.record')).toBeDisabled()
+    })
+
+
+    it('after a project switch, a leftover test is not shown behind a read-only view', async () => {
+      const stale: Test = { id: 'tA', name: 'T_A', url: '', steps: [] }
+      const suitesB = [
+        { id: 'sB', name: 'B', tests: [{ id: 'tB', name: 'T_B', url: '', steps: [] }] }
+      ]
+      mockApi.getSuites.mockResolvedValue(suitesB)
+      useRecorderStore.setState({
+        activeSuiteId: 'sA',
+        activeTest: stale,
+        readOnlyView: { file: 'spec/b_spec.rb', examples: [] }
+      })
+      await act(async () => {
+        render(<Recorder />)
+      })
+      expect(useRecorderStore.getState().activeTest?.id).toBe('tB')
+      expect(useRecorderStore.getState().activeSuiteId).toBe('sB')
+    })
+
+    it('Run in a read-only view without Ruby says so and runs nothing', async () => {
+      useRubyStoreMock.getState().rubyCommand = null as never
+      await openView()
+      await act(async () => {
+        fireEvent.click(screen.getByLabelText('recorder.mainRecorderPanel.run'))
+      })
+      useRubyStoreMock.getState().rubyCommand = '/usr/bin/ruby'
+      expect(mockApi.runProjectFile).not.toHaveBeenCalled()
+      expect(mockRunOutput.setRunOutput).toHaveBeenCalledWith('recorder.noRuby')
+    })
+
+    it('read-only run message names the viewed test', async () => {
+      mockApi.runProjectFile.mockResolvedValue({ success: true, output: 'ok' })
+      useRecorderStore.setState({ readOnlyTitle: 'Checkout flow' })
+      await openView()
+      useRecorderStore.setState({ readOnlyTitle: 'Checkout flow' })
+      await act(async () => {
+        fireEvent.click(screen.getByLabelText('recorder.mainRecorderPanel.run'))
+      })
+      expect(mockRunOutput.setRunOutput).toHaveBeenCalledWith('Running test: Checkout flow...')
+    })
+
+    it('a rename is saved before switching to another test', async () => {
+      const t2: Test = { id: 't2', name: 'Second', url: '', steps: [] }
+      const suites = [{ id: 's1', name: 'Suite', tests: [recordedTest, t2] }]
+      mockApi.getSuites.mockResolvedValue(suites)
+      useRecorderStore.setState({ suites, activeSuiteId: 's1', activeTest: recordedTest })
+      await act(async () => {
+        render(<Recorder />)
+      })
+      const input = screen.getByDisplayValue('Recorded one')
+      fireEvent.change(input, { target: { value: 'Renamed' } })
+      await act(async () => {
+        fireEvent.blur(input)
+        fireEvent.click(screen.getByText('Second'))
+      })
+      expect(mockApi.saveRecording).toHaveBeenCalledWith(
+        's1',
+        expect.objectContaining({ id: 't1', name: 'Renamed' })
+      )
+    })
+
+    it('stops an ongoing recording when a save says the test is code-owned', async () => {
+      mockApi.saveRecording.mockResolvedValue({ success: false, error: 'codeOwned' })
+      mockApi.stopRecordingMain.mockResolvedValue({ success: true })
+      const suites = [{ id: 's1', name: 'Suite', tests: [recordedTest] }]
+      mockApi.getSuites.mockResolvedValue(suites)
+      useRecorderStore.setState({
+        suites,
+        activeSuiteId: 's1',
+        activeTest: recordedTest,
+        isRecording: true
+      })
+      vi.useFakeTimers({ toFake: ['setTimeout'] })
+      await act(async () => {
+        render(<Recorder />)
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(mockApi.stopRecordingMain).toHaveBeenCalled()
+      expect(screen.getByText('recorder.readOnly.banner')).toBeInTheDocument()
+      useRecorderStore.setState({ isRecording: false })
     })
 
     it('cucumber project shows the notice', async () => {

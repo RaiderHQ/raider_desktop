@@ -34,6 +34,8 @@ interface RecorderStore {
   setFailedStepId: (id: string | null) => void
   setReadOnlyView: (view: CodeTestView | null, title?: string | null) => void
   setOpenTarget: (target: { suiteId: string; testId: string } | null) => void
+  /** Forget everything that belongs to the project that was open */
+  resetForProject: () => void
 
   activeSuite: () => Suite | undefined
 }
@@ -67,6 +69,18 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   setReadOnlyView: (view, title = null): void =>
     set({ readOnlyView: view, readOnlyTitle: view ? title : null }),
   setOpenTarget: (target): void => set({ openTarget: target }),
+  resetForProject: (): void =>
+    set({
+      suites: [],
+      activeSuiteId: null,
+      activeTest: null,
+      readOnlyView: null,
+      readOnlyTitle: null,
+      openTarget: null,
+      breakpointIndex: null,
+      failedStepId: null,
+      isReplayingToBreakpoint: false
+    }),
 
   activeSuite: () => {
     const { suites, activeSuiteId } = get()

@@ -53,8 +53,19 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
       setNameDraft(activeTest?.name ?? '')
       return
     }
-    if (name !== activeTest?.name) {
-      useRecorderStore.getState().updateActiveTest((p) => (p ? { ...p, name } : null))
+    if (!activeTest || readOnly || name === activeTest.name) return
+    useRecorderStore.getState().updateActiveTest((p) => (p ? { ...p, name } : null))
+    // Saved right away, not left to the debounce: clicking another test cancels that timer
+    const renamed = { ...activeTest, name }
+    const ownedByCode = activeTest.ownership && activeTest.ownership !== 'recorded'
+    if (activeSuiteId && !ownedByCode) {
+      Promise.resolve(window.api.saveRecording(activeSuiteId, renamed))
+        .then((result) => {
+          if (!handleSaveResult(result, renamed.id, t) && result?.error === 'codeOwned') {
+            if (useRecorderStore.getState().isRecording) onStopRecording()
+          }
+        })
+        .catch((error: unknown) => console.error('Saving the new name failed:', error))
     }
   }
 
@@ -71,8 +82,7 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
     if (suiteId) {
       const newTest = createNewTest()
       setActiveTest(newTest)
-      window.api
-        .saveRecording(suiteId, newTest)
+      Promise.resolve(window.api.saveRecording(suiteId, newTest))
         .then((result) => handleSaveResult(result, newTest.id, t))
         .catch((error: unknown) => console.error('Saving the new test failed:', error))
     }
@@ -247,14 +257,16 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
               </button>
             </Tooltip>
           )}
-          <Tooltip content={t('tooltips.recorder.more')} position="right">
-            <Dropdown
-              buttonText={t('recorder.mainRecorderPanel.more')}
-              options={moreOptions}
-              defaultOption={0}
-              disabled={false}
-            />
-          </Tooltip>
+          {!readOnly && (
+            <Tooltip content={t('tooltips.recorder.more')} position="right">
+              <Dropdown
+                buttonText={t('recorder.mainRecorderPanel.more')}
+                options={moreOptions}
+                defaultOption={0}
+                disabled={false}
+              />
+            </Tooltip>
+          )}
         </div>
         <div className="flex items-center space-x-2">
           {!readOnly && (

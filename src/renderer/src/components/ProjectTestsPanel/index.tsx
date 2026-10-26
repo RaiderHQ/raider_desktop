@@ -83,15 +83,19 @@ const ProjectTestsPanel: React.FC = () => {
   }
 
   const restore = async (entry: ProjectTestEntry): Promise<void> => {
+    const failRestore = (error: unknown): void => {
+      console.error('Restoring the test failed:', error)
+      toast.error(t('tests.restoreFailed'))
+    }
     try {
       const found = entry.testId ? await findInSuites(entry.testId) : null
-      if (!found) return fail(`No suite lists test ${entry.testId}`)
+      if (!found) return failRestore(`No suite lists test ${entry.testId}`)
       const result = await window.api.saveRecording(found.suiteId, found.test)
-      if (!result.success) return fail(result.error)
+      if (!result.success) return failRestore(result.error)
       toast.success(t('tests.restored'))
       await load()
     } catch (error) {
-      fail(error)
+      failRestore(error)
     }
   }
 

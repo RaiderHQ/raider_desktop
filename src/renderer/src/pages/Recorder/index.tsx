@@ -120,7 +120,13 @@ const Recorder: React.FC = (): JSX.Element => {
       if (suiteId && test) {
         window.api
           .saveRecording(suiteId, test)
-          .then((result) => handleSaveResult(result, test.id, t))
+          .then((result) => {
+            handleSaveResult(result, test.id, t)
+            // A recording must not carry on into a test that is now read-only
+            if (result?.error === 'codeOwned' && useRecorderStore.getState().isRecording) {
+              handleStopRecording()
+            }
+          })
           .catch((error: unknown) => console.error('Saving the test failed:', error))
       }
     }, 500)
@@ -204,9 +210,15 @@ const Recorder: React.FC = (): JSX.Element => {
     // Tests that are code run straight from their file, never from a copy of the steps
     const codeFile =
       view?.file ?? (test?.ownership && test.ownership !== 'recorded' ? test.file : undefined)
+    if (codeFile && !cmd) {
+      setRunOutput(t('recorder.noRuby'))
+      return
+    }
     if (codeFile && cmd) {
       setIsRunning(true)
-      setRunOutput(`Running test: ${test?.name ?? ''}...`)
+      setRunOutput(
+        `Running test: ${view ? (useRecorderStore.getState().readOnlyTitle ?? '') : (test?.name ?? '')}...`
+      )
       try {
         const result = await window.api.runProjectFile(codeFile, cmd)
         setRunOutput(result.output)
