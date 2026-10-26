@@ -1,5 +1,5 @@
 import { test, expect } from './electronApp'
-import type { Page } from '@playwright/test'
+import type { ElectronApplication, Page } from '@playwright/test'
 import { goToOverview, goToRecorder } from './helpers/navigation'
 import {
   setupProjectContext,
@@ -10,7 +10,7 @@ import {
   sendMainEvent
 } from './helpers/ipc-mock'
 
-const entries = [
+const entries: Parameters<typeof mockProjectTests>[1] = [
   { file: 'spec/login_page_spec.rb', name: 'Login', ownership: 'code' },
   { file: 'spec/search_spec.rb', name: 'Search products', ownership: 'recorded', testId: 't1' },
   {
@@ -149,6 +149,21 @@ test.describe('Project Tests tab', () => {
       .toEqual([['spec/login_page_spec.rb', expect.stringMatching(/ruby$/)]])
   })
 
+  test('a run that stops on a load error shows Failed', async ({ page }) => {
+    await mockIPC(page, 'openCodeTest', codeView)
+    // rspec counts 0 failures when a missing gem stops it before any example
+    await mockIPC(page, 'runProjectFile', {
+      success: false,
+      output: '0 examples, 0 failures, 1 error occurred outside of examples'
+    })
+    await goToOverview(page)
+    await row(page, 'Login').getByRole('button', { name: 'View' }).click()
+    await page.getByRole('button', { name: 'Run', exact: true }).click()
+
+    await expect(page.getByRole('button', { name: /Failed/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Passed/ })).toHaveCount(0)
+  })
+
   test('Back to the recorder leaves the read-only view', async ({ page }) => {
     await mockIPC(page, 'openCodeTest', codeView)
     await goToOverview(page)
@@ -160,14 +175,42 @@ test.describe('Project Tests tab', () => {
     await expect(page.getByText('logs in with right credentials')).toHaveCount(0)
   })
 
-  test('a recorded test taken over in code is read-only and never saved', async ({ page }) => {
+  // A suite update that changes the open test is what starts the recorder's 500ms autosave
+  const changeOpenTest = async (
+    electronApp: ElectronApplication,
+    test: (typeof suites)[0]['tests'][0]
+  ): Promise<void> => {
+    await sendMainEvent(electronApp, 'suite-updated', [
+      { ...suites[0], tests: [{ ...test, name: `${test.name} (changed)` }] }
+    ])
+  }
+
+  test('a change to a recorded test is autosaved', async ({ page, electronApp }) => {
+    // Control for the next test: the same change does reach saveRecording when editable
+    await mockIPCCapture(page, 'saveRecording', { success: true })
+    await mockIPC(page, 'getSuites', [{ ...suites[0], tests: [suites[0].tests[0]] }])
+    await goToRecorder(page)
+    await expect(page.getByPlaceholder('Test Name')).toHaveValue('Search products')
+
+    await changeOpenTest(electronApp, suites[0].tests[0])
+    await expect(page.getByPlaceholder('Test Name')).toHaveValue('Search products (changed)')
+    await expect.poll(async () => (await getIPCCalls(page, 'saveRecording')).length).toBe(1)
+  })
+
+  test('a recorded test taken over in code is read-only and never saved', async ({
+    page,
+    electronApp
+  }) => {
     await mockIPCCapture(page, 'saveRecording', { success: false, error: 'codeOwned' })
     await mockIPC(page, 'getSuites', [{ ...suites[0], tests: [suites[0].tests[1]] }])
     await goToRecorder(page)
 
     await expect(page.getByText('Edited in code by a developer — view and run only.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Record', exact: true })).toHaveCount(0)
-    // The autosave runs 500ms after a change; a read-only test must never reach it
+
+    await changeOpenTest(electronApp, suites[0].tests[1])
+    // The change reached the recorder, which would autosave it 500ms later if it could
+    await expect(page.getByRole('heading', { name: 'Add to cart (changed)' })).toBeVisible()
     await page.waitForTimeout(1500)
     expect(await getIPCCalls(page, 'saveRecording')).toEqual([])
   })
