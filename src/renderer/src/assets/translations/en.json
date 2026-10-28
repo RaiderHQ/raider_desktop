@@ -9,6 +9,22 @@
       "openProject": "An error occurred while opening the project. Please try again."
     }
   },
+  "quickRecord": {
+    "title": "Quick record",
+    "urlLabel": "Website address",
+    "urlPlaceholder": "https://example.com",
+    "nameLabel": "Test name",
+    "namePlaceholder": "Checkout works",
+    "start": "Start",
+    "starting": "Setting up\u2026",
+    "cancel": "Cancel",
+    "error": "Raider couldn't set up a quick recording: {{error}}",
+    "banner": "This project lives in Raider's own folder.",
+    "saveTo": "Save project to\u2026",
+    "saveToTitle": "Choose where to save the project",
+    "saved": "Project saved to {{path}}",
+    "saveFailed": "Raider couldn't save the project: {{error}}"
+  },
   "newProject": {
     "alerts": {
       "invalidName": "Please enter a valid project name.",
@@ -57,8 +73,8 @@
       "description": "Open existing project"
     },
     "recorder": {
-      "text": "Open",
-      "description": "Record a test session"
+      "text": "Quick record",
+      "description": "Record a test without a project"
     },
     "back": {
       "text": "Back",

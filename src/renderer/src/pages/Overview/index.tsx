@@ -139,6 +139,39 @@ const Overview: React.FC = () => {
     void loadSettings()
   }, [projectPath])
 
+  // A quick-record project lives in Raider's own folder until the user saves it somewhere
+  const [isQuick, setIsQuick] = useState(false)
+  useEffect(() => {
+    setIsQuick(false)
+    if (!projectPath) return
+    let current = true
+    Promise.resolve(window.api.isQuickProject(projectPath))
+      .then((quick) => {
+        if (current) setIsQuick(quick)
+      })
+      .catch(() => {})
+    return (): void => {
+      current = false
+    }
+  }, [projectPath])
+
+  const handleSaveProjectTo = async (): Promise<void> => {
+    if (!projectPath) return
+    try {
+      const folder = await window.api.selectFolder(t('quickRecord.saveToTitle'))
+      if (!folder) return
+      const result = await window.api.saveQuickProjectTo(projectPath, folder)
+      if (!result.success) {
+        toast.error(t('quickRecord.saveFailed', { error: result.error }))
+        return
+      }
+      useProjectStore.getState().setProjectPath(result.projectPath)
+      toast.success(t('quickRecord.saved', { path: result.projectPath }))
+    } catch (error) {
+      toast.error(t('quickRecord.saveFailed', { error: String(error) }))
+    }
+  }
+
   // Detect mobile project
   useEffect(() => {
     if (!projectPath) return
@@ -547,6 +580,18 @@ const Overview: React.FC = () => {
           />
         </div>
       </div>
+
+      {isQuick && (
+        <div className="flex items-center justify-between gap-4 mb-4 px-4 py-2 rounded-lg border border-neutral-bdr bg-ruby-sub text-sm text-neutral-dk">
+          <span>{t('quickRecord.banner')}</span>
+          <button
+            onClick={() => void handleSaveProjectTo()}
+            className="px-3 py-1 text-xs font-semibold text-ruby border border-ruby rounded hover:bg-white transition-colors"
+          >
+            {t('quickRecord.saveTo')}
+          </button>
+        </div>
+      )}
 
       {activeTab === 'tests' && (
         <div className="relative w-full">

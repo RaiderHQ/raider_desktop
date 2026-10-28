@@ -75,6 +75,9 @@ const mockApi = {
   runRakeTask: vi.fn().mockResolvedValue({ success: true }),
   rerunFailedTests: vi.fn().mockResolvedValue({ success: true }),
   isMobileProject: vi.fn().mockResolvedValue({ success: true, isMobileProject: false }),
+  isQuickProject: vi.fn().mockResolvedValue(false),
+  selectFolder: vi.fn().mockResolvedValue(null),
+  saveQuickProjectTo: vi.fn(),
   getMobileCapabilities: vi.fn().mockResolvedValue({ success: true, capabilities: {} }),
   updateTimeout: vi.fn().mockResolvedValue({ success: true }),
   updateViewport: vi.fn().mockResolvedValue({ success: true }),
@@ -416,5 +419,47 @@ describe('Overview Settings Toolbar', (): void => {
     expect(options[1]).toHaveValue('safari')
     expect(options[2]).toHaveValue('firefox')
     expect(options[3]).toHaveValue('edge')
+  })
+
+  describe('quick-record banner', (): void => {
+    const renderOverview = async (): Promise<void> => {
+      useProjectStore.setState({ projectPath: '/quick/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+    }
+
+    it('is hidden for a regular project', async (): Promise<void> => {
+      await renderOverview()
+      expect(screen.queryByText('quickRecord.banner')).not.toBeInTheDocument()
+    })
+
+    it('shows for a quick project and re-activates the moved project after saving', async (): Promise<void> => {
+      mockApi.isQuickProject.mockResolvedValue(true)
+      mockApi.selectFolder.mockResolvedValue('/dest')
+      mockApi.saveQuickProjectTo.mockResolvedValue({ success: true, projectPath: '/dest/proj' })
+      await renderOverview()
+      expect(screen.getByText('quickRecord.banner')).toBeInTheDocument()
+      await act(async () => {
+        fireEvent.click(screen.getByText('quickRecord.saveTo'))
+      })
+      expect(mockApi.saveQuickProjectTo).toHaveBeenCalledWith('/quick/project', '/dest')
+      expect(useProjectStore.getState().projectPath).toBe('/dest/proj')
+    })
+
+    it('does nothing when the folder pick is cancelled', async (): Promise<void> => {
+      mockApi.isQuickProject.mockResolvedValue(true)
+      mockApi.selectFolder.mockResolvedValue(null)
+      await renderOverview()
+      await act(async () => {
+        fireEvent.click(screen.getByText('quickRecord.saveTo'))
+      })
+      expect(mockApi.saveQuickProjectTo).not.toHaveBeenCalled()
+      expect(useProjectStore.getState().projectPath).toBe('/quick/project')
+    })
   })
 })

@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import ProjectSelector from '@components/ProjectSelector'
 import Logo from '@components/Logo'
 import InformationModal from '@components/InformationModal'
+import QuickRecordDialog from '@components/QuickRecordDialog'
 import OpenFolder from '@assets/icons/open-folder.svg'
 import AddIcon from '@assets/icons/add.svg'
 import RecorderIcon from '@assets/icons/bxs_up-arrow_side.svg'
@@ -15,6 +16,7 @@ const Landing: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [helpOpen, setHelpOpen] = useState(false)
+  const [quickRecordOpen, setQuickRecordOpen] = useState(false)
 
   const setLoading: (loading: boolean) => void = useLoadingStore(
     (state: { setLoading: (loading: boolean) => void }) => state.setLoading
@@ -76,7 +78,7 @@ const Landing: React.FC = (): JSX.Element => {
           <ProjectSelector
             icon={RecorderIcon}
             description={t('button.recorder.description')}
-            url="/recorder"
+            onClick={() => setQuickRecordOpen(true)}
             buttonValue={t('button.recorder.text')}
             modalTitleKey="information.openRecorder.title"
             modalMessageKey="information.openRecorder.message"
@@ -99,6 +101,8 @@ const Landing: React.FC = (): JSX.Element => {
           />
         </div>
       </main>
+
+      {quickRecordOpen && <QuickRecordDialog onClose={() => setQuickRecordOpen(false)} />}
 
       {helpOpen && (
         <InformationModal
