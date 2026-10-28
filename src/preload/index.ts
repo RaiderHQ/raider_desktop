@@ -88,6 +88,18 @@ const api = {
     rubyCommand: string
   ): Promise<{ success: boolean; output?: string; error?: string }> =>
     ipcRenderer.invoke('rerun-failed-tests', folderPath, rubyCommand),
+  createQuickProject: async (
+    url: string,
+    rubyCommand: string
+  ): Promise<{ success: true; projectPath: string } | { success: false; error: string }> =>
+    ipcRenderer.invoke('create-quick-project', url, rubyCommand),
+  isQuickProject: async (projectPath: string): Promise<boolean> =>
+    ipcRenderer.invoke('is-quick-project', projectPath),
+  saveQuickProjectTo: async (
+    projectPath: string,
+    destFolder: string
+  ): Promise<{ success: true; projectPath: string } | { success: false; error: string }> =>
+    ipcRenderer.invoke('save-quick-project-to', projectPath, destFolder),
   updateBrowserUrl: async (
     projectPath: string,
     url: string

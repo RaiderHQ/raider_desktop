@@ -9,6 +9,11 @@ import type { TraceStep } from '@foundation/Types/traceStep'
 import selectFolder from './handlers/project/selectFolder'
 import readDirectory from './handlers/io/readDirectory'
 import runRubyRaider from './handlers/project/runRubyRaider'
+import {
+  createQuickProject,
+  isQuickProject,
+  saveQuickProjectTo
+} from './handlers/project/quickProject'
 import runRaiderTests from './handlers/testing/runRaiderTests'
 import runRakeTask from './handlers/testing/runRakeTask'
 import rerunFailedTests from './handlers/testing/rerunFailedTests'
@@ -183,6 +188,13 @@ app.whenReady().then(() => {
     'rerun-failed-tests',
     (_event, folderPath: string, rubyCommand: string) =>
       rerunFailedTests(appState.mainWindow!, folderPath, rubyCommand)
+  )
+  ipcMain.handle('create-quick-project', (_event, url: string, rubyCommand: string) =>
+    createQuickProject(url, rubyCommand)
+  )
+  ipcMain.handle('is-quick-project', (_event, projectPath: string) => isQuickProject(projectPath))
+  ipcMain.handle('save-quick-project-to', (_event, projectPath: string, destFolder: string) =>
+    saveQuickProjectTo(projectPath, destFolder)
   )
   ipcMain.handle('is-mobile-project', isMobileProject)
   ipcMain.handle('update-browser-url', (event, projectPath: string, url: string) =>

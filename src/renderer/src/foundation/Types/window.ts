@@ -21,6 +21,15 @@ export interface WindowApi {
     mobile?: string | null,
     options?: ProjectCreationOptions
   ) => Promise<CommandType>
+  createQuickProject: (
+    url: string,
+    rubyCommand: string
+  ) => Promise<{ success: true; projectPath: string } | { success: false; error: string }>
+  isQuickProject: (projectPath: string) => Promise<boolean>
+  saveQuickProjectTo: (
+    projectPath: string,
+    destFolder: string
+  ) => Promise<{ success: true; projectPath: string } | { success: false; error: string }>
   selectFolder: (title: string) => Promise<string | null>
   readDirectory: (folderPath: string) => Promise<FileNode[]>
   readFile: (

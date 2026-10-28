@@ -1,0 +1,103 @@
+import fs from 'fs'
+import path from 'path'
+import { app } from 'electron'
+import runRubyRaider from './runRubyRaider'
+import updateBrowserUrl from '../config/updateBrowserUrl'
+import { slugify } from '../tests/recordedTests'
+
+type QuickProjectResult = { success: true; projectPath: string } | { success: false; error: string }
+
+const FALLBACK_NAME = 'quick_record'
+
+export function quickProjectsDir(): string {
+  return path.join(app.getPath('userData'), 'quick-record')
+}
+
+export function quickProjectName(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '')
+    return host ? slugify(host) : FALLBACK_NAME
+  } catch {
+    return FALLBACK_NAME
+  }
+}
+
+function freeName(dir: string, base: string): string {
+  let name = base
+  for (let i = 2; fs.existsSync(path.join(dir, name)); i++) name = `${base}_${i}`
+  return name
+}
+
+const message = (e: unknown): string => (e instanceof Error ? e.message : String(e))
+
+export async function createQuickProject(
+  url: string,
+  rubyCommand: string
+): Promise<QuickProjectResult> {
+  const dir = quickProjectsDir()
+  let projectPath = ''
+  try {
+    fs.mkdirSync(dir, { recursive: true })
+    const name = freeName(dir, quickProjectName(url))
+    projectPath = path.join(dir, name)
+    const created = await runRubyRaider(null as never, dir, name, 'rspec', 'selenium', rubyCommand)
+    if (!created.success) {
+      fs.rmSync(projectPath, { recursive: true, force: true })
+      return { success: false, error: created.error ?? 'Could not create the project.' }
+    }
+    const updated = await updateBrowserUrl(null as never, projectPath, url)
+    if (!updated.success) {
+      fs.rmSync(projectPath, { recursive: true, force: true })
+      return { success: false, error: updated.error ?? 'Could not set the project URL.' }
+    }
+    return { success: true, projectPath }
+  } catch (e) {
+    if (projectPath) fs.rmSync(projectPath, { recursive: true, force: true })
+    return { success: false, error: message(e) }
+  }
+}
+
+function realOrResolved(p: string): string {
+  try {
+    return fs.realpathSync(p)
+  } catch {
+    return path.resolve(p)
+  }
+}
+
+export function isQuickProject(projectPath: string): boolean {
+  if (typeof projectPath !== 'string' || projectPath === '') return false
+  const root = realOrResolved(quickProjectsDir())
+  const rel = path.relative(root, realOrResolved(projectPath))
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel)
+}
+
+export async function saveQuickProjectTo(
+  projectPath: string,
+  destFolder: string
+): Promise<QuickProjectResult> {
+  let target = ''
+  let copyStarted = false
+  try {
+    if (!isQuickProject(projectPath) || !fs.existsSync(projectPath)) {
+      return { success: false, error: 'This is not a quick-record project.' }
+    }
+    if (typeof destFolder !== 'string' || !fs.statSync(destFolder).isDirectory()) {
+      return { success: false, error: 'Choose an existing folder to save into.' }
+    }
+    target = path.join(path.resolve(destFolder), path.basename(projectPath))
+    try {
+      fs.lstatSync(target)
+      return { success: false, error: `"${path.basename(target)}" already exists in that folder.` }
+    } catch {
+      // does not exist: good
+    }
+    copyStarted = true
+    await fs.promises.cp(projectPath, target, { recursive: true, errorOnExist: true, force: false })
+    await fs.promises.rm(projectPath, { recursive: true, force: true })
+    return { success: true, projectPath: target }
+  } catch (e) {
+    if (copyStarted) fs.rmSync(target, { recursive: true, force: true })
+    return { success: false, error: message(e) }
+  }
+}

@@ -48,6 +48,9 @@ describe('IPC Contract', () => {
   const expectedMethods = [
     // Project Management
     'runRubyRaider',
+    'createQuickProject',
+    'isQuickProject',
+    'saveQuickProjectTo',
     'selectFolder',
     'readDirectory',
     'readFile',
