@@ -17,8 +17,14 @@ export interface RaiderResultsApi {
 interface RaiderResult {
   full_name?: string
   status?: string
-  failure?: { message?: string; backtrace?: string[] }
-  attachments?: { content_type?: string; path?: string }[]
+  duration_ms?: number
+  failure?: {
+    message?: string
+    exception_class?: string
+    backtrace?: string[]
+    app_frame?: string
+  }
+  attachments?: { name?: string; content_type?: string; path?: string }[]
 }
 
 const MAX_MESSAGE = 20000
@@ -54,22 +60,27 @@ const safeAttachmentPath = (raw: string): string | null => {
   return p
 }
 
-const toRow = (result: RaiderResult, resultsDir: string): TestResult => {
+const toRow = (result: RaiderResult, resultsDir: string, browser?: string): TestResult => {
   const row: TestResult = {
     name: result.full_name ?? '',
     status: mapStatus(result.status)
   }
   if (result.failure?.message !== undefined) {
-    const trace = (result.failure.backtrace ?? []).join('\n')
-    row.statusDetails = {
-      message: sanitizeMessage(
-        trace ? `${result.failure.message}\n${trace}` : result.failure.message
-      )
+    const message = sanitizeMessage(result.failure.message)
+    row.statusDetails = { message }
+    row.failure = {
+      message,
+      exceptionClass: result.failure.exception_class,
+      backtrace: Array.isArray(result.failure.backtrace) ? result.failure.backtrace : [],
+      appFrame: result.failure.app_frame
     }
   }
-  const image = (result.attachments ?? []).find(
+  if (typeof result.duration_ms === 'number') row.durationMs = result.duration_ms
+  if (browser) row.browser = browser
+  const images = (result.attachments ?? []).filter(
     (a) => a.content_type?.startsWith('image/') && a.path
   )
+  const image = images.find((a) => a.name === 'screenshot') ?? images[0]
   const safe = image?.path ? safeAttachmentPath(image.path) : null
   if (safe) row.screenshot = `${resultsDir}/${safe}`
   const video = (result.attachments ?? []).find(
@@ -86,6 +97,7 @@ interface Candidate {
   results: RaiderResult[]
   finished: number // epoch ms, NaN when missing
   total: number | null
+  browser?: string
 }
 
 const fileIndex = (name: string): number | null | undefined => {
@@ -137,7 +149,11 @@ export const loadRaiderResults = async (
     }
     try {
       const data = JSON.parse(res.data) as {
-        run?: { finished_at?: string; shard?: { total?: number | null } }
+        run?: {
+          finished_at?: string
+          environment?: { browser?: unknown }
+          shard?: { total?: number | null }
+        }
         results?: RaiderResult[]
       }
       parsed.push({
@@ -145,7 +161,11 @@ export const loadRaiderResults = async (
         index: fileIndex(node.name) as number | null,
         results: Array.isArray(data.results) ? data.results : [],
         finished: data.run?.finished_at ? Date.parse(data.run.finished_at) : NaN,
-        total: typeof data.run?.shard?.total === 'number' ? data.run.shard.total : null
+        total: typeof data.run?.shard?.total === 'number' ? data.run.shard.total : null,
+        browser:
+          typeof data.run?.environment?.browser === 'string' && data.run.environment.browser
+            ? data.run.environment.browser
+            : undefined
       })
     } catch (e: unknown) {
       onError?.(node.name, (e as Error).message)
@@ -153,5 +173,7 @@ export const loadRaiderResults = async (
   }
   if (parsed.length === 0) return null
 
-  return selectCandidates(parsed).flatMap((c) => c.results.map((r) => toRow(r, resultsDir)))
+  return selectCandidates(parsed).flatMap((c) =>
+    c.results.map((r) => toRow(r, resultsDir, c.browser))
+  )
 }
