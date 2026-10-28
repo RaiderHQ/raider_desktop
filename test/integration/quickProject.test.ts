@@ -77,6 +77,15 @@ describe('createQuickProject', () => {
   })
 })
 
+describe('createQuickProject validation', () => {
+  it.each(['not a url', 'file:///etc/passwd', 'javascript:alert(1)'])('rejects %s', async (u) => {
+    const r = await createQuickProject(u, 'ruby')
+    expect(r.success).toBe(false)
+    expect(mockRun).not.toHaveBeenCalled()
+    expect(fs.existsSync(quickProjectsDir())).toBe(false)
+  })
+})
+
 describe('isQuickProject', () => {
   it('is true inside the dir only', async () => {
     const r = await createQuickProject('https://shop.test', 'ruby')
@@ -120,6 +129,19 @@ describe('saveQuickProjectTo', () => {
     const s = await saveQuickProjectTo(r.projectPath, dest)
     expect(s.success).toBe(false)
     expect(fs.existsSync(r.projectPath)).toBe(true)
+  })
+  it('keeps the finished copy when removing the source fails', async () => {
+    const r = await createQuickProject('https://shop.test', 'ruby')
+    if (!r.success) throw new Error('setup')
+    const dest = path.join(tmp, 'dest')
+    fs.mkdirSync(dest)
+    const spy = vi.spyOn(fs.promises, 'rm').mockRejectedValueOnce(new Error('busy'))
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const s = await saveQuickProjectTo(r.projectPath, dest)
+    spy.mockRestore()
+    errSpy.mockRestore()
+    expect(s).toEqual({ success: true, projectPath: path.join(dest, 'shop_test') })
+    expect(fs.readFileSync(path.join(dest, 'shop_test', 'spec', 'a.rb'), 'utf8')).toBe('x')
   })
   it('refuses a project that is not a quick project', async () => {
     const other = path.join(tmp, 'other')

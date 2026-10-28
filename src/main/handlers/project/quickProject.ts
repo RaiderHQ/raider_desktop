@@ -3,6 +3,7 @@ import path from 'path'
 import { app } from 'electron'
 import runRubyRaider from './runRubyRaider'
 import updateBrowserUrl from '../config/updateBrowserUrl'
+import { safeError } from '../../utils/safeLog'
 import { slugify } from '../tests/recordedTests'
 
 type QuickProjectResult = { success: true; projectPath: string } | { success: false; error: string }
@@ -34,6 +35,12 @@ export async function createQuickProject(
   url: string,
   rubyCommand: string
 ): Promise<QuickProjectResult> {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('bad protocol')
+  } catch {
+    return { success: false, error: 'Enter a valid http or https address.' }
+  }
   const dir = quickProjectsDir()
   let projectPath = ''
   try {
@@ -94,7 +101,13 @@ export async function saveQuickProjectTo(
     }
     copyStarted = true
     await fs.promises.cp(projectPath, target, { recursive: true, errorOnExist: true, force: false })
-    await fs.promises.rm(projectPath, { recursive: true, force: true })
+    copyStarted = false
+    try {
+      await fs.promises.rm(projectPath, { recursive: true, force: true })
+    } catch (e) {
+      // The copy is complete; keep it and leave the leftover source rather than risk data loss.
+      safeError('[quickProject] Copied, but could not remove the source:', projectPath, message(e))
+    }
     return { success: true, projectPath: target }
   } catch (e) {
     if (copyStarted) fs.rmSync(target, { recursive: true, force: true })
