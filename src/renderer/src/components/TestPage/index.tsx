@@ -25,10 +25,9 @@ import NewTestForm from './NewTestForm'
 interface TestPageProps {
   /** The recorded test to show; without one, a new test is named, then recorded */
   row?: TestRow
+  /** The suite a new test is saved into (the list's filter); outside any suite by default */
+  targetSuiteId?: string
 }
-
-// Until the Tests list can filter by suite, a new test is saved outside any suite
-const draftTarget: RecordingTarget = { kind: 'draft', suiteId: UNLISTED_SUITE_ID }
 
 const field =
   'block w-full px-3 py-1 border border-neutral-bdr rounded text-sm focus:ring-ruby focus:border-ruby transition-colors disabled:bg-neutral-lt disabled:cursor-not-allowed'
@@ -37,7 +36,7 @@ const toolbarButton =
   'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white disabled:text-neutral-mid disabled:cursor-not-allowed'
 
 /** A recorded test (or a new one): its name, start URL, steps, and what can be done with it. */
-const TestPage: React.FC<TestPageProps> = ({ row }) => {
+const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE_ID }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const recording = useTestRecording()
@@ -54,6 +53,7 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
   const { updateActiveTest, setShowCode, setIsOutputVisible, setBreakpointIndex } =
     useRecorderStore.getState()
 
+  const draftTarget: RecordingTarget = { kind: 'draft', suiteId: targetSuiteId }
   const key = row ? testKeyOf(row) : null
   const [openFailed, setOpenFailed] = useState(false)
   useEffect(() => {
