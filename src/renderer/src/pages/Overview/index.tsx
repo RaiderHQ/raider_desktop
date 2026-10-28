@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { sample } from 'lodash'
 import { FaTerminal } from 'react-icons/fa'
@@ -13,7 +13,7 @@ import ProjectDashboard from '@components/ProjectDashboard'
 import Editor from '@components/Editor'
 import Terminal from '@components/Terminal'
 import Tooltip from '@components/Tooltip'
-import ProjectTestsPanel from '@components/ProjectTestsPanel'
+import TestsWorkspace from '@components/TestsWorkspace'
 import InfoButton from '@components/InfoButton'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
@@ -30,7 +30,13 @@ const Overview: React.FC = () => {
   const { rubyCommand } = useRubyStore()
   const navigate = useNavigate()
   const toastIdRef = useRef<string | null>(null)
+  const { testKey } = useParams()
   const [activeTab, setActiveTab] = useState<OverviewTab>('tests')
+
+  // A test route always shows the Tests tab
+  useEffect(() => {
+    if (testKey) setActiveTab('tests')
+  }, [testKey])
   const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression' | 'custom'>('all')
   const [customTag, setCustomTag] = useState('')
 
@@ -544,9 +550,7 @@ const Overview: React.FC = () => {
 
       {activeTab === 'tests' && (
         <div className="relative w-full">
-          <div className="relative h-[70vh] border border-neutral-bdr rounded-lg shadow-card overflow-y-auto bg-white p-4">
-            <ProjectTestsPanel />
-          </div>
+          <TestsWorkspace />
         </div>
       )}
 

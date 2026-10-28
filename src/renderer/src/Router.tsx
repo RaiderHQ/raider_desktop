@@ -21,7 +21,12 @@ const Router = (): JSX.Element => {
         { path: 'new', element: <NewProject /> },
         { path: 'start-project', element: <Landing /> },
         { path: 'file-editor', element: <FileEditor /> },
-        { path: 'overview', element: <Overview /> },
+        {
+          path: 'overview',
+          element: <Overview />,
+          // Children render nothing themselves: Overview reads the testKey param
+          children: [{ path: 'tests' }, { path: 'tests/:testKey' }]
+        },
         { path: 'recorder', element: <Recorder /> }
       ]
     }
