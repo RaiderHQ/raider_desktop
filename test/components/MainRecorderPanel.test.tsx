@@ -130,15 +130,6 @@ describe('MainRecorderPanel', () => {
       )
     })
 
-    it('copes with a save that returns nothing', async () => {
-      // @ts-expect-error - Mocking window.api
-      window.api = { saveRecording: vi.fn() }
-      await act(async () => {
-        render(<MainRecorderPanel {...baseProps} />)
-      })
-      fireEvent.click(screen.getByText('recorder.mainRecorderPanel.newTest'))
-    })
-
     it('hides More (import/export) when read-only', async () => {
       await act(async () => {
         render(<MainRecorderPanel {...baseProps} readOnly />)

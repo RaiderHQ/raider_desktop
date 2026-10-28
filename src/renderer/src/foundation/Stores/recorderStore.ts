@@ -32,6 +32,8 @@ interface RecorderStore {
   /** The embedded browser's page and preload script while recording (null otherwise) */
   recordingUrl: string | null
   preloadPath: string | null
+  /** A new test named on the new-test page and not saved yet; its live steps are in `activeTest` */
+  draftTest: Test | null
 
   setSuites: (suites: Suite[]) => void
   setActiveSuiteId: (id: string | null) => void
@@ -48,6 +50,9 @@ interface RecorderStore {
   setOpenTarget: (target: { suiteId: string; testId: string } | null) => void
   setRecordingTarget: (target: RecordingTarget | null) => void
   setRecordingBrowser: (browser: { url: string; preloadPath: string } | null) => void
+  /** Open a new, unsaved test with this name and start URL, ready to record */
+  startDraft: (name: string, url: string) => void
+  setDraftTest: (test: Test | null) => void
   /** Make the list row's recorded test the active one (throws when no suite lists it) */
   openTest: (row: TestRow) => Promise<void>
   /** Forget everything that belongs to the project that was open */
@@ -73,6 +78,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   recordingTarget: null,
   recordingUrl: null,
   preloadPath: null,
+  draftTest: null,
 
   setSuites: (suites) => set({ suites }),
   setActiveSuiteId: (id) => set({ activeSuiteId: id }),
@@ -91,6 +97,19 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   setRecordingTarget: (target): void => set({ recordingTarget: target }),
   setRecordingBrowser: (browser): void =>
     set({ recordingUrl: browser?.url ?? null, preloadPath: browser?.preloadPath ?? null }),
+  startDraft: (name, url): void => {
+    const draft: Test = { id: crypto.randomUUID(), name, url, steps: [] }
+    set({
+      draftTest: draft,
+      activeTest: draft,
+      // No suite lists a draft: nothing autosaves it, and suite updates leave it alone
+      activeSuiteId: null,
+      readOnlyView: null,
+      readOnlyTitle: null,
+      openTarget: null
+    })
+  },
+  setDraftTest: (test): void => set({ draftTest: test }),
   openTest: async (row): Promise<void> => {
     const suites = await window.api.getSuites()
     const suite = row.testId
@@ -118,6 +137,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
       recordingTarget: null,
       recordingUrl: null,
       preloadPath: null,
+      draftTest: null,
       breakpointIndex: null,
       failedStepId: null,
       isReplayingToBreakpoint: false,

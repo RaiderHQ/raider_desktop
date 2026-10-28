@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
@@ -64,16 +64,58 @@ async function saveTraceOf(test: Test): Promise<Test> {
   return { ...test, hasTrace: true }
 }
 
+/** Only the start page was recorded: there is nothing worth keeping */
+const isEmptyRecording = (test: Test): boolean =>
+  test.steps.length === 0 || (test.steps.length === 1 && test.steps[0].kind === 'navigate')
+
+interface StopOptions {
+  /** Called with the saved test's key once the save went through */
+  onSaved?: (key: TestKey) => void
+  /** Called when a new test was dropped because nothing was recorded */
+  onDiscarded?: () => void
+}
+
+/**
+ * Saves a stopped recording of `test` (and its trace) into the suite, says where it
+ * went, and refreshes the list. Returns true when it saved.
+ */
+async function saveStopped(
+  t: Translate,
+  suiteId: string,
+  test: Test,
+  { onSaved }: StopOptions
+): Promise<boolean> {
+  // The trace is saved here, from the same snapshot: after a leave, nothing is left
+  // listening for main's 'recording-stopped'
+  traceSavedOnStop()
+  const withTrace = await saveTraceOf(test)
+  let result: Awaited<ReturnType<typeof window.api.saveRecording>>
+  try {
+    result = await window.api.saveRecording(suiteId, withTrace)
+  } catch (error) {
+    console.error('Saving the test failed:', error)
+    return false
+  }
+  if (!handleSaveResult(result, test.id, t)) {
+    // The steps stay on screen; say so, so nobody wonders whether it saved
+    if (result?.error === 'codeOwned') toast.error(t('tests.saveRefusedCodeOwned'))
+    return false
+  }
+  const name = result?.test?.name ?? test.name
+  const file = result?.test?.file
+  toast.success(file ? t('tests.saved', { name, file }) : t('tests.savedNoFile', { name }))
+  // A new file changes the list (and gives the test its row)
+  await useTestsListStore.getState().reload()
+  onSaved?.(testKeyOf({ name: test.name, testId: test.id, ownership: 'recorded', suiteIds: [] }))
+  return true
+}
+
 /**
  * Ends the recording (and any replay) and saves it to its target. The test is read
- * from the store when called, so later events can't change what is saved. Calls
- * `onSaved` with the saved test's key once the save went through.
+ * from the store when called, so later events can't change what is saved.
  */
-async function stopAndSave(
-  t: Translate,
-  { onSaved }: { onSaved?: (key: TestKey) => void } = {}
-): Promise<void> {
-  const { recordingTarget: target, activeSuiteId, activeTest: test } = store()
+async function stopAndSave(t: Translate, options: StopOptions = {}): Promise<void> {
+  const { recordingTarget: target, activeSuiteId, activeTest: test, draftTest } = store()
   if (store().isReplayingToBreakpoint) {
     Promise.resolve(window.api.cancelReplay()).catch((error: unknown) =>
       console.error('Cancelling the replay failed:', error)
@@ -90,33 +132,24 @@ async function stopAndSave(
   switch (target.kind) {
     case 'test': {
       if (!activeSuiteId || !test) return
-      // The trace is saved here, from the same snapshot: after a leave, nothing is left
-      // listening for main's 'recording-stopped'
-      traceSavedOnStop()
-      const saved = await saveTraceOf(test)
-      let result: Awaited<ReturnType<typeof window.api.saveRecording>>
-      try {
-        result = await window.api.saveRecording(activeSuiteId, saved)
-      } catch (error) {
-        console.error('Saving the test failed:', error)
-        return
-      }
-      if (!handleSaveResult(result, test.id, t)) {
-        // The steps stay on screen; say so, so nobody wonders whether it saved
-        if (result?.error === 'codeOwned') toast.error(t('tests.saveRefusedCodeOwned'))
-        return
-      }
-      const name = result?.test?.name ?? test.name
-      const file = result?.test?.file
-      toast.success(file ? t('tests.saved', { name, file }) : t('tests.savedNoFile', { name }))
-      // A new file changes the list (and gives the test its row)
-      await useTestsListStore.getState().reload()
-      onSaved?.(
-        testKeyOf({ name: test.name, testId: test.id, ownership: 'recorded', suiteIds: [] })
-      )
+      await saveStopped(t, activeSuiteId, test, options)
       return
     }
-    case 'draft':
+    case 'draft': {
+      const draft = test && draftTest && test.id === draftTest.id ? test : null
+      if (!draft || isEmptyRecording(draft)) {
+        // Nothing is written for it, its trace included
+        traceSavedOnStop()
+        store().setDraftTest(null)
+        options.onDiscarded?.()
+        return
+      }
+      if (await saveStopped(t, target.suiteId, draft, options)) {
+        // Saved: from now on it is a recorded test like any other
+        if (store().draftTest?.id === draft.id) store().setDraftTest(null)
+      }
+      return
+    }
     case 'example':
       throw new Error(`Saving a ${target.kind} recording is not supported`)
     default: {
@@ -144,7 +177,10 @@ export function useTestRecording(): TestRecording {
 
   const stop = useCallback(
     (): Promise<void> =>
-      stopAndSave(t, { onSaved: (key) => navigate(`/overview/tests/${toRouteParam(key)}`) }),
+      stopAndSave(t, {
+        onSaved: (key) => navigate(`/overview/tests/${toRouteParam(key)}`),
+        onDiscarded: () => navigate('/overview/tests')
+      }),
     [t, navigate]
   )
 
@@ -180,14 +216,20 @@ export function useTestRecording(): TestRecording {
   )
 
   // Autosave: recorded tests are written back 500 ms after the last change. Not while
-  // recording: Stop & save writes the test once, instead of every half-second
+  // recording: Stop & save writes the test once, instead of every half-second. Opening a
+  // test is not a change: nothing is written until it is edited
+  const autosavedTestId = useRef<string | null>(activeTest?.id ?? null)
   useEffect((): (() => void) | void => {
-    if (isBusy()) return
+    const opened = (activeTest?.id ?? null) !== autosavedTestId.current
+    autosavedTestId.current = activeTest?.id ?? null
+    if (opened || isBusy()) return
     const handler = setTimeout(() => {
-      const { activeSuiteId: suiteId, activeTest: test, readOnlyView: view } = store()
+      const { activeSuiteId: suiteId, activeTest: test, readOnlyView: view, draftTest } = store()
       if (isBusy()) return
       // Read-only tests are never written back
       if (view || (test?.ownership && test.ownership !== 'recorded')) return
+      // A new test is written once, when its recording stops
+      if (test && test.id === draftTest?.id) return
       if (suiteId && test) {
         window.api
           .saveRecording(suiteId, test)

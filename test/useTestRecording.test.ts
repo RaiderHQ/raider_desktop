@@ -262,10 +262,94 @@ describe('useTestRecording', () => {
     expect(api.saveRecording).not.toHaveBeenCalled()
   })
 
-  it('stop refuses draft targets until they are supported', async () => {
-    const rec = await mount()
-    useRecorderStore.getState().setRecordingTarget({ kind: 'draft', suiteId: 's1' })
-    await expect(rec.stop()).rejects.toThrow('draft')
+  describe('a new test (draft)', () => {
+    const recordingDraft = async (rec: ReturnType<typeof useTestRecording>): Promise<void> => {
+      act(() => useRecorderStore.getState().startDraft('Add to cart', 'https://x.test'))
+      await act(() => rec.start({ kind: 'draft', suiteId: 'not-in-a-suite' }))
+      await emit('recording-started', 'https://x.test/login')
+    }
+
+    it('stop saves a recorded draft into its suite once, then forgets the draft', async () => {
+      const rec = await mount()
+      await recordingDraft(rec)
+      await emit('new-recorded-step', step('c'))
+      const id = useRecorderStore.getState().draftTest!.id
+
+      await act(() => rec.stop())
+
+      expect(api.saveRecording).toHaveBeenCalledTimes(1)
+      expect(api.saveRecording).toHaveBeenCalledWith(
+        'not-in-a-suite',
+        expect.objectContaining({ id, name: 'Add to cart', url: 'https://x.test' })
+      )
+      expect(useRecorderStore.getState().draftTest).toBeNull()
+      expect(location).toBe(`/overview/tests/${toRouteParam(`id:${id}`)}`)
+    })
+
+    it('stop drops a draft with only its start page and goes back to the list', async () => {
+      const rec = await mount()
+      await recordingDraft(rec)
+
+      await act(() => rec.stop())
+
+      expect(api.saveRecording).not.toHaveBeenCalled()
+      expect(api.saveTrace).not.toHaveBeenCalled()
+      expect(useRecorderStore.getState().draftTest).toBeNull()
+      expect(location).toBe('/overview/tests')
+    })
+
+    it('leave drops an empty draft without navigating', async () => {
+      const rec = await mount()
+      await recordingDraft(rec)
+
+      await act(() => rec.leave())
+
+      expect(api.saveRecording).not.toHaveBeenCalled()
+      expect(location).toBe('/overview/tests/x')
+    })
+
+    it('is never autosaved, even with a suite open', async () => {
+      const rec = await mount()
+      await recordingDraft(rec)
+      await emit('new-recorded-step', step('c'))
+      vi.useFakeTimers()
+      try {
+        act(() => {
+          // Recording failed to save, say: the draft is open, not recording, with a suite set
+          useRecorderStore.setState({ recordingTarget: null, isRecording: false })
+          useRecorderStore.getState().setActiveSuiteId('s1')
+          useRecorderStore
+            .getState()
+            .updateActiveTest((p) => (p ? { ...p, name: 'Add to basket' } : p))
+        })
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1000)
+        })
+        expect(api.saveRecording).not.toHaveBeenCalled()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
+
+  it('opening a test does not autosave it; editing it does', async () => {
+    await mount()
+    vi.useFakeTimers()
+    try {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      expect(api.saveRecording).not.toHaveBeenCalled()
+      act(() =>
+        useRecorderStore.getState().updateActiveTest((p) => (p ? { ...p, url: 'https://y' } : p))
+      )
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(500)
+      })
+      expect(api.saveRecording).toHaveBeenCalledWith('s1', expect.objectContaining({ id: 't1' }))
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('cancelReplay ends the replay and the recording', async () => {

@@ -32,7 +32,9 @@ export function useSuiteSync(): void {
   useEffect(() => {
     window.api.getSuites().then((initialSuites: Suite[]) => {
       setSuites(initialSuites)
-      const { openTarget, readOnlyView } = useRecorderStore.getState()
+      const { openTarget, readOnlyView, activeTest, draftTest } = useRecorderStore.getState()
+      // A new test being recorded stays open; no suite lists it yet
+      if (draftTest && activeTest?.id === draftTest.id) return
       // The Tests tab chose what to show; don't replace it with the first suite
       if (openTarget) {
         const suite = initialSuites.find((s) => s.id === openTarget.suiteId)

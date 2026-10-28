@@ -422,6 +422,7 @@
     "view": "View",
     "restore": "Restore",
     "newTest": "New test",
+    "startRecording": "Start recording",
     "editedInCode": "Edited in code",
     "selectOrCreate": "Select a test, or create a new one.",
     "fileMissing": "File missing",
@@ -776,6 +777,7 @@
     }
   },
   "common": {
-    "close": "Close"
+    "close": "Close",
+    "cancel": "Cancel"
   }
 }

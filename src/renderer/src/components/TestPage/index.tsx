@@ -10,6 +10,7 @@ import DeleteModal from '@components/DeleteModal'
 import ConfirmationModal from '@components/ConfirmationModal'
 import AssertionTextModal from '@components/AssertionTextModal'
 import useRecorderStore from '@foundation/Stores/recorderStore'
+import type { RecordingTarget } from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import { buildAssertionStep, assertionModalType } from '@foundation/assertionStep'
@@ -17,11 +18,17 @@ import { handleSaveResult } from '@foundation/saveResult'
 import { testKeyOf } from '@foundation/testKey'
 import type { TestRow } from '@foundation/testKey'
 import type { Step } from '@shared/types/step'
+import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import { useTestRecording } from '../../hooks/useTestRecording'
+import NewTestForm from './NewTestForm'
 
 interface TestPageProps {
-  row: TestRow
+  /** The recorded test to show; without one, a new test is named, then recorded */
+  row?: TestRow
 }
+
+// Until the Tests list can filter by suite, a new test is saved outside any suite
+const draftTarget: RecordingTarget = { kind: 'draft', suiteId: UNLISTED_SUITE_ID }
 
 const field =
   'block w-full px-3 py-1 border border-neutral-bdr rounded text-sm focus:ring-ruby focus:border-ruby transition-colors disabled:bg-neutral-lt disabled:cursor-not-allowed'
@@ -29,13 +36,14 @@ const field =
 const toolbarButton =
   'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white disabled:text-neutral-mid disabled:cursor-not-allowed'
 
-/** A recorded test: its name, start URL, steps, and what can be done with it. */
+/** A recorded test (or a new one): its name, start URL, steps, and what can be done with it. */
 const TestPage: React.FC<TestPageProps> = ({ row }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const recording = useTestRecording()
   const activeTest = useRecorderStore((s) => s.activeTest)
   const activeSuiteId = useRecorderStore((s) => s.activeSuiteId)
+  const draftTest = useRecorderStore((s) => s.draftTest)
   const isRunning = useRecorderStore((s) => s.isRunning)
   const showCode = useRecorderStore((s) => s.showCode)
   const isOutputVisible = useRecorderStore((s) => s.isOutputVisible)
@@ -46,11 +54,12 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
   const { updateActiveTest, setShowCode, setIsOutputVisible, setBreakpointIndex } =
     useRecorderStore.getState()
 
-  const key = testKeyOf(row)
+  const key = row ? testKeyOf(row) : null
   const [openFailed, setOpenFailed] = useState(false)
   useEffect(() => {
     let current = true
     setOpenFailed(false)
+    if (!row) return
     // A recording (or replay) belongs to the test it started on: save it before opening this one
     const { recordingTarget, isRecording, isReplayingToBreakpoint } = useRecorderStore.getState()
     if (recordingTarget || isRecording || isReplayingToBreakpoint) {
@@ -70,7 +79,15 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
     }
   }, [key])
 
-  const test = activeTest && activeTest.id === row.testId ? activeTest : null
+  const isDraft = !row
+  const test = row
+    ? activeTest && activeTest.id === row.testId
+      ? activeTest
+      : null
+    : activeTest && draftTest && activeTest.id === draftTest.id
+      ? activeTest
+      : null
+  const target: RecordingTarget = isDraft ? draftTarget : { kind: 'test' }
   const readOnly = !!test?.ownership && test.ownership !== 'recorded'
   const busy = recording.isRecording || isReplaying
 
@@ -86,6 +103,8 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
     }
     if (!test || readOnly || name === test.name) return
     updateActiveTest((p) => (p ? { ...p, name } : null))
+    // A new test is saved, under its latest name, when its recording stops
+    if (isDraft) return
     // Saved right away, not left to the debounce: opening another test cancels that timer
     const renamed = { ...test, name }
     if (activeSuiteId) {
@@ -101,14 +120,12 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
   const record = (): void => {
     if (!test) return
     const action = test.steps.length > 0 ? recording.continueRecording : recording.start
-    action({ kind: 'test' }).catch((error: unknown) => console.error('Recording failed:', error))
+    action(target).catch((error: unknown) => console.error('Recording failed:', error))
   }
 
   const startOver = (): void => {
     setConfirmingStartOver(false)
-    recording
-      .start({ kind: 'test' })
-      .catch((error: unknown) => console.error('Recording failed:', error))
+    recording.start(target).catch((error: unknown) => console.error('Recording failed:', error))
   }
 
   const exportTest = async (): Promise<void> => {
@@ -148,6 +165,11 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
     recording.setAssertionInfo(null)
   }
 
+  const startDraft = (name: string, url: string): void => {
+    useRecorderStore.getState().startDraft(name, url)
+    recording.start(draftTarget).catch((error: unknown) => console.error('Recording failed:', error))
+  }
+
   const moreOptions = [
     ...(readOnly || recordingDisabled
       ? []
@@ -178,7 +200,7 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
       onClearBreakpoint={() => setBreakpointIndex(null)}
       onRecordFromHere={(index) =>
         recording
-          .recordFromHere(index, { kind: 'test' })
+          .recordFromHere(index, target)
           .catch((error: unknown) => console.error('Recording failed:', error))
       }
       readOnly={readOnly}
@@ -195,12 +217,22 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
           {t('testPage.breadcrumbRoot')}
         </Link>
         <span className="text-neutral-mid">/</span>
-        <span className="font-semibold text-neutral-dark truncate">{test?.name ?? row.name}</span>
+        <span className="font-semibold text-neutral-dark truncate">
+          {test?.name ?? row?.name ?? t('tests.newTest')}
+        </span>
       </nav>
 
       {openFailed ? (
         <p className="text-sm text-neutral-mid">{t('tests.actionFailed')}</p>
-      ) : !test ? null : (
+      ) : !test ? (
+        isDraft && (
+          <NewTestForm
+            onStart={startDraft}
+            onCancel={() => navigate('/overview/tests')}
+            disabled={recordingDisabled}
+          />
+        )
+      ) : (
         <>
           <div className="flex items-center gap-4">
             <input
@@ -251,7 +283,7 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
             )}
             <button
               onClick={() => void recording.run()}
-              disabled={busy || isRunning}
+              disabled={busy || isRunning || isDraft}
               className={`${toolbarButton} text-green-700 hover:bg-green-50`}
             >
               {t('testPage.run')}
@@ -270,12 +302,14 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
             >
               {t('testPage.lastRun')}
             </button>
-            <Dropdown
-              buttonText={t('testPage.more')}
-              options={moreOptions}
-              defaultOption={-1}
-              disabled={busy}
-            />
+            {!isDraft && (
+              <Dropdown
+                buttonText={t('testPage.more')}
+                options={moreOptions}
+                defaultOption={-1}
+                disabled={busy}
+              />
+            )}
           </div>
 
           {browserOpen ? (

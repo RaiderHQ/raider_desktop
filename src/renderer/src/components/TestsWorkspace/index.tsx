@@ -1,5 +1,5 @@
 import React from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useMatch, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import TestsList from '@components/TestsList'
 import TestPage from '@components/TestPage'
@@ -19,6 +19,7 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { testKey: param } = useParams()
+  const isNewTest = useMatch('/overview/tests/new') !== null
   const rows = useTestsList()
   const isRecording = useRecorderStore((s) => s.isRecording)
 
@@ -29,6 +30,9 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
 
   const pane = renderPane ? (
     renderPane(selectedRow)
+  ) : isNewTest ? (
+    // The same page as a recorded test, so it stays mounted once the new test is saved
+    <TestPage />
   ) : selectedRow ? (
     selectedRow.ownership === 'recorded' || selectedRow.ownership === 'legacy' ? (
       // One page for every recorded test, so its recording hooks mount once
@@ -67,7 +71,7 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
               rows={rows}
               selectedKey={selectedKey}
               onSelect={select}
-              onNewTest={onNewTest ?? ((): void => navigate('/overview/tests'))}
+              onNewTest={onNewTest ?? ((): void => navigate('/overview/tests/new'))}
             />
           )}
         </div>

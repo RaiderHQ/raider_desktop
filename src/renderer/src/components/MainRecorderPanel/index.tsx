@@ -7,7 +7,6 @@ import type { Test } from '@foundation/Types/test'
 import toast from 'react-hot-toast'
 import { useTranslation } from 'react-i18next'
 import useRecorderStore from '@foundation/Stores/recorderStore'
-import { createNewTest } from '@foundation/recorderUtils'
 import { handleSaveResult } from '@foundation/saveResult'
 
 interface MainRecorderPanelProps {
@@ -37,8 +36,6 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
   const activeSuiteId = useRecorderStore((s) => s.activeSuiteId)
   const activeSuiteName = useRecorderStore((s) => s.activeSuite()?.name)
   const isReplayingToBreakpoint = useRecorderStore((s) => s.isReplayingToBreakpoint)
-
-  const { setActiveTest } = useRecorderStore.getState()
 
   // The name is kept here while typing and saved on blur or Enter: main renames the
   // test's file on a real rename, so a half-typed name must never reach it
@@ -75,17 +72,6 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
 
   const onUrlChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     useRecorderStore.getState().updateActiveTest((p) => (p ? { ...p, url: e.target.value } : null))
-  }
-
-  const onNewTest = (): void => {
-    const suiteId = useRecorderStore.getState().activeSuiteId
-    if (suiteId) {
-      const newTest = createNewTest()
-      setActiveTest(newTest)
-      Promise.resolve(window.api.saveRecording(suiteId, newTest))
-        .then((result) => handleSaveResult(result, newTest.id, t))
-        .catch((error: unknown) => console.error('Saving the new test failed:', error))
-    }
   }
 
   const handleExportClick = async (exportType: 'Test' | 'Suite' | 'Project'): Promise<void> => {
@@ -242,21 +228,6 @@ const MainRecorderPanel: React.FC<MainRecorderPanelProps> = ({
       )}
       <div className="flex items-center justify-between pt-2">
         <div className="flex items-center space-x-2">
-          {!readOnly && (
-            <Tooltip content={t('tooltips.recorder.newTest')} position="right">
-              <button
-                onClick={onNewTest}
-                disabled={!activeSuiteId}
-                className={`text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors ${
-                  !activeSuiteId
-                    ? 'text-neutral-mid cursor-not-allowed bg-white'
-                    : 'text-neutral-dk bg-white hover:bg-neutral-50'
-                }`}
-              >
-                {t('recorder.mainRecorderPanel.newTest')}
-              </button>
-            </Tooltip>
-          )}
           {!readOnly && (
             <Tooltip content={t('tooltips.recorder.more')} position="right">
               <Dropdown

@@ -154,7 +154,6 @@ const mockApi = {
   setLongshipConfig: vi.fn().mockResolvedValue({ url: '', apiKey: '', enabled: false })
 }
 
-let suiteUpdatedCallback: (event: IpcRendererEvent, updatedSuites: unknown) => void = () => {}
 const ipcListeners = new Map<string, (event: IpcRendererEvent, ...args: unknown[]) => unknown>()
 const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
   await act(async () => {
@@ -170,9 +169,6 @@ beforeEach(() => {
         channel: string,
         callback: (event: IpcRendererEvent, ...args: unknown[]) => void
       ): (() => void) => {
-        if (channel === 'suite-updated') {
-          suiteUpdatedCallback = callback
-        }
         ipcListeners.set(channel, callback)
         return () => {}
       },
@@ -337,42 +333,6 @@ describe('Recorder Page', (): void => {
       fireEvent.click(toggleButton)
     })
     expect(screen.getByText('recorder.recorderPage.codeView')).toBeInTheDocument()
-  })
-
-  it('creates a new test and displays it', async () => {
-    const initialSuites = [{ id: 'suite-1', name: 'My Suite', tests: [] }]
-    mockApi.getSuites.mockResolvedValue(initialSuites)
-
-    await act(async () => {
-      render(<Recorder />)
-    })
-
-    mockApi.saveRecording.mockResolvedValue({ success: true })
-    const newTestButton = screen.getByText('recorder.mainRecorderPanel.newTest')
-    await act(async () => {
-      fireEvent.click(newTestButton)
-    })
-
-    const newTest = {
-      id: expect.any(String),
-      name: 'Untitled Test',
-      url: 'https://www.wikipedia.org',
-      steps: []
-    }
-
-    const updatedSuites = [
-      {
-        id: 'suite-1',
-        name: 'My Suite',
-        tests: [newTest]
-      }
-    ]
-
-    await act(async () => {
-      suiteUpdatedCallback({} as IpcRendererEvent, updatedSuites)
-    })
-
-    expect(screen.getByText('Untitled Test')).toBeInTheDocument()
   })
 
   describe('recording steps', () => {

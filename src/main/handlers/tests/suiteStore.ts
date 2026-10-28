@@ -122,9 +122,10 @@ export async function saveTestInSuite(
   suiteId: string,
   input: Test
 ): Promise<SaveResult> {
-  const entry = store.index.get(suiteId)
-  const suite = store.suites.get(suiteId)
-  if (!entry || !suite || !isCurrent(store)) {
+  // New tests are saved outside any suite: that suite is added once one is saved into it
+  let entry = store.index.get(suiteId)
+  let suite = store.suites.get(suiteId)
+  if (((!entry || !suite) && suiteId !== UNLISTED_SUITE_ID) || !isCurrent(store)) {
     return { success: false, error: `Suite with ID ${suiteId} not found.` }
   }
   if (!isStorableTest(input)) return { success: false, error: INVALID_TEST_ERROR }
@@ -152,6 +153,8 @@ export async function saveTestInSuite(
     return { success: false, error: 'codeOwned' }
   }
 
+  const added = { entry: !store.index.has(suiteId), suite: !store.suites.has(suiteId) }
+  if (!entry || !suite) ({ entry, suite } = ensureUnlistedSuite(store))
   if (!entry.testIds.includes(test.id)) {
     entry.testIds.push(test.id)
     try {
@@ -159,6 +162,9 @@ export async function saveTestInSuite(
     } catch (error) {
       // The file is saved; without the index entry it shows up as a recorded file, not in the suite
       entry.testIds = entry.testIds.filter((id) => id !== test.id)
+      // Nor is the suite it was going to be the first test of
+      if (added.entry) store.index.delete(suiteId)
+      if (added.suite) store.suites.delete(suiteId)
       throw error
     }
   }
@@ -258,6 +264,29 @@ export async function releaseTests(store: FilesStore, testIds: string[]): Promis
 }
 
 /**
+ * The "Not in a suite" suite, added to the snapshot's index and suites when
+ * missing. Only the maps change: callers save the index.
+ */
+export function ensureUnlistedSuite(store: FilesStore): {
+  entry: SuiteIndexEntry
+  suite: Suite
+} {
+  const entry = store.index.get(UNLISTED_SUITE_ID) ?? {
+    id: UNLISTED_SUITE_ID,
+    name: en.tests.notInSuite,
+    testIds: []
+  }
+  const suite = store.suites.get(UNLISTED_SUITE_ID) ?? {
+    id: UNLISTED_SUITE_ID,
+    name: entry.name,
+    tests: []
+  }
+  store.index.set(UNLISTED_SUITE_ID, entry)
+  store.suites.set(UNLISTED_SUITE_ID, suite)
+  return { entry, suite }
+}
+
+/**
  * Lists recorded tests that no suite lists (left by a replacing import, a
  * damaged suites file or an interrupted save) in the "Not in a suite" suite,
  * so none is out of reach. Only the index is written; the tests' files are not
@@ -267,20 +296,9 @@ export async function adoptUnlistedTests(store: FilesStore): Promise<void> {
   try {
     const tests = await unlistedTests(store.projectPath, Array.from(store.index.values()))
     if (tests.length === 0 || !isCurrent(store)) return
-    const entry = store.index.get(UNLISTED_SUITE_ID) ?? {
-      id: UNLISTED_SUITE_ID,
-      name: en.tests.notInSuite,
-      testIds: []
-    }
-    const suite = store.suites.get(UNLISTED_SUITE_ID) ?? {
-      id: UNLISTED_SUITE_ID,
-      name: entry.name,
-      tests: []
-    }
+    const { entry, suite } = ensureUnlistedSuite(store)
     entry.testIds = [...entry.testIds, ...tests.map((t) => t.id)]
     suite.tests = [...suite.tests, ...tests]
-    store.index.set(UNLISTED_SUITE_ID, entry)
-    store.suites.set(UNLISTED_SUITE_ID, suite)
     // Kept in memory even if the write fails: the next index save stores it
     await saveIndex(store)
   } catch (error) {
