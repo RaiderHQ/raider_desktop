@@ -14,6 +14,8 @@ interface CommandListProps {
   onClearBreakpoint?: () => void
   onRecordFromHere?: (index: number) => void
   readOnly?: boolean
+  /** Marks the last step as the latest one (while recording) */
+  markLatest?: boolean
 }
 
 const CommandList: React.FC<CommandListProps> = ({
@@ -26,7 +28,8 @@ const CommandList: React.FC<CommandListProps> = ({
   onSetBreakpoint,
   onClearBreakpoint,
   onRecordFromHere,
-  readOnly = false
+  readOnly = false,
+  markLatest = false
 }) => {
   const { t } = useTranslation()
   const dragItemIndex = useRef<number | null>(null)
@@ -70,6 +73,7 @@ const CommandList: React.FC<CommandListProps> = ({
               onClearBreakpoint={onClearBreakpoint}
               onRecordFromHere={onRecordFromHere}
               readOnly={readOnly}
+              latest={markLatest && index === steps.length - 1}
             />
           ))
         ) : (

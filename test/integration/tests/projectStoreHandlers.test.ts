@@ -99,7 +99,11 @@ describe('recorded tests as project files', () => {
 
     const result = await saveRecording(win, suiteId, checkout())
 
-    expect(result).toEqual({ success: true })
+    // The saved test comes back with its file, so the page can say where it went
+    expect(result).toEqual({
+      success: true,
+      test: expect.objectContaining({ id: 't-checkout', file: 'spec/checkout_spec.rb' })
+    })
     expect(await exists(join(project, 'spec', 'checkout_spec.rb'))).toBe(true)
     expect(await exists(join(project, '.raider', 'tests', 'spec', 'checkout_spec.rb.json'))).toBe(
       true

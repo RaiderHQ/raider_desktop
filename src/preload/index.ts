@@ -211,7 +211,7 @@ const api = {
   saveRecording: async (
     suiteId: string,
     testData: Test
-  ): Promise<{ success: boolean; error?: string }> =>
+  ): Promise<{ success: boolean; error?: string; test?: Test }> =>
     ipcRenderer.invoke('save-recording', suiteId, testData),
   deleteTest: (suiteId: string, testId: string): Promise<void> =>
     ipcRenderer.invoke('delete-test', { suiteId, testId }),
@@ -247,6 +247,17 @@ const api = {
   registerRecorderWebContents: async (webContentsId: number): Promise<void> =>
     ipcRenderer.invoke('register-recorder-webcontents', webContentsId),
   stopRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('stop-recording-main'),
+  /** Tells main whether a recording is open, so closing the window saves it first */
+  setRecordingState: (active: boolean): void => ipcRenderer.send('recording-state', active),
+  /** Main asks the page to save its recording before the window closes; returns an unsubscribe */
+  onFlushRecording: (callback: () => void): (() => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('flush-recording', listener)
+    return (): void => {
+      ipcRenderer.removeListener('flush-recording', listener)
+    }
+  },
+  flushRecordingDone: (): void => ipcRenderer.send('flush-recording-done'),
   loadUrlRequest: async (url: string): Promise<CommandType> =>
     ipcRenderer.invoke('load-url-request', url),
   renderStep: (step: Step): Promise<string> => ipcRenderer.invoke('render-step', step),

@@ -14,7 +14,7 @@ const handler = async (
   mainWindow: BrowserWindow | null,
   suiteId: string,
   testData: Test
-): Promise<{ success: boolean; error?: string }> => {
+): Promise<{ success: boolean; error?: string; test?: Test }> => {
   if (!mainWindow) {
     return { success: false, error: 'Main window is not available.' }
   }
@@ -28,7 +28,7 @@ const handler = async (
       const result = await saveTestInSuite(store, suiteId, testData)
       if (!result.success) return result
       broadcast(store)
-      return { success: true }
+      return { success: true, test: result.test }
     } catch (error) {
       return { success: false, error: (error as Error).message }
     }

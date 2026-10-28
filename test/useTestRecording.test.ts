@@ -1,4 +1,7 @@
+import { createElement } from 'react'
+import type { ReactNode } from 'react'
 import { renderHook, act } from '@testing-library/react'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { IpcRendererEvent } from 'electron'
 import { useTestRecording } from '../src/renderer/src/hooks/useTestRecording'
@@ -6,10 +9,15 @@ import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import { useTestsListStore } from '@foundation/Stores/testsListStore'
+import { toRouteParam } from '@foundation/testKey'
 import type { Test } from '@foundation/Types/test'
 
 vi.mock('react-i18next', () => ({
-  useTranslation: (): { t: (key: string) => string } => ({ t: (key: string): string => key })
+  useTranslation: (): { t: (key: string, options?: object) => string } => ({
+    t: (key: string, options?: object): string =>
+      options ? `${key} ${JSON.stringify(options)}` : key
+  })
 }))
 
 const mockToast = vi.hoisted(() =>
@@ -48,14 +56,50 @@ const api = {
   replayInWebview: vi.fn(),
   cancelReplay: vi.fn(),
   runTest: vi.fn(),
-  runProjectFile: vi.fn()
+  runProjectFile: vi.fn(),
+  listProjectTests: vi.fn(),
+  setRecordingState: vi.fn(),
+  onFlushRecording: vi.fn(),
+  flushRecordingDone: vi.fn()
 }
 
-const mount = async (): Promise<ReturnType<typeof useTestRecording>> => {
-  const { result } = renderHook(() => useTestRecording())
+let flushRecording: (() => void) | null = null
+let location = ''
+
+const wrapper = ({ children }: { children: ReactNode }): ReactNode =>
+  createElement(
+    MemoryRouter,
+    {
+      initialEntries: ['/overview/tests/x'],
+      future: { v7_startTransition: true, v7_relativeSplatPath: true }
+    },
+    children
+  )
+
+const mountHook = async (): Promise<{
+  result: { current: ReturnType<typeof useTestRecording> }
+  unmount: () => void
+}> => {
+  const hook = renderHook(
+    () => {
+      location = useLocation().pathname
+      return useTestRecording()
+    },
+    { wrapper }
+  )
   // Let useSuiteSync's first load settle
   await act(async () => {})
-  return result.current
+  return hook
+}
+
+const mount = async (): Promise<ReturnType<typeof useTestRecording>> =>
+  (await mountHook()).result.current
+
+/** Recording the open test, with its steps so far kept */
+const recordingTest = async (rec: ReturnType<typeof useTestRecording>): Promise<void> => {
+  await act(() => rec.start({ kind: 'test' }))
+  act(() => useRecorderStore.getState().setBreakpointIndex(2))
+  await emit('recording-started', 'https://x.test/login')
 }
 
 beforeEach(() => {
@@ -72,6 +116,14 @@ beforeEach(() => {
   api.replayInWebview.mockResolvedValue({ success: true })
   api.cancelReplay.mockResolvedValue({ success: true })
   api.runTest.mockResolvedValue({ success: true, output: 'ok' })
+  api.listProjectTests.mockResolvedValue([])
+  flushRecording = null
+  api.onFlushRecording.mockImplementation((cb: () => void) => {
+    flushRecording = cb
+    return (): void => {
+      flushRecording = null
+    }
+  })
   // @ts-expect-error - Mocking window.api
   window.api = api
   // @ts-expect-error - Mocking window.electron
@@ -85,6 +137,7 @@ beforeEach(() => {
   }
   useRecorderStore.getState().resetForProject()
   useRecorderStore.setState({ activeSuiteId: 's1', activeTest: test1 })
+  useTestsListStore.setState({ rows: null })
   useProjectStore.setState({ layout: null })
   useRubyStore.setState({ rubyCommand: '/usr/bin/ruby' })
   useRunOutputStore.setState({ runOutput: '', runFailed: false })
@@ -140,6 +193,8 @@ describe('useTestRecording', () => {
       exampleName: 'logs in'
     })
     expect(api.loadUrlRequest).toHaveBeenCalledWith('')
+    // Example recordings can't be saved yet: don't let the unmount try
+    act(() => useRecorderStore.getState().setRecordingTarget(null))
   })
 
   it('start does nothing when the project cannot be recorded', async () => {
@@ -265,5 +320,92 @@ describe('useTestRecording', () => {
       's1',
       expect.objectContaining({ url: 'https://y' })
     )
+  })
+
+  it('stop says where the test was saved, refreshes the list and opens the test', async () => {
+    api.saveRecording.mockResolvedValue({
+      success: true,
+      test: { ...test1, file: 'spec/login_works_spec.rb' }
+    })
+    api.listProjectTests.mockResolvedValue([
+      { name: 'Login works', file: 'spec/login_works_spec.rb', testId: 't1', ownership: 'recorded' }
+    ])
+    const rec = await mount()
+    await recordingTest(rec)
+    await act(() => rec.stop())
+    expect(mockToast.success).toHaveBeenCalledWith(
+      `tests.saved ${JSON.stringify({ name: 'Login works', file: 'spec/login_works_spec.rb' })}`
+    )
+    expect(useTestsListStore.getState().rows).toEqual([
+      expect.objectContaining({ testId: 't1', file: 'spec/login_works_spec.rb' })
+    ])
+    expect(location).toBe(`/overview/tests/${toRouteParam('id:t1')}`)
+    expect(useRecorderStore.getState().isRecording).toBe(false)
+  })
+
+  it('stop shows no success when the save is refused', async () => {
+    api.saveRecording.mockResolvedValue({ success: false, error: 'codeOwned' })
+    const rec = await mount()
+    await recordingTest(rec)
+    await act(() => rec.stop())
+    expect(mockToast.success).not.toHaveBeenCalled()
+    expect(location).toBe('/overview/tests/x')
+    expect(useRecorderStore.getState().activeTest?.ownership).toBe('codeOwnedWasRecorded')
+  })
+
+  it('steps that arrive after another test was opened never reach it', async () => {
+    const other: Test = { id: 't2', name: 'Other', url: '', steps: [], ownership: 'recorded' }
+    const rec = await mount()
+    await recordingTest(rec)
+    await act(() => rec.leave())
+    act(() => useRecorderStore.getState().setActiveTest(other))
+    await emit('new-recorded-step', step('late'))
+    await emit('new-trace-step', { id: 'tr' })
+    expect(useRecorderStore.getState().activeTest).toEqual(other)
+  })
+
+  it('tells main whether it is recording', async () => {
+    const rec = await mount()
+    expect(api.setRecordingState).toHaveBeenLastCalledWith(false)
+    await recordingTest(rec)
+    expect(api.setRecordingState).toHaveBeenLastCalledWith(true)
+    await act(() => rec.stop())
+    expect(api.setRecordingState).toHaveBeenLastCalledWith(false)
+  })
+
+  it('a flush from main saves the recording, then answers', async () => {
+    const rec = await mount()
+    await recordingTest(rec)
+    await emit('new-recorded-step', step('n'))
+    api.saveRecording.mockClear()
+    await act(async () => {
+      flushRecording?.()
+    })
+    expect(api.saveRecording).toHaveBeenCalledWith(
+      's1',
+      expect.objectContaining({ steps: [...test1.steps, step('n')] })
+    )
+    expect(api.flushRecordingDone).toHaveBeenCalledTimes(1)
+  })
+
+  it('a flush with nothing recording only answers', async () => {
+    await mount()
+    api.saveRecording.mockClear()
+    await act(async () => {
+      flushRecording?.()
+    })
+    expect(api.saveRecording).not.toHaveBeenCalled()
+    expect(api.flushRecordingDone).toHaveBeenCalledTimes(1)
+  })
+
+  it('unmounting while recording saves the recording and tells main it stopped', async () => {
+    const { result, unmount } = await mountHook()
+    await recordingTest(result.current)
+    api.saveRecording.mockClear()
+    unmount()
+    expect(api.stopRecordingMain).toHaveBeenCalled()
+    await act(async () => {})
+    expect(api.saveRecording).toHaveBeenCalledWith('s1', expect.objectContaining({ id: 't1' }))
+    expect(api.setRecordingState).toHaveBeenLastCalledWith(false)
   })
 })

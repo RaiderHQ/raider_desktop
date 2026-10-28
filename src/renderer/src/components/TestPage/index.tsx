@@ -51,6 +51,13 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
   useEffect(() => {
     let current = true
     setOpenFailed(false)
+    // A recording (or replay) belongs to the test it started on: save it before opening this one
+    const { recordingTarget, isRecording, isReplayingToBreakpoint } = useRecorderStore.getState()
+    if (recordingTarget || isRecording || isReplayingToBreakpoint) {
+      recording
+        .leave()
+        .catch((error: unknown) => console.error('Saving the recording failed:', error))
+    }
     useRecorderStore
       .getState()
       .openTest(row)
@@ -175,6 +182,7 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
           .catch((error: unknown) => console.error('Recording failed:', error))
       }
       readOnly={readOnly}
+      markLatest={recording.isRecording}
     />
   ) : null
 
@@ -218,6 +226,12 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
           </div>
 
           <div className="flex items-center gap-2">
+            {recording.isRecording && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" aria-hidden />
+                {t('testPage.recording')}
+              </span>
+            )}
             {recording.isRecording ? (
               <button
                 onClick={() => void recording.stop()}

@@ -19,6 +19,8 @@ interface CommandBlockProps {
   onRecordFromHere?: (index: number) => void
   /** View-only: no editing, dragging, deleting or breakpoints */
   readOnly?: boolean
+  /** The step recorded last */
+  latest?: boolean
 }
 
 const CommandBlock: React.FC<CommandBlockProps> = ({
@@ -34,7 +36,8 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   onSetBreakpoint,
   onClearBreakpoint,
   onRecordFromHere,
-  readOnly = false
+  readOnly = false,
+  latest = false
 }) => {
   const { t } = useTranslation()
   // Ruby for the code view, rendered by the main process for the project's automation
@@ -155,7 +158,10 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   }
 
   return (
-    <div className="relative w-full mb-3 group/block">
+    <div
+      className={`relative w-full mb-3 group/block ${latest ? 'rounded-lg ring-2 ring-ruby/40' : ''}`}
+      data-latest={latest ? 'true' : undefined}
+    >
       {/* Breakpoint gutter */}
       {!readOnly && (
         <div

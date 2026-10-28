@@ -1,6 +1,8 @@
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
+import type { ReactElement } from 'react'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
+import type { IpcRendererEvent } from 'electron'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import TestPage from '@components/TestPage'
 import TestsWorkspace from '@components/TestsWorkspace'
@@ -65,6 +67,13 @@ const row = (test: Test): TestRow => ({
   suiteIds: ['s1']
 })
 
+const listeners = new Map<string, (event: IpcRendererEvent, ...args: unknown[]) => unknown>()
+const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
+  await act(async () => {
+    await listeners.get(channel)?.({} as IpcRendererEvent, ...args)
+  })
+}
+
 const api = {
   getSuites: vi.fn(),
   listProjectTests: vi.fn(),
@@ -73,21 +82,36 @@ const api = {
   exportTest: vi.fn(),
   stopRecordingMain: vi.fn(),
   saveTrace: vi.fn(),
-  renderStep: vi.fn()
+  renderStep: vi.fn(),
+  cancelReplay: vi.fn(),
+  setRecordingState: vi.fn(),
+  onFlushRecording: vi.fn(() => (): void => {}),
+  flushRecordingDone: vi.fn()
 }
 
-const renderPage = (test: Test = recorded): void => {
-  render(
-    <MemoryRouter
-      initialEntries={['/overview/tests/x']}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
-      <Routes>
-        <Route path="/overview/tests/:testKey" element={<TestPage row={row(test)} />} />
-        <Route path="/overview/tests" element={<div>tests list route</div>} />
-      </Routes>
-    </MemoryRouter>
-  )
+const page = (test: Test): ReactElement => (
+  <MemoryRouter
+    initialEntries={['/overview/tests/x']}
+    future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+  >
+    <Routes>
+      <Route path="/overview/tests/:testKey" element={<TestPage row={row(test)} />} />
+      <Route path="/overview/tests" element={<div>tests list route</div>} />
+    </Routes>
+  </MemoryRouter>
+)
+
+const renderPage = (test: Test = recorded): ReturnType<typeof render> => render(page(test))
+
+/** Puts the open test in recording the way start() and main do. */
+const startRecording = async (): Promise<void> => {
+  act(() => {
+    useRecorderStore.getState().setRecordingTarget({ kind: 'test' })
+    useRecorderStore.getState().setRecordingBrowser({ url: 'https://x.test', preloadPath: '/p.js' })
+    // Continue recording: the steps so far are kept
+    useRecorderStore.getState().setBreakpointIndex(1)
+  })
+  await emit('recording-started', 'https://x.test/login')
 }
 
 const opened = async (name = 'Login works'): Promise<void> => {
@@ -104,10 +128,18 @@ beforeEach(() => {
   api.deleteTest.mockResolvedValue(undefined)
   api.exportTest.mockResolvedValue({ success: true, path: '/out' })
   api.renderStep.mockImplementation(async (s: { url?: string }) => `goto ${s.url ?? ''}`)
+  api.saveTrace.mockResolvedValue({ success: true })
+  listeners.clear()
   // @ts-expect-error - Mocking window.api
   window.api = api
-  // @ts-expect-error - Mocking window.electron
-  window.electron = { ipcRenderer: { on: vi.fn(() => () => {}) } }
+  window.electron = {
+    ipcRenderer: {
+      on: (channel: string, cb: (event: IpcRendererEvent, ...args: unknown[]) => unknown) => {
+        listeners.set(channel, cb)
+        return (): boolean => listeners.delete(channel)
+      }
+    }
+  } as unknown as typeof window.electron
   useRecorderStore.getState().resetForProject()
   useRecorderStore.setState({ showCode: false, isOutputVisible: false })
   useRunOutputStore.setState({ runOutput: '' })
@@ -316,10 +348,75 @@ describe('TestPage', () => {
       code: 'Code',
       lastRun: 'Last run',
       more: 'More',
+      stop: 'Stop & save',
+      recording: 'Recording',
       startOver: 'Start over',
       exportTest: 'Export test',
       deleteTest: 'Delete test'
     })
+    expect(en.tests).toMatchObject({
+      rail: 'Tests',
+      saved: 'Saved to your project as {{name}} ({{file}})'
+    })
+  })
+
+  it('leaving the page while recording stops and saves the recording', async () => {
+    const { unmount } = renderPage()
+    await opened()
+    await startRecording()
+    await emit('new-recorded-step', step('n'))
+    api.saveRecording.mockClear()
+    api.stopRecordingMain.mockClear()
+
+    unmount()
+
+    expect(api.stopRecordingMain).toHaveBeenCalled()
+    await waitFor(() => expect(api.saveRecording).toHaveBeenCalledTimes(1))
+    expect(api.saveRecording).toHaveBeenCalledWith(
+      's1',
+      expect.objectContaining({ id: 't1', steps: [step('a'), step('b'), step('n')] })
+    )
+    expect(api.setRecordingState).toHaveBeenLastCalledWith(false)
+  })
+
+  it('opening another test while recording saves the first, and later steps never reach the second', async () => {
+    const { rerender } = renderPage(recorded)
+    await opened()
+    await startRecording()
+    await emit('new-recorded-step', step('n'))
+    api.saveRecording.mockClear()
+
+    rerender(page(empty))
+    await opened('Empty one')
+
+    expect(api.stopRecordingMain).toHaveBeenCalled()
+    expect(api.saveRecording).toHaveBeenCalledTimes(1)
+    expect(api.saveRecording).toHaveBeenCalledWith(
+      's1',
+      expect.objectContaining({ id: 't1', steps: [step('a'), step('b'), step('n')] })
+    )
+    expect(useRecorderStore.getState().activeTest?.id).toBe('t2')
+
+    await emit('new-recorded-step', step('late'))
+    expect(useRecorderStore.getState().activeTest?.steps).toEqual([])
+    expect(useRecorderStore.getState().isRecording).toBe(false)
+  })
+
+  it('opening another test while replaying cancels the replay and saves the first', async () => {
+    const { rerender } = renderPage(recorded)
+    await opened()
+    await startRecording()
+    // Replaying up to a step in the webview after main started recording
+    act(() => useRecorderStore.setState({ isReplayingToBreakpoint: true, breakpointIndex: 1 }))
+    api.saveRecording.mockClear()
+
+    rerender(page(empty))
+    await opened('Empty one')
+
+    expect(api.cancelReplay).toHaveBeenCalled()
+    expect(api.saveRecording).toHaveBeenCalledWith('s1', expect.objectContaining({ id: 't1' }))
+    expect(useRecorderStore.getState().isReplayingToBreakpoint).toBe(false)
+    expect(useRecorderStore.getState().breakpointIndex).toBeNull()
   })
 })
 

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import TestsList from '@components/TestsList'
 import TestPage from '@components/TestPage'
 import { useTestsList } from '../../hooks/useTestsList'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 import { fromRouteParam, testKeyOf, toRouteParam } from '@foundation/testKey'
 import type { TestKey, TestRow } from '@foundation/testKey'
 
@@ -19,6 +20,7 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
   const navigate = useNavigate()
   const { testKey: param } = useParams()
   const rows = useTestsList()
+  const isRecording = useRecorderStore((s) => s.isRecording)
 
   const selectedKey: TestKey | null = param ? fromRouteParam(param) || null : null
   const selectedRow = rows?.find((r) => testKeyOf(r) === selectedKey) ?? null
@@ -45,16 +47,31 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
 
   return (
     <div className="flex h-[calc(100vh-11rem)] min-h-[24rem] border border-neutral-bdr rounded-lg shadow-card bg-white overflow-hidden">
-      <div className="w-72 shrink-0 border-r border-neutral-bdr min-h-0">
-        {rows && (
-          <TestsList
-            rows={rows}
-            selectedKey={selectedKey}
-            onSelect={select}
-            onNewTest={onNewTest ?? ((): void => navigate('/overview/tests'))}
-          />
-        )}
-      </div>
+      {isRecording ? (
+        // Recording folds the list away; going back to it leaves the test page, which saves
+        <div
+          data-testid="tests-rail"
+          className="w-24 shrink-0 border-r border-neutral-bdr p-2 bg-neutral-50"
+        >
+          <button
+            onClick={() => navigate('/overview/tests')}
+            className="w-full text-left text-sm font-medium text-neutral-dark hover:text-ruby px-2 py-1 rounded transition-colors"
+          >
+            {t('tests.rail')} <span aria-hidden>›</span>
+          </button>
+        </div>
+      ) : (
+        <div className="w-72 shrink-0 border-r border-neutral-bdr min-h-0">
+          {rows && (
+            <TestsList
+              rows={rows}
+              selectedKey={selectedKey}
+              onSelect={select}
+              onNewTest={onNewTest ?? ((): void => navigate('/overview/tests'))}
+            />
+          )}
+        </div>
+      )}
       <div className="flex-1 min-w-0 min-h-0 overflow-y-auto">{pane}</div>
     </div>
   )

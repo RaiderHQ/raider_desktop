@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import type { Test } from '@foundation/Types/test'
 import type { TraceStep } from '@foundation/Types/traceStep'
 import type { Step } from '@shared/types/step'
 import { isPendingAssertion } from '@shared/types/pendingAssertion'
@@ -10,16 +11,22 @@ interface RecordingIPCOptions {
   setAssertionInfo: (info: PendingAssertion | null) => void
 }
 
-const appendStep = (step: Step): void => {
-  useRecorderStore
-    .getState()
-    .updateActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, step] } : null))
-}
-
 export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void {
   const { setRunOutput } = useRunOutputStore.getState()
 
   useEffect(() => {
+    // The test the recording started on. Steps that arrive late, after another test was
+    // opened, belong to the recorded test, never to the one open now
+    let recordedTestId: string | null = null
+    const forRecordedTest = (update: (test: Test) => Test): void =>
+      useRecorderStore
+        .getState()
+        .updateActiveTest((prev) =>
+          prev && (recordedTestId === null || prev.id === recordedTestId) ? update(prev) : prev
+        )
+    const appendStep = (step: Step): void =>
+      forRecordedTest((prev) => ({ ...prev, steps: [...prev.steps, step] }))
+
     const handleRecordingStarted = (_event: Electron.IpcRendererEvent, loadedUrl: string): void => {
       const {
         setIsRecording,
@@ -30,6 +37,7 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
         setIsReplayingToBreakpoint
       } = useRecorderStore.getState()
       setIsRecording(true)
+      recordedTestId = activeTest?.id ?? null
       if (activeTest) {
         if (breakpointIndex !== null) {
           // Keep the pre-breakpoint steps; new recorded steps will append after them
@@ -71,11 +79,7 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
     }
 
     const handleNewTraceStep = (_event: Electron.IpcRendererEvent, traceStep: TraceStep): void => {
-      useRecorderStore
-        .getState()
-        .updateActiveTest((prev) =>
-          prev ? { ...prev, trace: [...(prev.trace || []), traceStep] } : null
-        )
+      forRecordedTest((prev) => ({ ...prev, trace: [...(prev.trace || []), traceStep] }))
     }
 
     // Complete steps are added directly; text checks first ask the user for the expected text

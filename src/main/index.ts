@@ -66,6 +66,7 @@ import replayStepsAndRecord from './handlers/recording/replayStepsAndRecord'
 import replayInWebview, { cancelWebviewReplay } from './handlers/recording/replayInWebview'
 import stopRecordingMain from './handlers/recording/stopRecordingMain'
 import saveRecording from './handlers/recording/saveRecording'
+import { installCloseFlush } from './handlers/recording/closeFlush'
 import saveTrace from './handlers/trace/saveTrace'
 import loadTrace from './handlers/trace/loadTrace'
 import deleteTrace from './handlers/trace/deleteTrace'
@@ -98,6 +99,9 @@ const iconPath = join(
       : '../../resources/ruby-raider.png' // Linux
 )
 
+// Set once the app is quitting, so a close held for saving a recording quits afterwards
+let quitting = false
+
 function createWindow(): void {
   const newMainWindow = new BrowserWindow({
     width: 1200,
@@ -115,6 +119,11 @@ function createWindow(): void {
 
   // Set the main window instance in our app state module
   setMainWindow(newMainWindow)
+
+  // Closing while recording saves the recording first
+  installCloseFlush(newMainWindow, ipcMain, {
+    close: () => (quitting ? app.quit() : newMainWindow.close())
+  })
 
   if (is.dev && appState.mainWindow) {
     appState.mainWindow.webContents.openDevTools()
@@ -138,6 +147,10 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.ruby-raider')
+
+  app.on('before-quit', () => {
+    quitting = true
+  })
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

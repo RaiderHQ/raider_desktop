@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import useRecorderStore from '@foundation/Stores/recorderStore'
@@ -6,7 +7,10 @@ import type { RecordingTarget } from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { handleSaveResult } from '@foundation/saveResult'
+import { testKeyOf, toRouteParam } from '@foundation/testKey'
+import type { TestKey } from '@foundation/testKey'
 import type { PendingAssertion } from '@shared/types/pendingAssertion'
 import { useSuiteSync } from './useSuiteSync'
 import { useRecordingIPC } from './useRecordingIPC'
@@ -18,8 +22,10 @@ export interface TestRecording {
   continueRecording(target: RecordingTarget): Promise<void>
   /** Replay up to `index`, then record after it */
   recordFromHere(index: number, target: RecordingTarget): Promise<void>
-  /** Stop the recording and save it to its target */
+  /** Stop & save: save the recording to its target, then show the saved test */
   stop(): Promise<void>
+  /** Stop and save the recording (or replay) without showing anything: the user is leaving */
+  leave(): Promise<void>
   run(): Promise<void>
   cancelReplay(): Promise<void>
   recordingUrl: string | null
@@ -32,12 +38,74 @@ export interface TestRecording {
 
 const store = useRecorderStore.getState
 
+type Translate = (key: string, options?: Record<string, string>) => string
+
+/** Recording, or replaying up to a step before recording */
+const isBusy = (): boolean => {
+  const { recordingTarget, isRecording, isReplayingToBreakpoint } = store()
+  return recordingTarget !== null || isRecording || isReplayingToBreakpoint
+}
+
+/**
+ * Ends the recording (and any replay) and saves it to its target. The test is read
+ * from the store when called, so later events can't change what is saved. Calls
+ * `onSaved` with the saved test's key once the save went through.
+ */
+async function stopAndSave(
+  t: Translate,
+  { onSaved }: { onSaved?: (key: TestKey) => void } = {}
+): Promise<void> {
+  const { recordingTarget: target, activeSuiteId, activeTest: test } = store()
+  if (store().isReplayingToBreakpoint) {
+    Promise.resolve(window.api.cancelReplay()).catch((error: unknown) =>
+      console.error('Cancelling the replay failed:', error)
+    )
+    store().setIsReplayingToBreakpoint(false)
+    store().setBreakpointIndex(null)
+  }
+  store().setRecordingBrowser(null)
+  // Right away, not on main's 'recording-stopped': steps still in flight must not land anywhere
+  store().setIsRecording(false)
+  window.api.stopRecordingMain()
+  store().setRecordingTarget(null)
+  if (!target) return
+  switch (target.kind) {
+    case 'test': {
+      if (!activeSuiteId || !test) return
+      let result: Awaited<ReturnType<typeof window.api.saveRecording>>
+      try {
+        result = await window.api.saveRecording(activeSuiteId, test)
+      } catch (error) {
+        console.error('Saving the test failed:', error)
+        return
+      }
+      if (!handleSaveResult(result, test.id, t)) return
+      const file = result?.test?.file
+      if (file) toast.success(t('tests.saved', { name: result?.test?.name ?? test.name, file }))
+      // A new file changes the list (and gives the test its row)
+      await useTestsListStore.getState().reload()
+      onSaved?.(
+        testKeyOf({ name: test.name, testId: test.id, ownership: 'recorded', suiteIds: [] })
+      )
+      return
+    }
+    case 'draft':
+    case 'example':
+      throw new Error(`Saving a ${target.kind} recording is not supported`)
+    default: {
+      const unknownTarget: never = target
+      throw new Error(`Unknown recording target ${JSON.stringify(unknownTarget)}`)
+    }
+  }
+}
+
 /**
  * Recording, replay and running for the open test. Mount it once per workspace:
  * it also keeps the suites in sync and listens to the recording IPC.
  */
 export function useTestRecording(): TestRecording {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const recordingUrl = useRecorderStore((s) => s.recordingUrl)
   const preloadPath = useRecorderStore((s) => s.preloadPath)
   const isRecording = useRecorderStore((s) => s.isRecording)
@@ -47,49 +115,56 @@ export function useTestRecording(): TestRecording {
   useSuiteSync()
   useRecordingIPC({ setAssertionInfo })
 
-  const stop = useCallback(async (): Promise<void> => {
-    const { recordingTarget: target, activeSuiteId, activeTest: test } = store()
-    store().setRecordingBrowser(null)
-    window.api.stopRecordingMain()
-    store().setRecordingTarget(null)
-    if (!target) return
-    switch (target.kind) {
-      case 'test': {
-        if (!activeSuiteId || !test) return
-        try {
-          const result = await window.api.saveRecording(activeSuiteId, test)
-          handleSaveResult(result, test.id, t)
-        } catch (error) {
-          console.error('Saving the test failed:', error)
-        }
-        return
-      }
-      case 'draft':
-      case 'example':
-        throw new Error(`Saving a ${target.kind} recording is not supported`)
-      default: {
-        const unknownTarget: never = target
-        throw new Error(`Unknown recording target ${JSON.stringify(unknownTarget)}`)
-      }
-    }
-  }, [t])
+  const stop = useCallback(
+    (): Promise<void> =>
+      stopAndSave(t, { onSaved: (key) => navigate(`/overview/tests/${toRouteParam(key)}`) }),
+    [t, navigate]
+  )
 
-  // Autosave: recorded tests are written back 500 ms after the last change
-  useEffect((): (() => void) => {
+  const leave = useCallback((): Promise<void> => stopAndSave(t), [t])
+
+  // Main holds a window close while recording, so the recording is saved first
+  useEffect(() => {
+    window.api.setRecordingState(isRecording)
+  }, [isRecording])
+
+  useEffect(
+    () =>
+      window.api.onFlushRecording(() => {
+        const saved = isBusy() ? stopAndSave(t) : Promise.resolve()
+        saved
+          .catch((error: unknown) => console.error('Saving the recording failed:', error))
+          .finally(() => window.api.flushRecordingDone())
+      }),
+    []
+  )
+
+  // Leaving the page while recording saves the recording
+  useEffect(
+    () => (): void => {
+      if (isBusy()) {
+        stopAndSave(t).catch((error: unknown) =>
+          console.error('Saving the recording failed:', error)
+        )
+      }
+      window.api.setRecordingState(false)
+    },
+    []
+  )
+
+  // Autosave: recorded tests are written back 500 ms after the last change. Not while
+  // recording: Stop & save writes the test once, instead of every half-second
+  useEffect((): (() => void) | void => {
+    if (isBusy()) return
     const handler = setTimeout(() => {
       const { activeSuiteId: suiteId, activeTest: test, readOnlyView: view } = store()
+      if (isBusy()) return
       // Read-only tests are never written back
       if (view || (test?.ownership && test.ownership !== 'recorded')) return
       if (suiteId && test) {
         window.api
           .saveRecording(suiteId, test)
-          .then((result) => {
-            handleSaveResult(result, test.id, t)
-            // A recording must not carry on into a test that is now read-only
-            if (result?.error === 'codeOwned' && store().isRecording) {
-              stop().catch((error: unknown) => console.error('Stopping failed:', error))
-            }
-          })
+          .then((result) => handleSaveResult(result, test.id, t))
           .catch((error: unknown) => console.error('Saving the test failed:', error))
       }
     }, 500)
@@ -228,6 +303,7 @@ export function useTestRecording(): TestRecording {
     continueRecording,
     recordFromHere,
     stop,
+    leave,
     run,
     cancelReplay,
     recordingUrl,

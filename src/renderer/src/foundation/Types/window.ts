@@ -173,7 +173,11 @@ export interface WindowApi {
   importTest: (suiteId: string) => Promise<{ success: boolean; test?: Test; error?: string }>
 
   // --- Test Management ---
-  saveRecording: (suiteId: string, testData: Test) => Promise<{ success: boolean; error?: string }>
+  /** `test` is the test as saved, with its project file when it has one */
+  saveRecording: (
+    suiteId: string,
+    testData: Test
+  ) => Promise<{ success: boolean; error?: string; test?: Test }>
   deleteTest: (suiteId: string, testId: string) => Promise<void>
   exportTest: (
     testName: string,
@@ -203,6 +207,11 @@ export interface WindowApi {
   }>
   registerRecorderWebContents: (webContentsId: number) => Promise<void>
   stopRecordingMain: () => Promise<CommandType>
+  /** Tells main whether a recording is open, so closing the window saves it first */
+  setRecordingState: (active: boolean) => void
+  /** Main asks the page to save its recording before the window closes; returns an unsubscribe */
+  onFlushRecording: (callback: () => void) => () => void
+  flushRecordingDone: () => void
   loadUrlRequest: (url: string) => Promise<CommandType>
   updateRecordingSettings: (
     settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
