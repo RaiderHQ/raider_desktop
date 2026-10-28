@@ -16,11 +16,11 @@
     "nameLabel": "Test name",
     "namePlaceholder": "Checkout works",
     "start": "Start",
-    "starting": "Setting up\u2026",
+    "starting": "Setting up…",
     "cancel": "Cancel",
     "error": "Raider couldn't set up a quick recording: {{error}}",
     "banner": "This project lives in Raider's own folder.",
-    "saveTo": "Save project to\u2026",
+    "saveTo": "Save project to…",
     "stopFirst": "Stop recording and save or discard your test first.",
     "saveToTitle": "Choose where to save the project",
     "saved": "Project saved to {{path}}",
@@ -375,27 +375,10 @@
       "step2": "Use the toolbar to choose your browser, run mode, and timeout.",
       "step3": "Click the Run button — then come back here to see the results."
     },
-    "runFailed": {
-      "title": "The test run failed",
-      "subtitle": "Raider couldn't read any test results from this run.",
-      "details": "Show technical details"
-    },
-    "noRecordingResults": {
-      "title": "No recording results yet",
-      "subtitle": "Record and run a test from the Recording tab to see results here.",
-      "step1": "Go to the Recording tab and select or create a test suite.",
-      "step2": "Create a new test, enter the URL you want to test, and press Record.",
-      "step3": "Interact with the page in the browser — every action is captured as a step.",
-      "step4": "Press Stop, then Run to execute the test and see the results here."
-    },
     "openReport": "Open report",
     "viewTrace": "View Trace",
     "backToResults": "Back to Results",
     "traceTitle": "Trace View",
-    "tabs": {
-      "project": "Project Dashboard",
-      "recording": "Recording Dashboard"
-    },
     "error": {
       "fetching": "Error fetching dashboard",
       "parsing": "Error parsing {{file}}",
@@ -431,9 +414,7 @@
   },
   "tests": {
     "badge": {
-      "recorded": "Recorded",
-      "codeOwned": "Code-owned (was recorded)",
-      "code": "Code"
+      "recorded": "Recorded"
     },
     "edit": "Edit",
     "view": "View",
@@ -446,7 +427,7 @@
     "restored": "The test was restored.",
     "restoreFailed": "Raider couldn't restore this test. Nothing was changed.",
     "notInSuite": "Not in a suite",
-    "empty": "No tests yet \u2014 record one",
+    "empty": "No tests yet — record one",
     "emptyNoRecording": "No tests found in this project yet.",
     "cucumber": "This project's tests are Cucumber features: find them in the Files tab. Recorded tests become project files when Gherkin support arrives.",
     "actionFailed": "Raider couldn't open this test. Nothing was changed.",
@@ -457,7 +438,7 @@
       "all": "All tests",
       "run": "Run suite",
       "runPassed": "{{suite}} passed",
-      "runFailed": "{{suite}} failed \u2014 open a test's Last run for details",
+      "runFailed": "{{suite}} failed — open a test's Last run for details",
       "new": "New suite",
       "delete": "Delete suite",
       "importTest": "Import test",
@@ -495,20 +476,13 @@
     "recordOverFailed": "Raider couldn't save the recording into this file: {{error}}. Your steps are still here."
   },
   "recorder": {
-    "readOnly": {
-      "banner": "Edited in code by a developer \u2014 view and run only.",
-      "close": "Back to the recorder",
-      "loadFailed": "Raider couldn't read this test's file. Run it to see what happens, or ask a developer to check it."
-    },
     "unsupported": {
-      "title": "This project needs an upgrade for recording",
       "mobile": "Mobile projects can't be recorded yet.",
       "minitest": "This project uses a test style Raider can't record into yet.",
       "capybara": "This project uses a test style Raider can't record into yet.",
       "noGemfile": "Raider couldn't find the files it needs to set up this project.",
       "generic": "Raider can't record into this project yet."
     },
-    "cucumberNotice": "Recorded tests become project files when Gherkin support arrives.",
     "saveFailed": "Raider couldn't save this test. Your work is still here.",
     "runFailed": "Raider couldn't run this test.",
     "noRuby": "Raider can't find Ruby on this computer, so it can't run tests yet.",
@@ -572,28 +546,13 @@
       "no": "Skip"
     },
     "mainRecorderPanel": {
-      "suite": "Suite: {{activeSuiteName}}",
-      "noSuite": "No Suite Selected",
-      "testName": "Test Name",
-      "url": "URL to Record",
       "newTest": "New Test",
       "import": "Import",
       "export": "Export",
-      "more": "More",
-      "record": "Record",
-      "run": "Run",
-      "stop": "Stop",
-      "exportTest": "Export Test",
-      "exportSuite": "Export Suite",
-      "exportProject": "Export Project",
-      "importTest": "Import Test",
-      "importSuite": "Import Suite",
-      "importProject": "Import Project",
       "exportSuccess": "{{exportType}} exported to {{path}}",
       "exportError": "Export failed: {{error}}",
       "importSuccess": "{{importType}} imported successfully!",
       "importError": "Import failed: {{error}}",
-      "emptyHelper": "Select or create a suite to get started",
       "replaying": "Replaying to breakpoint..."
     },
     "breakpoint": {
@@ -609,33 +568,15 @@
       "placeholder": "Test output will appear here..."
     },
     "testSuitePanel": {
-      "selectSuite": "Select a Suite",
       "newSuite": "+ New Suite...",
-      "deleteSuite": "- Delete Current Suite",
-      "runAll": "Run All",
       "newSuiteName": "New suite name...",
-      "cancel": "Cancel",
       "create": "Create",
-      "deleteConfirmation": "Are you sure you want to delete the suite \"{{suiteName}}\"? This cannot be undone.",
-      "emptyTitle": "No Test Suites Yet",
-      "emptyDescription": "Create a suite to organize your tests and start recording",
-      "createFirst": "Create Suite"
+      "deleteConfirmation": "Are you sure you want to delete the suite \"{{suiteName}}\"? This cannot be undone."
     },
     "tabs": {
-      "recording": "Recording",
-      "dashboard": "Dashboard",
       "settings": "Settings"
     },
     "recorderPage": {
-      "testSuites": "Test Suites",
-      "noSuiteSteps": "Create a suite and add a test to start recording steps",
-      "noTestSteps": "Click New Test in the toolbar to create your first test",
-      "recordedSteps": "Recorded Steps",
-      "runOutput": "Run Output",
-      "codeView": "Code View",
-      "friendlyView": "Friendly View",
-      "hideOutput": "Hide Output",
-      "testOutput": "Test Output",
       "traceView": "Trace View",
       "traceViewExit": "Exit Trace"
     },
@@ -682,20 +623,47 @@
     "installSubtitle": "Ruby Raider needs three things installed on your machine before it can run.",
     "install": {
       "mac": {
-        "step1": { "title": "1. Install rbenv (via Homebrew)", "desc": "rbenv manages Ruby versions. Homebrew must be installed first (brew.sh)." },
-        "step2": { "title": "2. Install Ruby 3+", "desc": "Install Ruby 3 or higher and set it as the global version." },
-        "step3": { "title": "3. Install ruby_raider", "desc": "Install the gem from RubyGems." }
+        "step1": {
+          "title": "1. Install rbenv (via Homebrew)",
+          "desc": "rbenv manages Ruby versions. Homebrew must be installed first (brew.sh)."
+        },
+        "step2": {
+          "title": "2. Install Ruby 3+",
+          "desc": "Install Ruby 3 or higher and set it as the global version."
+        },
+        "step3": {
+          "title": "3. Install ruby_raider",
+          "desc": "Install the gem from RubyGems."
+        }
       },
       "linux": {
-        "step1": { "title": "1. Install rbenv (via git)", "desc": "Clone rbenv and ruby-build into your home directory, then reload your shell." },
-        "step2": { "title": "2. Install Ruby 3+", "desc": "Install Ruby 3 or higher and set it as the global version." },
-        "step3": { "title": "3. Install ruby_raider", "desc": "Install the gem from RubyGems." }
+        "step1": {
+          "title": "1. Install rbenv (via git)",
+          "desc": "Clone rbenv and ruby-build into your home directory, then reload your shell."
+        },
+        "step2": {
+          "title": "2. Install Ruby 3+",
+          "desc": "Install Ruby 3 or higher and set it as the global version."
+        },
+        "step3": {
+          "title": "3. Install ruby_raider",
+          "desc": "Install the gem from RubyGems."
+        }
       },
       "windows": {
         "note": "Native Windows support is coming soon. In the meantime, use WSL (Windows Subsystem for Linux) and follow the Linux steps.",
-        "step1": { "title": "1. Enable WSL", "desc": "Run PowerShell as Administrator and install WSL." },
-        "step2": { "title": "2. Follow Linux steps inside WSL", "desc": "Open the WSL terminal and follow the Linux installation instructions above." },
-        "step3": { "title": "3. Install ruby_raider", "desc": "Install the gem inside WSL." }
+        "step1": {
+          "title": "1. Enable WSL",
+          "desc": "Run PowerShell as Administrator and install WSL."
+        },
+        "step2": {
+          "title": "2. Follow Linux steps inside WSL",
+          "desc": "Open the WSL terminal and follow the Linux installation instructions above."
+        },
+        "step3": {
+          "title": "3. Install ruby_raider",
+          "desc": "Install the gem inside WSL."
+        }
       },
       "rbenv": {
         "title": "1. Install rbenv",
@@ -742,11 +710,7 @@
     "recorder": {
       "recording": {
         "title": "Recording a Test",
-        "message": "Pick a suite from the dropdown, create a test, and enter the URL you want to test.\n\nThen press the red Record button — a browser will open and every click or keystroke you make is captured as a step.\n\nPress Stop when you're done, then Run to check if the test passes.",
-        "assertions": {
-          "title": "Adding Assertions",
-          "content": "Right-click any element in the browser to add a checkpoint — a step that verifies something about the page.\n\n\u2022 Assert element is displayed — confirms an element is visible\n\u2022 Assert element is NOT displayed — confirms it is hidden or gone\n\u2022 Assert element is enabled — confirms a button or field is interactive\n\u2022 Assert element is checked — confirms a checkbox or radio is selected\n\u2022 Assert element text equals — checks the element's exact text\n\u2022 Assert element text includes — checks it contains certain text\n\u2022 Assert element value — checks what's entered in an input field\n\u2022 Assert page title — checks the browser tab title\n\u2022 Assert current URL contains — checks the page address\n\u2022 Wait for element to appear / disappear / be enabled — pauses the test until a condition is met"
-        }
+        "message": "Pick a suite from the dropdown, create a test, and enter the URL you want to test.\n\nThen press the red Record button — a browser will open and every click or keystroke you make is captured as a step.\n\nPress Stop when you're done, then Run to check if the test passes."
       },
       "dashboard": {
         "title": "Recording Dashboard",
@@ -783,22 +747,9 @@
   "tooltips": {
     "viewTrace": "View the step-by-step trace for this test — see screenshots and element info for every recorded action.",
     "recorder": {
-      "record": "Start recording — opens the website in a built-in browser and captures every click and keystroke as a test step.",
-      "run": "Run the selected test — replays every recorded step in a browser and reports pass or fail.",
-      "stop": "Stop the current recording session and return to the normal view.",
       "newTest": "Create a new blank test inside the active suite. Give it a name and a URL, then press Record.",
-      "more": "Import or export tests, suites, or the entire project to share or back up your work.",
-      "testName": "A short name that describes what this test checks — e.g. 'Login with valid credentials'.",
-      "urlToRecord": "The web address the browser will open when you start recording. Must start with https://",
       "implicitWait": "Seconds Selenium automatically waits for a page element to appear before giving up. 0 means no automatic wait.",
       "explicitWait": "Maximum seconds to wait for a specific condition — such as a button becoming clickable.",
-      "suiteSelector": "A suite is a named group of related tests. Select one here or create a new one via the dropdown.",
-      "runAllTests": "Run every test in the currently selected suite one after another and see the combined results.",
-      "deleteTest": "Permanently remove this test from the suite. This cannot be undone.",
-      "codeView": "See the raw Ruby/Selenium commands. In code view you can double-click any step to edit it directly.",
-      "friendlyView": "Switch to a plain-English description of each recorded step — easier to read without coding knowledge.",
-      "testOutput": "Show the output panel — displays the pass/fail result and any errors after running a test.",
-      "hideOutput": "Hide the output panel to give more space to your recorded steps.",
       "deleteStep": "Remove this step from the test. The remaining steps will still run in order.",
       "dragStep": "Drag to reorder this step. Tests run steps from top to bottom.",
       "setBreakpoint": "Set a breakpoint here — click 'Record from here' to replay steps up to this point headlessly, then continue recording from this page state.",

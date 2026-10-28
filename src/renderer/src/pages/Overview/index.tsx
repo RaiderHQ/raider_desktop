@@ -18,6 +18,7 @@ import InfoButton from '@components/InfoButton'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { isEmptyRecording } from '../../hooks/useTestRecording'
+import { useRecorderSettings } from '../../hooks/useRecorderSettings'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { FileNode } from '@foundation/Types/fileNode'
 import { getFileLanguage } from '@foundation/helpers'
@@ -33,7 +34,24 @@ const Overview: React.FC = () => {
   const navigate = useNavigate()
   const toastIdRef = useRef<string | null>(null)
   const { testKey } = useParams()
+  const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
+    useRecorderSettings()
   const [activeTab, setActiveTab] = useState<OverviewTab>('tests')
+
+  // Until the project's settings load, the fields hold defaults that must not overwrite the config
+  const saveWait = async (
+    patch: { implicitWait: number } | { explicitWait: number }
+  ): Promise<void> => {
+    if (!loaded) return
+    try {
+      const result = await window.api.updateRecordingSettings(patch)
+      if (!result.success) {
+        toast.error(`${t('settings.recording.error.unexpected')} : ${result.error}`)
+      }
+    } catch (error) {
+      toast.error(`${t('settings.recording.error.unexpected')} : ${error}`)
+    }
+  }
 
   // A test route always shows the Tests tab
   useEffect(() => {
@@ -746,6 +764,46 @@ const Overview: React.FC = () => {
                 </div>
               </div>
             )}
+            <div className="flex items-center gap-4 flex-wrap">
+              <Tooltip content={t('tooltips.recorder.implicitWait')} position="right">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                    {t('settings.recording.implicitWait.label')}
+                  </label>
+                  <input
+                    type="number"
+                    id="implicit-wait"
+                    value={implicitWait}
+                    onChange={(e) => {
+                      const val = Number(e.target.value)
+                      if (val >= 0) setImplicitWait(val)
+                    }}
+                    onBlur={() => saveWait({ implicitWait })}
+                    min="0"
+                    className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                  />
+                </div>
+              </Tooltip>
+              <Tooltip content={t('tooltips.recorder.explicitWait')} position="right">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                    {t('settings.recording.explicitWait.label')}
+                  </label>
+                  <input
+                    type="number"
+                    id="explicit-wait"
+                    value={explicitWait}
+                    onChange={(e) => {
+                      const val = Number(e.target.value)
+                      if (val >= 0) setExplicitWait(val)
+                    }}
+                    onBlur={() => saveWait({ explicitWait })}
+                    min="0"
+                    className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                  />
+                </div>
+              </Tooltip>
+            </div>
           </div>
           <div className="relative h-[62vh] border border-t-0 border-neutral-bdr rounded-b-lg shadow-card flex flex-col bg-white">
             {/* Split: file tree left + editor preview right */}

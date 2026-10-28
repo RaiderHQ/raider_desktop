@@ -61,48 +61,24 @@ beforeAll(() => {
 })
 
 describe('MainTemplate Navigation', () => {
-  it('renders the Recorder navigation link', () => {
+  it('has no Recorder navigation link', () => {
     render(
       <MemoryRouter initialEntries={['/overview']}>
         <MainTemplate />
       </MemoryRouter>
     )
 
-    expect(screen.getByText('Recorder')).toBeInTheDocument()
+    expect(screen.queryByText('Recorder')).not.toBeInTheDocument()
   })
 
-  it('does not highlight Recorder link when on /overview', () => {
-    render(
-      <MemoryRouter initialEntries={['/overview']}>
-        <MainTemplate />
-      </MemoryRouter>
-    )
-
-    const recorderLink = screen.getByText('Recorder')
-    expect(recorderLink.className).not.toContain('font-semibold')
-  })
-
-  it('highlights Recorder link when on /recorder', () => {
-    render(
-      <MemoryRouter initialEntries={['/recorder']}>
-        <MainTemplate />
-      </MemoryRouter>
-    )
-
-    const recorderLink = screen.getByText('Recorder')
-    expect(recorderLink.className).toContain('font-semibold')
-    expect(recorderLink.className).toContain('bg-ruby-sub')
-  })
-
-  it('does not highlight Recorder link when on root /', () => {
+  it('links "Ruby Raider" to the overview whenever a project is open', () => {
     render(
       <MemoryRouter initialEntries={['/']}>
         <MainTemplate />
       </MemoryRouter>
     )
 
-    const recorderLink = screen.getByText('Recorder')
-    expect(recorderLink.className).not.toContain('font-semibold')
+    expect(screen.getByText('Ruby Raider').closest('a')).toHaveAttribute('href', '/overview')
   })
 
   it('displays the version in the footer', () => {

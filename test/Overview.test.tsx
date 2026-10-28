@@ -80,6 +80,8 @@ const mockApi = {
   selectFolder: vi.fn().mockResolvedValue(null),
   saveQuickProjectTo: vi.fn(),
   getMobileCapabilities: vi.fn().mockResolvedValue({ success: true, capabilities: {} }),
+  getRecorderSettings: vi.fn().mockResolvedValue({ implicitWait: 3, explicitWait: 15 }),
+  updateRecordingSettings: vi.fn().mockResolvedValue({ success: true }),
   updateTimeout: vi.fn().mockResolvedValue({ success: true }),
   updateViewport: vi.fn().mockResolvedValue({ success: true }),
   updateDebugMode: vi.fn().mockResolvedValue({ success: true }),
@@ -505,5 +507,52 @@ describe('Overview Settings Toolbar', (): void => {
       expect(mockApi.saveQuickProjectTo).not.toHaveBeenCalled()
       expect(useProjectStore.getState().projectPath).toBe('/quick/project')
     })
+  })
+})
+
+describe('Overview wait settings', (): void => {
+  const renderFiles = async (): Promise<void> => {
+    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+    await openFilesTab()
+  }
+
+  it('shows the implicit and explicit wait fields with the project values', async (): Promise<void> => {
+    await renderFiles()
+    expect(screen.getByLabelText('settings.recording.implicitWait.label')).toHaveValue(3)
+    expect(screen.getByLabelText('settings.recording.explicitWait.label')).toHaveValue(15)
+  })
+
+  it('saves a wait on blur once the settings have loaded', async (): Promise<void> => {
+    await renderFiles()
+    const input = screen.getByLabelText('settings.recording.implicitWait.label')
+    fireEvent.change(input, { target: { value: '7' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(mockApi.updateRecordingSettings).toHaveBeenCalledWith({ implicitWait: 7 })
+
+    const explicit = screen.getByLabelText('settings.recording.explicitWait.label')
+    fireEvent.change(explicit, { target: { value: '20' } })
+    await act(async () => {
+      fireEvent.blur(explicit)
+    })
+    expect(mockApi.updateRecordingSettings).toHaveBeenCalledWith({ explicitWait: 20 })
+  })
+
+  it('does not save before the settings have loaded', async (): Promise<void> => {
+    mockApi.getRecorderSettings.mockReturnValueOnce(new Promise(() => {}))
+    await renderFiles()
+    const input = screen.getByLabelText('settings.recording.implicitWait.label')
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(mockApi.updateRecordingSettings).not.toHaveBeenCalled()
   })
 })

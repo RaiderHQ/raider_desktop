@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import toast, { Toaster } from 'react-hot-toast'
 import Logo from '@components/Logo'
-import NavBtn from '@components/NavBtn'
 import ConceptsModal from '@components/ConceptsModal'
 import RubyInstallModal from '@components/RubyInstallModal'
 import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
@@ -13,7 +12,6 @@ import useProjectStore from '@foundation/Stores/projectStore'
 
 const MainTemplate: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
-  const location = useLocation()
   const raiderVersion = useVersionStore((state: { version: string }) => state.version)
   const { setRubyCommand, setRubyVersion, setVersionWarning } = useRubyStore()
   const [isRubyInstallModalOpen, setIsRubyInstallModalOpen] = useState(false)
@@ -96,11 +94,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
     }
   }
 
-  const isCreateProjectView = location.pathname === '/project/new'
   const projectPath = useProjectStore((state) => state.projectPath)
-
-  const isActive = (paths: string[]): boolean =>
-    paths.some((p) => (p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)))
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -120,7 +114,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
               ?
             </span>
           </button>
-          {projectPath || isActive(['/recorder']) ? (
+          {projectPath ? (
             <Link to="/overview" className="text-lg font-bold text-neutral-dark tracking-tight hover:text-ruby transition-colors">
               Ruby Raider
             </Link>
@@ -131,11 +125,6 @@ const MainTemplate: React.FC = (): JSX.Element => {
           )}
         </div>
 
-        {!isCreateProjectView && projectPath && (
-          <nav className="flex gap-2">
-            <NavBtn to="/recorder" label="Recorder" active={isActive(['/recorder'])} />
-          </nav>
-        )}
       </header>
 
       <main className="flex flex-col items-center justify-center flex-grow animate-page-enter pt-8 pb-8">
