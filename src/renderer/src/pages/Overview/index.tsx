@@ -16,6 +16,7 @@ import Tooltip from '@components/Tooltip'
 import TestsWorkspace from '@components/TestsWorkspace'
 import InfoButton from '@components/InfoButton'
 import useProjectStore from '@foundation/Stores/projectStore'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { FileNode } from '@foundation/Types/fileNode'
 import { getFileLanguage } from '@foundation/helpers'
@@ -155,8 +156,20 @@ const Overview: React.FC = () => {
     }
   }, [projectPath])
 
+  const [saving, setSaving] = useState(false)
+  // Moving the project resets the recorder, so it waits until nothing recorded is at stake
+  const recorderBusy = useRecorderStore(
+    (r) =>
+      r.isRecording ||
+      r.isReplayingToBreakpoint ||
+      r.recordingTarget != null ||
+      r.draftTest != null ||
+      r.unsavedExample != null
+  )
+
   const handleSaveProjectTo = async (): Promise<void> => {
-    if (!projectPath) return
+    if (!projectPath || saving || recorderBusy) return
+    setSaving(true)
     try {
       const folder = await window.api.selectFolder(t('quickRecord.saveToTitle'))
       if (!folder) return
@@ -169,6 +182,8 @@ const Overview: React.FC = () => {
       toast.success(t('quickRecord.saved', { path: result.projectPath }))
     } catch (error) {
       toast.error(t('quickRecord.saveFailed', { error: String(error) }))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -586,7 +601,9 @@ const Overview: React.FC = () => {
           <span>{t('quickRecord.banner')}</span>
           <button
             onClick={() => void handleSaveProjectTo()}
-            className="px-3 py-1 text-xs font-semibold text-ruby border border-ruby rounded hover:bg-white transition-colors"
+            disabled={saving || recorderBusy}
+            title={recorderBusy ? t('quickRecord.stopFirst') : undefined}
+            className="px-3 py-1 text-xs font-semibold text-ruby border border-ruby rounded hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {t('quickRecord.saveTo')}
           </button>

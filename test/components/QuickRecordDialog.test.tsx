@@ -109,4 +109,20 @@ describe('QuickRecordDialog', (): void => {
     expect(useRecorderStore.getState().draftTest).toBeNull()
     expect(screen.getByText('quickRecord.start')).toBeEnabled()
   })
+
+  it('prefixes https:// when the address has no scheme', async (): Promise<void> => {
+    api.createQuickProject.mockResolvedValue({ success: true, projectPath: '/quick/p' })
+    await renderDialog()
+    fireEvent.change(screen.getByPlaceholderText('quickRecord.urlPlaceholder'), {
+      target: { value: 'example.com' }
+    })
+    fireEvent.change(screen.getByPlaceholderText('quickRecord.namePlaceholder'), {
+      target: { value: 'Checkout' }
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByText('quickRecord.start'))
+    })
+    expect(api.createQuickProject).toHaveBeenCalledWith('https://example.com', '/usr/bin/ruby')
+    expect(useRecorderStore.getState().draftTest?.url).toBe('https://example.com')
+  })
 })

@@ -21,6 +21,7 @@
     "error": "Raider couldn't set up a quick recording: {{error}}",
     "banner": "This project lives in Raider's own folder.",
     "saveTo": "Save project to\u2026",
+    "stopFirst": "Stop recording and save or discard your test first.",
     "saveToTitle": "Choose where to save the project",
     "saved": "Project saved to {{path}}",
     "saveFailed": "Raider couldn't save the project: {{error}}"

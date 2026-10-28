@@ -31,18 +31,21 @@ const QuickRecordDialog: React.FC<QuickRecordDialogProps> = ({ onClose }) => {
 
   const canStart = url.trim() !== '' && name.trim() !== '' && !creating
 
+  // Main only accepts http(s), so a bare address like example.com gets https://
+  const normalizedUrl = /^[a-z][a-z0-9+.-]*:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`
+
   const start = async (): Promise<void> => {
     if (!canStart) return
     setCreating(true)
     try {
-      const result = await window.api.createQuickProject(url.trim(), rubyCommand)
+      const result = await window.api.createQuickProject(normalizedUrl, rubyCommand)
       if (!result.success) {
         toast.error(t('quickRecord.error', { error: result.error }))
         return
       }
       setProjectPath(result.projectPath)
       // After activation: switching projects clears the recorder's open test
-      useRecorderStore.getState().startDraft(name.trim(), url.trim())
+      useRecorderStore.getState().startDraft(name.trim(), normalizedUrl)
       onClose()
       navigate('/overview/tests/new')
     } catch (error) {

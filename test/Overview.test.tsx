@@ -3,6 +3,7 @@ import Overview from '@pages/Overview'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 
 // Mocking necessary modules and hooks
@@ -422,6 +423,11 @@ describe('Overview Settings Toolbar', (): void => {
   })
 
   describe('quick-record banner', (): void => {
+    beforeEach(() => {
+      mockApi.isQuickProject.mockResolvedValue(false)
+      useRecorderStore.getState().resetForProject()
+    })
+
     const renderOverview = async (): Promise<void> => {
       useProjectStore.setState({ projectPath: '/quick/project', files: [] })
       await act(async () => {
@@ -449,6 +455,37 @@ describe('Overview Settings Toolbar', (): void => {
       })
       expect(mockApi.saveQuickProjectTo).toHaveBeenCalledWith('/quick/project', '/dest')
       expect(useProjectStore.getState().projectPath).toBe('/dest/proj')
+    })
+
+    it('is disabled while recording and while a draft exists', async (): Promise<void> => {
+      mockApi.isQuickProject.mockResolvedValue(true)
+      await renderOverview()
+      const button = screen.getByText('quickRecord.saveTo')
+      expect(button).toBeEnabled()
+      act(() => useRecorderStore.setState({ isRecording: true }))
+      expect(button).toBeDisabled()
+      act(() => useRecorderStore.setState({ isRecording: false }))
+      expect(button).toBeEnabled()
+      act(() => useRecorderStore.getState().startDraft('t', 'https://e.com'))
+      expect(button).toBeDisabled()
+      expect(button).toHaveAttribute('title', 'quickRecord.stopFirst')
+    })
+
+    it('ignores a second click while a save is in flight', async (): Promise<void> => {
+      mockApi.isQuickProject.mockResolvedValue(true)
+      mockApi.selectFolder.mockResolvedValue('/dest')
+      let finish: (v: unknown) => void = () => {}
+      mockApi.saveQuickProjectTo.mockReturnValue(new Promise((r) => (finish = r)))
+      await renderOverview()
+      const button = screen.getByText('quickRecord.saveTo')
+      await act(async () => {
+        fireEvent.click(button)
+      })
+      await act(async () => {
+        fireEvent.click(button)
+      })
+      expect(mockApi.saveQuickProjectTo).toHaveBeenCalledTimes(1)
+      await act(async () => finish({ success: true, projectPath: '/dest/proj' }))
     })
 
     it('does nothing when the folder pick is cancelled', async (): Promise<void> => {
