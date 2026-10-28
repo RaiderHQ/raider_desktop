@@ -4,6 +4,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 import type { IpcRendererEvent } from 'electron'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import CodeTestPane from '@components/CodeTestPane'
+import TestsWorkspace from '@components/TestsWorkspace'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
@@ -74,7 +75,7 @@ const api = {
   registerRecorderWebContents: vi.fn(),
   cancelReplay: vi.fn(),
   setRecordingState: vi.fn(),
-  onFlushRecording: vi.fn(() => (): void => {}),
+  onFlushRecording: vi.fn((_cb: () => void) => (): void => {}),
   flushRecordingDone: vi.fn(),
   setActiveProject: vi.fn(),
   readDirectory: vi.fn()
@@ -320,6 +321,82 @@ describe('CodeTestPane', () => {
       )
     )
     expect(api.recordOverExample).toHaveBeenCalled()
+    // Only how the save went: not that the steps are still here
+    expect(mockToast.error).not.toHaveBeenCalled()
+    expect(mockToast.success).toHaveBeenCalledWith(expect.stringContaining('tests.saved'))
+  })
+
+  describe('leaving with unsaved steps on screen saves them as a new test', () => {
+    const refusedStop = async (): Promise<void> => {
+      api.recordOverExample.mockResolvedValue({ success: false, error: 'notUnique', count: 2 })
+      await recordOverFirstExample()
+      await stopAndSave()
+      await screen.findByRole('button', { name: 'testPage.saveAsNew' })
+      mockToast.success.mockClear()
+    }
+    const savedOnceAsNewTest = async (): Promise<void> => {
+      await waitFor(() => expect(api.saveRecording).toHaveBeenCalledTimes(1))
+      expect(api.saveRecording).toHaveBeenCalledWith(
+        UNLISTED_SUITE_ID,
+        expect.objectContaining({ name: 'logs in', steps: expect.arrayContaining([clickStep]) })
+      )
+      expect(mockToast.success).toHaveBeenCalledWith(expect.stringContaining('tests.saved'))
+      expect(useRecorderStore.getState().unsavedExample).toBeNull()
+    }
+
+    it('keeps the window open until they are saved, and Edit code waits for them', async () => {
+      renderPane()
+      await refusedStop()
+      expect(api.setRecordingState).toHaveBeenLastCalledWith(true)
+      expect(screen.getByRole('button', { name: 'testPage.editCode' })).toBeDisabled()
+    })
+
+    it('on unmount', async () => {
+      const { unmount } = renderPane()
+      await refusedStop()
+      await act(async () => {
+        unmount()
+      })
+      await savedOnceAsNewTest()
+    })
+
+    it('on a window-close flush, then answers main', async () => {
+      let flush: (() => void) | null = null
+      api.onFlushRecording.mockImplementation((cb: () => void) => {
+        flush = cb
+        return (): void => {}
+      })
+      renderPane()
+      await refusedStop()
+      await act(async () => {
+        flush?.()
+      })
+      await savedOnceAsNewTest()
+      await waitFor(() => expect(api.flushRecordingDone).toHaveBeenCalled())
+    })
+
+    it('on switching to another test in the list', async () => {
+      api.listProjectTests.mockResolvedValue([
+        { name: 'Login', file: 'spec/login_spec.rb', ownership: 'code' },
+        { name: 'Signup', file: 'spec/signup_spec.rb', ownership: 'code' }
+      ])
+      render(
+        <MemoryRouter
+          initialEntries={[`/overview/tests/${toRouteParam('file:spec/login_spec.rb')}`]}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
+          <Routes>
+            <Route path="/overview/tests/:testKey" element={<TestsWorkspace />} />
+          </Routes>
+        </MemoryRouter>
+      )
+      await refusedStop()
+      await act(async () => {
+        fireEvent.click(await screen.findByText('Signup'))
+      })
+      await savedOnceAsNewTest()
+      await waitFor(() => expect(api.openCodeTest).toHaveBeenCalledWith('spec/signup_spec.rb'))
+    })
   })
 
   it('says so when the file cannot be opened', async () => {

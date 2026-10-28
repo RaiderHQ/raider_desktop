@@ -157,8 +157,8 @@ async function saveOverExample(
     return
   }
   const notUnique = result.error === 'notUnique'
-  if (!notUnique) toast.error(t('testPage.recordOverFailed', { error: result.error }))
   if (options.offerSaveAsNew) {
+    if (!notUnique) toast.error(t('testPage.recordOverFailed', { error: result.error }))
     store().setUnsavedExample({
       reason: notUnique ? 'notUnique' : 'error',
       exampleName: target.exampleName,
@@ -166,8 +166,26 @@ async function saveOverExample(
     })
     return
   }
-  // Leaving: nobody is left to offer Save as a new test, so nothing recorded is lost
+  // Leaving: nobody is left to offer Save as a new test, so nothing recorded is lost.
+  // Only how that save went is said
   await saveStopped(t, UNLISTED_SUITE_ID, test, options)
+}
+
+/**
+ * Leaving with a recording over a code example on screen that its file refused: it is
+ * saved as a new test, since nobody is left to offer that.
+ */
+async function saveUnsavedExample(t: Translate): Promise<void> {
+  const { unsavedExample: unsaved, activeTest: test } = store()
+  if (!unsaved) return
+  store().setUnsavedExample(null)
+  if (!test || test.id !== unsaved.testId) return
+  await saveStopped(t, UNLISTED_SUITE_ID, test, {})
+}
+
+/** The user is leaving: saves whatever is recording, or recorded and not saved yet */
+function saveOnLeave(t: Translate): Promise<void> {
+  return isBusy() ? stopAndSave(t) : saveUnsavedExample(t)
 }
 
 /**
@@ -230,6 +248,7 @@ export function useTestRecording(): TestRecording {
   const recordingUrl = useRecorderStore((s) => s.recordingUrl)
   const preloadPath = useRecorderStore((s) => s.preloadPath)
   const isRecording = useRecorderStore((s) => s.isRecording)
+  const hasUnsavedExample = useRecorderStore((s) => s.unsavedExample !== null)
   const activeTest = useRecorderStore((s) => s.activeTest)
   const [assertionInfo, setAssertionInfo] = useState<PendingAssertion | null>(null)
 
@@ -246,7 +265,7 @@ export function useTestRecording(): TestRecording {
     [t, navigate]
   )
 
-  const leave = useCallback((): Promise<void> => stopAndSave(t), [t])
+  const leave = useCallback((): Promise<void> => saveOnLeave(t), [t])
 
   const saveAsNewTest = useCallback(async (): Promise<void> => {
     const { unsavedExample: unsaved, activeTest: test } = store()
@@ -257,30 +276,28 @@ export function useTestRecording(): TestRecording {
     if (saved && store().unsavedExample?.testId === unsaved.testId) store().setUnsavedExample(null)
   }, [t, navigate])
 
-  // Main holds a window close while recording, so the recording is saved first
+  // Main holds a window close while recording (or while steps wait to be saved), so
+  // they are saved first
   useEffect(() => {
-    window.api.setRecordingState(isRecording)
-  }, [isRecording])
+    window.api.setRecordingState(isRecording || hasUnsavedExample)
+  }, [isRecording, hasUnsavedExample])
 
   useEffect(
     () =>
       window.api.onFlushRecording(() => {
-        const saved = isBusy() ? stopAndSave(t) : Promise.resolve()
-        saved
+        saveOnLeave(t)
           .catch((error: unknown) => console.error('Saving the recording failed:', error))
           .finally(() => window.api.flushRecordingDone())
       }),
     []
   )
 
-  // Leaving the page while recording saves the recording
+  // Leaving the page while recording (or with steps not saved yet) saves them
   useEffect(
     () => (): void => {
-      if (isBusy()) {
-        stopAndSave(t).catch((error: unknown) =>
-          console.error('Saving the recording failed:', error)
-        )
-      }
+      saveOnLeave(t).catch((error: unknown) =>
+        console.error('Saving the recording failed:', error)
+      )
       window.api.setRecordingState(false)
     },
     []

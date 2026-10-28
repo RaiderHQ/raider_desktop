@@ -42,6 +42,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
   const isReplaying = useRecorderStore((s) => s.isReplayingToBreakpoint)
   const recordingDisabled = useProjectStore((s) => s.layout?.recordable === false)
   const runOutput = useRunOutputStore((s) => s.runOutput)
+  const projectPath = useProjectStore((s) => s.projectPath)
   const { updateActiveTest, setShowCode, setIsOutputVisible } = useRecorderStore.getState()
   const file = row.file ?? ''
 
@@ -66,9 +67,6 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
     }
   }, [file])
   useEffect(load, [load])
-
-  // A recording that couldn't be saved belongs to this file only
-  useEffect(() => (): void => useRecorderStore.getState().setUnsavedExample(null), [])
 
   const selected =
     view?.examples.find((example) => example.name === selectedName) ?? view?.examples[0] ?? null
@@ -101,7 +99,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
   }
 
   const editCode = (): void => {
-    const projectPath = useProjectStore.getState().projectPath ?? ''
+    if (!projectPath) return
     navigate('/file-editor', {
       state: { fileName: file.split('/').pop() ?? file, filePath: `${projectPath}/${file}` }
     })
@@ -196,7 +194,8 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
             </button>
             <button
               onClick={editCode}
-              disabled={busy || !file}
+              // Not away from steps that aren't saved yet
+              disabled={busy || !file || !projectPath || !!recordedTest}
               className={`${toolbarButton} text-neutral-dk hover:bg-neutral-50`}
             >
               {t('testPage.editCode')}
