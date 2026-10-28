@@ -144,6 +144,17 @@ export interface WindowApi {
     file: string,
     rubyCommand: string
   ) => Promise<{ success: boolean; output: string }>
+  /** Replaces the one example named `exampleName` in a listed spec file with `steps` */
+  recordOverExample: (
+    file: string,
+    exampleName: string,
+    steps: Step[],
+    rubyCommand: string
+  ) => Promise<
+    | { success: true }
+    | { success: false; error: 'notUnique'; count: number }
+    | { success: false; error: string }
+  >
   createSuite: (suiteName: string) => Promise<{ success: boolean; suite?: Suite; error?: string }>
   deleteSuite: (suiteId: string) => Promise<{ success: boolean }>
   exportSuite: (suiteId: string) => Promise<{ success: boolean; path?: string; error?: string }>

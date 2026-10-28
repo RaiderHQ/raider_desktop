@@ -39,6 +39,7 @@ import {
   getProjectLayoutHandler,
   listProjectTestsHandler,
   openCodeTestHandler,
+  recordOverExampleHandler,
   runProjectFileHandler
 } from './handlers/tests/projectTestIpc'
 import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTests'
@@ -211,6 +212,11 @@ app.whenReady().then(() => {
   ipcMain.handle('get-project-layout', getProjectLayoutHandler)
   ipcMain.handle('run-project-file', (_event, file: string, rubyCommand: string) =>
     runProjectFileHandler(file, rubyCommand)
+  )
+  ipcMain.handle(
+    'record-over-example',
+    (_event, file: string, exampleName: string, steps: Step[], rubyCommand: string) =>
+      recordOverExampleHandler(file, exampleName, steps, rubyCommand)
   )
   ipcMain.handle('create-suite', (_event, suiteName: string) =>
     createSuite(appState.mainWindow!, suiteName)

@@ -84,6 +84,7 @@ const mockApi = {
   openCodeTest: vi.fn(),
   getProjectLayout: vi.fn().mockResolvedValue(null),
   runProjectFile: vi.fn(),
+  recordOverExample: vi.fn(),
   runRubyRaider: vi.fn(),
   selectFolder: vi.fn(),
   readDirectory: vi.fn(),

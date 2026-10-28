@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtemp, mkdir, writeFile, rm, symlink } from 'fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -12,6 +12,7 @@ import {
   getProjectLayoutHandler,
   listProjectTestsHandler,
   openCodeTestHandler,
+  recordOverExampleHandler,
   runProjectFileHandler
 } from '../../../src/main/handlers/tests/projectTestIpc'
 
@@ -149,5 +150,52 @@ describe('project test IPC', () => {
     const result = await runProjectFileHandler('spec/a_spec.rb', 'ruby')
     expect(result.success).toBe(false)
     expect(result.output).toContain('boom')
+  })
+
+  it('record-over-example replaces the example in a listed file', async () => {
+    await setActiveProject(project)
+    mockSafeExec.mockResolvedValue({
+      stdout: '[{"startLine":2,"endLine":4}]',
+      stderr: '',
+      exitCode: 0
+    })
+    const steps = [{ id: 's', kind: 'navigate', url: 'https://x.test' }]
+    expect(await recordOverExampleHandler('spec/a_spec.rb', 'works', steps, 'ruby')).toEqual({
+      success: true
+    })
+    expect(await readFile(join(project, 'spec', 'a_spec.rb'), 'utf-8')).toBe(
+      "RSpec.describe 'A' do\n  it 'works' do\n    driver.navigate.to('https://x.test')\n  end\nend\n"
+    )
+  })
+
+  it('record-over-example reports a name that is not unique', async () => {
+    await setActiveProject(project)
+    mockSafeExec.mockResolvedValue({
+      stdout: '[{"startLine":2,"endLine":4},{"startLine":5,"endLine":6}]',
+      stderr: '',
+      exitCode: 0
+    })
+    expect(await recordOverExampleHandler('spec/a_spec.rb', 'works', [], 'ruby')).toEqual({
+      success: false,
+      error: 'notUnique',
+      count: 2
+    })
+  })
+
+  it('record-over-example refuses unlisted files and bad steps, writing nothing', async () => {
+    await setActiveProject(project)
+    for (const bad of ['other_spec.rb', 'spec/link_spec.rb', '../x_spec.rb']) {
+      const result = await recordOverExampleHandler(bad, 'works', [], 'ruby')
+      expect(result.success, bad).toBe(false)
+    }
+    const result = await recordOverExampleHandler(
+      'spec/a_spec.rb',
+      'works',
+      [{ kind: 'x' }],
+      'ruby'
+    )
+    expect(result.success).toBe(false)
+    expect(mockSafeExec).not.toHaveBeenCalled()
+    expect(await readFile(join(outside, 'secret_spec.rb'), 'utf-8')).toBe("it 'x' do\nend\n")
   })
 })

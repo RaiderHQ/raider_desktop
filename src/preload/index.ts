@@ -162,6 +162,16 @@ const api = {
     rubyCommand: string
   ): Promise<{ success: boolean; output: string }> =>
     ipcRenderer.invoke('run-project-file', file, rubyCommand),
+  recordOverExample: (
+    file: string,
+    exampleName: string,
+    steps: Step[],
+    rubyCommand: string
+  ): Promise<
+    | { success: true }
+    | { success: false; error: 'notUnique'; count: number }
+    | { success: false; error: string }
+  > => ipcRenderer.invoke('record-over-example', file, exampleName, steps, rubyCommand),
   createSuite: async (
     suiteName: string
   ): Promise<{ success: boolean; suite?: Suite; error?: string }> =>
