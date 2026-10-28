@@ -13,6 +13,7 @@ import { testKeyOf, toRouteParam } from '@foundation/testKey'
 import type { TestKey } from '@foundation/testKey'
 import type { Test } from '@foundation/Types/test'
 import type { PendingAssertion } from '@shared/types/pendingAssertion'
+import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import { useSuiteSync } from './useSuiteSync'
 import { traceSavedOnStop, useRecordingIPC } from './useRecordingIPC'
 
@@ -27,6 +28,8 @@ export interface TestRecording {
   stop(): Promise<void>
   /** Stop and save the recording (or replay) without showing anything: the user is leaving */
   leave(): Promise<void>
+  /** Saves a recording over a code example that its file couldn't take as a new recorded test */
+  saveAsNewTest(): Promise<void>
   run(): Promise<void>
   cancelReplay(): Promise<void>
   recordingUrl: string | null
@@ -73,6 +76,11 @@ interface StopOptions {
   onSaved?: (key: TestKey) => void
   /** Called when a new test was dropped because nothing was recorded */
   onDiscarded?: () => void
+  /**
+   * Someone is there to offer Save as a new test when a recording over a code example
+   * can't be written into its file. Without it (leaving), it is saved as a new test at once
+   */
+  offerSaveAsNew?: boolean
 }
 
 /**
@@ -108,6 +116,58 @@ async function saveStopped(
   await useTestsListStore.getState().reload()
   onSaved?.(testKeyOf({ name: test.name, testId: test.id, ownership: 'recorded', suiteIds: [] }))
   return true
+}
+
+type RecordOverResult = Awaited<ReturnType<typeof window.api.recordOverExample>>
+
+/**
+ * Writes a stopped recording over the code example it was bound to. When the file
+ * can't take it, the steps stay in `activeTest`: offered as a new test, or saved as one.
+ */
+async function saveOverExample(
+  t: Translate,
+  target: { file: string; exampleName: string },
+  test: Test | null,
+  options: StopOptions
+): Promise<void> {
+  // A trace of this recording is only kept if it becomes a test of its own
+  traceSavedOnStop()
+  // Nothing recorded must not wipe the example
+  if (!test || isEmptyRecording(test)) {
+    if (test && store().activeTest?.id === test.id) store().setActiveTest(null)
+    return
+  }
+  const rubyCommand = useRubyStore.getState().rubyCommand ?? ''
+  let result: RecordOverResult
+  try {
+    result = await window.api.recordOverExample(
+      target.file,
+      target.exampleName,
+      test.steps,
+      rubyCommand
+    )
+  } catch (error) {
+    console.error('Recording over the example failed:', error)
+    result = { success: false, error: error instanceof Error ? error.message : String(error) }
+  }
+  if (result.success) {
+    toast.success(t('tests.saved', { name: target.exampleName, file: target.file }))
+    if (store().activeTest?.id === test.id) store().setActiveTest(null)
+    await useTestsListStore.getState().reload()
+    return
+  }
+  const notUnique = result.error === 'notUnique'
+  if (!notUnique) toast.error(t('testPage.recordOverFailed', { error: result.error }))
+  if (options.offerSaveAsNew) {
+    store().setUnsavedExample({
+      reason: notUnique ? 'notUnique' : 'error',
+      exampleName: target.exampleName,
+      testId: test.id
+    })
+    return
+  }
+  // Leaving: nobody is left to offer Save as a new test, so nothing recorded is lost
+  await saveStopped(t, UNLISTED_SUITE_ID, test, options)
 }
 
 /**
@@ -151,7 +211,8 @@ async function stopAndSave(t: Translate, options: StopOptions = {}): Promise<voi
       return
     }
     case 'example':
-      throw new Error(`Saving a ${target.kind} recording is not supported`)
+      await saveOverExample(t, target, test, options)
+      return
     default: {
       const unknownTarget: never = target
       throw new Error(`Unknown recording target ${JSON.stringify(unknownTarget)}`)
@@ -179,12 +240,22 @@ export function useTestRecording(): TestRecording {
     (): Promise<void> =>
       stopAndSave(t, {
         onSaved: (key) => navigate(`/overview/tests/${toRouteParam(key)}`),
-        onDiscarded: () => navigate('/overview/tests')
+        onDiscarded: () => navigate('/overview/tests'),
+        offerSaveAsNew: true
       }),
     [t, navigate]
   )
 
   const leave = useCallback((): Promise<void> => stopAndSave(t), [t])
+
+  const saveAsNewTest = useCallback(async (): Promise<void> => {
+    const { unsavedExample: unsaved, activeTest: test } = store()
+    if (!unsaved || !test || test.id !== unsaved.testId) return
+    const saved = await saveStopped(t, UNLISTED_SUITE_ID, test, {
+      onSaved: (key) => navigate(`/overview/tests/${toRouteParam(key)}`)
+    })
+    if (saved && store().unsavedExample?.testId === unsaved.testId) store().setUnsavedExample(null)
+  }, [t, navigate])
 
   // Main holds a window close while recording, so the recording is saved first
   useEffect(() => {
@@ -242,6 +313,7 @@ export function useTestRecording(): TestRecording {
 
   const start = useCallback(async (target: RecordingTarget): Promise<void> => {
     if (useProjectStore.getState().layout?.recordable === false) return
+    store().setUnsavedExample(null)
     if (target.kind === 'example') {
       // The recording IPC only appends to an active test; an empty URL means the project base URL
       store().setActiveTest({
@@ -250,6 +322,8 @@ export function useTestRecording(): TestRecording {
         url: '',
         steps: []
       })
+      // No suite lists it: nothing autosaves it, and suite updates leave it alone
+      store().setActiveSuiteId(null)
     }
     const test = store().activeTest
     if (!test) return
@@ -373,6 +447,7 @@ export function useTestRecording(): TestRecording {
     recordFromHere,
     stop,
     leave,
+    saveAsNewTest,
     run,
     cancelReplay,
     recordingUrl,

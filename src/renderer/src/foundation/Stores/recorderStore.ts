@@ -10,6 +10,13 @@ export type RecordingTarget =
   | { kind: 'draft'; suiteId: string }
   | { kind: 'example'; file: string; exampleName: string }
 
+/** Why a recording over a code example wasn't written, and which recording it was */
+export interface UnsavedExample {
+  reason: 'notUnique' | 'error'
+  exampleName: string
+  testId: string
+}
+
 interface RecorderStore {
   suites: Suite[]
   activeSuiteId: string | null
@@ -34,6 +41,8 @@ interface RecorderStore {
   preloadPath: string | null
   /** A new test named on the new-test page and not saved yet; its live steps are in `activeTest` */
   draftTest: Test | null
+  /** A recording over a code example that couldn't be written into its file; its steps are in `activeTest` */
+  unsavedExample: UnsavedExample | null
 
   setSuites: (suites: Suite[]) => void
   setActiveSuiteId: (id: string | null) => void
@@ -53,6 +62,7 @@ interface RecorderStore {
   /** Open a new, unsaved test with this name and start URL, ready to record */
   startDraft: (name: string, url: string) => void
   setDraftTest: (test: Test | null) => void
+  setUnsavedExample: (unsaved: UnsavedExample | null) => void
   /** Make the list row's recorded test the active one (throws when no suite lists it) */
   openTest: (row: TestRow) => Promise<void>
   /** Forget everything that belongs to the project that was open */
@@ -79,6 +89,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   recordingUrl: null,
   preloadPath: null,
   draftTest: null,
+  unsavedExample: null,
 
   setSuites: (suites) => set({ suites }),
   setActiveSuiteId: (id) => set({ activeSuiteId: id }),
@@ -110,6 +121,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
     })
   },
   setDraftTest: (test): void => set({ draftTest: test }),
+  setUnsavedExample: (unsaved): void => set({ unsavedExample: unsaved }),
   openTest: async (row): Promise<void> => {
     const suites = await window.api.getSuites()
     const suite = row.testId
@@ -138,6 +150,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
       recordingUrl: null,
       preloadPath: null,
       draftTest: null,
+      unsavedExample: null,
       breakpointIndex: null,
       failedStepId: null,
       isReplayingToBreakpoint: false,

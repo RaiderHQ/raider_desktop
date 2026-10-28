@@ -77,6 +77,7 @@ const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
 const api = {
   getSuites: vi.fn(),
   listProjectTests: vi.fn(),
+  openCodeTest: vi.fn(),
   saveRecording: vi.fn(),
   deleteTest: vi.fn(),
   exportTest: vi.fn(),
@@ -455,9 +456,15 @@ describe('TestsWorkspace pane', () => {
     expect(screen.getByRole('button', { name: 'testPage.record' })).toBeInTheDocument()
   })
 
-  it('shows a placeholder for a test that is code', async () => {
+  it('shows the code test pane for a test that is code', async () => {
+    api.openCodeTest.mockResolvedValue({
+      file: 'spec/api_spec.rb',
+      examples: [{ name: 'responds', steps: [] }]
+    })
     renderWorkspace('file:spec/api_spec.rb')
-    expect(await screen.findByText('testPage.codePlaceholder')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'testPage.record' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'responds' })).toBeInTheDocument()
+    expect(api.openCodeTest).toHaveBeenCalledWith('spec/api_spec.rb')
+    expect(screen.getByRole('button', { name: 'testPage.editCode' })).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('API health')).not.toBeInTheDocument()
   })
 })

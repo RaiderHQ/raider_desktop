@@ -12,6 +12,7 @@ import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { toRouteParam } from '@foundation/testKey'
 import type { Test } from '@foundation/Types/test'
+import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 
 vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string, options?: object) => string } => ({
@@ -194,8 +195,79 @@ describe('useTestRecording', () => {
       exampleName: 'logs in'
     })
     expect(api.loadUrlRequest).toHaveBeenCalledWith('')
-    // Example recordings can't be saved yet: don't let the unmount try
+    // No suite lists it: autosave and suite updates must leave it alone
+    expect(s.activeSuiteId).toBeNull()
     act(() => useRecorderStore.getState().setRecordingTarget(null))
+  })
+
+  describe('recording over a code example', () => {
+    const click = {
+      id: 'c1',
+      kind: 'click' as const,
+      element: { strategy: 'css' as const, value: '#go' }
+    }
+    const recordExample = async (rec: ReturnType<typeof useTestRecording>): Promise<void> => {
+      await act(() =>
+        rec.start({ kind: 'example', file: 'spec/a_spec.rb', exampleName: 'logs in' })
+      )
+      await emit('recording-started', 'https://x.test/base')
+    }
+
+    beforeEach(() => {
+      Object.assign(api, { recordOverExample: vi.fn().mockResolvedValue({ success: true }) })
+    })
+
+    it('a stop with only the start page leaves the example alone', async () => {
+      const rec = await mount()
+      await recordExample(rec)
+      await act(() => rec.stop())
+      expect(
+        (api as unknown as { recordOverExample: ReturnType<typeof vi.fn> }).recordOverExample
+      ).not.toHaveBeenCalled()
+      expect(api.saveRecording).not.toHaveBeenCalled()
+    })
+
+    it('is never autosaved, even after a suite update', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const rec = await mount()
+      await recordExample(rec)
+      const recordingId = useRecorderStore.getState().activeTest?.id
+      await emit('suite-updated', suites)
+      // The suite update must not swap the recording for a suite's test
+      expect(useRecorderStore.getState().activeTest?.id).toBe(recordingId)
+      act(() =>
+        useRecorderStore
+          .getState()
+          .updateActiveTest((p) => (p ? { ...p, steps: [...p.steps, click] } : p))
+      )
+      expect(useRecorderStore.getState().activeTest?.steps).toContainEqual(click)
+      await act(async () => {
+        vi.advanceTimersByTime(1000)
+      })
+      expect(api.saveRecording).not.toHaveBeenCalled()
+      act(() => useRecorderStore.getState().setRecordingTarget(null))
+    })
+
+    it('a flush from main when the file refuses it saves the steps as a new test', async () => {
+      ;(
+        api as unknown as { recordOverExample: ReturnType<typeof vi.fn> }
+      ).recordOverExample.mockResolvedValue({ success: false, error: 'notUnique', count: 2 })
+      const rec = await mount()
+      await recordExample(rec)
+      act(() =>
+        useRecorderStore
+          .getState()
+          .updateActiveTest((p) => (p ? { ...p, steps: [...p.steps, click] } : p))
+      )
+      await act(async () => {
+        flushRecording?.()
+      })
+      await vi.waitFor(() => expect(api.flushRecordingDone).toHaveBeenCalled())
+      expect(api.saveRecording).toHaveBeenCalledWith(
+        UNLISTED_SUITE_ID,
+        expect.objectContaining({ name: 'logs in', steps: expect.arrayContaining([click]) })
+      )
+    })
   })
 
   it('start does nothing when the project cannot be recorded', async () => {

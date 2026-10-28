@@ -3,6 +3,7 @@ import { useMatch, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import TestsList from '@components/TestsList'
 import TestPage from '@components/TestPage'
+import CodeTestPane from '@components/CodeTestPane'
 import SuiteFilter from '@components/SuiteFilter'
 import { useTestsList } from '../../hooks/useTestsList'
 import useRecorderStore from '@foundation/Stores/recorderStore'
@@ -60,10 +61,8 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
       // One page for every recorded test, so its recording hooks mount once
       <TestPage row={selectedRow} />
     ) : (
-      <div className="p-6 space-y-2 text-sm">
-        <p className="font-semibold text-neutral-dark">{selectedRow.name}</p>
-        <p className="text-neutral-mid">{t('testPage.codePlaceholder')}</p>
-      </div>
+      // A file of its own per pane: leaving one saves its recording, like leaving a test page
+      <CodeTestPane key={testKeyOf(selectedRow)} row={selectedRow} />
     )
   ) : (
     <div className="flex items-center justify-center h-full text-neutral-mid text-sm p-8 text-center">
