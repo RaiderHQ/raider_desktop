@@ -79,7 +79,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
     )
   }
 
-  const isFailing = status === 'failed' || status === 'broken'
+  const isFailing = status === 'failed' || status === 'broken' || status === 'quarantined'
   const showFailureDetails = isFailing && !!failure
 
   const chevronIcon = open ? <FaChevronDown /> : <FaChevronRight />

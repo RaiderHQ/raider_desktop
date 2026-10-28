@@ -10,15 +10,15 @@ describe('editorTargetFor', () => {
     })
   })
 
-  it('keeps an absolute frame as is', () => {
-    expect(editorTargetFor('/p', '/other/spec/a_spec.rb:3')).toEqual({
-      fileName: 'a_spec.rb',
-      filePath: '/other/spec/a_spec.rb',
-      line: 3
-    })
-    expect(editorTargetFor('C:\\p', "C:/proj/spec/a_spec.rb:4:in 'x'")?.filePath).toBe(
-      'C:/proj/spec/a_spec.rb'
-    )
+  it('returns null for absolute frames', () => {
+    expect(editorTargetFor('/p', '/other/spec/a_spec.rb:3')).toBeNull()
+    expect(editorTargetFor('C:\\p', "C:/proj/spec/a_spec.rb:4:in 'x'")).toBeNull()
+  })
+
+  it('returns null for frames that climb out of the project', () => {
+    expect(editorTargetFor('/p', '../../.ssh/config:1')).toBeNull()
+    expect(editorTargetFor('/p', 'spec/../../x.rb:1')).toBeNull()
+    expect(editorTargetFor('/p', 'spec\\..\\x.rb:1')).toBeNull()
   })
 
   it('joins a Windows project path without doubling separators', () => {

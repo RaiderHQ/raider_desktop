@@ -20,7 +20,21 @@ describe('parseFrame', () => {
   })
 })
 
+describe('parseFrame line terminators', () => {
+  it('strips one trailing CR', () => {
+    expect(parseFrame("spec/a.rb:12:in 'x'\r")).toEqual({ file: 'spec/a.rb', line: 12 })
+  })
+  it.each(['\r\r', '\n', '\u2028', '\u2029'])('is unparseable with %j inside', (t) => {
+    expect(parseFrame(`spec/a.rb:12:in 'x'${t}`)).toBeNull()
+    expect(parseFrame(`spec/a.rb:12:in 'x'${t}y`)).toBeNull()
+  })
+})
+
 describe('isProjectFrame', () => {
+  it('treats (eval) and -e frames as other', () => {
+    expect(isProjectFrame('(eval):1')).toBe(false)
+    expect(isProjectFrame("-e:1:in 'x'")).toBe(false)
+  })
   it('classifies frames', () => {
     expect(isProjectFrame('pages/login.rb:9')).toBe(true)
     expect(isProjectFrame('/usr/lib/ruby/gems/3.4.0/gems/x/y.rb:1')).toBe(false)

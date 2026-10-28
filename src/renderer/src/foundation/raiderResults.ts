@@ -60,32 +60,38 @@ const safeAttachmentPath = (raw: string): string | null => {
   return p
 }
 
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v)
+
 const toRow = (result: RaiderResult, resultsDir: string, browser?: string): TestResult => {
   const row: TestResult = {
-    name: result.full_name ?? '',
-    status: mapStatus(result.status)
+    name: typeof result.full_name === 'string' ? result.full_name : '',
+    status: mapStatus(typeof result.status === 'string' ? result.status : undefined)
   }
-  if (result.failure?.message !== undefined) {
-    const message = sanitizeMessage(result.failure.message)
+  const failure = isObject(result.failure) ? result.failure : undefined
+  if (failure && typeof failure.message === 'string') {
+    const message = sanitizeMessage(failure.message)
     row.statusDetails = { message }
     row.failure = {
       message,
-      exceptionClass: result.failure.exception_class,
-      backtrace: Array.isArray(result.failure.backtrace) ? result.failure.backtrace : [],
-      appFrame: result.failure.app_frame
+      exceptionClass:
+        typeof failure.exception_class === 'string' ? failure.exception_class : undefined,
+      backtrace: Array.isArray(failure.backtrace)
+        ? failure.backtrace.filter((l): l is string => typeof l === 'string')
+        : [],
+      appFrame: typeof failure.app_frame === 'string' ? failure.app_frame : undefined
     }
   }
   if (typeof result.duration_ms === 'number') row.durationMs = result.duration_ms
   if (browser) row.browser = browser
-  const images = (result.attachments ?? []).filter(
-    (a) => a.content_type?.startsWith('image/') && a.path
+  const attachments = (Array.isArray(result.attachments) ? result.attachments : []).filter(
+    (a) => isObject(a) && typeof a.content_type === 'string' && typeof a.path === 'string'
   )
+  const images = attachments.filter((a) => a.content_type?.startsWith('image/') && a.path)
   const image = images.find((a) => a.name === 'screenshot') ?? images[0]
   const safe = image?.path ? safeAttachmentPath(image.path) : null
   if (safe) row.screenshot = `${resultsDir}/${safe}`
-  const video = (result.attachments ?? []).find(
-    (a) => a.content_type?.startsWith('video/') && a.path
-  )
+  const video = attachments.find((a) => a.content_type?.startsWith('video/') && a.path)
   const safeVideo = video?.path ? safeAttachmentPath(video.path) : null
   if (safeVideo) row.video = `${resultsDir}/${safeVideo}`
   return row
@@ -159,7 +165,7 @@ export const loadRaiderResults = async (
       parsed.push({
         node,
         index: fileIndex(node.name) as number | null,
-        results: Array.isArray(data.results) ? data.results : [],
+        results: Array.isArray(data.results) ? data.results.filter(isObject) : [],
         finished: data.run?.finished_at ? Date.parse(data.run.finished_at) : NaN,
         total: typeof data.run?.shard?.total === 'number' ? data.run.shard.total : null,
         browser:

@@ -8,7 +8,10 @@ export const editorTargetFor = (projectPath: string, appFrame: string): EditorTa
   const frame = parseFrame(appFrame)
   if (!frame) return null
   const { file, line } = frame
-  const filePath = isAbsolute(file) ? file : `${projectPath.replace(/[\\/]+$/, '')}/${file}`
+  if (isAbsolute(file) || file.split(/[\\/]/).some((seg) => seg === '..')) return null
+  const root = projectPath.replace(/[\\/]+$/, '')
+  const filePath = `${root}/${file}`
+  if (!filePath.startsWith(`${root}/`)) return null
   const fileName = file.split(/[\\/]/).pop() || file
   return { fileName, filePath, line }
 }

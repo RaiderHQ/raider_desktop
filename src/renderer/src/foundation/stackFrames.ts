@@ -6,7 +6,9 @@ const FRAME_RE = /^((?:[A-Za-z]:)?[^:]+):(\d+)(?::in .*)?$/
 export type FrameSegment = { kind: 'project'; text: string } | { kind: 'folded'; lines: string[] }
 
 export const parseFrame = (s: string): { file: string; line: number } | null => {
-  const m = FRAME_RE.exec(s)
+  const text = s.replace(/\r$/, '')
+  if (/[\n\r\u2028\u2029]/.test(text)) return null
+  const m = FRAME_RE.exec(text)
   return m ? { file: m[1], line: Number(m[2]) } : null
 }
 
@@ -17,7 +19,13 @@ export const isProjectFrame = (line: string, appFrame?: string): boolean => {
   if (app && frame.file === app.file) return true
   const { file } = frame
   if (file.startsWith('/') || /^[A-Za-z]:/.test(file)) return false
-  if (file.startsWith('vendor/') || file.startsWith('.bundle/') || file.startsWith('<internal:'))
+  if (
+    file.startsWith('vendor/') ||
+    file.startsWith('.bundle/') ||
+    file.startsWith('<internal:') ||
+    file.startsWith('(') ||
+    file.startsWith('-')
+  )
     return false
   return !file.includes('/gems/')
 }

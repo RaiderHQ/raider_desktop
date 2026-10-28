@@ -344,6 +344,42 @@ describe('loadRaiderResults with schema 2', () => {
     expect(rows![0].statusDetails?.message).toBe('timeout')
   })
 
+  it('survives a malformed run.json', async () => {
+    const api = makeApi({
+      'run.json': JSON.stringify({
+        schema_version: 2,
+        client_run_id: 'x',
+        run: {},
+        results: [
+          null,
+          'str',
+          7,
+          r('F: bad', 'failed', {
+            failure: {
+              message: 'm',
+              backtrace: [{ x: 1 }, 'a:1', 3],
+              app_frame: {},
+              exception_class: 5
+            },
+            attachments: [null, 'x', { content_type: 5, path: {} }]
+          }),
+          r('F: nofailure', 'failed', { failure: 'oops' })
+        ]
+      })
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows!.map((x) => x.name)).toEqual(['F: bad', 'F: nofailure'])
+    expect(rows![0].failure).toEqual({
+      message: 'm',
+      exceptionClass: undefined,
+      backtrace: ['a:1'],
+      appFrame: undefined
+    })
+    expect(rows![1].failure).toBeUndefined()
+    const api2 = makeApi({ 'run.json': JSON.stringify({ run: {}, results: { a: 1 } }) })
+    expect(await loadRaiderResults('/proj', api2)).toEqual([])
+  })
+
   describe('failure details', () => {
     const one = async (
       result: Record<string, unknown>,

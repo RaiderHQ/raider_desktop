@@ -115,11 +115,14 @@ describe('TestResultCard', () => {
 describe('TestResultCard failure details', () => {
   const failure = { message: 'boom', backtrace: [] as string[] }
 
-  it.each(['failed', 'broken'])('renders failure-details for %s with failure', (status) => {
-    render(<TestResultCard name="Example" status={status} failure={failure} />)
-    fireEvent.click(screen.getByText('Example'))
-    expect(screen.getByTestId('failure-details')).toBeInTheDocument()
-  })
+  it.each(['failed', 'broken', 'quarantined'])(
+    'renders failure-details for %s with failure',
+    (status) => {
+      render(<TestResultCard name="Example" status={status} failure={failure} />)
+      fireEvent.click(screen.getByText('Example'))
+      expect(screen.getByTestId('failure-details')).toBeInTheDocument()
+    }
+  )
 
   it('does not render failure-details for passed', () => {
     render(<TestResultCard name="Example" status="passed" failure={failure} />)
