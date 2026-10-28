@@ -11,10 +11,14 @@ interface TestsListStore {
  * The project's tests as one list: project files plus suite tests that have no file
  * ('legacy'). Callers that save a recording must reload; save-recording doesn't broadcast.
  */
+let latestReload = 0
+
 export const useTestsListStore = create<TestsListStore>(
   (set): TestsListStore => ({
     rows: null,
     reload: async (): Promise<void> => {
+      // Only the newest reload may write: older ones can resolve late
+      const mine = ++latestReload
       try {
         const [entries, suites] = await Promise.all([
           window.api.listProjectTests(),
@@ -43,10 +47,10 @@ export const useTestsListStore = create<TestsListStore>(
             })
           }
         }
-        set({ rows })
+        if (mine === latestReload) set({ rows })
       } catch (error) {
         console.error('Listing the project tests failed:', error)
-        set({ rows: [] })
+        if (mine === latestReload) set({ rows: [] })
       }
     }
   })
