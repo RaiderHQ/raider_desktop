@@ -376,23 +376,7 @@ interface TestStoresWindow {
       getState: () => { layout: unknown }
       setState: (state: Patchable) => void
     }
-    recorderStore: {
-      getState: () => {
-        updateActiveTest: (updater: (test: Patchable | null) => Patchable | null) => void
-      }
-    }
   }
-}
-
-/**
- * Change the recorder's open test the way an edit in the recorder does.
- */
-export async function editOpenTest(page: Page, patch: Patchable): Promise<void> {
-  await page.evaluate((p) => {
-    ;(window as unknown as TestStoresWindow).__TEST_STORES__.recorderStore
-      .getState()
-      .updateActiveTest((test) => (test ? { ...test, ...p } : null))
-  }, patch)
 }
 
 /**

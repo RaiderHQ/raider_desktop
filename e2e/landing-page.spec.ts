@@ -1,5 +1,6 @@
 import { test, expect } from './electronApp'
 import { goToLanding } from './helpers/navigation'
+import { setRubyCommand } from './helpers/ipc-mock'
 
 test.describe('Landing Page', () => {
   test.beforeEach(async ({ page }) => {
@@ -29,6 +30,28 @@ test.describe('Landing Page', () => {
   test('shows Open project option', async ({ page }) => {
     await expect(page.getByText('Open existing project')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Open' })).toBeVisible()
+  })
+
+  test('shows Quick record option', async ({ page }) => {
+    await expect(page.getByText('Record a test without a project')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Quick record' })).toBeVisible()
+  })
+
+  test('Quick record opens its dialog and Cancel closes it', async ({ page }) => {
+    await setRubyCommand(page, 'ruby')
+    await page.getByRole('button', { name: 'Quick record' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Quick record' })
+    await expect(dialog).toBeVisible()
+    // Both the address and a name are needed
+    await expect(dialog.getByRole('button', { name: 'Start' })).toBeDisabled()
+    await dialog.getByPlaceholder('https://example.com').fill('example.com')
+    await expect(dialog.getByRole('button', { name: 'Start' })).toBeDisabled()
+    await dialog.getByPlaceholder('Checkout works').fill('Checkout works')
+    await expect(dialog.getByRole('button', { name: 'Start' })).toBeEnabled()
+
+    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await expect(dialog).toHaveCount(0)
+    expect(page.url()).toContain('#/start-project')
   })
 
   test('clicking Create navigates to new project page', async ({ page }) => {

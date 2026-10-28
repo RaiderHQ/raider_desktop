@@ -1,6 +1,6 @@
 import { test, expect } from './electronApp'
 import type { Page } from '@playwright/test'
-import { goToOverview, goToRecorder } from './helpers/navigation'
+import { goToOverview, goToTest } from './helpers/navigation'
 import {
   setupProjectContext,
   mockIPC,
@@ -8,8 +8,7 @@ import {
   mockProjectTests,
   getIPCCalls,
   sendMainEvent,
-  setProjectLayout,
-  editOpenTest
+  setProjectLayout
 } from './helpers/ipc-mock'
 
 const entries: Parameters<typeof mockProjectTests>[1] = [
@@ -69,8 +68,9 @@ const codeView = {
   ]
 }
 
-const row = (page: Page, name: string): ReturnType<Page['getByRole']> =>
-  page.getByRole('listitem').filter({ hasText: name })
+// List rows are buttons (<li role="button">), so they're found as <li>
+const row = (page: Page, name: string): ReturnType<Page['locator']> =>
+  page.locator('li[role="button"]').filter({ hasText: name })
 
 test.describe('Project Tests tab', () => {
   test.beforeEach(async ({ page }) => {
@@ -89,14 +89,12 @@ test.describe('Project Tests tab', () => {
     )
   })
 
-  test('lists every project test with who owns it', async ({ page }) => {
+  test('lists every project test and marks the ones edited in code', async ({ page }) => {
     await goToOverview(page)
-    await expect(row(page, 'Login')).toContainText('Code')
-    await expect(row(page, 'Login').getByRole('button', { name: 'View' })).toBeVisible()
-    await expect(row(page, 'Search products')).toContainText('Recorded')
-    await expect(row(page, 'Search products').getByRole('button', { name: 'Edit' })).toBeVisible()
-    await expect(row(page, 'Add to cart')).toContainText('Code-owned (was recorded)')
-    await expect(row(page, 'Add to cart').getByRole('button', { name: 'View' })).toBeVisible()
+    await expect(row(page, 'Login')).toContainText('Edited in code')
+    await expect(row(page, 'Search products')).toBeVisible()
+    await expect(row(page, 'Search products')).not.toContainText('Edited in code')
+    await expect(row(page, 'Add to cart')).toContainText('Edited in code')
     await expect(row(page, 'Old flow')).toContainText('File missing')
     await expect(row(page, 'Old flow').getByRole('button', { name: 'Restore' })).toBeVisible()
   })
@@ -140,35 +138,52 @@ test.describe('Project Tests tab', () => {
     await expect(page.getByText('No tests yet — record one')).toHaveCount(0)
   })
 
-  test('Edit opens a recorded test in the recorder', async ({ page }) => {
+  test('a recorded test opens on its own page', async ({ page }) => {
     await goToOverview(page)
-    await row(page, 'Search products').getByRole('button', { name: 'Edit' }).click()
-    await expect(page).toHaveURL(/#\/recorder/)
-    await expect(page.getByPlaceholder('Test Name')).toHaveValue('Search products')
-    await expect(page.getByText('Edited in code by a developer')).toHaveCount(0)
+    await row(page, 'Search products').click()
+    await expect(page).toHaveURL(/#\/overview\/tests\/[A-Za-z0-9_-]+$/)
+    await expect(page.getByLabel('Test name')).toHaveValue('Search products')
     await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Edit code' })).toHaveCount(0)
   })
 
-  test('View opens a hand-written test read-only', async ({ page }) => {
+  test('a test edited in code shows its tests, without fields to change', async ({ page }) => {
     await mockIPCCapture(page, 'openCodeTest', codeView)
     await goToOverview(page)
-    await row(page, 'Login').getByRole('button', { name: 'View' }).click()
+    await row(page, 'Login').click()
 
-    await expect(page).toHaveURL(/#\/recorder/)
+    await expect(page).toHaveURL(/#\/overview\/tests\/[A-Za-z0-9_-]+$/)
     expect(await getIPCCalls(page, 'openCodeTest')).toEqual([['spec/login_page_spec.rb']])
-    await expect(page.getByText('Edited in code by a developer — view and run only.')).toBeVisible()
-    await expect(page.getByText('logs in with right credentials')).toBeVisible()
-    await expect(page.getByText('shows an error with a wrong password')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Record', exact: true })).toHaveCount(0)
-    await expect(page.getByPlaceholder('Test Name')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'logs in with right credentials' })).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: 'shows an error with a wrong password' })
+    ).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Edit code' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeVisible()
+    await expect(page.getByLabel('Test name')).toHaveCount(0)
   })
 
-  test('Run in the read-only view runs the project file', async ({ page }) => {
+  test('picking another test in the file shows its steps', async ({ page }) => {
+    await mockIPC(page, 'openCodeTest', codeView)
+    await goToOverview(page)
+    await row(page, 'Login').click()
+    const first = page.getByRole('button', { name: 'logs in with right credentials' })
+    const second = page.getByRole('button', { name: 'shows an error with a wrong password' })
+    // The first test is shown until another is picked
+    await expect(first).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByText(/example\.com\/login/)).toBeVisible()
+
+    await second.click()
+    await expect(second).toHaveAttribute('aria-pressed', 'true')
+    await expect(first).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.getByText(/example\.com\/login/)).toHaveCount(0)
+  })
+
+  test('Run on a test edited in code runs the project file', async ({ page }) => {
     await mockIPC(page, 'openCodeTest', codeView)
     await mockIPCCapture(page, 'runProjectFile', { success: true, output: '1 example, 0 failures' })
     await goToOverview(page)
-    await row(page, 'Login').getByRole('button', { name: 'View' }).click()
-    await expect(page).toHaveURL(/#\/recorder/)
+    await row(page, 'Login').click()
 
     await page.getByRole('button', { name: 'Run', exact: true }).click()
     await expect
@@ -177,7 +192,7 @@ test.describe('Project Tests tab', () => {
       .toEqual([['spec/login_page_spec.rb', expect.stringMatching(/ruby$/)]])
   })
 
-  test('a run that stops on a load error shows Failed', async ({ page }) => {
+  test('Last run shows the output of a run that stopped on a load error', async ({ page }) => {
     await mockIPC(page, 'openCodeTest', codeView)
     // rspec counts 0 failures when a missing gem stops it before any example
     await mockIPC(page, 'runProjectFile', {
@@ -185,67 +200,49 @@ test.describe('Project Tests tab', () => {
       output: '0 examples, 0 failures, 1 error occurred outside of examples'
     })
     await goToOverview(page)
-    await row(page, 'Login').getByRole('button', { name: 'View' }).click()
+    await row(page, 'Login').click()
     await page.getByRole('button', { name: 'Run', exact: true }).click()
+    await page.getByRole('button', { name: 'Last run', exact: true }).click()
 
-    await expect(page.getByRole('button', { name: /Failed/ })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Passed/ })).toHaveCount(0)
+    await expect(page.getByTestId('last-run')).toContainText('1 error occurred outside of examples')
   })
 
-  test('Back to the recorder leaves the read-only view', async ({ page }) => {
-    await mockIPC(page, 'openCodeTest', codeView)
-    await goToOverview(page)
-    await row(page, 'Login').getByRole('button', { name: 'View' }).click()
-    await expect(page.getByText('logs in with right credentials')).toBeVisible()
-
-    await page.getByRole('button', { name: 'Back to the recorder' }).click()
-    await expect(page.getByText('Edited in code by a developer')).toHaveCount(0)
-    await expect(page.getByText('logs in with right credentials')).toHaveCount(0)
-  })
-
-  // A change to the open test starts the recorder's 500ms autosave. Main's echo of a
-  // save no longer carries edits into the open test, so changes are made in the recorder.
+  // A change to the open test starts the test page's 500ms autosave
   test('a change to a recorded test is autosaved', async ({ page }) => {
-    // Control for the next test: the same change does reach saveRecording when editable
     await mockIPCCapture(page, 'saveRecording', { success: true })
-    await mockIPC(page, 'getSuites', [{ ...suites[0], tests: [suites[0].tests[0]] }])
-    await goToRecorder(page)
-    await expect(page.getByPlaceholder('Test Name')).toHaveValue('Search products')
-    // Opening the test may autosave it once; count only what the changes add
+    await goToTest(page, 'id:t1')
+    await expect(page.getByLabel('Test name')).toHaveValue('Search products')
+    // Opening the test may autosave it once; count only what the change adds
     await page.waitForTimeout(1000)
     const saves = async (): Promise<number> => (await getIPCCalls(page, 'saveRecording')).length
     const before = await saves()
 
-    // Through the UI: a new start URL
-    await page.getByPlaceholder('URL to Record').fill('https://example.com/search')
+    await page.getByLabel('Start URL').fill('https://example.com/search')
     await expect.poll(saves).toBe(before + 1)
     expect((await getIPCCalls(page, 'saveRecording')).at(-1)![1]).toMatchObject({
       id: 't1',
       url: 'https://example.com/search'
     })
-
-    // The change the read-only test gets below, made the same way
-    await editOpenTest(page, { name: 'Search products (changed)' })
-    await expect(page.getByPlaceholder('Test Name')).toHaveValue('Search products (changed)')
-    await expect.poll(saves).toBe(before + 2)
-    expect((await getIPCCalls(page, 'saveRecording')).at(-1)![1]).toMatchObject({
-      name: 'Search products (changed)'
-    })
   })
 
-  test('a recorded test taken over in code is read-only and never saved', async ({ page }) => {
+  test('a recorded test taken over in code is shown as code and never saved', async ({ page }) => {
     await mockIPCCapture(page, 'saveRecording', { success: false, error: 'codeOwned' })
-    await mockIPC(page, 'getSuites', [{ ...suites[0], tests: [suites[0].tests[1]] }])
-    await goToRecorder(page)
+    await mockIPCCapture(page, 'openCodeTest', {
+      file: 'spec/cart_spec.rb',
+      examples: [
+        {
+          name: 'Add to cart',
+          steps: [{ id: 'b', kind: 'navigate', url: 'https://example.com/shop' }]
+        }
+      ]
+    })
+    await goToOverview(page)
+    await row(page, 'Add to cart').click()
 
-    await expect(page.getByText('Edited in code by a developer — view and run only.')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Record', exact: true })).toHaveCount(0)
-    // Read-only offers no fields to change, so the open test is changed as the recorder would
-    await expect(page.getByPlaceholder('URL to Record')).toHaveCount(0)
-
-    await editOpenTest(page, { name: 'Add to cart (changed)' })
-    // The change reached the recorder, which would autosave it 500ms later if it could
-    await expect(page.getByRole('heading', { name: 'Add to cart (changed)' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Edit code' })).toBeVisible()
+    expect(await getIPCCalls(page, 'openCodeTest')).toEqual([['spec/cart_spec.rb']])
+    await expect(page.getByLabel('Test name')).toHaveCount(0)
+    await expect(page.getByLabel('Start URL')).toHaveCount(0)
     await page.waitForTimeout(1500)
     expect(await getIPCCalls(page, 'saveRecording')).toEqual([])
   })

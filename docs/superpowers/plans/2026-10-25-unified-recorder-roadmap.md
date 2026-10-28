@@ -11,7 +11,7 @@ one lands, so they build on the real interfaces rather than guessed ones.
 | 1 | Foundation: one settings source, suites survive restart, structured step model + generator | Stages 1–2; §2, §8 | **Done** — PR #72 |
 | 2 | Recorded tests as project files: sidecars, Tests list, code ownership, read-only mode | Stage 3; §3, §4 | **Done** — PR #75 |
 | 3 | One runner, one dashboard: project runner, step-mapped failures, fix actions | Stage 4; §7 | To write |
-| 4 | Navigation: sidebar, `/tests/:id` editor route, Quick record | Stage 5; §1, §8 | To write |
+| 4 | Navigation: sidebar, `/tests/:id` editor route, Quick record | Stage 5; §1, §8 | In progress |
 | 5 | Suites = tags | Stage 6; §6 | To write |
 | 6 | Elements / page objects: managed regions, element library, re-pick + usage warning | Stage 7; §5, §11 | To write |
 | 7 | Gherkin: step vocabulary, `raider_steps.rb`, feature generation | Stage 8; §9, §11 | To write |

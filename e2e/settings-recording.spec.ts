@@ -1,6 +1,7 @@
 import { test, expect } from './electronApp'
-import { goToRecorder } from './helpers/navigation'
+import { goToOverviewFiles } from './helpers/navigation'
 import {
+  setupProjectContext,
   mockIPC,
   mockIPCCapture,
   mockIPCCaptureError,
@@ -8,7 +9,7 @@ import {
   getIPCCalls
 } from './helpers/ipc-mock'
 
-// Wait settings live inline on the Recorder page and are read from / written to the
+// Wait settings live on the Overview's Files-tab toolbar and are read from / written to the
 // project's config/config.yml through the main process.
 const projectSettings = {
   baseUrl: 'https://example.com',
@@ -21,9 +22,10 @@ const projectSettings = {
 
 test.describe('Recording Settings', () => {
   test.beforeEach(async ({ page }) => {
-    // Must be mocked before the Recorder mounts, which loads the settings
+    await setupProjectContext(page)
+    // Must be mocked before the Overview mounts, which loads the settings
     await mockIPC(page, 'getRecorderSettings', projectSettings)
-    await goToRecorder(page)
+    await goToOverviewFiles(page)
     await page.waitForTimeout(500)
   })
 

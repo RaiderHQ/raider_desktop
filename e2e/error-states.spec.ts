@@ -1,5 +1,6 @@
 import { test, expect } from './electronApp'
-import { navigateTo, goToRecorder, createSuiteViaUI } from './helpers/navigation'
+import { navigateTo, goToOverview } from './helpers/navigation'
+import { setupProjectContext } from './helpers/ipc-mock'
 
 test.describe('Error States & Edge Cases', () => {
   test('navigating to file-editor without state does not crash', async ({ page }) => {
@@ -7,30 +8,28 @@ test.describe('Error States & Edge Cases', () => {
     await page.waitForTimeout(500)
 
     // App should still be functional - can navigate away
-    await navigateTo(page, '/recorder')
-    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).toBeVisible()
+    await navigateTo(page, '/start-project')
+    await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
   })
 
-  test('rapid tab switching in Recorder does not break UI', async ({ page }) => {
-    await goToRecorder(page)
-    await page.waitForTimeout(500)
+  test('rapid tab switching on the Overview does not break UI', async ({ page }) => {
+    await setupProjectContext(page)
+    await goToOverview(page)
 
-    const recordingTab = page.locator('button').filter({ hasText: 'Recording' }).first()
-    const dashboardTab = page.locator('button').filter({ hasText: 'Dashboard' })
-    const settingsTab = page.locator('button').filter({ hasText: 'Settings' })
-
+    const tab = (name: string) => page.getByRole('button', { name, exact: true })
     for (let i = 0; i < 5; i++) {
-      await recordingTab.click()
-      await dashboardTab.click()
-      await settingsTab.click()
+      await tab('Tests').click()
+      await tab('Dashboard').click()
+      await tab('Files').click()
     }
 
-    await recordingTab.click()
-    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).toBeVisible()
+    await tab('Tests').click()
+    await expect(page.getByText('Select a test, or create a new one.')).toBeVisible()
   })
 
   test('navigating between all pages rapidly does not crash', async ({ page }) => {
-    const routes = ['/recorder', '/start-project', '/new', '/overview']
+    await setupProjectContext(page)
+    const routes = ['/recorder', '/start-project', '/new', '/overview', '/overview/tests/new']
 
     for (const route of routes) {
       await navigateTo(page, route)
@@ -38,11 +37,19 @@ test.describe('Error States & Edge Cases', () => {
     }
 
     await navigateTo(page, '/recorder')
-    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).toBeVisible()
+    await expect(page.getByText('Select a test, or create a new one.')).toBeVisible()
   })
 
-  test('double-clicking nav links does not break navigation', async ({ page }) => {
-    await page.locator('a[href="#/overview"]').dblclick()
+  test('an unknown test in the route shows the list with nothing selected', async ({ page }) => {
+    await setupProjectContext(page)
+    await navigateTo(page, '/overview/tests/not-a-test')
+    await expect(page.getByText('Select a test, or create a new one.')).toBeVisible()
+  })
+
+  test('double-clicking the header link does not break navigation', async ({ page }) => {
+    await setupProjectContext(page)
+    await navigateTo(page, '/start-project')
+    await page.locator('header a[href="#/overview"]').dblclick()
     await page.waitForTimeout(800)
     // Overview page should load without crashing
     const url = page.url()
