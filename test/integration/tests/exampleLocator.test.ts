@@ -80,4 +80,26 @@ describe.skipIf(!hasRuby)('locateExamples', () => {
     expect(await locateExamples(dir, f, 'one', 'ruby')).toEqual([{ startLine: 2, endLine: 3 }])
     expect(await locateExamples(dir, f, 'two', 'ruby')).toEqual([{ startLine: 5, endLine: 6 }])
   })
+
+  it('finds non-ASCII names without a UTF-8 locale', async () => {
+    const f = await spec("describe 'Accès' do\n  it 'connexion réussie' do\n    1\n  end\nend\n")
+    const saved = {
+      LANG: process.env.LANG,
+      LC_ALL: process.env.LC_ALL,
+      LC_CTYPE: process.env.LC_CTYPE
+    }
+    process.env.LANG = 'C'
+    process.env.LC_ALL = 'C'
+    delete process.env.LC_CTYPE
+    try {
+      expect(await locateExamples(dir, f, 'connexion réussie', 'ruby')).toEqual([
+        { startLine: 2, endLine: 4 }
+      ])
+    } finally {
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[key]
+        else process.env[key] = value
+      }
+    }
+  })
 })

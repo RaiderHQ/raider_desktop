@@ -12,6 +12,8 @@ export type ExampleRange = { startLine: number; endLine: number }
 const SCRIPT = `
 require 'json'
 NAMES = %i[it specify scenario].freeze
+# Read as UTF-8 whatever the locale: an app started from Finder often has no LANG
+name = ARGV[1].dup.force_encoding('UTF-8')
 found = []
 walk = lambda do |node|
   next unless node.is_a?(RubyVM::AbstractSyntaxTree::Node)
@@ -20,14 +22,14 @@ walk = lambda do |node|
     if %i[FCALL CALL].include?(call.type)
       mid, args = call.type == :FCALL ? call.children : call.children[1..2]
       first = args&.type == :LIST ? args.children[0] : nil
-      if NAMES.include?(mid) && first&.type == :STR && first.children[0] == ARGV[1]
+      if NAMES.include?(mid) && first&.type == :STR && first.children[0] == name
         found << { startLine: node.first_lineno, endLine: node.last_lineno }
       end
     end
   end
   node.children.each { |child| walk.call(child) }
 end
-walk.call(RubyVM::AbstractSyntaxTree.parse(File.read(ARGV[0])))
+walk.call(RubyVM::AbstractSyntaxTree.parse(File.read(ARGV[0], encoding: 'UTF-8')))
 puts JSON.generate(found)
 `
 

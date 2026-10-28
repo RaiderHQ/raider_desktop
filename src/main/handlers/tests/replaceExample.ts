@@ -73,15 +73,19 @@ export async function replaceExample(
     const { startLine, endLine } = ranges[0]
 
     const source = await fs.readFile(target, 'utf-8')
-    const eol = source.includes('\r\n') ? '\r\n' : '\n'
-    const lines = source.split(eol)
-    const header = lines[startLine - 1]
+    // Split on \n only, as Ruby counts lines, so a file with mixed endings still
+    // lines up; kept lines keep their own \r, new ones follow the header's ending
+    const lines = source.split('\n')
+    const cr = lines[startLine - 1].endsWith('\r') ? '\r' : ''
+    const header = cr ? lines[startLine - 1].slice(0, -1) : lines[startLine - 1]
     const indent = header.match(/^\s*/)![0]
 
     // A multi-line do block keeps its header and `end`; anything else becomes one
     const keep = endLine > startLine && DO_HEADER.test(header)
-    const open = keep ? header : `${header.slice(0, openerIndex(header)).trimEnd()} do`
-    const close = keep ? lines[endLine - 1] : `${indent}end`
+    const open = keep
+      ? lines[startLine - 1]
+      : `${header.slice(0, openerIndex(header)).trimEnd()} do${cr}`
+    const close = keep ? lines[endLine - 1] : `${indent}end${cr}`
 
     const body = steps.flatMap((step) =>
       renderStep(step, layout.automation, { receiver: 'helper' }).split('\n')
@@ -89,10 +93,10 @@ export async function replaceExample(
     const usesWait = body.some((line) => /\bwait\b/.test(line.replace(STRING_LITERAL, "''")))
     if (layout.automation === 'selenium' && usesWait && !DEFINES_WAIT.test(source))
       body.unshift(LOCAL_WAIT)
-    const inner = body.map((line) => (line === '' ? line : `${indent}  ${line}`))
+    const inner = body.map((line) => (line === '' ? cr : `${indent}  ${line}${cr}`))
 
     const next = [...lines.slice(0, startLine - 1), open, ...inner, close, ...lines.slice(endLine)]
-    await writeFileAtomic(target, next.join(eol))
+    await writeFileAtomic(target, next.join('\n'))
 
     let sidecar: Sidecar | null = null
     try {

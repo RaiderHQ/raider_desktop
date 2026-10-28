@@ -180,4 +180,31 @@ describe.skipIf(!hasRuby)('replaceExample', () => {
     expect(await readFile(join(project, 'spec', 'helper.rb'), 'utf-8')).toBe("it 'B' do\nend\n")
     expect(await read()).toBe(ABC.join('\n'))
   })
+
+  it('keeps CRLF line endings', async () => {
+    await writeFile(join(project, FILE), ABC.join('\r\n'))
+    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
+    const start = ABC.indexOf("  it 'B' do")
+    const expected = [
+      ...ABC.slice(0, start + 1),
+      ...rendered(steps, '    '),
+      ...ABC.slice(start + 3)
+    ]
+    expect(await read()).toBe(expected.join('\r\n'))
+  })
+
+  it('splices a file with mixed line endings at the right lines', async () => {
+    const navigate: Step[] = [{ id: 'n', kind: 'navigate', url: 'https://x.test' }]
+    await writeFile(
+      join(project, FILE),
+      "describe 'S' do\r\n  it 'a' do\n    x\r\n  end\r\n  it 'b' do\n    y\n  end\nend\r\n"
+    )
+    await replaceExample(project, layout, FILE, 'a', navigate, 'ruby')
+    expect(await read()).toBe(
+      "describe 'S' do\r\n  it 'a' do\n" +
+        rendered(navigate, '    ').join('\n') +
+        "\n  end\r\n  it 'b' do\n    y\n  end\nend\r\n"
+    )
+    expect(spawnSync('ruby', ['-c', join(project, FILE)]).status).toBe(0)
+  })
 })
