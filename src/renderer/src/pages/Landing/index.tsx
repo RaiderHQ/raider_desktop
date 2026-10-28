@@ -80,8 +80,8 @@ const Landing: React.FC = (): JSX.Element => {
             description={t('button.recorder.description')}
             onClick={() => setQuickRecordOpen(true)}
             buttonValue={t('button.recorder.text')}
-            modalTitleKey="information.openRecorder.title"
-            modalMessageKey="information.openRecorder.message"
+            modalTitleKey="information.quickRecord.title"
+            modalMessageKey="information.quickRecord.message"
           />
           <ProjectSelector
             icon={OpenFolder}

@@ -8,6 +8,7 @@ vi.mock('electron', () => ({ BrowserWindow: class {}, app: { getPath: (): string
 
 import {
   replaceExample,
+  receiverFor,
   ExampleNotUniqueError
 } from '../../../src/main/handlers/tests/replaceExample'
 import { readSidecar, writeSidecar } from '../../../src/main/handlers/tests/sidecar'
@@ -72,7 +73,99 @@ afterEach(async () => {
   await rm(project, { recursive: true, force: true })
 })
 
+describe('receiverFor', () => {
+  it('uses the instance variable in a file that drives @driver or @browser', () => {
+    expect(receiverFor("    @driver.find_element(id: 'a').click")).toBe('ivar')
+    expect(receiverFor("    @browser.button(id: 'a').click")).toBe('ivar')
+  })
+
+  it('keeps the helper in a file that calls driver. or browser.', () => {
+    expect(receiverFor("    driver.find_element(id: 'a').click")).toBe('helper')
+    expect(receiverFor("browser.goto('x')")).toBe('helper')
+  })
+
+  it('keeps the helper when a file uses both', () => {
+    expect(receiverFor("@driver = make\n    driver.navigate.to('x')")).toBe('helper')
+  })
+
+  it('keeps the helper when the file names neither', () => {
+    expect(receiverFor("it 'A' do\n  a\nend")).toBe('helper')
+    expect(receiverFor('  @driver_options = {}')).toBe('helper')
+  })
+})
+
 describe.skipIf(!hasRuby)('replaceExample', () => {
+  it('writes @driver. lines into a file that uses @driver', async () => {
+    const file = [
+      "describe 'Shop' do",
+      "  it 'A' do",
+      "    @driver.find_element(id: 'a').click",
+      '  end',
+      '',
+      "  it 'B' do",
+      '    b',
+      '  end',
+      'end',
+      ''
+    ]
+    await write(file)
+    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
+    const out = (await read()).split('\n')
+    const body = steps.flatMap((s) =>
+      renderStep(s, layout.automation, { receiver: 'ivar' })
+        .split('\n')
+        .map((l) => '    ' + l)
+    )
+    // The file has no @wait of its own, so one is set up first
+    expect(out[6]).toBe(
+      "    @wait = Selenium::WebDriver::Wait.new(timeout: YAML.load_file('config/config.yml').fetch('explicit_wait', 10))"
+    )
+    expect(out.slice(7, 7 + body.length)).toEqual(body)
+    expect(body.every((l) => !/(^|[^@\w])driver\./.test(l))).toBe(true)
+    expect(body.some((l) => l.includes('@driver.'))).toBe(true)
+  })
+
+  it('reuses a @wait the file already sets', async () => {
+    const file = [
+      "describe 'Shop' do",
+      '  before { @wait = Selenium::WebDriver::Wait.new(timeout: 5) }',
+      "  it 'A' do",
+      "    @driver.find_element(id: 'a').click",
+      '  end',
+      "  it 'B' do",
+      '    b',
+      '  end',
+      'end',
+      ''
+    ]
+    await write(file)
+    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
+    const out = (await read()).split('\n')
+    expect(out[6]).toBe('    ' + renderStep(steps[0], layout.automation, { receiver: 'ivar' }))
+    expect(out.filter((l) => l.includes('@wait =')).length).toBe(1)
+  })
+
+  it('keeps driver. lines in a file that uses the driver helper', async () => {
+    const file = [
+      "describe 'Shop' do",
+      "  it 'A' do",
+      "    driver.find_element(id: 'a').click",
+      '  end',
+      '',
+      "  it 'B' do",
+      '    b',
+      '  end',
+      'end',
+      ''
+    ]
+    await write(file)
+    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
+    const out = (await read()).split('\n')
+    expect(out[6]).toMatch(/^    wait = Selenium::WebDriver::Wait\.new/)
+    expect(out.slice(7, 7 + rendered(steps, '').length)).toEqual(rendered(steps, '    '))
+    expect(out.slice(6).some((l) => l.includes('@driver') || l.includes('@wait'))).toBe(false)
+  })
+
   it('replaces only the matching block', async () => {
     await write(ABC)
     await replaceExample(project, layout, FILE, 'B', steps, 'ruby')

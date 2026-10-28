@@ -1,5 +1,6 @@
 import fs from 'fs/promises'
 import { renderStep } from '../../codegen/steps'
+import type { Receiver } from '../../codegen/steps'
 import { locateExamples } from './exampleLocator'
 import { assertSpecFile } from './readCodeTest'
 import {
@@ -23,10 +24,28 @@ export class ExampleNotUniqueError extends Error {
   }
 }
 
-// Selenium steps read `wait`; a spec without its own uses the project's configured wait
-const LOCAL_WAIT =
-  "wait = Selenium::WebDriver::Wait.new(timeout: YAML.load_file('config/config.yml').fetch('explicit_wait', 10))"
-const DEFINES_WAIT = /\blet!?[(\s]\s*:wait\b|\bdef\s+wait\b/
+// Selenium steps read `wait` (or `@wait`); a spec without its own uses the project's configured wait
+const WAIT_VALUE =
+  "Selenium::WebDriver::Wait.new(timeout: YAML.load_file('config/config.yml').fetch('explicit_wait', 10))"
+const WAIT = {
+  helper: {
+    uses: /\bwait\b/,
+    defined: /\blet!?[(\s]\s*:wait\b|\bdef\s+wait\b/,
+    line: `wait = ${WAIT_VALUE}`
+  },
+  ivar: { uses: /@wait\b/, defined: /@wait\s*\|{0,2}=/, line: `@wait = ${WAIT_VALUE}` }
+}
+
+const USES_IVAR = /@(driver|browser)\b/
+const USES_HELPER = /(^|[^@\w])(driver|browser)\./m
+
+/**
+ * How recorded steps reach the browser in this file: `@driver`/`@browser` when the
+ * file drives one of those and never calls the `driver`/`browser` helper, else the helper.
+ */
+export function receiverFor(source: string): Receiver {
+  return USES_IVAR.test(source) && !USES_HELPER.test(source) ? 'ivar' : 'helper'
+}
 const STRING_LITERAL = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g
 const DO_HEADER = /\bdo\s*(?:\|[^|]*\|)?\s*(?:#.*)?$/
 
@@ -87,12 +106,14 @@ export async function replaceExample(
       : `${header.slice(0, openerIndex(header)).trimEnd()} do${cr}`
     const close = keep ? lines[endLine - 1] : `${indent}end${cr}`
 
+    const receiver = receiverFor(source)
     const body = steps.flatMap((step) =>
-      renderStep(step, layout.automation, { receiver: 'helper' }).split('\n')
+      renderStep(step, layout.automation, { receiver }).split('\n')
     )
-    const usesWait = body.some((line) => /\bwait\b/.test(line.replace(STRING_LITERAL, "''")))
-    if (layout.automation === 'selenium' && usesWait && !DEFINES_WAIT.test(source))
-      body.unshift(LOCAL_WAIT)
+    const wait = WAIT[receiver]
+    const usesWait = body.some((line) => wait.uses.test(line.replace(STRING_LITERAL, "''")))
+    if (layout.automation === 'selenium' && usesWait && !wait.defined.test(source))
+      body.unshift(wait.line)
     const inner = body.map((line) => (line === '' ? cr : `${indent}  ${line}${cr}`))
 
     const next = [...lines.slice(0, startLine - 1), open, ...inner, close, ...lines.slice(endLine)]

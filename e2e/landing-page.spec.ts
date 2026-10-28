@@ -54,6 +54,15 @@ test.describe('Landing Page', () => {
     expect(page.url()).toContain('#/start-project')
   })
 
+  test('the Quick record card help explains Quick record', async ({ page }) => {
+    // The Quick record card comes first, so its help icon is the first one
+    await page.locator('button[aria-label="Help"]').first().click()
+    await expect(
+      page.getByText('Quick record lets you record a website as a test', { exact: false })
+    ).toBeVisible()
+    await expect(page.getByText('Open Recorder')).toHaveCount(0)
+  })
+
   test('clicking Create navigates to new project page', async ({ page }) => {
     await page.getByRole('button', { name: 'Create' }).click()
     await page.waitForTimeout(1000)
@@ -68,16 +77,18 @@ test.describe('Landing Page', () => {
   })
 
   test('info icon on Create card opens modal', async ({ page }) => {
+    // Quick record's card comes first; Create's help icon is the second
     const infoIcons = page.locator('button[aria-label="Help"]')
-    await infoIcons.first().click()
+    await infoIcons.nth(1).click()
     await page.waitForTimeout(500)
     // Modal should appear with project creation info
     await expect(page.getByText('Creating a New Project')).toBeVisible()
   })
 
   test('info modal can be closed', async ({ page }) => {
+    // Quick record's card comes first; Create's help icon is the second
     const infoIcons = page.locator('button[aria-label="Help"]')
-    await infoIcons.first().click()
+    await infoIcons.nth(1).click()
     await page.waitForTimeout(500)
     await expect(page.getByText('Creating a New Project')).toBeVisible()
 

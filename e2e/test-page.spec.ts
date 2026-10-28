@@ -91,7 +91,9 @@ test.describe('Test page', () => {
     await setUp(page)
   })
 
-  test('a row opens its test, and the route keeps it open after a reload', async ({ page }) => {
+  // The project path isn't kept across a reload, so the project is set up again:
+  // what this proves is that the route alone brings the selected test back
+  test('a row opens its test, and its route restores it after a reload', async ({ page }) => {
     await goToOverview(page)
     await row(page, 'Search products').click()
 

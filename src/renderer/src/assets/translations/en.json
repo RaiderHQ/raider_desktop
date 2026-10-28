@@ -107,9 +107,9 @@
       "title": "Opening an Existing Project",
       "message": "Here you can open an existing project and continue automating your tests."
     },
-    "openRecorder": {
-      "title": "Open Recorder",
-      "message": "The Recorder lets you capture browser interactions and automatically generate test scripts without writing code.\n\nNo prior coding experience is required."
+    "quickRecord": {
+      "title": "Quick record",
+      "message": "Quick record lets you record a website as a test without creating a project first.\n\nRaider keeps it in a temporary project, which you can save to a folder later.\n\nNo coding needed."
     },
     "new": {
       "title": "Start a New Project",
@@ -741,7 +741,7 @@
     },
     "landing": {
       "title": "Welcome to Ruby Raider",
-      "message": "Ruby Raider is a visual test automation tool.\n\nUse the Recorder to capture browser actions as tests, the Overview to browse and run your tests, or Create Project to start a brand new test suite from scratch.\n\nFor installation help and a full guide, click the Ruby Raider logo in the top-left corner of the app."
+      "message": "Ruby Raider is a visual test automation tool.\n\nUse Quick record to record a website as a test without a project, the Overview's Tests tab to record, browse and run your project's tests, or Create Project to start a brand new test suite from scratch.\n\nFor installation help and a full guide, click the Ruby Raider logo in the top-left corner of the app."
     }
   },
   "tooltips": {

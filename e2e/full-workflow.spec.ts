@@ -74,8 +74,9 @@ test.describe('User Workflows', () => {
     const infoIcons = page.locator('button[aria-label="Help"]')
     const count = await infoIcons.count()
 
-    if (count > 0) {
-      await infoIcons.first().click()
+    // Quick record's card comes first; Create's help icon is the second
+    if (count > 1) {
+      await infoIcons.nth(1).click()
       await page.waitForTimeout(500)
       await expect(page.getByText('Creating a New Project')).toBeVisible()
     }
