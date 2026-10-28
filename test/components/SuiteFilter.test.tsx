@@ -152,6 +152,34 @@ describe('SuiteFilter', () => {
     expect(useRecorderStore.getState().isRunning).toBe(false)
   })
 
+  it('toasts the outcome of a run and shows the output', async () => {
+    useRecorderStore.setState({ isOutputVisible: false })
+    const { unmount } = render(<Harness initial="s1" />)
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Run suite' }))
+    await waitFor(() => expect(mockToast.success).toHaveBeenCalledWith('Smoke passed'))
+    expect(useRecorderStore.getState().isOutputVisible).toBe(true)
+    unmount()
+    api.runSuite.mockResolvedValue({ success: false, output: 'boom' })
+    render(<Harness initial="s1" />)
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Run suite' }))
+    await waitFor(() =>
+      expect(mockToast.error).toHaveBeenCalledWith(
+        "Smoke failed \u2014 open a test's Last run for details"
+      )
+    )
+  })
+
+  it('says so when Ruby is missing instead of doing nothing', () => {
+    useRubyStore.setState({ rubyCommand: null })
+    render(<Harness initial="s1" />)
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Run suite' }))
+    expect(mockToast.error).toHaveBeenCalledWith(en.recorder.noRuby)
+    expect(api.runSuite).not.toHaveBeenCalled()
+  })
+
   it('creates a suite, reloads the list and selects the new suite', async () => {
     const reload = vi.fn().mockResolvedValue(undefined)
     useTestsListStore.setState({ reload })

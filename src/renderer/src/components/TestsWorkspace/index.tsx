@@ -28,6 +28,9 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
   // null: all tests. A new test joins the filtered suite, or sits outside any suite
   const [suiteFilter, setSuiteFilter] = useState<string | null>(null)
 
+  // Duplicates useSuiteSync's setSuites on purpose (it only runs under a test page). Its
+  // "new suite appeared, select it" branch compares against the previous suites, so it
+  // depends on listener order: this listener must not run first.
   // The suite menu needs the suites even before a test page (which syncs them) is open
   useEffect(() => {
     const { setSuites } = useRecorderStore.getState()

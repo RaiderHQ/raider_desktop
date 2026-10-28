@@ -76,17 +76,26 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
     setOpen(false)
     const cmd = useRubyStore.getState().rubyCommand
     const path = useProjectStore.getState().projectPath
-    if (!suite || !cmd) return
-    const { setIsRunning } = useRecorderStore.getState()
+    if (!suite) return
+    if (!cmd) {
+      toast.error(t('recorder.noRuby'))
+      return
+    }
+    const { setIsRunning, setIsOutputVisible } = useRecorderStore.getState()
     const { setRunOutput, setRunResult } = useRunOutputStore.getState()
     setIsRunning(true)
     setRunOutput(`Running suite: ${suite.name}...`)
     try {
       const result = await window.api.runSuite(suite.id, path || '', cmd)
       setRunResult(result.output, result.success)
+      setIsOutputVisible(true)
+      if (result.success) toast.success(t('tests.suiteFilter.runPassed', { suite: suite.name }))
+      else toast.error(t('tests.suiteFilter.runFailed', { suite: suite.name }))
     } catch (error) {
       console.error('Running the suite failed:', error)
       setRunResult(String(error), false)
+      setIsOutputVisible(true)
+      toast.error(t('tests.suiteFilter.runFailed', { suite: suite.name }))
     } finally {
       setIsRunning(false)
     }

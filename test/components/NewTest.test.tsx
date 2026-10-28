@@ -220,6 +220,25 @@ describe('New test', () => {
     expect(useRecorderStore.getState().draftTest).toBeNull()
   })
 
+  it('saves a new test into the suite chosen in the filter', async () => {
+    renderAt('/overview/tests')
+    fireEvent.change(await screen.findByLabelText('Suite'), { target: { value: 's1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'New test' }))
+    fireEvent.change(await screen.findByLabelText(en.testPage.name), {
+      target: { value: 'Add to cart' }
+    })
+    fireEvent.click(startButton())
+    await waitFor(() => expect(api.startRecordingMain).toHaveBeenCalled())
+    await emit('recording-started', 'https://x.test/home')
+    await emit('new-recorded-step', step('c1'))
+    fireEvent.click(screen.getByRole('button', { name: 'Stop & save' }))
+    await waitFor(() => expect(api.saveRecording).toHaveBeenCalled())
+    expect(api.saveRecording).toHaveBeenCalledWith(
+      's1',
+      expect.objectContaining({ name: 'Add to cart' })
+    )
+  })
+
   it('stopping with only the start page saves nothing and goes back to the list', async () => {
     await startDraft()
 

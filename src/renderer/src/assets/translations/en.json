@@ -439,6 +439,8 @@
       "actions": "Suite actions",
       "all": "All tests",
       "run": "Run suite",
+      "runPassed": "{{suite}} passed",
+      "runFailed": "{{suite}} failed \u2014 open a test's Last run for details",
       "new": "New suite",
       "delete": "Delete suite",
       "importTest": "Import test",
