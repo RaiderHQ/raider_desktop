@@ -22,6 +22,7 @@ const FoldedFrames: React.FC<{ lines: string[] }> = ({ lines }) => {
     <div data-testid="stack-frames-folded">
       <button
         type="button"
+        aria-expanded={open}
         onClick={() => setOpen(!open)}
         className="text-neutral-mid hover:underline"
       >
@@ -95,22 +96,40 @@ const FailureDetails: React.FC<FailureDetailsProps> = ({
 
   return (
     <div data-testid="failure-details" className="mt-2 flex gap-4 items-start">
-      {screenshot && thumb && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onOpenScreenshot?.()
-          }}
-          className="w-[45%] shrink-0"
-          aria-label={t('testResults.viewScreenshot')}
-        >
-          <img
-            src={thumb}
-            alt={t('testResults.screenshotAlt')}
-            className="w-full rounded border border-neutral-bdr"
-          />
-        </button>
+      {screenshot && (
+        <div className="w-[45%] shrink-0 aspect-video">
+          {thumb ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenScreenshot?.()
+              }}
+              className="block w-full h-full"
+              aria-label={t('testResults.viewScreenshot')}
+            >
+              <img
+                src={thumb}
+                alt={t('testResults.screenshotAlt')}
+                className="w-full h-full object-contain rounded border border-neutral-bdr"
+              />
+            </button>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center rounded border border-neutral-bdr bg-neutral-50">
+              <button
+                type="button"
+                data-testid="screenshot-fallback"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onOpenScreenshot?.()
+                }}
+                className="text-xs text-ruby hover:underline"
+              >
+                {t('testResults.viewScreenshot')}
+              </button>
+            </div>
+          )}
+        </div>
       )}
       <div className="min-w-0 flex-1">
         {failure.exceptionClass && (

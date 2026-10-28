@@ -6,10 +6,13 @@ vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string) => string } => ({ t: (key: string): string => key })
 }))
 
+vi.mock('react-router-dom', () => ({ useNavigate: (): (() => void) => vi.fn() }))
+
 vi.mock('react-hot-toast', () => ({ default: { error: vi.fn() } }))
 
 beforeEach(() => {
   window.api = {
+    readFile: vi.fn().mockResolvedValue({ success: false }),
     readImage: vi.fn().mockResolvedValue({ success: true, data: 'base64data' })
   } as unknown as typeof window.api
 })
@@ -106,5 +109,31 @@ describe('TestResultCard', () => {
     render(<TestResultCard name="vid test" status="failed" />)
     fireEvent.click(screen.getByText('vid test'))
     expect(screen.queryByTestId('result-video')).not.toBeInTheDocument()
+  })
+})
+
+describe('TestResultCard failure details', () => {
+  const failure = { message: 'boom', backtrace: [] as string[] }
+
+  it.each(['failed', 'broken'])('renders failure-details for %s with failure', (status) => {
+    render(<TestResultCard name="Example" status={status} failure={failure} />)
+    fireEvent.click(screen.getByText('Example'))
+    expect(screen.getByTestId('failure-details')).toBeInTheDocument()
+  })
+
+  it('does not render failure-details for passed', () => {
+    render(<TestResultCard name="Example" status="passed" failure={failure} />)
+    fireEvent.click(screen.getByText('Example'))
+    expect(screen.queryByTestId('failure-details')).not.toBeInTheDocument()
+  })
+
+  it('keeps the old message and screenshot link without failure', () => {
+    render(
+      <TestResultCard name="Example" status="failed" message="old msg" screenshot="/p/s.png" />
+    )
+    fireEvent.click(screen.getByText('Example'))
+    expect(screen.queryByTestId('failure-details')).not.toBeInTheDocument()
+    expect(screen.getByText('old msg')).toBeInTheDocument()
+    expect(screen.getByText('testResults.viewScreenshot')).toBeInTheDocument()
   })
 })

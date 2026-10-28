@@ -154,15 +154,17 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
             />
           ) : (
             <>
-            {message && <MessageContent message={message} />}
-            {backtrace && backtrace.length > 0 && (
-              <div className="mt-3">
-                <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-1">Backtrace</p>
-                <pre className="text-xs font-mono text-neutral-dk bg-neutral-50 border border-neutral-bdr rounded px-3 py-2 overflow-auto max-h-40 whitespace-pre-wrap break-all">
-                  {backtrace.join('\n')}
-                </pre>
-              </div>
-            )}
+              {message && <MessageContent message={message} />}
+              {backtrace && backtrace.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-1">
+                    Backtrace
+                  </p>
+                  <pre className="text-xs font-mono text-neutral-dk bg-neutral-50 border border-neutral-bdr rounded px-3 py-2 overflow-auto max-h-40 whitespace-pre-wrap break-all">
+                    {backtrace.join('\n')}
+                  </pre>
+                </div>
+              )}
             </>
           )}
 

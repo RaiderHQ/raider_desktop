@@ -103,4 +103,25 @@ describe('FailureDetails', () => {
     fireEvent.click(await screen.findByRole('img'))
     expect(open).toHaveBeenCalled()
   })
+
+  it('keeps a View Screenshot fallback while the thumbnail is not loaded', () => {
+    window.api = {
+      readFile: vi.fn().mockResolvedValue({ success: true }),
+      readImage: vi.fn().mockResolvedValue({ success: false })
+    } as unknown as typeof window.api
+    const open = vi.fn()
+    render(<FailureDetails failure={failure} screenshot="/p/s.png" onOpenScreenshot={open} />)
+    fireEvent.click(screen.getByTestId('screenshot-fallback'))
+    expect(open).toHaveBeenCalled()
+    expect(screen.queryByRole('img')).toBeNull()
+  })
+
+  it('exposes aria-expanded on the folded toggle', () => {
+    render(<FailureDetails failure={failure} projectPath="/p" />)
+    fireEvent.click(screen.getByTestId('stack-trace-toggle'))
+    const btn = screen.getAllByTestId('stack-frames-folded')[0].querySelector('button')!
+    expect(btn).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(btn)
+    expect(btn).toHaveAttribute('aria-expanded', 'true')
+  })
 })

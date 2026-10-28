@@ -181,6 +181,7 @@ describe('loadRaiderResults', () => {
     })
     const rows = await loadRaiderResults('/proj', api)
     expect(rows![0].statusDetails?.message).toBe('ab')
+    expect(rows![0].failure?.message).toBe('ab')
   })
 
   it('reports unreadable files through onError', async () => {
