@@ -83,7 +83,7 @@
 **Interfaces:**
 - Produces:
   - `type ExampleRange = { startLine: number; endLine: number }`. Lines are 1-based and inclusive; the start line is the `it` line and the end line holds the closing `end` or `}`.
-  - `locateExamples(absFile: string, name: string, rubyCommand: string): Promise<ExampleRange[]>`
+  - `locateExamples(projectPath: string, absFile: string, name: string, rubyCommand: string): Promise<ExampleRange[]>`
   - `class ExampleNotUniqueError extends Error { constructor(readonly count: number) }`
   - `replaceExample(projectPath: string, layout: ProjectLayout, fileRel: string, exampleName: string, steps: Step[], rubyCommand: string): Promise<void>`
   - IPC `record-over-example` (file, exampleName, steps, rubyCommand) returns one of:
@@ -95,14 +95,14 @@
 - [ ] **Step 1: Write failing locator tests.** They run real Ruby, so skip them when `ruby -v` fails, as the other Ruby-dependent integration tests do. Fixture spec contents, written to a temp dir:
   - `finds the one literal match`:
     - Input: two `it` blocks, `'logs in'` and `'logs out'`, each with a nested `do…end` and a heredoc in the body.
-    - Assert: `locateExamples(f, 'logs in', 'ruby')` deep-equals `[{ startLine: 2, endLine: 9 }]`, with the line numbers taken from the fixture.
+    - Assert: `locateExamples(dir, f, 'logs in', 'ruby')` deep-equals `[{ startLine: 2, endLine: 9 }]`, with the line numbers taken from the fixture.
   - `brace blocks`: `it('x') { expect(1).to eq 1 }` gives one range with startLine equal to endLine.
   - `ignores interpolated names`: `it "a #{b}" do … end` searched as `'a #{b}'` gives `[]`.
   - `same name twice`: two `it 'dup'` blocks in different `describe` blocks give `length === 2`.
   - `specify / scenario`: both are found.
 - [ ] **Step 2:** Run `npx vitest run test/integration/tests/exampleLocator.test.ts`. Expected: FAIL (module not found).
 - [ ] **Step 3: Implement `locateExamples`.**
-  - Run `${rubyCommand} -e ${shellQuote(SCRIPT)} ${shellQuote(absFile)} ${shellQuote(name)}` through `safeExec(buildShellCommand(dirname(absFile), …), { timeout: 20_000 })`, after `isValidRubyCommand`.
+  - Run `${rubyCommand} -e ${shellQuote(SCRIPT)} ${shellQuote(absFile)} ${shellQuote(name)}` through `safeExec(buildShellCommand(projectPath, …), { cwd: projectPath, timeout: 20_000 })`, as `runSpecFiles` does, after `isValidRubyCommand`.
   - `SCRIPT` is a constant Ruby program:
     - It parses `File.read(ARGV[0])` with `RubyVM::AbstractSyntaxTree.parse`.
     - It walks every node. Keep `:ITER` nodes whose call is an `FCALL` or `CALL` named `it`, `specify` or `scenario`, and whose first argument is a `:STR` node equal to `ARGV[1]`.
@@ -166,7 +166,7 @@
 - Create: `src/renderer/src/components/TestsWorkspace/index.tsx` (layout: list column + pane + rail state)
 - Create: `src/renderer/src/components/TestsList/index.tsx` (replaces `ProjectTestsPanel`, which is deleted)
 - Create: `src/renderer/src/foundation/testKey.ts`
-- Create: `src/renderer/src/hooks/useTestsList.ts`
+- Create: `src/renderer/src/hooks/useTestsList.ts`, `src/renderer/src/foundation/Stores/testsListStore.ts`
 - Modify: `src/renderer/src/Router.tsx` (`overview` gets children `tests` and `tests/:testKey`; `recorder` becomes `<Navigate to="/overview/tests" replace />`), `src/renderer/src/pages/Overview/index.tsx` (the Tests tab renders `TestsWorkspace` at full height, and a `testKey` param forces the Tests tab), `en.json`
 - Test: `test/testKey.test.ts`, `test/components/TestsList.test.tsx` (replaces `ProjectTestsPanel.test.tsx`)
 
@@ -175,14 +175,15 @@
   - `type TestKey = string`
   - `testKeyOf(row: TestRow): TestKey`, which gives `id:<testId>` when the row has a test id, otherwise `file:<file>`.
   - `parseTestKey(key: string): { kind: 'id'; testId: string } | { kind: 'file'; file: string } | null`
-  - Route paths always carry `encodeURIComponent(key)`.
+  - `toRouteParam(key)` and `fromRouteParam(param)` encode the key as base64url, so a file path's `/` never reaches the router (react-router 6 doesn't round-trip `%2F` reliably in a hash route). Every navigation uses `/overview/tests/${toRouteParam(key)}`.
   - `interface TestRow { name: string; file?: string; testId?: string; ownership: Ownership | 'legacy'; missingFile?: true; suiteIds: string[] }`
-  - `useTestsList(): { rows: TestRow[] | null; reload: () => Promise<void> }`. It merges `listProjectTests()` with every suite test that has no `file`; those get ownership `'legacy'`. `suiteIds` comes from `getSuites()`. It reloads on `suite-updated`.
+  - `useTestsListStore` (zustand, `src/renderer/src/foundation/Stores/testsListStore.ts`): `{ rows: TestRow[] | null; reload(): Promise<void> }`. Any code may call `useTestsListStore.getState().reload()`. The `save-recording` handler doesn't broadcast `suite-updated` on success, so callers that save must reload themselves. `useTestsList()` is a thin hook that subscribes to the store and calls `reload()` on mount. `reload()` merges `listProjectTests()` with every suite test that has no `file`; those get ownership `'legacy'`. `suiteIds` comes from `getSuites()`. It reloads on `suite-updated`.
   - `TestsList` props: `{ rows: TestRow[]; selectedKey: TestKey | null; onSelect(key: TestKey): void; onNewTest(): void; headerExtra?: ReactNode }`
   - `TestsWorkspace` reads `testKey` from `useParams` and renders `TestsList` beside `props.renderPane(selectedRow | null)`. The pane is a placeholder in this task; Task 4 fills it.
 
 - [ ] **Step 1: Write failing tests.**
-  - `testKey` round-trips: `id:t1`, and `file:spec/a b_spec.rb` survives encoding.
+  - `fromRouteParam(toRouteParam(k)) === k` for `id:t1`, `file:spec/a b_spec.rb` and `file:spec/nested/ü_spec.rb`, and `toRouteParam` output matches `/^[A-Za-z0-9_-]+$/`.
+  - A rendered `createHashRouter` at `#/overview/tests/<toRouteParam('file:spec/x/y_spec.rb')>` yields that key from `useParams`.
   - `parseTestKey('junk')` returns `null`.
   - TestsList:
     - Clicking anywhere on a row calls `onSelect` with that row's key; there's no Edit or View button.
@@ -218,6 +219,10 @@
     - `run` comes from `handleRunTest`;
     - `cancelReplay` comes from `handleCancelReplay`.
     The hook also mounts `useSuiteSync` and `useRecordingIPC`, once per workspace.
+  - Store addition: `recordingTarget: RecordingTarget | null`, where `type RecordingTarget = { kind: 'test' } | { kind: 'draft'; suiteId: string } | { kind: 'example'; file: string; exampleName: string }`.
+    - `start()` and `continueRecording()` take the target and store it.
+    - For `'example'`, `start()` first sets a transient `activeTest` (fresh `crypto.randomUUID()` id, the example name, the project base URL, steps `[]`). `useRecordingIPC` only appends steps to an `activeTest`, so without this nothing would be recorded.
+    - `stop()` switches on `recordingTarget.kind`. This task implements `'test'` (`saveRecording(activeSuiteId, activeTest)`); Tasks 6 and 8 add the other two branches, and nothing else in `stop()` changes.
   - Store addition: `openTest(row: TestRow): Promise<void>`. It finds the suite and test the way `ProjectTestsPanel.edit` did (via `getSuites`), sets `activeSuiteId` and `activeTest`, and clears `readOnlyView`.
   - `TestPage` props: `{ row: TestRow }`
 
@@ -245,7 +250,7 @@
   - `useTestRecording().stop()` now saves:
     - A `recorded` test goes through `saveRecording(activeSuiteId, activeTest)`.
     - Then it shows `toast.success(t('tests.saved', { name, file }))`. `file` comes from the save result's `test.file`.
-    - Then it calls `useTestsList().reload()` and navigates to the test's key, so a new file gets its `id:` key.
+    - Then it calls `useTestsListStore.getState().reload()` and navigates to the test's key, so a new file gets its `id:` key.
     - `stop()` returns once the save settles.
   - Main: on `mainWindow` `close`, if the renderer reported `recording-state: true`:
     - call `preventDefault()` once and send `flush-recording`;
@@ -280,12 +285,14 @@
 - Test: `test/components/NewTest.test.tsx`
 
 **Interfaces:**
+- Consumes: `RecordingTarget` and `stop()` (Task 4). This task adds the `'draft'` branch.
 - Produces:
   - Store: `draftTest: Test | null` and `startDraft(name: string, url: string): void`, which uses `crypto.randomUUID()` for the id and `[]` for the steps.
   - Route: `/overview/tests/new`.
   - `useTestRecording().stop()` with a draft:
     - An empty draft (no steps besides `navigate`) is discarded and the app navigates to `/overview/tests`.
-    - Otherwise it saves through `saveRecording(targetSuiteId, draft)` and clears the draft. `targetSuiteId` is the list's suite filter (Task 7), or `UNLISTED_SUITE_ID`.
+    - Otherwise it saves through `saveRecording(target.suiteId, draft)` and clears the draft. Until Task 7 wires the suite filter, the caller passes `UNLISTED_SUITE_ID`.
+  - Main: `saveTestInSuite` (`src/main/handlers/tests/suiteStore.ts`) creates the `UNLISTED_SUITE_ID` index entry and suite when they're missing, instead of answering "Suite … not found". Today they exist only after `adoptUnlistedTests` found orphans. Extract `ensureUnlistedSuite(store)` from `adoptUnlistedTests` and use it in both. Test: in `test/integration/tests/suiteStore.test.ts`, saving into `not-in-a-suite` on a project with no such suite succeeds, and the index then lists it.
 
 - [ ] **Step 1: Write failing tests.**
   - `New test` navigates to `/overview/tests/new`, which shows a Name field (required: `Start recording` is disabled while it's blank), a URL field prefilled with the project base URL, and `Start recording` and `Cancel`.
@@ -326,7 +333,7 @@
 - Test: `test/components/CodeTestPane.test.tsx`
 
 **Interfaces:**
-- Consumes: `openCodeTest(file)`, which returns `CodeTestView`; `recordOverExample` (Task 1); `runProjectFile`.
+- Consumes: `openCodeTest(file)`, which returns `CodeTestView`; `recordOverExample` (Task 1); `runProjectFile`; `RecordingTarget` and `stop()` (Task 4). This task adds the `'example'` branch.
 - Produces: for `code` and `codeOwnedWasRecorded` rows, `TestPage` renders `CodeTestPane`, which lists `view.examples` and has one selected example.
   - **Run** runs the file, using `runProjectFile`.
   - **Edit code** navigates to `/file-editor` with `{ fileName: basename(file), filePath: join(projectPath, file) }`.
@@ -387,7 +394,7 @@
   - their tests: `Recorder.test.tsx`, `TestSuitePanel.test.tsx`, `RecordingDashboard.test.tsx`, `MainRecorderPanel.test.tsx`
 - Modify:
   - `src/renderer/src/templates/Main/index.tsx`: remove the `Recorder` NavBtn. The "Ruby Raider" link shows whenever a project is open.
-  - `Overview`: the settings toolbar on the Files tab gains the implicit and explicit wait fields through `useRecorderSettings`, with the same save guard (`loaded`) the Recorder had.
+  - `Overview`: this toolbar region also changes in PR #74 (peer), so rebase onto it first if it has landed, and keep the change to a single block. The settings toolbar on the Files tab gains the implicit and explicit wait fields through `useRecorderSettings`, with the same save guard (`loaded`) the Recorder had.
   - `en.json`: drop keys used only by the deleted files.
   - `recorderStore.ts`: drop `readOnlyView`, `readOnlyTitle` and `openTarget` if nothing uses them any more.
 - Test: `test/components/MainTemplate.test.tsx`, `test/Overview.test.tsx`
@@ -408,7 +415,7 @@
 - Create: `e2e/test-page.spec.ts`
 
 - [ ] **Step 1: Write `e2e/test-page.spec.ts`**, with IPC mocked through `e2e/helpers/ipc-mock`:
-  - Tests tab, then click a row: the URL hash is `#/overview/tests/id%3At1` and the breadcrumb is `Tests / Search products`.
+  - Tests tab, then click a row: the breadcrumb is `Tests / Search products`, and reloading the page keeps that test open.
   - `New test`, then name it, then `Start recording`: the list folds into the rail. A mocked step event arrives, then `Stop & save`: `save-recording` is captured once and the toast reads `Saved to your project as …`.
   - A code row, then `Record`: the warning appears. Confirm, then stop with mocked `record-over-example` returning `notUnique`: `Save as a new test` appears.
   - The breadcrumb `Tests` link returns to the list with no row selected.
