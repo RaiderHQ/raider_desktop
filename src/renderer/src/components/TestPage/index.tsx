@@ -1,4 +1,4 @@
-import React, { SetStateAction, useEffect, useState } from 'react'
+import React, { SetStateAction, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
@@ -19,7 +19,7 @@ import { testKeyOf } from '@foundation/testKey'
 import type { TestRow } from '@foundation/testKey'
 import type { Step } from '@shared/types/step'
 import { UNLISTED_SUITE_ID } from '@shared/types/suite'
-import { useTestRecording } from '../../hooks/useTestRecording'
+import { dropEmptyDraft, useTestRecording } from '../../hooks/useTestRecording'
 import NewTestForm from './NewTestForm'
 import RecordingLayout from './RecordingLayout'
 
@@ -54,6 +54,19 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const { updateActiveTest, setShowCode, setIsOutputVisible, setBreakpointIndex } =
     useRecorderStore.getState()
 
+  // Leaving a new test nobody recorded anything in forgets it. Deferred so a remount
+  // (React StrictMode in dev) keeps it
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return (): void => {
+      mounted.current = false
+      setTimeout(() => {
+        if (!mounted.current) dropEmptyDraft()
+      }, 0)
+    }
+  }, [])
+
   const draftTarget: RecordingTarget = { kind: 'draft', suiteId: targetSuiteId }
   const key = row ? testKeyOf(row) : null
   const [openFailed, setOpenFailed] = useState(false)
@@ -61,6 +74,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
     let current = true
     setOpenFailed(false)
     if (!row) return
+    dropEmptyDraft()
     // A recording (or replay) belongs to the test it started on: save it before opening this one
     const { recordingTarget, isRecording, isReplayingToBreakpoint } = useRecorderStore.getState()
     if (recordingTarget || isRecording || isReplayingToBreakpoint) {

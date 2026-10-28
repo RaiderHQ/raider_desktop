@@ -35,6 +35,7 @@ vi.mock('../../src/renderer/src/hooks/useTestRecording', async (importOriginal) 
   const actual =
     await importOriginal<typeof import('../../src/renderer/src/hooks/useTestRecording')>()
   return {
+    ...actual,
     useTestRecording: (): ReturnType<typeof actual.useTestRecording> => ({
       ...actual.useTestRecording(),
       start: spies.start,
@@ -149,6 +150,48 @@ beforeEach(() => {
 })
 
 afterEach(() => vi.useRealTimers())
+
+describe('TestPage leaving a new test', () => {
+  const renderDraft = (): ReturnType<typeof render> =>
+    render(
+      <MemoryRouter
+        initialEntries={['/overview/tests/new']}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
+        <Routes>
+          <Route path="/overview/tests/new" element={<TestPage />} />
+          <Route path="/overview/tests" element={<div>tests list route</div>} />
+        </Routes>
+      </MemoryRouter>
+    )
+
+  it('forgets a draft nothing was recorded in', async () => {
+    useRecorderStore.getState().startDraft('Quick', 'https://x.test')
+    renderDraft()
+    await screen.findByDisplayValue('Quick')
+    expect(useRecorderStore.getState().draftTest).not.toBeNull()
+    fireEvent.click(screen.getByRole('link', { name: 'testPage.breadcrumbRoot' }))
+    await waitFor(() => expect(useRecorderStore.getState().draftTest).toBeNull())
+    expect(useRecorderStore.getState().activeTest).toBeNull()
+  })
+
+  it('keeps a draft that has recorded steps', async () => {
+    useRecorderStore.getState().startDraft('Quick', 'https://x.test')
+    act(() =>
+      useRecorderStore.getState().updateActiveTest((p) =>
+        p ? { ...p, steps: [step('a'), { id: 'c', kind: 'custom', code: 'x' }] } : null
+      )
+    )
+    renderDraft()
+    await screen.findByDisplayValue('Quick')
+    fireEvent.click(screen.getByRole('link', { name: 'testPage.breadcrumbRoot' }))
+    await screen.findByText('tests list route')
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10))
+    })
+    expect(useRecorderStore.getState().draftTest).not.toBeNull()
+  })
+})
 
 describe('TestPage', () => {
   it('shows a breadcrumb back to the Tests list, then the test name', async () => {

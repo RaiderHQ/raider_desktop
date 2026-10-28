@@ -17,6 +17,7 @@ import TestsWorkspace from '@components/TestsWorkspace'
 import InfoButton from '@components/InfoButton'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
+import { isEmptyRecording } from '../../hooks/useTestRecording'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { FileNode } from '@foundation/Types/fileNode'
 import { getFileLanguage } from '@foundation/helpers'
@@ -163,7 +164,9 @@ const Overview: React.FC = () => {
       r.isRecording ||
       r.isReplayingToBreakpoint ||
       r.recordingTarget != null ||
-      r.draftTest != null ||
+      // An empty draft is never saved, so there is nothing to lose
+      (r.draftTest != null &&
+        !isEmptyRecording(r.activeTest?.id === r.draftTest.id ? r.activeTest : r.draftTest)) ||
       r.unsavedExample != null
   )
 

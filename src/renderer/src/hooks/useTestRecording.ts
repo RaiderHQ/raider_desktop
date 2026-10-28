@@ -68,8 +68,25 @@ async function saveTraceOf(test: Test): Promise<Test> {
 }
 
 /** Only the start page was recorded: there is nothing worth keeping */
-const isEmptyRecording = (test: Test): boolean =>
+export const isEmptyRecording = (test: Test): boolean =>
   test.steps.length === 0 || (test.steps.length === 1 && test.steps[0].kind === 'navigate')
+
+/** The draft as it is now: its steps live on the active test while it is open */
+export const currentDraft = (): Test | null => {
+  const { draftTest, activeTest } = store()
+  if (!draftTest) return null
+  return activeTest && activeTest.id === draftTest.id ? activeTest : draftTest
+}
+
+/** Forgets a new test nothing was recorded for (never saved). Does nothing while busy. */
+export function dropEmptyDraft(): void {
+  const { isRecording, isReplayingToBreakpoint, recordingTarget, activeTest } = store()
+  const draft = currentDraft()
+  if (!draft || isRecording || isReplayingToBreakpoint || recordingTarget) return
+  if (!isEmptyRecording(draft)) return
+  store().setDraftTest(null)
+  if (activeTest?.id === draft.id) store().setActiveTest(null)
+}
 
 interface StopOptions {
   /** Called with the saved test's key once the save went through */

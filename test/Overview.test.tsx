@@ -467,6 +467,13 @@ describe('Overview Settings Toolbar', (): void => {
       act(() => useRecorderStore.setState({ isRecording: false }))
       expect(button).toBeEnabled()
       act(() => useRecorderStore.getState().startDraft('t', 'https://e.com'))
+      // Nothing recorded yet: an empty draft is never saved, so there is nothing to lose
+      expect(button).toBeEnabled()
+      act(() =>
+        useRecorderStore.getState().updateActiveTest((p) =>
+          p ? { ...p, steps: [{ id: 'c', kind: 'custom', code: 'x' }] } : null
+        )
+      )
       expect(button).toBeDisabled()
       expect(button).toHaveAttribute('title', 'quickRecord.stopFirst')
     })
