@@ -11,6 +11,15 @@ interface RecordingIPCOptions {
   setAssertionInfo: (info: PendingAssertion | null) => void
 }
 
+/**
+ * Set when Stop & save (or leaving) already saved the recording's trace, so main's
+ * 'recording-stopped' doesn't save it again. Cleared when the next recording starts.
+ */
+let traceSaved = false
+export const traceSavedOnStop = (): void => {
+  traceSaved = true
+}
+
 export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void {
   const { setRunOutput } = useRunOutputStore.getState()
 
@@ -38,6 +47,7 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
       } = useRecorderStore.getState()
       setIsRecording(true)
       recordedTestId = activeTest?.id ?? null
+      traceSaved = false
       if (activeTest) {
         if (breakpointIndex !== null) {
           // Keep the pre-breakpoint steps; new recorded steps will append after them
@@ -63,6 +73,7 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
     const handleRecordingStopped = async (): Promise<void> => {
       const { activeTest, updateActiveTest } = useRecorderStore.getState()
       useRecorderStore.getState().setIsRecording(false)
+      if (traceSaved) return
       if (activeTest?.trace?.length) {
         const result = await window.api.saveTrace(activeTest.id, activeTest.trace)
         if (result.success) {

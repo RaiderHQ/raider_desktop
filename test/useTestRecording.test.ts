@@ -116,6 +116,7 @@ beforeEach(() => {
   api.replayInWebview.mockResolvedValue({ success: true })
   api.cancelReplay.mockResolvedValue({ success: true })
   api.runTest.mockResolvedValue({ success: true, output: 'ok' })
+  api.saveTrace.mockResolvedValue({ success: true })
   api.listProjectTests.mockResolvedValue([])
   flushRecording = null
   api.onFlushRecording.mockImplementation((cb: () => void) => {
@@ -343,14 +344,57 @@ describe('useTestRecording', () => {
     expect(useRecorderStore.getState().isRecording).toBe(false)
   })
 
-  it('stop shows no success when the save is refused', async () => {
+  it('stop says the recording was not saved when the test was changed in code', async () => {
     api.saveRecording.mockResolvedValue({ success: false, error: 'codeOwned' })
     const rec = await mount()
     await recordingTest(rec)
+    await emit('new-recorded-step', step('n'))
     await act(() => rec.stop())
     expect(mockToast.success).not.toHaveBeenCalled()
+    expect(mockToast.error).toHaveBeenCalledWith('tests.saveRefusedCodeOwned')
+    // The steps stay on screen
+    expect(useRecorderStore.getState().activeTest?.steps).toEqual([...test1.steps, step('n')])
     expect(location).toBe('/overview/tests/x')
     expect(useRecorderStore.getState().activeTest?.ownership).toBe('codeOwnedWasRecorded')
+  })
+
+  it('stop says it saved when the project keeps no test files', async () => {
+    api.saveRecording.mockResolvedValue({ success: true })
+    const rec = await mount()
+    await recordingTest(rec)
+    await act(() => rec.stop())
+    expect(mockToast.success).toHaveBeenCalledWith(
+      `tests.savedNoFile ${JSON.stringify({ name: 'Login works' })}`
+    )
+    expect(location).toBe(`/overview/tests/${toRouteParam('id:t1')}`)
+  })
+
+  it('stop saves the trace once, even when main reports the stop afterwards', async () => {
+    const traceStep = { id: 'tr1', command: 'click', timestamp: 1, url: 'https://x.test' }
+    const rec = await mount()
+    await recordingTest(rec)
+    await emit('new-trace-step', traceStep)
+    await act(() => rec.stop())
+    await emit('recording-stopped')
+    expect(api.saveTrace).toHaveBeenCalledTimes(1)
+    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep])
+    expect(api.saveRecording).toHaveBeenCalledWith(
+      's1',
+      expect.objectContaining({ id: 't1', hasTrace: true })
+    )
+    expect(useRecorderStore.getState().activeTest?.hasTrace).toBe(true)
+  })
+
+  it("a stop that saves nothing leaves the trace to main's recording-stopped", async () => {
+    const traceStep = { id: 'tr1', command: 'click', timestamp: 1, url: 'https://x.test' }
+    const rec = await mount()
+    await recordingTest(rec)
+    await emit('new-trace-step', traceStep)
+    // The target is gone (e.g. replay cancelled): only the old path saves the trace
+    act(() => useRecorderStore.getState().setRecordingTarget(null))
+    await act(() => rec.stop())
+    await emit('recording-stopped')
+    expect(api.saveTrace).toHaveBeenCalledTimes(1)
   })
 
   it('steps that arrive after another test was opened never reach it', async () => {

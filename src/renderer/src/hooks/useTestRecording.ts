@@ -11,9 +11,10 @@ import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { handleSaveResult } from '@foundation/saveResult'
 import { testKeyOf, toRouteParam } from '@foundation/testKey'
 import type { TestKey } from '@foundation/testKey'
+import type { Test } from '@foundation/Types/test'
 import type { PendingAssertion } from '@shared/types/pendingAssertion'
 import { useSuiteSync } from './useSuiteSync'
-import { useRecordingIPC } from './useRecordingIPC'
+import { traceSavedOnStop, useRecordingIPC } from './useRecordingIPC'
 
 export interface TestRecording {
   /** Record from the test's start URL, replacing its steps */
@@ -46,6 +47,23 @@ const isBusy = (): boolean => {
   return recordingTarget !== null || isRecording || isReplayingToBreakpoint
 }
 
+/** Saves the recorded trace, if any; returns the test marked as having one when it saved */
+async function saveTraceOf(test: Test): Promise<Test> {
+  if (!test.trace?.length) return test
+  try {
+    const result = await window.api.saveTrace(test.id, test.trace)
+    if (!result.success) return test
+  } catch (error) {
+    console.error('Saving the trace failed:', error)
+    return test
+  }
+  // Mark the test as it is now, if it is still open
+  store().updateActiveTest((live) =>
+    live && live.id === test.id ? { ...live, hasTrace: true } : live
+  )
+  return { ...test, hasTrace: true }
+}
+
 /**
  * Ends the recording (and any replay) and saves it to its target. The test is read
  * from the store when called, so later events can't change what is saved. Calls
@@ -72,16 +90,25 @@ async function stopAndSave(
   switch (target.kind) {
     case 'test': {
       if (!activeSuiteId || !test) return
+      // The trace is saved here, from the same snapshot: after a leave, nothing is left
+      // listening for main's 'recording-stopped'
+      traceSavedOnStop()
+      const saved = await saveTraceOf(test)
       let result: Awaited<ReturnType<typeof window.api.saveRecording>>
       try {
-        result = await window.api.saveRecording(activeSuiteId, test)
+        result = await window.api.saveRecording(activeSuiteId, saved)
       } catch (error) {
         console.error('Saving the test failed:', error)
         return
       }
-      if (!handleSaveResult(result, test.id, t)) return
+      if (!handleSaveResult(result, test.id, t)) {
+        // The steps stay on screen; say so, so nobody wonders whether it saved
+        if (result?.error === 'codeOwned') toast.error(t('tests.saveRefusedCodeOwned'))
+        return
+      }
+      const name = result?.test?.name ?? test.name
       const file = result?.test?.file
-      if (file) toast.success(t('tests.saved', { name: result?.test?.name ?? test.name, file }))
+      toast.success(file ? t('tests.saved', { name, file }) : t('tests.savedNoFile', { name }))
       // A new file changes the list (and gives the test its row)
       await useTestsListStore.getState().reload()
       onSaved?.(

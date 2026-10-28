@@ -179,11 +179,15 @@ describe('TestsWorkspace recording mode', () => {
   it('the rail leaves the recording, saving it on the way', async () => {
     await recording()
     await emit('new-recorded-step', step('n'))
+    const traceStep = { id: 'tr1', command: 'click', timestamp: 1, url: 'https://x.test' }
+    await emit('new-trace-step', traceStep)
     api.saveRecording.mockClear()
 
     fireEvent.click(screen.getByRole('button', { name: /Tests/ }))
 
     await waitFor(() => expect(api.saveRecording).toHaveBeenCalledTimes(1))
+    expect(api.saveTrace).toHaveBeenCalledTimes(1)
+    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep])
     expect(api.stopRecordingMain).toHaveBeenCalled()
     expect(api.saveRecording).toHaveBeenCalledWith(
       's1',

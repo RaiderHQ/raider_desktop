@@ -103,6 +103,8 @@ const page = (test: Test): ReactElement => (
 
 const renderPage = (test: Test = recorded): ReturnType<typeof render> => render(page(test))
 
+const traceStep = { id: 'tr1', command: 'click', timestamp: 1, url: 'https://x.test' }
+
 /** Puts the open test in recording the way start() and main do. */
 const startRecording = async (): Promise<void> => {
   act(() => {
@@ -365,6 +367,7 @@ describe('TestPage', () => {
     await opened()
     await startRecording()
     await emit('new-recorded-step', step('n'))
+    await emit('new-trace-step', traceStep)
     api.saveRecording.mockClear()
     api.stopRecordingMain.mockClear()
 
@@ -372,6 +375,13 @@ describe('TestPage', () => {
 
     expect(api.stopRecordingMain).toHaveBeenCalled()
     await waitFor(() => expect(api.saveRecording).toHaveBeenCalledTimes(1))
+    // Nothing listens for main's 'recording-stopped' any more: the leave saved the trace
+    expect(api.saveTrace).toHaveBeenCalledTimes(1)
+    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep])
+    expect(api.saveRecording).toHaveBeenCalledWith(
+      's1',
+      expect.objectContaining({ id: 't1', hasTrace: true })
+    )
     expect(api.saveRecording).toHaveBeenCalledWith(
       's1',
       expect.objectContaining({ id: 't1', steps: [step('a'), step('b'), step('n')] })
@@ -384,13 +394,18 @@ describe('TestPage', () => {
     await opened()
     await startRecording()
     await emit('new-recorded-step', step('n'))
+    await emit('new-trace-step', traceStep)
     api.saveRecording.mockClear()
 
     rerender(page(empty))
     await opened('Empty one')
+    // Main's 'recording-stopped' arrives once the second test is open
+    await emit('recording-stopped')
 
     expect(api.stopRecordingMain).toHaveBeenCalled()
-    expect(api.saveRecording).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(api.saveRecording).toHaveBeenCalledTimes(1))
+    expect(api.saveTrace).toHaveBeenCalledTimes(1)
+    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep])
     expect(api.saveRecording).toHaveBeenCalledWith(
       's1',
       expect.objectContaining({ id: 't1', steps: [step('a'), step('b'), step('n')] })

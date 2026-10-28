@@ -433,7 +433,9 @@
     "cucumber": "This project's tests are Cucumber features: find them in the Files tab. Recorded tests become project files when Gherkin support arrives.",
     "actionFailed": "Raider couldn't open this test. Nothing was changed.",
     "rail": "Tests",
-    "saved": "Saved to your project as {{name}} ({{file}})"
+    "saved": "Saved to your project as {{name}} ({{file}})",
+    "savedNoFile": "Saved to your project as {{name}}",
+    "saveRefusedCodeOwned": "This test was changed in code, so the recording wasn't saved. Your steps are still here."
   },
   "testPage": {
     "breadcrumb": "Breadcrumb",
