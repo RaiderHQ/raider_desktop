@@ -2,6 +2,7 @@ import React from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import TestsList from '@components/TestsList'
+import TestPage from '@components/TestPage'
 import { useTestsList } from '../../hooks/useTestsList'
 import { fromRouteParam, testKeyOf, toRouteParam } from '@foundation/testKey'
 import type { TestKey, TestRow } from '@foundation/testKey'
@@ -27,7 +28,15 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
   const pane = renderPane ? (
     renderPane(selectedRow)
   ) : selectedRow ? (
-    <div className="p-6 text-sm text-neutral-dark">{selectedRow.name}</div>
+    selectedRow.ownership === 'recorded' || selectedRow.ownership === 'legacy' ? (
+      // One page for every recorded test, so its recording hooks mount once
+      <TestPage row={selectedRow} />
+    ) : (
+      <div className="p-6 space-y-2 text-sm">
+        <p className="font-semibold text-neutral-dark">{selectedRow.name}</p>
+        <p className="text-neutral-mid">{t('testPage.codePlaceholder')}</p>
+      </div>
+    )
   ) : (
     <div className="flex items-center justify-center h-full text-neutral-mid text-sm p-8 text-center">
       {t('tests.selectOrCreate')}

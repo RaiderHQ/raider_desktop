@@ -433,6 +433,24 @@
     "cucumber": "This project's tests are Cucumber features: find them in the Files tab. Recorded tests become project files when Gherkin support arrives.",
     "actionFailed": "Raider couldn't open this test. Nothing was changed."
   },
+  "testPage": {
+    "breadcrumb": "Breadcrumb",
+    "breadcrumbRoot": "Tests",
+    "name": "Test name",
+    "url": "Start URL",
+    "record": "Record",
+    "stop": "Stop",
+    "run": "Run",
+    "code": "Code",
+    "lastRun": "Last run",
+    "more": "More",
+    "startOver": "Start over",
+    "startOverConfirm": "Start over? Recording again replaces this test's steps.",
+    "exportTest": "Export test",
+    "deleteTest": "Delete test",
+    "noSteps": "There are no steps to export.",
+    "codePlaceholder": "This test is written in code. Find it in the Files tab for now."
+  },
   "recorder": {
     "readOnly": {
       "banner": "Edited in code by a developer \u2014 view and run only.",
