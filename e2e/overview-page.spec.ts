@@ -20,15 +20,14 @@ test.describe('Overview/Tests Page', () => {
     expect(url).toContain('#/start-project')
   })
 
-  test('shows Tests, Files, Scaffolding, Settings tabs', async ({ page }) => {
+  test('shows Tests, Files, Scaffolding, Dashboard tabs', async ({ page }) => {
     await setupProjectContext(page)
     await goToOverview(page)
 
     await expect(page.getByRole('button', { name: 'Tests', exact: true })).toBeVisible()
     await expect(page.getByText('Files', { exact: true })).toBeVisible()
     await expect(page.getByText('Scaffolding', { exact: true })).toBeVisible()
-    // Check for the Settings tab button (not the nav link)
-    await expect(page.locator('button').filter({ hasText: 'Settings' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Dashboard', exact: true })).toBeVisible()
   })
 
   test('Tests tab active by default', async ({ page }) => {
@@ -75,7 +74,7 @@ test.describe('Overview/Tests Page', () => {
     await expect(page.getByText('pages')).toBeVisible({ timeout: 5000 })
   })
 
-  test('clicking file navigates to file-editor', async ({ page }) => {
+  test('clicking a file previews it beside the tree', async ({ page }) => {
     const mockTree = [
       { name: 'login_spec.rb', type: 'file', path: '/mock/test-project/login_spec.rb' }
     ]
@@ -88,10 +87,11 @@ test.describe('Overview/Tests Page', () => {
     })
 
     await page.getByText('login_spec.rb').click()
-    await page.waitForTimeout(1000)
 
-    const url = page.url()
-    expect(url).toContain('#/file-editor')
+    // The file opens in the Files tab's preview (the tree and the preview header name it)
+    await expect(page.getByText('login_spec.rb')).toHaveCount(2)
+    await expect(page.getByText('Select a file to preview')).toHaveCount(0)
+    expect(page.url()).toContain('#/overview')
   })
 
   test('run tests triggers runRaiderTests IPC', async ({ page }) => {

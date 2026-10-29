@@ -35,7 +35,7 @@ test.describe('File Editor Page', () => {
     await page.waitForTimeout(800)
   }
 
-  test('loads and displays file content via overview file click', async ({ page }) => {
+  test('an Overview file click previews the file in the Files tab', async ({ page }) => {
     const mockTree = [
       { name: 'login_page.rb', type: 'file', path: '/mock/test-project/login_page.rb' }
     ]
@@ -49,12 +49,11 @@ test.describe('File Editor Page', () => {
     await goToOverviewFiles(page)
 
     await page.getByText('login_page.rb').click()
-    await page.waitForTimeout(1500)
 
-    const url = page.url()
-    expect(url).toContain('#/file-editor')
-    // The editor or file name should be visible
-    await expect(page.getByText('login_page.rb')).toBeVisible({ timeout: 5000 })
+    // The tree and the preview header both name the file; the route stays on the Overview
+    await expect(page.getByText('login_page.rb')).toHaveCount(2)
+    await expect(page.getByText('Select a file to preview')).toHaveCount(0)
+    expect(page.url()).toContain('#/overview')
   })
 
   test('shows loading state while file loads', async ({ page }) => {
@@ -70,13 +69,10 @@ test.describe('File Editor Page', () => {
     await goToOverviewFiles(page)
 
     await page.getByText('slow_file.rb').click()
-    await page.waitForTimeout(500)
 
-    // Should show loading text
-    const loading = page.getByText('Loading', { exact: false })
-    const hasLoading = await loading.isVisible().catch(() => false)
-    // The page should be in file-editor route
-    expect(page.url()).toContain('#/file-editor')
+    // The preview shows a loading state until the file arrives
+    await expect(page.getByText('Loading...', { exact: true })).toBeVisible()
+    await expect(page.getByText('Loading...', { exact: true })).toHaveCount(0, { timeout: 10000 })
   })
 
   test('save triggers editFile IPC with correct path and content', async ({ page }) => {
