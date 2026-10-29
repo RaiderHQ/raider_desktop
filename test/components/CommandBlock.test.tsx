@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import CommandBlock from '@components/CommandBlock'
 import '@testing-library/jest-dom'
+import type { Mock } from 'vitest'
 import type { Step } from '@shared/types/step'
 
 vi.mock('react-i18next', () => ({
@@ -77,7 +78,10 @@ describe('CommandBlock', () => {
         secret: true,
         secretName: 'RAIDER_SECRET_1'
       }
-      const rename = async (onEdit: ReturnType<typeof vi.fn>, value: string): Promise<void> => {
+      const rename = async (
+        onEdit: Mock<(index: number, step: Step) => void>,
+        value: string
+      ): Promise<void> => {
         await renderBlock({ step: secret, onEdit })
         fireEvent.click(screen.getByRole('button', { name: 'recorder.step.secretRename' }))
         const input = screen.getByLabelText('recorder.step.secretNameLabel')
