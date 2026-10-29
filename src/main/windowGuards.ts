@@ -61,7 +61,12 @@ export function installWindowGuards(
     webPreferences.webSecurity = true
     webPreferences.partition = RECORDER_PARTITION
     params.partition = RECORDER_PARTITION
+    // Electron reads allowpopups before this event, so popups are also denied below
     delete params.allowpopups
+  })
+
+  contents.on('did-attach-webview', (_event, guest) => {
+    guest.setWindowOpenHandler(() => ({ action: 'deny' }))
   })
 }
 

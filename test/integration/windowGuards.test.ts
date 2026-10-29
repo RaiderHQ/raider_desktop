@@ -116,6 +116,14 @@ describe('installWindowGuards', () => {
     expect(event.preventDefault).not.toHaveBeenCalled()
   })
 
+  it('denies every popup from an attached webview', () => {
+    let guestHandler: ((details: { url: string }) => { action: string }) | undefined
+    const guest = { setWindowOpenHandler: vi.fn((h) => (guestHandler = h)) }
+    contents.emit('did-attach-webview', {}, guest)
+    expect(guestHandler!({ url: 'https://example.com/' })).toEqual({ action: 'deny' })
+    expect(mockOpenExternal).not.toHaveBeenCalled()
+  })
+
   it.each(['http://localhost:3000/', 'https://example.com/login', 'about:blank'])(
     'attaches a webview for %s',
     (src) => {
