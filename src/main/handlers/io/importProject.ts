@@ -1,4 +1,5 @@
 import { dialog, BrowserWindow } from 'electron'
+import { lastDialogDirectory, rememberDialogPick } from '../../utils/dialogDirectory'
 import * as fs from 'fs'
 import * as path from 'path'
 import { appState } from '../appState'
@@ -35,8 +36,10 @@ export default async function importProject(
     // Taken before the dialog: the import goes to the project that was open when it started
     const store = filesStore()
     const result = await dialog.showOpenDialog(mainWindow, {
+      defaultPath: lastDialogDirectory(),
       properties: ['openDirectory']
     })
+    if (!result.canceled) rememberDialogPick(result.filePaths)
 
     if (result.canceled || !result.filePaths.length) {
       return { success: false, error: 'No directory selected' }
