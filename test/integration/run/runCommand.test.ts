@@ -81,6 +81,16 @@ describe('buildRunCommand', () => {
     expect(command).toContain('parallel_rspec -n 3 --prefix-output-with-test-env-number')
   })
 
+  it('passes the cucumber tag expression to parallel workers quoted for the shell', () => {
+    const { command } = buildRunCommand({
+      ...base,
+      framework: 'cucumber',
+      scope: { kind: 'tags', tags: ['smoke', 'ui'] },
+      workers: 3
+    })
+    expect(command).toContain(`-o ${shellQuote(`--tags ${shellQuote('@smoke or @ui')}`)}`)
+  })
+
   it('passes cucumber files to parallel_cucumber', () => {
     const f = 'features/a b.feature'
     const { command } = buildRunCommand({

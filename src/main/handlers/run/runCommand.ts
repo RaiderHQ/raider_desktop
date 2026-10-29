@@ -17,7 +17,7 @@ export function validateTags(tags: string[]): void {
 function tagOptions(framework: Framework, tags: string[]): string {
   return framework === 'rspec'
     ? tags.map((t) => `--tag ${t}`).join(' ')
-    : `--tags "${tags.map((t) => `@${t}`).join(' or ')}"`
+    : `--tags ${shellQuote(tags.map((t) => `@${t}`).join(' or '))}`
 }
 
 /**
@@ -44,12 +44,7 @@ export function buildRunCommand(opts: {
     let args = ''
     if (scope.kind === 'files') args = scope.files.map(shellQuote).join(' ')
     else if (scope.kind === 'locations') args = scope.locations.map(shellQuote).join(' ')
-    else if (scope.kind === 'tags') {
-      args =
-        framework === 'rspec'
-          ? tagOptions(framework, scope.tags)
-          : `--tags ${shellQuote(scope.tags.map((t) => `@${t}`).join(' or '))}`
-    }
+    else if (scope.kind === 'tags') args = tagOptions(framework, scope.tags)
     return { command: `${bundle} ${framework}${args ? ` ${args}` : ''}`, workers }
   }
 
