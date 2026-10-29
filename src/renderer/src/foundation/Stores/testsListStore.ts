@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import toast from 'react-hot-toast'
+import i18n from 'i18next'
 import type { TestRow } from '@foundation/testKey'
 
 interface TestsListStore {
@@ -14,7 +16,7 @@ interface TestsListStore {
 let latestReload = 0
 
 export const useTestsListStore = create<TestsListStore>(
-  (set): TestsListStore => ({
+  (set, get): TestsListStore => ({
     rows: null,
     reload: async (): Promise<void> => {
       // Only the newest reload may write: older ones can resolve late
@@ -50,7 +52,10 @@ export const useTestsListStore = create<TestsListStore>(
         if (mine === latestReload) set({ rows })
       } catch (error) {
         console.error('Listing the project tests failed:', error)
-        if (mine === latestReload) set({ rows: [] })
+        if (mine !== latestReload) return
+        // A good list stays: an empty one would say the project has no tests
+        toast.error(i18n.t('tests.listFailed'), { id: 'tests-list-failed' })
+        if (get().rows === null) set({ rows: [] })
       }
     }
   })

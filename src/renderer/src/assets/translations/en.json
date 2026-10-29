@@ -431,6 +431,7 @@
     "emptyNoRecording": "No tests found in this project yet.",
     "cucumber": "This project's tests are Cucumber features: find them in the Files tab. Recorded tests become project files when Gherkin support arrives.",
     "actionFailed": "Raider couldn't open this test. Nothing was changed.",
+    "listFailed": "Raider couldn't load the tests list. Try again in a moment.",
     "rail": "Tests",
     "suiteFilter": {
       "label": "Suite",
