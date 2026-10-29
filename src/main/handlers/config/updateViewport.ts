@@ -1,6 +1,7 @@
 import { IpcMainInvokeEvent } from 'electron'
 import { safeExec } from '../../utils/safeExec'
 import { buildShellCommand } from '../../utils/shellCommand'
+import { quoteShellArg } from '../../utils/shellQuote'
 import { CommandType } from '@foundation/Types/commandType'
 
 const handler = async (
@@ -13,7 +14,10 @@ const handler = async (
   fixPath()
 
   try {
-    const shellCommand = buildShellCommand(projectPath, `raider u viewport ${width}x${height}`)
+    const shellCommand = buildShellCommand(
+      projectPath,
+      `raider u viewport ${quoteShellArg(`${width}x${height}`)}`
+    )
 
     const result = await safeExec(shellCommand, { timeout: 30_000 })
 

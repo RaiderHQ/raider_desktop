@@ -194,6 +194,30 @@ describe('migrateLegacyStep', () => {
 })
 
 describe('migrateLegacyTest', () => {
+  it('names unnamed secret steps once when a test is loaded', () => {
+    const pw = { strategy: 'id', value: 'pw' }
+    const test = migrateLegacyTest({
+      id: 't',
+      name: 'T',
+      url: '',
+      steps: [
+        { id: 'a', kind: 'type', element: pw, text: '', secret: true },
+        {
+          id: 'b',
+          kind: 'type',
+          element: pw,
+          text: '',
+          secret: true,
+          secretName: 'RAIDER_SECRET_1'
+        }
+      ]
+    })
+    expect(test.steps).toMatchObject([
+      { id: 'a', secretName: 'RAIDER_SECRET_2' },
+      { id: 'b', secretName: 'RAIDER_SECRET_1' }
+    ])
+  })
+
   it('treats missing or non-array steps as no steps', () => {
     expect(migrateLegacyTest({ id: 't', name: 'n', url: 'u' }).steps).toEqual([])
     expect(migrateLegacyTest({ id: 't', name: 'n', url: 'u', steps: 'oops' }).steps).toEqual([])

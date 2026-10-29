@@ -64,9 +64,18 @@ export function getCssPath(el: Element): string {
   return path.join(' > ')
 }
 
+// XPath 1.0 string literals have no escape character, so a value holding both
+// quote types has to be stitched together with concat().
+export function xpathLiteral(value: string): string {
+  if (!value.includes('"')) return `"${value}"`
+  if (!value.includes("'")) return `'${value}'`
+  const parts = value.split("'").map((part) => `'${part}'`)
+  return `concat(${parts.join(`,"'",`)})`
+}
+
 export function getXPath(element: Element): string {
   if (element.id !== '') {
-    return `//*[@id="${element.id}"]`
+    return `//*[@id=${xpathLiteral(element.id)}]`
   }
   if (element === document.body) {
     return element.tagName.toLowerCase()

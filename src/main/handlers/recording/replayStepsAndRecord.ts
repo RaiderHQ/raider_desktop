@@ -6,7 +6,10 @@ import { appState } from '../appState'
 import startRecordingMain from './startRecordingMain'
 import { generateRspecFile, toAutomation } from '../../codegen/testFile'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
+import { quoteShellArg } from '../../utils/shellQuote'
 import type { Step } from '../../../shared/types/step'
+import { missingSecrets, refusedSecretName } from '../../../shared/secretSteps'
+import { englishText } from '../../../shared/describeStepEnglish'
 
 interface ReplayResult {
   success: boolean
@@ -29,6 +32,18 @@ async function replayStepsAndRecord(
 ): Promise<ReplayResult> {
   if (!isValidRubyCommand(rubyCommand)) {
     return { success: false, error: 'The Ruby command is not valid, so the replay did not run.' }
+  }
+  const refused = stepsToReplay.map(refusedSecretName).find((name) => name !== undefined)
+  if (refused !== undefined) {
+    return {
+      success: false,
+      error: englishText('recorder.step.secretNameRefused', { name: refused })
+    }
+  }
+  // The replayed spec reads secrets with ENV.fetch, so say which one is missing up front
+  const [missing] = missingSecrets(stepsToReplay, process.env)
+  if (missing) {
+    return { success: false, error: englishText('recorder.step.secretMissing', { name: missing }) }
   }
   const { implicitWait, explicitWait } = appState.recorderSettings
   const tempFilePath = path.join(os.tmpdir(), `replay_${Date.now()}_spec.rb`)
@@ -65,7 +80,7 @@ async function replayStepsAndRecord(
       cancelled?: boolean
     }>((resolve) => {
       const child = exec(
-        `${rubyCommand} -S rspec ${tempFilePath}`,
+        `${rubyCommand} -S rspec ${quoteShellArg(tempFilePath)}`,
         { env: executionEnv, timeout: 120_000, encoding: 'utf8' },
         (error, stdout, stderr) => {
           appState.activeReplayProcess = null

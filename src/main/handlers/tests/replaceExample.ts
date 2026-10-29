@@ -1,5 +1,6 @@
 import fs from 'fs/promises'
 import { renderStep } from '../../codegen/steps'
+import { withSecretNames } from '../../../shared/secretSteps'
 import type { Receiver } from '../../codegen/steps'
 import { locateExamples } from './exampleLocator'
 import { assertSpecFile } from './readCodeTest'
@@ -107,7 +108,7 @@ export async function replaceExample(
     const close = keep ? lines[endLine - 1] : `${indent}end${cr}`
 
     const receiver = receiverFor(source)
-    const body = steps.flatMap((step) =>
+    const body = withSecretNames(steps).flatMap((step) =>
       renderStep(step, layout.automation, { receiver }).split('\n')
     )
     const wait = WAIT[receiver]

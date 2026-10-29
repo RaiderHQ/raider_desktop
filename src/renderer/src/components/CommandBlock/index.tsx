@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Tooltip from '@components/Tooltip'
 import type { Step } from '@shared/types/step'
 import { describeStep } from '@shared/describeStep'
+import { isSecretStep, isValidSecretName, secretNameOf } from '@shared/secretSteps'
 
 interface CommandBlockProps {
   step: Step
@@ -21,6 +22,64 @@ interface CommandBlockProps {
   readOnly?: boolean
   /** The step recorded last */
   latest?: boolean
+}
+
+/** Lets the user change the environment variable a secret step reads, e.g. per test. */
+const SecretRename: React.FC<{ name: string; onRename: (name: string) => void }> = ({
+  name,
+  onRename
+}) => {
+  const { t } = useTranslation()
+  const [value, setValue] = useState<string | null>(null)
+  const [invalid, setInvalid] = useState(false)
+
+  if (value === null) {
+    return (
+      <button
+        type="button"
+        className="ml-2 text-xs text-ruby hover:underline"
+        aria-label={t('recorder.step.secretRename')}
+        onClick={() => {
+          setValue(name)
+          setInvalid(false)
+        }}
+      >
+        {t('recorder.step.secretRename')}
+      </button>
+    )
+  }
+
+  const save = (): void => {
+    const next = value.trim()
+    if (!isValidSecretName(next)) {
+      setInvalid(true)
+      return
+    }
+    if (next !== name) onRename(next)
+    setValue(null)
+  }
+
+  return (
+    <span className="block mt-1">
+      <input
+        autoFocus
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') save()
+          if (e.key === 'Escape') setValue(null)
+        }}
+        aria-label={t('recorder.step.secretNameLabel')}
+        aria-invalid={invalid}
+        className="font-mono text-xs border border-neutral-bdr rounded px-1 py-0.5"
+      />
+      {invalid && (
+        <span className="block text-xs text-red-600 mt-1">
+          {t('recorder.step.secretNameInvalid')}
+        </span>
+      )}
+    </span>
+  )
 }
 
 const CommandBlock: React.FC<CommandBlockProps> = ({
@@ -146,7 +205,17 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
 
     // Friendly view
     const { key, values } = describeStep(step)
-    return <span className="text-neutral-dark">{t(key, values)}</span>
+    return (
+      <span className="text-neutral-dark">
+        {t(key, values)}
+        {isSecretStep(step) && !readOnly && onEdit && (
+          <SecretRename
+            name={secretNameOf(step)}
+            onRename={(secretName) => onEdit(index, { ...step, secretName })}
+          />
+        )}
+      </span>
+    )
   }
 
   const handleGutterClick = (): void => {

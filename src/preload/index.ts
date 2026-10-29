@@ -229,7 +229,12 @@ const api = {
     ipcRenderer.invoke('load-trace', testId),
   deleteTrace: (testId: string): Promise<void> => ipcRenderer.invoke('delete-trace', testId),
   // Recording Session Control
-  startRecordingMain: async (): Promise<{ success: boolean; url: string; preloadPath: string }> =>
+  startRecordingMain: async (): Promise<{
+    success: boolean
+    url: string
+    preloadPath: string
+    reason?: 'unsupportedUrl'
+  }> =>
     ipcRenderer.invoke('start-recording-main'),
   replayStepsAndRecord: async (
     testName: string,

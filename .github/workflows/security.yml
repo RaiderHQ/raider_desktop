@@ -1,0 +1,79 @@
+name: Security Checks
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  dependencies:
+    name: Dependency Vulnerabilities
+    runs-on: ubuntu-latest
+    # Report-only until the dependency upgrade PR clears the current findings; then remove this
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Scan package-lock.json with OSV-Scanner
+        id: osv
+        uses: google/osv-scanner-action/osv-scanner-action@v2.0.2
+        with:
+          scan-args: |-
+            --lockfile=package-lock.json
+
+      # Runs even when OSV-Scanner fails or can't run, so the job always has a second opinion
+      - name: Set up Node.js
+        if: ${{ !cancelled() }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: npm audit (high and critical)
+        if: ${{ !cancelled() }}
+        run: npm audit --audit-level=high --package-lock-only
+
+  electronegativity:
+    name: Electronegativity
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # A production build: the e2e build (--mode e2e) may turn context isolation off
+      - name: Build main and preload bundles
+        run: npx electron-vite build
+
+      # One scan over main and preload together: global checks (e.g. a missing
+      # permission handler) look across every file, so a preload-only scan would
+      # always miss main's handler. The large renderer bundle is left out.
+      - name: Run Electronegativity
+        run: |
+          mkdir -p electronegativity scan
+          cp -R out/main out/preload scan/
+          ELECTRON_VERSION=$(node -p "require('electron/package.json').version")
+          npx --yes @doyensec/electronegativity@1.10.3 \
+            -i scan -o electronegativity/results.csv -e "$ELECTRON_VERSION" -r
+
+      - name: Upload Electronegativity results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: electronegativity
+          path: electronegativity/
+
+      - name: Fail on blocking findings
+        run: node .github/scripts/electronegativity-gate.mjs electronegativity/results.csv

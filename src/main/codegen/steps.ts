@@ -1,5 +1,7 @@
 import type { ElementTarget, Step } from '../../shared/types/step'
 import { rubyString } from './ruby'
+import { isValidSecretName } from '../../shared/secretSteps'
+import { englishText } from '../../shared/describeStepEnglish'
 
 export type Automation = 'selenium' | 'watir'
 
@@ -141,6 +143,15 @@ function renderAssert(
   }
 }
 
+// A generated test only ever reads RAIDER_SECRET_ variables (see SECRET_NAME)
+function secretVariable(step: Extract<Step, { kind: 'type' }>): string {
+  const name = step.secretName
+  if (name === undefined) throw new Error(englishText('recorder.step.secretUnnamed'))
+  if (!isValidSecretName(name))
+    throw new Error(englishText('recorder.step.secretNameRefused', { name }))
+  return name
+}
+
 /** Ruby for one step: one or more lines, no trailing newline, no indentation. */
 export function renderStep(step: Step, automation: Automation, opts: RenderOptions = {}): string {
   const selenium = automation === 'selenium'
@@ -156,7 +167,10 @@ export function renderStep(step: Step, automation: Automation, opts: RenderOptio
         ? `${n.wait}.until { ${sel(step.element)}.displayed? }\n${sel(step.element)}.click`
         : `${wat(step.element)}.click`
     case 'type': {
-      const text = rubyString(step.text)
+      // A secret's value is never in the step; the test reads it when it runs
+      const text = step.secret
+        ? `ENV.fetch(${rubyString(secretVariable(step))})`
+        : rubyString(step.text)
       return selenium
         ? [
             `${n.wait}.until { ${sel(step.element)}.displayed? }`,

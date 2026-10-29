@@ -86,6 +86,38 @@ describe('renderStep table', () => {
   })
 })
 
+describe('renderStep secret type steps', () => {
+  const secret: Step = { id: '1', kind: 'type', element: id('pw'), text: '', secret: true }
+  const named: Step = { ...secret, secretName: 'RAIDER_SECRET_2' } as Step
+
+  it('reads the value from the environment variable stored on the step', () => {
+    expect(renderStep(named, 'selenium')).toBe(
+      "@wait.until { @driver.find_element(id: 'pw').displayed? }\n@driver.find_element(id: 'pw').clear\n@driver.find_element(id: 'pw').send_keys(ENV.fetch('RAIDER_SECRET_2'))"
+    )
+    expect(renderStep(named, 'watir')).toBe(
+      "@browser.element(id: 'pw').to_subtype.set(ENV.fetch('RAIDER_SECRET_2'))"
+    )
+  })
+
+  it('refuses a secret step that has no variable yet', () => {
+    expect(() => renderStep(secret, 'watir')).toThrow(/no variable/)
+  })
+
+  it.each(['GITHUB_TOKEN', 'RAIDER_TOKEN', 'RAIDER_SECRET'])(
+    'refuses to read %s, which is not a RAIDER_SECRET_ variable',
+    (secretName) => {
+      const bad = { ...secret, secretName } as Step
+      expect(() => renderStep(bad, 'selenium')).toThrow(/RAIDER_SECRET_/)
+    }
+  )
+
+  it('reads RAIDER_SECRET_LOGIN', () => {
+    expect(renderStep({ ...secret, secretName: 'RAIDER_SECRET_LOGIN' } as Step, 'watir')).toContain(
+      "ENV.fetch('RAIDER_SECRET_LOGIN')"
+    )
+  })
+})
+
 describe('renderStep details', () => {
   const el = css('.x')
   const assertStep = (check: AssertKind, expected?: string): Step => ({

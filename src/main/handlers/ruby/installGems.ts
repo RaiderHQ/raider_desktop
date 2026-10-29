@@ -1,11 +1,12 @@
 import { spawn } from 'child_process'
+import { quoteShellArg } from '../../utils/shellQuote'
 
 const handler = (
   rubyCommand: string,
   gems: string[]
 ): Promise<{ success: boolean; output?: string; error?: string }> => {
   return new Promise((resolve) => {
-    const command = `${rubyCommand} gem install ${gems.join(' ')}`
+    const command = `${rubyCommand} gem install ${gems.map((gem) => quoteShellArg(gem)).join(' ')}`
     const process = spawn(command, {
       shell: true
     })

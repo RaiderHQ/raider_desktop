@@ -1,6 +1,7 @@
 import React, { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import StyledPanel from '@components/StyledPanel'
+import { RECORDER_PARTITION } from '@shared/recorderSession'
 import type { TestRecording } from '../../hooks/useTestRecording'
 
 interface RecordingLayoutProps {
@@ -57,6 +58,7 @@ const RecordingBrowser: React.FC<{ url: string | null; preloadPath: string | nul
         }
       }}
       src={url}
+      partition={RECORDER_PARTITION}
       preload={`file://${preloadPath}`}
       style={{ width: '100%', height: '100%' }}
     />

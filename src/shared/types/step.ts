@@ -21,7 +21,16 @@ export type AssertKind =
 export type Step =
   | { id: string; kind: 'navigate'; url: string }
   | { id: string; kind: 'click'; element: ElementTarget }
-  | { id: string; kind: 'type'; element: ElementTarget; text: string }
+  // A secret step (a password field) never holds its value: text is '' and the value
+  // comes from the environment variable secretName (RAIDER_SECRET_<n> unless renamed)
+  | {
+      id: string
+      kind: 'type'
+      element: ElementTarget
+      text: string
+      secret?: true
+      secretName?: string
+    }
   | { id: string; kind: 'pressKey'; element: ElementTarget; key: string }
   | { id: string; kind: 'wait'; element: ElementTarget; until: 'visible' | 'hidden' | 'enabled' }
   | { id: string; kind: 'assert'; check: AssertKind; element?: ElementTarget; expected?: string }
@@ -29,6 +38,12 @@ export type Step =
   | { id: string; kind: 'custom'; code: string }
 
 const STRATEGIES = ['id', 'css', 'xpath']
+/**
+ * The variables a secret step may read: RAIDER_SECRET_ then capitals, digits and _.
+ * Only these, so a shared test can't read a real credential (GITHUB_TOKEN, or the
+ * Hideout client's RAIDER_TOKEN) and type it into a page.
+ */
+export const SECRET_NAME = /^RAIDER_SECRET_[A-Z0-9_]+$/
 const WAIT_UNTIL = ['visible', 'hidden', 'enabled']
 const ASSERT_KINDS: AssertKind[] = [
   'displayed',
@@ -80,6 +95,12 @@ export function isStep(value: unknown): value is Step {
     case 'click':
       return isElementTarget(value.element)
     case 'type':
+      if (value.secret !== undefined && !(value.secret === true && value.text === '')) return false
+      if (
+        value.secretName !== undefined &&
+        !(value.secret === true && isStr(value.secretName) && SECRET_NAME.test(value.secretName))
+      )
+        return false
       return isElementTarget(value.element) && isStr(value.text)
     case 'pressKey':
       return isElementTarget(value.element) && isStr(value.key)

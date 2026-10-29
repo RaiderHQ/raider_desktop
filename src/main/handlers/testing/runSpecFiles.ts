@@ -1,7 +1,8 @@
 import path from 'path'
 import { safeExec } from '../../utils/safeExec'
 import type { SafeExecResult } from '../../utils/safeExec'
-import { buildShellCommand, shellQuote } from '../../utils/shellCommand'
+import { buildShellCommand } from '../../utils/shellCommand'
+import { quoteShellArg } from '../../utils/shellQuote'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
 
 /**
@@ -23,7 +24,7 @@ export function runSpecFiles(
     .filter((p) => !p.includes(path.join('node_modules', '.bin')))
     .join(path.delimiter)
 
-  const rspec = `${rubyCommand} -S rspec ${files.map(shellQuote).join(' ')} --format json`
+  const rspec = `${rubyCommand} -S rspec ${files.map((f) => quoteShellArg(f)).join(' ')} --format json`
   return safeExec(buildShellCommand(projectPath, rspec), {
     cwd: projectPath,
     env: { ...process.env, PATH: newPath },

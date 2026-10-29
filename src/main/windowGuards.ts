@@ -1,0 +1,101 @@
+import { shell } from 'electron'
+import { RECORDER_PARTITION } from '../shared/recorderSession'
+
+/** Links the app may hand to the system browser: web pages only, never files or app schemes. */
+export function isExternalUrl(url: string): boolean {
+  try {
+    const { protocol } = new URL(url)
+    return protocol === 'https:' || protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * True when `url` is the app's own page: the dev server's origin, or the bundled
+ * index.html (any hash route). A dropped .html file or a website is not.
+ */
+export function isAppUrl(url: string, appUrl: string): boolean {
+  try {
+    const target = new URL(url)
+    const app = new URL(appUrl)
+    if (app.protocol === 'file:')
+      return target.protocol === 'file:' && target.pathname === app.pathname
+    return target.origin === app.origin
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Locks down the main window: links open in the browser (http(s) only), the window
+ * never navigates away from the app, and the recorder <webview> always gets the
+ * recorder preload, an isolated world, web security, no popups and its own session,
+ * whatever the page asks for. A webview may only open a website or about:blank.
+ */
+export function installWindowGuards(
+  contents: Electron.WebContents,
+  { appUrl, recorderPreload }: { appUrl: string; recorderPreload: string }
+): void {
+  contents.setWindowOpenHandler(({ url }) => {
+    if (isExternalUrl(url)) void shell.openExternal(url)
+    return { action: 'deny' }
+  })
+
+  contents.on('will-navigate', (event, url) => {
+    if (!isAppUrl(url, appUrl)) event.preventDefault()
+  })
+
+  contents.on('will-attach-webview', (event, webPreferences, params) => {
+    // The recorder only ever opens a website (or a blank page while it starts)
+    if (!(isExternalUrl(params.src) || params.src === 'about:blank')) {
+      event.preventDefault()
+      return
+    }
+    // Older Electron passed the webview's preload attribute as preloadURL
+    delete (webPreferences as { preloadURL?: string }).preloadURL
+    webPreferences.preload = recorderPreload
+    webPreferences.nodeIntegration = false
+    webPreferences.nodeIntegrationInSubFrames = false
+    webPreferences.contextIsolation = true
+    webPreferences.webSecurity = true
+    webPreferences.partition = RECORDER_PARTITION
+    params.partition = RECORDER_PARTITION
+    // Electron reads allowpopups before this event, so popups are also denied below
+    delete params.allowpopups
+  })
+
+  contents.on('did-attach-webview', (_event, guest) => {
+    guest.setWindowOpenHandler(() => ({ action: 'deny' }))
+  })
+}
+
+// What the app's own page may use: the clipboard (copying a file path, the code
+// editor's Copy and Paste) and full-screen video
+const APP_PERMISSIONS = new Set(['clipboard-read', 'clipboard-sanitized-write', 'fullscreen'])
+
+/**
+ * Denies permission requests by default. The app's own page (the main window, on the
+ * app's URL) gets only what it uses; websites in the recorder session get nothing
+ * (camera, location, notifications, the clipboard, …).
+ */
+export function installPermissionHandlers({
+  app,
+  recorder,
+  appUrl,
+  isAppContents
+}: {
+  app: Electron.Session
+  recorder: Electron.Session
+  appUrl: string
+  isAppContents: (contents: Electron.WebContents) => boolean
+}): void {
+  app.setPermissionRequestHandler((contents, permission, callback, details) => {
+    callback(
+      APP_PERMISSIONS.has(permission) &&
+        isAppContents(contents) &&
+        isAppUrl(details.requestingUrl, appUrl)
+    )
+  })
+  recorder.setPermissionRequestHandler((_wc, _permission, callback) => callback(false))
+}

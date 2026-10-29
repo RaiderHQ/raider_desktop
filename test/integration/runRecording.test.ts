@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { exec } from 'child_process'
 import { promises as fs } from 'fs'
+import os from 'os'
 
 vi.mock('child_process', () => {
   const exec = vi.fn()
@@ -90,6 +91,23 @@ describe('runRecording', () => {
     expect(mockWriteFile.mock.calls[0][1]).toBe(expected)
     const calledCmd = mockExec.mock.calls[0][0] as string
     expect(calledCmd).toMatch(/^ruby -S rspec .*\.rb --format json$/)
+  })
+
+  it('quotes the temp spec path, which can hold a space or $ in the user name', async () => {
+    vi.spyOn(os, 'tmpdir').mockReturnValueOnce("/Users/Jo Ann's $HOME/tmp")
+    mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) => cb(null, '{}', ''))
+    await runRecording({
+      savedTest: { id: 't', name: 'Login', url: '', steps: [] },
+      implicitWait: 5,
+      explicitWait: 10,
+      projectPath: '/project',
+      rubyCommand: 'ruby'
+    })
+    const tempFile = mockWriteFile.mock.calls[0][0] as string
+    expect(tempFile.startsWith("/Users/Jo Ann's $HOME/tmp/")).toBe(true)
+    expect(mockExec.mock.calls[0][0]).toBe(
+      `ruby -S rspec '${tempFile.replace(/'/g, `'\\''`)}' --format json`
+    )
   })
 
   it('returns failure with stderr on exec error', async () => {

@@ -79,6 +79,57 @@ describe('generateRspecFile', () => {
     expect(code).not.toContain('sleep(')
   })
 
+  it('keeps each secret step on its stored variable, whatever the order', () => {
+    const pw = { strategy: 'id' as const, value: 'pw' }
+    const code = generateRspecFile(
+      {
+        name: 'Login',
+        steps: [
+          {
+            id: 'c',
+            kind: 'type',
+            element: pw,
+            text: '',
+            secret: true,
+            secretName: 'RAIDER_SECRET_2'
+          },
+          {
+            id: 'a',
+            kind: 'type',
+            element: pw,
+            text: '',
+            secret: true,
+            secretName: 'RAIDER_SECRET_1'
+          }
+        ]
+      },
+      'selenium',
+      settings
+    )
+    expect(code.indexOf("ENV.fetch('RAIDER_SECRET_2')")).toBeLessThan(
+      code.indexOf("ENV.fetch('RAIDER_SECRET_1')")
+    )
+  })
+
+  it('names old unnamed secret steps in order and never writes a typed value', () => {
+    const pw = { strategy: 'id' as const, value: 'pw' }
+    const code = generateRspecFile(
+      {
+        name: 'Login',
+        steps: [
+          { id: 'a', kind: 'type', element: pw, text: '', secret: true },
+          { id: 'b', kind: 'type', element: pw, text: 'visible' },
+          { id: 'c', kind: 'type', element: pw, text: '', secret: true }
+        ]
+      },
+      'selenium',
+      settings
+    )
+    expect(code).toContain("send_keys(ENV.fetch('RAIDER_SECRET_1'))")
+    expect(code).toContain("send_keys('visible')")
+    expect(code).toContain("send_keys(ENV.fetch('RAIDER_SECRET_2'))")
+  })
+
   it('quotes the test name safely', () => {
     const code = generateRspecFile({ name: `It's "ok"`, steps: [] }, 'selenium', settings)
     expect(code).toContain(`describe 'It\\'s "ok"' do`)

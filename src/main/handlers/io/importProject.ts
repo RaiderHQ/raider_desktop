@@ -8,6 +8,12 @@ import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
 import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
 import {
+  confirmCustomCode,
+  importCancelled,
+  secretRefused,
+  type ImportedTest
+} from './confirmCustomCode'
+import {
   activeSuiteMode,
   addSuites,
   broadcast,
@@ -42,12 +48,8 @@ export default async function importProject(
       .filter((dirent) => dirent.isDirectory())
       .map((dirent) => dirent.name)
 
-    if (store && !isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
-    // Importing replaces every suite, so keep a copy of the current file first.
-    // If the copy fails the import stops, rather than risk losing the user's suites.
-    const activePath = store?.projectPath ?? appState.projectPath
-    if (activePath) await backupSuitesFile(activePath)
     const imported: Suite[] = []
+    const toConfirm: ImportedTest[] = []
 
     for (const suiteDir of subdirectories) {
       const suitePath = path.join(projectPath, suiteDir)
@@ -68,6 +70,9 @@ export default async function importProject(
 
           // Exported files carry their steps as JSON; older files hold Ruby lines
           const header = readExportHeader(fileContent)
+          if (header.refusedSecret !== undefined) {
+            return { success: false, error: secretRefused(header.refusedSecret) }
+          }
           const steps = withUniqueIds(header.steps ?? [], stepIds)
           const newTest: Test = {
             id: randomUUID(),
@@ -76,10 +81,21 @@ export default async function importProject(
             steps
           }
           newSuite.tests.push(newTest)
+          toConfirm.push(newTest)
         }
       }
       imported.push(newSuite)
     }
+
+    if (!(await confirmCustomCode(mainWindow, toConfirm))) {
+      return { success: false, error: importCancelled() }
+    }
+
+    if (store && !isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
+    // Importing replaces every suite, so keep a copy of the current file first.
+    // If the copy fails the import stops, rather than risk losing the user's suites.
+    const activePath = store?.projectPath ?? appState.projectPath
+    if (activePath) await backupSuitesFile(activePath)
 
     if (store) {
       // The replaced suites' tests keep their files: they stay in the project as recorded tests

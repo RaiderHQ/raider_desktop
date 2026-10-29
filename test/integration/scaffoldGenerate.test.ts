@@ -135,7 +135,7 @@ describe('scaffoldGenerate handler', () => {
 
     const command = mockSafeExec.mock.calls[0][0] as string
     expect(command).toContain('rbenv init')
-    expect(command).toContain("cd '/my/project'")
+    expect(command).toContain('cd /my/project && ')
   })
 
   it('returns failure when exec errors', async () => {

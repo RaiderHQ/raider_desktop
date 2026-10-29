@@ -8,6 +8,12 @@ import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
 import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
 import {
+  confirmCustomCode,
+  importCancelled,
+  secretRefused,
+  type ImportedTest
+} from './confirmCustomCode'
+import {
   activeSuiteMode,
   addSuites,
   broadcast,
@@ -48,6 +54,7 @@ export default async function importSuite(
     }
 
     const stepIds = new Set<string>()
+    const toConfirm: ImportedTest[] = []
     const files = fs.readdirSync(directoryPath)
     for (const file of files) {
       if (path.extname(file) === '.rb') {
@@ -56,6 +63,9 @@ export default async function importSuite(
 
         // Exported files carry their steps as JSON; older files hold Ruby lines
         const header = readExportHeader(fileContent)
+        if (header.refusedSecret !== undefined) {
+          return { success: false, error: secretRefused(header.refusedSecret) }
+        }
         const steps = withUniqueIds(header.steps ?? [], stepIds)
         const newTest: Test = {
           id: randomUUID(),
@@ -64,7 +74,12 @@ export default async function importSuite(
           steps
         }
         newSuite.tests.push(newTest)
+        toConfirm.push(newTest)
       }
+    }
+
+    if (!(await confirmCustomCode(mainWindow, toConfirm))) {
+      return { success: false, error: importCancelled() }
     }
 
     if (store) {

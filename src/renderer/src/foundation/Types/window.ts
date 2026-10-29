@@ -189,7 +189,13 @@ export interface WindowApi extends RunApi {
   ) => Promise<{ success: boolean; path?: string; error?: string }>
 
   // --- Recording Session ---
-  startRecordingMain: () => Promise<{ success: boolean; url: string; preloadPath: string }>
+  startRecordingMain: () => Promise<{
+    success: boolean
+    url: string
+    preloadPath: string
+    /** The address isn't an http(s) website the recorder can open */
+    reason?: 'unsupportedUrl'
+  }>
   replayStepsAndRecord: (
     testName: string,
     stepsToReplay: Step[],
