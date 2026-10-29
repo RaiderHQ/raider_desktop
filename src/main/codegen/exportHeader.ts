@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { isStep } from '../../shared/types/step'
 import type { Step } from '../../shared/types/step'
 import { migrateLegacySteps } from './legacy'
+import { refusedSecretName, withSecretNames } from '../../shared/secretSteps'
 
 /**
  * Exported test files start with Ruby comments naming the test (and suite) and
@@ -28,12 +29,16 @@ export function writeExportHeader(header: {
   return `${lines.join('\n')}\n\n`
 }
 
-function parseStepsLine(json: string): Step[] | undefined {
+function parseStepsLine(json: string): { steps?: Step[]; refusedSecret?: string } {
   try {
     const parsed: unknown = JSON.parse(json)
-    return Array.isArray(parsed) ? parsed.filter(isStep) : undefined
+    if (!Array.isArray(parsed)) return {}
+    return {
+      steps: withSecretNames(parsed.filter(isStep)),
+      refusedSecret: parsed.map(refusedSecretName).find((name) => name !== undefined)
+    }
   } catch {
-    return undefined
+    return {}
   }
 }
 
@@ -53,17 +58,21 @@ export function readExportHeader(text: string): {
   testName?: string
   suiteName?: string
   steps?: Step[]
+  /** A secret step in the JSON line reads this variable, which isn't a RAIDER_SECRET_ one */
+  refusedSecret?: string
 } {
   const lines = text.split(/\r?\n/)
   const value = (prefix: string): string | undefined =>
     lines.find((l) => l.startsWith(prefix))?.slice(prefix.length)
 
   const stepsJson = value(STEPS)
-  const steps =
-    (stepsJson !== undefined ? parseStepsLine(stepsJson) : undefined) ?? legacySteps(text)
+  const json = stepsJson !== undefined ? parseStepsLine(stepsJson) : {}
+  const steps = json.steps ?? legacySteps(text)
   // Legacy files may have the test comment anywhere, so fall back to a loose match
   const testName = value(TEST) ?? text.match(/# Test: (.*)/)?.[1]
-  return { testName, suiteName: value(SUITE), steps }
+  return json.refusedSecret === undefined
+    ? { testName, suiteName: value(SUITE), steps }
+    : { testName, suiteName: value(SUITE), steps, refusedSecret: json.refusedSecret }
 }
 
 /** The URL a test starts at: its first navigate step's URL, or '' when it has none. */

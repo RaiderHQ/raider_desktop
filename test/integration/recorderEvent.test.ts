@@ -59,6 +59,25 @@ describe('recorderEventToStep', () => {
     })
   })
 
+  it('maps a change on a password field to a secret type step without its value', () => {
+    const step = recorderEventToStep({
+      action: 'type',
+      selector: '#password',
+      strategy: 'css',
+      tagName: 'INPUT',
+      secret: true,
+      value: 'hunter2'
+    })
+    expect(step).toEqual({
+      id: expect.any(String),
+      kind: 'type',
+      element: { strategy: 'css', value: '#password' },
+      text: '',
+      secret: true
+    })
+    expect(isStep(step)).toBe(true)
+  })
+
   it('maps a change on a select to a type step with the selected value', () => {
     const step = recorderEventToStep({
       action: 'type',
@@ -171,6 +190,20 @@ describe('recorderEvent handler', () => {
     })
 
     expect(sentSteps()).toEqual([expect.objectContaining({ kind: 'type', text: 'hello world' })])
+  })
+
+  it('never sends the value of a secret field to the app window', () => {
+    recorderEvent({
+      action: 'type',
+      selector: '#password',
+      strategy: 'css',
+      tagName: 'INPUT',
+      secret: true,
+      value: 'hunter2'
+    })
+
+    expect(sentSteps()).toEqual([expect.objectContaining({ kind: 'type', secret: true })])
+    expect(JSON.stringify(mockSend.mock.calls)).not.toContain('hunter2')
   })
 
   it('does not send when the key is not recordable', () => {

@@ -41,6 +41,23 @@ describe('recorderEvent trace capture', () => {
     state.recorderWebContentsId = null
   })
 
+  it('traces a secret step before it has its variable, with a placeholder name', () => {
+    state.activeTraceDir = '/tmp/trace-test'
+    state.recorderWebContentsId = 42
+    mockCapturePage.mockReturnValue(new Promise(() => {}))
+    recorderEvent({
+      action: 'type',
+      selector: '#pw',
+      strategy: 'css',
+      tagName: 'INPUT',
+      secret: true
+    })
+    const trace = mockSend.mock.calls.find((c) => c[0] === 'new-trace-step')
+    expect(trace).toBeUndefined() // sent once the screenshot resolves
+    // The command is built synchronously; it must not throw on the unnamed step
+    expect(mockSend).toHaveBeenCalledWith('new-recorded-step', expect.any(Object))
+  })
+
   it('does not emit trace step when activeTraceDir is null', () => {
     recorderEvent({
       action: 'click',

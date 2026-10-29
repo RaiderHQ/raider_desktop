@@ -1,6 +1,7 @@
 import fs from 'fs/promises'
 import { safeExec } from '../../utils/safeExec'
-import { buildShellCommand, shellQuote } from '../../utils/shellCommand'
+import { buildShellCommand } from '../../utils/shellCommand'
+import { quoteShellArg } from '../../utils/shellQuote'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
 
 /** 1-based, inclusive: the `it` line through the line holding its closing `end` or `}`. */
@@ -56,7 +57,7 @@ export async function locateExamples(
   if (!isValidRubyCommand(rubyCommand)) throw new Error('The Ruby command is not valid.')
   if (surelyAbsent(await fs.readFile(absFile, 'utf-8'), name)) return []
 
-  const command = `${rubyCommand} -e ${shellQuote(SCRIPT)} ${shellQuote(absFile)} ${shellQuote(name)}`
+  const command = `${rubyCommand} -e ${quoteShellArg(SCRIPT)} ${quoteShellArg(absFile)} ${quoteShellArg(name)}`
   const result = await safeExec(buildShellCommand(projectPath, command), {
     cwd: projectPath,
     timeout: 20_000

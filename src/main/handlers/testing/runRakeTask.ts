@@ -2,8 +2,15 @@ import path from 'path'
 import { BrowserWindow } from 'electron'
 import { CommandType } from '@foundation/Types/commandType'
 import { safeExec } from '../../utils/safeExec'
+import { quoteShellArg } from '../../utils/shellQuote'
 import checkBundle from '../ruby/checkBundle'
 import bundleInstall from '../ruby/bundleInstall'
+
+// Rake task names, with optional [args]. A leading '-' would be read as a rake option
+// (e.g. --execute runs Ruby), so it is refused, not quoted.
+const TASK_NAME = /^[A-Za-z0-9_:\-[\],.]+$/
+const isValidTaskName = (name: unknown): name is string =>
+  typeof name === 'string' && TASK_NAME.test(name) && !name.startsWith('-')
 
 const handler = async (
   mainWindow: BrowserWindow,
@@ -11,6 +18,10 @@ const handler = async (
   rubyCommand: string,
   taskName: string
 ): Promise<CommandType> => {
+  if (!isValidTaskName(taskName)) {
+    const error = `"${taskName}" is not a valid task name, so nothing was run.`
+    return { success: false, output: '', error }
+  }
   try {
     const checkResult = await checkBundle(folderPath, rubyCommand)
 
@@ -29,7 +40,7 @@ const handler = async (
 
     mainWindow.webContents.send('test-run-status', { status: 'running' })
     const normalizedFolderPath = path.resolve(folderPath)
-    const commandToExecute = `${rubyCommand} -S bundle exec rake ${taskName}`
+    const commandToExecute = `${rubyCommand} -S bundle exec rake ${quoteShellArg(taskName)}`
 
     const result = await safeExec(commandToExecute, {
       cwd: normalizedFolderPath,

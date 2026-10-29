@@ -3,6 +3,7 @@ import { realpathSync } from 'fs'
 import { dirname, posix, resolve } from 'path'
 import { generateProjectSpecFile, RECORDED_MARKER } from '../../codegen/testFile'
 import { hashRuby } from './codeHash'
+import { withSecretNames } from '../../../shared/secretSteps'
 import {
   assertRealInside,
   deleteSidecar,
@@ -121,7 +122,8 @@ const buildSidecar = (
   id: test.id,
   name: test.name,
   url: test.url,
-  steps: test.steps,
+  // The names the spec was generated with (generateProjectSpecFile names the same way)
+  steps: withSecretNames(test.steps),
   file,
   automation: layout.automation,
   hash: hashRuby(content),

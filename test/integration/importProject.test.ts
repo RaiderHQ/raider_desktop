@@ -5,7 +5,8 @@ const mockReload = vi.fn()
 
 vi.mock('electron', () => ({
   dialog: {
-    showOpenDialog: vi.fn()
+    showOpenDialog: vi.fn(),
+    showMessageBox: vi.fn()
   },
   BrowserWindow: {}
 }))
@@ -45,6 +46,7 @@ import importProject from '../../src/main/handlers/io/importProject'
 import { appState } from '../../src/main/handlers/appState'
 
 const mockShowOpenDialog = dialog.showOpenDialog as ReturnType<typeof vi.fn>
+const mockShowMessageBox = dialog.showMessageBox as ReturnType<typeof vi.fn>
 const mockReaddirSync = fs.readdirSync as ReturnType<typeof vi.fn>
 const mockReadFileSync = fs.readFileSync as ReturnType<typeof vi.fn>
 
@@ -57,6 +59,8 @@ describe('importProject handler', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     appState.suites = new Map()
+    // Legacy bodies with unmapped Ruby lines hold custom steps, so they ask first
+    mockShowMessageBox.mockResolvedValue({ response: 0 })
   })
 
   it('returns error when mainWindow is null', async () => {
@@ -101,6 +105,25 @@ describe('importProject handler', () => {
     const result = await importProject(fakeMainWindow)
     expect(result.success).toBe(true)
     expect(appState.suites.size).toBe(2)
+  })
+
+  it('asks before importing hidden custom Ruby and keeps the current suites on cancel', async () => {
+    appState.suites.set('old-suite', { id: 'old-suite', name: 'Old', tests: [] })
+    mockShowOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/tmp/project'] })
+    mockReaddirSync
+      .mockReturnValueOnce([{ name: 'suite1', isDirectory: () => true }])
+      .mockReturnValueOnce(['shared.rb'])
+    mockReadFileSync.mockReturnValue(
+      '# Test: Shared\n# raider-steps: [{"id":"c","kind":"custom","code":"system(\'id\')"}]\n'
+    )
+    mockShowMessageBox.mockResolvedValue({ response: 1 })
+
+    const result = await importProject(fakeMainWindow)
+
+    expect(mockShowMessageBox.mock.calls[0][1].detail).toContain("system('id')")
+    expect(result.success).toBe(false)
+    expect([...appState.suites.keys()]).toEqual(['old-suite'])
+    expect(mockReload).not.toHaveBeenCalled()
   })
 
   it('clears existing suites before importing', async () => {

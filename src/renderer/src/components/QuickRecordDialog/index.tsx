@@ -11,6 +11,7 @@ import { installMissingGems } from '@foundation/installGems'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
+import { withScheme } from '@shared/recordUrl'
 
 interface QuickRecordDialogProps {
   onClose: () => void
@@ -59,9 +60,7 @@ const QuickRecordDialog: React.FC<QuickRecordDialogProps> = ({ onClose }) => {
   const canStart = url.trim() !== '' && name.trim() !== '' && !creating
 
   // Main only accepts http(s), so a bare address like example.com gets https://
-  const normalizedUrl = /^[a-z][a-z0-9+.-]*:\/\//i.test(url.trim())
-    ? url.trim()
-    : `https://${url.trim()}`
+  const normalizedUrl = withScheme(url)
 
   const start = async (): Promise<void> => {
     if (!canStart) return

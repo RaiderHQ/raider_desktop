@@ -153,6 +153,17 @@ describe('generateProjectSpecFile', () => {
     })
   })
 
+  it('numbers secret steps from 1 per test', () => {
+    const secret = (id: string): Step => ({ id, kind: 'type', element: el, text: '', secret: true })
+    const out = generateProjectSpecFile(
+      { name: 'Login', steps: [secret('a'), steps[2], secret('b')] },
+      'watir',
+      opts
+    )
+    expect(out).toContain("set(ENV.fetch('RAIDER_SECRET_1'))")
+    expect(out).toContain("set(ENV.fetch('RAIDER_SECRET_2'))")
+  })
+
   it('no step header', () => {
     expect(generateProjectSpecFile(test, 'selenium', opts)).not.toContain('raider-steps')
   })

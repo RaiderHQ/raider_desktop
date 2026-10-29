@@ -1,6 +1,7 @@
 import { webContents } from 'electron'
 import { appState } from '../appState'
-import { describeStepEnglish } from '../../../shared/describeStepEnglish'
+import { describeStepEnglish, englishText } from '../../../shared/describeStepEnglish'
+import { isValidSecretName, secretNameOf, withSecretNames } from '../../../shared/secretSteps'
 import type { ElementTarget, Step } from '../../../shared/types/step'
 
 const POLL_INTERVAL_MS = 100
@@ -288,6 +289,27 @@ async function runAssert(
   return `expected ${last.expected}, got ${last.actual}`
 }
 
+/**
+ * A secret step types the value of its environment variable. When that isn't set, the
+ * step fails with a message saying so rather than typing an empty password.
+ */
+function runSecretType(
+  wc: WebContents,
+  step: Extract<Step, { kind: 'type' }>,
+  timeoutMs: number
+): Promise<string | null> {
+  const secretName = secretNameOf(step)
+  // Never read a variable a secret step may not name (e.g. GITHUB_TOKEN from a shared test)
+  if (!isValidSecretName(secretName)) {
+    return Promise.resolve(englishText('recorder.step.secretNameRefused', { name: secretName }))
+  }
+  const value = process.env[secretName]
+  if (value === undefined) {
+    return Promise.resolve(englishText('recorder.step.secretMissing', { name: secretName }))
+  }
+  return runAction(wc, typeJS(step.element, value), step.element, timeoutMs)
+}
+
 /** Returns an error message, or null on success, or 'skipped' for steps replay doesn't run. */
 async function runStep(wc: WebContents, step: Step, timeoutMs: number): Promise<string | null> {
   switch (step.kind) {
@@ -297,6 +319,7 @@ async function runStep(wc: WebContents, step: Step, timeoutMs: number): Promise<
     case 'click':
       return runAction(wc, clickJS(step.element), step.element, timeoutMs)
     case 'type':
+      if (step.secret) return runSecretType(wc, step, timeoutMs)
       return runAction(wc, typeJS(step.element, step.text), step.element, timeoutMs)
     case 'pressKey': {
       const key = KEY_MAP[step.key.toLowerCase()] ?? step.key
@@ -324,8 +347,10 @@ export interface WebviewReplayResult {
 
 async function replayInWebview(
   _event: Electron.IpcMainInvokeEvent,
-  steps: Step[]
+  stepsToReplay: Step[]
 ): Promise<WebviewReplayResult> {
+  // Old secret steps without a stored name get the same names codegen gives them
+  const steps = withSecretNames(stepsToReplay)
   cancelRequested = false
   appState.isReplayingInWebview = true
   // The flag gates recorder events, so it must be reset on every exit, including throws

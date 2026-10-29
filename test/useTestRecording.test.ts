@@ -278,6 +278,20 @@ describe('useTestRecording', () => {
     expect(useRecorderStore.getState().recordingTarget).toBeNull()
   })
 
+  it('start says only http and https websites can be recorded when main refuses the URL', async () => {
+    api.startRecordingMain.mockResolvedValue({
+      success: false,
+      url: '',
+      preloadPath: '',
+      reason: 'unsupportedUrl'
+    })
+    const rec = await mount()
+    await act(() => rec.start({ kind: 'test' }))
+    expect(mockToast.error).toHaveBeenCalledWith('recorder.unsupportedUrl')
+    expect(useRecorderStore.getState().recordingTarget).toBeNull()
+    expect(useRecorderStore.getState().recordingUrl).toBeNull()
+  })
+
   it('start says so and forgets the target when there is no start URL', async () => {
     api.startRecordingMain.mockResolvedValue({ success: false, url: '', preloadPath: '' })
     const rec = await mount()
@@ -324,6 +338,36 @@ describe('useTestRecording', () => {
     expect(s.recordingTarget).toBeNull()
     expect(s.recordingUrl).toBeNull()
     expect(s.preloadPath).toBeNull()
+  })
+
+  it('names each recorded secret step once, with the lowest free variable', async () => {
+    const rec = await mount()
+    await act(() => rec.start({ kind: 'test' }))
+    await emit('recording-started', 'https://x.test/login')
+    const pw = { strategy: 'id' as const, value: 'pw' }
+    // A hand-edited secret still reads RAIDER_SECRET_1, so the next one must not
+    act(() =>
+      useRecorderStore.getState().updateActiveTest((p) =>
+        p
+          ? {
+              ...p,
+              steps: [
+                ...p.steps,
+                { id: 'e', kind: 'custom', code: "x.send_keys(ENV.fetch('RAIDER_SECRET_1'))" }
+              ]
+            }
+          : p
+      )
+    )
+    await emit('new-recorded-step', { id: 's', kind: 'type', element: pw, text: '', secret: true })
+    expect(useRecorderStore.getState().activeTest?.steps.at(-1)).toEqual({
+      id: 's',
+      kind: 'type',
+      element: pw,
+      text: '',
+      secret: true,
+      secretName: 'RAIDER_SECRET_2'
+    })
   })
 
   it('stop with no target only closes the browser', async () => {

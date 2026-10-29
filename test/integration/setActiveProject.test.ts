@@ -80,6 +80,28 @@ describe('recording start URL', () => {
     expect(startRecordingMain().url).toBe('https://example.test/')
   })
 
+  it('adds https:// to an address saved without a scheme, as Quick record does', async () => {
+    await setActiveProject(dir)
+    loadUrlRequest('localhost:3000/login')
+    expect(startRecordingMain().url).toBe('https://localhost:3000/login')
+  })
+
+  it.each(['file:///Users/me/page.html', 'ftp://example.test/', 'javascript:alert(1)'])(
+    'does not start on %s, which the recorder cannot open, and says why',
+    async (url) => {
+      await setActiveProject(dir)
+      const send = vi.fn()
+      appState.mainWindow = { webContents: { send } } as never
+      appState.activeTraceDir = null
+      loadUrlRequest(url)
+      const result = startRecordingMain()
+      appState.mainWindow = null
+      expect(result).toEqual({ success: false, url: '', preloadPath: '', reason: 'unsupportedUrl' })
+      expect(appState.activeTraceDir).toBeNull()
+      expect(send).not.toHaveBeenCalled()
+    }
+  )
+
   it('does not start when there is no URL anywhere', async () => {
     await writeFile(join(dir, 'config', 'config.yml'), 'explicit_wait: 15\n')
     await setActiveProject(dir)

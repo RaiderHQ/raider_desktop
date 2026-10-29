@@ -34,6 +34,22 @@ describe('describeStep', () => {
     })
   })
 
+  it('describes a secret type step by where its value comes from, never by a value', () => {
+    expect(
+      describeStep({
+        id,
+        kind: 'type',
+        element: labelled,
+        text: '',
+        secret: true,
+        secretName: 'RAIDER_SECRET_2'
+      })
+    ).toEqual({
+      key: 'recorder.commandParser.typeSecret',
+      values: { element: 'Log in', name: 'RAIDER_SECRET_2' }
+    })
+  })
+
   it('describes pressKey, naming the space bar', () => {
     expect(describeStep({ id, kind: 'pressKey', element: bare, key: 'Enter' })).toEqual({
       key: 'recorder.commandParser.pressKey',

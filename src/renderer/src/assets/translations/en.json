@@ -435,6 +435,17 @@
       "exportSuite": "Export suite",
       "exportProject": "Export project"
     },
+    "importCustomCode": {
+      "one": "This test runs custom Ruby code. Import anyway?",
+      "many": "These tests run custom Ruby code. Import anyway?",
+      "detail": "Only import files you trust. This is the code that will run:",
+      "confirm": "Import anyway",
+      "showAll": "Show all code",
+      "truncated": "Showing the first {{shown}} of {{total}} lines.",
+      "cancel": "Cancel",
+      "cancelled": "Nothing was imported.",
+      "secretNameRefused": "A password step in this file reads {{name}}. Password steps can only read variables that start with RAIDER_SECRET_, so nothing was imported."
+    },
     "saved": "Saved to your project as {{name}} ({{file}})",
     "savedNoFile": "Saved to your project as {{name}}",
     "saveRefusedCodeOwned": "This test was changed in code, so the recording wasn't saved. Your steps are still here.",
@@ -477,6 +488,7 @@
     "runFailed": "Raider couldn't run this test.",
     "noRuby": "Raider can't find Ruby on this computer, so it can't run tests yet.",
     "noStartUrl": "There's no page to start recording on. Enter a URL for this test, or set the project's base URL in Settings.",
+    "unsupportedUrl": "Only http and https websites can be recorded.",
     "placeholder": {
       "url": "Enter URL to record",
       "commands": "Recorded Selenium Ruby commands will appear here..."
@@ -587,6 +599,7 @@
       "clickElement": "Click \"{{element}}\"",
       "pressKey": "Press the {{key}} key on \"{{element}}\"",
       "typeText": "Type \"{{text}}\" into \"{{element}}\"",
+      "typeSecret": "Type secret (from {{name}}) into \"{{element}}\"",
       "switchToFrame": "Switch to frame \"{{element}}\"",
       "switchToDefaultContent": "Switch back to main content",
       "assertElementDisplayed": "Assert that \"{{element}}\" is displayed",
@@ -602,6 +615,12 @@
     },
     "step": {
       "custom": "Custom code step",
+      "secretRename": "Change variable",
+      "secretNameLabel": "Variable name",
+      "secretNameInvalid": "Use RAIDER_SECRET_ followed by capital letters, digits or _, for example RAIDER_SECRET_ADMIN.",
+      "secretNameRefused": "This step reads {{name}}. A password step can only read a variable that starts with RAIDER_SECRET_, so it wasn't used.",
+      "secretUnnamed": "This password step has no variable yet.",
+      "secretMissing": "This step types a password from {{name}}, which isn't set on this computer. Set it, restart Raider, and try again.",
       "renderFailed": "Couldn't render code"
     }
   },

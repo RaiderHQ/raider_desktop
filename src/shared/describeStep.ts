@@ -1,4 +1,5 @@
 import type { AssertKind, ElementTarget, Step } from './types/step'
+import { secretNameOf } from './secretSteps'
 
 /** An i18n key plus its interpolation values; the friendly view never shows Ruby. */
 export interface StepDescription {
@@ -37,6 +38,15 @@ export function describeStep(step: Step): StepDescription {
     case 'click':
       return { key: `${P}.clickElement`, values: { element: elementName(step.element) } }
     case 'type':
+      if (step.secret) {
+        return {
+          key: `${P}.typeSecret`,
+          values: {
+            element: elementName(step.element),
+            name: secretNameOf(step)
+          }
+        }
+      }
       return {
         key: `${P}.typeText`,
         values: { element: elementName(step.element), text: step.text }

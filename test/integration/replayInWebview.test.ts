@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { EventEmitter } from 'events'
 
 const mockSend = vi.fn()
@@ -99,6 +99,63 @@ describe('replayInWebview', () => {
     expect(jsAt(0)).toContain(`setter.call(el, ${JSON.stringify('hello')})`)
     expect(jsAt(0)).toContain("new Event('input'")
     expect(jsAt(0)).toContain("new Event('change'")
+  })
+
+  describe('secret type steps', () => {
+    const secret = (id: string): Step => ({ id, kind: 'type', element: el, text: '', secret: true })
+    afterEach(() => {
+      delete process.env.RAIDER_SECRET_1
+      delete process.env.RAIDER_SECRET_2
+    })
+
+    it('types the value of the numbered environment variable', async () => {
+      process.env.RAIDER_SECRET_1 = 'first'
+      process.env.RAIDER_SECRET_2 = 'hunter2'
+      const result = await run([secret('a'), secret('b')])
+      expect(jsAt(1)).toContain(`setter.call(el, ${JSON.stringify('hunter2')})`)
+      expect(result).toEqual({ success: true, skippedStepIds: [] })
+    })
+
+    it('refuses a variable that is not RAIDER_SECRET_, and never reads or types it', async () => {
+      process.env.GITHUB_TOKEN = 'ghp_leak'
+      try {
+        const result = await run([{ ...secret('a'), secretName: 'GITHUB_TOKEN' } as Step])
+        expect(result.success).toBe(false)
+        expect(result.failedStepId).toBe('a')
+        expect(result.error).toContain('GITHUB_TOKEN')
+        expect(result.error).toContain('RAIDER_SECRET_')
+        expect(JSON.stringify(mockExecuteJavaScript.mock.calls)).not.toContain('ghp_leak')
+      } finally {
+        delete process.env.GITHUB_TOKEN
+      }
+    })
+
+    it('reads the variable stored on the step, wherever the step now is', async () => {
+      process.env.RAIDER_SECRET_ADMIN = 'admin-secret'
+      process.env.RAIDER_SECRET_1 = 'user-secret'
+      try {
+        await run([
+          { ...secret('b'), secretName: 'RAIDER_SECRET_ADMIN' } as Step,
+          { ...secret('a'), secretName: 'RAIDER_SECRET_1' } as Step
+        ])
+        expect(jsAt(0)).toContain(`setter.call(el, ${JSON.stringify('admin-secret')})`)
+        expect(jsAt(1)).toContain(`setter.call(el, ${JSON.stringify('user-secret')})`)
+      } finally {
+        delete process.env.RAIDER_SECRET_ADMIN
+      }
+    })
+
+    it('stops with a clear message instead of typing nothing when the variable is not set', async () => {
+      process.env.RAIDER_SECRET_1 = 'first'
+      const result = await run([secret('a'), secret('b')])
+      expect(mockExecuteJavaScript).toHaveBeenCalledTimes(1)
+      expect(result.success).toBe(false)
+      expect(result.failedStepId).toBe('b')
+      expect(result.error).toContain('RAIDER_SECRET_2')
+      expect(result.error).toContain(
+        'Step 2 (Type secret (from RAIDER_SECRET_2) into "Login button")'
+      )
+    })
   })
 
   it('presses a key with keydown, keypress, keyup and submits the form on Enter', async () => {

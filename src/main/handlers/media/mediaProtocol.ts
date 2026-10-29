@@ -147,6 +147,8 @@ export const registerMediaScheme = (): void => {
   ])
 }
 
+// Registered on the default (app) session only: the recorder webview runs in
+// RECORDER_PARTITION, so the websites it records can't load raider-media:// URLs
 export const registerMediaHandler = (): void => {
   protocol.handle(SCHEME, handleMediaRequest)
 }

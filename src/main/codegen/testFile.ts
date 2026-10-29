@@ -3,6 +3,7 @@ import type { Step } from '../../shared/types/step'
 import { posix } from 'node:path'
 import { rubyString } from './ruby'
 import { renderStep } from './steps'
+import { withSecretNames } from '../../shared/secretSteps'
 import type { Automation } from './steps'
 
 export type { Automation }
@@ -68,7 +69,8 @@ export function generateRspecFile(
   const setup = watir ? watirSetup(settings) : seleniumSetup(settings)
   const teardown = watir ? '@browser.close' : '@driver.quit'
   const name = rubyString(test.name)
-  const body = test.steps.map((step) => indent(renderStep(step, automation), 4))
+  // Steps loaded through migrateLegacyTest are named already; this covers any caller that isn't
+  const body = withSecretNames(test.steps).map((step) => indent(renderStep(step, automation), 4))
 
   return [
     `require '${watir ? 'watir' : 'selenium-webdriver'}'`,
@@ -164,7 +166,7 @@ export function generateProjectSpecFile(
         `    Selenium::WebDriver::Wait.new(timeout: ${CONFIG_WAIT})`,
         '  end'
       ]
-  const body = test.steps.map((step) =>
+  const body = withSecretNames(test.steps).map((step) =>
     indent(renderStep(step, automation, { receiver: 'helper' }), 4)
   )
   const cops = copsToDisable(test.name, body).join(', ')

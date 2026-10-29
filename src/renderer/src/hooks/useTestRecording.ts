@@ -70,6 +70,10 @@ async function saveTraceOf(test: Test): Promise<Test> {
 /** The recording started for `target` was left (saved or dropped) while it was starting */
 const leftDuringStart = (target: RecordingTarget): boolean => store().recordingTarget !== target
 
+// Why a recording didn't start: no address at all, or one the recorder can't open
+const startFailedKey = (result: { reason?: 'unsupportedUrl' }): string =>
+  result.reason === 'unsupportedUrl' ? 'recorder.unsupportedUrl' : 'recorder.noStartUrl'
+
 /** Stops a recording main started after the user left it, unless another one took its place */
 function stopAbandonedRecording(): void {
   if (store().recordingTarget === null) window.api.stopRecordingMain()
@@ -397,7 +401,7 @@ export function useTestRecording(): TestRecording {
       store().setRecordingBrowser({ url: result.url, preloadPath: result.preloadPath })
     } else {
       store().setRecordingTarget(null)
-      toast.error(t('recorder.noStartUrl'))
+      toast.error(t(startFailedKey(result)))
     }
   }, [])
 
@@ -426,7 +430,7 @@ export function useTestRecording(): TestRecording {
         setIsReplayingToBreakpoint(false)
         setBreakpointIndex(null)
         store().setRecordingTarget(null)
-        toast.error(t('recorder.noStartUrl'))
+        toast.error(t(startFailedKey(recResult)))
         return
       }
       store().setRecordingBrowser({ url: recResult.url, preloadPath: recResult.preloadPath })

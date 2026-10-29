@@ -87,6 +87,23 @@ describe('recorded tests', () => {
     expect(await readSidecar(project, 'spec/checkout_spec.rb')).toEqual(sidecar)
   })
 
+  it('a secret step is saved as an environment lookup, never as a value', async () => {
+    const secret: Step = {
+      id: 'pw',
+      kind: 'type',
+      element: { strategy: 'id', value: 'password' },
+      text: '',
+      secret: true
+    }
+    const sidecar = await saveRecordedTest(project, layout, test({ steps: [secret] }))
+    const spec = await readFile(join(project, sidecar.file), 'utf-8')
+    expect(spec).toContain("send_keys(ENV.fetch('RAIDER_SECRET_1'))")
+    // An unnamed secret is named once and saved that way
+    expect((await readSidecar(project, sidecar.file))?.steps).toEqual([
+      { ...secret, secretName: 'RAIDER_SECRET_1' }
+    ])
+  })
+
   it('name clash appends suffix', async () => {
     await mkdir(join(project, 'spec'))
     const handWritten = "describe 'mine' do\nend\n"
