@@ -165,9 +165,10 @@ union breaks only an exhaustive `never` switch, so we ask them to check.
     `truncated`.
 - **Finishing:** the status is decided in this order:
   1. `cancelled` if a cancel was requested;
-  2. `errored` if live mode saw no plan, or the exit code isn't 0 (including
-     no exit code, i.e. killed by a signal) and no result came in, whether
-     from the events or from run.json in degraded mode;
+  2. `errored` if the exit code isn't 0 (including no exit code, i.e.
+     killed by a signal) and no result came in, whether from the events or
+     from run.json. Live mode that never saw a plan (the formatter wasn't
+     loaded) finishes exactly like degraded mode, from run.json;
   3. `failed` if any test failed, or if `quarantinedFails` is set and any
      test was quarantined, or if the exit code isn't 0 for any reason other
      than quarantined failures (live mode: the exit code is 1 and every
@@ -204,9 +205,12 @@ union breaks only an exhaustive `never` switch, so we ask them to check.
     state. There's no plan and no per-test events, and output still streams.
   - The renderer can show "Update raider_reporter for live test states"
     (text is the desktop session's call).
-  - *My call:* if a live-mode run shows no plan, it ends as `errored` only
-    when the process exits. There's no watchdog timer, because slow boots
-    are real.
+  - If a live-mode run shows no plan (e.g. the formatter isn't loaded), it
+    finishes like degraded mode, from run.json, when the process exits.
+    There's no watchdog timer, because slow boots are real.
+  - The lock is read again after the bundle install, so a lock the install
+    just wrote decides the run.json fallback; `run:started` keeps the first
+    read, since it goes out before the install.
 - **Longship:** *my call* to keep today's behaviour: `pushToLongship(success,
   output, durationMs)` on finish, with `success = status === 'passed' ||
   status === 'failed'`, matching today's "tests ran" meaning.

@@ -30,13 +30,23 @@ export async function getProjectLayoutHandler(): Promise<ProjectLayout | null> {
 export async function listedFile(
   file: unknown
 ): Promise<{ projectPath: string; layout: ProjectLayout; file: string }> {
+  const { projectPath, layout, files } = await listedFiles([file])
+  return { projectPath, layout, file: files[0] }
+}
+
+/** listedFile for several files against a single scan of the project. */
+export async function listedFiles(
+  files: unknown[]
+): Promise<{ projectPath: string; layout: ProjectLayout; files: string[] }> {
   await activationSettled()
   const { projectPath, layout } = appState
   if (!projectPath || !layout) throw new Error(NO_PROJECT)
-  if (typeof file !== 'string') throw new Error('Not a spec file')
-  const listed = await listProjectTests(projectPath, layout)
-  if (!listed.some((entry) => entry.file === file)) throw new Error(`Not a project test: ${file}`)
-  return { projectPath, layout, file }
+  for (const file of files) if (typeof file !== 'string') throw new Error('Not a spec file')
+  const listed = new Set((await listProjectTests(projectPath, layout)).map((entry) => entry.file))
+  for (const file of files as string[]) {
+    if (!listed.has(file)) throw new Error(`Not a project test: ${file}`)
+  }
+  return { projectPath, layout, files: files as string[] }
 }
 
 /** 'open-code-test': the read-only view of a listed spec file. */

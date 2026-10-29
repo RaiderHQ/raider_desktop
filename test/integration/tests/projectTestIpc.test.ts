@@ -11,6 +11,7 @@ import setActiveProject from '../../../src/main/handlers/project/setActiveProjec
 import {
   getProjectLayoutHandler,
   listProjectTestsHandler,
+  listedFiles,
   openCodeTestHandler,
   recordOverExampleHandler,
   runProjectFileHandler
@@ -54,6 +55,15 @@ describe('project test IPC', () => {
     const entries = await listProjectTestsHandler()
     expect(entries.map((e) => e.file)).toContain('spec/a_spec.rb')
     expect((await getProjectLayoutHandler())?.specPath).toBeTruthy()
+  })
+
+  it('listedFiles accepts listed files and rejects the request if any is not listed', async () => {
+    await setActiveProject(project)
+    expect((await listedFiles(['spec/a_spec.rb'])).files).toEqual(['spec/a_spec.rb'])
+    await expect(listedFiles(['spec/a_spec.rb', 'other_spec.rb'])).rejects.toThrow(
+      'Not a project test: other_spec.rb'
+    )
+    await expect(listedFiles(['spec/a_spec.rb', 3])).rejects.toThrow('Not a spec file')
   })
 
   it('open-code-test opens a listed file', async () => {

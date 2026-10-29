@@ -1,6 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { descendantPids, descendantsOf, parsePs } from '../../../src/main/handlers/run/processTree'
+import {
+  descendantPids,
+  descendantsOf,
+  freshKillTargets,
+  killTargets,
+  parsePs
+} from '../../../src/main/handlers/run/processTree'
 
 const PS = [
   '    1     0     1',
@@ -54,5 +60,24 @@ describe('processTree', () => {
         throw new Error('boom')
       })
     ).toEqual([])
+  })
+
+  describe('killTargets (SIGKILL some time after recording)', () => {
+    it('kills fresh descendants and recorded pids still parented inside the run', () => {
+      // 102 (chromedriver) was reparented to 1 after 101 died; 103 (browser) still under 102
+      const later = parsePs('100 1 100\n102 1 102\n103 102 102\n104 100 100\n')
+      expect(killTargets(100, [101, 102, 103], later).sort()).toEqual([103, 104])
+    })
+
+    it('leaves a recorded pid alone once it was reused by an unrelated process', () => {
+      const later = parsePs('100 1 100\n101 200 200\n200 1 200\n')
+      expect(killTargets(100, [101], later)).toEqual([])
+    })
+
+    it('reads a fresh ps and returns [] when ps fails', () => {
+      const stub = (): { stdout: string; status: number } => ({ stdout: PS, status: 0 })
+      expect(freshKillTargets(100, [], stub)).toEqual([101, 102, 103])
+      expect(freshKillTargets(100, [101], ps(null, 1))).toEqual([])
+    })
   })
 })

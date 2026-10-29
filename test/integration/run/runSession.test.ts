@@ -118,6 +118,17 @@ describe('RunSession', () => {
     expect(finished(emitted).counts).toMatchObject({ total: 2, passed: 1, failed: 1 })
   })
 
+  it('live mode without a plan finishes like degraded mode', () => {
+    const fb: RunCounts = { total: 2, passed: 1, failed: 1, quarantined: 0, pending: 0, skipped: 0 }
+    const a = make()
+    a.session.finish(1, fb)
+    expect(a.session.hasPlan()).toBe(false)
+    expect(finished(a.emitted)).toMatchObject({ status: 'failed', counts: fb })
+    const b = make()
+    b.session.finish(0)
+    expect(finished(b.emitted).status).toBe('passed')
+  })
+
   it('uses fallbackCounts only when no example result arrived', () => {
     const fb: RunCounts = { total: 4, passed: 4, failed: 0, quarantined: 0, pending: 0, skipped: 0 }
     const a = make({ liveEvents: false })
@@ -205,8 +216,6 @@ describe('RunSession', () => {
 describe('finishStatus', () => {
   const base = {
     cancelled: false,
-    liveEvents: true,
-    planned: true,
     exitCode: 0 as number | null,
     counts: { ...zero, total: 1, passed: 1 },
     quarantinedFails: false
@@ -217,7 +226,7 @@ describe('finishStatus', () => {
       { cancelled: true, exitCode: 1, counts: { ...zero, failed: 1 } },
       'cancelled'
     ],
-    ['live with no plan and exit 1', { planned: false, exitCode: 1, counts: zero }, 'errored'],
+    ['no results and exit 1', { exitCode: 1, counts: zero }, 'errored'],
     ['exit 137 with no results', { exitCode: 137, counts: zero }, 'errored'],
     [
       'exit 1, quarantined only',
@@ -231,13 +240,7 @@ describe('finishStatus', () => {
     ],
     ['exit 0 all passed', {}, 'passed'],
     ['exit 1, 1 failed', { exitCode: 1, counts: { ...zero, total: 1, failed: 1 } }, 'failed'],
-    ['degraded with exit 0', { liveEvents: false, planned: false, counts: zero }, 'passed'],
-    [
-      'degraded exit 1 without counts',
-      { liveEvents: false, planned: false, exitCode: 1, counts: zero },
-      'errored'
-    ],
-    ['live, planned, exit 1 without results', { exitCode: 1, counts: zero }, 'errored'],
+    ['exit 0 without results (live without a plan, or degraded)', { counts: zero }, 'passed'],
     ['exit 137 after results', { exitCode: 137 }, 'failed'],
     ['null exit without results', { exitCode: null, counts: zero }, 'errored']
   ] as const)('%s', (_name, over, expected) => {

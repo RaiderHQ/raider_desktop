@@ -21,15 +21,12 @@ const hasResults = (c: RunCounts): boolean =>
 /** The run's final status; rules apply in order. */
 export function finishStatus(input: {
   cancelled: boolean
-  liveEvents: boolean
-  planned: boolean
   exitCode: number | null
   counts: RunCounts
   quarantinedFails: boolean
 }): RunFinishedStatus {
   const { exitCode, counts } = input
   if (input.cancelled) return 'cancelled'
-  if (input.liveEvents && !input.planned) return 'errored'
   // A non-zero (or signal) exit before any result: a crash, not a test failure
   if (exitCode !== 0 && !hasResults(counts)) return 'errored'
   if (counts.failed > 0) return 'failed'
@@ -63,11 +60,9 @@ export class RunSession {
   private trimmed = false
   private cancelled = false
   private finished = false
-  private liveEvents: boolean
 
   constructor(private readonly opts: RunSessionOptions) {
     this.now = opts.now ?? ((): Date => new Date())
-    this.liveEvents = opts.liveEvents
   }
 
   start(): void {
@@ -118,12 +113,9 @@ export class RunSession {
     this.drainOutput()
   }
 
-  /**
-   * Corrects live/degraded mode for the final status after run:started went out, e.g.
-   * when the bundle install wrote a Gemfile.lock that wasn't there before.
-   */
-  setLiveEvents(liveEvents: boolean): void {
-    this.liveEvents = liveEvents
+  /** Whether a plan arrived; without one the run finishes from run.json, as in degraded mode. */
+  hasPlan(): boolean {
+    return this.planned
   }
 
   /** Only records the intent; finish() decides the status. */
@@ -138,8 +130,6 @@ export class RunSession {
     const counts = this.latest.size === 0 && fallbackCounts ? fallbackCounts : this.counts()
     const status = finishStatus({
       cancelled: this.cancelled,
-      liveEvents: this.liveEvents,
-      planned: this.planned,
       exitCode,
       counts,
       quarantinedFails: this.opts.request.quarantinedFails === true

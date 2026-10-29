@@ -15,7 +15,7 @@ import { appState } from '../appState'
 import checkBundle from '../ruby/checkBundle'
 import bundleInstall from '../ruby/bundleInstall'
 import { pushToLongship } from '../longship/pushToLongship'
-import { listedFile } from '../tests/projectTestIpc'
+import { listedFiles } from '../tests/projectTestIpc'
 import { buildShellCommand } from '../../utils/shellCommand'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
 import { safeWarn } from '../../utils/safeLog'
@@ -26,7 +26,7 @@ import { EventTail } from './eventTail'
 import { Translator } from './translate'
 import { RunSession } from './runSession'
 import { OutputPrefixParser } from './outputPrefix'
-import { descendantPids, descendantProcesses, signalPid } from './processTree'
+import { descendantProcesses, freshKillTargets, signalPid } from './processTree'
 
 export interface RunnerDeps {
   send(e: RunEvent): void
@@ -118,14 +118,16 @@ async function validate(request: unknown): Promise<RunRequest> {
     case 'all':
       break
     case 'files':
-      for (const file of nonEmptyStrings(s.files, 'files')) await listedFile(file)
+      await listedFiles(nonEmptyStrings(s.files, 'files'))
       break
     case 'locations':
-      for (const location of nonEmptyStrings(s.locations, 'locations')) {
-        const match = LOCATION.exec(location)
-        if (!match) throw new Error(`Not a test location: ${location}`)
-        await listedFile(match[1])
-      }
+      await listedFiles(
+        nonEmptyStrings(s.locations, 'locations').map((location) => {
+          const match = LOCATION.exec(location)
+          if (!match) throw new Error(`Not a test location: ${location}`)
+          return match[1]
+        })
+      )
       break
     case 'tags':
       validateTags(nonEmptyStrings(s.tags, 'tags'))
@@ -223,7 +225,7 @@ export async function startRun(
     const projectPath = appState.projectPath
     if (!projectPath) throw new Error('No project is open.')
     const valid = await validate(request)
-    // listedFile checked against the project open now; run only if it's still the same one
+    // listedFiles checked against the project open now; run only if it's still the same one
     if (appState.projectPath !== projectPath)
       throw new Error('The project changed, so the tests were not run.')
     const framework = await detectFramework(projectPath)
@@ -315,14 +317,16 @@ async function launch(
       return finishEarly(null)
     }
     // An install may have written the Gemfile.lock; run:started keeps the first read
-    // (it went out before the install), but the final status uses this one
+    // (it went out before the install), but the run.json fallback decision uses this one
     run.liveEvents = await readLiveEvents(run.projectPath)
-    session.setLiveEvents(run.liveEvents)
     if (active.cancelled) return finishEarly(null)
 
     const dir = path.join(deps.tempRoot, runId)
     lastRunDir = dir
-    await fs.mkdir(dir, { recursive: true })
+    // Owner-only: other local users must not read or plant event files
+    await fs.mkdir(deps.tempRoot, { recursive: true, mode: 0o700 })
+    await fs.chmod(deps.tempRoot, 0o700).catch(() => {})
+    await fs.mkdir(dir, { mode: 0o700 })
     if (active.cancelled) return finishEarly(null)
 
     const env: NodeJS.ProcessEnv = {
@@ -388,8 +392,10 @@ async function launch(
               session.output(stream, text, worker)
           }
         }
-        // run.json finished_at may have only second precision, so compare from the start's second
-        if (!run.liveEvents) {
+        // Degraded mode, or live mode that never saw a plan (formatter not loaded): count
+        // from run.json. Its finished_at may have only second precision, so compare from
+        // the start's second
+        if (!run.liveEvents || !session.hasPlan()) {
           fallback = await resultCounts(run.projectPath, Math.floor(startedAt / 1000) * 1000)
         }
       } catch (error) {
@@ -457,14 +463,14 @@ function kill(child: ChildProcess, signal: 'SIGINT' | 'SIGKILL'): boolean {
 
 /**
  * SIGKILLs the run's process group and every process below it (POSIX), plus `known`
- * pids in case they were reparented. Descendants are walked before the group dies.
+ * pids that are still inside the run's tree (see killTargets). Walked before the group dies.
  */
 function killTree(child: ChildProcess, known: number[] = []): void {
   const pid = child.pid
   if (pid === undefined) return
-  const tree = descendantPids(pid)
+  const targets = freshKillTargets(pid, known)
   kill(child, 'SIGKILL')
-  for (const p of new Set([...tree, ...known])) signalPid(p, 'SIGKILL')
+  for (const p of targets) signalPid(p, 'SIGKILL')
 }
 
 /**

@@ -122,7 +122,7 @@ export type RunEvent =
       exitCode: number | null
       /**
        * `errored`: the process failed before or outside examples (load error, bundler, a
-       * crash or kill before any result arrived, live mode with no plan); run:output has why.
+       * non-zero exit, crash or kill before any result arrived); run:output has why.
        */
       status: RunFinishedStatus
       counts: RunCounts

@@ -12,17 +12,19 @@ vi.mock('../../../src/main/handlers/longship/pushToLongship', () => ({
 }))
 const LISTED = ['spec/a_spec.rb', 'spec/b_spec.rb']
 vi.mock('../../../src/main/handlers/tests/projectTestIpc', () => ({
-  listedFile: vi.fn(async (file: unknown) => {
-    if (typeof file !== 'string' || !LISTED.includes(file)) {
-      throw new Error(`Not a project test: ${String(file)}`)
+  listedFiles: vi.fn(async (files: unknown[]) => {
+    for (const file of files) {
+      if (typeof file !== 'string' || !LISTED.includes(file)) {
+        throw new Error(`Not a project test: ${String(file)}`)
+      }
     }
-    return { projectPath: '', layout: {}, file }
+    return { projectPath: '', layout: {}, files }
   })
 }))
 
 import { appState } from '../../../src/main/handlers/appState'
 import { pushToLongship } from '../../../src/main/handlers/longship/pushToLongship'
-import { listedFile } from '../../../src/main/handlers/tests/projectTestIpc'
+import { listedFiles } from '../../../src/main/handlers/tests/projectTestIpc'
 import {
   cancelRun,
   getActiveRun,
@@ -333,21 +335,67 @@ describe('runner', () => {
     }
   )
 
-  it('uses the Gemfile.lock written by the bundle install for the final status', async () => {
+  it('uses the Gemfile.lock written by the bundle install for the run.json fallback', async () => {
     fs.rmSync(path.join(project, 'Gemfile.lock'))
     deps.ensureBundle = async (projectPath, _r, onInstalling): Promise<{ ok: boolean }> => {
       onInstalling()
       fs.writeFileSync(path.join(projectPath, 'Gemfile.lock'), LIVE_LOCK)
       return { ok: true }
     }
-    // Live mode with no plan is errored; degraded mode would call it passed
-    script = { steps: [], exitCode: 0 }
+    // Live and planned: counts come from the plan, not run.json (degraded would count the failure)
+    script = { steps: [{ event: plan('t1') }, { runJson: ['failed'] }], exitCode: 0 }
     const runId = await run()
     const done = await finishedEvent(runId)
     const sequence = ofRun(runId).filter((e) => e.type === 'run:started' || e.type === 'run:phase')
     expect(sequence[0]).toMatchObject({ type: 'run:started', liveEvents: false })
     expect(sequence[1]).toMatchObject({ type: 'run:phase', phase: 'installing' })
-    expect(done.status).toBe('errored')
+    expect(done.status).toBe('passed')
+    expect(done.counts).toMatchObject({ total: 1, failed: 0 })
+  })
+
+  it('live mode without a plan finishes like degraded mode', async () => {
+    // Reporter 0.11 in the lock but the formatter not loaded: no events at all
+    script = { steps: [{ stdout: 'tests ran\n' }], exitCode: 0 }
+    const passing = await run()
+    expect((await finishedEvent(passing)).status).toBe('passed')
+
+    script = { steps: [], exitCode: 1 }
+    const crashed = await run()
+    expect((await finishedEvent(crashed)).status).toBe('errored')
+
+    script = { steps: [{ runJson: ['passed', 'failed'] }], exitCode: 1 }
+    const failing = await run()
+    const done = await finishedEvent(failing)
+    expect(done.status).toBe('failed')
+    expect(done.counts).toMatchObject({ total: 2, passed: 1, failed: 1 })
+  })
+
+  it.skipIf(process.platform === 'win32')('creates the run dirs owner-only', async () => {
+    fs.chmodSync(tempRoot, 0o755)
+    const runId = await run()
+    await finishedEvent(runId)
+    expect(fs.statSync(tempRoot).mode & 0o777).toBe(0o700)
+    expect(fs.statSync(path.join(tempRoot, runId)).mode & 0o777).toBe(0o700)
+  })
+
+  it('checks every requested file against one project listing', async () => {
+    vi.mocked(listedFiles).mockClear()
+    const files = await run({
+      scope: { kind: 'files', files: ['spec/a_spec.rb', 'spec/b_spec.rb'] },
+      rubyCommand: 'ruby'
+    })
+    await finishedEvent(files)
+    expect(listedFiles).toHaveBeenCalledTimes(1)
+    expect(listedFiles).toHaveBeenCalledWith(['spec/a_spec.rb', 'spec/b_spec.rb'])
+
+    vi.mocked(listedFiles).mockClear()
+    const locations = await run({
+      scope: { kind: 'locations', locations: ['spec/a_spec.rb:3', 'spec/b_spec.rb:9'] },
+      rubyCommand: 'ruby'
+    })
+    await finishedEvent(locations)
+    expect(listedFiles).toHaveBeenCalledTimes(1)
+    expect(listedFiles).toHaveBeenCalledWith(['spec/a_spec.rb', 'spec/b_spec.rb'])
   })
 
   it('degraded mode: liveEvents false, no plan, finishes by exit code', async () => {
@@ -520,9 +568,9 @@ describe('runner', () => {
 
   it('rejects a run when the project changes during validation', async () => {
     const other = fs.mkdtempSync(path.join(os.tmpdir(), 'runner-other-'))
-    vi.mocked(listedFile).mockImplementationOnce(async (file: unknown) => {
+    vi.mocked(listedFiles).mockImplementationOnce(async (files: unknown[]) => {
       appState.projectPath = other
-      return { projectPath: other, layout: {} as never, file: String(file) }
+      return { projectPath: other, layout: {} as never, files: files as string[] }
     })
     try {
       const result = await startRun(

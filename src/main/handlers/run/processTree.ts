@@ -70,6 +70,43 @@ export function descendantProcesses(
 export const descendantPids = (rootPid: number, ps?: Ps): number[] =>
   descendantProcesses(rootPid, ps).map((p) => p.pid)
 
+/**
+ * What to SIGKILL some time after `recorded` was walked: the fresh descendants, plus any
+ * recorded pid that is still alive with its parent inside the run's tree (the root, a
+ * fresh descendant or another recorded pid), e.g. a browser whose chromedriver was
+ * reparented. A recorded pid that now belongs to some other parent may have been reused,
+ * so it is left alone.
+ */
+export function killTargets(
+  rootPid: number,
+  recorded: number[],
+  entries: ProcessEntry[]
+): number[] {
+  const fresh = descendantsOf(rootPid, entries).map((p) => p.pid)
+  const tree = new Set([rootPid, ...fresh, ...recorded])
+  const targets = new Set(fresh)
+  for (const entry of entries) {
+    if (recorded.includes(entry.pid) && entry.pid !== rootPid && tree.has(entry.ppid))
+      targets.add(entry.pid)
+  }
+  return [...targets]
+}
+
+/** killTargets from a fresh ps read; [] if ps fails. */
+export function freshKillTargets(
+  rootPid: number,
+  recorded: number[],
+  ps: Ps = spawnSync as unknown as Ps
+): number[] {
+  try {
+    const result = ps('ps', ['-A', '-o', 'pid=,ppid=,pgid='], { encoding: 'utf8' })
+    if (result.error || result.status !== 0 || !result.stdout) return []
+    return killTargets(rootPid, recorded, parsePs(result.stdout))
+  } catch {
+    return []
+  }
+}
+
 /** Sends signal to pid, ignoring a process that is already gone (or any other failure). */
 export function signalPid(pid: number, signal: NodeJS.Signals): void {
   try {
