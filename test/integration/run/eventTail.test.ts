@@ -88,4 +88,33 @@ describe('EventTail', () => {
     await Promise.all([tail.poll(), tail.poll(), tail.poll()])
     expect(lines).toHaveLength(1)
   })
+
+  it('a poll requested mid-poll gets a follow-up pass that sees newer bytes', async () => {
+    const file = path.join(dir, 'worker-0.ndjson')
+    fs.writeFileSync(file, '{"a":1}\n')
+    const first = tail.poll()
+    fs.appendFileSync(file, '{"a":2}\n')
+    await tail.poll()
+    expect(lines).toEqual([
+      [0, { a: 1 }],
+      [0, { a: 2 }]
+    ])
+    await first
+  })
+
+  it('a throwing onLine does not lose the rest of the chunk', async () => {
+    const got: unknown[] = []
+    const t = new EventTail(
+      dir,
+      (_w, line) => {
+        got.push(line)
+        if (got.length === 1) throw new Error('boom')
+      },
+      () => {}
+    )
+    fs.writeFileSync(path.join(dir, 'worker-0.ndjson'), '{"a":1}\n{"a":2}\n')
+    await t.poll()
+    await t.poll()
+    expect(got).toEqual([{ a: 1 }, { a: 2 }])
+  })
 })

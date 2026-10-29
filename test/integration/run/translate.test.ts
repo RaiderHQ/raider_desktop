@@ -99,4 +99,41 @@ describe('Translator', () => {
     expect(t.translate(0, { v: 2, type: 'plan', tests: [test1] })).toEqual([])
     expect(t.badLines).toBe(1)
   })
+
+  describe('untrusted shapes', () => {
+    it('skips a bad plan entry, keeps the rest, counts it', () => {
+      const seen: number[] = []
+      const t = new Translator('r1', false, () => seen.push(1))
+      const [ev] = t.translate(0, { v: 1, type: 'plan', tests: [null, 5, test1] })
+      expect((ev as { tests: unknown[] }).tests).toHaveLength(1)
+      expect(seen).toHaveLength(2)
+    })
+
+    it('rejects a plan without a tests array', () => {
+      const t = new Translator('r1', false)
+      expect(t.translate(0, { v: 1, type: 'plan' })).toEqual([])
+      expect(t.badLines).toBe(1)
+    })
+
+    it('rejects started/finished without an id', () => {
+      const t = new Translator('r1', false)
+      expect(t.translate(0, { v: 1, type: 'started' })).toEqual([])
+      expect(t.translate(0, { v: 1, type: 'finished', status: 'passed' })).toEqual([])
+      expect(t.badLines).toBe(2)
+    })
+
+    it('rejects an unknown or missing finished status', () => {
+      const t = new Translator('r1', false)
+      expect(t.translate(0, { v: 1, type: 'finished', id: 'a', status: 'weird' })).toEqual([])
+      expect(t.translate(0, { v: 1, type: 'finished', id: 'a' })).toEqual([])
+      expect(t.badLines).toBe(2)
+    })
+
+    it('rejects non-object lines and calls onBadLine', () => {
+      let calls = 0
+      const t = new Translator('r1', false, () => calls++)
+      for (const line of [5, null, [], 'x']) expect(t.translate(0, line)).toEqual([])
+      expect(calls).toBe(4)
+    })
+  })
 })

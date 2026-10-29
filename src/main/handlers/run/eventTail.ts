@@ -15,7 +15,8 @@ interface FileState {
  */
 export class EventTail {
   private files = new Map<number, FileState>()
-  private inflight: Promise<void> | null = null
+  private current: Promise<void> | null = null
+  private queued: { promise: Promise<void>; resolve: () => void } | null = null
 
   constructor(
     private dir: string,
@@ -23,14 +24,40 @@ export class EventTail {
     private onBadLine: () => void
   ) {}
 
-  /** Overlapping calls share the poll already in flight. */
+  /**
+   * Passes never overlap. A call that arrives mid-pass gets one shared
+   * follow-up pass, so it sees bytes written after the current pass started.
+   */
   poll(): Promise<void> {
-    if (!this.inflight) {
-      this.inflight = this.pollOnce().finally(() => {
-        this.inflight = null
-      })
+    if (!this.current) {
+      this.current = this.loop()
+      return this.current
     }
-    return this.inflight
+    if (!this.queued) {
+      let resolve!: () => void
+      const promise = new Promise<void>((r) => {
+        resolve = r
+      })
+      this.queued = { promise, resolve }
+    }
+    return this.queued.promise
+  }
+
+  private async loop(): Promise<void> {
+    let waiter: { resolve: () => void } | null = null
+    for (;;) {
+      try {
+        await this.pollOnce()
+      } finally {
+        waiter?.resolve()
+      }
+      waiter = this.queued
+      this.queued = null
+      if (!waiter) {
+        this.current = null
+        return
+      }
+    }
   }
 
   private async pollOnce(): Promise<void> {
@@ -71,17 +98,20 @@ export class EventTail {
     } catch {
       return
     }
-    state.offset += chunk.length
     // Split on the newline byte before decoding so a multi-byte character cut by a read stays intact.
     let buf = Buffer.concat([state.partial, chunk])
+    const texts: string[] = []
     let nl = buf.indexOf(0x0a)
     while (nl !== -1) {
       const text = buf.subarray(0, nl).toString('utf8').trim()
       buf = buf.subarray(nl + 1)
-      if (text) this.emit(worker, text)
+      if (text) texts.push(text)
       nl = buf.indexOf(0x0a)
     }
+    // Advance state before emitting so a throwing callback can't replay or lose the chunk.
+    state.offset += chunk.length
     state.partial = buf
+    for (const text of texts) this.emit(worker, text)
   }
 
   private emit(worker: number, text: string): void {
@@ -89,9 +119,18 @@ export class EventTail {
     try {
       parsed = JSON.parse(text)
     } catch {
-      this.onBadLine()
+      this.safely(this.onBadLine)
       return
     }
-    this.onLine(worker, parsed)
+    this.safely(() => this.onLine(worker, parsed))
+  }
+
+  /** A throwing callback must not cost the rest of the chunk. */
+  private safely(fn: () => void): void {
+    try {
+      fn()
+    } catch {
+      // ignored
+    }
   }
 }

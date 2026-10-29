@@ -2,37 +2,55 @@ import type { ExampleStatus, PlannedTest, RunEvent } from '../../../shared/types
 
 type Raw = Record<string, unknown>
 
+const FINISHED_STATUSES: readonly string[] = [
+  'passed',
+  'failed',
+  'quarantined',
+  'pending',
+  'skipped'
+]
+
+function isRaw(value: unknown): value is Raw {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 /** Turns raider_reporter NDJSON lines (snake_case, v:1) into RunEvents. */
 export class Translator {
   private known = new Map<string, PlannedTest>()
-  /** Lines rejected for an unsupported `v` or a non-object shape. */
+  /** Lines (or plan entries) rejected as malformed or unsupported. */
   badLines = 0
 
   constructor(
     private runId: string,
-    private parallel: boolean
+    private parallel: boolean,
+    private onBadLine?: () => void
   ) {}
 
   translate(worker: number, line: unknown): RunEvent[] {
-    if (typeof line !== 'object' || line === null || (line as Raw).v !== 1) {
-      this.badLines += 1
-      return []
-    }
-    const raw = line as Raw
+    if (!isRaw(line) || line.v !== 1) return this.bad()
     const w = this.parallel ? { worker } : {}
-    switch (raw.type) {
+    switch (line.type) {
       case 'plan': {
-        const tests = (Array.isArray(raw.tests) ? raw.tests : []).map((t) =>
-          this.remember(t as Raw)
-        )
+        if (!Array.isArray(line.tests)) return this.bad()
+        const tests: PlannedTest[] = []
+        for (const entry of line.tests) {
+          const t = this.remember(entry)
+          if (t) tests.push(t)
+          else this.bad()
+        }
         return [{ type: 'run:planned', runId: this.runId, tests, ...w }]
       }
       case 'started': {
-        const t = this.remember(raw)
+        const t = this.remember(line)
+        if (!t) return this.bad()
         return [{ type: 'run:example', runId: this.runId, ...t, status: 'started', ...w }]
       }
       case 'finished': {
-        const id = String(raw.id)
+        if (typeof line.id !== 'string' || !line.id) return this.bad()
+        if (typeof line.status !== 'string' || !FINISHED_STATUSES.includes(line.status)) {
+          return this.bad()
+        }
+        const id = line.id
         const t = this.known.get(id) ?? {
           id,
           file: '',
@@ -45,9 +63,9 @@ export class Translator {
             type: 'run:example',
             runId: this.runId,
             ...t,
-            status: raw.status as ExampleStatus,
-            ...(typeof raw.duration_ms === 'number' ? { durationMs: raw.duration_ms } : {}),
-            ...(typeof raw.attempts === 'number' ? { attempt: raw.attempts } : {}),
+            status: line.status as ExampleStatus,
+            ...(typeof line.duration_ms === 'number' ? { durationMs: line.duration_ms } : {}),
+            ...(typeof line.attempts === 'number' ? { attempt: line.attempts } : {}),
             ...w
           }
         ]
@@ -57,13 +75,26 @@ export class Translator {
     }
   }
 
-  private remember(raw: Raw): PlannedTest {
+  private bad(): RunEvent[] {
+    this.badLines += 1
+    try {
+      this.onBadLine?.()
+    } catch {
+      // a throwing callback must not break translation
+    }
+    return []
+  }
+
+  /** Validates a test entry and remembers it by id; null when malformed. */
+  private remember(raw: unknown): PlannedTest | null {
+    if (!isRaw(raw) || typeof raw.id !== 'string' || !raw.id) return null
+    const description = typeof raw.description === 'string' ? raw.description : ''
     const test: PlannedTest = {
-      id: String(raw.id),
-      file: String(raw.file ?? ''),
+      id: raw.id,
+      file: typeof raw.file === 'string' ? raw.file : '',
       line: typeof raw.line === 'number' ? raw.line : null,
-      description: String(raw.description ?? ''),
-      fullName: String(raw.full_name ?? raw.description ?? '')
+      description,
+      fullName: typeof raw.full_name === 'string' ? raw.full_name : description
     }
     this.known.set(test.id, test)
     return test
