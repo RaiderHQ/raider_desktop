@@ -25,7 +25,14 @@ import importTest from '../../src/main/handlers/io/importTest'
 import saveRecording from '../../src/main/handlers/recording/saveRecording'
 import getSuites from '../../src/main/handlers/getSuites'
 import * as persistence from '../../src/main/handlers/suitePersistence'
-import { loadSuites, saveSuites } from '../../src/main/handlers/suitePersistence'
+import {
+  loadSuites,
+  saveSuites,
+  loadSuiteIndex,
+  saveSuiteIndex,
+  LegacySuitesFileError,
+  UnknownSuitesVersionError
+} from '../../src/main/handlers/suitePersistence'
 import type { Suite } from '../../src/shared/types/suite'
 
 let a: string
@@ -234,6 +241,71 @@ describe('suite files', () => {
 
   it('backupSuitesFile is a no-op when there is no suites file', async () => {
     expect(await persistence.backupSuitesFile(a)).toBeNull()
+  })
+})
+
+describe('suite index (version 3)', () => {
+  const index = [{ id: 's1', name: 'Smoke', testIds: ['t1', 't2'] }]
+  const write = async (body: string): Promise<void> => {
+    await fsp.mkdir(join(a, '.raider'), { recursive: true })
+    await writeFile(join(a, '.raider', 'suites.json'), body)
+  }
+
+  it('round trips and writes version 3', async () => {
+    await saveSuiteIndex(a, index)
+    const written = JSON.parse(await readFile(join(a, '.raider', 'suites.json'), 'utf-8'))
+    expect(written).toEqual({ version: 3, suites: index })
+    expect(await loadSuiteIndex(a)).toEqual({ suites: index, recoveredFromCorrupt: false })
+  })
+
+  it('returns an empty index when there is no file', async () => {
+    expect(await loadSuiteIndex(a)).toEqual({ suites: [], recoveredFromCorrupt: false })
+  })
+
+  it('corrupt version 3 index recovered', async () => {
+    await write(JSON.stringify({ version: 3, suites: [{ id: 's1', name: 'x', testIds: [1] }] }))
+    expect(await loadSuiteIndex(a)).toEqual({
+      suites: [],
+      recoveredFromCorrupt: true,
+      backupSaved: true
+    })
+    const [backup] = (await fsp.readdir(join(a, '.raider'))).filter((f) => f.endsWith('.bak'))
+    expect(backup).toMatch(/^suites\.json\.[0-9TZ-]+\.bak$/)
+    expect(await exists(join(a, '.raider', 'suites.json'))).toBe(false)
+  })
+
+  it('unparsable index recovered, best-effort when it cannot be moved', async () => {
+    await write('{not json')
+    vi.spyOn(fsp, 'rename').mockRejectedValueOnce(new Error('EACCES'))
+    expect(await loadSuiteIndex(a)).toEqual({
+      suites: [],
+      recoveredFromCorrupt: true,
+      backupSaved: false
+    })
+  })
+
+  it('a version 2 file is never treated as a corrupt index', async () => {
+    const v2 = JSON.stringify({ version: 2, suites: [suite('s')] })
+    await write(v2)
+    await expect(loadSuiteIndex(a)).rejects.toBeInstanceOf(LegacySuitesFileError)
+    expect(await readFile(join(a, '.raider', 'suites.json'), 'utf-8')).toBe(v2)
+    expect((await fsp.readdir(join(a, '.raider'))).filter((f) => f.endsWith('.bak'))).toEqual([])
+  })
+
+  it('a newer version file is neither migrated nor treated as corrupt', async () => {
+    const v4 = JSON.stringify({ version: 4, suites: [{ id: 's', name: 's', testIds: [] }] })
+    await write(v4)
+    await expect(loadSuiteIndex(a)).rejects.toBeInstanceOf(UnknownSuitesVersionError)
+    expect(await readFile(join(a, '.raider', 'suites.json'), 'utf-8')).toBe(v4)
+    expect((await fsp.readdir(join(a, '.raider'))).filter((f) => f.endsWith('.bak'))).toEqual([])
+  })
+
+  it('index and version 2 writes share one queue', async () => {
+    const v2 = saveSuites(a, [suite('old')])
+    const v3 = saveSuiteIndex(a, index)
+    await Promise.all([v2, v3])
+    const written = JSON.parse(await readFile(join(a, '.raider', 'suites.json'), 'utf-8'))
+    expect(written.version).toBe(3)
   })
 })
 

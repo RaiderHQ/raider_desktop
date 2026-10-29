@@ -26,6 +26,8 @@ test.describe('Overview settings toolbar - functional', () => {
       await mockMainIPCCapture(electronApp, channel, { success: true })
     }
     await enterMainLayout(electronApp, page, PROJECT)
+    // The Overview opens on the Tests tab; the settings toolbar is on Files
+    await page.getByRole('button', { name: 'Files', exact: true }).click()
   })
 
   test('URL save triggers update-browser-url', async ({ electronApp, page }) => {

@@ -39,16 +39,23 @@ test.describe('App Launch', () => {
     expect(criticalErrors).toHaveLength(0)
   })
 
-  test('default route loads the Welcome page', async ({ page }) => {
+  test('default route loads the Landing page', async ({ page }) => {
     await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Quick record' })).toBeVisible()
   })
 
-  test('navigation links are present once a project is open', async ({ electronApp, page }) => {
-    // The header nav only exists after a project is opened from the Welcome page
+  test('without a project the header title is not a link', async ({ page }) => {
+    await expect(page.locator('header').getByText('Ruby Raider', { exact: true })).toBeVisible()
+    await expect(page.locator('header a[href="#/overview"]')).toHaveCount(0)
+  })
+
+  test('the header title links to the Overview once a project is open', async ({
+    electronApp,
+    page
+  }) => {
     await mockRubyReady(electronApp, page)
     await enterMainLayout(electronApp, page)
-    await expect(page.locator('a[href="#/recorder"]')).toBeVisible()
-    await expect(page.locator('a[href="#/overview"]')).toBeVisible()
+    await expect(page.locator('header a[href="#/overview"]')).toBeVisible()
   })
 
   test('header logo is visible on launch', async ({ page }) => {

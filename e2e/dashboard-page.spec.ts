@@ -1,63 +1,35 @@
 import { test, expect } from './electronApp'
-import { goToRecorder, mockRubyReady } from './helpers/navigation'
-import { mockIPC, mockIPCSync } from './helpers/ipc-mock'
+import { goToOverview, mockRubyReady } from './helpers/navigation'
+import { setupProjectContext } from './helpers/ipc-mock'
 
-test.describe('Dashboard Tab (Recorder)', () => {
+// The results of a run live on the Overview's Dashboard tab (the recorder's own
+// dashboard is gone: a test's last run is on its page)
+test.describe('Dashboard tab (Overview)', () => {
   test.beforeEach(async ({ electronApp, page }) => {
     await mockRubyReady(electronApp, page)
-    // Mock IPC methods used on Recorder mount
-    await mockIPC(page, 'getSuites', [])
-    await mockIPCSync(page, 'onTestRunStatus')
-    await mockIPCSync(page, 'removeTestRunStatusListener')
-    await goToRecorder(page)
-    await page.waitForTimeout(500)
+    await setupProjectContext(page)
+    await goToOverview(page)
   })
 
-  test('shows Recording tab by default', async ({ page }) => {
-    // Recording tab content is shown by default
-    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).toBeVisible()
+  const tab = (page: import('@playwright/test').Page, name: string) =>
+    page.getByRole('button', { name, exact: true })
+
+  test('shows the Dashboard tab', async ({ page }) => {
+    await expect(tab(page, 'Dashboard')).toBeVisible()
   })
 
-  test('shows Dashboard tab button', async ({ page }) => {
-    const dashboardTab = page.locator('button').filter({ hasText: 'Dashboard' })
-    await expect(dashboardTab).toBeVisible()
-  })
-
-  test('switching to Dashboard tab works', async ({ page }) => {
-    const dashboardTab = page.locator('button').filter({ hasText: 'Dashboard' })
-    await dashboardTab.click()
-    await page.waitForTimeout(500)
-
-    // Recording content should be hidden
-    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).not.toBeVisible()
-  })
-
-  test('Recording Dashboard shows placeholder when no recording results', async ({ page }) => {
-    const dashboardTab = page.locator('button').filter({ hasText: 'Dashboard' })
-    await dashboardTab.click()
-    await page.waitForTimeout(500)
-
-    await expect(page.getByText('No recording results yet')).toBeVisible()
-    await expect(
-      page.getByText('Record and run a test from the Recording tab to see results here.')
-    ).toBeVisible()
+  test('shows an empty state when no tests have run', async ({ page }) => {
+    await tab(page, 'Dashboard').click()
+    await expect(page.getByText('No test results yet')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Open report' })).toBeDisabled()
   })
 
   test('switching tabs changes active styling', async ({ page }) => {
-    const recordingTab = page.locator('button').filter({ hasText: 'Recording' }).first()
-    const dashboardTab = page.locator('button').filter({ hasText: 'Dashboard' })
-
-    // Recording tab is active by default
-    await expect(recordingTab).toHaveClass(/border-ruby/)
-
-    // Switch to Dashboard
-    await dashboardTab.click()
-    await page.waitForTimeout(300)
-    await expect(dashboardTab).toHaveClass(/border-ruby/)
-
-    // Switch back to Recording
-    await recordingTab.click()
-    await page.waitForTimeout(300)
-    await expect(recordingTab).toHaveClass(/border-ruby/)
+    await expect(tab(page, 'Tests')).toHaveClass(/border-ruby/)
+    await tab(page, 'Dashboard').click()
+    await expect(tab(page, 'Dashboard')).toHaveClass(/border-ruby/)
+    await expect(tab(page, 'Tests')).not.toHaveClass(/border-ruby/)
+    await tab(page, 'Tests').click()
+    await expect(tab(page, 'Tests')).toHaveClass(/border-ruby/)
   })
 })

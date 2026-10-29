@@ -70,7 +70,7 @@ terminal, or the file tree.
 | Topic | Decision |
 |---|---|
 | Suites | Map to tags. |
-| Hand-edited recorded file | Becomes **code-owned**. Recorder opens it **read-only** (view + run). No fork. |
+| Hand-edited recorded file | Editable by hand and can be recorded over; one-time warning before replacing hand edits (Plan 4 design). |
 | Gherkin | Supported for Cucumber projects. |
 | Fixing tests | Non-coder fixes and maintains their own tests without code. |
 | Sharing work | git in the background, driven by the UI. CI runs the tests; results go to Raider SaaS. |

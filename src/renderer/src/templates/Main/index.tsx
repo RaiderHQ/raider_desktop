@@ -1,19 +1,18 @@
 import { useEffect, useState } from 'react'
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import toast, { Toaster } from 'react-hot-toast'
 import Logo from '@components/Logo'
-import NavBtn from '@components/NavBtn'
 import ConceptsModal from '@components/ConceptsModal'
 import RubyInstallModal from '@components/RubyInstallModal'
 import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
 import useVersionStore from '@foundation/Stores/versionStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import { installMissingGems } from '@foundation/installGems'
 
 const MainTemplate: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
-  const location = useLocation()
   const raiderVersion = useVersionStore((state: { version: string }) => state.version)
   const { setRubyCommand, setRubyVersion, setVersionWarning } = useRubyStore()
   const [isRubyInstallModalOpen, setIsRubyInstallModalOpen] = useState(false)
@@ -60,28 +59,33 @@ const MainTemplate: React.FC = (): JSX.Element => {
     return (): void => cleanup?.()
   }, [])
 
+  useEffect(() => {
+    const onMigrated = (_event: unknown, info: { migrated: number; postponed: boolean }): void => {
+      if (info.postponed) {
+        toast(t('suites.migrated.postponed'), { icon: '\u26A0\uFE0F', duration: 10000 })
+      } else {
+        toast.success(t('suites.migrated.done', { count: info.migrated }), { duration: 6000 })
+      }
+    }
+    const onTooNew = (): void => {
+      toast.error(t('suites.tooNew'), { duration: 10000 })
+    }
+    window.api.onTestsMigrated(onMigrated)
+    window.api.onSuitesTooNew(onTooNew)
+    return (): void => {
+      window.api.removeTestsMigratedListener(onMigrated)
+      window.api.removeSuitesTooNewListener(onTooNew)
+    }
+  }, [])
+
   const { rubyCommand } = useRubyStore()
 
   const handleInstallGems = async (): Promise<void> => {
     setIsGemsInstallModalOpen(false)
-    const toastId = toast.loading(`Installing missing gems: ${missingGems?.join(', ')}...`)
-    try {
-      const result = await window.api.installGems(rubyCommand!, missingGems!)
-      if (result.success) {
-        toast.success('Gems installed successfully!', { id: toastId })
-      } else {
-        toast.error(`Failed to install gems: ${result.error}`, { id: toastId })
-      }
-    } catch (error) {
-      toast.error(`Error installing gems: ${error}`, { id: toastId })
-    }
+    await installMissingGems(rubyCommand!, missingGems!)
   }
 
-  const isCreateProjectView = location.pathname === '/project/new'
   const projectPath = useProjectStore((state) => state.projectPath)
-
-  const isActive = (paths: string[]): boolean =>
-    paths.some((p) => (p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)))
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -101,7 +105,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
               ?
             </span>
           </button>
-          {projectPath || isActive(['/recorder']) ? (
+          {projectPath ? (
             <Link to="/overview" className="text-lg font-bold text-neutral-dark tracking-tight hover:text-ruby transition-colors">
               Ruby Raider
             </Link>
@@ -112,11 +116,6 @@ const MainTemplate: React.FC = (): JSX.Element => {
           )}
         </div>
 
-        {!isCreateProjectView && projectPath && (
-          <nav className="flex gap-2">
-            <NavBtn to="/recorder" label="Recorder" active={isActive(['/recorder'])} />
-          </nav>
-        )}
       </header>
 
       <main className="flex flex-col items-center justify-center flex-grow animate-page-enter pt-8 pb-8">

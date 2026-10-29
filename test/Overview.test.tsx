@@ -3,6 +3,7 @@ import Overview from '@pages/Overview'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import toast from 'react-hot-toast'
 
@@ -52,7 +53,16 @@ vi.mock('@foundation/Stores/rubyStore', () => ({
   }))
 }))
 
+// The project opens on the Tests tab; most of these tests are about the Files tab
+const openFilesTab = async (): Promise<void> => {
+  await act(async () => {
+    fireEvent.click(screen.getByText('overview.tabs.files'))
+  })
+}
+
 const mockApi = {
+  listProjectTests: vi.fn().mockResolvedValue([]),
+  getSuites: vi.fn().mockResolvedValue([]),
   readDirectory: vi.fn().mockResolvedValue([]),
   setActiveProject: vi.fn().mockResolvedValue({ success: true }),
   onTestRunStatus: vi.fn(),
@@ -67,7 +77,12 @@ const mockApi = {
   runRakeTask: vi.fn().mockResolvedValue({ success: true }),
   rerunFailedTests: vi.fn().mockResolvedValue({ success: true }),
   isMobileProject: vi.fn().mockResolvedValue({ success: true, isMobileProject: false }),
+  isQuickProject: vi.fn().mockResolvedValue(false),
+  selectFolder: vi.fn().mockResolvedValue(null),
+  saveQuickProjectTo: vi.fn(),
   getMobileCapabilities: vi.fn().mockResolvedValue({ success: true, capabilities: {} }),
+  getRecorderSettings: vi.fn().mockResolvedValue({ implicitWait: 3, explicitWait: 15 }),
+  updateRecordingSettings: vi.fn().mockResolvedValue({ success: true }),
   updateTimeout: vi.fn().mockResolvedValue({ success: true }),
   updateViewport: vi.fn().mockResolvedValue({ success: true }),
   updateMobileCapabilities: vi.fn().mockResolvedValue({ success: true }),
@@ -97,6 +112,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     expect(screen.getByTestId('folder')).toHaveTextContent('project')
   })
@@ -110,8 +126,24 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     expect(mockNavigate).toHaveBeenCalledWith('/start-project')
+  })
+
+  it('opens on the Tests tab first', async (): Promise<void> => {
+    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+    const tabs = screen.getAllByRole('button').map((b) => b.textContent)
+    expect(tabs[0]).toBe('overview.tabs.tests')
+    expect(screen.getByText('tests.empty')).toBeInTheDocument()
+    expect(screen.queryByTestId('folder')).not.toBeInTheDocument()
   })
 
   it('renders Files, Scaffolding, and Dashboard tabs', async (): Promise<void> => {
@@ -123,6 +155,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     expect(screen.getByText('overview.tabs.files')).toBeInTheDocument()
     expect(screen.getByText('Scaffolding')).toBeInTheDocument()
@@ -138,6 +171,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     expect(screen.getByTestId('folder')).toBeInTheDocument()
     expect(screen.queryByTestId('scaffold-panel')).not.toBeInTheDocument()
@@ -152,6 +186,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     fireEvent.click(screen.getByText('Scaffolding'))
 
@@ -168,6 +203,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     fireEvent.click(screen.getByText('Scaffolding'))
     expect(screen.getByTestId('scaffold-panel')).toBeInTheDocument()
@@ -186,6 +222,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     fireEvent.click(screen.getByText('overview.tabs.dashboard'))
 
@@ -205,6 +242,7 @@ describe('Overview Settings Toolbar', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
   }
 
   it('renders base URL input, browser select, and headless toggle on Files tab', async () => {
@@ -283,6 +321,7 @@ describe('Overview Settings Toolbar', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     // The component redirects when no project, so the input won't be there
     expect(mockApi.updateBrowserUrl).not.toHaveBeenCalled()
@@ -501,5 +540,137 @@ describe('Overview Settings Toolbar', (): void => {
 
     await waitFor(() => expect(screen.queryByText('no-sandbox')).not.toBeInTheDocument())
     expect(errorSpy).not.toHaveBeenCalled()
+  })
+
+  describe('quick-record banner', (): void => {
+    beforeEach(() => {
+      mockApi.isQuickProject.mockResolvedValue(false)
+      useRecorderStore.getState().resetForProject()
+    })
+
+    const renderOverview = async (): Promise<void> => {
+      useProjectStore.setState({ projectPath: '/quick/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+    }
+
+    it('is hidden for a regular project', async (): Promise<void> => {
+      await renderOverview()
+      expect(screen.queryByText('quickRecord.banner')).not.toBeInTheDocument()
+    })
+
+    it('shows for a quick project and re-activates the moved project after saving', async (): Promise<void> => {
+      mockApi.isQuickProject.mockResolvedValue(true)
+      mockApi.selectFolder.mockResolvedValue('/dest')
+      mockApi.saveQuickProjectTo.mockResolvedValue({ success: true, projectPath: '/dest/proj' })
+      await renderOverview()
+      expect(screen.getByText('quickRecord.banner')).toBeInTheDocument()
+      await act(async () => {
+        fireEvent.click(screen.getByText('quickRecord.saveTo'))
+      })
+      expect(mockApi.saveQuickProjectTo).toHaveBeenCalledWith('/quick/project', '/dest')
+      expect(useProjectStore.getState().projectPath).toBe('/dest/proj')
+    })
+
+    it('is disabled while recording and while a draft exists', async (): Promise<void> => {
+      mockApi.isQuickProject.mockResolvedValue(true)
+      await renderOverview()
+      const button = screen.getByText('quickRecord.saveTo')
+      expect(button).toBeEnabled()
+      act(() => useRecorderStore.setState({ isRecording: true }))
+      expect(button).toBeDisabled()
+      act(() => useRecorderStore.setState({ isRecording: false }))
+      expect(button).toBeEnabled()
+      act(() => useRecorderStore.getState().startDraft('t', 'https://e.com'))
+      // Nothing recorded yet: an empty draft is never saved, so there is nothing to lose
+      expect(button).toBeEnabled()
+      act(() =>
+        useRecorderStore.getState().updateActiveTest((p) =>
+          p ? { ...p, steps: [{ id: 'c', kind: 'custom', code: 'x' }] } : null
+        )
+      )
+      expect(button).toBeDisabled()
+      expect(button).toHaveAttribute('title', 'quickRecord.stopFirst')
+    })
+
+    it('ignores a second click while a save is in flight', async (): Promise<void> => {
+      mockApi.isQuickProject.mockResolvedValue(true)
+      mockApi.selectFolder.mockResolvedValue('/dest')
+      let finish: (v: unknown) => void = () => {}
+      mockApi.saveQuickProjectTo.mockReturnValue(new Promise((r) => (finish = r)))
+      await renderOverview()
+      const button = screen.getByText('quickRecord.saveTo')
+      await act(async () => {
+        fireEvent.click(button)
+      })
+      await act(async () => {
+        fireEvent.click(button)
+      })
+      expect(mockApi.saveQuickProjectTo).toHaveBeenCalledTimes(1)
+      await act(async () => finish({ success: true, projectPath: '/dest/proj' }))
+    })
+
+    it('does nothing when the folder pick is cancelled', async (): Promise<void> => {
+      mockApi.isQuickProject.mockResolvedValue(true)
+      mockApi.selectFolder.mockResolvedValue(null)
+      await renderOverview()
+      await act(async () => {
+        fireEvent.click(screen.getByText('quickRecord.saveTo'))
+      })
+      expect(mockApi.saveQuickProjectTo).not.toHaveBeenCalled()
+      expect(useProjectStore.getState().projectPath).toBe('/quick/project')
+    })
+  })
+})
+
+describe('Overview wait settings', (): void => {
+  const renderFiles = async (): Promise<void> => {
+    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+    await openFilesTab()
+  }
+
+  it('shows the implicit and explicit wait fields with the project values', async (): Promise<void> => {
+    await renderFiles()
+    expect(screen.getByLabelText('settings.recording.implicitWait.label')).toHaveValue(3)
+    expect(screen.getByLabelText('settings.recording.explicitWait.label')).toHaveValue(15)
+  })
+
+  it('saves a wait on blur once the settings have loaded', async (): Promise<void> => {
+    await renderFiles()
+    const input = screen.getByLabelText('settings.recording.implicitWait.label')
+    fireEvent.change(input, { target: { value: '7' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(mockApi.updateRecordingSettings).toHaveBeenCalledWith({ implicitWait: 7 })
+
+    const explicit = screen.getByLabelText('settings.recording.explicitWait.label')
+    fireEvent.change(explicit, { target: { value: '20' } })
+    await act(async () => {
+      fireEvent.blur(explicit)
+    })
+    expect(mockApi.updateRecordingSettings).toHaveBeenCalledWith({ explicitWait: 20 })
+  })
+
+  it('does not save before the settings have loaded', async (): Promise<void> => {
+    mockApi.getRecorderSettings.mockReturnValueOnce(new Promise(() => {}))
+    await renderFiles()
+    const input = screen.getByLabelText('settings.recording.implicitWait.label')
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(mockApi.updateRecordingSettings).not.toHaveBeenCalled()
   })
 })

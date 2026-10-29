@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, writeFileSync, existsSync } from 'node:fs'
-import { tmpdir, homedir } from 'node:os'
+import { findRuby } from './rubyBin'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { renderStep } from '../../../src/main/codegen/steps'
 import type { Step, AssertKind } from '../../../src/shared/types/step'
@@ -196,9 +197,58 @@ describe('renderStep details', () => {
   })
 })
 
-const rubyBin = ['ruby', join(homedir(), '.rubies/3.4.1/bin/ruby')].find((r) => {
-  if (r.startsWith('/') && !existsSync(r)) return false
-  return spawnSync(r, ['-e', '1']).status === 0
+const rubyBin = findRuby()
+
+describe('receiver option', () => {
+  it('ivar receiver unchanged', () => {
+    const step: Step = { id: '1', kind: 'click', element: css('#a') }
+    for (const a of ['selenium', 'watir'] as const) {
+      expect(renderStep(step, a, { receiver: 'ivar' })).toBe(renderStep(step, a))
+    }
+  })
+
+  it('helper receiver drops the ivars', () => {
+    const step: Step = { id: '1', kind: 'click', element: css('#a') }
+    expect(renderStep(step, 'selenium', { receiver: 'helper' })).toBe(
+      "wait.until { driver.find_element(css: '#a').displayed? }\ndriver.find_element(css: '#a').click"
+    )
+    expect(renderStep(step, 'watir', { receiver: 'helper' })).toBe(
+      "browser.element(css: '#a').click"
+    )
+  })
+})
+
+describe('helper receiver has no instance variables', () => {
+  it('every step kind x automation', () => {
+    const e = css('.x')
+    const checks: AssertKind[] = [
+      'displayed',
+      'notDisplayed',
+      'enabled',
+      'checked',
+      'textEquals',
+      'textIncludes',
+      'valueEquals',
+      'titleEquals',
+      'urlIncludes'
+    ]
+    const steps: Step[] = [
+      { id: '1', kind: 'navigate', url: 'https://x.io' },
+      { id: '2', kind: 'click', element: e },
+      { id: '3', kind: 'type', element: e, text: 't' },
+      { id: '4', kind: 'pressKey', element: e, key: 'Enter' },
+      ...(['visible', 'hidden', 'enabled'] as const).map(
+        (until, i): Step => ({ id: `w${i}`, kind: 'wait', element: e, until })
+      ),
+      ...checks.map(
+        (c, i): Step => ({ id: `a${i}`, kind: 'assert', check: c, element: e, expected: 'v' })
+      ),
+      { id: '5', kind: 'switchFrame' },
+      { id: '6', kind: 'switchFrame', element: e }
+    ]
+    for (const a of ['selenium', 'watir'] as const)
+      for (const s of steps) expect(renderStep(s, a, { receiver: 'helper' })).not.toContain('@')
+  })
 })
 
 describe('ruby syntax', () => {

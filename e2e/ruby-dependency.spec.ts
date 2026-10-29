@@ -1,18 +1,18 @@
 import { test, expect } from './electronApp'
-import { goToRecorder } from './helpers/navigation'
+import { goToLanding } from './helpers/navigation'
 
 test.describe('Ruby Dependency Checks', () => {
-  test('recorder page loads even when Ruby check is performed', async ({ page }) => {
-    await goToRecorder(page)
+  test('start page loads even when Ruby check is performed', async ({ page }) => {
+    await goToLanding(page)
     await page.waitForTimeout(500)
 
-    // The recorder page should be visible regardless of Ruby state
-    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).toBeVisible()
+    // The start page should be visible regardless of Ruby state
+    await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
   })
 
   test('Ruby install modal has expected structure when shown', async ({ page }) => {
     // This test verifies the modal structure if it appears
-    await goToRecorder(page)
+    await goToLanding(page)
     await page.waitForTimeout(1000)
 
     // Check if ruby install modal appeared
@@ -28,12 +28,12 @@ test.describe('Ruby Dependency Checks', () => {
       expect(hasClose || hasContinue).toBe(true)
     } else {
       // No modal - Ruby is installed or check was skipped
-      await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).toBeVisible()
+      await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
     }
   })
 
   test('gems install modal has Yes/No buttons when shown', async ({ page }) => {
-    await goToRecorder(page)
+    await goToLanding(page)
     await page.waitForTimeout(1000)
 
     // Check if gems install modal appeared
@@ -46,7 +46,7 @@ test.describe('Ruby Dependency Checks', () => {
   })
 
   test('continue button dismisses Ruby install modal if present', async ({ page }) => {
-    await goToRecorder(page)
+    await goToLanding(page)
     await page.waitForTimeout(1000)
 
     const continueBtn = page.getByRole('button', { name: /continue/i })

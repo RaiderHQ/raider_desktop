@@ -52,6 +52,12 @@ describe('replayStepsAndRecord', () => {
     appState.projectAutomation = null
   })
 
+  it('refuses a ruby command with shell characters and runs nothing', async () => {
+    const result = await replayStepsAndRecord({} as never, 'T', [], 'ruby; touch /tmp/x #')
+    expect(result.success).toBe(false)
+    expect(mockExec).not.toHaveBeenCalled()
+  })
+
   it('replays the steps via a generated rspec file without sleeps', async () => {
     mockExec.mockImplementation(
       (

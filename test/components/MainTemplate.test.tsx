@@ -39,15 +39,21 @@ vi.mock('@foundation/Stores/rubyStore', () => {
 })
 
 vi.mock('react-hot-toast', () => ({
-  default: { success: vi.fn(), error: vi.fn(), loading: vi.fn() },
+  default: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), loading: vi.fn() }),
   Toaster: (): JSX.Element => <div data-testid="toaster" />
 }))
 
 // Mock window.api to prevent useEffect errors
 beforeAll(() => {
   ;(window as unknown as Record<string, unknown>).api = {
-    isRubyInstalled: vi.fn().mockResolvedValue({ success: true, rubyCommand: 'ruby', rubyVersion: '3.2.0' }),
-    closeApp: vi.fn()
+    isRubyInstalled: vi
+      .fn()
+      .mockResolvedValue({ success: true, rubyCommand: 'ruby', rubyVersion: '3.2.0' }),
+    closeApp: vi.fn(),
+    onTestsMigrated: vi.fn(),
+    removeTestsMigratedListener: vi.fn(),
+    onSuitesTooNew: vi.fn(),
+    removeSuitesTooNewListener: vi.fn()
   }
   ;(window as unknown as Record<string, unknown>).electron = {
     ipcRenderer: { on: vi.fn().mockReturnValue(() => {}) }
@@ -55,48 +61,24 @@ beforeAll(() => {
 })
 
 describe('MainTemplate Navigation', () => {
-  it('renders the Recorder navigation link', () => {
+  it('has no Recorder navigation link', () => {
     render(
       <MemoryRouter initialEntries={['/overview']}>
         <MainTemplate />
       </MemoryRouter>
     )
 
-    expect(screen.getByText('Recorder')).toBeInTheDocument()
+    expect(screen.queryByText('Recorder')).not.toBeInTheDocument()
   })
 
-  it('does not highlight Recorder link when on /overview', () => {
-    render(
-      <MemoryRouter initialEntries={['/overview']}>
-        <MainTemplate />
-      </MemoryRouter>
-    )
-
-    const recorderLink = screen.getByText('Recorder')
-    expect(recorderLink.className).not.toContain('font-semibold')
-  })
-
-  it('highlights Recorder link when on /recorder', () => {
-    render(
-      <MemoryRouter initialEntries={['/recorder']}>
-        <MainTemplate />
-      </MemoryRouter>
-    )
-
-    const recorderLink = screen.getByText('Recorder')
-    expect(recorderLink.className).toContain('font-semibold')
-    expect(recorderLink.className).toContain('bg-ruby-sub')
-  })
-
-  it('does not highlight Recorder link when on root /', () => {
+  it('links "Ruby Raider" to the overview whenever a project is open', () => {
     render(
       <MemoryRouter initialEntries={['/']}>
         <MainTemplate />
       </MemoryRouter>
     )
 
-    const recorderLink = screen.getByText('Recorder')
-    expect(recorderLink.className).not.toContain('font-semibold')
+    expect(screen.getByText('Ruby Raider').closest('a')).toHaveAttribute('href', '/overview')
   })
 
   it('displays the version in the footer', () => {
@@ -145,5 +127,53 @@ describe('MainTemplate suites recovered toast', () => {
     )
     recoveredListener()({}, { backupSaved: false })
     expect(toast.error).toHaveBeenCalledWith('suites.recovered.backupFailed', expect.anything())
+  })
+})
+
+describe('MainTemplate project files toasts', () => {
+  type Api = Record<string, ReturnType<typeof vi.fn>>
+  const api = (): Api => (window as unknown as { api: Api }).api
+  const listener = (name: string): ((...args: unknown[]) => void) =>
+    api()[name].mock.calls.at(-1)![0]
+  const toastMock = async (): Promise<
+    ReturnType<typeof vi.fn> & {
+      success: ReturnType<typeof vi.fn>
+      error: ReturnType<typeof vi.fn>
+    }
+  > => (await import('react-hot-toast')).default as never
+
+  const renderMain = (): void => {
+    render(
+      <MemoryRouter initialEntries={['/overview']}>
+        <MainTemplate />
+      </MemoryRouter>
+    )
+  }
+
+  it('says the recorded tests are now project files', async () => {
+    const toast = await toastMock()
+    toast.success.mockClear()
+    renderMain()
+    listener('onTestsMigrated')({}, { migrated: 2, postponed: false })
+    expect(toast.success).toHaveBeenCalledWith(
+      'suites.migrated.done {"count":2}',
+      expect.anything()
+    )
+  })
+
+  it('says a postponed move keeps the tests safe', async () => {
+    const toast = await toastMock()
+    toast.mockClear()
+    renderMain()
+    listener('onTestsMigrated')({}, { migrated: 0, postponed: true })
+    expect(toast).toHaveBeenCalledWith('suites.migrated.postponed', expect.anything())
+  })
+
+  it('says suites from a newer Raider are left alone', async () => {
+    const toast = await toastMock()
+    toast.error.mockClear()
+    renderMain()
+    listener('onSuitesTooNew')({})
+    expect(toast.error).toHaveBeenCalledWith('suites.tooNew', expect.anything())
   })
 })

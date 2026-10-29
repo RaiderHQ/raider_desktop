@@ -1,5 +1,5 @@
 import { test, expect } from './electronApp'
-import { goToOverview } from './helpers/navigation'
+import { goToOverviewFiles } from './helpers/navigation'
 import {
   setupProjectContext,
   mockIPCCapture,
@@ -11,7 +11,7 @@ test.describe('Test Execution Features', () => {
   test.describe('Run Mode Select (tag-based execution)', () => {
     test('renders run mode dropdown with All, Smoke, Regression options', async ({ page }) => {
       await setupProjectContext(page)
-      await goToOverview(page)
+      await goToOverviewFiles(page)
 
       const select = page.getByTestId('overview-run-mode-select')
       await expect(select).toBeVisible()
@@ -25,7 +25,7 @@ test.describe('Test Execution Features', () => {
 
     test('calls runRaiderTests when run mode is "all"', async ({ page }) => {
       await setupProjectContext(page)
-      await goToOverview(page)
+      await goToOverviewFiles(page)
       await mockIPCCapture(page, 'runRaiderTests', { success: true, output: '5 examples, 0 failures' })
 
       // Ensure run mode is "all" (default)
@@ -45,7 +45,7 @@ test.describe('Test Execution Features', () => {
 
     test('calls runRakeTask with "smoke" when run mode is smoke', async ({ page }) => {
       await setupProjectContext(page)
-      await goToOverview(page)
+      await goToOverviewFiles(page)
       await mockIPCCapture(page, 'runRakeTask', { success: true, output: '2 examples, 0 failures' })
       await mockIPCCapture(page, 'runRaiderTests', { success: true })
 
@@ -70,7 +70,7 @@ test.describe('Test Execution Features', () => {
 
     test('calls runRakeTask with "regression" when run mode is regression', async ({ page }) => {
       await setupProjectContext(page)
-      await goToOverview(page)
+      await goToOverviewFiles(page)
       await mockIPCCapture(page, 'runRakeTask', { success: true, output: '5 examples, 0 failures' })
 
       const select = page.getByTestId('overview-run-mode-select')
@@ -86,7 +86,7 @@ test.describe('Test Execution Features', () => {
 
     test('shows error toast when runRakeTask fails', async ({ page }) => {
       await setupProjectContext(page)
-      await goToOverview(page)
+      await goToOverviewFiles(page)
       await mockIPCCaptureFailure(page, 'runRakeTask', "Don't know how to build task 'smoke'")
 
       const select = page.getByTestId('overview-run-mode-select')
@@ -103,7 +103,7 @@ test.describe('Test Execution Features', () => {
   test.describe('Retry Configuration', () => {
     test('renders retry input with default value 0', async ({ page }) => {
       await setupProjectContext(page)
-      await goToOverview(page)
+      await goToOverviewFiles(page)
 
       const retryInput = page.getByTestId('overview-retry-input')
       await expect(retryInput).toBeVisible()
@@ -112,7 +112,7 @@ test.describe('Test Execution Features', () => {
 
     test('passes retryCount to runRaiderTests when set', async ({ page }) => {
       await setupProjectContext(page)
-      await goToOverview(page)
+      await goToOverviewFiles(page)
       await mockIPCCapture(page, 'runRaiderTests', { success: true, output: 'ok' })
 
       // Set retry count to 3
@@ -131,7 +131,7 @@ test.describe('Test Execution Features', () => {
 
     test('does not pass retryCount when set to 0', async ({ page }) => {
       await setupProjectContext(page)
-      await goToOverview(page)
+      await goToOverviewFiles(page)
       await mockIPCCapture(page, 'runRaiderTests', { success: true, output: 'ok' })
 
       // Ensure retry is 0
@@ -149,7 +149,7 @@ test.describe('Test Execution Features', () => {
 
     test('clamps retry input between 0 and 5', async ({ page }) => {
       await setupProjectContext(page)
-      await goToOverview(page)
+      await goToOverviewFiles(page)
 
       const retryInput = page.getByTestId('overview-retry-input')
 
@@ -166,7 +166,7 @@ test.describe('Test Execution Features', () => {
 
     test('retry count is ignored when run mode is smoke/regression', async ({ page }) => {
       await setupProjectContext(page)
-      await goToOverview(page)
+      await goToOverviewFiles(page)
       await mockIPCCapture(page, 'runRakeTask', { success: true, output: 'ok' })
 
       // Set retry count to 3 and run mode to smoke
@@ -188,7 +188,7 @@ test.describe('Test Execution Features', () => {
   test.describe('Re-run Failed Tests', () => {
     test('renders re-run failed button', async ({ page }) => {
       await setupProjectContext(page)
-      await goToOverview(page)
+      await goToOverviewFiles(page)
 
       const btn = page.getByTestId('overview-rerun-failed-btn')
       await expect(btn).toBeVisible()
@@ -196,7 +196,7 @@ test.describe('Test Execution Features', () => {
 
     test('calls rerunFailedTests on click', async ({ page }) => {
       await setupProjectContext(page)
-      await goToOverview(page)
+      await goToOverviewFiles(page)
       await mockIPCCapture(page, 'rerunFailedTests', { success: true, output: '1 example, 0 failures' })
 
       const btn = page.getByTestId('overview-rerun-failed-btn')
@@ -210,7 +210,7 @@ test.describe('Test Execution Features', () => {
 
     test('shows error toast when rerunFailedTests fails', async ({ page }) => {
       await setupProjectContext(page)
-      await goToOverview(page)
+      await goToOverviewFiles(page)
       await mockIPCCaptureFailure(page, 'rerunFailedTests', 'No rerun.txt found')
 
       const btn = page.getByTestId('overview-rerun-failed-btn')
@@ -221,7 +221,7 @@ test.describe('Test Execution Features', () => {
 
     test('re-run button is independent of run mode selection', async ({ page }) => {
       await setupProjectContext(page)
-      await goToOverview(page)
+      await goToOverviewFiles(page)
       await mockIPCCapture(page, 'rerunFailedTests', { success: true, output: 'ok' })
       await mockIPCCapture(page, 'runRakeTask', { success: true })
 
@@ -244,7 +244,7 @@ test.describe('Test Execution Features', () => {
   test.describe('Controls visibility', () => {
     test('run mode, retry, and re-run are only visible on Files tab', async ({ page }) => {
       await setupProjectContext(page)
-      await goToOverview(page)
+      await goToOverviewFiles(page)
 
       // Visible on Files tab
       await expect(page.getByTestId('overview-run-mode-select')).toBeVisible()

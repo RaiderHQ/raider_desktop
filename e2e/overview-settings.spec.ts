@@ -18,6 +18,8 @@ async function openOverview(
   })
   await mockMainIPCCapture(electronApp, 'read-directory', [])
   await enterMainLayout(electronApp, page, PROJECT)
+  // The Overview opens on the Tests tab; the settings toolbar is on Files
+  await page.getByRole('button', { name: 'Files', exact: true }).click()
 }
 
 test.describe('Overview settings toolbar', () => {

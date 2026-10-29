@@ -13,8 +13,8 @@ export interface TraceViewerState {
 }
 
 /**
- * Shared hook for trace viewing functionality used by both
- * ProjectDashboard and RecordingDashboard.
+ * Shared hook for trace viewing functionality used by
+ * ProjectDashboard.
  */
 export function useTraceViewer(): TraceViewerState {
   const suites = useRecorderStore((s) => s.suites)
