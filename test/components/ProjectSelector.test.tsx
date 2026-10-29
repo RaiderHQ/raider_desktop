@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import ProjectSelector from '@components/ProjectSelector'
 import '@testing-library/jest-dom'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter } from 'react-router'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })

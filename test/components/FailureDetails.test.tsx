@@ -4,7 +4,7 @@ import { vi } from 'vitest'
 import FailureDetails from '@components/FailureDetails'
 
 const navigate = vi.fn()
-vi.mock('react-router-dom', () => ({ useNavigate: (): typeof navigate => navigate }))
+vi.mock('react-router', () => ({ useNavigate: (): typeof navigate => navigate }))
 vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (k: string, o?: { count?: number }) => string } => ({
     t: (k, o) => (k === 'testResults.moreFrames' ? `… ${o?.count} more` : k)

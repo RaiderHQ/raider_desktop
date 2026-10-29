@@ -6,7 +6,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string) => string } => ({ t: (key: string): string => key })
 }))
 
-vi.mock('react-router-dom', () => ({ useNavigate: (): (() => void) => vi.fn() }))
+vi.mock('react-router', () => ({ useNavigate: (): (() => void) => vi.fn() }))
 
 vi.mock('react-hot-toast', () => ({ default: { error: vi.fn() } }))
 

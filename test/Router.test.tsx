@@ -1,15 +1,15 @@
 import { render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect } from 'vitest'
-import { MemoryRouter, useRoutes } from 'react-router-dom'
+import { MemoryRouter, useRoutes } from 'react-router'
 import { routes } from '../src/renderer/src/Router'
 
 vi.mock('@templates/Main', async () => {
-  const { Outlet } = await import('react-router-dom')
+  const { Outlet } = await import('react-router')
   return { default: (): JSX.Element => <Outlet /> }
 })
 vi.mock('@pages/Overview', async () => {
-  const { Outlet, useLocation } = await import('react-router-dom')
+  const { Outlet, useLocation } = await import('react-router')
   return {
     default: (): JSX.Element => (
       <div data-testid="overview">

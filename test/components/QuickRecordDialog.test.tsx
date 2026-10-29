@@ -1,7 +1,7 @@
 import { render, screen, act, fireEvent, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter } from 'react-router'
 import toast from 'react-hot-toast'
 import QuickRecordDialog from '@components/QuickRecordDialog'
 import useProjectStore from '@foundation/Stores/projectStore'
@@ -36,8 +36,8 @@ vi.mock('@components/RubyGemsInstallModal', () => ({
 }))
 
 const mockNavigate = vi.fn()
-vi.mock('react-router-dom', async () => {
-  const original = await vi.importActual('react-router-dom')
+vi.mock('react-router', async () => {
+  const original = await vi.importActual('react-router')
   return { ...original, useNavigate: (): (() => void) => mockNavigate }
 })
 
