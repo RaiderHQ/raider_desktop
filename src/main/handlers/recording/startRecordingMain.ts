@@ -4,6 +4,9 @@ import { tmpdir } from 'os'
 import { randomUUID } from 'crypto'
 import { appState } from '../appState'
 
+/** The recorder webview's preload; the window guards pin every webview to it. */
+export const RECORDER_PRELOAD = join(__dirname, '../preload/recorderPreload.js')
+
 function startRecordingMain(): { success: boolean; url: string; preloadPath: string } {
   const url = appState.sessionUrl ?? appState.recorderSettings.baseUrl
   // Nothing to open: the renderer tells the user to set a URL
@@ -15,7 +18,7 @@ function startRecordingMain(): { success: boolean; url: string; preloadPath: str
   appState.activeTraceDir = traceDir
 
   // Return the URL and preload path so the renderer can create an embedded webview
-  const preloadPath = join(__dirname, '../preload/recorderPreload.js')
+  const preloadPath = RECORDER_PRELOAD
 
   appState.mainWindow?.webContents.send('recording-started', url)
 

@@ -1,5 +1,6 @@
-import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
+import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { setMainWindow, appState } from './handlers/appState'
 import { getLongshipConfig, setLongshipConfig, LongshipConfig } from './handlers/longship/longshipConfig'
@@ -22,6 +23,8 @@ import readFile from './handlers/io/readFile'
 import readImage from './handlers/io/readImage'
 import { openReport, reportExists } from './handlers/openReport'
 import { registerMediaScheme, registerMediaHandler } from './handlers/media/mediaProtocol'
+import { installWindowGuards } from './windowGuards'
+import { RECORDER_PRELOAD } from './handlers/recording/startRecordingMain'
 import editFile from './handlers/io/editFile'
 import deleteFile from './handlers/io/deleteFile'
 import renameFile from './handlers/io/renameFile'
@@ -102,6 +105,14 @@ const iconPath = join(
 // Set once the app is quitting, so a close held for saving a recording quits afterwards
 let quitting = false
 
+// e2e mocks replace window.api, which needs the main window without context isolation.
+// Only a build made with `electron-vite build --mode e2e` allows that; any other build
+// keeps isolation on whatever NODE_ENV says at runtime.
+const E2E_BUILD = import.meta.env.MODE === 'e2e'
+
+const devServerUrl = is.dev ? process.env['ELECTRON_RENDERER_URL'] : undefined
+const rendererFile = join(__dirname, '../renderer/index.html')
+
 function createWindow(): void {
   const newMainWindow = new BrowserWindow({
     width: 1200,
@@ -112,7 +123,7 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
-      contextIsolation: process.env.NODE_ENV !== 'test',
+      contextIsolation: !(E2E_BUILD && process.env.NODE_ENV === 'test'),
       webviewTag: true
     }
   })
@@ -133,15 +144,15 @@ function createWindow(): void {
     appState.mainWindow!.show()
   })
 
-  appState.mainWindow!.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
-    return { action: 'deny' }
+  installWindowGuards(appState.mainWindow!.webContents, {
+    appUrl: devServerUrl ?? pathToFileURL(rendererFile).href,
+    recorderPreload: RECORDER_PRELOAD
   })
 
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    appState.mainWindow!.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  if (devServerUrl) {
+    appState.mainWindow!.loadURL(devServerUrl)
   } else {
-    appState.mainWindow!.loadFile(join(__dirname, '../renderer/index.html'))
+    appState.mainWindow!.loadFile(rendererFile)
   }
 }
 
