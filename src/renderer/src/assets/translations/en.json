@@ -2,6 +2,11 @@
   "landing": {
     "title": "Welcome to Ruby Raider!",
     "subtitle": "It is a gem that provides a generator and scaffolding to simplify UI test automation.",
+    "quickRecordings": {
+      "title": "Quick recordings",
+      "hint": "Recordings Raider keeps in its own folder. Open one to keep going or save it to a folder.",
+      "changed": "Changed {{date}}"
+    },
     "error": {
       "selectFolder": "Select a project folder",
       "folderNotFound": "The folder does not exist.",

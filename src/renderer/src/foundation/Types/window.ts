@@ -8,6 +8,7 @@ import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
+import type { QuickProject } from '@shared/types/quickProject'
 import type { IpcRendererEvent } from 'electron'
 
 export interface WindowApi {
@@ -26,6 +27,8 @@ export interface WindowApi {
     rubyCommand: string
   ) => Promise<{ success: true; projectPath: string } | { success: false; error: string }>
   isQuickProject: (projectPath: string) => Promise<boolean>
+  /** Quick record projects in Raider's own folder, newest first */
+  listQuickProjects: () => Promise<QuickProject[]>
   saveQuickProjectTo: (
     projectPath: string,
     destFolder: string

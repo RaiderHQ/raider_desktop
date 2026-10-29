@@ -12,6 +12,7 @@ import runRubyRaider from './handlers/project/runRubyRaider'
 import {
   createQuickProject,
   isQuickProject,
+  listQuickProjects,
   saveQuickProjectTo
 } from './handlers/project/quickProject'
 import runRaiderTests from './handlers/testing/runRaiderTests'
@@ -206,6 +207,7 @@ app.whenReady().then(() => {
     createQuickProject(url, rubyCommand)
   )
   ipcMain.handle('is-quick-project', (_event, projectPath: string) => isQuickProject(projectPath))
+  ipcMain.handle('list-quick-projects', () => listQuickProjects())
   ipcMain.handle('save-quick-project-to', (_event, projectPath: string, destFolder: string) =>
     saveQuickProjectTo(projectPath, destFolder)
   )

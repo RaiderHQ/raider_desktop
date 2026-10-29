@@ -1,6 +1,6 @@
 import { test, expect } from './electronApp'
-import { goToLanding } from './helpers/navigation'
-import { setRubyCommand } from './helpers/ipc-mock'
+import { goToLanding, navigateTo } from './helpers/navigation'
+import { mockIPC, setRubyCommand } from './helpers/ipc-mock'
 
 test.describe('Landing Page', () => {
   test.beforeEach(async ({ page }) => {
@@ -30,6 +30,24 @@ test.describe('Landing Page', () => {
   test('shows Open project option', async ({ page }) => {
     await expect(page.getByText('Open existing project')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Open' })).toBeVisible()
+  })
+
+  test('lists quick recordings not saved to a folder, and opens one on its tests', async ({
+    page
+  }) => {
+    await mockIPC(page, 'listQuickProjects', [
+      { path: '/mock/quick-record/shop_test', name: 'shop_test', modifiedAt: Date.now() }
+    ])
+    await mockIPC(page, 'listProjectTests', [])
+    await mockIPC(page, 'getSuites', [])
+    await mockIPC(page, 'readDirectory', [])
+    // Landing reads the list when it opens
+    await navigateTo(page, '/new')
+    await goToLanding(page)
+
+    await expect(page.getByRole('heading', { name: 'Quick recordings' })).toBeVisible()
+    await page.getByRole('button', { name: /shop_test/ }).click()
+    await expect(page).toHaveURL(/#\/overview\/tests$/)
   })
 
   test('shows Quick record option', async ({ page }) => {

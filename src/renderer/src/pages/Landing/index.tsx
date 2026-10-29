@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -11,6 +11,7 @@ import AddIcon from '@assets/icons/add.svg'
 import RecorderIcon from '@assets/icons/bxs_up-arrow_side.svg'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import type { QuickProject } from '@shared/types/quickProject'
 
 const Landing: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -24,6 +25,26 @@ const Landing: React.FC = (): JSX.Element => {
   const setProjectPath: (path: string) => void = useProjectStore(
     (state: { setProjectPath: (path: string) => void }) => state.setProjectPath
   )
+
+  // Quick recordings not saved to a folder yet, so they can be found again
+  const [quickProjects, setQuickProjects] = useState<QuickProject[]>([])
+  useEffect(() => {
+    let current = true
+    Promise.resolve(window.api.listQuickProjects())
+      .then((projects) => {
+        if (current) setQuickProjects(projects ?? [])
+      })
+      .catch((error: unknown) => console.error('Listing the quick recordings failed:', error))
+    return (): void => {
+      current = false
+    }
+  }, [])
+
+  // Opens like a new quick recording does: on its tests, with the Save project to… banner
+  const openQuickProject = (project: QuickProject): void => {
+    setProjectPath(project.path)
+    navigate('/overview/tests')
+  }
 
   const handleOpenProject = async (): Promise<void> => {
     try {
@@ -100,6 +121,35 @@ const Landing: React.FC = (): JSX.Element => {
             onClick={handleOpenProject}
           />
         </div>
+
+        {quickProjects.length > 0 && (
+          <section aria-labelledby="quick-recordings" className="w-full max-w-xl mb-8">
+            <h2 id="quick-recordings" className="text-lg font-semibold text-neutral-dark">
+              {t('landing.quickRecordings.title')}
+            </h2>
+            <p className="text-sm text-neutral-mid mb-3">{t('landing.quickRecordings.hint')}</p>
+            <ul className="border border-neutral-bdr rounded-lg bg-white shadow-card divide-y divide-neutral-bdr">
+              {quickProjects.map((project) => (
+                <li key={project.path}>
+                  <button
+                    onClick={() => openQuickProject(project)}
+                    className="w-full flex items-center justify-between gap-4 px-4 py-2 text-left hover:bg-neutral-50 transition-colors"
+                  >
+                    <span className="font-medium text-neutral-dark truncate">{project.name}</span>
+                    <span className="text-xs text-neutral-mid shrink-0">
+                      {t('landing.quickRecordings.changed', {
+                        date: new Date(project.modifiedAt).toLocaleString(undefined, {
+                          dateStyle: 'medium',
+                          timeStyle: 'short'
+                        })
+                      })}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </main>
 
       {quickRecordOpen && <QuickRecordDialog onClose={() => setQuickRecordOpen(false)} />}

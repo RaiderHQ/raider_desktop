@@ -18,6 +18,7 @@ import {
   quickProjectsDir,
   createQuickProject,
   isQuickProject,
+  listQuickProjects,
   saveQuickProjectTo
 } from '../../src/main/handlers/project/quickProject'
 
@@ -148,5 +149,42 @@ describe('saveQuickProjectTo', () => {
     fs.mkdirSync(other)
     expect((await saveQuickProjectTo(other, tmp)).success).toBe(false)
     expect(fs.existsSync(other)).toBe(true)
+  })
+})
+
+describe('listQuickProjects', () => {
+  it('is empty when there is no quick-record folder yet', () => {
+    expect(listQuickProjects()).toEqual([])
+  })
+
+  it('lists the project folders, newest first', async () => {
+    const a = await createQuickProject('https://shop.test', 'ruby')
+    const b = await createQuickProject('https://blog.test', 'ruby')
+    if (!a.success || !b.success) throw new Error('setup')
+    // A stray file is not a project
+    fs.writeFileSync(path.join(quickProjectsDir(), '.DS_Store'), '')
+    const old = new Date('2026-01-01T00:00:00Z')
+    for (const dir of [b.projectPath, path.join(b.projectPath, 'spec')])
+      fs.utimesSync(dir, old, old)
+    expect(listQuickProjects().map(({ name, path: p }) => ({ name, path: p }))).toEqual([
+      { name: 'shop_test', path: a.projectPath },
+      { name: 'blog_test', path: b.projectPath }
+    ])
+  })
+
+  it('counts a change in spec/ as a change of the project', async () => {
+    const a = await createQuickProject('https://shop.test', 'ruby')
+    const b = await createQuickProject('https://blog.test', 'ruby')
+    if (!a.success || !b.success) throw new Error('setup')
+    const old = new Date('2026-01-01T00:00:00Z')
+    for (const p of [a.projectPath, b.projectPath]) {
+      fs.utimesSync(p, old, old)
+      fs.utimesSync(path.join(p, 'spec'), old, old)
+    }
+    const recent = new Date('2026-06-01T00:00:00Z')
+    fs.utimesSync(path.join(b.projectPath, 'spec'), recent, recent)
+    const listed = listQuickProjects()
+    expect(listed[0].name).toBe('blog_test')
+    expect(listed[0].modifiedAt).toBe(recent.getTime())
   })
 })

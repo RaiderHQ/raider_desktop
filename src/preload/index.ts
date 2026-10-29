@@ -6,6 +6,7 @@ import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import type { TraceStep } from '@foundation/Types/traceStep'
 import type { Step } from '@shared/types/step'
+import type { QuickProject } from '@shared/types/quickProject'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
@@ -95,6 +96,7 @@ const api = {
     ipcRenderer.invoke('create-quick-project', url, rubyCommand),
   isQuickProject: async (projectPath: string): Promise<boolean> =>
     ipcRenderer.invoke('is-quick-project', projectPath),
+  listQuickProjects: async (): Promise<QuickProject[]> => ipcRenderer.invoke('list-quick-projects'),
   saveQuickProjectTo: async (
     projectPath: string,
     destFolder: string

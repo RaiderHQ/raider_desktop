@@ -51,6 +51,7 @@ describe('IPC Contract', () => {
     'recordOverExample',
     'createQuickProject',
     'isQuickProject',
+    'listQuickProjects',
     'saveQuickProjectTo',
     'selectFolder',
     'readDirectory',

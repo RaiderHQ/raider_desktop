@@ -5,6 +5,7 @@ import runRubyRaider from './runRubyRaider'
 import updateBrowserUrl from '../config/updateBrowserUrl'
 import { safeError } from '../../utils/safeLog'
 import { slugify } from '../tests/recordedTests'
+import type { QuickProject } from '../../../shared/types/quickProject'
 
 type QuickProjectResult = { success: true; projectPath: string } | { success: false; error: string }
 
@@ -62,6 +63,42 @@ export async function createQuickProject(
     if (projectPath) fs.rmSync(projectPath, { recursive: true, force: true })
     return { success: false, error: message(e) }
   }
+}
+
+const isDirectory = (entry: fs.Dirent): boolean => entry.isDirectory() && !entry.isSymbolicLink()
+
+/** The latest change in the folder or the folders two levels below (spec/, .raider/tests/, …) */
+function lastChanged(folder: string, depth = 2): number {
+  let latest = fs.statSync(folder).mtimeMs
+  if (depth === 0) return latest
+  for (const entry of fs.readdirSync(folder, { withFileTypes: true })) {
+    if (isDirectory(entry)) {
+      latest = Math.max(latest, lastChanged(path.join(folder, entry.name), depth - 1))
+    }
+  }
+  return latest
+}
+
+/** The quick-record projects, newest first; none when the folder doesn't exist yet. */
+export function listQuickProjects(): QuickProject[] {
+  const dir = quickProjectsDir()
+  let entries: fs.Dirent[]
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true })
+  } catch {
+    return []
+  }
+  const projects: QuickProject[] = []
+  for (const entry of entries.filter(isDirectory)) {
+    const projectPath = path.join(dir, entry.name)
+    try {
+      projects.push({ path: projectPath, name: entry.name, modifiedAt: lastChanged(projectPath) })
+    } catch (e) {
+      // Gone or unreadable since it was listed: leave it out
+      safeError('[quickProject] Could not read:', projectPath, message(e))
+    }
+  }
+  return projects.sort((a, b) => b.modifiedAt - a.modifiedAt)
 }
 
 function realOrResolved(p: string): string {
