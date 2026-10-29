@@ -61,6 +61,21 @@ describe('getPrioritizedSelector', () => {
     expect(selector).toBe('body/p[2]')
   })
 
+  it.each([
+    ['plain', 'save', '//*[@id="save"]'],
+    ['a double quote', 'say "hi"', `//*[@id='say "hi"']`],
+    ['a single quote', "it's", `//*[@id="it's"]`],
+    ['both quote types', `it's "x"`, `//*[@id=concat('it',"'",'s "x"')]`]
+  ])('quotes an xpath id containing %s', (_label, id, expected) => {
+    const el = document.createElement('p')
+    el.id = id
+    document.body.appendChild(el)
+    const { selector } = getPrioritizedSelector(el, ['xpath'])
+    expect(selector).toBe(expected)
+    const found = document.evaluate(selector, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE)
+    expect(found.singleNodeValue).toBe(el)
+  })
+
   it('ignores an unusable attribute name instead of throwing', () => {
     document.body.innerHTML = '<p id="x">one</p>'
     const el = document.getElementById('x')!
