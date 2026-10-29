@@ -38,4 +38,43 @@ describe('buildShellCommand', () => {
       expect(out.trim().split('\n').at(-1)).toBe(await realpath(project))
     }
   )
+
+  it('pins a Ruby version as one shell word', () => {
+    expect(buildShellCommand('/p', 'pwd', '3.3.0')).toContain('export RBENV_VERSION=3.3.0 && ')
+  })
+
+  describe('on win32', () => {
+    const platform = process.platform
+    beforeEach(() => Object.defineProperty(process, 'platform', { value: 'win32' }))
+    afterEach(() => Object.defineProperty(process, 'platform', { value: platform }))
+
+    it('double-quotes the project path for cmd.exe, never single quotes', () => {
+      expect(buildShellCommand('C:\\Users\\Jo Ann\\say "hi" $x', 'rspec')).toBe(
+        'cd /d "C:\\Users\\Jo Ann\\say ""hi"" $x" && rspec'
+      )
+    })
+
+    it('shellQuote double-quotes for cmd.exe', () => {
+      expect(shellQuote("spec/it's a_spec.rb")).toBe(`"spec/it's a_spec.rb"`)
+    })
+
+    it('shellQuote ignores the index when used as an Array#map callback', () => {
+      expect(['a b', 'c d'].map(shellQuote)).toEqual(['"a b"', '"c d"'])
+    })
+  })
+})
+
+describe.skipIf(process.platform === 'win32')('shellQuote', () => {
+  it('is quoteShellArg for the current platform', () => {
+    expect(shellQuote('spec/a_spec.rb')).toBe('spec/a_spec.rb')
+    expect(shellQuote("it's")).toBe(`'it'\\''s'`)
+  })
+
+  it('passes paths with spaces, quotes and $ to the command unchanged', () => {
+    const args = ['spec/my tests/a_spec.rb', `spec/it's "x"_spec.rb`, 'spec/$HOME_spec.rb', NASTY]
+    const out = execFileSync('/bin/sh', ['-c', `printf '%s\\n' ${args.map(shellQuote).join(' ')}`], {
+      encoding: 'utf-8'
+    })
+    expect(out.split('\n').slice(0, -1)).toEqual(args)
+  })
 })

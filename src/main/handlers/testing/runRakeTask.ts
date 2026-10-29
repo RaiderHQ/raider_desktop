@@ -2,6 +2,7 @@ import path from 'path'
 import { BrowserWindow } from 'electron'
 import { CommandType } from '@foundation/Types/commandType'
 import { safeExec } from '../../utils/safeExec'
+import { quoteShellArg } from '../../utils/shellQuote'
 import checkBundle from '../ruby/checkBundle'
 import bundleInstall from '../ruby/bundleInstall'
 
@@ -29,7 +30,7 @@ const handler = async (
 
     mainWindow.webContents.send('test-run-status', { status: 'running' })
     const normalizedFolderPath = path.resolve(folderPath)
-    const commandToExecute = `${rubyCommand} -S bundle exec rake ${taskName}`
+    const commandToExecute = `${rubyCommand} -S bundle exec rake ${quoteShellArg(taskName)}`
 
     const result = await safeExec(commandToExecute, {
       cwd: normalizedFolderPath,

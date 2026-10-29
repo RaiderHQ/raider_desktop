@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { exec } from 'child_process'
 import { promises as fs } from 'fs'
+import os from 'os'
 
 vi.mock('child_process', () => {
   const exec = vi.fn()
@@ -103,6 +104,21 @@ describe('replayStepsAndRecord', () => {
     expect(code).not.toContain('@driver')
     expect(appState.sessionUrl).toBe('http://final/watir')
     expect(result.success).toBe(true)
+  })
+
+  it('quotes the temp spec path, which can hold a space or $ in the user name', async () => {
+    vi.spyOn(os, 'tmpdir').mockReturnValueOnce("/Users/Jo Ann's $HOME/tmp")
+    mockExec.mockImplementation(
+      (
+        _cmd: string,
+        _opts: object,
+        cb: (err: Error | null, stdout: string, stderr: string) => void
+      ) => cb(null, '', '')
+    )
+    await replayStepsAndRecord({} as never, 'T', [click('1', 'a')], 'ruby')
+    const tempFile = mockWriteFile.mock.calls[0][0] as string
+    expect(tempFile.startsWith("/Users/Jo Ann's $HOME/tmp/")).toBe(true)
+    expect(mockExec.mock.calls[0][0]).toBe(`ruby -S rspec '${tempFile.replace(/'/g, `'\\''`)}'`)
   })
 
   it('reports a failed replay', async () => {

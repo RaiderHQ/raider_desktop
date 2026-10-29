@@ -6,6 +6,7 @@ import { appState } from '../appState'
 import startRecordingMain from './startRecordingMain'
 import { generateRspecFile, toAutomation } from '../../codegen/testFile'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
+import { quoteShellArg } from '../../utils/shellQuote'
 import type { Step } from '../../../shared/types/step'
 
 interface ReplayResult {
@@ -65,7 +66,7 @@ async function replayStepsAndRecord(
       cancelled?: boolean
     }>((resolve) => {
       const child = exec(
-        `${rubyCommand} -S rspec ${tempFilePath}`,
+        `${rubyCommand} -S rspec ${quoteShellArg(tempFilePath)}`,
         { env: executionEnv, timeout: 120_000, encoding: 'utf8' },
         (error, stdout, stderr) => {
           appState.activeReplayProcess = null

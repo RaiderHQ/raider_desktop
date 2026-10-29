@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const mockSafeExec = vi.hoisted(() => vi.fn())
 vi.mock('electron', () => ({ BrowserWindow: class {} }))
@@ -44,6 +44,34 @@ describe('runSpecFiles ruby command', () => {
       /Ruby command/
     )
     expect(mockSafeExec).not.toHaveBeenCalled()
+  })
+})
+
+describe('runSpecFiles quoting', () => {
+  it('quotes each spec file and the project folder so the shell takes them literally', async () => {
+    await runSpecFiles(
+      "/Users/me/QA's $tests",
+      ['spec/my tests/a_spec.rb', 'spec/b_spec.rb', 'spec/say "hi"_spec.rb'],
+      'ruby'
+    )
+    const command = mockSafeExec.mock.calls[0][0] as string
+    expect(command).toContain(`cd '/Users/me/QA'\\''s $tests' && `)
+    expect(command).toContain(
+      `ruby -S rspec 'spec/my tests/a_spec.rb' spec/b_spec.rb 'spec/say "hi"_spec.rb' --format json`
+    )
+  })
+
+  describe('on win32', () => {
+    const platform = process.platform
+    beforeEach(() => Object.defineProperty(process, 'platform', { value: 'win32' }))
+    afterEach(() => Object.defineProperty(process, 'platform', { value: platform }))
+
+    it('double-quotes for cmd.exe, which does not treat single quotes as quotes', async () => {
+      await runSpecFiles('C:\\QA tests', ['spec/my tests/a_spec.rb', 'spec/b_spec.rb'], 'ruby')
+      expect(mockSafeExec.mock.calls[0][0]).toBe(
+        'cd /d "C:\\QA tests" && ruby -S rspec "spec/my tests/a_spec.rb" spec/b_spec.rb --format json'
+      )
+    })
   })
 })
 

@@ -2,6 +2,7 @@ import { promises as fs } from 'fs'
 import os from 'os'
 import path from 'path'
 import { safeExec } from '../../utils/safeExec'
+import { quoteShellArg } from '../../utils/shellQuote'
 import { generateRspecFile, toAutomation } from '../../codegen/testFile'
 import { migrateLegacyTest } from '../../codegen/legacy'
 
@@ -50,7 +51,7 @@ const runRecording = async (
 
     await fs.writeFile(tempFilePath, testCode)
 
-    const command = `${rubyCommand} -S rspec ${tempFilePath} --format json`
+    const command = `${rubyCommand} -S rspec ${quoteShellArg(tempFilePath)} --format json`
 
     const result = await safeExec(command, { env: executionEnv, timeout: 120_000 })
 

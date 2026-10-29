@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { exec } from 'child_process'
 import { promises as fs } from 'fs'
+import os from 'os'
 
 vi.mock('child_process', () => {
   const exec = vi.fn()
@@ -59,6 +60,18 @@ describe('runSuite handler (integration)', () => {
     })
     await runSuite('suite-1', 'ruby')
     expect(mockWriteFile).toHaveBeenCalledTimes(1)
+  })
+
+  it('quotes every temp spec path, which can hold a space or $ in the user name', async () => {
+    vi.spyOn(os, 'tmpdir').mockReturnValue('/Users/Jo Ann $x/tmp')
+    appState.suites.set('suite-1', { ...suite, tests: [suite.tests[0], suite.tests[0]] })
+    mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) => cb(null, '{}', ''))
+    await runSuite('suite-1', 'ruby')
+    vi.mocked(os.tmpdir).mockRestore()
+    const files = mockWriteFile.mock.calls.map((c) => c[0] as string)
+    expect(mockExec.mock.calls[0][0]).toBe(
+      `ruby -S rspec ${files.map((f) => `'${f}'`).join(' ')} --format json`
+    )
   })
 
   it('runs rspec with the correct ruby command', async () => {

@@ -2,6 +2,7 @@ import { promises as fs } from 'fs'
 import os from 'os'
 import path from 'path'
 import { safeExec } from '../../utils/safeExec'
+import { quoteShellArg } from '../../utils/shellQuote'
 import { safeWarn } from '../../utils/safeLog'
 import { appState } from '../appState'
 import { generateRspecFile, toAutomation } from '../../codegen/testFile'
@@ -36,7 +37,7 @@ export default async (
     const executionEnv = { ...process.env, PATH: newPath }
 
     // For suites, run all temp files in one rspec invocation
-    const command = `${rubyCommand} -S rspec ${tempFilePaths.join(' ')} --format json`
+    const command = `${rubyCommand} -S rspec ${tempFilePaths.map((f) => quoteShellArg(f)).join(' ')} --format json`
 
     const result = await safeExec(command, { env: executionEnv, timeout: 120_000 })
 

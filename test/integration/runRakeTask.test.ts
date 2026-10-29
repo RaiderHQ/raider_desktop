@@ -50,6 +50,12 @@ describe('runRakeTask handler', () => {
     expect(options.timeout).toBe(120_000)
   })
 
+  it('quotes the task name so it reaches rake as one argument', async () => {
+    mockSafeExec.mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 })
+    await handler(mockMainWindow, '/project', 'ruby', 'smoke; touch /tmp/x')
+    expect(mockSafeExec.mock.calls[0][0]).toBe(`ruby -S bundle exec rake 'smoke; touch /tmp/x'`)
+  })
+
   it('runs rake regression with the correct command', async () => {
     mockSafeExec.mockResolvedValue({
       stdout: '5 examples, 0 failures',
