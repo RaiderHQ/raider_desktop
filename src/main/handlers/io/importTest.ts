@@ -1,4 +1,5 @@
 import { dialog, BrowserWindow } from 'electron'
+import { lastDialogDirectory, rememberDialogPick } from '../../utils/dialogDirectory'
 import * as fs from 'fs'
 import { appState } from '../appState'
 import { persistActiveSuites } from '../suitePersistence'
@@ -32,9 +33,11 @@ export default async function importTest(
     const store = filesStore()
 
     const result = await dialog.showOpenDialog(mainWindow, {
+      defaultPath: lastDialogDirectory(),
       properties: ['openFile'],
       filters: [{ name: 'Ruby files', extensions: ['rb'] }]
     })
+    if (!result.canceled) rememberDialogPick(result.filePaths)
 
     if (result.canceled || !result.filePaths.length) {
       return { success: false, error: 'No file selected' }
