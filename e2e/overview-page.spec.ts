@@ -1,11 +1,16 @@
 import { test, expect } from './electronApp'
-import { goToOverview, goToOverviewFiles } from './helpers/navigation'
+import { goToOverview, goToOverviewFiles, mockRubyReady } from './helpers/navigation'
 import {
   setupProjectContext,
   mockIPCCapture,
   mockIPCCaptureFailure,
   getIPCCalls
 } from './helpers/ipc-mock'
+
+// The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
+test.beforeEach(async ({ electronApp, page }) => {
+  await mockRubyReady(electronApp, page)
+})
 
 test.describe('Overview/Tests Page', () => {
   test('redirects to start-project when no project', async ({ page }) => {

@@ -1,5 +1,5 @@
 import { test, expect } from './electronApp'
-import { goToOverview } from './helpers/navigation'
+import { goToOverview, mockRubyReady } from './helpers/navigation'
 import { mockIPC, mockReadDirectory } from './helpers/ipc-mock'
 
 /**
@@ -36,6 +36,11 @@ async function setupOverviewWithProject(page: import('@playwright/test').Page): 
 
   await goToOverview(page)
 }
+
+// The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
+test.beforeEach(async ({ electronApp, page }) => {
+  await mockRubyReady(electronApp, page)
+})
 
 test.describe('Test Run Toast Notifications', () => {
   test('loading toast is dismissed after successful test run', async ({ page }) => {

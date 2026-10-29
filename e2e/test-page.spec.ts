@@ -1,6 +1,6 @@
 import { test, expect } from './electronApp'
 import type { Page } from '@playwright/test'
-import { goToOverview, goToTest, navigateTo } from './helpers/navigation'
+import { goToOverview, goToTest, navigateTo, mockRubyReady } from './helpers/navigation'
 import {
   setupProjectContext,
   mockIPC,
@@ -85,6 +85,11 @@ async function setUp(page: Page): Promise<void> {
   await mockIPCSync(page, 'stopRecordingMain')
   await mockIPCSync(page, 'setRecordingState')
 }
+
+// The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
+test.beforeEach(async ({ electronApp, page }) => {
+  await mockRubyReady(electronApp, page)
+})
 
 test.describe('Test page', () => {
   test.beforeEach(async ({ page }) => {

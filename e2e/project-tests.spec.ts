@@ -1,6 +1,6 @@
 import { test, expect } from './electronApp'
 import type { Page } from '@playwright/test'
-import { goToOverview, goToTest } from './helpers/navigation'
+import { goToOverview, goToTest, mockRubyReady } from './helpers/navigation'
 import {
   setupProjectContext,
   mockIPC,
@@ -71,6 +71,11 @@ const codeView = {
 // List rows are buttons (<li role="button">), so they're found as <li>
 const row = (page: Page, name: string): ReturnType<Page['locator']> =>
   page.locator('li[role="button"]').filter({ hasText: name })
+
+// The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
+test.beforeEach(async ({ electronApp, page }) => {
+  await mockRubyReady(electronApp, page)
+})
 
 test.describe('Project Tests tab', () => {
   test.beforeEach(async ({ page }) => {
