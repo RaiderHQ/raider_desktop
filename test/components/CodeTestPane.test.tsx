@@ -243,6 +243,12 @@ describe('CodeTestPane', () => {
     renderPane()
     fireEvent.click(await screen.findByRole('button', { name: 'testPage.record' }))
     expect(screen.getByText('testPage.overwriteConfirm')).toBeInTheDocument()
+    // Names the test and the file it will change
+    expect(
+      screen.getByText(
+        `testPage.overwriteTarget ${JSON.stringify({ name: 'logs in', file: 'spec/login_spec.rb' })}`
+      )
+    ).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByText('testPage.overwriteConfirm')).not.toBeInTheDocument()
     expect(api.startRecordingMain).not.toHaveBeenCalled()
@@ -446,6 +452,7 @@ describe('CodeTestPane', () => {
   it('uses the fixed copy', () => {
     expect(en.testPage).toMatchObject({
       overwriteConfirm: 'This test has code edits. Recording will replace them. Continue?',
+      overwriteTarget: '“{{name}}” in {{file}}',
       exampleNotUnique: 'Raider couldn\'t find exactly one test named "{{name}}" in this file.',
       saveAsNew: 'Save as a new test',
       editCode: 'Edit code',

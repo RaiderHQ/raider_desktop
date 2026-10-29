@@ -470,6 +470,7 @@
     "noSteps": "There are no steps to export.",
     "editCode": "Edit code",
     "examples": "Tests in this file",
+    "overwriteTarget": "“{{name}}” in {{file}}",
     "overwriteConfirm": "This test has code edits. Recording will replace them. Continue?",
     "exampleNotUnique": "Raider couldn't find exactly one test named \"{{name}}\" in this file.",
     "saveAsNew": "Save as a new test",

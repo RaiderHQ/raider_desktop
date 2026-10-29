@@ -317,6 +317,9 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
       {confirmingRecord && (
         <ConfirmationModal
           title={t('testPage.record')}
+          subject={
+            selected ? t('testPage.overwriteTarget', { name: selected.name, file }) : undefined
+          }
           message={t('testPage.overwriteConfirm')}
           onConfirm={record}
           onCancel={() => setConfirmingRecord(false)}

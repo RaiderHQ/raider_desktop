@@ -169,6 +169,9 @@ test.describe('Test page', () => {
     await expect(
       page.getByText('This test has code edits. Recording will replace them. Continue?')
     ).toBeVisible()
+    await expect(
+      page.getByText('“logs in with right credentials” in spec/login_page_spec.rb')
+    ).toBeVisible()
     await page.getByRole('button', { name: 'Confirm' }).click()
 
     await sendMainEvent(electronApp, 'recording-started', 'https://example.com/login')
