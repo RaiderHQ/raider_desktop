@@ -85,7 +85,7 @@ commandExists(command: string): Promise<boolean>
 3. **System PATH** (via `ruby -v`)
    - Returns: `{ source: 'system', rubyCommand: 'ruby' }`
 
-**Version Check:** Only accepts Ruby 3.0.0+
+**Version Check:** Only accepts Ruby 3.2+
 
 ---
 
@@ -304,7 +304,7 @@ jobs:
 
 #### Windows 10/11 VM Testing
 
-- [ ] Install Ruby 3.1.6 via RubyInstaller
+- [ ] Install Ruby 3.4.1 via RubyInstaller
 - [ ] Launch Raider Desktop
 - [ ] Verify Ruby detected automatically
 - [ ] Create new Selenium project
@@ -541,7 +541,7 @@ Currently, Ruby detection runs on app startup and after installation attempts.
 
 ### Q: Will this work with Ruby 2.x on Windows?
 
-**A:** No. Ruby 3.0.0+ is required on all platforms. The version check rejects Ruby 2.x with a clear error message.
+**A:** No. Ruby 3.2+ is required on all platforms. The version check rejects older Rubies with a clear error message.
 
 ### Q: Can I use bash commands in new handlers?
 

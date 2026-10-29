@@ -5,32 +5,14 @@ interface FileProps {
   name: string
   path: string
   onFileClick: (filePath: string) => void
-  onGenerateSpec?: (filePath: string, pageName: string) => void
   onContextMenu?: (e: React.MouseEvent, filePath: string, fileName: string) => void
 }
 
-const File: React.FC<FileProps> = ({ name, path, onFileClick, onGenerateSpec, onContextMenu }) => {
+const File: React.FC<FileProps> = ({ name, path, onFileClick, onContextMenu }) => {
   const handleContextMenu = (e: React.MouseEvent): void => {
     e.preventDefault()
 
-    if (onContextMenu) {
-      onContextMenu(e, path, name)
-      return
-    }
-
-    // Legacy: generate spec for page files
-    const isPageFile =
-      (name.endsWith('_page.rb') || path.includes('/pages/')) && name.endsWith('.rb')
-    if (!isPageFile || !onGenerateSpec) return
-
-    const pageName = name
-      .replace(/_page\.rb$/, '')
-      .replace(/\.rb$/, '')
-      .split('_')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join('')
-
-    onGenerateSpec(path, pageName)
+    onContextMenu?.(e, path, name)
   }
 
   return (

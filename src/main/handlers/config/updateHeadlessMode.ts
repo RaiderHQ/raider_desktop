@@ -2,6 +2,7 @@ import { IpcMainInvokeEvent } from 'electron'
 import { safeExec } from '../../utils/safeExec'
 import { buildShellCommand } from '../../utils/shellCommand'
 import { CommandType } from '@foundation/Types/commandType'
+import { refreshRecorderSettings } from '../project/setActiveProject'
 
 const handler = async (
   _event: IpcMainInvokeEvent,
@@ -24,6 +25,7 @@ const handler = async (
         error: result.stderr.trim()
       }
     }
+    await refreshRecorderSettings(projectPath)
     return { success: true, output: result.stdout.trim() }
   } catch (error) {
     return {

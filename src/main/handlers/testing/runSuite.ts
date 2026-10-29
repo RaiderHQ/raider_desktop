@@ -3,8 +3,9 @@ import os from 'os'
 import path from 'path'
 import { safeExec } from '../../utils/safeExec'
 import { safeWarn } from '../../utils/safeLog'
-import { appState, getRecordingSettings } from '../appState'
-import { generateTestCode } from '../frameworkTemplates'
+import { appState } from '../appState'
+import { generateRspecFile, toAutomation } from '../../codegen/testFile'
+import { migrateLegacyTest } from '../../codegen/legacy'
 
 export default async (
   suiteId: string,
@@ -15,22 +16,14 @@ export default async (
     return { success: false, output: `Suite with ID ${suiteId} not found.` }
   }
 
-  const { implicitWait, explicitWait } = getRecordingSettings()
-  const framework = appState.projectFramework || null
-  const automation = appState.projectAutomation || null
-  const ext = framework === 'cucumber' ? 'feature' : 'rb'
+  const settings = appState.recorderSettings
+  const automation = toAutomation(appState.projectAutomation)
   const tempFilePaths: string[] = []
 
   try {
     for (const test of suite.tests) {
-      const testCode = generateTestCode(framework, {
-        testName: test.name,
-        steps: test.steps,
-        implicitWait,
-        explicitWait,
-        automation
-      })
-      const tempFilePath = path.join(os.tmpdir(), `test_${Date.now()}_${Math.random()}.${ext}`)
+      const testCode = generateRspecFile(migrateLegacyTest(test), automation, settings)
+      const tempFilePath = path.join(os.tmpdir(), `test_${Date.now()}_${Math.random()}.rb`)
       await fs.writeFile(tempFilePath, testCode)
       tempFilePaths.push(tempFilePath)
     }
@@ -42,11 +35,8 @@ export default async (
 
     const executionEnv = { ...process.env, PATH: newPath }
 
-    // For suites, join all temp file paths into one command
-    const command =
-      framework === 'minitest'
-        ? tempFilePaths.map((f) => `${rubyCommand} ${f}`).join(' && ')
-        : `${rubyCommand} -S rspec ${tempFilePaths.join(' ')} --format json`
+    // For suites, run all temp files in one rspec invocation
+    const command = `${rubyCommand} -S rspec ${tempFilePaths.join(' ')} --format json`
 
     const result = await safeExec(command, { env: executionEnv, timeout: 120_000 })
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { sample } from 'lodash'
 import { FaTerminal } from 'react-icons/fa'
@@ -13,13 +13,17 @@ import ProjectDashboard from '@components/ProjectDashboard'
 import Editor from '@components/Editor'
 import Terminal from '@components/Terminal'
 import Tooltip from '@components/Tooltip'
+import TestsWorkspace from '@components/TestsWorkspace'
 import InfoButton from '@components/InfoButton'
 import useProjectStore from '@foundation/Stores/projectStore'
+import useRecorderStore from '@foundation/Stores/recorderStore'
+import { isEmptyRecording } from '../../hooks/useTestRecording'
+import { useRecorderSettings } from '../../hooks/useRecorderSettings'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { FileNode } from '@foundation/Types/fileNode'
 import { getFileLanguage } from '@foundation/helpers'
 
-type OverviewTab = 'files' | 'scaffold' | 'dashboard'
+type OverviewTab = 'tests' | 'files' | 'scaffold' | 'dashboard'
 
 
 const Overview: React.FC = () => {
@@ -29,9 +33,31 @@ const Overview: React.FC = () => {
   const { rubyCommand } = useRubyStore()
   const navigate = useNavigate()
   const toastIdRef = useRef<string | null>(null)
-  const [activeTab, setActiveTab] = useState<OverviewTab>('files')
-  const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression' | 'custom'>('all')
-  const [customTag, setCustomTag] = useState('')
+  const { testKey } = useParams()
+  const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
+    useRecorderSettings()
+  const [activeTab, setActiveTab] = useState<OverviewTab>('tests')
+
+  // Until the project's settings load, the fields hold defaults that must not overwrite the config
+  const saveWait = async (
+    patch: { implicitWait: number } | { explicitWait: number }
+  ): Promise<void> => {
+    if (!loaded) return
+    try {
+      const result = await window.api.updateRecordingSettings(patch)
+      if (!result.success) {
+        toast.error(`${t('settings.recording.error.unexpected')} : ${result.error}`)
+      }
+    } catch (error) {
+      toast.error(`${t('settings.recording.error.unexpected')} : ${error}`)
+    }
+  }
+
+  // A test route always shows the Tests tab
+  useEffect(() => {
+    if (testKey) setActiveTab('tests')
+  }, [testKey])
+  const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression'>('all')
 
   // Test settings state
   const [browserUrl, setBrowserUrl] = useState('')
@@ -43,18 +69,13 @@ const Overview: React.FC = () => {
   const [timeout, setTimeout_] = useState(30)
 
   const [browserOptions, setBrowserOptions] = useState<string[]>([])
+  const [configLoaded, setConfigLoaded] = useState(false)
+  // Latest-request-wins token for config loads (project load and browser-change re-fetch)
+  const configRequestRef = useRef(0)
   const [pagePath, setPagePath] = useState('')
   const [specPath, setSpecPath] = useState('')
   const [featurePath, setFeaturePath] = useState('')
   const [helperPath, setHelperPath] = useState('')
-
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{
-    x: number
-    y: number
-    filePath: string
-    pageName: string
-  } | null>(null)
 
   // File context menu state
   const [fileContextMenu, setFileContextMenu] = useState<{
@@ -84,11 +105,25 @@ const Overview: React.FC = () => {
   // Load test settings from config files, falling back to localStorage
   useEffect(() => {
     if (!projectPath) return
+    setConfigLoaded(false)
+    const token = ++configRequestRef.current
+    const isCurrent = (): boolean => token === configRequestRef.current
     const loadSettings = async (): Promise<void> => {
       try {
         const result = await window.api.getProjectConfig(projectPath)
+        if (!isCurrent()) return
+        if (!result.success || !result.config) {
+          setTimeout_(30)
+          setBrowserOptions([])
+        }
         if (result.success && result.config) {
-          const { baseUrl, browser, headless: headlessVal } = result.config
+          const {
+            baseUrl,
+            browser,
+            headless: headlessVal,
+            timeout: timeoutVal,
+            browserArguments
+          } = result.config
           if (baseUrl) {
             setBrowserUrl(baseUrl)
             localStorage.setItem('browserUrl', baseUrl)
@@ -103,6 +138,8 @@ const Overview: React.FC = () => {
             const storedBrowser = localStorage.getItem('selectedBrowser')
             if (storedBrowser) setSelectedBrowser(storedBrowser)
           }
+          setTimeout_(typeof timeoutVal === 'number' ? timeoutVal : 30)
+          setBrowserOptions(browserArguments ?? [])
           if (typeof headlessVal === 'boolean') {
             setHeadless(headlessVal)
             localStorage.setItem('headless', String(headlessVal))
@@ -120,6 +157,9 @@ const Overview: React.FC = () => {
           if (storedHeadless !== null) setHeadless(storedHeadless === 'true')
         }
       } catch {
+        if (!isCurrent()) return
+        setTimeout_(30)
+        setBrowserOptions([])
         // Fallback to localStorage on error
         const storedUrl = localStorage.getItem('browserUrl')
         const storedBrowser = localStorage.getItem('selectedBrowser')
@@ -129,8 +169,59 @@ const Overview: React.FC = () => {
         if (storedHeadless !== null) setHeadless(storedHeadless === 'true')
       }
     }
-    void loadSettings()
+    void loadSettings().finally(() => {
+      if (isCurrent()) setConfigLoaded(true)
+    })
   }, [projectPath])
+
+  // A quick-record project lives in Raider's own folder until the user saves it somewhere
+  const [isQuick, setIsQuick] = useState(false)
+  useEffect(() => {
+    setIsQuick(false)
+    if (!projectPath) return
+    let current = true
+    Promise.resolve(window.api.isQuickProject(projectPath))
+      .then((quick) => {
+        if (current) setIsQuick(quick)
+      })
+      .catch(() => {})
+    return (): void => {
+      current = false
+    }
+  }, [projectPath])
+
+  const [saving, setSaving] = useState(false)
+  // Moving the project resets the recorder, so it waits until nothing recorded is at stake
+  const recorderBusy = useRecorderStore(
+    (r) =>
+      r.isRecording ||
+      r.isReplayingToBreakpoint ||
+      r.recordingTarget != null ||
+      // An empty draft is never saved, so there is nothing to lose
+      (r.draftTest != null &&
+        !isEmptyRecording(r.activeTest?.id === r.draftTest.id ? r.activeTest : r.draftTest)) ||
+      r.unsavedExample != null
+  )
+
+  const handleSaveProjectTo = async (): Promise<void> => {
+    if (!projectPath || saving || recorderBusy) return
+    setSaving(true)
+    try {
+      const folder = await window.api.selectFolder(t('quickRecord.saveToTitle'))
+      if (!folder) return
+      const result = await window.api.saveQuickProjectTo(projectPath, folder)
+      if (!result.success) {
+        toast.error(t('quickRecord.saveFailed', { error: result.error }))
+        return
+      }
+      useProjectStore.getState().setProjectPath(result.projectPath)
+      toast.success(t('quickRecord.saved', { path: result.projectPath }))
+    } catch (error) {
+      toast.error(t('quickRecord.saveFailed', { error: String(error) }))
+    } finally {
+      setSaving(false)
+    }
+  }
 
   // Detect mobile project
   useEffect(() => {
@@ -170,17 +261,34 @@ const Overview: React.FC = () => {
       toast.error(t('settings.noProject.description'))
       return
     }
+    const token = ++configRequestRef.current
+    const isCurrent = (): boolean => token === configRequestRef.current
+    setConfigLoaded(false)
     try {
       const response = await window.api.updateBrowserType(projectPath, browser)
       if (!response.success) {
         toast.error(response.error || t('overview.settings.browserUpdateFailed'))
+        if (isCurrent()) setConfigLoaded(true)
         return
       }
       localStorage.setItem('selectedBrowser', browser)
       toast.success(t('overview.settings.browserUpdateSuccess'))
     } catch (error) {
       toast.error(`${t('overview.settings.browserUpdateFailed')}: ${(error as Error).message}`)
+      if (isCurrent()) setConfigLoaded(true)
+      return
     }
+    // browser_arguments are kept per browser, so show the new browser's list
+    let args: string[] = []
+    try {
+      const config = await window.api.getProjectConfig(projectPath)
+      if (config.success) args = config.config?.browserArguments ?? []
+    } catch {
+      // re-fetch failed: clear rather than show the previous browser's args
+    }
+    if (!isCurrent()) return
+    setBrowserOptions(args)
+    setConfigLoaded(true)
   }
 
   const handleHeadlessToggle = async (enabled: boolean): Promise<void> => {
@@ -280,8 +388,6 @@ const Overview: React.FC = () => {
         result = await window.api.runRaiderTests(
           projectPath || '', rubyCommand || '', false
         )
-      } else if (runMode === 'custom' && customTag.trim()) {
-        result = await window.api.runRakeTask(projectPath || '', rubyCommand || '', customTag.trim())
       } else {
         result = await window.api.runRakeTask(projectPath || '', rubyCommand || '', runMode)
       }
@@ -320,42 +426,6 @@ const Overview: React.FC = () => {
       toastIdRef.current = null
       if (toastId) toast.dismiss(toastId)
       toast.error(`${t('overview.error.rerun')}: ${(error as Error).message}`)
-    }
-  }
-
-  const handleGenerateSpec = (filePath: string, pageName: string): void => {
-    const mouseEvent = window.event as MouseEvent | undefined
-    setContextMenu({
-      x: mouseEvent?.clientX ?? 200,
-      y: mouseEvent?.clientY ?? 200,
-      filePath,
-      pageName
-    })
-  }
-
-  const handleContextMenuAction = async (): Promise<void> => {
-    if (!contextMenu || !projectPath || !rubyCommand) return
-
-    try {
-      const res = await window.api.scaffoldGenerate(
-        {
-          operation: 'generate',
-          type: 'spec',
-          name: contextMenu.pageName,
-          from: contextMenu.filePath,
-          ai: true
-        },
-        projectPath,
-        rubyCommand
-      )
-      if (res.success) {
-        toast.success(`Spec generated for ${contextMenu.pageName}`)
-        useProjectStore.getState().loadFiles(projectPath)
-      } else {
-        toast.error(`Failed: ${res.error || res.output}`)
-      }
-    } catch (error) {
-      toast.error(`Error: ${error}`)
     }
   }
 
@@ -484,6 +554,16 @@ const Overview: React.FC = () => {
       {/* Tabs */}
       <div className="flex items-center border-b border-neutral-bdr mb-4">
         <button
+          onClick={() => setActiveTab('tests')}
+          className={`px-5 py-2 text-sm font-semibold transition-colors ${
+            activeTab === 'tests'
+              ? 'text-neutral-dark border-b-2 border-ruby'
+              : 'text-neutral-mid hover:text-neutral-dk'
+          }`}
+        >
+          {t('overview.tabs.tests')}
+        </button>
+        <button
           onClick={() => setActiveTab('files')}
           className={`px-5 py-2 text-sm font-semibold transition-colors ${
             activeTab === 'files'
@@ -531,6 +611,26 @@ const Overview: React.FC = () => {
         </div>
       </div>
 
+      {isQuick && (
+        <div className="flex items-center justify-between gap-4 mb-4 px-4 py-2 rounded-lg border border-neutral-bdr bg-ruby-sub text-sm text-neutral-dk">
+          <span>{t('quickRecord.banner')}</span>
+          <button
+            onClick={() => void handleSaveProjectTo()}
+            disabled={saving || recorderBusy}
+            title={recorderBusy ? t('quickRecord.stopFirst') : undefined}
+            className="px-3 py-1 text-xs font-semibold text-ruby border border-ruby rounded hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t('quickRecord.saveTo')}
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'tests' && (
+        <div className="relative w-full">
+          <TestsWorkspace />
+        </div>
+      )}
+
       {activeTab === 'files' && (
         <div className="relative w-full">
           {/* Test settings toolbar */}
@@ -567,9 +667,10 @@ const Overview: React.FC = () => {
                     data-testid="overview-browser-select"
                   >
                     <option value="chrome">{t('settings.browser.chrome')}</option>
-                    <option value="safari">{t('settings.browser.safari')}</option>
                     <option value="firefox">{t('settings.browser.firefox')}</option>
-                    <option value="edge">{t('settings.browser.edge')}</option>
+                    {selectedBrowser !== 'chrome' && selectedBrowser !== 'firefox' && (
+                      <option value={selectedBrowser}>{selectedBrowser}</option>
+                    )}
                   </select>
                 </div>
               </Tooltip>
@@ -588,25 +689,14 @@ const Overview: React.FC = () => {
                   </label>
                   <select
                     value={runMode}
-                    onChange={(e) => setRunMode(e.target.value as 'all' | 'smoke' | 'regression' | 'custom')}
+                    onChange={(e) => setRunMode(e.target.value as 'all' | 'smoke' | 'regression')}
                     className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[140px]"
                     data-testid="overview-run-mode-select"
                   >
                     <option value="all">{t('overview.settings.runMode.all')}</option>
                     <option value="smoke">{t('overview.settings.runMode.smoke')}</option>
                     <option value="regression">{t('overview.settings.runMode.regression')}</option>
-                    <option value="custom">{t('overview.settings.runMode.custom')}</option>
                   </select>
-                  {runMode === 'custom' && (
-                    <input
-                      type="text"
-                      value={customTag}
-                      onChange={(e) => setCustomTag(e.target.value)}
-                      placeholder={t('overview.settings.customTagPlaceholder')}
-                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-32"
-                      data-testid="overview-custom-tag-input"
-                    />
-                  )}
                 </div>
               </Tooltip>
               <Tooltip content={t('tooltips.overview.rerunFailed')} position="right">
@@ -630,6 +720,7 @@ const Overview: React.FC = () => {
                       value={timeout}
                       onChange={(e) => setTimeout_(Number(e.target.value))}
                       onBlur={handleTimeoutUpdate}
+                      disabled={!configLoaded}
                       min={1}
                       max={300}
                       className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
@@ -650,14 +741,60 @@ const Overview: React.FC = () => {
                       setBrowserOptions(tags)
                       if (projectPath) {
                         window.api.updateBrowserOptions(projectPath, tags)
+                          .then((result) => {
+                            if (!result.success) {
+                              toast.error(result.error || t('settings.error.unexpected'))
+                            }
+                          })
                           .catch(() => toast.error(t('settings.error.unexpected')))
                       }
                     }}
                     placeholder={t('settings.browserOptions.placeholder')}
+                    disabled={!configLoaded}
                   />
                 </div>
               </div>
             )}
+            <div className="flex items-center gap-4 flex-wrap">
+              <Tooltip content={t('tooltips.recorder.implicitWait')} position="right">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                    {t('settings.recording.implicitWait.label')}
+                  </label>
+                  <input
+                    type="number"
+                    id="implicit-wait"
+                    value={implicitWait}
+                    onChange={(e) => {
+                      const val = Number(e.target.value)
+                      if (val >= 0) setImplicitWait(val)
+                    }}
+                    onBlur={() => saveWait({ implicitWait })}
+                    min="0"
+                    className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                  />
+                </div>
+              </Tooltip>
+              <Tooltip content={t('tooltips.recorder.explicitWait')} position="right">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                    {t('settings.recording.explicitWait.label')}
+                  </label>
+                  <input
+                    type="number"
+                    id="explicit-wait"
+                    value={explicitWait}
+                    onChange={(e) => {
+                      const val = Number(e.target.value)
+                      if (val >= 0) setExplicitWait(val)
+                    }}
+                    onBlur={() => saveWait({ explicitWait })}
+                    min="0"
+                    className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                  />
+                </div>
+              </Tooltip>
+            </div>
           </div>
           <div className="relative h-[62vh] border border-t-0 border-neutral-bdr rounded-b-lg shadow-card flex flex-col bg-white">
             {/* Split: file tree left + editor preview right */}
@@ -672,7 +809,6 @@ const Overview: React.FC = () => {
                   onFileClick={handleOpenFile}
                   isRoot={true}
                   onRunTests={handleRunRaiderTests}
-                  onGenerateSpec={handleGenerateSpec}
                   onFileContextMenu={handleFileContextMenu}
                   onFolderContextMenu={handleFolderContextMenu}
                 />
@@ -760,21 +896,6 @@ const Overview: React.FC = () => {
             <ProjectDashboard />
           </div>
         </div>
-      )}
-
-      {/* Context menu for page files (generate spec) */}
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          items={[
-            {
-              label: `Generate spec from ${contextMenu.pageName}`,
-              onClick: handleContextMenuAction
-            }
-          ]}
-          onClose={() => setContextMenu(null)}
-        />
       )}
 
       {/* Context menu for all files (copy/rename/delete) */}

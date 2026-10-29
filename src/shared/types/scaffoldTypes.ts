@@ -1,19 +1,23 @@
-export type ScaffoldComponentType = 'page' | 'spec' | 'feature' | 'steps' | 'helper' | 'component'
+// Mirrors `raider generate <type> <name> [--path]`; the gem accepts nothing more.
+export const SCAFFOLD_GENERATE_TYPES = [
+  'page',
+  'feature',
+  'spec',
+  'helper',
+  'steps',
+  'component',
+  'scaffold'
+] as const
 
-export type ScaffoldOperation = 'generate' | 'smart' | 'from_url' | 'dry_run' | 'delete' | 'destroy'
+export type ScaffoldComponentType = (typeof SCAFFOLD_GENERATE_TYPES)[number]
+
+export type ScaffoldOperation = 'generate'
 
 export interface ScaffoldParams {
   operation: ScaffoldOperation
   type?: ScaffoldComponentType
-  names?: string[]
   name?: string
-  url?: string
   path?: string
-  components?: string[]
-  uses?: string[]
-  crud?: boolean
-  from?: string
-  ai?: boolean
 }
 
 export interface ScaffoldResult {

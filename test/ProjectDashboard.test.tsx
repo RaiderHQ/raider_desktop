@@ -21,13 +21,27 @@ vi.mock('@components/PieChartWidget', () => ({
   )
 }))
 vi.mock('@components/TestResultCard', () => ({
-  default: ({ name, status }: { name: string; status: string }): JSX.Element => (
-    <div data-testid="row">{`${name}|${status}`}</div>
+  default: ({
+    name,
+    status,
+    video,
+    failure
+  }: {
+    name: string
+    status: string
+    video?: string
+    failure?: unknown
+  }): JSX.Element => (
+    <div data-testid="row" data-video={video} data-failure={failure ? 'yes' : 'no'}>{`${name}|${status}`}</div>
   )
 }))
 
 describe('ProjectDashboard with raider-results', () => {
   it('renders rows from a raider-results fixture without touching allure-results', async () => {
+    window.api = {
+      setActiveProject: vi.fn().mockResolvedValue({ success: true }),
+      readDirectory: vi.fn().mockResolvedValue([])
+    } as unknown as typeof window.api
     useProjectStore.setState({ projectPath: '/proj' })
     const run = JSON.stringify({
       results: [
@@ -53,6 +67,7 @@ describe('ProjectDashboard with raider-results', () => {
       throw new Error('ENOENT')
     })
     window.api = {
+      setActiveProject: vi.fn().mockResolvedValue({ success: true }),
       readDirectory,
       readFile: vi.fn(async () => ({ success: true, data: run }))
     } as unknown as typeof window.api
@@ -63,6 +78,41 @@ describe('ProjectDashboard with raider-results', () => {
     expect(screen.getByText('Login: ok|passed')).toBeInTheDocument()
     expect(screen.getByText('Login: bad|failed')).toBeInTheDocument()
     expect(readDirectory).not.toHaveBeenCalledWith('/proj/allure-results')
+    expect(screen.getByText('Login: bad|failed')).toHaveAttribute('data-failure', 'yes')
+    expect(screen.getByText('Login: ok|passed')).toHaveAttribute('data-failure', 'no')
+  })
+})
+
+describe('ProjectDashboard video threading', () => {
+  it('passes the absolute video path from run.json to the result card', async () => {
+    useProjectStore.setState({ projectPath: '/proj' })
+    const run = JSON.stringify({
+      results: [
+        {
+          full_name: 'Login: bad',
+          status: 'failed',
+          attachments: [
+            { content_type: 'video/webm', path: 'attachments/0-video.webm' }
+          ]
+        }
+      ]
+    })
+    window.api = {
+      readDirectory: vi.fn(async (dir: string) => {
+        if (dir === '/proj/raider-results')
+          return [
+            { name: 'run.json', type: 'file', isDirectory: false, path: '/proj/raider-results/run.json' }
+          ]
+        throw new Error('ENOENT')
+      }),
+      readFile: vi.fn(async () => ({ success: true, data: run })),
+      reportExists: vi.fn(async () => false)
+    } as unknown as typeof window.api
+
+    render(<ProjectDashboard />)
+
+    const row = await screen.findByTestId('row')
+    expect(row).toHaveAttribute('data-video', '/proj/raider-results/attachments/0-video.webm')
   })
 })
 
@@ -71,6 +121,7 @@ describe('ProjectDashboard Open report button', () => {
     useProjectStore.setState({ projectPath: '/proj' })
     const openReport = vi.fn(async () => ({ success: true }))
     window.api = {
+      setActiveProject: vi.fn().mockResolvedValue({ success: true }),
       readDirectory: vi.fn(async () => {
         throw new Error('ENOENT')
       }),
@@ -142,6 +193,7 @@ describe('ProjectDashboard with quarantined results', () => {
       ]
     })
     window.api = {
+      setActiveProject: vi.fn().mockResolvedValue({ success: true }),
       readDirectory: vi.fn(async (dir: string) => {
         if (dir === '/proj/raider-results')
           return [

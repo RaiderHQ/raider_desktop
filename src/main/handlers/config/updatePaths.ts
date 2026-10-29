@@ -1,6 +1,7 @@
 import { IpcMainInvokeEvent } from 'electron'
 import { safeExec } from '../../utils/safeExec'
 import { buildShellCommand } from '../../utils/shellCommand'
+import { quoteShellArg } from '../../utils/shellQuote'
 import { CommandType } from '@foundation/Types/commandType'
 
 type PathType = 'feature' | 'spec' | 'helper'
@@ -15,7 +16,7 @@ const handler = async (
   fixPath()
 
   try {
-    const args: string[] = ['raider', 'u', 'path', pathValue]
+    const args: string[] = ['raider', 'u', 'path', quoteShellArg(pathValue)]
 
     if (pathType === 'feature') args.push('-f')
     else if (pathType === 'spec') args.push('-s')

@@ -1,14 +1,37 @@
 import { BrowserWindow } from 'electron'
 import { appState } from '../appState'
+import { persistActiveSuites } from '../suitePersistence'
+import {
+  activeSuiteMode,
+  broadcast,
+  filesStore,
+  lockedError,
+  saveTestInSuite
+} from '../tests/suiteStore'
 import type { Test } from '@foundation/Types/test'
 
-const handler = (
+const handler = async (
   mainWindow: BrowserWindow | null,
   suiteId: string,
   testData: Test
-): { success: boolean; error?: string } => {
+): Promise<{ success: boolean; error?: string; test?: Test }> => {
   if (!mainWindow) {
     return { success: false, error: 'Main window is not available.' }
+  }
+
+  const mode = await activeSuiteMode()
+  if (mode === 'locked') return { success: false, error: lockedError() }
+
+  const store = filesStore()
+  if (store) {
+    try {
+      const result = await saveTestInSuite(store, suiteId, testData)
+      if (!result.success) return result
+      broadcast(store)
+      return { success: true, test: result.test }
+    } catch (error) {
+      return { success: false, error: (error as Error).message }
+    }
   }
 
   const suite = appState.suites.get(suiteId)
@@ -32,6 +55,7 @@ const handler = (
 
   // Persist the updated suites map
   appState.suites.set(suiteId, suite)
+  await persistActiveSuites()
   mainWindow.webContents.send('suite-updated', Array.from(appState.suites.values()))
 
   return { success: true }

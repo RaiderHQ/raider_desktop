@@ -3,8 +3,8 @@ export interface RaiderConfig {
   rubyVersion: string
   createdAt: string
   framework: {
-    automation: 'Appium' | 'Selenium' | 'Axe' | 'Capybara' | 'Watir' | 'Applitools'
-    test: 'Rspec' | 'Cucumber' | 'Minitest'
+    automation: 'Selenium' | 'Watir' | 'Appium'
+    test: 'Rspec' | 'Cucumber'
     mobile: 'Android' | 'iOS'
   }
   settings: {

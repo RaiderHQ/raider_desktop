@@ -42,7 +42,7 @@ This dual nature means the app should:
 
 ### System Requirements
 - **rbenv**: Ruby version manager (required)
-- **Ruby 3.0.0+**: Required for Ruby Raider gem
+- **Ruby 3.2.0+**: Required for Ruby Raider gem
 - **ruby_raider gem**: The underlying CLI tool this app wraps
 
 ### Platform Support

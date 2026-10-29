@@ -38,3 +38,7 @@
     @apply font-sans text-neutral-dark antialiased;
   }
 }
+
+.raider-reveal-line {
+  background-color: rgba(220, 38, 38, 0.15);
+}

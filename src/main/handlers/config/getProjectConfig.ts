@@ -6,6 +6,8 @@ export interface ProjectConfig {
   baseUrl?: string
   browser?: string
   headless?: boolean
+  timeout?: number
+  browserArguments?: string[]
 }
 
 const handler = async (
@@ -34,6 +36,20 @@ const handler = async (
         }
         if (typeof config['headless'] === 'boolean') {
           result.headless = config['headless']
+        }
+        if (typeof config['timeout'] === 'number') {
+          result.timeout = config['timeout']
+        }
+        const browserArgs = config['browser_arguments']
+        if (
+          typeof config['browser'] === 'string' &&
+          browserArgs &&
+          typeof browserArgs === 'object'
+        ) {
+          const args = (browserArgs as Record<string, unknown>)[config['browser']]
+          if (Array.isArray(args)) {
+            result.browserArguments = args.filter((a): a is string => typeof a === 'string')
+          }
         }
       }
     } catch {

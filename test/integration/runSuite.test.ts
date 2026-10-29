@@ -22,13 +22,12 @@ vi.mock('fs', () => {
 vi.mock('../../src/main/handlers/appState', () => {
   const suites = new Map()
   return {
-    appState: { suites },
-    getRecordingSettings: vi.fn(() => ({ implicitWait: 0, explicitWait: 30 }))
+    appState: { suites, recorderSettings: { browser: 'chrome', headless: false, implicitWait: 0, explicitWait: 30 } }
   }
 })
 
 import runSuite from '../../src/main/handlers/testing/runSuite'
-import { appState, getRecordingSettings } from '../../src/main/handlers/appState'
+import { appState } from '../../src/main/handlers/appState'
 
 const mockExec = exec as ReturnType<typeof vi.fn>
 const mockWriteFile = fs.writeFile as ReturnType<typeof vi.fn>
@@ -109,14 +108,18 @@ describe('runSuite handler (integration)', () => {
       ...suite,
       tests: [{ id: 'test-1', name: 'Test', url: '', steps: [] }]
     });
-    (getRecordingSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+    (appState as unknown as { recorderSettings: object }).recorderSettings = {
+      browser: 'firefox',
+      headless: false,
       implicitWait: 5,
       explicitWait: 60
-    })
+    }
     mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) => cb(null, '{}', ''))
     await runSuite('suite-1', 'ruby')
     const writtenCode = (mockWriteFile.mock.calls[0][1] as string)
     expect(writtenCode).toContain('implicit_wait = 5')
     expect(writtenCode).toContain('timeout: 60')
+    expect(writtenCode).toContain('Selenium::WebDriver.for :firefox')
+    expect(writtenCode).not.toContain('sleep(')
   })
 })

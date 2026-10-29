@@ -15,21 +15,12 @@ vi.mock('fs', () => {
   return { default: { promises }, promises }
 })
 
-import runRecording, { generateRspecCode } from '../../src/main/handlers/testing/runRecording'
+import { generateRspecFile } from '../../src/main/codegen/testFile'
+import { migrateLegacyTest } from '../../src/main/codegen/legacy'
+import runRecording from '../../src/main/handlers/testing/runRecording'
 
 const mockExec = exec as ReturnType<typeof vi.fn>
 const mockWriteFile = fs.writeFile as ReturnType<typeof vi.fn>
-
-describe('generateRspecCode (backward compat)', () => {
-  it('generates rspec code with selenium defaults', () => {
-    const code = generateRspecCode('My Test', ['@driver.get("https://example.com")'], 5, 10)
-    expect(code).toContain("require 'selenium-webdriver'")
-    expect(code).toContain("require 'rspec'")
-    expect(code).toContain("describe 'My Test'")
-    expect(code).toContain('implicit_wait = 5')
-    expect(code).toContain('timeout: 10')
-  })
-})
 
 describe('runRecording', () => {
   beforeEach(() => {
@@ -54,7 +45,7 @@ describe('runRecording', () => {
     })
 
     const result = await runRecording({
-      savedTest: { name: 'Login', steps: ['@driver.get("https://example.com")'] },
+      savedTest: { id: 't', name: 'Login', url: '', steps: ['@driver.get("https://example.com")'] },
       implicitWait: 5,
       explicitWait: 10,
       projectPath: '/project',
@@ -67,24 +58,38 @@ describe('runRecording', () => {
     expect(calledCmd).toContain('--format json')
   })
 
-  it('generates and executes minitest test when framework is minitest', async () => {
+  it('writes exactly the generated rspec file and runs rspec with json output', async () => {
     mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) => {
-      cb(null, '1 tests, 0 failures', '')
+      cb(null, '{}', '')
     })
+    const savedTest = {
+      id: 't1',
+      name: 'Login',
+      url: '',
+      steps: ['@driver.find_element(:id, "btn").click']
+    }
 
-    const result = await runRecording({
-      savedTest: { name: 'Login', steps: ['step1'] },
+    await runRecording({
+      savedTest,
       implicitWait: 5,
       explicitWait: 10,
+      browser: 'firefox',
+      headless: true,
       projectPath: '/project',
       rubyCommand: 'ruby',
+      projectAutomation: 'watir',
       projectFramework: 'minitest'
     })
 
-    expect(result.success).toBe(true)
+    const expected = generateRspecFile(migrateLegacyTest(savedTest), 'watir', {
+      browser: 'firefox',
+      headless: true,
+      implicitWait: 5,
+      explicitWait: 10
+    })
+    expect(mockWriteFile.mock.calls[0][1]).toBe(expected)
     const calledCmd = mockExec.mock.calls[0][0] as string
-    expect(calledCmd).not.toContain('rspec')
-    expect(calledCmd).toContain('ruby')
+    expect(calledCmd).toMatch(/^ruby -S rspec .*\.rb --format json$/)
   })
 
   it('returns failure with stderr on exec error', async () => {
@@ -93,7 +98,7 @@ describe('runRecording', () => {
     })
 
     const result = await runRecording({
-      savedTest: { name: 'T', steps: ['step'] },
+      savedTest: { id: 't', name: 'T', url: '', steps: ['step'] },
       implicitWait: 5,
       explicitWait: 10,
       projectPath: '/p',
@@ -103,24 +108,5 @@ describe('runRecording', () => {
     expect(result.success).toBe(false)
     expect(result.output).toContain('STDERR')
     expect(result.output).toContain('test failed')
-  })
-
-  it('passes automation framework to test code generation', async () => {
-    mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) => {
-      cb(null, 'ok', '')
-    })
-
-    await runRecording({
-      savedTest: { name: 'T', steps: ['find(".btn").click'] },
-      implicitWait: 5,
-      explicitWait: 10,
-      projectPath: '/p',
-      rubyCommand: 'ruby',
-      projectAutomation: 'capybara',
-      projectFramework: 'rspec'
-    })
-
-    const writtenCode = mockWriteFile.mock.calls[0][1] as string
-    expect(writtenCode).toContain('capybara')
   })
 })

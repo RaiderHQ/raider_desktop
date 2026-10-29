@@ -2,9 +2,12 @@ import { app } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { appState } from './appState'
+import { activationSettled } from './project/setActiveProject'
 import type { Suite } from '@foundation/Types/suite'
 
-export default (): Suite[] => {
+export default async (): Promise<Suite[]> => {
+  // Wait for a project switch to finish, so the previous project's suites are never shown
+  await activationSettled()
   const tracesDir = join(app.getPath('userData'), 'traces')
   const suites = Array.from(appState.suites.values())
   for (const suite of suites) {

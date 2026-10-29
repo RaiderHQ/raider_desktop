@@ -120,4 +120,13 @@ describe('recorderStore', () => {
       expect(useRecorderStore.getState().activeSuite()?.name).toBe('Suite 2')
     })
   })
+
+  describe('resetForProject', () => {
+    it('stops showing a recording or run from the project that was open', () => {
+      useRecorderStore.setState({ isRecording: true, isRunning: true })
+      useRecorderStore.getState().resetForProject()
+      expect(useRecorderStore.getState().isRecording).toBe(false)
+      expect(useRecorderStore.getState().isRunning).toBe(false)
+    })
+  })
 })

@@ -1,4 +1,4 @@
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import FileEditor from '@pages/FileEditor'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
@@ -14,12 +14,19 @@ vi.mock('react-i18next', () => ({
 vi.mock('@components/Editor', () => ({
   default: ({
     value,
-    onChange
+    onChange,
+    revealLine
   }: {
     value: string
     onChange: (value: string) => void
+    revealLine?: number
   }): JSX.Element => (
-    <textarea data-testid="editor" value={value} onChange={(e) => onChange(e.target.value)} />
+    <textarea
+      data-testid="editor"
+      data-reveal-line={revealLine === undefined ? '' : String(revealLine)}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
   )
 }))
 
@@ -33,19 +40,26 @@ beforeEach((): void => {
   window.api = mockApi
 })
 
-const renderComponent = (): void => {
+const renderComponent = (extraState: object = {}): void => {
   render(
     <MemoryRouter
       initialEntries={[
-        { pathname: '/file-editor', state: { fileName: 'test.txt', filePath: '/fake/path' } }
+        {
+          pathname: '/file-editor',
+          state: { fileName: 'test.txt', filePath: '/fake/path', ...extraState }
+        }
       ]}
     >
       <Routes>
         <Route path="/file-editor" element={<FileEditor />} />
+        <Route path="/overview" element={<div>overview route</div>} />
+        <Route path="/overview/tests/:testKey" element={<div>test route</div>} />
       </Routes>
     </MemoryRouter>
   )
 }
+
+const back = (): HTMLElement => screen.getByText('test.txt').previousElementSibling as HTMLElement
 
 describe('FileEditor Page', () => {
   it('renders loading state initially', async () => {
@@ -63,5 +77,35 @@ describe('FileEditor Page', () => {
     expect(screen.getByText('test.txt')).toBeInTheDocument()
     expect(screen.getByTestId('editor')).toBeInTheDocument()
     expect(screen.getByTestId('editor')).toHaveValue('file content')
+  })
+
+  it('passes the requested line to the editor as revealLine', async () => {
+    await act(async () => {
+      renderComponent({ line: 7 })
+    })
+    expect(screen.getByTestId('editor')).toHaveAttribute('data-reveal-line', '7')
+  })
+
+  it('passes no revealLine when no line is requested', async () => {
+    await act(async () => {
+      renderComponent()
+    })
+    expect(screen.getByTestId('editor')).toHaveAttribute('data-reveal-line', '')
+  })
+
+  it('Back goes to the overview by default', async () => {
+    await act(async () => {
+      renderComponent()
+    })
+    fireEvent.click(back())
+    expect(screen.getByText('overview route')).toBeInTheDocument()
+  })
+
+  it('Back returns to the page the file was opened from', async () => {
+    await act(async () => {
+      renderComponent({ returnTo: '/overview/tests/abc' })
+    })
+    fireEvent.click(back())
+    expect(screen.getByText('test route')).toBeInTheDocument()
   })
 })

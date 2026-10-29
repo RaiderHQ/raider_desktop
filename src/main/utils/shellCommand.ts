@@ -1,5 +1,8 @@
 import { appState } from '../handlers/appState'
 
+/** Single-quotes `value` for a POSIX shell: quotes, `$` and backticks stay literal. */
+export const shellQuote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`
+
 /**
  * Platform-aware shell command builder.
  *
@@ -23,5 +26,5 @@ export function buildShellCommand(
   }
   const version = rubyVersion || appState.rubyVersion || undefined
   const versionExport = version ? `export RBENV_VERSION=${version} && ` : ''
-  return `eval "$(rbenv init - 2>/dev/null || true)" && ${versionExport}cd "${projectPath}" && ${command}`
+  return `eval "$(rbenv init - 2>/dev/null || true)" && ${versionExport}cd ${shellQuote(projectPath)} && ${command}`
 }

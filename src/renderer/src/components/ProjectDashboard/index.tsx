@@ -62,13 +62,15 @@ interface ResultSectionProps {
   results: TestResult[]
   keyPrefix: string
   testByName: Map<string, { id: string; hasTrace?: boolean }>
+  projectPath?: string
 }
 
 const ResultSection: React.FC<ResultSectionProps> = ({
   titleKey,
   results,
   keyPrefix,
-  testByName
+  testByName,
+  projectPath
 }) => {
   const { t } = useTranslation()
   if (results.length === 0) return null
@@ -86,8 +88,13 @@ const ResultSection: React.FC<ResultSectionProps> = ({
               name={result.name}
               status={result.status}
               screenshot={result.screenshot}
+              video={result.video}
               message={result.statusDetails?.message}
               traceTestId={testInfo?.hasTrace ? testInfo.id : undefined}
+              failure={result.failure}
+              durationMs={result.durationMs}
+              browser={result.browser}
+              projectPath={projectPath}
             />
           )
         })}
@@ -233,24 +240,28 @@ const Index: React.FC = (): JSX.Element => {
                 results={passedTests}
                 keyPrefix="passed"
                 testByName={testByName}
+                projectPath={projectPath}
               />
               <ResultSection
                 titleKey="dashboard.failed"
                 results={failedTests}
                 keyPrefix="failed"
                 testByName={testByName}
+                projectPath={projectPath}
               />
               <ResultSection
                 titleKey="dashboard.quarantined"
                 results={quarantinedTests}
                 keyPrefix="quarantined"
                 testByName={testByName}
+                projectPath={projectPath}
               />
               <ResultSection
                 titleKey="dashboard.skipped"
                 results={skippedTests}
                 keyPrefix="skipped"
                 testByName={testByName}
+                projectPath={projectPath}
               />
             </div>
           </div>

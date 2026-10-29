@@ -48,6 +48,11 @@ describe('IPC Contract', () => {
   const expectedMethods = [
     // Project Management
     'runRubyRaider',
+    'recordOverExample',
+    'createQuickProject',
+    'isQuickProject',
+    'listQuickProjects',
+    'saveQuickProjectTo',
     'selectFolder',
     'readDirectory',
     'readFile',
@@ -65,7 +70,6 @@ describe('IPC Contract', () => {
     'isRvmRubyInstalled',
     'isSystemRubyInstalled',
     'installRbenvAndRuby',
-    'installRaider',
     'installGems',
 
     // Browser & Mobile Configuration
@@ -83,12 +87,15 @@ describe('IPC Contract', () => {
     'runTest',
     'runSuite',
 
-    // Command Parsing
-    'xpathParser',
-    'commandParser',
+    // Step Rendering
+    'renderStep',
 
     // Suite Management
     'getSuites',
+    'listProjectTests',
+    'openCodeTest',
+    'getProjectLayout',
+    'runProjectFile',
     'createSuite',
     'deleteSuite',
     'exportSuite',
@@ -109,8 +116,13 @@ describe('IPC Contract', () => {
     'replayInWebview',
     'registerRecorderWebContents',
     'stopRecordingMain',
+    'setRecordingState',
+    'onFlushRecording',
+    'flushRecordingDone',
     'loadUrlRequest',
     'updateRecordingSettings',
+    'setActiveProject',
+    'getRecorderSettings',
 
     // Trace Management
     'saveTrace',
@@ -120,6 +132,10 @@ describe('IPC Contract', () => {
     // Event Listeners
     'onTestRunStatus',
     'removeTestRunStatusListener',
+    'onTestsMigrated',
+    'removeTestsMigratedListener',
+    'onSuitesTooNew',
+    'removeSuitesTooNewListener',
 
     // Scaffolding
     'scaffoldGenerate',
@@ -127,7 +143,6 @@ describe('IPC Contract', () => {
     // Extended Project Settings
     'updateTimeout',
     'updateViewport',
-    'updateDebugMode',
     'updateBrowserOptions',
     'updateHeadlessMode',
     'getProjectConfig',

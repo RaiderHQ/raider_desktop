@@ -1,11 +1,16 @@
 import { test, expect } from './electronApp'
-import { goToOverview } from './helpers/navigation'
+import { goToOverviewFiles, mockRubyReady } from './helpers/navigation'
 import {
   setupProjectContext,
   mockIPCCapture,
   mockIPCCaptureFailure,
   getIPCCalls
 } from './helpers/ipc-mock'
+
+// The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
+test.beforeEach(async ({ electronApp, page }) => {
+  await mockRubyReady(electronApp, page)
+})
 
 test.describe('File Editor Page', () => {
   const navigateToEditor = async (page: any): Promise<void> => {
@@ -30,7 +35,7 @@ test.describe('File Editor Page', () => {
     await page.waitForTimeout(800)
   }
 
-  test('loads and displays file content via overview file click', async ({ page }) => {
+  test('an Overview file click previews the file in the Files tab', async ({ page }) => {
     const mockTree = [
       { name: 'login_page.rb', type: 'file', path: '/mock/test-project/login_page.rb' }
     ]
@@ -41,15 +46,14 @@ test.describe('File Editor Page', () => {
         data: 'class LoginPage\nend'
       })
     })
-    await goToOverview(page)
+    await goToOverviewFiles(page)
 
     await page.getByText('login_page.rb').click()
-    await page.waitForTimeout(1500)
 
-    const url = page.url()
-    expect(url).toContain('#/file-editor')
-    // The editor or file name should be visible
-    await expect(page.getByText('login_page.rb')).toBeVisible({ timeout: 5000 })
+    // The tree and the preview header both name the file; the route stays on the Overview
+    await expect(page.getByText('login_page.rb')).toHaveCount(2)
+    await expect(page.getByText('Select a file to preview')).toHaveCount(0)
+    expect(page.url()).toContain('#/overview')
   })
 
   test('shows loading state while file loads', async ({ page }) => {
@@ -62,16 +66,13 @@ test.describe('File Editor Page', () => {
       ;(window as any).api.readFile = () =>
         new Promise((resolve) => setTimeout(() => resolve({ success: true, data: 'content' }), 3000))
     })
-    await goToOverview(page)
+    await goToOverviewFiles(page)
 
     await page.getByText('slow_file.rb').click()
-    await page.waitForTimeout(500)
 
-    // Should show loading text
-    const loading = page.getByText('Loading', { exact: false })
-    const hasLoading = await loading.isVisible().catch(() => false)
-    // The page should be in file-editor route
-    expect(page.url()).toContain('#/file-editor')
+    // The preview shows a loading state until the file arrives
+    await expect(page.getByText('Loading...', { exact: true })).toBeVisible()
+    await expect(page.getByText('Loading...', { exact: true })).toHaveCount(0, { timeout: 10000 })
   })
 
   test('save triggers editFile IPC with correct path and content', async ({ page }) => {
@@ -85,7 +86,7 @@ test.describe('File Editor Page', () => {
         data: 'original content'
       })
     })
-    await goToOverview(page)
+    await goToOverviewFiles(page)
     await page.getByText('edit_me.rb').click()
     await page.waitForTimeout(1500)
 
@@ -112,7 +113,7 @@ test.describe('File Editor Page', () => {
         data: 'content'
       })
     })
-    await goToOverview(page)
+    await goToOverviewFiles(page)
     await page.getByText('save_test.rb').click()
     await page.waitForTimeout(1500)
     await mockIPCCapture(page, 'editFile', { success: true })
@@ -135,7 +136,7 @@ test.describe('File Editor Page', () => {
         data: 'content'
       })
     })
-    await goToOverview(page)
+    await goToOverviewFiles(page)
     await page.getByText('fail_save.rb').click()
     await page.waitForTimeout(1500)
     await mockIPCCaptureFailure(page, 'editFile', 'Permission denied')
@@ -158,7 +159,7 @@ test.describe('File Editor Page', () => {
         data: 'content'
       })
     })
-    await goToOverview(page)
+    await goToOverviewFiles(page)
     await page.getByText('back_test.rb').click()
     await page.waitForTimeout(1500)
 

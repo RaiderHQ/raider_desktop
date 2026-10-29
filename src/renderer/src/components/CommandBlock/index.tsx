@@ -1,25 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ParsedCommand } from '@foundation/Types/command'
 import Tooltip from '@components/Tooltip'
+import type { Step } from '@shared/types/step'
+import { describeStep } from '@shared/describeStep'
 
 interface CommandBlockProps {
-  command: string
+  step: Step
   index: number
   showCode: boolean
   onDragStart: (index: number) => void
   onDragEnter: (index: number) => void
   onDragEnd: () => void
   onDelete: (index: number) => void
-  onEdit?: (index: number, newCommand: string) => void
+  onEdit?: (index: number, step: Step) => void
   isBreakpoint?: boolean
   onSetBreakpoint?: (index: number) => void
   onClearBreakpoint?: () => void
   onRecordFromHere?: (index: number) => void
+  /** View-only: no editing, dragging, deleting or breakpoints */
+  readOnly?: boolean
+  /** The step recorded last */
+  latest?: boolean
 }
 
 const CommandBlock: React.FC<CommandBlockProps> = ({
-  command,
+  step,
   index,
   showCode,
   onDragStart,
@@ -30,41 +35,37 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   isBreakpoint,
   onSetBreakpoint,
   onClearBreakpoint,
-  onRecordFromHere
+  onRecordFromHere,
+  readOnly = false,
+  latest = false
 }) => {
   const { t } = useTranslation()
-  const [mainCommand, comment] = command.split(' # ')
-  const [parsedCommand, setParsedCommand] = useState<string | ParsedCommand>('Loading...')
+  // Ruby for the code view, rendered by the main process for the project's automation
+  const [code, setCode] = useState<string | null>(null)
+  const [renderFailed, setRenderFailed] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(command)
-  const editValueRef = useRef(command)
+  const [editValue, setEditValue] = useState('')
+  const editValueRef = useRef('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isCancellingRef = useRef(false)
 
-  useEffect((): (() => void) => {
+  useEffect((): (() => void) | undefined => {
+    if (!showCode) return undefined
     let isMounted = true
-
-    if (!showCode) {
-      setParsedCommand('Loading...')
-      const parser = mainCommand.includes(':xpath,')
-        ? window.api.xpathParser
-        : window.api.commandParser
-      parser(mainCommand).then((result: string | ParsedCommand) => {
-        if (isMounted) {
-          setParsedCommand(result)
-        }
+    setCode(null)
+    setRenderFailed(false)
+    window.api
+      .renderStep(step)
+      .then((ruby) => {
+        if (isMounted) setCode(ruby)
       })
-    }
-
+      .catch(() => {
+        if (isMounted) setRenderFailed(true)
+      })
     return (): void => {
       isMounted = false
     }
-  }, [mainCommand, showCode])
-
-  useEffect(() => {
-    editValueRef.current = command
-    setEditValue(command)
-  }, [command])
+  }, [step, showCode])
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -74,9 +75,10 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   }, [isEditing])
 
   const handleEditStart = (): void => {
-    if (showCode && onEdit) {
-      editValueRef.current = command
-      setEditValue(command)
+    // Editing starts from the rendered Ruby, so wait until it has arrived
+    if (!readOnly && showCode && onEdit && code !== null) {
+      editValueRef.current = code
+      setEditValue(code)
       setIsEditing(true)
     }
   }
@@ -92,8 +94,9 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
       return
     }
     const trimmed = editValueRef.current.trim()
-    if (trimmed && trimmed !== command && onEdit) {
-      onEdit(index, trimmed)
+    // Hand-edited Ruby can't be mapped back to a structured step, so it becomes custom code
+    if (trimmed && trimmed !== code && onEdit) {
+      onEdit(index, { id: step.id, kind: 'custom', code: trimmed })
     }
     setIsEditing(false)
   }
@@ -105,8 +108,6 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
     }
     if (e.key === 'Escape') {
       isCancellingRef.current = true
-      editValueRef.current = command
-      setEditValue(command)
       setIsEditing(false)
     }
   }
@@ -130,21 +131,21 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
 
       return (
         <div
-          className="font-mono text-sm cursor-text"
+          className="font-mono text-sm cursor-text whitespace-pre-wrap text-ruby"
           onDoubleClick={handleEditStart}
-          title={onEdit ? 'Double-click to edit' : undefined}
+          title={onEdit && !readOnly ? 'Double-click to edit' : undefined}
         >
-          <span className="text-ruby">{mainCommand}</span>
-          {comment && <span className="text-neutral-mid ml-2"># {comment}</span>}
+          {renderFailed ? (
+            <span className="text-neutral-mid font-sans">{t('recorder.step.renderFailed')}</span>
+          ) : (
+            (code ?? '\u00a0')
+          )}
         </div>
       )
     }
 
     // Friendly view
-    if (typeof parsedCommand === 'string') {
-      return <span className="text-neutral-dark">{parsedCommand}</span>
-    }
-    const { key, values } = parsedCommand
+    const { key, values } = describeStep(step)
     return <span className="text-neutral-dark">{t(key, values)}</span>
   }
 
@@ -157,25 +158,34 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   }
 
   return (
-    <div className="relative w-full mb-3 group/block">
+    <div
+      className={`relative w-full mb-3 group/block ${latest ? 'rounded-lg ring-2 ring-ruby/40' : ''}`}
+      data-latest={latest ? 'true' : undefined}
+    >
       {/* Breakpoint gutter */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-5 flex items-center justify-center cursor-pointer z-20"
-        onClick={handleGutterClick}
-        title={isBreakpoint ? t('tooltips.recorder.clearBreakpoint') : t('tooltips.recorder.setBreakpoint')}
-      >
-        <div className={`w-2.5 h-2.5 rounded-full transition-colors ${
-          isBreakpoint
-            ? 'bg-amber-400'
-            : 'bg-transparent group-hover/block:bg-amber-200'
-        }`} />
-      </div>
+      {!readOnly && (
+        <div
+          className="absolute left-0 top-0 bottom-0 w-5 flex items-center justify-center cursor-pointer z-20"
+          onClick={handleGutterClick}
+          title={
+            isBreakpoint
+              ? t('tooltips.recorder.clearBreakpoint')
+              : t('tooltips.recorder.setBreakpoint')
+          }
+        >
+          <div
+            className={`w-2.5 h-2.5 rounded-full transition-colors ${
+              isBreakpoint ? 'bg-amber-400' : 'bg-transparent group-hover/block:bg-amber-200'
+            }`}
+          />
+        </div>
+      )}
 
       <div
-        className={`relative bg-white p-3 pl-4 pr-8 rounded-lg border transition-shadow duration-200 z-10 cursor-grab active:cursor-grabbing ml-5 ${
-          isBreakpoint ? 'border-amber-300 bg-amber-50/30' : 'border-neutral-bdr/50'
-        }`}
-        draggable={!isEditing}
+        className={`relative bg-white p-3 pl-4 pr-8 rounded-lg border transition-shadow duration-200 z-10 ml-5 ${
+          readOnly ? '' : 'cursor-grab active:cursor-grabbing'
+        } ${isBreakpoint ? 'border-amber-300 bg-amber-50/30' : 'border-neutral-bdr/50'}`}
+        draggable={!isEditing && !readOnly}
         onDragStart={() => onDragStart(index)}
         onDragEnter={() => onDragEnter(index)}
         onDragEnd={onDragEnd}
@@ -183,20 +193,22 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
       >
         {renderContent()}
 
-        <div className="absolute top-2 right-2">
-          <Tooltip content={t('tooltips.recorder.deleteStep')} position="top">
-            <button
-              onClick={() => onDelete(index)}
-              className="w-6 h-6 flex items-center justify-center rounded-full text-neutral-mid hover:bg-status-err-bg hover:text-red-600 transition-colors"
-              aria-label="Delete step"
-            >
-              <span className="text-2xl font-light select-none leading-none">×</span>
-            </button>
-          </Tooltip>
-        </div>
+        {!readOnly && (
+          <div className="absolute top-2 right-2">
+            <Tooltip content={t('tooltips.recorder.deleteStep')} position="top">
+              <button
+                onClick={() => onDelete(index)}
+                className="w-6 h-6 flex items-center justify-center rounded-full text-neutral-mid hover:bg-status-err-bg hover:text-red-600 transition-colors"
+                aria-label="Delete step"
+              >
+                <span className="text-2xl font-light select-none leading-none">×</span>
+              </button>
+            </Tooltip>
+          </div>
+        )}
       </div>
 
-      {isBreakpoint && onRecordFromHere && (
+      {!readOnly && isBreakpoint && onRecordFromHere && (
         <button
           onClick={() => onRecordFromHere(index)}
           className="mt-1 ml-5 text-xs text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded px-2 py-0.5 transition-colors font-medium"

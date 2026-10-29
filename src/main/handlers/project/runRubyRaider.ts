@@ -3,6 +3,7 @@ import path from 'path'
 import { IpcMainInvokeEvent } from 'electron'
 import { safeExec } from '../../utils/safeExec'
 import { buildShellCommand } from '../../utils/shellCommand'
+import { quoteShellArg } from '../../utils/shellQuote'
 import { CommandType } from '@foundation/Types/commandType'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import { safeLog, safeError } from '../../utils/safeLog'
@@ -49,20 +50,13 @@ const handler = async (
       formattedAutomation = mobile.toLowerCase()
     }
 
-    let raiderCommand = `raider new "${projectName}" -p framework:${formattedFramework} automation:${formattedAutomation}`
+    let raiderCommand = `raider new ${quoteShellArg(projectName)} -p framework:${formattedFramework} automation:${formattedAutomation}`
 
     // Azure Pipelines is web-only for now; github is ruby_raider's default so nothing is passed.
     const isMobile = typeof mobile === 'string' && mobile.trim() !== ''
     if (options?.ci === 'azure' && !isMobile) raiderCommand += ' ci:azure'
 
-    if (options) {
-      if (options.accessibility) raiderCommand += ' --accessibility'
-      if (options.reporter && options.reporter !== 'none') {
-        raiderCommand += ` -r ${options.reporter}`
-      }
-      if (options.skipCi) raiderCommand += ' --skip_ci'
-      if (options.rubyVersion) raiderCommand += ` --ruby_version ${options.rubyVersion}`
-    }
+    if (options?.accessibility) raiderCommand += ' --accessibility'
 
     // Extract the Ruby version from rubyCommand (e.g. "eval ... && rbenv shell 3.4.1 && ruby")
     // so buildShellCommand can pin RBENV_VERSION. This ensures raider is found even in

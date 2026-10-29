@@ -1,7 +1,9 @@
 import { IpcMainInvokeEvent } from 'electron'
 import { safeExec } from '../../utils/safeExec'
 import { buildShellCommand } from '../../utils/shellCommand'
+import { quoteShellArg } from '../../utils/shellQuote'
 import { CommandType } from '@foundation/Types/commandType'
+import { refreshRecorderSettings } from '../project/setActiveProject'
 
 const handler = async (
   _event: IpcMainInvokeEvent,
@@ -12,7 +14,7 @@ const handler = async (
   fixPath()
 
   try {
-    const shellCommand = buildShellCommand(projectPath, `raider u url ${url}`)
+    const shellCommand = buildShellCommand(projectPath, `raider u url ${quoteShellArg(url)}`)
 
     const result = await safeExec(shellCommand, { timeout: 30_000 })
 
@@ -23,6 +25,7 @@ const handler = async (
         error: result.stderr.trim()
       }
     }
+    await refreshRecorderSettings(projectPath)
     return { success: true, output: result.stdout.trim() }
   } catch (error) {
     return {

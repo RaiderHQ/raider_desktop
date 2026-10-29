@@ -3,7 +3,9 @@ import Overview from '@pages/Overview'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import toast from 'react-hot-toast'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
@@ -51,8 +53,18 @@ vi.mock('@foundation/Stores/rubyStore', () => ({
   }))
 }))
 
+// The project opens on the Tests tab; most of these tests are about the Files tab
+const openFilesTab = async (): Promise<void> => {
+  await act(async () => {
+    fireEvent.click(screen.getByText('overview.tabs.files'))
+  })
+}
+
 const mockApi = {
+  listProjectTests: vi.fn().mockResolvedValue([]),
+  getSuites: vi.fn().mockResolvedValue([]),
   readDirectory: vi.fn().mockResolvedValue([]),
+  setActiveProject: vi.fn().mockResolvedValue({ success: true }),
   onTestRunStatus: vi.fn(),
   removeTestRunStatusListener: vi.fn(),
   scaffoldGenerate: vi.fn().mockResolvedValue({ success: true, output: '' }),
@@ -65,10 +77,14 @@ const mockApi = {
   runRakeTask: vi.fn().mockResolvedValue({ success: true }),
   rerunFailedTests: vi.fn().mockResolvedValue({ success: true }),
   isMobileProject: vi.fn().mockResolvedValue({ success: true, isMobileProject: false }),
+  isQuickProject: vi.fn().mockResolvedValue(false),
+  selectFolder: vi.fn().mockResolvedValue(null),
+  saveQuickProjectTo: vi.fn(),
   getMobileCapabilities: vi.fn().mockResolvedValue({ success: true, capabilities: {} }),
+  getRecorderSettings: vi.fn().mockResolvedValue({ implicitWait: 3, explicitWait: 15 }),
+  updateRecordingSettings: vi.fn().mockResolvedValue({ success: true }),
   updateTimeout: vi.fn().mockResolvedValue({ success: true }),
   updateViewport: vi.fn().mockResolvedValue({ success: true }),
-  updateDebugMode: vi.fn().mockResolvedValue({ success: true }),
   updateMobileCapabilities: vi.fn().mockResolvedValue({ success: true }),
   startAppium: vi.fn().mockResolvedValue({ success: true }),
   updatePaths: vi.fn().mockResolvedValue({ success: true }),
@@ -96,6 +112,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     expect(screen.getByTestId('folder')).toHaveTextContent('project')
   })
@@ -109,8 +126,24 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     expect(mockNavigate).toHaveBeenCalledWith('/start-project')
+  })
+
+  it('opens on the Tests tab first', async (): Promise<void> => {
+    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+    const tabs = screen.getAllByRole('button').map((b) => b.textContent)
+    expect(tabs[0]).toBe('overview.tabs.tests')
+    expect(screen.getByText('tests.empty')).toBeInTheDocument()
+    expect(screen.queryByTestId('folder')).not.toBeInTheDocument()
   })
 
   it('renders Files, Scaffolding, and Dashboard tabs', async (): Promise<void> => {
@@ -122,6 +155,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     expect(screen.getByText('overview.tabs.files')).toBeInTheDocument()
     expect(screen.getByText('Scaffolding')).toBeInTheDocument()
@@ -137,6 +171,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     expect(screen.getByTestId('folder')).toBeInTheDocument()
     expect(screen.queryByTestId('scaffold-panel')).not.toBeInTheDocument()
@@ -151,6 +186,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     fireEvent.click(screen.getByText('Scaffolding'))
 
@@ -167,6 +203,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     fireEvent.click(screen.getByText('Scaffolding'))
     expect(screen.getByTestId('scaffold-panel')).toBeInTheDocument()
@@ -185,6 +222,7 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     fireEvent.click(screen.getByText('overview.tabs.dashboard'))
 
@@ -192,7 +230,6 @@ describe('Overview Page', (): void => {
     expect(screen.queryByTestId('folder')).not.toBeInTheDocument()
     expect(screen.queryByTestId('scaffold-panel')).not.toBeInTheDocument()
   })
-
 })
 
 describe('Overview Settings Toolbar', (): void => {
@@ -205,6 +242,7 @@ describe('Overview Settings Toolbar', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
   }
 
   it('renders base URL input, browser select, and headless toggle on Files tab', async () => {
@@ -283,6 +321,7 @@ describe('Overview Settings Toolbar', (): void => {
         </MemoryRouter>
       )
     })
+    await openFilesTab()
 
     // The component redirects when no project, so the input won't be there
     expect(mockApi.updateBrowserUrl).not.toHaveBeenCalled()
@@ -363,7 +402,7 @@ describe('Overview Settings Toolbar', (): void => {
     await renderOverview()
 
     const browserSelect = screen.getByTestId('overview-browser-select')
-    fireEvent.change(browserSelect, { target: { value: 'safari' } })
+    fireEvent.change(browserSelect, { target: { value: 'firefox' } })
 
     await waitFor(() => {
       expect(mockApi.updateBrowserType).toHaveBeenCalled()
@@ -372,15 +411,266 @@ describe('Overview Settings Toolbar', (): void => {
     expect(localStorage.getItem('selectedBrowser')).toBeNull()
   })
 
-  it('renders all four browser options in dropdown', async () => {
+  it('offers only Chrome and Firefox in the browser dropdown', async () => {
     await renderOverview()
 
     const select = screen.getByTestId('overview-browser-select')
     const options = select.querySelectorAll('option')
-    expect(options).toHaveLength(4)
+    expect(options).toHaveLength(2)
     expect(options[0]).toHaveValue('chrome')
-    expect(options[1]).toHaveValue('safari')
-    expect(options[2]).toHaveValue('firefox')
-    expect(options[3]).toHaveValue('edge')
+    expect(options[1]).toHaveValue('firefox')
+  })
+
+  it('offers only All, Smoke and Regression run modes', async () => {
+    await renderOverview()
+
+    const select = screen.getByTestId('overview-run-mode-select')
+    const values = Array.from(select.querySelectorAll('option')).map(
+      (o) => (o as HTMLOptionElement).value
+    )
+    expect(values).toEqual(['all', 'smoke', 'regression'])
+    expect(screen.queryByTestId('overview-custom-tag-input')).not.toBeInTheDocument()
+  })
+
+  it('reads the timeout and browser arguments back from the project config', async () => {
+    mockApi.getProjectConfig.mockResolvedValueOnce({
+      success: true,
+      config: { timeout: 10, browser: 'chrome', browserArguments: ['no-sandbox'] }
+    })
+    await renderOverview()
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('settings.timeout.label')).toHaveValue(10)
+    })
+    expect(screen.getByText('no-sandbox')).toBeInTheDocument()
+  })
+
+  it("shows the new browser's arguments after switching browsers", async () => {
+    mockApi.getProjectConfig
+      .mockResolvedValueOnce({
+        success: true,
+        config: { browser: 'chrome', browserArguments: ['no-sandbox'] }
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        config: { browser: 'firefox', browserArguments: ['-private'] }
+      })
+    await renderOverview()
+    await waitFor(() => expect(screen.getByText('no-sandbox')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByTestId('overview-browser-select'), {
+      target: { value: 'firefox' }
+    })
+
+    await waitFor(() => expect(screen.getByText('-private')).toBeInTheDocument())
+    expect(screen.queryByText('no-sandbox')).not.toBeInTheDocument()
+  })
+
+  it('shows a legacy saved browser as an extra option', async () => {
+    mockApi.getProjectConfig.mockResolvedValueOnce({ success: true, config: { browser: 'safari' } })
+    await renderOverview()
+
+    const select = screen.getByTestId('overview-browser-select')
+    await waitFor(() => expect(select).toHaveValue('safari'))
+    expect(select.querySelectorAll('option')).toHaveLength(3)
+  })
+
+  it('does not allow a timeout edit before the config has loaded', async () => {
+    mockApi.getProjectConfig.mockReturnValueOnce(new Promise(() => {}))
+    await renderOverview()
+
+    expect(screen.getByLabelText('settings.timeout.label')).toBeDisabled()
+  })
+
+  it('enables the timeout and browser args after a successful load', async () => {
+    mockApi.getProjectConfig.mockResolvedValueOnce({ success: true, config: { timeout: 7 } })
+    await renderOverview()
+
+    await waitFor(() => expect(screen.getByLabelText('settings.timeout.label')).toBeEnabled())
+    expect(screen.getByPlaceholderText('settings.browserOptions.placeholder')).toBeEnabled()
+  })
+
+  it('enables the timeout and browser args after a failed load and resets them', async () => {
+    mockApi.getProjectConfig.mockRejectedValueOnce(new Error('boom'))
+    await renderOverview()
+
+    await waitFor(() => expect(screen.getByLabelText('settings.timeout.label')).toBeEnabled())
+    expect(screen.getByPlaceholderText('settings.browserOptions.placeholder')).toBeEnabled()
+    expect(screen.getByLabelText('settings.timeout.label')).toHaveValue(30)
+  })
+
+  it('ignores a stale browser-change re-fetch that resolves after a newer one', async () => {
+    let resolveFirst: (v: unknown) => void = () => {}
+    mockApi.getProjectConfig
+      .mockResolvedValueOnce({ success: true, config: { browser: 'chrome', browserArguments: [] } })
+      .mockImplementationOnce(() => new Promise((res) => (resolveFirst = res)))
+      .mockResolvedValueOnce({
+        success: true,
+        config: { browser: 'chrome', browserArguments: ['latest-arg'] }
+      })
+    await renderOverview()
+    const select = screen.getByTestId('overview-browser-select')
+
+    fireEvent.change(select, { target: { value: 'firefox' } })
+    await waitFor(() => expect(mockApi.getProjectConfig).toHaveBeenCalledTimes(2))
+    fireEvent.change(select, { target: { value: 'chrome' } })
+    await waitFor(() => expect(screen.getByText('latest-arg')).toBeInTheDocument())
+
+    await act(async () => {
+      resolveFirst({ success: true, config: { browserArguments: ['stale-arg'] } })
+    })
+    expect(screen.queryByText('stale-arg')).not.toBeInTheDocument()
+    expect(screen.getByText('latest-arg')).toBeInTheDocument()
+  })
+
+  it('clears args and shows no update-failed toast when only the re-fetch fails', async () => {
+    mockApi.getProjectConfig
+      .mockResolvedValueOnce({
+        success: true,
+        config: { browser: 'chrome', browserArguments: ['no-sandbox'] }
+      })
+      .mockRejectedValueOnce(new Error('boom'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    await renderOverview()
+    await waitFor(() => expect(screen.getByText('no-sandbox')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByTestId('overview-browser-select'), {
+      target: { value: 'firefox' }
+    })
+
+    await waitFor(() => expect(screen.queryByText('no-sandbox')).not.toBeInTheDocument())
+    expect(errorSpy).not.toHaveBeenCalled()
+  })
+
+  describe('quick-record banner', (): void => {
+    beforeEach(() => {
+      mockApi.isQuickProject.mockResolvedValue(false)
+      useRecorderStore.getState().resetForProject()
+    })
+
+    const renderOverview = async (): Promise<void> => {
+      useProjectStore.setState({ projectPath: '/quick/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+    }
+
+    it('is hidden for a regular project', async (): Promise<void> => {
+      await renderOverview()
+      expect(screen.queryByText('quickRecord.banner')).not.toBeInTheDocument()
+    })
+
+    it('shows for a quick project and re-activates the moved project after saving', async (): Promise<void> => {
+      mockApi.isQuickProject.mockResolvedValue(true)
+      mockApi.selectFolder.mockResolvedValue('/dest')
+      mockApi.saveQuickProjectTo.mockResolvedValue({ success: true, projectPath: '/dest/proj' })
+      await renderOverview()
+      expect(screen.getByText('quickRecord.banner')).toBeInTheDocument()
+      await act(async () => {
+        fireEvent.click(screen.getByText('quickRecord.saveTo'))
+      })
+      expect(mockApi.saveQuickProjectTo).toHaveBeenCalledWith('/quick/project', '/dest')
+      expect(useProjectStore.getState().projectPath).toBe('/dest/proj')
+    })
+
+    it('is disabled while recording and while a draft exists', async (): Promise<void> => {
+      mockApi.isQuickProject.mockResolvedValue(true)
+      await renderOverview()
+      const button = screen.getByText('quickRecord.saveTo')
+      expect(button).toBeEnabled()
+      act(() => useRecorderStore.setState({ isRecording: true }))
+      expect(button).toBeDisabled()
+      act(() => useRecorderStore.setState({ isRecording: false }))
+      expect(button).toBeEnabled()
+      act(() => useRecorderStore.getState().startDraft('t', 'https://e.com'))
+      // Nothing recorded yet: an empty draft is never saved, so there is nothing to lose
+      expect(button).toBeEnabled()
+      act(() =>
+        useRecorderStore.getState().updateActiveTest((p) =>
+          p ? { ...p, steps: [{ id: 'c', kind: 'custom', code: 'x' }] } : null
+        )
+      )
+      expect(button).toBeDisabled()
+      expect(button).toHaveAttribute('title', 'quickRecord.stopFirst')
+    })
+
+    it('ignores a second click while a save is in flight', async (): Promise<void> => {
+      mockApi.isQuickProject.mockResolvedValue(true)
+      mockApi.selectFolder.mockResolvedValue('/dest')
+      let finish: (v: unknown) => void = () => {}
+      mockApi.saveQuickProjectTo.mockReturnValue(new Promise((r) => (finish = r)))
+      await renderOverview()
+      const button = screen.getByText('quickRecord.saveTo')
+      await act(async () => {
+        fireEvent.click(button)
+      })
+      await act(async () => {
+        fireEvent.click(button)
+      })
+      expect(mockApi.saveQuickProjectTo).toHaveBeenCalledTimes(1)
+      await act(async () => finish({ success: true, projectPath: '/dest/proj' }))
+    })
+
+    it('does nothing when the folder pick is cancelled', async (): Promise<void> => {
+      mockApi.isQuickProject.mockResolvedValue(true)
+      mockApi.selectFolder.mockResolvedValue(null)
+      await renderOverview()
+      await act(async () => {
+        fireEvent.click(screen.getByText('quickRecord.saveTo'))
+      })
+      expect(mockApi.saveQuickProjectTo).not.toHaveBeenCalled()
+      expect(useProjectStore.getState().projectPath).toBe('/quick/project')
+    })
+  })
+})
+
+describe('Overview wait settings', (): void => {
+  const renderFiles = async (): Promise<void> => {
+    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+    await openFilesTab()
+  }
+
+  it('shows the implicit and explicit wait fields with the project values', async (): Promise<void> => {
+    await renderFiles()
+    expect(screen.getByLabelText('settings.recording.implicitWait.label')).toHaveValue(3)
+    expect(screen.getByLabelText('settings.recording.explicitWait.label')).toHaveValue(15)
+  })
+
+  it('saves a wait on blur once the settings have loaded', async (): Promise<void> => {
+    await renderFiles()
+    const input = screen.getByLabelText('settings.recording.implicitWait.label')
+    fireEvent.change(input, { target: { value: '7' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(mockApi.updateRecordingSettings).toHaveBeenCalledWith({ implicitWait: 7 })
+
+    const explicit = screen.getByLabelText('settings.recording.explicitWait.label')
+    fireEvent.change(explicit, { target: { value: '20' } })
+    await act(async () => {
+      fireEvent.blur(explicit)
+    })
+    expect(mockApi.updateRecordingSettings).toHaveBeenCalledWith({ explicitWait: 20 })
+  })
+
+  it('does not save before the settings have loaded', async (): Promise<void> => {
+    mockApi.getRecorderSettings.mockReturnValueOnce(new Promise(() => {}))
+    await renderFiles()
+    const input = screen.getByLabelText('settings.recording.implicitWait.label')
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(mockApi.updateRecordingSettings).not.toHaveBeenCalled()
   })
 })

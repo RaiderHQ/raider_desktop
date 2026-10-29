@@ -26,12 +26,17 @@ vi.mock('../../src/main/handlers/appState', () => ({
   appState: {
     suites: new Map(),
     projectFramework: 'rspec',
-    projectAutomation: 'selenium'
+    projectAutomation: 'selenium',
+    recorderSettings: { browser: 'chrome', headless: false, implicitWait: 0, explicitWait: 30 }
   }
 }))
 
+vi.mock('../../src/main/codegen/testFile', () => ({
+  generateRspecFile: vi.fn(() => '# generated test content'),
+  toAutomation: vi.fn(() => 'selenium')
+}))
+
 vi.mock('../../src/main/handlers/frameworkTemplates', () => ({
-  generateExportContent: vi.fn(() => '# generated test content'),
   getExportExtension: vi.fn(() => 'rb')
 }))
 

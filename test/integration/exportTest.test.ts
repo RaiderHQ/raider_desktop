@@ -21,18 +21,24 @@ vi.mock('fs', () => ({
 vi.mock('../../src/main/handlers/appState', () => ({
   appState: {
     projectFramework: 'rspec',
-    projectAutomation: 'selenium'
+    projectAutomation: 'selenium',
+    recorderSettings: { browser: 'chrome', headless: false, implicitWait: 0, explicitWait: 30 }
   }
 }))
 
+vi.mock('../../src/main/codegen/testFile', () => ({
+  generateRspecFile: vi.fn(() => '# generated test content'),
+  toAutomation: vi.fn(() => 'selenium')
+}))
+
 vi.mock('../../src/main/handlers/frameworkTemplates', () => ({
-  generateExportContent: vi.fn(() => '# generated test content'),
   getExportExtension: vi.fn(() => 'rb'),
   getExportFilters: vi.fn(() => [{ name: 'Ruby', extensions: ['rb'] }])
 }))
 
 import { BrowserWindow, dialog } from 'electron'
 import fs from 'fs'
+import { generateRspecFile } from '../../src/main/codegen/testFile'
 import exportTest from '../../src/main/handlers/io/exportTest'
 
 const mockGetFocusedWindow = BrowserWindow.getFocusedWindow as ReturnType<typeof vi.fn>
@@ -45,6 +51,8 @@ describe('exportTest handler', () => {
     testName: 'Login Test',
     steps: ['@driver.get("http://example.com")', '@driver.find_element(:id, "btn").click']
   }
+  // legacy string steps on purpose: the handler migrates them
+  const legacyInput = testData as unknown as Parameters<typeof exportTest>[0]
 
   const fakeWindow = { id: 1 }
 
@@ -55,37 +63,53 @@ describe('exportTest handler', () => {
 
   it('returns error when no focused window is available', async () => {
     mockGetFocusedWindow.mockReturnValue(null)
-    const result = await exportTest(testData as any)
+    const result = await exportTest(legacyInput)
     expect(result.success).toBe(false)
     expect(result.error).toContain('No focused window')
   })
 
   it('returns error when user cancels the save dialog', async () => {
     mockShowSaveDialog.mockResolvedValue({ canceled: true, filePath: undefined })
-    const result = await exportTest(testData as any)
+    const result = await exportTest(legacyInput)
     expect(result.success).toBe(false)
     expect(result.error).toContain('cancelled')
   })
 
   it('returns error when filePath is empty', async () => {
     mockShowSaveDialog.mockResolvedValue({ canceled: false, filePath: '' })
-    const result = await exportTest(testData as any)
+    const result = await exportTest(legacyInput)
     expect(result.success).toBe(false)
   })
 
   it('exports test successfully and writes file', async () => {
     mockShowSaveDialog.mockResolvedValue({ canceled: false, filePath: '/tmp/login_test.rb' })
-    const result = await exportTest(testData as any)
+    const result = await exportTest(legacyInput)
     expect(result.success).toBe(true)
     expect(result.path).toBe('/tmp/login_test.rb')
-    expect(mockWriteFileSync).toHaveBeenCalledWith('/tmp/login_test.rb', '# generated test content', 'utf8')
+    const [path, content, encoding] = mockWriteFileSync.mock.calls[0]
+    expect([path, encoding]).toEqual(['/tmp/login_test.rb', 'utf8'])
+    // Header (name + steps JSON for re-import) followed by the generated spec
+    expect(content).toMatch(
+      /^# Test: Login Test\n# raider-steps: \[.*\]\n\n# generated test content$/
+    )
+  })
+
+  it('migrates legacy string steps to the step model before generating', async () => {
+    mockShowSaveDialog.mockResolvedValue({ canceled: false, filePath: '/tmp/login_test.rb' })
+    await exportTest(legacyInput)
+    const [test, automation, settings] = (generateRspecFile as ReturnType<typeof vi.fn>).mock
+      .calls[0]
+    expect(test.name).toBe('Login Test')
+    expect(test.steps.map((s: { kind: string }) => s.kind)).toEqual(['navigate', 'click'])
+    expect(automation).toBe('selenium')
+    expect(settings).toMatchObject({ browser: 'chrome', explicitWait: 30 })
   })
 
   it('sets file permissions on non-windows platforms', async () => {
     mockShowSaveDialog.mockResolvedValue({ canceled: false, filePath: '/tmp/login_test.rb' })
     const originalPlatform = process.platform
     Object.defineProperty(process, 'platform', { value: 'darwin' })
-    await exportTest(testData as any)
+    await exportTest(legacyInput)
     expect(mockChmodSync).toHaveBeenCalledWith('/tmp/login_test.rb', '755')
     Object.defineProperty(process, 'platform', { value: originalPlatform })
   })
@@ -95,14 +119,14 @@ describe('exportTest handler', () => {
     mockWriteFileSync.mockImplementation(() => {
       throw new Error('EACCES: permission denied')
     })
-    const result = await exportTest(testData as any)
+    const result = await exportTest(legacyInput)
     expect(result.success).toBe(false)
     expect(result.error).toContain('EACCES')
   })
 
   it('calls showSaveDialog with correct default filename', async () => {
     mockShowSaveDialog.mockResolvedValue({ canceled: true, filePath: undefined })
-    await exportTest(testData as any)
+    await exportTest(legacyInput)
     expect(mockShowSaveDialog).toHaveBeenCalledWith(
       fakeWindow,
       expect.objectContaining({
