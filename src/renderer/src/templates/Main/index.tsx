@@ -9,6 +9,7 @@ import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
 import useVersionStore from '@foundation/Stores/versionStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import { installMissingGems } from '@foundation/installGems'
 
 const MainTemplate: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -81,17 +82,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
 
   const handleInstallGems = async (): Promise<void> => {
     setIsGemsInstallModalOpen(false)
-    const toastId = toast.loading(`Installing missing gems: ${missingGems?.join(', ')}...`)
-    try {
-      const result = await window.api.installGems(rubyCommand!, missingGems!)
-      if (result.success) {
-        toast.success('Gems installed successfully!', { id: toastId })
-      } else {
-        toast.error(`Failed to install gems: ${result.error}`, { id: toastId })
-      }
-    } catch (error) {
-      toast.error(`Error installing gems: ${error}`, { id: toastId })
-    }
+    await installMissingGems(rubyCommand!, missingGems!)
   }
 
   const projectPath = useProjectStore((state) => state.projectPath)

@@ -6,6 +6,8 @@ import toast from 'react-hot-toast'
 import Button from '@components/Button'
 import InputField from '@components/InputField'
 import RubyInstallModal from '@components/RubyInstallModal'
+import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
+import { installMissingGems } from '@foundation/installGems'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
@@ -23,16 +25,43 @@ const QuickRecordDialog: React.FC<QuickRecordDialogProps> = ({ onClose }) => {
   const [url, setUrl] = useState('')
   const [name, setName] = useState('')
   const [creating, setCreating] = useState(false)
+  // Gems Raider needs that are missing: the setup help replaces the form until closed
+  const [missingGems, setMissingGems] = useState<string[] | null>(null)
 
   // Without Ruby there is nothing to create the project with
   if (!rubyCommand) {
     return <RubyInstallModal onClose={onClose} onCloseApp={() => window.api.closeApp()} />
   }
 
+  if (missingGems) {
+    return (
+      <RubyGemsInstallModal
+        missingGems={missingGems}
+        onInstall={() => {
+          setMissingGems(null)
+          void installMissingGems(rubyCommand, missingGems)
+        }}
+        onClose={() => setMissingGems(null)}
+      />
+    )
+  }
+
+  /** The gems Raider needs that this Ruby lacks (none when the check itself fails) */
+  const findMissingGems = async (): Promise<string[]> => {
+    try {
+      const check = await window.api.isRubyInstalled()
+      return !check.success && check.rubyCommand ? (check.missingGems ?? []) : []
+    } catch {
+      return []
+    }
+  }
+
   const canStart = url.trim() !== '' && name.trim() !== '' && !creating
 
   // Main only accepts http(s), so a bare address like example.com gets https://
-  const normalizedUrl = /^[a-z][a-z0-9+.-]*:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`
+  const normalizedUrl = /^[a-z][a-z0-9+.-]*:\/\//i.test(url.trim())
+    ? url.trim()
+    : `https://${url.trim()}`
 
   const start = async (): Promise<void> => {
     if (!canStart) return
@@ -40,7 +69,10 @@ const QuickRecordDialog: React.FC<QuickRecordDialogProps> = ({ onClose }) => {
     try {
       const result = await window.api.createQuickProject(normalizedUrl, rubyCommand)
       if (!result.success) {
-        toast.error(t('quickRecord.error', { error: result.error }))
+        // Without Raider's gems a project can't be made: show the same help as at startup
+        const missing = await findMissingGems()
+        if (missing.length > 0) setMissingGems(missing)
+        else toast.error(t('quickRecord.error', { error: result.error }))
         return
       }
       setProjectPath(result.projectPath)
