@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { isStep } from '../../shared/types/step'
+import { withSecretNames } from '../../shared/secretSteps'
 import type { AssertKind, ElementTarget, Step } from '../../shared/types/step'
 import type { Test } from '../../shared/types/test'
 
@@ -193,7 +194,8 @@ export function migrateLegacySteps(steps: unknown[]): Step[] {
       out.push(custom(`# unrecognised step: ${JSON.stringify(s)}`))
     }
   }
-  return out
+  // Secret steps saved before names were stored are named once, in order
+  return withSecretNames(out)
 }
 
 export function migrateLegacyTest(test: {

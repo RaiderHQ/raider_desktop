@@ -68,6 +68,53 @@ describe('CommandBlock', () => {
       expect(screen.queryByText(/secret ruby/)).not.toBeInTheDocument()
     })
 
+    describe('secret steps', () => {
+      const secret: Step = {
+        id: 's',
+        kind: 'type',
+        element: { strategy: 'id', value: 'pw', label: 'Password' },
+        text: '',
+        secret: true,
+        secretName: 'RAIDER_SECRET_1'
+      }
+      const rename = async (onEdit: ReturnType<typeof vi.fn>, value: string): Promise<void> => {
+        await renderBlock({ step: secret, onEdit })
+        fireEvent.click(screen.getByRole('button', { name: 'recorder.step.secretRename' }))
+        const input = screen.getByLabelText('recorder.step.secretNameLabel')
+        fireEvent.change(input, { target: { value } })
+        fireEvent.keyDown(input, { key: 'Enter' })
+      }
+
+      it('shows the variable the password comes from', async () => {
+        await renderBlock({ step: secret })
+        expect(
+          screen.getByText(
+            'recorder.commandParser.typeSecret {"element":"Password","name":"RAIDER_SECRET_1"}'
+          )
+        ).toBeInTheDocument()
+      })
+
+      it('renames the variable', async () => {
+        const onEdit = vi.fn()
+        await rename(onEdit, 'ADMIN_PASSWORD')
+        expect(onEdit).toHaveBeenCalledWith(0, { ...secret, secretName: 'ADMIN_PASSWORD' })
+      })
+
+      it('refuses a name that is not an environment variable name', async () => {
+        const onEdit = vi.fn()
+        await rename(onEdit, 'admin password')
+        expect(onEdit).not.toHaveBeenCalled()
+        expect(screen.getByText('recorder.step.secretNameInvalid')).toBeInTheDocument()
+      })
+
+      it('offers no rename when read-only', async () => {
+        await renderBlock({ step: secret, onEdit: vi.fn(), readOnly: true })
+        expect(
+          screen.queryByRole('button', { name: 'recorder.step.secretRename' })
+        ).not.toBeInTheDocument()
+      })
+    })
+
     it('does not enter edit mode', async () => {
       await renderBlock({ step: watirClick, onEdit: vi.fn() })
       fireEvent.doubleClick(
@@ -80,7 +127,7 @@ describe('CommandBlock', () => {
   describe('code view', () => {
     it('shows the Ruby rendered by the main process', async () => {
       await renderBlock({ step: watirClick, showCode: true })
-      expect(renderStep).toHaveBeenCalledWith(watirClick, undefined)
+      expect(renderStep).toHaveBeenCalledWith(watirClick)
       expect(await screen.findByText('ruby for c1')).toBeInTheDocument()
     })
 

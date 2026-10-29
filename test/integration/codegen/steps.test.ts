@@ -88,17 +88,18 @@ describe('renderStep table', () => {
 
 describe('renderStep secret type steps', () => {
   const secret: Step = { id: '1', kind: 'type', element: id('pw'), text: '', secret: true }
+  const named: Step = { ...secret, secretName: 'RAIDER_SECRET_2' } as Step
 
-  it('reads the value from the environment variable it is given', () => {
-    expect(renderStep(secret, 'selenium', { secretName: 'RAIDER_SECRET_2' })).toBe(
+  it('reads the value from the environment variable stored on the step', () => {
+    expect(renderStep(named, 'selenium')).toBe(
       "@wait.until { @driver.find_element(id: 'pw').displayed? }\n@driver.find_element(id: 'pw').clear\n@driver.find_element(id: 'pw').send_keys(ENV.fetch('RAIDER_SECRET_2'))"
     )
-    expect(renderStep(secret, 'watir', { secretName: 'RAIDER_SECRET_2' })).toBe(
+    expect(renderStep(named, 'watir')).toBe(
       "@browser.element(id: 'pw').to_subtype.set(ENV.fetch('RAIDER_SECRET_2'))"
     )
   })
 
-  it('falls back to RAIDER_SECRET when rendered outside its test', () => {
+  it('falls back to RAIDER_SECRET for a step that has no name yet', () => {
     expect(renderStep(secret, 'watir')).toContain("ENV.fetch('RAIDER_SECRET')")
   })
 })

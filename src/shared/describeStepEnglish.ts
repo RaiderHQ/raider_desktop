@@ -1,5 +1,5 @@
 import en from '../renderer/src/assets/translations/en.json'
-import { describeStep, type DescribeOptions } from './describeStep'
+import { describeStep } from './describeStep'
 import type { Step } from './types/step'
 
 /** Walks a dotted i18n key through the English catalog. */
@@ -22,7 +22,7 @@ export function englishText(key: string, values: Record<string, string> = {}): s
 }
 
 /** English text for a step, from describeStep. */
-export function describeStepEnglish(step: Step, opts: DescribeOptions = {}): string {
-  const { key, values } = describeStep(step, opts)
+export function describeStepEnglish(step: Step): string {
+  const { key, values } = describeStep(step)
   return englishText(key, values)
 }

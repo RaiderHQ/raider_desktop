@@ -326,6 +326,36 @@ describe('useTestRecording', () => {
     expect(s.preloadPath).toBeNull()
   })
 
+  it('names each recorded secret step once, with the lowest free variable', async () => {
+    const rec = await mount()
+    await act(() => rec.start({ kind: 'test' }))
+    await emit('recording-started', 'https://x.test/login')
+    const pw = { strategy: 'id' as const, value: 'pw' }
+    // A hand-edited secret still reads RAIDER_SECRET_1, so the next one must not
+    act(() =>
+      useRecorderStore.getState().updateActiveTest((p) =>
+        p
+          ? {
+              ...p,
+              steps: [
+                ...p.steps,
+                { id: 'e', kind: 'custom', code: "x.send_keys(ENV.fetch('RAIDER_SECRET_1'))" }
+              ]
+            }
+          : p
+      )
+    )
+    await emit('new-recorded-step', { id: 's', kind: 'type', element: pw, text: '', secret: true })
+    expect(useRecorderStore.getState().activeTest?.steps.at(-1)).toEqual({
+      id: 's',
+      kind: 'type',
+      element: pw,
+      text: '',
+      secret: true,
+      secretName: 'RAIDER_SECRET_2'
+    })
+  })
+
   it('stop with no target only closes the browser', async () => {
     const rec = await mount()
     api.saveRecording.mockClear()

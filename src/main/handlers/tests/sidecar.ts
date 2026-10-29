@@ -2,6 +2,7 @@ import fs from 'fs/promises'
 import { randomBytes } from 'crypto'
 import { dirname, isAbsolute, join, relative, resolve } from 'path'
 import { isStep } from '../../../shared/types/step'
+import { withSecretNames } from '../../../shared/secretSteps'
 import type { Sidecar } from '../../../shared/types/projectTest'
 
 export class SidecarUnreadableError extends Error {
@@ -161,7 +162,8 @@ export async function readSidecar(projectPath: string, fileRel: string): Promise
     throw new SidecarUnreadableError(`Sidecar is not valid JSON: ${fileRel}`)
   }
   if (!isSidecar(parsed)) throw new SidecarUnreadableError(`Sidecar has a bad shape: ${fileRel}`)
-  return parsed
+  // Secret steps saved before names were stored are named once here; the next save keeps them
+  return { ...parsed, steps: withSecretNames(parsed.steps) }
 }
 
 // Writes and deletes per sidecar path are chained so they can't interleave or reorder

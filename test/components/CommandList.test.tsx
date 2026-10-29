@@ -42,11 +42,18 @@ describe('CommandList', () => {
     expect(screen.getByText('recorder.commandParser.visit {"url":"b"}')).toBeInTheDocument()
   })
 
-  it('names each secret step by its numbered environment variable', async () => {
+  it('names each secret step by the variable stored on it, whatever the order', async () => {
     const pw = { strategy: 'id' as const, value: 'pw', label: 'Password' }
     const secrets: Step[] = [
-      { id: 's1', kind: 'type', element: pw, text: '', secret: true },
-      { id: 's2', kind: 'type', element: pw, text: '', secret: true }
+      {
+        id: 's2',
+        kind: 'type',
+        element: pw,
+        text: '',
+        secret: true,
+        secretName: 'RAIDER_SECRET_1'
+      },
+      { id: 's1', kind: 'type', element: pw, text: '', secret: true, secretName: 'RAIDER_SECRET_2' }
     ]
     render(
       <CommandList steps={secrets} setSteps={vi.fn()} onDeleteStep={vi.fn()} showCode={false} />
@@ -65,7 +72,7 @@ describe('CommandList', () => {
     await act(async () => {
       render(<CommandList steps={secrets} setSteps={vi.fn()} onDeleteStep={vi.fn()} showCode />)
     })
-    expect(window.api.renderStep).toHaveBeenCalledWith(secrets[1], 'RAIDER_SECRET_2')
+    expect(window.api.renderStep).toHaveBeenCalledWith(secrets[1])
   })
 
   it('calls onDeleteStep when a step delete button is clicked', () => {

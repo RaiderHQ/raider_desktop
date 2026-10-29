@@ -4,6 +4,7 @@ import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import type { Test } from '@foundation/Types/test'
 import type { TraceStep } from '@foundation/Types/traceStep'
 import type { Step } from '@shared/types/step'
+import { nameSecretStep } from '@shared/secretSteps'
 import { isPendingAssertion } from '@shared/types/pendingAssertion'
 import type { AssertionMessage, PendingAssertion } from '@shared/types/pendingAssertion'
 
@@ -33,8 +34,12 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
         .updateActiveTest((prev) =>
           prev && (recordedTestId === null || prev.id === recordedTestId) ? update(prev) : prev
         )
+    // A secret step is named here, once: later moves, inserts and deletes never renumber it
     const appendStep = (step: Step): void =>
-      forRecordedTest((prev) => ({ ...prev, steps: [...prev.steps, step] }))
+      forRecordedTest((prev) => ({
+        ...prev,
+        steps: [...prev.steps, nameSecretStep(step, prev.steps)]
+      }))
 
     const handleRecordingStarted = (_event: Electron.IpcRendererEvent, loadedUrl: string): void => {
       const {

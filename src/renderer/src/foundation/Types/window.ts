@@ -141,7 +141,7 @@ export interface WindowApi {
 
   // --- Step Rendering ---
   /** Ruby for one step, in the active project's automation (Selenium or Watir). */
-  renderStep: (step: Step, secretName?: string) => Promise<string>
+  renderStep: (step: Step) => Promise<string>
 
   // --- Suite Management ---
   getSuites: () => Promise<Suite[]>

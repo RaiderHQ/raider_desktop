@@ -53,6 +53,22 @@ describe('sidecar store', () => {
     expect(await readSidecar(project, 'spec/a_spec.rb')).toEqual(s)
   })
 
+  it('readSidecar names old secret steps once, in order', async () => {
+    const pw = { strategy: 'id' as const, value: 'pw' }
+    const old = sidecar('spec/a_spec.rb', {
+      steps: [
+        { id: 'a', kind: 'type', element: pw, text: '', secret: true },
+        { id: 'b', kind: 'type', element: pw, text: '', secret: true }
+      ]
+    })
+    await writeSidecar(project, old)
+    const read = await readSidecar(project, 'spec/a_spec.rb')
+    expect(read!.steps.map((s) => (s.kind === 'type' ? s.secretName : undefined))).toEqual([
+      'RAIDER_SECRET_1',
+      'RAIDER_SECRET_2'
+    ])
+  })
+
   it('readSidecar returns null when missing', async () => {
     expect(await readSidecar(project, 'spec/none_spec.rb')).toBeNull()
   })

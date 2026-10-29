@@ -22,8 +22,15 @@ export type Step =
   | { id: string; kind: 'navigate'; url: string }
   | { id: string; kind: 'click'; element: ElementTarget }
   // A secret step (a password field) never holds its value: text is '' and the value
-  // comes from a RAIDER_SECRET_<n> environment variable when the test runs
-  | { id: string; kind: 'type'; element: ElementTarget; text: string; secret?: true }
+  // comes from the environment variable secretName (RAIDER_SECRET_<n> unless renamed)
+  | {
+      id: string
+      kind: 'type'
+      element: ElementTarget
+      text: string
+      secret?: true
+      secretName?: string
+    }
   | { id: string; kind: 'pressKey'; element: ElementTarget; key: string }
   | { id: string; kind: 'wait'; element: ElementTarget; until: 'visible' | 'hidden' | 'enabled' }
   | { id: string; kind: 'assert'; check: AssertKind; element?: ElementTarget; expected?: string }
@@ -31,6 +38,8 @@ export type Step =
   | { id: string; kind: 'custom'; code: string }
 
 const STRATEGIES = ['id', 'css', 'xpath']
+/** An environment variable name a user may give a secret: capitals, digits and _. */
+export const SECRET_NAME = /^[A-Z][A-Z0-9_]*$/
 const WAIT_UNTIL = ['visible', 'hidden', 'enabled']
 const ASSERT_KINDS: AssertKind[] = [
   'displayed',
@@ -83,6 +92,11 @@ export function isStep(value: unknown): value is Step {
       return isElementTarget(value.element)
     case 'type':
       if (value.secret !== undefined && !(value.secret === true && value.text === '')) return false
+      if (
+        value.secretName !== undefined &&
+        !(value.secret === true && isStr(value.secretName) && SECRET_NAME.test(value.secretName))
+      )
+        return false
       return isElementTarget(value.element) && isStr(value.text)
     case 'pressKey':
       return isElementTarget(value.element) && isStr(value.key)

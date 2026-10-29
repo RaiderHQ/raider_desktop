@@ -98,7 +98,10 @@ describe('recorded tests', () => {
     const sidecar = await saveRecordedTest(project, layout, test({ steps: [secret] }))
     const spec = await readFile(join(project, sidecar.file), 'utf-8')
     expect(spec).toContain("send_keys(ENV.fetch('RAIDER_SECRET_1'))")
-    expect((await readSidecar(project, sidecar.file))?.steps).toEqual([secret])
+    // An unnamed secret is named once and saved that way
+    expect((await readSidecar(project, sidecar.file))?.steps).toEqual([
+      { ...secret, secretName: 'RAIDER_SECRET_1' }
+    ])
   })
 
   it('name clash appends suffix', async () => {

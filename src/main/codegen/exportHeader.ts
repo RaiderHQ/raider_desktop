@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { isStep } from '../../shared/types/step'
 import type { Step } from '../../shared/types/step'
 import { migrateLegacySteps } from './legacy'
+import { withSecretNames } from '../../shared/secretSteps'
 
 /**
  * Exported test files start with Ruby comments naming the test (and suite) and
@@ -31,7 +32,7 @@ export function writeExportHeader(header: {
 function parseStepsLine(json: string): Step[] | undefined {
   try {
     const parsed: unknown = JSON.parse(json)
-    return Array.isArray(parsed) ? parsed.filter(isStep) : undefined
+    return Array.isArray(parsed) ? withSecretNames(parsed.filter(isStep)) : undefined
   } catch {
     return undefined
   }

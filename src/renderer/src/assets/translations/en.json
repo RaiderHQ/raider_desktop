@@ -613,6 +613,9 @@
     },
     "step": {
       "custom": "Custom code step",
+      "secretRename": "Change variable",
+      "secretNameLabel": "Variable name",
+      "secretNameInvalid": "Use capital letters, digits and _, starting with a letter, for example ADMIN_PASSWORD.",
       "secretMissing": "This step types a password from {{name}}, which isn't set on this computer. Set it, restart Raider, and try again.",
       "renderFailed": "Couldn't render code"
     }

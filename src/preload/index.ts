@@ -261,8 +261,7 @@ const api = {
   flushRecordingDone: (): void => ipcRenderer.send('flush-recording-done'),
   loadUrlRequest: async (url: string): Promise<CommandType> =>
     ipcRenderer.invoke('load-url-request', url),
-  renderStep: (step: Step, secretName?: string): Promise<string> =>
-    ipcRenderer.invoke('render-step', step, secretName),
+  renderStep: (step: Step): Promise<string> => ipcRenderer.invoke('render-step', step),
   exportTest: (
     testName: string,
     steps: Step[]

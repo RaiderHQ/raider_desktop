@@ -79,7 +79,39 @@ describe('generateRspecFile', () => {
     expect(code).not.toContain('sleep(')
   })
 
-  it('numbers secret steps per test and never writes a typed value', () => {
+  it('keeps each secret step on its stored variable, whatever the order', () => {
+    const pw = { strategy: 'id' as const, value: 'pw' }
+    const code = generateRspecFile(
+      {
+        name: 'Login',
+        steps: [
+          {
+            id: 'c',
+            kind: 'type',
+            element: pw,
+            text: '',
+            secret: true,
+            secretName: 'RAIDER_SECRET_2'
+          },
+          {
+            id: 'a',
+            kind: 'type',
+            element: pw,
+            text: '',
+            secret: true,
+            secretName: 'RAIDER_SECRET_1'
+          }
+        ]
+      },
+      'selenium',
+      settings
+    )
+    expect(code.indexOf("ENV.fetch('RAIDER_SECRET_2')")).toBeLessThan(
+      code.indexOf("ENV.fetch('RAIDER_SECRET_1')")
+    )
+  })
+
+  it('names old unnamed secret steps in order and never writes a typed value', () => {
     const pw = { strategy: 'id' as const, value: 'pw' }
     const code = generateRspecFile(
       {

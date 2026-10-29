@@ -116,6 +116,21 @@ describe('replayInWebview', () => {
       expect(result).toEqual({ success: true, skippedStepIds: [] })
     })
 
+    it('reads the variable stored on the step, wherever the step now is', async () => {
+      process.env.ADMIN_PW = 'admin-secret'
+      process.env.RAIDER_SECRET_1 = 'user-secret'
+      try {
+        await run([
+          { ...secret('b'), secretName: 'ADMIN_PW' } as Step,
+          { ...secret('a'), secretName: 'RAIDER_SECRET_1' } as Step
+        ])
+        expect(jsAt(0)).toContain(`setter.call(el, ${JSON.stringify('admin-secret')})`)
+        expect(jsAt(1)).toContain(`setter.call(el, ${JSON.stringify('user-secret')})`)
+      } finally {
+        delete process.env.ADMIN_PW
+      }
+    })
+
     it('stops with a clear message instead of typing nothing when the variable is not set', async () => {
       process.env.RAIDER_SECRET_1 = 'first'
       const result = await run([secret('a'), secret('b')])

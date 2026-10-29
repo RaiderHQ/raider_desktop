@@ -275,6 +275,12 @@ describe('readExportHeader', () => {
     expect(readExportHeader('# raider-steps: {nope').steps).toBeUndefined()
   })
 
+  it('names unnamed secret steps from the JSON line', () => {
+    const pw = { strategy: 'id', value: 'pw' }
+    const line = `# raider-steps: ${JSON.stringify([{ id: 'a', kind: 'type', element: pw, text: '', secret: true }])}`
+    expect(readExportHeader(line).steps).toMatchObject([{ id: 'a', secretName: 'RAIDER_SECRET_1' }])
+  })
+
   it('keeps only valid steps from the JSON line', () => {
     const line = `# raider-steps: ${JSON.stringify([steps[0], { id: 'z', kind: 'click' }, 'x'])}`
     expect(readExportHeader(line).steps).toEqual([steps[0]])
