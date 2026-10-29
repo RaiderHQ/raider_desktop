@@ -4,7 +4,12 @@ import { EventEmitter } from 'events'
 const mockOpenExternal = vi.hoisted(() => vi.fn())
 vi.mock('electron', () => ({ shell: { openExternal: mockOpenExternal } }))
 
-import { installWindowGuards, isAppUrl, isExternalUrl } from '../../src/main/windowGuards'
+import {
+  installPermissionHandlers,
+  installWindowGuards,
+  isAppUrl,
+  isExternalUrl
+} from '../../src/main/windowGuards'
 import { RECORDER_PARTITION } from '../../src/shared/recorderSession'
 
 const APP_FILE =
@@ -98,5 +103,51 @@ describe('installWindowGuards', () => {
       partition: RECORDER_PARTITION
     })
     expect(params.partition).toBe(RECORDER_PARTITION)
+  })
+})
+
+describe('installPermissionHandlers', () => {
+  type Handler = (
+    wc: unknown,
+    permission: string,
+    callback: (granted: boolean) => void,
+    details: { requestingUrl: string }
+  ) => void
+  const sessionWith = (): { setPermissionRequestHandler: ReturnType<typeof vi.fn> } => ({
+    setPermissionRequestHandler: vi.fn()
+  })
+  const decide = (handler: Handler, permission: string, requestingUrl: string): boolean => {
+    let granted: boolean | undefined
+    handler({}, permission, (g) => (granted = g), { requestingUrl })
+    return granted!
+  }
+
+  it('lets the app copy to the clipboard and go full screen, and denies anything else', () => {
+    const app = sessionWith()
+    const recorder = sessionWith()
+    installPermissionHandlers({ app: app as never, recorder: recorder as never, appUrl: APP_FILE })
+    const handler = app.setPermissionRequestHandler.mock.calls[0][0] as Handler
+
+    expect(decide(handler, 'clipboard-sanitized-write', `${APP_FILE}#/tests`)).toBe(true)
+    expect(decide(handler, 'fullscreen', APP_FILE)).toBe(true)
+    for (const permission of ['media', 'geolocation', 'notifications', 'openExternal']) {
+      expect(decide(handler, permission, APP_FILE)).toBe(false)
+    }
+    expect(decide(handler, 'clipboard-sanitized-write', 'https://example.com/')).toBe(false)
+  })
+
+  it('denies every permission to the websites being recorded', () => {
+    const app = sessionWith()
+    const recorder = sessionWith()
+    installPermissionHandlers({ app: app as never, recorder: recorder as never, appUrl: APP_FILE })
+    const handler = recorder.setPermissionRequestHandler.mock.calls[0][0] as Handler
+    for (const permission of [
+      'clipboard-sanitized-write',
+      'fullscreen',
+      'media',
+      'notifications'
+    ]) {
+      expect(decide(handler, permission, 'https://example.com/')).toBe(false)
+    }
   })
 })

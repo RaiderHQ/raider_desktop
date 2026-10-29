@@ -56,3 +56,25 @@ export function installWindowGuards(
     params.partition = RECORDER_PARTITION
   })
 }
+
+// What the app's own page may use: copying text (e.g. a file path) and full-screen video
+const APP_PERMISSIONS = new Set(['clipboard-sanitized-write', 'fullscreen'])
+
+/**
+ * Denies permission requests by default. The app's own page gets only what it uses;
+ * websites in the recorder session get nothing (camera, location, notifications, …).
+ */
+export function installPermissionHandlers({
+  app,
+  recorder,
+  appUrl
+}: {
+  app: Electron.Session
+  recorder: Electron.Session
+  appUrl: string
+}): void {
+  app.setPermissionRequestHandler((_wc, permission, callback, details) => {
+    callback(APP_PERMISSIONS.has(permission) && isAppUrl(details.requestingUrl, appUrl))
+  })
+  recorder.setPermissionRequestHandler((_wc, _permission, callback) => callback(false))
+}

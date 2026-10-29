@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, session } from 'electron'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -23,7 +23,8 @@ import readFile from './handlers/io/readFile'
 import readImage from './handlers/io/readImage'
 import { openReport, reportExists } from './handlers/openReport'
 import { registerMediaScheme, registerMediaHandler } from './handlers/media/mediaProtocol'
-import { installWindowGuards } from './windowGuards'
+import { installPermissionHandlers, installWindowGuards } from './windowGuards'
+import { RECORDER_PARTITION } from '../shared/recorderSession'
 import { RECORDER_PRELOAD } from './handlers/recording/startRecordingMain'
 import editFile from './handlers/io/editFile'
 import deleteFile from './handlers/io/deleteFile'
@@ -112,6 +113,7 @@ const E2E_BUILD = import.meta.env.MODE === 'e2e'
 
 const devServerUrl = is.dev ? process.env['ELECTRON_RENDERER_URL'] : undefined
 const rendererFile = join(__dirname, '../renderer/index.html')
+const appUrl = devServerUrl ?? pathToFileURL(rendererFile).href
 
 function createWindow(): void {
   const newMainWindow = new BrowserWindow({
@@ -145,7 +147,7 @@ function createWindow(): void {
   })
 
   installWindowGuards(appState.mainWindow!.webContents, {
-    appUrl: devServerUrl ?? pathToFileURL(rendererFile).href,
+    appUrl,
     recorderPreload: RECORDER_PRELOAD
   })
 
@@ -161,6 +163,11 @@ registerMediaScheme()
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.ruby-raider')
   registerMediaHandler()
+  installPermissionHandlers({
+    app: session.defaultSession,
+    recorder: session.fromPartition(RECORDER_PARTITION),
+    appUrl
+  })
 
   app.on('before-quit', () => {
     quitting = true
