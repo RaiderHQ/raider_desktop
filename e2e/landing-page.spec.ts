@@ -1,10 +1,11 @@
 import { test, expect } from './electronApp'
-import { goToLanding, navigateTo } from './helpers/navigation'
+import { goToLanding, mockRubyReady, navigateTo, openProjectButton } from './helpers/navigation'
 import { mockIPC, setRubyCommand } from './helpers/ipc-mock'
 
 test.describe('Landing Page', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ electronApp, page }) => {
     await goToLanding(page)
+    await mockRubyReady(electronApp, page)
   })
 
   test('shows welcome title', async ({ page }) => {
@@ -24,12 +25,12 @@ test.describe('Landing Page', () => {
 
   test('shows Create project option', async ({ page }) => {
     await expect(page.getByText('Create a new project')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Create' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Create', exact: true })).toBeVisible()
   })
 
   test('shows Open project option', async ({ page }) => {
     await expect(page.getByText('Open existing project')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Open' })).toBeVisible()
+    await expect(openProjectButton(page)).toBeVisible()
   })
 
   test('lists quick recordings not saved to a folder, and opens one on its tests', async ({
@@ -82,7 +83,7 @@ test.describe('Landing Page', () => {
   })
 
   test('clicking Create navigates to new project page', async ({ page }) => {
-    await page.getByRole('button', { name: 'Create' }).click()
+    await page.getByRole('button', { name: 'Create', exact: true }).click()
     await page.waitForTimeout(1000)
     const url = page.url()
     expect(url).toContain('#/new')
@@ -98,27 +99,20 @@ test.describe('Landing Page', () => {
     // Quick record's card comes first; Create's help icon is the second
     const infoIcons = page.locator('button[aria-label="Help"]')
     await infoIcons.nth(1).click()
-    await page.waitForTimeout(500)
     // Modal should appear with project creation info
-    await expect(page.getByText('Creating a New Project')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Creating a New Project' })).toBeVisible()
   })
 
   test('info modal can be closed', async ({ page }) => {
     // Quick record's card comes first; Create's help icon is the second
     const infoIcons = page.locator('button[aria-label="Help"]')
     await infoIcons.nth(1).click()
-    await page.waitForTimeout(500)
-    await expect(page.getByText('Creating a New Project')).toBeVisible()
+    const modalTitle = page.getByRole('heading', { name: 'Creating a New Project' })
+    await expect(modalTitle).toBeVisible()
 
     // Close the modal via the close button (aria-label="Close")
-    const closeButton = page.getByRole('button', { name: 'Close' })
-    if (await closeButton.isVisible()) {
-      await closeButton.click()
-    } else {
-      // Try clicking the overlay background
-      await page.locator('#modal-overlay').click({ position: { x: 10, y: 10 } })
-    }
-    await expect(page.getByText('Creating a New Project')).not.toBeVisible({ timeout: 3000 })
+    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(modalTitle).not.toBeVisible({ timeout: 3000 })
   })
 
   test('Open button triggers folder selection', async ({ electronApp, page }) => {
@@ -127,13 +121,10 @@ test.describe('Landing Page', () => {
       ipcMain.removeHandler('select-folder')
       ipcMain.handle('select-folder', async () => '/mock/project/path')
     })
-    await page.getByRole('button', { name: 'Open' }).click()
+    await openProjectButton(page).click()
 
-    // After folder selection, app should try to navigate to overview
-    await page.waitForTimeout(500)
-    const url = page.url()
-    // Either navigated to overview or stayed (if project loading failed)
-    expect(url).toBeDefined()
+    // After folder selection the app opens the project's Overview
+    await expect(page).toHaveURL(/#\/overview/)
   })
 
   test('Open with cancelled folder selection stays on landing', async ({ electronApp, page }) => {
@@ -141,7 +132,7 @@ test.describe('Landing Page', () => {
       ipcMain.removeHandler('select-folder')
       ipcMain.handle('select-folder', async () => null)
     })
-    await page.getByRole('button', { name: 'Open' }).click()
+    await openProjectButton(page).click()
     await page.waitForTimeout(500)
 
     // Should stay on the landing page

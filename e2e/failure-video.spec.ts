@@ -1,5 +1,5 @@
 import { test, expect } from './electronApp'
-import { goToOverview } from './helpers/navigation'
+import { goToOverview, mockRubyReady } from './helpers/navigation'
 import { setProjectPath } from './helpers/ipc-mock'
 import { execFileSync } from 'child_process'
 import fs from 'fs'
@@ -7,6 +7,11 @@ import os from 'os'
 import path from 'path'
 
 const FFMPEG = '/opt/homebrew/bin/ffmpeg'
+
+// The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
+test.beforeEach(async ({ electronApp, page }) => {
+  await mockRubyReady(electronApp, page)
+})
 
 test.describe('Failure video playback', () => {
   test.skip(!fs.existsSync(FFMPEG), 'ffmpeg not available to generate a fixture video')

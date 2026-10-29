@@ -1,207 +1,103 @@
 import { test, expect } from './electronApp'
-import { goToOverview } from './helpers/navigation'
-import {
-  setupProjectContext,
-  mockIPCCapture,
-  mockIPCCaptureFailure,
-  getIPCCalls
-} from './helpers/ipc-mock'
+import { enterMainLayout, mockRubyReady } from './helpers/navigation'
+import { getMainIPCCalls, mockMainIPCCapture } from './helpers/ipc-mock'
 
-test.describe('Overview Settings Tab - Functional', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupProjectContext(page)
-    await goToOverview(page)
-    // Click Settings tab
-    // Use button locator to avoid matching the nav link "Settings"
-    const settingsTab = page.locator('button').filter({ hasText: 'Settings' })
-    await settingsTab.click()
-    await page.waitForTimeout(500)
+const PROJECT = '/mock/test-project'
+
+test.describe('Overview settings toolbar - functional', () => {
+  test.beforeEach(async ({ electronApp, page }) => {
+    await mockRubyReady(electronApp, page)
+    await mockMainIPCCapture(electronApp, 'get-project-config', {
+      success: true,
+      config: { browser: 'chrome', headless: false, timeout: 10, browserArguments: ['no-sandbox'] }
+    })
+    await mockMainIPCCapture(electronApp, 'is-mobile-project', {
+      success: true,
+      isMobileProject: false
+    })
+    await mockMainIPCCapture(electronApp, 'read-directory', [])
+    for (const channel of [
+      'update-browser-url',
+      'update-browser-type',
+      'update-headless-mode',
+      'update-timeout',
+      'update-browser-options'
+    ]) {
+      await mockMainIPCCapture(electronApp, channel, { success: true })
+    }
+    await enterMainLayout(electronApp, page, PROJECT)
+    // The Overview opens on the Tests tab; the settings toolbar is on Files
+    await page.getByRole('button', { name: 'Files', exact: true }).click()
   })
 
-  // ── URL & Browser ───────────────────────────────
-
-  test('URL save triggers updateBrowserUrl with correct args', async ({ page }) => {
-    await mockIPCCapture(page, 'updateBrowserUrl', { success: true })
-    // The URL input in the settings tab (inside the details section)
-    const urlInput = page.locator('details input[type="text"]').first()
+  test('URL save triggers update-browser-url', async ({ electronApp, page }) => {
+    const urlInput = page.locator('[data-testid="overview-url-input"]')
     await urlInput.fill('https://example.com')
-    // Click the save/update button next to URL
-    const updateBtn = page.locator('details').first().getByText('Update', { exact: false }).first()
-    await updateBtn.click()
-    await page.waitForTimeout(500)
-
-    const calls = await getIPCCalls(page, 'updateBrowserUrl')
-    expect(calls.length).toBeGreaterThanOrEqual(1)
-    expect(calls[0][0]).toBe('/mock/test-project')
-    expect(calls[0][1]).toBe('https://example.com')
+    await urlInput.blur()
+    await expect
+      .poll(async () => (await getMainIPCCalls(electronApp, 'update-browser-url')).length)
+      .toBeGreaterThanOrEqual(1)
+    const calls = await getMainIPCCalls(electronApp, 'update-browser-url')
+    expect(calls[0]).toEqual([PROJECT, 'https://example.com'])
   })
 
-  test('URL persists to localStorage', async ({ page }) => {
-    await mockIPCCapture(page, 'updateBrowserUrl', { success: true })
-    const urlInput = page.locator('details input[type="text"]').first()
-    await urlInput.fill('https://saved-url.com')
-    const updateBtn = page.locator('details').first().getByText('Update', { exact: false }).first()
-    await updateBtn.click()
-    await page.waitForTimeout(500)
-
-    const stored = await page.evaluate(() => localStorage.getItem('browserUrl'))
-    expect(stored).toBe('https://saved-url.com')
+  test('browser change triggers update-browser-type', async ({ electronApp, page }) => {
+    await page.locator('[data-testid="overview-browser-select"]').selectOption('firefox')
+    await expect
+      .poll(async () => (await getMainIPCCalls(electronApp, 'update-browser-type')).length)
+      .toBe(1)
+    const calls = await getMainIPCCalls(electronApp, 'update-browser-type')
+    expect(calls[0]).toEqual([PROJECT, 'firefox'])
   })
 
-  test('URL restored from localStorage on remount', async ({ page }) => {
-    // Set localStorage value
-    await page.evaluate(() => localStorage.setItem('browserUrl', 'https://persisted.com'))
-    // Navigate away and back
-    // (/recorder now opens the Tests tab of this same page, so it wouldn't remount it)
-    await page.evaluate(() => { window.location.hash = '#/start-project' })
-    await page.waitForTimeout(800)
-    await page.evaluate(() => { window.location.hash = '#/overview' })
-    await page.waitForTimeout(800)
-    // Click Settings tab
-    // Use button locator to avoid matching the nav link "Settings"
-    const settingsTab = page.locator('button').filter({ hasText: 'Settings' })
-    await settingsTab.click()
-    await page.waitForTimeout(500)
-
-    const urlInput = page.locator('details input[type="text"]').first()
-    await expect(urlInput).toHaveValue('https://persisted.com')
+  test('headless toggle triggers update-headless-mode', async ({ electronApp, page }) => {
+    await page.getByTestId('overview-headless-toggle').click()
+    await expect
+      .poll(async () => (await getMainIPCCalls(electronApp, 'update-headless-mode')).length)
+      .toBe(1)
+    const calls = await getMainIPCCalls(electronApp, 'update-headless-mode')
+    expect(calls[0]).toEqual([PROJECT, true])
   })
 
-  test('browser change triggers updateBrowserType', async ({ page }) => {
-    await mockIPCCapture(page, 'updateBrowserType', { success: true })
-    const browserSelect = page.locator('details select').first()
-    await browserSelect.selectOption('firefox')
-    await page.waitForTimeout(500)
-
-    const calls = await getIPCCalls(page, 'updateBrowserType')
-    expect(calls.length).toBeGreaterThanOrEqual(1)
-    expect(calls[0][0]).toBe('/mock/test-project')
-    expect(calls[0][1]).toBe('firefox')
+  test('timeout edit saves on blur with the new value', async ({ electronApp, page }) => {
+    const input = page.locator('#timeout-input')
+    await expect(input).toHaveValue('10')
+    await input.fill('45')
+    await input.blur()
+    await expect
+      .poll(async () => (await getMainIPCCalls(electronApp, 'update-timeout')).length)
+      .toBe(1)
+    const calls = await getMainIPCCalls(electronApp, 'update-timeout')
+    expect(calls[0]).toEqual([PROJECT, 45])
   })
 
-  test('headless toggle triggers updateBrowserOptions with --headless', async ({ page }) => {
-    await mockIPCCapture(page, 'updateBrowserOptions', { success: true })
-    // Click the headless toggle (ToggleSwitch) inside the settings tab
-    const headlessToggle = page.locator('details').first().locator('[role="switch"]')
-    await headlessToggle.click()
-    await page.waitForTimeout(500)
-
-    const calls = await getIPCCalls(page, 'updateBrowserOptions')
-    expect(calls.length).toBeGreaterThanOrEqual(1)
-    // The options array should contain '--headless'
-    const optionsArg = calls[0][1] as string[]
-    expect(optionsArg).toContain('--headless')
-  })
-
-  // ── Timeout ─────────────────────────────────────
-
-  test('timeout update triggers updateTimeout with value', async ({ page }) => {
-    await mockIPCCapture(page, 'updateTimeout', { success: true })
-    const timeoutInput = page.locator('#timeout-input')
-    await timeoutInput.fill('45')
-    // Click the Update button in the timeout section
-    const timeoutSection = page.locator('details').filter({ has: page.locator('#timeout-input') })
-    await timeoutSection.getByText('Update', { exact: false }).click()
-    await page.waitForTimeout(500)
-
-    const calls = await getIPCCalls(page, 'updateTimeout')
-    expect(calls.length).toBe(1)
-    expect(calls[0][0]).toBe('/mock/test-project')
-    expect(calls[0][1]).toBe(45)
-  })
-
-  test('timeout update shows success toast', async ({ page }) => {
-    await mockIPCCapture(page, 'updateTimeout', { success: true })
-    const timeoutInput = page.locator('#timeout-input')
-    await timeoutInput.fill('45')
-    const timeoutSection = page.locator('details').filter({ has: page.locator('#timeout-input') })
-    await timeoutSection.getByText('Update', { exact: false }).click()
-    await page.waitForTimeout(500)
-
-    const toast = page.locator('[role="status"]').first()
-    await expect(toast).toBeVisible({ timeout: 5000 })
-  })
-
-
-  // ── Debug ───────────────────────────────────────
-
-  test('debug toggle triggers updateDebugMode', async ({ page }) => {
-    await mockIPCCapture(page, 'updateDebugMode', { success: true })
-    // Find the debug section's toggle
-    const debugSection = page.locator('details').filter({ hasText: 'Debug' })
-    await debugSection.locator('[role="switch"]').click()
-    await page.waitForTimeout(500)
-
-    const calls = await getIPCCalls(page, 'updateDebugMode')
-    expect(calls.length).toBe(1)
-    expect(calls[0][0]).toBe('/mock/test-project')
-    expect(calls[0][1]).toBe(true)
-  })
-
-  test('debug toggle reverts on failure', async ({ page }) => {
-    await mockIPCCaptureFailure(page, 'updateDebugMode', 'Failed to update')
-    const debugSection = page.locator('details').filter({ hasText: 'Debug' })
-    const toggle = debugSection.locator('[role="switch"]')
-
-    // Should be off initially
-    const initialState = await toggle.getAttribute('aria-checked')
-    await toggle.click()
-    await page.waitForTimeout(1000)
-
-    // Should revert back to initial state after failure
-    const finalState = await toggle.getAttribute('aria-checked')
-    expect(finalState).toBe(initialState)
-  })
-
-  // ── Browser Options ─────────────────────────────
-
-  test('browser options update triggers updateBrowserOptions IPC', async ({ page }) => {
-    await mockIPCCapture(page, 'updateBrowserOptions', { success: true })
-    const browserOptionsSection = page.locator('details').filter({ hasText: 'Browser Options' })
-    // Add a tag via TagInput
-    const tagInput = browserOptionsSection.locator('input')
-    await tagInput.fill('--no-sandbox')
+  test('adding a browser arg sends the full list to update-browser-options', async ({
+    electronApp,
+    page
+  }) => {
+    await expect(page.getByText('no-sandbox')).toBeVisible()
+    const tagInput = page.getByPlaceholder(/^Add option/)
+    await tagInput.fill('disable-gpu')
     await tagInput.press('Enter')
-    await page.waitForTimeout(300)
-
-    // Click update button
-    await browserOptionsSection.getByText('Update', { exact: false }).click()
-    await page.waitForTimeout(500)
-
-    const calls = await getIPCCalls(page, 'updateBrowserOptions')
-    expect(calls.length).toBeGreaterThanOrEqual(1)
-    expect(calls[0][0]).toBe('/mock/test-project')
+    await expect
+      .poll(async () => (await getMainIPCCalls(electronApp, 'update-browser-options')).length)
+      .toBe(1)
+    const calls = await getMainIPCCalls(electronApp, 'update-browser-options')
+    expect(calls[0]).toEqual([PROJECT, ['no-sandbox', 'disable-gpu']])
   })
-
-  // ── Paths ───────────────────────────────────────
-
-  test('paths update triggers updatePaths IPC for each path', async ({ page }) => {
-    await mockIPCCapture(page, 'updatePaths', { success: true })
-    const pathsSection = page.locator('details').filter({ hasText: 'Paths' })
-    // Fill page path
-    const inputs = pathsSection.locator('input[type="text"]')
-    await inputs.nth(0).fill('pages')
-    await inputs.nth(1).fill('features')
-    await inputs.nth(2).fill('spec')
-    await inputs.nth(3).fill('helpers')
-
-    await pathsSection.getByText('Update', { exact: false }).click()
-    await page.waitForTimeout(500)
-
-    const calls = await getIPCCalls(page, 'updatePaths')
-    expect(calls.length).toBe(4)
-  })
-
-  test('paths update shows success toast', async ({ page }) => {
-    await mockIPCCapture(page, 'updatePaths', { success: true })
-    const pathsSection = page.locator('details').filter({ hasText: 'Paths' })
-    const inputs = pathsSection.locator('input[type="text"]')
-    await inputs.nth(0).fill('pages')
-
-    await pathsSection.getByText('Update', { exact: false }).click()
-    await page.waitForTimeout(500)
-
-    const toast = page.locator('[role="status"]').first()
-    await expect(toast).toBeVisible({ timeout: 5000 })
+  test('paths on the Scaffolding tab trigger update-paths on blur', async ({
+    electronApp,
+    page
+  }) => {
+    await mockMainIPCCapture(electronApp, 'update-paths', { success: true })
+    await page.getByText('Scaffolding', { exact: true }).first().click()
+    const pageInput = page.getByPlaceholder('e.g. pages')
+    await pageInput.fill('my_pages')
+    await pageInput.blur()
+    await expect
+      .poll(async () => (await getMainIPCCalls(electronApp, 'update-paths')).length)
+      .toBeGreaterThanOrEqual(1)
+    const calls = await getMainIPCCalls(electronApp, 'update-paths')
+    expect(calls[0].slice(0, 2)).toEqual([PROJECT, 'my_pages'])
   })
 })

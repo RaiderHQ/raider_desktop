@@ -62,9 +62,23 @@ describe('runRubyRaider handler (integration)', () => {
     await handler(...validArgs)
     const call = mockExec.mock.calls[0][0] as string
     expect(call).toContain('raider new')
-    expect(call).toContain('"my_project"')
+    expect(call).toContain('raider new my_project ')
     expect(call).toContain('framework:rspec')
     expect(call).toContain('automation:selenium')
+  })
+
+  it.each([
+    ['ampersand', 'a&b', "'a&b'"],
+    ['command substitution', '$(whoami)', "'$(whoami)'"],
+    ['backticks', '`id`', "'`id`'"],
+    ['spaces', 'my project', "'my project'"],
+    ['single quote', "it's", "'it'\\''s'"],
+    ['double quote', 'a"b', `'a"b'`]
+  ])('quotes a project name with %s', async (_n, name, quoted) => {
+    mockExecSuccess()
+    await handler({} as any, '/tmp/projects', name, 'rspec', 'selenium', 'ruby')
+    const call = mockExec.mock.calls[0][0] as string
+    expect(call).toContain(`raider new ${quoted} -p`)
   })
 
   describe('ci option', () => {
@@ -96,6 +110,21 @@ describe('runRubyRaider handler (integration)', () => {
     it('ignores azure for mobile projects', async () => {
       expect(await run({ ci: 'azure' }, 'android')).not.toContain('ci:')
     })
+  })
+
+  it('never emits -r, --skip_ci or --ruby_version', async () => {
+    mockExecSuccess()
+    await handler(...validArgs, null, {
+      accessibility: true,
+      reporter: 'junit',
+      skipCi: true,
+      rubyVersion: '3.3.0'
+    } as never)
+    const call = mockExec.mock.calls[0][0] as string
+    expect(call).not.toMatch(/ -r /)
+    expect(call).not.toContain('--skip_ci')
+    expect(call).not.toContain('--ruby_version')
+    expect(call).toContain('--accessibility')
   })
 
   it('returns error when exec fails', async () => {

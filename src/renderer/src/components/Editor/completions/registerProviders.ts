@@ -1,11 +1,9 @@
 import * as monaco from 'monaco-editor'
 import { registerRubyCompletions } from './rubyCompletions'
 import { registerSeleniumCompletions } from './seleniumCompletions'
-import { registerCapybaraCompletions } from './capybaraCompletions'
 import { registerWatirCompletions } from './watirCompletions'
 import {
   registerRspecCompletions,
-  registerMinitestCompletions,
   registerCucumberCompletions
 } from './testFrameworkCompletions'
 
@@ -28,9 +26,6 @@ export function registerRubyProviders(
   if (automationLower === 'selenium' || automationLower === '') {
     disposables.push(registerSeleniumCompletions(monacoInstance))
   }
-  if (automationLower === 'capybara') {
-    disposables.push(registerCapybaraCompletions(monacoInstance))
-  }
   if (automationLower === 'watir') {
     disposables.push(registerWatirCompletions(monacoInstance))
   }
@@ -39,9 +34,6 @@ export function registerRubyProviders(
   const frameworkLower = (framework || '').toLowerCase()
   if (frameworkLower === 'rspec' || frameworkLower === '') {
     disposables.push(registerRspecCompletions(monacoInstance))
-  }
-  if (frameworkLower === 'minitest') {
-    disposables.push(registerMinitestCompletions(monacoInstance))
   }
   if (frameworkLower === 'cucumber') {
     disposables.push(registerCucumberCompletions(monacoInstance))

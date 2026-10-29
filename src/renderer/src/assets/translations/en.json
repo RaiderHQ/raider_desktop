@@ -58,15 +58,6 @@
       "accessibilityHelp": "Adds axe-core for automated accessibility checks",
       "disabledMobile": "Add-ons are not available for mobile (Appium) projects"
     },
-    "reporter": {
-      "label": "Reporter"
-    },
-    "advanced": {
-      "title": "Advanced",
-      "skipCi": "Skip CI configuration",
-      "rubyVersion": "Ruby Version",
-      "rubyVersionPlaceholder": "Auto-detected from system"
-    },
     "versionWarning": "Your Ruby version may not be compatible with Ruby Raider v3"
   },
   "button": {
@@ -137,7 +128,6 @@
       "appiumSettings": "Appium Settings",
       "timeout": "Timeout",
       "viewport": "Viewport",
-      "debug": "Debug Mode",
       "browserOptions": "Browser Options",
       "appium": "Appium",
       "paths": "Paths"
@@ -206,23 +196,16 @@
       "save": "Save"
     },
     "recording": {
-      "title": "Recording Settings",
-      "description": "Adjust the settings for test recording and playback.",
       "error": {
         "recordingUpdateFailed": "Failed to update recording settings.",
-        "unexpected": "An unexpected error occurred. Please try again.",
-        "notLoaded": "This project's recording settings haven't loaded, so they can't be saved yet. Open the project again and retry."
+        "unexpected": "An unexpected error occurred. Please try again."
       },
       "implicitWait": {
-        "label": "Implicit Wait",
-        "description": "The default time to wait for elements to appear during playback."
+        "label": "Implicit Wait"
       },
       "explicitWait": {
-        "label": "Explicit Wait",
-        "description": "The maximum time to wait for a specific condition to be met."
-      },
-      "recordingUpdateSuccess": "Recording settings updated successfully!",
-      "updateRecordingSettingsButton": "Update Settings"
+        "label": "Explicit Wait"
+      }
     },
     "timeout": {
       "label": "Test timeout",
@@ -235,11 +218,6 @@
       "height": "Height:",
       "updateButton": "Update Viewport",
       "updateSuccess": "Viewport updated successfully!"
-    },
-    "debug": {
-      "label": "Enable debug diagnostics",
-      "description": "Captures screenshots, HTML, and console logs on failure.",
-      "updateSuccess": "Debug mode updated!"
     },
     "browserOptions": {
       "placeholder": "Add option (e.g. headless)...",
@@ -327,8 +305,7 @@
       "runMode": {
         "all": "All Tests",
         "smoke": "Smoke",
-        "regression": "Regression",
-        "custom": "Custom Tag"
+        "regression": "Regression"
       },
       "customTagPlaceholder": "Tag name...",
       "rerunFailed": "Re-run Failed"
@@ -414,7 +391,7 @@
       "commandFailed": "Ruby command failed.\nCommand: {{command}}\nOutput: {{output}}\nDebug Info:\n{{debugInfo}}",
       "unexpectedOutput": "Unexpected ruby version output: {{output}}\nDebug Info:\n{{debugInfo}}",
       "failedToParse": "Failed to parse Ruby version from output: {{output}}\nDebug Info:\n{{debugInfo}}",
-      "outdated": "Ruby version {{version}} is outdated. Please install Ruby 3.0.0 or higher.\nCommand output: {{output}}\nDebug Info:\n{{debugInfo}}",
+      "outdated": "Ruby version {{version}} is outdated. Please install Ruby 3.2 or higher.\nCommand output: {{output}}\nDebug Info:\n{{debugInfo}}",
       "unknown": "An error occurred: {{error}}\nDebug Info:\n{{debugInfo}}"
     }
   },
@@ -544,7 +521,7 @@
     },
     "rubyInstallModal": {
       "title": "Ruby Not Found",
-      "message": "Ruby Raider needs Ruby 3+ installed via rbenv. Follow the steps below to get set up.",
+      "message": "Ruby Raider needs Ruby 3.2 or higher installed via rbenv. Follow the steps below to get set up.",
       "continue": "Continue",
       "close": "Close App"
     },
@@ -637,8 +614,8 @@
           "desc": "rbenv manages Ruby versions. Homebrew must be installed first (brew.sh)."
         },
         "step2": {
-          "title": "2. Install Ruby 3+",
-          "desc": "Install Ruby 3 or higher and set it as the global version."
+          "title": "2. Install Ruby 3.2+",
+          "desc": "Install Ruby 3.2 or higher and set it as the global version."
         },
         "step3": {
           "title": "3. Install ruby_raider",
@@ -651,8 +628,8 @@
           "desc": "Clone rbenv and ruby-build into your home directory, then reload your shell."
         },
         "step2": {
-          "title": "2. Install Ruby 3+",
-          "desc": "Install Ruby 3 or higher and set it as the global version."
+          "title": "2. Install Ruby 3.2+",
+          "desc": "Install Ruby 3.2 or higher and set it as the global version."
         },
         "step3": {
           "title": "3. Install ruby_raider",
@@ -680,8 +657,8 @@
         "command": "brew install rbenv ruby-build && rbenv init"
       },
       "ruby": {
-        "title": "2. Install Ruby 3+",
-        "message": "Once rbenv is set up, install Ruby 3 or higher:",
+        "title": "2. Install Ruby 3.2+",
+        "message": "Once rbenv is set up, install Ruby 3.2 or higher:",
         "command": "rbenv install 3.4.1 && rbenv global 3.4.1"
       },
       "gem": {

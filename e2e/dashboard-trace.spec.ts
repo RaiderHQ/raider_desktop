@@ -1,6 +1,6 @@
 import { test, expect } from './electronApp'
 import type { Page } from '@playwright/test'
-import { goToOverview } from './helpers/navigation'
+import { goToOverview, mockRubyReady } from './helpers/navigation'
 import { setupProjectContext, mockIPC, mockIPCCapture, getIPCCalls } from './helpers/ipc-mock'
 
 const projectPath = '/mock/test-project'
@@ -72,7 +72,8 @@ async function openDashboard(page: Page): Promise<void> {
 }
 
 test.describe('Dashboard trace viewer', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ electronApp, page }) => {
+    await mockRubyReady(electronApp, page)
     await setupProjectContext(page, { projectPath })
     await mockIPC(page, 'listProjectTests', [
       { file: 'spec/search_spec.rb', name: 'Search products', ownership: 'recorded', testId: 't1' }

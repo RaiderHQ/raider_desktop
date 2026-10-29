@@ -12,4 +12,4 @@ export type {
   ScaffoldParams,
   ScaffoldResult
 } from './scaffoldTypes'
-export type { ProjectCreationOptions, ReporterType } from './projectCreationTypes'
+export type { ProjectCreationOptions } from './projectCreationTypes'

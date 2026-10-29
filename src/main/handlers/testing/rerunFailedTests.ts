@@ -1,5 +1,5 @@
 import path from 'path'
-import { existsSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { BrowserWindow } from 'electron'
 import { CommandType } from '@foundation/Types/commandType'
 import { safeExec } from '../../utils/safeExec'
@@ -26,6 +26,15 @@ const handler = async (
       }
     }
 
+    // Cucumber with a missing or blank rerun.txt has nothing to re-run.
+    if (!hasSpec) {
+      const rerunFile = path.join(normalizedFolderPath, 'rerun.txt')
+      const rerunContent = existsSync(rerunFile) ? readFileSync(rerunFile, 'utf-8') : ''
+      if (rerunContent.trim() === '') {
+        return { success: true, output: 'No failed scenarios to re-run.' }
+      }
+    }
+
     const checkResult = await checkBundle(folderPath, rubyCommand)
 
     if (!checkResult.success) {
@@ -49,17 +58,9 @@ const handler = async (
       // RSpec: use --only-failures flag
       commandToExecute = `${rubyCommand} -S bundle exec rspec --only-failures`
     } else {
-      // Cucumber: re-run from rerun.txt if it exists
-      const rerunFile = path.join(normalizedFolderPath, 'rerun.txt')
-      if (existsSync(rerunFile)) {
-        commandToExecute = `${rubyCommand} -S bundle exec cucumber @rerun.txt`
-      } else {
-        return {
-          success: false,
-          output: '',
-          error: 'No rerun.txt found. Run tests first to generate failure data.'
-        }
-      }
+      // Cucumber: re-run from rerun.txt. `cucumber @rerun.txt` on an empty
+      // file would run the whole suite, so that case returns early above.
+      commandToExecute = `${rubyCommand} -S bundle exec cucumber @rerun.txt`
     }
 
     const result = await safeExec(commandToExecute, {

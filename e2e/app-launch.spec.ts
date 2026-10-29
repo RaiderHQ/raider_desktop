@@ -1,4 +1,5 @@
 import { test, expect } from './electronApp'
+import { enterMainLayout, mockRubyReady } from './helpers/navigation'
 
 test.describe('App Launch', () => {
   test('opens a window on startup', async ({ page }) => {
@@ -46,6 +47,15 @@ test.describe('App Launch', () => {
   test('without a project the header title is not a link', async ({ page }) => {
     await expect(page.locator('header').getByText('Ruby Raider', { exact: true })).toBeVisible()
     await expect(page.locator('header a[href="#/overview"]')).toHaveCount(0)
+  })
+
+  test('the header title links to the Overview once a project is open', async ({
+    electronApp,
+    page
+  }) => {
+    await mockRubyReady(electronApp, page)
+    await enterMainLayout(electronApp, page)
+    await expect(page.locator('header a[href="#/overview"]')).toBeVisible()
   })
 
   test('header logo is visible on launch', async ({ page }) => {

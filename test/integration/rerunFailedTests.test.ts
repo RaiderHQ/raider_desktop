@@ -35,6 +35,7 @@ const tmpBase = path.join(os.tmpdir(), 'raider-rerun-test-' + Date.now())
 const rspecProject = path.join(tmpBase, 'rspec_project')
 const cucumberProject = path.join(tmpBase, 'cucumber_project')
 const cucumberNoRerun = path.join(tmpBase, 'cucumber_no_rerun')
+const cucumberEmptyRerun = path.join(tmpBase, 'cucumber_empty_rerun')
 const emptyProject = path.join(tmpBase, 'empty_project')
 
 beforeEach(() => {
@@ -50,6 +51,8 @@ mkdirSync(path.join(rspecProject, 'spec'), { recursive: true })
 mkdirSync(path.join(cucumberProject, 'features'), { recursive: true })
 writeFileSync(path.join(cucumberProject, 'rerun.txt'), 'features/login.feature:5')
 mkdirSync(path.join(cucumberNoRerun, 'features'), { recursive: true })
+mkdirSync(path.join(cucumberEmptyRerun, 'features'), { recursive: true })
+writeFileSync(path.join(cucumberEmptyRerun, 'rerun.txt'), ' \n\t\n')
 mkdirSync(emptyProject, { recursive: true })
 
 afterAll(() => {
@@ -143,13 +146,19 @@ describe('rerunFailedTests handler', () => {
       expect(options.cwd).toBe(path.resolve(cucumberProject))
     })
 
-    it('returns error when rerun.txt does not exist', async () => {
+    it('does not run anything when rerun.txt is empty', async () => {
+      const result = await handler(mockMainWindow, cucumberEmptyRerun, 'ruby')
+
+      expect(result.success).toBe(true)
+      expect(result.output).toBe('No failed scenarios to re-run.')
+      expect(mockSafeExec).not.toHaveBeenCalled()
+    })
+
+    it('does not run anything when rerun.txt does not exist', async () => {
       const result = await handler(mockMainWindow, cucumberNoRerun, 'ruby')
 
-      expect(result.success).toBe(false)
-      expect(result.error).toBe(
-        'No rerun.txt found. Run tests first to generate failure data.'
-      )
+      expect(result.success).toBe(true)
+      expect(result.output).toBe('No failed scenarios to re-run.')
       expect(mockSafeExec).not.toHaveBeenCalled()
     })
   })

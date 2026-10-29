@@ -1,64 +1,61 @@
+import type { ElectronApplication, Page } from '@playwright/test'
 import { test, expect } from './electronApp'
-import { goToOverviewFiles } from './helpers/navigation'
-import { setupProjectContext, mockIPCCapture, getIPCCalls } from './helpers/ipc-mock'
+import { enterMainLayout, mockRubyReady } from './helpers/navigation'
+import { mockMainIPCCapture } from './helpers/ipc-mock'
 
-test.describe('Overview Settings Toolbar', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupProjectContext(page)
-    await goToOverviewFiles(page)
+const PROJECT = '/mock/test-project'
+
+async function openOverview(
+  electronApp: ElectronApplication,
+  page: Page,
+  config: Record<string, unknown> = {}
+): Promise<void> {
+  await mockRubyReady(electronApp, page)
+  await mockMainIPCCapture(electronApp, 'get-project-config', { success: true, config })
+  await mockMainIPCCapture(electronApp, 'is-mobile-project', {
+    success: true,
+    isMobileProject: false
+  })
+  await mockMainIPCCapture(electronApp, 'read-directory', [])
+  await enterMainLayout(electronApp, page, PROJECT)
+  // The Overview opens on the Tests tab; the settings toolbar is on Files
+  await page.getByRole('button', { name: 'Files', exact: true }).click()
+}
+
+test.describe('Overview settings toolbar', () => {
+  test('browser dropdown offers only Chrome and Firefox', async ({ electronApp, page }) => {
+    await openOverview(electronApp, page)
+    const options = page.locator('[data-testid="overview-browser-select"] option')
+    await expect(options).toHaveCount(2)
+    await expect(options).toHaveText(['Chrome', 'Firefox'])
   })
 
-  test('base URL input is visible on Overview Files tab', async ({ page }) => {
-    const urlInput = page.locator('[data-testid="overview-url-input"]')
-    await expect(urlInput).toBeVisible()
+  test('run mode offers All, Smoke and Regression but no Custom Tag', async ({
+    electronApp,
+    page
+  }) => {
+    await openOverview(electronApp, page)
+    const select = page.locator('[data-testid="overview-run-mode-select"]')
+    await expect(select.locator('option')).toHaveCount(3)
+    await expect(select).not.toContainText('Custom')
+    await expect(page.locator('[data-testid="overview-custom-tag-input"]')).toHaveCount(0)
   })
 
-  test('base URL saves on blur and triggers updateBrowserUrl with correct args', async ({ page }) => {
-    await mockIPCCapture(page, 'updateBrowserUrl', { success: true })
-    const urlInput = page.locator('[data-testid="overview-url-input"]')
-    await urlInput.fill('https://example.com')
-    await urlInput.blur()
-    await page.waitForTimeout(1000)
-
-    const calls = await getIPCCalls(page, 'updateBrowserUrl')
-    expect(calls.length).toBeGreaterThanOrEqual(1)
-    expect(calls[0][0]).toBe('/mock/test-project')
-    expect(calls[0][1]).toBe('https://example.com')
-
-    // Toast should appear
-    const toast = page.locator('[role="status"]').first()
-    await expect(toast).toBeVisible({ timeout: 5000 })
-  })
-
-  test('browser dropdown triggers updateBrowserType with firefox', async ({ page }) => {
-    await mockIPCCapture(page, 'updateBrowserType', { success: true })
-    const browserSelect = page.locator('[data-testid="overview-browser-select"]')
-    await expect(browserSelect).toBeVisible()
-    await browserSelect.selectOption('firefox')
-    await page.waitForTimeout(500)
-
-    const calls = await getIPCCalls(page, 'updateBrowserType')
-    expect(calls.length).toBeGreaterThanOrEqual(1)
-    expect(calls[0][0]).toBe('/mock/test-project')
-    expect(calls[0][1]).toBe('firefox')
-
-    // Toast should appear
-    const toast = page.locator('[role="status"]').first()
-    await expect(toast).toBeVisible({ timeout: 5000 })
-  })
-
-  test('headless toggle is visible and can be toggled', async ({ page }) => {
-    await mockIPCCapture(page, 'updateBrowserOptions', { success: true })
-    const headlessSwitch = page.locator('[role="switch"]').last()
-    await expect(headlessSwitch).toBeVisible()
-    await headlessSwitch.click()
-    await page.waitForTimeout(500)
-
-    const calls = await getIPCCalls(page, 'updateBrowserOptions')
-    expect(calls.length).toBeGreaterThanOrEqual(1)
-
-    // Toast should appear
-    const toast = page.locator('[role="status"]').first()
-    await expect(toast).toBeVisible({ timeout: 5000 })
+  test('timeout and browser args are read back from the project config', async ({
+    electronApp,
+    page
+  }) => {
+    await openOverview(electronApp, page, {
+      baseUrl: 'https://example.com',
+      browser: 'chrome',
+      timeout: 10,
+      browserArguments: ['no-sandbox', 'disable-gpu']
+    })
+    await expect(page.locator('#timeout-input')).toHaveValue('10')
+    await expect(page.getByText('no-sandbox')).toBeVisible()
+    await expect(page.getByText('disable-gpu')).toBeVisible()
+    await expect(page.locator('[data-testid="overview-url-input"]')).toHaveValue(
+      'https://example.com'
+    )
   })
 })

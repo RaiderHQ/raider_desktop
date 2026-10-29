@@ -104,16 +104,6 @@ export async function mockSuites(
 }
 
 /**
- * Mock adoptAnalyze with a successful detection result.
- */
-export async function mockAdoptAnalyze(
-  page: Page,
-  detection: Record<string, unknown>
-): Promise<void> {
-  await mockIPC(page, 'adoptAnalyze', { success: true, detection })
-}
-
-/**
  * Mock readDirectory to return a file tree.
  */
 export async function mockReadDirectory(page: Page, tree: unknown[]): Promise<void> {

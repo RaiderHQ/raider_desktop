@@ -1,5 +1,11 @@
 import { test, expect } from './electronApp'
-import { goToLanding, goToOverview, createSuiteViaUI, navigateTo } from './helpers/navigation'
+import {
+  goToLanding,
+  goToOverview,
+  createSuiteViaUI,
+  mockRubyReady,
+  navigateTo
+} from './helpers/navigation'
 import {
   setupProjectContext,
   mockIPC,
@@ -9,11 +15,15 @@ import {
 } from './helpers/ipc-mock'
 
 test.describe('User Workflows', () => {
+  test.beforeEach(async ({ electronApp, page }) => {
+    await mockRubyReady(electronApp, page)
+  })
+
   test('new user flow: landing -> create project form -> back', async ({ page }) => {
     await goToLanding(page)
     await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
 
-    await page.getByRole('button', { name: 'Create' }).click()
+    await page.getByRole('button', { name: 'Create', exact: true }).click()
     await page.waitForTimeout(800)
 
     await page.getByPlaceholder('Enter project name').fill('test_automation_project')
@@ -71,27 +81,27 @@ test.describe('User Workflows', () => {
   test('landing page info modals show correct content', async ({ page }) => {
     await goToLanding(page)
 
+    // Cards are ordered Quick record, Create, Open
     const infoIcons = page.locator('button[aria-label="Help"]')
-    const count = await infoIcons.count()
+    await expect(infoIcons).toHaveCount(3)
 
-    // Quick record's card comes first; Create's help icon is the second
-    if (count > 1) {
-      await infoIcons.nth(1).click()
-      await page.waitForTimeout(500)
-      await expect(page.getByText('Creating a New Project')).toBeVisible()
-    }
+    await infoIcons.nth(1).click()
+    await expect(page.getByRole('heading', { name: 'Creating a New Project' })).toBeVisible()
+    await expect(
+      page.getByText('Here you can create a new project and start automating your tests.')
+    ).toBeVisible()
   })
 
   test('full navigation round trip: all pages', async ({ page }) => {
     await goToLanding(page)
     await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
 
-    await page.getByRole('button', { name: 'Create' }).click()
+    await page.getByRole('button', { name: 'Create', exact: true }).click()
     await page.waitForTimeout(800)
-    await expect(page.getByText('Create a new project')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Create a new project' })).toBeVisible()
 
     await page.getByRole('button', { name: 'Back' }).click()
-    await page.waitForTimeout(500)
+    await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
 
     await setupProjectContext(page)
     await navigateTo(page, '/overview')

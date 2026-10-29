@@ -1,8 +1,12 @@
 import { test, expect } from './electronApp'
-import { goToOverview, navigateTo } from './helpers/navigation'
+import { goToOverview, navigateTo, mockRubyReady } from './helpers/navigation'
 import { setupProjectContext } from './helpers/ipc-mock'
 
 test.describe('Navigation', () => {
+  test.beforeEach(async ({ electronApp, page }) => {
+    await mockRubyReady(electronApp, page)
+  })
+
   test('main layout shows header with logo', async ({ page }) => {
     const logo = page.locator('header svg')
     await expect(logo).toBeVisible()

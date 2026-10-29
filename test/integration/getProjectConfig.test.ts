@@ -25,8 +25,14 @@ describe('getProjectConfig handler', () => {
   })
 
   it('reads url, browser, and headless from config.yml', async () => {
-    mockReadFile.mockResolvedValueOnce('url: https://example.com\nbrowser: firefox\nheadless: true\n')
-    mockYamlLoad.mockReturnValueOnce({ url: 'https://example.com', browser: 'firefox', headless: true })
+    mockReadFile.mockResolvedValueOnce(
+      'url: https://example.com\nbrowser: firefox\nheadless: true\n'
+    )
+    mockYamlLoad.mockReturnValueOnce({
+      url: 'https://example.com',
+      browser: 'firefox',
+      headless: true
+    })
 
     const result = await handler('/my/project')
 
@@ -36,6 +42,59 @@ describe('getProjectConfig handler', () => {
       browser: 'firefox',
       headless: true
     })
+  })
+
+  it("reads timeout and the current browser's arguments", async () => {
+    mockReadFile.mockResolvedValueOnce('')
+    mockYamlLoad.mockReturnValueOnce({
+      timeout: 10,
+      browser: 'chrome',
+      browser_arguments: { chrome: ['no-sandbox'], firefox: ['-headless'] }
+    })
+
+    const result = await handler('/my/project')
+
+    expect(result.config?.timeout).toBe(10)
+    expect(result.config?.browserArguments).toEqual(['no-sandbox'])
+  })
+
+  it('omits browserArguments when browser_arguments is missing', async () => {
+    mockReadFile.mockResolvedValueOnce('')
+    mockYamlLoad.mockReturnValueOnce({ browser: 'chrome', timeout: 5 })
+
+    const result = await handler('/my/project')
+
+    expect(result.success).toBe(true)
+    expect(result.config?.browserArguments).toBeUndefined()
+  })
+
+  it('omits browserArguments when the browser is absent from browser_arguments', async () => {
+    mockReadFile.mockResolvedValueOnce('')
+    mockYamlLoad.mockReturnValueOnce({ browser: 'safari', browser_arguments: { chrome: ['x'] } })
+
+    const result = await handler('/my/project')
+
+    expect(result.config?.browserArguments).toBeUndefined()
+  })
+
+  it('omits timeout when it is missing', async () => {
+    mockReadFile.mockResolvedValueOnce('')
+    mockYamlLoad.mockReturnValueOnce({ browser: 'chrome' })
+
+    const result = await handler('/my/project')
+
+    expect(result.config?.timeout).toBeUndefined()
+  })
+
+  it('returns an empty config for malformed yml', async () => {
+    mockReadFile.mockResolvedValueOnce('{: bad')
+    mockYamlLoad.mockImplementationOnce(() => {
+      throw new Error('bad yaml')
+    })
+
+    const result = await handler('/my/project')
+
+    expect(result).toEqual({ success: true, config: {} })
   })
 
   it('supports legacy base_url key', async () => {

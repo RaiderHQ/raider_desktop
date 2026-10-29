@@ -1,8 +1,12 @@
 import { test, expect } from './electronApp'
-import { navigateTo, goToOverview } from './helpers/navigation'
+import { navigateTo, goToOverview, mockRubyReady } from './helpers/navigation'
 import { setupProjectContext } from './helpers/ipc-mock'
 
 test.describe('Error States & Edge Cases', () => {
+  test.beforeEach(async ({ electronApp, page }) => {
+    await mockRubyReady(electronApp, page)
+  })
+
   test('navigating to file-editor without state does not crash', async ({ page }) => {
     await navigateTo(page, '/file-editor')
     await page.waitForTimeout(500)
@@ -58,13 +62,10 @@ test.describe('Error States & Edge Cases', () => {
 
   test('back button on new project page navigates away', async ({ page }) => {
     await navigateTo(page, '/start-project')
-    await page.getByRole('button', { name: 'Create' }).click()
-    await page.waitForTimeout(800)
+    await page.getByRole('button', { name: 'Create', exact: true }).click()
+    await expect(page).toHaveURL(/#\/new/)
 
     await page.getByRole('button', { name: 'Back' }).click()
-    await page.waitForTimeout(500)
-
-    const url = page.url()
-    expect(url).not.toContain('#/new')
+    await expect(page).not.toHaveURL(/#\/new/)
   })
 })

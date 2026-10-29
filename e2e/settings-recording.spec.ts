@@ -1,5 +1,5 @@
 import { test, expect } from './electronApp'
-import { goToOverviewFiles } from './helpers/navigation'
+import { goToOverviewFiles, mockRubyReady } from './helpers/navigation'
 import {
   setupProjectContext,
   mockIPC,
@@ -19,6 +19,11 @@ const projectSettings = {
   explicitWait: 12,
   selectorPriority: ['id', 'css']
 }
+
+// The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
+test.beforeEach(async ({ electronApp, page }) => {
+  await mockRubyReady(electronApp, page)
+})
 
 test.describe('Recording Settings', () => {
   test.beforeEach(async ({ page }) => {

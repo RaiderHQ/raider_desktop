@@ -1,5 +1,5 @@
 const MIN_MAJOR = 3
-const MIN_MINOR = 1
+const MIN_MINOR = 2
 
 export function parseRubyVersion(
   versionString: string

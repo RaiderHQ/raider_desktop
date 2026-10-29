@@ -11,7 +11,6 @@ interface FolderProps {
   onFileClick: (filePath: string) => void
   isRoot?: boolean
   onRunTests?: () => void
-  onGenerateSpec?: (filePath: string, pageName: string) => void
   onFileContextMenu?: (e: React.MouseEvent, filePath: string, fileName: string) => void
   onFolderContextMenu?: (e: React.MouseEvent, folderPath: string, folderName: string) => void
 }
@@ -24,7 +23,6 @@ const Folder: React.FC<FolderProps> = ({
   onFileClick,
   isRoot = false,
   onRunTests,
-  onGenerateSpec,
   onFileContextMenu,
   onFolderContextMenu
 }) => {
@@ -85,7 +83,6 @@ const Folder: React.FC<FolderProps> = ({
                     path={file.path}
                     files={file.children}
                     onFileClick={onFileClick}
-                    onGenerateSpec={onGenerateSpec}
                     onFileContextMenu={onFileContextMenu}
                     onFolderContextMenu={onFolderContextMenu}
                   />
@@ -97,7 +94,6 @@ const Folder: React.FC<FolderProps> = ({
                   name={file.name}
                   path={file.path}
                   onFileClick={onFileClick}
-                  onGenerateSpec={onGenerateSpec}
                   onContextMenu={onFileContextMenu}
                 />
               )

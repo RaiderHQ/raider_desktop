@@ -1,11 +1,12 @@
 import { test, expect } from './electronApp'
-import { goToOverview } from './helpers/navigation'
+import { goToOverview, mockRubyReady } from './helpers/navigation'
 import { setupProjectContext } from './helpers/ipc-mock'
 
 // The results of a run live on the Overview's Dashboard tab (the recorder's own
 // dashboard is gone: a test's last run is on its page)
 test.describe('Dashboard tab (Overview)', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ electronApp, page }) => {
+    await mockRubyReady(electronApp, page)
     await setupProjectContext(page)
     await goToOverview(page)
   })

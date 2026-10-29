@@ -118,7 +118,6 @@ const api = {
     ipcRenderer.invoke('is-mobile-project', projectPath),
   runCommand: async (command: string): Promise<CommandType> =>
     ipcRenderer.invoke('run-command', command),
-  installRaider: async (): Promise<CommandType> => ipcRenderer.invoke('install-raider'),
   installGems: async (rubyCommand: string, gems: string[]): Promise<CommandType> =>
     ipcRenderer.invoke('install-gems', rubyCommand, gems),
   isRubyInstalled: async (): Promise<{
@@ -322,10 +321,12 @@ const api = {
     projectPath: string,
     width: number,
     height: number
-  ): Promise<CommandType> => ipcRenderer.invoke('update-viewport', projectPath, width, height),
-  updateDebugMode: async (projectPath: string, enabled: boolean): Promise<CommandType> =>
-    ipcRenderer.invoke('update-debug-mode', projectPath, enabled),
-  updateBrowserOptions: async (projectPath: string, options: string[]): Promise<CommandType> =>
+  ): Promise<CommandType> =>
+    ipcRenderer.invoke('update-viewport', projectPath, width, height),
+  updateBrowserOptions: async (
+    projectPath: string,
+    options: string[]
+  ): Promise<CommandType> =>
     ipcRenderer.invoke('update-browser-options', projectPath, options),
   startAppium: async (projectPath: string): Promise<CommandType> =>
     ipcRenderer.invoke('start-appium', projectPath),
@@ -342,6 +343,8 @@ const api = {
       baseUrl?: string
       browser?: string
       headless?: boolean
+      timeout?: number
+      browserArguments?: string[]
     }
     error?: string
   }> => ipcRenderer.invoke('get-project-config', projectPath),

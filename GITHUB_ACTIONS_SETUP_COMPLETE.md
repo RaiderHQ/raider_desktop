@@ -313,7 +313,7 @@ git push
 ### 2. Verify on Real Windows
 
 **Test checklist:**
-- [ ] Install Ruby 3.1.6 from RubyInstaller.org
+- [ ] Install Ruby 3.4.1 from RubyInstaller.org
 - [ ] Install Raider Desktop .exe
 - [ ] Launch app
 - [ ] Verify Ruby auto-detected

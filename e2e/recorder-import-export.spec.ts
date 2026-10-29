@@ -1,11 +1,16 @@
 import { test, expect } from './electronApp'
 import type { Page } from '@playwright/test'
-import { goToOverview, createSuiteViaUI } from './helpers/navigation'
+import { goToOverview, createSuiteViaUI, mockRubyReady } from './helpers/navigation'
 import { setupProjectContext, mockIPCCapture, getIPCCalls } from './helpers/ipc-mock'
 
 // Import and export sit in the suite actions menu above the Tests list
 const openMenu = (page: Page): Promise<void> =>
   page.getByRole('button', { name: 'Suite actions' }).click()
+
+// The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
+test.beforeEach(async ({ electronApp, page }) => {
+  await mockRubyReady(electronApp, page)
+})
 
 test.describe('Tests list import/export', () => {
   test.beforeEach(async ({ page }) => {

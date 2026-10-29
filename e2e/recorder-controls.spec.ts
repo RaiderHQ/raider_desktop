@@ -1,9 +1,15 @@
 import { test, expect } from './electronApp'
-import { goToOverview, createSuiteViaUI } from './helpers/navigation'
+import { goToOverview, createSuiteViaUI, mockRubyReady } from './helpers/navigation'
 import { setupProjectContext } from './helpers/ipc-mock'
 
 // Suites are managed above the Tests list. Creating one goes through the real main
 // process, which broadcasts the new suites back to the window.
+
+// The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
+test.beforeEach(async ({ electronApp, page }) => {
+  await mockRubyReady(electronApp, page)
+})
+
 test.describe('Suites on the Tests list', () => {
   test.beforeEach(async ({ page }) => {
     await setupProjectContext(page)

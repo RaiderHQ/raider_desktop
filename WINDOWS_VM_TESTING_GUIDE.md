@@ -175,7 +175,7 @@ Display: 1920x1080 or higher
 
 1. Open Edge browser in VM
 2. Go to: https://rubyinstaller.org/downloads/
-3. Download **Ruby+Devkit 3.1.6 (x64)**
+3. Download **Ruby+Devkit 3.4.1 (x64)**
 4. Run installer
 5. ✅ **IMPORTANT:** Check "Add Ruby to PATH"
 6. Select "MSYS2 and MINGW development toolchain"
@@ -187,7 +187,7 @@ Display: 1920x1080 or higher
 ```powershell
 # Open PowerShell
 ruby -v
-# Should show: ruby 3.1.6...
+# Should show: ruby 3.4.1...
 
 gem -v
 # Should show: 3.3.x or higher
@@ -282,7 +282,7 @@ npm run build:win
   - UI renders correctly
 
 - [ ] **Ruby auto-detection works**
-  - App detects Ruby 3.1.6 automatically
+  - App detects Ruby 3.4.1 automatically
   - No "Ruby not found" error modal
   - Dashboard shows Ruby version
 
@@ -429,7 +429,7 @@ bundle check
 
 **Verify:**
 - [ ] Error message mentions version requirement
-- [ ] Says "Ruby 3.0.0+ required"
+- [ ] Says "Ruby 3.2 or higher required"
 - [ ] Shows detected version
 
 #### Test: Permission Denied
@@ -657,7 +657,7 @@ Create a test report:
 
 ## Environment
 - Windows Version: Windows 11 Pro
-- Ruby Version: 3.1.6
+- Ruby Version: 3.4.1
 - Installation Method: RubyInstaller
 - VM Software: Parallels Desktop
 

@@ -1,5 +1,5 @@
 import { test, expect } from './electronApp'
-import { goToNewTest, goToOverview, goToTest, navigateTo } from './helpers/navigation'
+import { goToNewTest, goToOverview, goToTest, navigateTo, mockRubyReady } from './helpers/navigation'
 import {
   setupProjectContext,
   mockIPC,
@@ -24,6 +24,11 @@ const suites = [
     ]
   }
 ]
+
+// The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
+test.beforeEach(async ({ electronApp, page }) => {
+  await mockRubyReady(electronApp, page)
+})
 
 test.describe('Tests tab (recorder)', () => {
   test.beforeEach(async ({ page }) => {
