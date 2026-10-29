@@ -12,7 +12,17 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
-afterPack: build/afterPack.cjs
+# Electron fuses, flipped in the packaged binary right before signing. They only exist
+# in the packaged app, so `npm run dev` and the e2e runs (plain electron) are unaffected.
+electronFuses:
+  # ELECTRON_RUN_AS_NODE would turn the app into a plain Node.js runtime
+  runAsNode: false
+  # --inspect and friends would let anyone attach a debugger to the main process
+  enableNodeCliInspectArguments: false
+  # Only the signed app.asar may be loaded, not a loose app folder next to it
+  onlyLoadAppFromAsar: true
+  # On Apple silicon the ad-hoc signature must be redone after flipping (only acts on .app bundles)
+  resetAdHocDarwinSignature: true
 win:
   executableName: Ruby Raider
   icon: build/icon.ico
@@ -29,8 +39,9 @@ mac:
   category: public.app-category.developer-tools
   icon: build/icon.icns
   hardenedRuntime: true
-  notarize:
-    teamId: FJCVZDVC44
+  # electron-builder 26: notarize is a boolean; the team ID comes from APPLE_TEAM_ID
+  # (with APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD), which the release workflow sets
+  notarize: true
   gatekeeperAssess: false
   extendInfo:
     NSCameraUsageDescription: Application requests access to the device's camera.
