@@ -51,6 +51,7 @@ import {
 import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTests'
 import { isListed } from './handlers/tests/suiteStore'
 import { registerRunIpc } from './handlers/run/runIpc'
+import { killActiveRun } from './handlers/run/runner'
 import exportTest from './handlers/io/exportTest'
 import exportSuite from './handlers/io/exportSuite'
 import exportProject from './handlers/io/exportProject'
@@ -154,6 +155,8 @@ app.whenReady().then(() => {
 
   app.on('before-quit', () => {
     quitting = true
+    // The run is detached in its own process group, so it would outlive the app
+    killActiveRun()
   })
 
   app.on('browser-window-created', (_, window) => {

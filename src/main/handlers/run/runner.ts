@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process'
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
@@ -50,6 +50,8 @@ interface Active {
   session: RunSession
   child: ChildProcess | null
   cancelled: boolean
+  /** Set once the process has closed: a cancel after that has nothing to stop. */
+  exited: boolean
   done: boolean
   killTimer: NodeJS.Timeout | null
   graceMs: number
@@ -213,6 +215,9 @@ export async function startRun(
     const projectPath = appState.projectPath
     if (!projectPath) throw new Error('No project is open.')
     const valid = await validate(request)
+    // listedFile checked against the project open now; run only if it's still the same one
+    if (appState.projectPath !== projectPath)
+      throw new Error('The project changed, so the tests were not run.')
     const framework = await detectFramework(projectPath)
     const { command, workers } = buildRunCommand({
       framework,
@@ -248,6 +253,7 @@ export async function startRun(
       session,
       child: null,
       cancelled: false,
+      exited: false,
       done: false,
       killTimer: null,
       graceMs: deps.graceMs
@@ -283,8 +289,12 @@ async function launch(
   const { session, runId } = active
   const startedAt = Date.now()
   const finishEarly = (exitCode: number | null): void => {
-    session.finish(exitCode)
-    active.done = true
+    clearKillTimer(active)
+    try {
+      session.finish(exitCode)
+    } finally {
+      active.done = true
+    }
   }
 
   try {
@@ -351,23 +361,34 @@ async function launch(
 
     let closing = false
     const close = async (exitCode: number | null): Promise<void> => {
+      active.exited = true
       if (closing) return
       closing = true
       clearInterval(timer)
-      if (active.killTimer) clearTimeout(active.killTimer)
-      await tail.poll()
-      if (parsers) {
-        for (const stream of ['stdout', 'stderr'] as const) {
-          for (const { worker, text } of parsers[stream].flush())
-            session.output(stream, text, worker)
+      clearKillTimer(active)
+      let fallback: RunCounts | undefined
+      try {
+        await tail.poll()
+        if (parsers) {
+          for (const stream of ['stdout', 'stderr'] as const) {
+            for (const { worker, text } of parsers[stream].flush())
+              session.output(stream, text, worker)
+          }
+        }
+        // run.json finished_at may have only second precision, so compare from the start's second
+        if (!run.liveEvents) {
+          fallback = await resultCounts(run.projectPath, Math.floor(startedAt / 1000) * 1000)
+        }
+      } catch (error) {
+        session.output('stderr', `${message(error)}\n`)
+      } finally {
+        // Always finish and free the slot, whatever failed above
+        try {
+          session.finish(exitCode, fallback)
+        } finally {
+          active.done = true
         }
       }
-      // run.json finished_at may have only second precision, so compare from the start's second
-      const fallback = run.liveEvents
-        ? undefined
-        : await resultCounts(run.projectPath, Math.floor(startedAt / 1000) * 1000)
-      session.finish(exitCode, fallback)
-      active.done = true
 
       const events = session.snapshot().events
       const finished = events[events.length - 1]
@@ -394,6 +415,11 @@ async function launch(
   }
 }
 
+function clearKillTimer(active: Active): void {
+  if (active.killTimer) clearTimeout(active.killTimer)
+  active.killTimer = null
+}
+
 function kill(child: ChildProcess, signal: 'SIGINT' | 'SIGKILL'): void {
   const pid = child.pid
   if (pid === undefined) return
@@ -416,15 +442,35 @@ function kill(child: ChildProcess, signal: 'SIGINT' | 'SIGKILL'): void {
 /** SIGINT to the run's process group, then SIGKILL after the grace period. */
 export async function cancelRun(runId: string): Promise<void> {
   const active = current
-  if (!active || active.runId !== runId || active.done || active.cancelled) return
+  if (!active || active.runId !== runId || active.done || active.exited || active.cancelled) return
   active.cancelled = true
   active.session.requestCancel()
   const child = active.child
   if (!child) return // not spawned yet; launch finishes the run as cancelled
   kill(child, 'SIGINT')
   if (process.platform !== 'win32') {
-    active.killTimer = setTimeout(() => kill(child, 'SIGKILL'), active.graceMs)
+    active.killTimer = setTimeout(() => {
+      active.killTimer = null
+      // The group is gone once closed, and its pid may have been reused
+      if (!active.exited) kill(child, 'SIGKILL')
+    }, active.graceMs)
   }
+}
+
+/**
+ * Kills the running test process group at once (app quit), so ruby, parallel workers
+ * and browsers don't outlive the app. Synchronous; does nothing when no child is alive.
+ */
+export function killActiveRun(): void {
+  const active = current
+  const pid = active?.child?.pid
+  if (!active || active.done || active.exited || pid === undefined) return
+  clearKillTimer(active)
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'])
+    return
+  }
+  kill(active.child!, 'SIGKILL')
 }
 
 /** The current or last run with its events, for a renderer that reloads. */

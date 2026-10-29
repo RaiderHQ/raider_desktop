@@ -22,9 +22,11 @@ vi.mock('../../../src/main/handlers/tests/projectTestIpc', () => ({
 
 import { appState } from '../../../src/main/handlers/appState'
 import { pushToLongship } from '../../../src/main/handlers/longship/pushToLongship'
+import { listedFile } from '../../../src/main/handlers/tests/projectTestIpc'
 import {
   cancelRun,
   getActiveRun,
+  killActiveRun,
   startRun,
   type RunnerDeps
 } from '../../../src/main/handlers/run/runner'
@@ -383,5 +385,77 @@ describe('runner', () => {
     await finishedEvent(second)
     expect(fs.existsSync(path.join(tempRoot, first))).toBe(false)
     expect(fs.existsSync(path.join(tempRoot, second))).toBe(true)
+  })
+
+  it.skipIf(process.platform === 'win32')(
+    'a cancel between exit and run:finished neither changes the status nor signals',
+    async () => {
+      script = { steps: [{ event: plan('t1') }, { event: finished('t1', 'passed') }], exitCode: 0 }
+      const killSpy = vi.spyOn(process, 'kill')
+      let runId = ''
+      deps.spawnCommand.mockImplementationOnce(
+        (cmd: string, cwd: string, env: NodeJS.ProcessEnv) => {
+          const child = fakeSpawn(cmd, cwd, env)
+          // Registered before the runner's own 'close' listener; the microtask runs after it,
+          // while the runner is still draining the tail
+          child.on('close', () => queueMicrotask(() => void cancelRun(runId)))
+          return child
+        }
+      )
+      try {
+        runId = await run()
+        const done = await finishedEvent(runId)
+        expect(done).toMatchObject({ status: 'passed', exitCode: 0 })
+        expect(killSpy).not.toHaveBeenCalled()
+      } finally {
+        killSpy.mockRestore()
+      }
+    }
+  )
+
+  it.skipIf(process.platform === 'win32')(
+    'killActiveRun SIGKILLs the running process group at once',
+    async () => {
+      expect(() => killActiveRun()).not.toThrow() // no run yet: nothing to kill
+      deps.graceMs = 10_000
+      script = { steps: [{ event: plan('t1') }], hang: true, ignoreSigint: true }
+      const runId = await run()
+      await waitFor(() => events.find((e) => e.type === 'run:planned'))
+      const killSpy = vi.spyOn(process, 'kill')
+      try {
+        killActiveRun()
+        const pid = deps.spawnCommand.mock.results[0].value.pid
+        expect(killSpy).toHaveBeenCalledWith(-pid, 'SIGKILL')
+      } finally {
+        killSpy.mockRestore()
+      }
+      const done = await finishedEvent(runId, 2000)
+      expect(done.exitCode).toBeNull()
+      killActiveRun() // after the run: nothing alive, no throw
+    }
+  )
+
+  it('rejects a run when the project changes during validation', async () => {
+    const other = fs.mkdtempSync(path.join(os.tmpdir(), 'runner-other-'))
+    vi.mocked(listedFile).mockImplementationOnce(async (file: unknown) => {
+      appState.projectPath = other
+      return { projectPath: other, layout: {} as never, file: String(file) }
+    })
+    try {
+      const result = await startRun(
+        { scope: { kind: 'files', files: ['spec/a_spec.rb'] }, rubyCommand: 'ruby' },
+        deps
+      )
+      expect(result).toHaveProperty('error')
+      expect(deps.spawnCommand).not.toHaveBeenCalled()
+      expect(
+        await startRun(ALL, { ...deps, ensureBundle: async () => ({ ok: true }) })
+      ).toHaveProperty('runId')
+      const active = getActiveRun()!
+      await finishedEvent(active.runId)
+    } finally {
+      appState.projectPath = project
+      fs.rmSync(other, { recursive: true, force: true })
+    }
   })
 })
