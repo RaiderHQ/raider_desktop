@@ -27,13 +27,7 @@ export interface RunRequest {
   quarantinedFails?: boolean
 }
 
-export type ExampleStatus =
-  | 'started'
-  | 'passed'
-  | 'failed'
-  | 'quarantined'
-  | 'pending'
-  | 'skipped'
+export type ExampleStatus = 'started' | 'passed' | 'failed' | 'quarantined' | 'pending' | 'skipped'
 
 export type RunPhase = 'installing' | 'booting' | 'running'
 
