@@ -92,14 +92,23 @@ describe('EventTail', () => {
   it('a poll requested mid-poll gets a follow-up pass that sees newer bytes', async () => {
     const file = path.join(dir, 'worker-0.ndjson')
     fs.writeFileSync(file, '{"a":1}\n')
-    const first = tail.poll()
-    fs.appendFileSync(file, '{"a":2}\n')
-    await tail.poll()
-    expect(lines).toEqual([
-      [0, { a: 1 }],
-      [0, { a: 2 }]
-    ])
-    await first
+    const seen: unknown[] = []
+    let second: Promise<void> | undefined
+    const t = new EventTail(
+      dir,
+      (_w, line) => {
+        seen.push(line)
+        if (seen.length === 1) {
+          // Pass 1 has already read line 1 and is delivering it: write line 2 now and ask again.
+          fs.appendFileSync(file, '{"a":2}\n')
+          second = t.poll()
+        }
+      },
+      () => {}
+    )
+    await t.poll()
+    await second
+    expect(seen).toEqual([{ a: 1 }, { a: 2 }])
   })
 
   it('a throwing onLine does not lose the rest of the chunk', async () => {

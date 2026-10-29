@@ -45,18 +45,22 @@ export class EventTail {
 
   private async loop(): Promise<void> {
     let waiter: { resolve: () => void } | null = null
-    for (;;) {
-      try {
-        await this.pollOnce()
-      } finally {
-        waiter?.resolve()
+    try {
+      for (;;) {
+        try {
+          await this.pollOnce()
+        } finally {
+          waiter?.resolve()
+        }
+        waiter = this.queued
+        this.queued = null
+        if (!waiter) return
       }
-      waiter = this.queued
+    } finally {
+      // Also reached if pollOnce throws, so later polls never hang.
+      this.current = null
+      this.queued?.resolve()
       this.queued = null
-      if (!waiter) {
-        this.current = null
-        return
-      }
     }
   }
 
