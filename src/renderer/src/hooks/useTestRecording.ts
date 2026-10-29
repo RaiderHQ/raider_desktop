@@ -67,6 +67,14 @@ async function saveTraceOf(test: Test): Promise<Test> {
   return { ...test, hasTrace: true }
 }
 
+/** The recording started for `target` was left (saved or dropped) while it was starting */
+const leftDuringStart = (target: RecordingTarget): boolean => store().recordingTarget !== target
+
+/** Stops a recording main started after the user left it, unless another one took its place */
+function stopAbandonedRecording(): void {
+  if (store().recordingTarget === null) window.api.stopRecordingMain()
+}
+
 /** Only the start page was recorded: there is nothing worth keeping */
 export const isEmptyRecording = (test: Test): boolean =>
   test.steps.length === 0 || (test.steps.length === 1 && test.steps[0].kind === 'navigate')
@@ -98,6 +106,8 @@ interface StopOptions {
    * can't be written into its file. Without it (leaving), it is saved as a new test at once
    */
   offerSaveAsNew?: boolean
+  /** The user is leaving: nothing recorded stays on screen */
+  leaving?: boolean
 }
 
 /**
@@ -108,7 +118,7 @@ async function saveStopped(
   t: Translate,
   suiteId: string,
   test: Test,
-  { onSaved }: StopOptions
+  { onSaved, leaving }: StopOptions
 ): Promise<boolean> {
   // The trace is saved here, from the same snapshot: after a leave, nothing is left
   // listening for main's 'recording-stopped'
@@ -119,11 +129,14 @@ async function saveStopped(
     result = await window.api.saveRecording(suiteId, withTrace)
   } catch (error) {
     console.error('Saving the test failed:', error)
+    toast.error(t('recorder.saveFailed'), { id: 'save-failed' })
     return false
   }
   if (!handleSaveResult(result, test.id, t)) {
-    // The steps stay on screen; say so, so nobody wonders whether it saved
-    if (result?.error === 'codeOwned') toast.error(t('tests.saveRefusedCodeOwned'))
+    // Say what became of the steps, so nobody wonders whether it saved
+    if (result?.error === 'codeOwned') {
+      toast.error(t(leaving ? 'tests.saveRefusedCodeOwnedOnLeave' : 'tests.saveRefusedCodeOwned'))
+    }
     return false
   }
   const name = result?.test?.name ?? test.name
@@ -192,17 +205,28 @@ async function saveOverExample(
  * Leaving with a recording over a code example on screen that its file refused: it is
  * saved as a new test, since nobody is left to offer that.
  */
+let savingUnsavedFor: string | null = null
 async function saveUnsavedExample(t: Translate): Promise<void> {
   const { unsavedExample: unsaved, activeTest: test } = store()
-  if (!unsaved) return
-  store().setUnsavedExample(null)
-  if (!test || test.id !== unsaved.testId) return
-  await saveStopped(t, UNLISTED_SUITE_ID, test, {})
+  // Once: a leave and a window-close flush can both ask
+  if (!unsaved || savingUnsavedFor === unsaved.testId) return
+  if (!test || test.id !== unsaved.testId) {
+    store().setUnsavedExample(null)
+    return
+  }
+  savingUnsavedFor = unsaved.testId
+  try {
+    // Forgotten only once saved: a failed save keeps the steps
+    const saved = await saveStopped(t, UNLISTED_SUITE_ID, test, { leaving: true })
+    if (saved && store().unsavedExample?.testId === unsaved.testId) store().setUnsavedExample(null)
+  } finally {
+    savingUnsavedFor = null
+  }
 }
 
 /** The user is leaving: saves whatever is recording, or recorded and not saved yet */
 function saveOnLeave(t: Translate): Promise<void> {
-  return isBusy() ? stopAndSave(t) : saveUnsavedExample(t)
+  return isBusy() ? stopAndSave(t, { leaving: true }) : saveUnsavedExample(t)
 }
 
 /**
@@ -312,9 +336,7 @@ export function useTestRecording(): TestRecording {
   // Leaving the page while recording (or with steps not saved yet) saves them
   useEffect(
     () => (): void => {
-      saveOnLeave(t).catch((error: unknown) =>
-        console.error('Saving the recording failed:', error)
-      )
+      saveOnLeave(t).catch((error: unknown) => console.error('Saving the recording failed:', error))
       window.api.setRecordingState(false)
     },
     []
@@ -364,7 +386,13 @@ export function useTestRecording(): TestRecording {
     store().setRecordingTarget(target)
     // An empty URL clears any earlier one, so main falls back to the project base URL
     await window.api.loadUrlRequest(test.url ?? '')
+    // The user may have left while this was starting: leaving already saved what there was
+    if (leftDuringStart(target)) return
     const result = await window.api.startRecordingMain()
+    if (leftDuringStart(target)) {
+      if (result.success) stopAbandonedRecording()
+      return
+    }
     if (result.success) {
       store().setRecordingBrowser({ url: result.url, preloadPath: result.preloadPath })
     } else {
@@ -387,7 +415,13 @@ export function useTestRecording(): TestRecording {
 
       // Start recording to show the embedded webview immediately
       await window.api.loadUrlRequest(test.url ?? '')
+      // The user may have left while this was starting: leaving already saved what there was
+      if (leftDuringStart(target)) return
       const recResult = await window.api.startRecordingMain()
+      if (leftDuringStart(target)) {
+        if (recResult.success) stopAbandonedRecording()
+        return
+      }
       if (!recResult.success) {
         setIsReplayingToBreakpoint(false)
         setBreakpointIndex(null)
@@ -399,10 +433,11 @@ export function useTestRecording(): TestRecording {
 
       // Wait briefly for the webview to mount and register its webContentsId
       await new Promise((resolve) => setTimeout(resolve, 1500))
+      if (leftDuringStart(target)) return
 
       // Replay steps directly in the embedded webview
       const result = await window.api.replayInWebview(stepsToReplay)
-      if (result.cancelled) return
+      if (result.cancelled || leftDuringStart(target)) return
 
       setIsReplayingToBreakpoint(false)
       if (!result.success) {

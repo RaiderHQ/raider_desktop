@@ -608,4 +608,123 @@ describe('useTestRecording', () => {
     expect(api.saveRecording).toHaveBeenCalledWith('s1', expect.objectContaining({ id: 't1' }))
     expect(api.setRecordingState).toHaveBeenLastCalledWith(false)
   })
+
+  it('leaving a recording the file refuses says it was not saved, not that the steps are here', async () => {
+    const { result, unmount } = await mountHook()
+    await recordingTest(result.current)
+    api.saveRecording.mockResolvedValue({ success: false, error: 'codeOwned' })
+    unmount()
+    await act(async () => {})
+    expect(mockToast.error).toHaveBeenCalledWith('tests.saveRefusedCodeOwnedOnLeave')
+    expect(mockToast.error).not.toHaveBeenCalledWith('tests.saveRefusedCodeOwned')
+  })
+
+  describe('leaving while the recording is starting', () => {
+    const test2: Test = { ...test1, id: 't2', name: 'Other', steps: [step('x'), step('y')] }
+
+    /** Holds the page load until the user has left for test2 */
+    const leaveDuringPageLoad = async (
+      rec: ReturnType<typeof useTestRecording>,
+      begin: () => Promise<void>
+    ): Promise<void> => {
+      let release: () => void = () => {}
+      api.loadUrlRequest.mockImplementationOnce(
+        () => new Promise((resolve) => (release = (): void => resolve({ success: true })))
+      )
+      let started: Promise<void> = Promise.resolve()
+      act(() => {
+        started = begin()
+      })
+      await act(async () => {
+        await rec.leave()
+        useRecorderStore.setState({ activeTest: test2 })
+      })
+      await act(async () => {
+        release()
+        await started
+      })
+    }
+
+    it('during the page load: nothing starts', async () => {
+      const rec = await mount()
+      await leaveDuringPageLoad(rec, () => rec.start({ kind: 'test' }))
+      expect(api.startRecordingMain).not.toHaveBeenCalled()
+      expect(useRecorderStore.getState().recordingTarget).toBeNull()
+      expect(useRecorderStore.getState().recordingUrl).toBeNull()
+    })
+
+    it('while main starts it: the recorder is stopped and the open test is left alone', async () => {
+      const rec = await mount()
+      let release: () => void = () => {}
+      api.startRecordingMain.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            release = (): void =>
+              resolve({ success: true, url: 'https://x.test/login', preloadPath: '/preload.js' })
+          })
+      )
+      let started: Promise<void> = Promise.resolve()
+      await act(async () => {
+        started = rec.start({ kind: 'test' })
+      })
+      expect(api.startRecordingMain).toHaveBeenCalled()
+      await act(async () => {
+        await rec.leave()
+        useRecorderStore.setState({ activeTest: test2 })
+      })
+      api.stopRecordingMain.mockClear()
+      // Main says it started, then answers
+      await emit('recording-started', 'https://x.test/login')
+      await act(async () => {
+        release()
+        await started
+      })
+      expect(api.stopRecordingMain).toHaveBeenCalledTimes(1)
+      const s = useRecorderStore.getState()
+      expect(s.isRecording).toBe(false)
+      expect(s.recordingTarget).toBeNull()
+      expect(s.recordingUrl).toBeNull()
+      expect(s.activeTest?.steps).toEqual(test2.steps)
+    })
+
+    it('Record from here: no replay runs once left', async () => {
+      const rec = await mount()
+      await leaveDuringPageLoad(rec, () => rec.recordFromHere(1, { kind: 'test' }))
+      expect(api.startRecordingMain).not.toHaveBeenCalled()
+      expect(api.replayInWebview).not.toHaveBeenCalled()
+      expect(useRecorderStore.getState().isReplayingToBreakpoint).toBe(false)
+    })
+  })
+
+  describe('leaving with an example recording the file refused', () => {
+    const unsaved = { reason: 'error' as const, exampleName: 'logs in', testId: 't1' }
+
+    it('keeps the steps when saving them as a new test fails, and says so', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      api.saveRecording.mockRejectedValue(new Error('disk full'))
+      const { unmount } = await mountHook()
+      act(() => useRecorderStore.setState({ activeSuiteId: null, unsavedExample: unsaved }))
+      unmount()
+      await act(async () => {})
+      expect(api.saveRecording).toHaveBeenCalledWith(
+        UNLISTED_SUITE_ID,
+        expect.objectContaining({ id: 't1' })
+      )
+      expect(mockToast.error).toHaveBeenCalledWith('recorder.saveFailed', { id: 'save-failed' })
+      expect(useRecorderStore.getState().unsavedExample).toEqual(unsaved)
+      error.mockRestore()
+    })
+
+    it('forgets them once saved, and saves them once when asked twice', async () => {
+      const { unmount } = await mountHook()
+      act(() => useRecorderStore.setState({ activeSuiteId: null, unsavedExample: unsaved }))
+      await act(async () => {
+        flushRecording?.()
+        unmount()
+      })
+      await act(async () => {})
+      expect(api.saveRecording).toHaveBeenCalledTimes(1)
+      expect(useRecorderStore.getState().unsavedExample).toBeNull()
+    })
+  })
 })

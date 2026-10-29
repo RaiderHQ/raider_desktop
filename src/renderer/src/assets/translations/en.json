@@ -449,7 +449,8 @@
     },
     "saved": "Saved to your project as {{name}} ({{file}})",
     "savedNoFile": "Saved to your project as {{name}}",
-    "saveRefusedCodeOwned": "This test was changed in code, so the recording wasn't saved. Your steps are still here."
+    "saveRefusedCodeOwned": "This test was changed in code, so the recording wasn't saved. Your steps are still here.",
+    "saveRefusedCodeOwnedOnLeave": "This test was changed in code, so your recording wasn't saved."
   },
   "testPage": {
     "breadcrumb": "Breadcrumb",

@@ -38,6 +38,7 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
 
     const handleRecordingStarted = (_event: Electron.IpcRendererEvent, loadedUrl: string): void => {
       const {
+        recordingTarget,
         setIsRecording,
         activeTest,
         setActiveTest,
@@ -45,6 +46,9 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
         setBreakpointIndex,
         setIsReplayingToBreakpoint
       } = useRecorderStore.getState()
+      // A recording the user left while it started: it is being stopped, and must not
+      // replace the steps of the test open now
+      if (!recordingTarget) return
       setIsRecording(true)
       recordedTestId = activeTest?.id ?? null
       traceSaved = false
