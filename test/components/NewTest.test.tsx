@@ -215,8 +215,12 @@ describe('New test', () => {
       })
     )
     // The saved test is selected in the list
-    const row = await screen.findByRole('button', { name: /Add to cart/ })
-    expect(row).toHaveAttribute('aria-current', 'true')
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Add to cart/ })).toHaveAttribute(
+        'aria-current',
+        'true'
+      )
+    )
     expect(useRecorderStore.getState().draftTest).toBeNull()
   })
 
