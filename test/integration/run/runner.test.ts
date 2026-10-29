@@ -24,6 +24,7 @@ vi.mock('../../../src/main/handlers/tests/projectTestIpc', () => ({
 
 import { appState } from '../../../src/main/handlers/appState'
 import { pushToLongship } from '../../../src/main/handlers/longship/pushToLongship'
+import { shellQuote } from '../../../src/main/utils/shellCommand'
 import { listedFiles } from '../../../src/main/handlers/tests/projectTestIpc'
 import {
   cancelRun,
@@ -472,7 +473,7 @@ describe('runner', () => {
       rubyCommand: 'ruby'
     })
     await finishedEvent(runId)
-    expect(deps.spawnCommand.mock.calls[0][0]).toContain("'spec/a_spec.rb:12'")
+    expect(deps.spawnCommand.mock.calls[0][0]).toContain(shellQuote('spec/a_spec.rb:12'))
   })
 
   it('installing phase is sent only when ensureBundle reports missing gems', async () => {
