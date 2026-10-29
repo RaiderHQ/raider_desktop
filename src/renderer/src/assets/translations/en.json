@@ -488,6 +488,7 @@
     "runFailed": "Raider couldn't run this test.",
     "noRuby": "Raider can't find Ruby on this computer, so it can't run tests yet.",
     "noStartUrl": "There's no page to start recording on. Enter a URL for this test, or set the project's base URL in Settings.",
+    "unsupportedUrl": "Only http and https websites can be recorded.",
     "placeholder": {
       "url": "Enter URL to record",
       "commands": "Recorded Selenium Ruby commands will appear here..."

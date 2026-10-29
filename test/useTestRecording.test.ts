@@ -278,6 +278,20 @@ describe('useTestRecording', () => {
     expect(useRecorderStore.getState().recordingTarget).toBeNull()
   })
 
+  it('start says only http and https websites can be recorded when main refuses the URL', async () => {
+    api.startRecordingMain.mockResolvedValue({
+      success: false,
+      url: '',
+      preloadPath: '',
+      reason: 'unsupportedUrl'
+    })
+    const rec = await mount()
+    await act(() => rec.start({ kind: 'test' }))
+    expect(mockToast.error).toHaveBeenCalledWith('recorder.unsupportedUrl')
+    expect(useRecorderStore.getState().recordingTarget).toBeNull()
+    expect(useRecorderStore.getState().recordingUrl).toBeNull()
+  })
+
   it('start says so and forgets the target when there is no start URL', async () => {
     api.startRecordingMain.mockResolvedValue({ success: false, url: '', preloadPath: '' })
     const rec = await mount()
