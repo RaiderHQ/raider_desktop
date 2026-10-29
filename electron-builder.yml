@@ -12,6 +12,7 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+afterPack: build/afterPack.cjs
 win:
   executableName: Ruby Raider
   icon: build/icon.ico
