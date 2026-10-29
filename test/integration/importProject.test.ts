@@ -59,6 +59,8 @@ describe('importProject handler', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     appState.suites = new Map()
+    // Legacy bodies with unmapped Ruby lines hold custom steps, so they ask first
+    mockShowMessageBox.mockResolvedValue({ response: 0 })
   })
 
   it('returns error when mainWindow is null', async () => {

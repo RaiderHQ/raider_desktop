@@ -190,16 +190,29 @@ describe('importing custom Ruby code', () => {
     expect(appState.suites.size).toBe(0)
   })
 
-  it('does not ask for a legacy file, whose visible Ruby is what runs', async () => {
-    const legacyDir = join(dir, 'legacy-custom')
-    await mkdir(legacyDir)
-    await writeFile(
-      join(legacyDir, 'old.rb'),
+  // The user picks a file in a dialog and never sees its body, so every source of
+  // custom code asks: a legacy body, and a missing or broken steps line
+  it.each([
+    [
+      'a legacy file',
       '# Test: Old\nbegin\n  some_helper(1)\n  puts "Test \'Old\' passed successfully!"\n'
-    )
-    mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [legacyDir] })
-    expect((await importSuite(win)).success).toBe(true)
-    expect(mockDialog.showMessageBox).not.toHaveBeenCalled()
+    ],
+    [
+      'a broken steps line',
+      '# Test: Old\n# raider-steps: [{nope\nbegin\n  some_helper(1)\n  puts "Test \'Old\' passed successfully!"\n'
+    ]
+  ])('asks before importing custom Ruby from %s', async (_label, body) => {
+    const file = join(dir, 'old.rb')
+    await writeFile(file, body)
+    appState.suites = new Map([['s1', { id: 's1', name: 'S', tests: [] }]])
+    mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [file] })
+    mockDialog.showMessageBox.mockResolvedValue({ response: 1 })
+
+    const res = await importTest(win, 's1')
+
+    expect(mockDialog.showMessageBox.mock.calls[0][1].detail).toContain('some_helper(1)')
+    expect(res.success).toBe(false)
+    expect(appState.suites.get('s1')!.tests).toEqual([])
   })
 })
 
@@ -228,8 +241,7 @@ describe('readExportHeader', () => {
     expect(readExportHeader(header)).toEqual({
       testName: 'a b',
       suiteName: 'c d',
-      steps: [],
-      fromJson: true
+      steps: []
     })
   })
 })

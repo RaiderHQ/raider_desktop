@@ -53,19 +53,17 @@ export function readExportHeader(text: string): {
   testName?: string
   suiteName?: string
   steps?: Step[]
-  /** The steps came from the JSON line, not the visible Ruby */
-  fromJson: boolean
 } {
   const lines = text.split(/\r?\n/)
   const value = (prefix: string): string | undefined =>
     lines.find((l) => l.startsWith(prefix))?.slice(prefix.length)
 
   const stepsJson = value(STEPS)
-  const jsonSteps = stepsJson !== undefined ? parseStepsLine(stepsJson) : undefined
-  const steps = jsonSteps ?? legacySteps(text)
+  const steps =
+    (stepsJson !== undefined ? parseStepsLine(stepsJson) : undefined) ?? legacySteps(text)
   // Legacy files may have the test comment anywhere, so fall back to a loose match
   const testName = value(TEST) ?? text.match(/# Test: (.*)/)?.[1]
-  return { testName, suiteName: value(SUITE), steps, fromJson: jsonSteps !== undefined }
+  return { testName, suiteName: value(SUITE), steps }
 }
 
 /** The URL a test starts at: its first navigate step's URL, or '' when it has none. */

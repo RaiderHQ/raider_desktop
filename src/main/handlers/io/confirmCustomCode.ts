@@ -9,20 +9,19 @@ const DETAIL_MAX = 4000
 export interface ImportedTest {
   name: string
   steps: Step[]
-  /** The steps came from the hidden JSON line, so the Ruby shown in the file isn't what runs */
-  fromJson: boolean
 }
 
 /**
- * Before importing tests whose hidden steps hold custom Ruby, shows that code and asks
- * to confirm. True when there is none, or the user chose to import anyway.
+ * Before importing tests whose steps hold custom Ruby, shows that code and asks to
+ * confirm. Called on the final step list, whatever format it came from: the user picked
+ * the file in a dialog and hasn't seen its body. True when there is no custom code, or
+ * the user chose to import anyway.
  */
 export async function confirmCustomCode(
   mainWindow: BrowserWindow,
   tests: ImportedTest[]
 ): Promise<boolean> {
   const withCode = tests
-    .filter((test) => test.fromJson)
     .map((test) => ({
       name: test.name,
       code: test.steps.flatMap((step) => (step.kind === 'custom' ? [step.code] : []))

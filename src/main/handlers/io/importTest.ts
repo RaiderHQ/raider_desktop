@@ -64,7 +64,7 @@ export default async function importTest(
       return { success: false, error: 'A test with this name already exists in the suite.' }
     }
 
-    if (!(await confirmCustomCode(mainWindow, [{ ...newTest, fromJson: header.fromJson }]))) {
+    if (!(await confirmCustomCode(mainWindow, [newTest]))) {
       return { success: false, error: importCancelled() }
     }
     if (store && !isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }

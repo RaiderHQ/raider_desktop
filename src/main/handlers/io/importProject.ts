@@ -73,7 +73,7 @@ export default async function importProject(
             steps
           }
           newSuite.tests.push(newTest)
-          toConfirm.push({ ...newTest, fromJson: header.fromJson })
+          toConfirm.push(newTest)
         }
       }
       imported.push(newSuite)
