@@ -234,7 +234,8 @@ describe('CodeTestPane', () => {
     const state = JSON.parse((await screen.findByTestId('editor-state')).textContent ?? '')
     expect(state).toEqual({
       fileName: 'login_spec.rb',
-      filePath: '/Users/me/project/spec/login_spec.rb'
+      filePath: '/Users/me/project/spec/login_spec.rb',
+      returnTo: '/overview/tests/x'
     })
   })
 

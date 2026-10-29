@@ -1,5 +1,5 @@
 import React, { SetStateAction, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import CommandList from '@components/CommandList'
@@ -40,6 +40,7 @@ const toolbarButton =
 const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE_ID }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const recording = useTestRecording()
   const activeTest = useRecorderStore((s) => s.activeTest)
   const activeSuiteId = useRecorderStore((s) => s.activeSuiteId)
@@ -51,6 +52,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const isReplaying = useRecorderStore((s) => s.isReplayingToBreakpoint)
   const recordingDisabled = useProjectStore((s) => s.layout?.recordable === false)
   const runOutput = useRunOutputStore((s) => s.runOutput)
+  const projectPath = useProjectStore((s) => s.projectPath)
   const { updateActiveTest, setShowCode, setIsOutputVisible, setBreakpointIndex } =
     useRecorderStore.getState()
 
@@ -162,6 +164,18 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
     }
   }
 
+  // The editor's back button comes back to this test
+  const editCode = (): void => {
+    if (!projectPath || !test?.file) return
+    navigate('/file-editor', {
+      state: {
+        fileName: test.file.split('/').pop() ?? test.file,
+        filePath: `${projectPath}/${test.file}`,
+        returnTo: location.pathname
+      }
+    })
+  }
+
   const deleteTest = (): void => {
     setConfirmingDelete(false)
     if (!activeSuiteId || !test) return
@@ -182,7 +196,9 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
 
   const startDraft = (name: string, url: string): void => {
     useRecorderStore.getState().startDraft(name, url)
-    recording.start(draftTarget).catch((error: unknown) => console.error('Recording failed:', error))
+    recording
+      .start(draftTarget)
+      .catch((error: unknown) => console.error('Recording failed:', error))
   }
 
   const moreOptions = [
@@ -303,6 +319,16 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             >
               {t('testPage.run')}
             </button>
+            {/* A test from before project files has no file to edit */}
+            {test.file && projectPath && (
+              <button
+                onClick={editCode}
+                disabled={busy}
+                className={`${toolbarButton} text-neutral-dk hover:bg-neutral-50`}
+              >
+                {t('testPage.editCode')}
+              </button>
+            )}
             <button
               onClick={() => setShowCode(!showCode)}
               aria-pressed={showCode}

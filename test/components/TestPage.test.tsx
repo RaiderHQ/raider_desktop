@@ -3,12 +3,13 @@ import '@testing-library/jest-dom'
 import type { ReactElement } from 'react'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { IpcRendererEvent } from 'electron'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import TestPage from '@components/TestPage'
 import TestsWorkspace from '@components/TestsWorkspace'
 import { testKeyOf, toRouteParam } from '@foundation/testKey'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import useProjectStore from '@foundation/Stores/projectStore'
 import type { TestRow } from '@foundation/testKey'
 import type { Test } from '@foundation/Types/test'
 import en from '@assets/translations/en.json'
@@ -88,7 +89,9 @@ const api = {
   cancelReplay: vi.fn(),
   setRecordingState: vi.fn(),
   onFlushRecording: vi.fn(() => (): void => {}),
-  flushRecordingDone: vi.fn()
+  flushRecordingDone: vi.fn(),
+  setActiveProject: vi.fn().mockResolvedValue({ success: true }),
+  readDirectory: vi.fn().mockResolvedValue([])
 }
 
 const page = (test: Test): ReactElement => (
@@ -178,9 +181,11 @@ describe('TestPage leaving a new test', () => {
   it('keeps a draft that has recorded steps', async () => {
     useRecorderStore.getState().startDraft('Quick', 'https://x.test')
     act(() =>
-      useRecorderStore.getState().updateActiveTest((p) =>
-        p ? { ...p, steps: [step('a'), { id: 'c', kind: 'custom', code: 'x' }] } : null
-      )
+      useRecorderStore
+        .getState()
+        .updateActiveTest((p) =>
+          p ? { ...p, steps: [step('a'), { id: 'c', kind: 'custom', code: 'x' }] } : null
+        )
     )
     renderDraft()
     await screen.findByDisplayValue('Quick')
@@ -285,6 +290,54 @@ describe('TestPage', () => {
     ]) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     }
+  })
+
+  describe('Edit code', () => {
+    const withFile: Test = { ...recorded, file: 'spec/login_works_spec.rb' }
+    const EditorProbe = (): JSX.Element => (
+      <div data-testid="editor-state">{JSON.stringify(useLocation().state)}</div>
+    )
+    const renderWithEditor = (test: Test): void => {
+      api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [test, empty] }])
+      render(
+        <MemoryRouter
+          initialEntries={['/overview/tests/x']}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
+          <Routes>
+            <Route path="/overview/tests/:testKey" element={<TestPage row={row(test)} />} />
+            <Route path="/file-editor" element={<EditorProbe />} />
+          </Routes>
+        </MemoryRouter>
+      )
+    }
+    beforeEach(() => useProjectStore.setState({ projectPath: '/Users/me/project' }))
+    afterEach(() => useProjectStore.setState({ projectPath: null }))
+
+    it('opens the test file in the file editor, coming back to this test', async () => {
+      renderWithEditor(withFile)
+      await opened()
+      fireEvent.click(screen.getByRole('button', { name: 'testPage.editCode' }))
+      const state = JSON.parse((await screen.findByTestId('editor-state')).textContent ?? '')
+      expect(state).toEqual({
+        fileName: 'login_works_spec.rb',
+        filePath: '/Users/me/project/spec/login_works_spec.rb',
+        returnTo: '/overview/tests/x'
+      })
+    })
+
+    it('is disabled while recording', async () => {
+      renderWithEditor(withFile)
+      await opened()
+      await startRecording()
+      expect(screen.getByRole('button', { name: 'testPage.editCode' })).toBeDisabled()
+    })
+
+    it('is not offered for a test with no file', async () => {
+      renderWithEditor(recorded)
+      await opened()
+      expect(screen.queryByRole('button', { name: 'testPage.editCode' })).not.toBeInTheDocument()
+    })
   })
 
   it('has no wait inputs and no Recording or Dashboard tabs', async () => {

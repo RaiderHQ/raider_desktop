@@ -1,5 +1,5 @@
 import React, { SetStateAction, useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import CommandList from '@components/CommandList'
 import ConfirmationModal from '@components/ConfirmationModal'
@@ -32,6 +32,7 @@ const toolbarButton =
 const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const recording = useTestRecording()
   const activeTest = useRecorderStore((s) => s.activeTest)
   const recordingTarget = useRecorderStore((s) => s.recordingTarget)
@@ -103,8 +104,13 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
 
   const editCode = (): void => {
     if (!projectPath) return
+    // The editor's back button comes back to this test
     navigate('/file-editor', {
-      state: { fileName: file.split('/').pop() ?? file, filePath: `${projectPath}/${file}` }
+      state: {
+        fileName: file.split('/').pop() ?? file,
+        filePath: `${projectPath}/${file}`,
+        returnTo: location.pathname
+      }
     })
   }
 
