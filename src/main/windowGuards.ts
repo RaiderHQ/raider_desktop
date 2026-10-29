@@ -30,7 +30,8 @@ export function isAppUrl(url: string, appUrl: string): boolean {
 /**
  * Locks down the main window: links open in the browser (http(s) only), the window
  * never navigates away from the app, and the recorder <webview> always gets the
- * recorder preload, an isolated world and its own session, whatever the page asks for.
+ * recorder preload, an isolated world, web security, no popups and its own session,
+ * whatever the page asks for. A webview may only open a website or about:blank.
  */
 export function installWindowGuards(
   contents: Electron.WebContents,
@@ -45,15 +46,22 @@ export function installWindowGuards(
     if (!isAppUrl(url, appUrl)) event.preventDefault()
   })
 
-  contents.on('will-attach-webview', (_event, webPreferences, params) => {
+  contents.on('will-attach-webview', (event, webPreferences, params) => {
+    // The recorder only ever opens a website (or a blank page while it starts)
+    if (!(isExternalUrl(params.src) || params.src === 'about:blank')) {
+      event.preventDefault()
+      return
+    }
     // Older Electron passed the webview's preload attribute as preloadURL
     delete (webPreferences as { preloadURL?: string }).preloadURL
     webPreferences.preload = recorderPreload
     webPreferences.nodeIntegration = false
     webPreferences.nodeIntegrationInSubFrames = false
     webPreferences.contextIsolation = true
+    webPreferences.webSecurity = true
     webPreferences.partition = RECORDER_PARTITION
     params.partition = RECORDER_PARTITION
+    delete params.allowpopups
   })
 }
 

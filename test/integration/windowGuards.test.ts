@@ -100,9 +100,41 @@ describe('installWindowGuards', () => {
       nodeIntegration: false,
       nodeIntegrationInSubFrames: false,
       contextIsolation: true,
+      webSecurity: true,
       partition: RECORDER_PARTITION
     })
     expect(params.partition).toBe(RECORDER_PARTITION)
+  })
+
+  it('keeps web security on and popups off in the webview', () => {
+    const event = { preventDefault: vi.fn() }
+    const webPreferences: Record<string, unknown> = { webSecurity: false }
+    const params: Record<string, string> = { src: 'https://example.com', allowpopups: 'true' }
+    contents.emit('will-attach-webview', event, webPreferences, params)
+    expect(webPreferences.webSecurity).toBe(true)
+    expect(params).not.toHaveProperty('allowpopups')
+    expect(event.preventDefault).not.toHaveBeenCalled()
+  })
+
+  it.each(['http://localhost:3000/', 'https://example.com/login', 'about:blank'])(
+    'attaches a webview for %s',
+    (src) => {
+      const event = { preventDefault: vi.fn() }
+      contents.emit('will-attach-webview', event, {}, { src })
+      expect(event.preventDefault).not.toHaveBeenCalled()
+    }
+  )
+
+  it.each([
+    'file:///etc/hosts',
+    'raider-media://file/%2Ftmp%2Fx.webm',
+    'javascript:alert(1)',
+    'data:text/html,<p>x</p>',
+    ''
+  ])('refuses a webview for %j', (src) => {
+    const event = { preventDefault: vi.fn() }
+    contents.emit('will-attach-webview', event, {}, { src })
+    expect(event.preventDefault).toHaveBeenCalled()
   })
 })
 
