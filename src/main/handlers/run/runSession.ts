@@ -30,7 +30,8 @@ export function finishStatus(input: {
   const { exitCode, counts } = input
   if (input.cancelled) return 'cancelled'
   if (input.liveEvents && !input.planned) return 'errored'
-  if (exitCode !== 0 && exitCode !== 1 && !hasResults(counts)) return 'errored'
+  // A non-zero (or signal) exit before any result: a crash, not a test failure
+  if (exitCode !== 0 && !hasResults(counts)) return 'errored'
   if (counts.failed > 0) return 'failed'
   if (input.quarantinedFails && counts.quarantined > 0) return 'failed'
   const quarantineOnlyExit = exitCode === 1 && counts.failed === 0 && counts.quarantined > 0
@@ -62,9 +63,11 @@ export class RunSession {
   private trimmed = false
   private cancelled = false
   private finished = false
+  private liveEvents: boolean
 
   constructor(private readonly opts: RunSessionOptions) {
     this.now = opts.now ?? ((): Date => new Date())
+    this.liveEvents = opts.liveEvents
   }
 
   start(): void {
@@ -115,6 +118,14 @@ export class RunSession {
     this.drainOutput()
   }
 
+  /**
+   * Corrects live/degraded mode for the final status after run:started went out, e.g.
+   * when the bundle install wrote a Gemfile.lock that wasn't there before.
+   */
+  setLiveEvents(liveEvents: boolean): void {
+    this.liveEvents = liveEvents
+  }
+
   /** Only records the intent; finish() decides the status. */
   requestCancel(): void {
     this.cancelled = true
@@ -127,7 +138,7 @@ export class RunSession {
     const counts = this.latest.size === 0 && fallbackCounts ? fallbackCounts : this.counts()
     const status = finishStatus({
       cancelled: this.cancelled,
-      liveEvents: this.opts.liveEvents,
+      liveEvents: this.liveEvents,
       planned: this.planned,
       exitCode,
       counts,

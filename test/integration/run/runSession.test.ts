@@ -235,8 +235,9 @@ describe('finishStatus', () => {
     [
       'degraded exit 1 without counts',
       { liveEvents: false, planned: false, exitCode: 1, counts: zero },
-      'failed'
+      'errored'
     ],
+    ['live, planned, exit 1 without results', { exitCode: 1, counts: zero }, 'errored'],
     ['exit 137 after results', { exitCode: 137 }, 'failed'],
     ['null exit without results', { exitCode: null, counts: zero }, 'errored']
   ] as const)('%s', (_name, over, expected) => {

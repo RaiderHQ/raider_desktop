@@ -26,6 +26,7 @@ import { EventTail } from './eventTail'
 import { Translator } from './translate'
 import { RunSession } from './runSession'
 import { OutputPrefixParser } from './outputPrefix'
+import { descendantPids, descendantProcesses, signalPid } from './processTree'
 
 export interface RunnerDeps {
   send(e: RunEvent): void
@@ -55,6 +56,8 @@ interface Active {
   done: boolean
   killTimer: NodeJS.Timeout | null
   graceMs: number
+  /** Descendants seen when the cancel's SIGINT went out; killed too even if reparented. */
+  cancelPids: number[]
 }
 
 /** The current or last run; one per app. */
@@ -201,6 +204,11 @@ async function resultCounts(projectPath: string, since: number): Promise<RunCoun
   return counts
 }
 
+async function readLiveEvents(projectPath: string): Promise<boolean> {
+  const lock = await fs.readFile(path.join(projectPath, 'Gemfile.lock'), 'utf8').catch(() => '')
+  return supportsLiveEvents(reporterVersion(lock))
+}
+
 /**
  * Starts a live run of the active project's tests. Resolves with the runId once
  * `run:started` is sent; the bundle check, spawn and events continue in the background.
@@ -225,8 +233,7 @@ export async function startRun(
       workers: clampWorkers(valid.workers, runDefaults().maxWorkers),
       rubyCommand: valid.rubyCommand
     })
-    const lock = await fs.readFile(path.join(projectPath, 'Gemfile.lock'), 'utf8').catch(() => '')
-    const liveEvents = supportsLiveEvents(reporterVersion(lock))
+    const liveEvents = await readLiveEvents(projectPath)
 
     const deps = { ...defaultDeps(), ...overrides }
     if (lastRunDir) await fs.rm(lastRunDir, { recursive: true, force: true }).catch(() => {})
@@ -256,7 +263,8 @@ export async function startRun(
       exited: false,
       done: false,
       killTimer: null,
-      graceMs: deps.graceMs
+      graceMs: deps.graceMs,
+      cancelPids: []
     }
     current = active
     session.start()
@@ -306,6 +314,11 @@ async function launch(
       session.output('stderr', `Failed to install gems: ${bundle.error ?? 'unknown error'}\n`)
       return finishEarly(null)
     }
+    // An install may have written the Gemfile.lock; run:started keeps the first read
+    // (it went out before the install), but the final status uses this one
+    run.liveEvents = await readLiveEvents(run.projectPath)
+    session.setLiveEvents(run.liveEvents)
+    if (active.cancelled) return finishEarly(null)
 
     const dir = path.join(deps.tempRoot, runId)
     lastRunDir = dir
@@ -420,26 +433,44 @@ function clearKillTimer(active: Active): void {
   active.killTimer = null
 }
 
-function kill(child: ChildProcess, signal: 'SIGINT' | 'SIGKILL'): void {
+/** Signals the run's process group; false when that failed and the child alone was signalled. */
+function kill(child: ChildProcess, signal: 'SIGINT' | 'SIGKILL'): boolean {
   const pid = child.pid
-  if (pid === undefined) return
+  if (pid === undefined) return false
   if (process.platform === 'win32') {
     // No graceful stop on Windows: kill the whole tree at once
     spawn('taskkill', ['/pid', String(pid), '/T', '/F']).on('error', () => {})
-    return
+    return true
   }
   try {
     process.kill(-pid, signal)
+    return true
   } catch {
     try {
       child.kill(signal)
     } catch {
       // already gone
     }
+    return false
   }
 }
 
-/** SIGINT to the run's process group, then SIGKILL after the grace period. */
+/**
+ * SIGKILLs the run's process group and every process below it (POSIX), plus `known`
+ * pids in case they were reparented. Descendants are walked before the group dies.
+ */
+function killTree(child: ChildProcess, known: number[] = []): void {
+  const pid = child.pid
+  if (pid === undefined) return
+  const tree = descendantPids(pid)
+  kill(child, 'SIGKILL')
+  for (const p of new Set([...tree, ...known])) signalPid(p, 'SIGKILL')
+}
+
+/**
+ * SIGINT to the run's process group and to descendants in other groups (chromedriver),
+ * then SIGKILL to the whole tree after the grace period.
+ */
 export async function cancelRun(runId: string): Promise<void> {
   const active = current
   if (!active || active.runId !== runId || active.done || active.exited || active.cancelled) return
@@ -447,30 +478,42 @@ export async function cancelRun(runId: string): Promise<void> {
   active.session.requestCancel()
   const child = active.child
   if (!child) return // not spawned yet; launch finishes the run as cancelled
-  kill(child, 'SIGINT')
-  if (process.platform !== 'win32') {
-    active.killTimer = setTimeout(() => {
-      active.killTimer = null
-      // The group is gone once closed, and its pid may have been reused
-      if (!active.exited) kill(child, 'SIGKILL')
-    }, active.graceMs)
+  if (process.platform === 'win32') {
+    kill(child, 'SIGINT')
+    return
   }
+  const pid = child.pid
+  const tree = pid === undefined ? [] : descendantProcesses(pid)
+  const grouped = kill(child, 'SIGINT')
+  // Processes in the run's group already got it: a second SIGINT makes RSpec exit! at once
+  for (const p of tree) if (!grouped || p.pgid !== pid) signalPid(p.pid, 'SIGINT')
+  active.cancelPids = tree.map((p) => p.pid)
+  active.killTimer = setTimeout(() => {
+    active.killTimer = null
+    // The group is gone once closed, and its pid may have been reused
+    if (!active.exited) killTree(child, active.cancelPids)
+  }, active.graceMs)
 }
 
 /**
- * Kills the running test process group at once (app quit), so ruby, parallel workers
- * and browsers don't outlive the app. Synchronous; does nothing when no child is alive.
+ * Kills the running test process tree at once (app quit), so ruby, parallel workers,
+ * chromedriver and browsers don't outlive the app. Synchronous, never throws; does
+ * nothing when no child is alive.
  */
 export function killActiveRun(): void {
-  const active = current
-  const pid = active?.child?.pid
-  if (!active || active.done || active.exited || pid === undefined) return
-  clearKillTimer(active)
-  if (process.platform === 'win32') {
-    spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'])
-    return
+  try {
+    const active = current
+    const pid = active?.child?.pid
+    if (!active || active.done || active.exited || pid === undefined) return
+    clearKillTimer(active)
+    if (process.platform === 'win32') {
+      spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'])
+      return
+    }
+    killTree(active.child!, active.cancelPids)
+  } catch (error) {
+    safeWarn('Could not stop the test run:', message(error))
   }
-  kill(active.child!, 'SIGKILL')
 }
 
 /** The current or last run with its events, for a renderer that reloads. */

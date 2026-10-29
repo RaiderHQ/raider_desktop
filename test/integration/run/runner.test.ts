@@ -208,6 +208,14 @@ describe('runner', () => {
     expect(done.counts).toMatchObject({ total: 1, failed: 1 })
   })
 
+  it('a crash after the plan, before any result, finishes errored', async () => {
+    script = { steps: [{ event: plan('t1', 't2') }], exitCode: 1 }
+    const runId = await run()
+    const done = await finishedEvent(runId)
+    expect(done).toMatchObject({ status: 'errored', exitCode: 1 })
+    expect(done.counts).toMatchObject({ total: 2, passed: 0, failed: 0 })
+  })
+
   it('exit before any plan finishes errored with stderr in run:output', async () => {
     script = { steps: [{ stderr: 'LoadError: cannot load such file\n' }], exitCode: 1 }
     const runId = await run()
@@ -266,6 +274,81 @@ describe('runner', () => {
       expect(out).toContain('fake: got SIGINT')
     }
   )
+
+  const alive = (pid: number): boolean => {
+    try {
+      process.kill(pid, 0)
+      return true
+    } catch (error) {
+      return (error as NodeJS.ErrnoException).code !== 'ESRCH'
+    }
+  }
+
+  /** Starts a run whose child leaves a SIGINT-ignoring grandchild in its own process group. */
+  const runWithGrandchild = async (): Promise<{ runId: string; grandchild: number }> => {
+    const pidFile = path.join(project, 'grandchild.pid')
+    script = { steps: [{ event: plan('t1') }], hang: true, ignoreSigint: true, grandchild: pidFile }
+    const runId = await run()
+    await waitFor(() => events.find((e) => e.type === 'run:planned'))
+    const grandchild = Number(fs.readFileSync(pidFile, 'utf8'))
+    expect(alive(grandchild)).toBe(true)
+    return { runId, grandchild }
+  }
+
+  const reap = (pid: number): void => {
+    try {
+      process.kill(pid, 'SIGKILL')
+    } catch {
+      // already gone
+    }
+  }
+
+  it.skipIf(process.platform === 'win32')(
+    'cancel kills a grandchild in its own process group after the grace period',
+    async () => {
+      const { runId, grandchild } = await runWithGrandchild()
+      try {
+        await cancelRun(runId)
+        const done = await finishedEvent(runId)
+        expect(done.status).toBe('cancelled')
+        await waitFor(() => (alive(grandchild) ? undefined : true), 2000)
+      } finally {
+        reap(grandchild)
+      }
+    }
+  )
+
+  it.skipIf(process.platform === 'win32')(
+    'killActiveRun kills a grandchild in its own process group',
+    async () => {
+      deps.graceMs = 10_000
+      const { runId, grandchild } = await runWithGrandchild()
+      try {
+        killActiveRun()
+        await finishedEvent(runId, 2000)
+        await waitFor(() => (alive(grandchild) ? undefined : true), 2000)
+      } finally {
+        reap(grandchild)
+      }
+    }
+  )
+
+  it('uses the Gemfile.lock written by the bundle install for the final status', async () => {
+    fs.rmSync(path.join(project, 'Gemfile.lock'))
+    deps.ensureBundle = async (projectPath, _r, onInstalling): Promise<{ ok: boolean }> => {
+      onInstalling()
+      fs.writeFileSync(path.join(projectPath, 'Gemfile.lock'), LIVE_LOCK)
+      return { ok: true }
+    }
+    // Live mode with no plan is errored; degraded mode would call it passed
+    script = { steps: [], exitCode: 0 }
+    const runId = await run()
+    const done = await finishedEvent(runId)
+    const sequence = ofRun(runId).filter((e) => e.type === 'run:started' || e.type === 'run:phase')
+    expect(sequence[0]).toMatchObject({ type: 'run:started', liveEvents: false })
+    expect(sequence[1]).toMatchObject({ type: 'run:phase', phase: 'installing' })
+    expect(done.status).toBe('errored')
+  })
 
   it('degraded mode: liveEvents false, no plan, finishes by exit code', async () => {
     fs.writeFileSync(path.join(project, 'Gemfile.lock'), OLD_LOCK)

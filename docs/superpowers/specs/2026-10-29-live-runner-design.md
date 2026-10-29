@@ -165,8 +165,9 @@ union breaks only an exhaustive `never` switch, so we ask them to check.
     `truncated`.
 - **Finishing:** the status is decided in this order:
   1. `cancelled` if a cancel was requested;
-  2. `errored` if live mode saw no plan, or the exit code isn't 0 or 1 and no
-     result came in;
+  2. `errored` if live mode saw no plan, or the exit code isn't 0 (including
+     no exit code, i.e. killed by a signal) and no result came in, whether
+     from the events or from run.json in degraded mode;
   3. `failed` if any test failed, or if `quarantinedFails` is set and any
      test was quarantined, or if the exit code isn't 0 for any reason other
      than quarantined failures (live mode: the exit code is 1 and every

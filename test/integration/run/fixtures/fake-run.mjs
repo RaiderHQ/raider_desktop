@@ -6,6 +6,9 @@
 //   exitCode     - exit code after the last step (default 0)
 //   hang         - stay alive after the steps until signalled
 //   ignoreSigint - ignore SIGINT (so only SIGKILL stops it)
+//   grandchild   - a file path: first start a SIGINT-ignoring grandchild in its own process
+//                  group (like chromedriver) and write its pid there
+import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -18,6 +21,16 @@ process.on('SIGINT', () => {
     if (!script.ignoreSigint) process.exit(130)
   })
 })
+
+if (script.grandchild) {
+  const grandchild = spawn(
+    process.execPath,
+    ['-e', "process.on('SIGINT', () => {}); setInterval(() => {}, 1000)"],
+    { detached: true, stdio: 'ignore' }
+  )
+  grandchild.unref()
+  fs.writeFileSync(script.grandchild, String(grandchild.pid))
+}
 
 for (const step of script.steps || []) {
   if (step.delay) await new Promise((resolve) => setTimeout(resolve, step.delay))

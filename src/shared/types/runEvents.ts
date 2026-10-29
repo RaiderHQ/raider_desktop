@@ -120,7 +120,10 @@ export type RunEvent =
       runId: string
       finishedAt: string
       exitCode: number | null
-      /** `errored`: the process failed before or outside examples (load error, bundler); run:output has why. */
+      /**
+       * `errored`: the process failed before or outside examples (load error, bundler, a
+       * crash or kill before any result arrived, live mode with no plan); run:output has why.
+       */
       status: RunFinishedStatus
       counts: RunCounts
       /** True when retained output passed the ~2 MB cap and the oldest chunks were trimmed. */
