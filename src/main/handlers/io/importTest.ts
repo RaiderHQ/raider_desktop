@@ -5,6 +5,7 @@ import { persistActiveSuites } from '../suitePersistence'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
 import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
+import { confirmCustomCode, importCancelled } from './confirmCustomCode'
 import {
   activeSuiteMode,
   broadcast,
@@ -62,6 +63,11 @@ export default async function importTest(
     if (suite.tests.some((t) => t.name === newTest.name)) {
       return { success: false, error: 'A test with this name already exists in the suite.' }
     }
+
+    if (!(await confirmCustomCode(mainWindow, [{ ...newTest, fromJson: header.fromJson }]))) {
+      return { success: false, error: importCancelled() }
+    }
+    if (store && !isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
 
     if (store) {
       // A fresh id always gets a new file: an import never replaces one

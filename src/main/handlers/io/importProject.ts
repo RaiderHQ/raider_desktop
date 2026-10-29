@@ -7,6 +7,7 @@ import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
 import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
+import { confirmCustomCode, importCancelled, type ImportedTest } from './confirmCustomCode'
 import {
   activeSuiteMode,
   addSuites,
@@ -42,12 +43,8 @@ export default async function importProject(
       .filter((dirent) => dirent.isDirectory())
       .map((dirent) => dirent.name)
 
-    if (store && !isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
-    // Importing replaces every suite, so keep a copy of the current file first.
-    // If the copy fails the import stops, rather than risk losing the user's suites.
-    const activePath = store?.projectPath ?? appState.projectPath
-    if (activePath) await backupSuitesFile(activePath)
     const imported: Suite[] = []
+    const toConfirm: ImportedTest[] = []
 
     for (const suiteDir of subdirectories) {
       const suitePath = path.join(projectPath, suiteDir)
@@ -76,10 +73,21 @@ export default async function importProject(
             steps
           }
           newSuite.tests.push(newTest)
+          toConfirm.push({ ...newTest, fromJson: header.fromJson })
         }
       }
       imported.push(newSuite)
     }
+
+    if (!(await confirmCustomCode(mainWindow, toConfirm))) {
+      return { success: false, error: importCancelled() }
+    }
+
+    if (store && !isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
+    // Importing replaces every suite, so keep a copy of the current file first.
+    // If the copy fails the import stops, rather than risk losing the user's suites.
+    const activePath = store?.projectPath ?? appState.projectPath
+    if (activePath) await backupSuitesFile(activePath)
 
     if (store) {
       // The replaced suites' tests keep their files: they stay in the project as recorded tests

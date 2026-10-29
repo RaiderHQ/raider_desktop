@@ -435,6 +435,14 @@
       "exportSuite": "Export suite",
       "exportProject": "Export project"
     },
+    "importCustomCode": {
+      "one": "This test runs custom Ruby code. Import anyway?",
+      "many": "These tests run custom Ruby code. Import anyway?",
+      "detail": "Only import files you trust. This is the code that will run:",
+      "confirm": "Import anyway",
+      "cancel": "Cancel",
+      "cancelled": "Nothing was imported."
+    },
     "saved": "Saved to your project as {{name}} ({{file}})",
     "savedNoFile": "Saved to your project as {{name}}",
     "saveRefusedCodeOwned": "This test was changed in code, so the recording wasn't saved. Your steps are still here.",
