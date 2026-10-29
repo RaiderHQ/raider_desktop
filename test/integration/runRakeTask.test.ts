@@ -50,11 +50,27 @@ describe('runRakeTask handler', () => {
     expect(options.timeout).toBe(120_000)
   })
 
-  it('quotes the task name so it reaches rake as one argument', async () => {
+  it.each([
+    ['spec:smoke', 'spec:smoke'],
+    ['a.b-c_d', 'a.b-c_d'],
+    // Brackets are glob characters to the shell, so the name is still quoted
+    ['test[firefox,1]', `'test[firefox,1]'`]
+  ])('runs the task name %s', async (name, shellWord) => {
     mockSafeExec.mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 })
-    await handler(mockMainWindow, '/project', 'ruby', 'smoke; touch /tmp/x')
-    expect(mockSafeExec.mock.calls[0][0]).toBe(`ruby -S bundle exec rake 'smoke; touch /tmp/x'`)
+    await handler(mockMainWindow, '/project', 'ruby', name)
+    expect(mockSafeExec.mock.calls[0][0]).toBe(`ruby -S bundle exec rake ${shellWord}`)
   })
+
+  it.each(['smoke; touch /tmp/x', "--execute=system('id')", '-e', 'a b', '$(id)', ''])(
+    'refuses the task name %j without running anything',
+    async (name) => {
+      const result = await handler(mockMainWindow, '/project', 'ruby', name)
+      expect(result.success).toBe(false)
+      expect(result.error).toMatch(/not a valid task name/)
+      expect(mockSafeExec).not.toHaveBeenCalled()
+      expect(mockCheckBundle).not.toHaveBeenCalled()
+    }
+  )
 
   it('runs rake regression with the correct command', async () => {
     mockSafeExec.mockResolvedValue({
@@ -75,10 +91,9 @@ describe('runRakeTask handler', () => {
 
     await handler(mockMainWindow, '/project', 'ruby', 'smoke')
 
-    expect(mockMainWindow.webContents.send).toHaveBeenCalledWith(
-      'test-run-status',
-      { status: 'running' }
-    )
+    expect(mockMainWindow.webContents.send).toHaveBeenCalledWith('test-run-status', {
+      status: 'running'
+    })
   })
 
   it('installs bundle when checkBundle fails', async () => {
@@ -88,10 +103,9 @@ describe('runRakeTask handler', () => {
 
     await handler(mockMainWindow, '/project', 'ruby', 'smoke')
 
-    expect(mockMainWindow.webContents.send).toHaveBeenCalledWith(
-      'test-run-status',
-      { status: 'installing' }
-    )
+    expect(mockMainWindow.webContents.send).toHaveBeenCalledWith('test-run-status', {
+      status: 'installing'
+    })
     expect(mockBundleInstall).toHaveBeenCalledWith('/project', 'ruby')
     expect(mockSafeExec).toHaveBeenCalledTimes(1)
   })
