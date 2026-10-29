@@ -340,6 +340,16 @@ describe('TestPage', () => {
     })
   })
 
+  it('keeps the test open when its project moves (Save project to…)', async () => {
+    useProjectStore.setState({ projectPath: '/quick/shop_test' })
+    renderPage()
+    await opened()
+    act(() => useProjectStore.getState().setProjectPath('/Users/me/shop_test'))
+    await opened()
+    expect(useRecorderStore.getState().activeTest?.id).toBe('t1')
+    useProjectStore.setState({ projectPath: null })
+  })
+
   it('has no wait inputs and no Recording or Dashboard tabs', async () => {
     renderPage()
     await opened()

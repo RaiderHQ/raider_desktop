@@ -94,7 +94,8 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
     return (): void => {
       current = false
     }
-  }, [key])
+    // A project that moved (Save project to…) forgets its open test: open it again
+  }, [key, projectPath])
 
   const isDraft = !row
   const test = row
