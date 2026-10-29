@@ -132,7 +132,9 @@ beforeEach(() => {
     test: { name: 'logs in', file: 'spec/logs_in_spec.rb' }
   })
   api.saveTrace.mockResolvedValue({ success: true })
-  api.renderStep.mockImplementation(async (s: { url?: string }) => `goto ${s.url ?? ''}`)
+  api.renderStep.mockImplementation(async (s: { url?: string; code?: string }) =>
+    s.code !== undefined ? s.code : `goto ${s.url ?? ''}`
+  )
   api.loadUrlRequest.mockResolvedValue({ success: true })
   api.setActiveProject.mockResolvedValue({ success: true })
   api.readDirectory.mockResolvedValue([])
@@ -181,6 +183,39 @@ describe('CodeTestPane', () => {
     expect(screen.queryByText(/Edited in code by a developer/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Custom code step/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Back to the recorder/ })).not.toBeInTheDocument()
+  })
+
+  it('opens a test with code Raider has no step for as its code, with no steps view', async () => {
+    api.openCodeTest.mockResolvedValue({
+      file: 'spec/login_spec.rb',
+      examples: [
+        {
+          name: 'logs in',
+          steps: [
+            navigateStep('a', 'https://x.test/login'),
+            { id: 'c', kind: 'custom', code: 'expect(page.title).to eq("Home")' }
+          ]
+        }
+      ]
+    })
+    renderPane()
+    expect(await screen.findByText('expect(page.title).to eq("Home")')).toBeInTheDocument()
+    expect(screen.queryByText('recorder.step.custom')).not.toBeInTheDocument()
+    const code = screen.getByRole('button', { name: 'testPage.code' })
+    expect(code).toHaveAttribute('aria-pressed', 'true')
+    expect(code).toBeDisabled()
+  })
+
+  it('opens as code even when the steps view was on elsewhere, and offers steps when they match', async () => {
+    useRecorderStore.setState({ showCode: false })
+    renderPane()
+    expect(await screen.findByText('goto https://x.test/first-example')).toBeInTheDocument()
+    const code = screen.getByRole('button', { name: 'testPage.code' })
+    expect(code).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(code)
+    expect(code).toHaveAttribute('aria-pressed', 'false')
+    expect(await screen.findByText(/commandParser\.visit/)).toBeInTheDocument()
+    expect(screen.queryByText('goto https://x.test/first-example')).not.toBeInTheDocument()
   })
 
   it('Run runs the file', async () => {

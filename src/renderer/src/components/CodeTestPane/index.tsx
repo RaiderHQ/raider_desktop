@@ -50,6 +50,8 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
   const [openFailed, setOpenFailed] = useState(false)
   const [selectedName, setSelectedName] = useState<string | null>(null)
   const [confirmingRecord, setConfirmingRecord] = useState(false)
+  // A test edited in code is shown as its code; its steps only on request
+  const [showSteps, setShowSteps] = useState(false)
 
   const load = useCallback((): (() => void) => {
     let current = true
@@ -74,9 +76,10 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
   const busy = recording.isRecording || isReplaying || recordingExample
   // The steps of the recording (live, or not saved into the file)
   const recordedTest =
-    activeTest && (recordingExample || unsavedExample?.testId === activeTest.id)
-      ? activeTest
-      : null
+    activeTest && (recordingExample || unsavedExample?.testId === activeTest.id) ? activeTest : null
+  // Steps can stand in for the code only when Raider understood every line of it
+  const stepsMatchFile = !!selected && selected.steps.every((step) => step.kind !== 'custom')
+  const exampleAsCode = !(showSteps && stepsMatchFile)
 
   const run = async (): Promise<void> => {
     const { setRunOutput, setRunResult } = useRunOutputStore.getState()
@@ -145,6 +148,11 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
   ) : null
 
   const browserOpen = (recording.recordingUrl && recording.preloadPath) || isReplaying
+  // Code switches the recording's steps while one is shown, else the selected test's view
+  const showingRecording = !!browserOpen || !!(recordedTest && unsavedExample)
+  const codePressed = showingRecording ? showCode : exampleAsCode
+  const toggleCode = (): void =>
+    showingRecording ? setShowCode(!showCode) : setShowSteps(exampleAsCode)
 
   return (
     <div className="flex flex-col h-full p-4 space-y-4">
@@ -201,9 +209,11 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
               {t('testPage.editCode')}
             </button>
             <button
-              onClick={() => setShowCode(!showCode)}
-              aria-pressed={showCode}
-              className={`${toolbarButton} ${showCode ? 'bg-neutral-lt' : ''} text-neutral-dk hover:bg-neutral-50`}
+              onClick={toggleCode}
+              aria-pressed={codePressed}
+              // No steps view for code Raider can't show as steps
+              disabled={!showingRecording && !stepsMatchFile}
+              className={`${toolbarButton} ${codePressed ? 'bg-neutral-lt' : ''} text-neutral-dk hover:bg-neutral-50`}
             >
               {t('testPage.code')}
             </button>
@@ -268,7 +278,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
                         steps={selected.steps}
                         setSteps={() => {}}
                         onDeleteStep={() => {}}
-                        showCode={showCode}
+                        showCode={exampleAsCode}
                         readOnly
                       />
                     ) : (
