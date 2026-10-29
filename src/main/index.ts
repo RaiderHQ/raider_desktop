@@ -166,7 +166,8 @@ app.whenReady().then(() => {
   installPermissionHandlers({
     app: session.defaultSession,
     recorder: session.fromPartition(RECORDER_PARTITION),
-    appUrl
+    appUrl,
+    isAppContents: (contents) => contents === appState.mainWindow?.webContents
   })
 
   app.on('before-quit', () => {

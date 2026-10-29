@@ -116,38 +116,59 @@ describe('installPermissionHandlers', () => {
   const sessionWith = (): { setPermissionRequestHandler: ReturnType<typeof vi.fn> } => ({
     setPermissionRequestHandler: vi.fn()
   })
-  const decide = (handler: Handler, permission: string, requestingUrl: string): boolean => {
+  const mainContents = { id: 1 }
+  const otherContents = { id: 2 }
+  const install = (): { app: Handler; recorder: Handler } => {
+    const app = sessionWith()
+    const recorder = sessionWith()
+    installPermissionHandlers({
+      app: app as never,
+      recorder: recorder as never,
+      appUrl: APP_FILE,
+      isAppContents: (wc) => wc === (mainContents as never)
+    })
+    return {
+      app: app.setPermissionRequestHandler.mock.calls[0][0] as Handler,
+      recorder: recorder.setPermissionRequestHandler.mock.calls[0][0] as Handler
+    }
+  }
+  const decide = (
+    handler: Handler,
+    permission: string,
+    requestingUrl: string,
+    wc: unknown = mainContents
+  ): boolean => {
     let granted: boolean | undefined
-    handler({}, permission, (g) => (granted = g), { requestingUrl })
+    handler(wc, permission, (g) => (granted = g), { requestingUrl })
     return granted!
   }
 
-  it('lets the app copy to the clipboard and go full screen, and denies anything else', () => {
-    const app = sessionWith()
-    const recorder = sessionWith()
-    installPermissionHandlers({ app: app as never, recorder: recorder as never, appUrl: APP_FILE })
-    const handler = app.setPermissionRequestHandler.mock.calls[0][0] as Handler
+  it("lets the app's own page read and write the clipboard, e.g. the editor's Paste", () => {
+    const { app } = install()
+    expect(decide(app, 'clipboard-read', `${APP_FILE}#/editor`)).toBe(true)
+    expect(decide(app, 'clipboard-sanitized-write', `${APP_FILE}#/tests`)).toBe(true)
+    expect(decide(app, 'fullscreen', APP_FILE)).toBe(true)
+  })
 
-    expect(decide(handler, 'clipboard-sanitized-write', `${APP_FILE}#/tests`)).toBe(true)
-    expect(decide(handler, 'fullscreen', APP_FILE)).toBe(true)
+  it('denies everything else, and the clipboard to other pages or windows', () => {
+    const { app } = install()
     for (const permission of ['media', 'geolocation', 'notifications', 'openExternal']) {
-      expect(decide(handler, permission, APP_FILE)).toBe(false)
+      expect(decide(app, permission, APP_FILE)).toBe(false)
     }
-    expect(decide(handler, 'clipboard-sanitized-write', 'https://example.com/')).toBe(false)
+    expect(decide(app, 'clipboard-read', 'https://example.com/')).toBe(false)
+    expect(decide(app, 'clipboard-read', APP_FILE, otherContents)).toBe(false)
   })
 
   it('denies every permission to the websites being recorded', () => {
-    const app = sessionWith()
-    const recorder = sessionWith()
-    installPermissionHandlers({ app: app as never, recorder: recorder as never, appUrl: APP_FILE })
-    const handler = recorder.setPermissionRequestHandler.mock.calls[0][0] as Handler
+    const { recorder } = install()
     for (const permission of [
+      'clipboard-read',
       'clipboard-sanitized-write',
       'fullscreen',
       'media',
       'notifications'
     ]) {
-      expect(decide(handler, permission, 'https://example.com/')).toBe(false)
+      expect(decide(recorder, permission, 'https://example.com/', otherContents)).toBe(false)
     }
   })
 })
