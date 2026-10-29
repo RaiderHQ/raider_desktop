@@ -3,6 +3,7 @@ import isRvmRubyInstalled from './isRvmRubyInstalled'
 import isSystemRubyInstalled from './isSystemRubyInstalled'
 import checkRubyDependencies from './checkRubyDependencies'
 import { parseRubyVersion, formatMinimumVersion } from '../../utils/rubyVersion'
+import { rbenvPrefix, rvmPrefix } from '../../utils/rubyCommand'
 import { setRubyVersion } from '../appState'
 
 function getVersionWarning(version?: string): string | undefined {
@@ -60,7 +61,7 @@ const handler = async (): Promise<{
   const rbenvResult = await isRbenvRubyInstalled()
   if (rbenvResult.success && rbenvResult.version) {
     setRubyVersion(rbenvResult.version)
-    const rubyCommandPrefix = `eval "$(rbenv init -)" && rbenv shell ${rbenvResult.version} &&`
+    const rubyCommandPrefix = rbenvPrefix(rbenvResult.version)
     const depsResult = await checkRubyDependencies(rubyCommandPrefix)
     const versionWarning = getVersionWarning(rbenvResult.version)
     if (depsResult.success) {
@@ -78,7 +79,7 @@ const handler = async (): Promise<{
   const rvmResult = await isRvmRubyInstalled()
   if (rvmResult.success && rvmResult.version) {
     setRubyVersion(rvmResult.version)
-    const rubyCommandPrefix = `source $(brew --prefix rvm)/scripts/rvm && rvm ${rvmResult.version} do`
+    const rubyCommandPrefix = rvmPrefix(rvmResult.version)
     const depsResult = await checkRubyDependencies(rubyCommandPrefix)
     const versionWarning = getVersionWarning(rvmResult.version)
     if (depsResult.success) {

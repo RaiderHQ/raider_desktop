@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import type { Test } from '@foundation/Types/test'
 import type { TraceStep } from '@foundation/Types/traceStep'
 import type { Step } from '@shared/types/step'
 import { isPendingAssertion } from '@shared/types/pendingAssertion'
@@ -10,18 +11,34 @@ interface RecordingIPCOptions {
   setAssertionInfo: (info: PendingAssertion | null) => void
 }
 
-const appendStep = (step: Step): void => {
-  useRecorderStore
-    .getState()
-    .updateActiveTest((prev) => (prev ? { ...prev, steps: [...prev.steps, step] } : null))
+/**
+ * Set when Stop & save (or leaving) already saved the recording's trace, so main's
+ * 'recording-stopped' doesn't save it again. Cleared when the next recording starts.
+ */
+let traceSaved = false
+export const traceSavedOnStop = (): void => {
+  traceSaved = true
 }
 
 export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void {
   const { setRunOutput } = useRunOutputStore.getState()
 
   useEffect(() => {
+    // The test the recording started on. Steps that arrive late, after another test was
+    // opened, belong to the recorded test, never to the one open now
+    let recordedTestId: string | null = null
+    const forRecordedTest = (update: (test: Test) => Test): void =>
+      useRecorderStore
+        .getState()
+        .updateActiveTest((prev) =>
+          prev && (recordedTestId === null || prev.id === recordedTestId) ? update(prev) : prev
+        )
+    const appendStep = (step: Step): void =>
+      forRecordedTest((prev) => ({ ...prev, steps: [...prev.steps, step] }))
+
     const handleRecordingStarted = (_event: Electron.IpcRendererEvent, loadedUrl: string): void => {
       const {
+        recordingTarget,
         setIsRecording,
         activeTest,
         setActiveTest,
@@ -29,7 +46,12 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
         setBreakpointIndex,
         setIsReplayingToBreakpoint
       } = useRecorderStore.getState()
+      // A recording the user left while it started: it is being stopped, and must not
+      // replace the steps of the test open now
+      if (!recordingTarget) return
       setIsRecording(true)
+      recordedTestId = activeTest?.id ?? null
+      traceSaved = false
       if (activeTest) {
         if (breakpointIndex !== null) {
           // Keep the pre-breakpoint steps; new recorded steps will append after them
@@ -53,12 +75,16 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
     }
 
     const handleRecordingStopped = async (): Promise<void> => {
-      const { activeTest, setActiveTest } = useRecorderStore.getState()
+      const { activeTest, updateActiveTest } = useRecorderStore.getState()
       useRecorderStore.getState().setIsRecording(false)
+      if (traceSaved) return
       if (activeTest?.trace?.length) {
         const result = await window.api.saveTrace(activeTest.id, activeTest.trace)
         if (result.success) {
-          setActiveTest({ ...activeTest, hasTrace: true })
+          // Mark the test as it is now: steps can still arrive while the trace is saved
+          updateActiveTest((live) =>
+            live && live.id === activeTest.id ? { ...live, hasTrace: true } : live
+          )
         }
       }
     }
@@ -68,11 +94,7 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
     }
 
     const handleNewTraceStep = (_event: Electron.IpcRendererEvent, traceStep: TraceStep): void => {
-      useRecorderStore
-        .getState()
-        .updateActiveTest((prev) =>
-          prev ? { ...prev, trace: [...(prev.trace || []), traceStep] } : null
-        )
+      forRecordedTest((prev) => ({ ...prev, trace: [...(prev.trace || []), traceStep] }))
     }
 
     // Complete steps are added directly; text checks first ask the user for the expected text

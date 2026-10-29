@@ -50,6 +50,13 @@ describe('updateBrowserUrl handler', () => {
     expect(call).toContain(`raider u url ${quoted}`)
   })
 
+  it('passes a hostile URL as one quoted argument', async () => {
+    mockExecSuccess()
+    await handler({} as any, '/my/project', 'https://a.test/x; rm -rf x')
+    const call = mockExec.mock.calls[0][0] as string
+    expect(call).toContain("raider u url 'https://a.test/x; rm -rf x'")
+  })
+
   it('returns success when command succeeds', async () => {
     mockExecSuccess('URL set to https://example.com')
     const result = await handler({} as any, '/my/project', 'https://example.com')

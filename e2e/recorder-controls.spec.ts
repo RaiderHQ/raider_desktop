@@ -1,53 +1,52 @@
 import { test, expect } from './electronApp'
-import { goToRecorder, createSuiteViaUI } from './helpers/navigation'
+import { goToOverview, createSuiteViaUI, mockRubyReady } from './helpers/navigation'
+import { setupProjectContext } from './helpers/ipc-mock'
 
-test.describe('Recorder Controls', () => {
+// Suites are managed above the Tests list. Creating one goes through the real main
+// process, which broadcasts the new suites back to the window.
+
+// The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
+test.beforeEach(async ({ electronApp, page }) => {
+  await mockRubyReady(electronApp, page)
+})
+
+test.describe('Suites on the Tests list', () => {
   test.beforeEach(async ({ page }) => {
-    await goToRecorder(page)
+    await setupProjectContext(page)
+    await goToOverview(page)
   })
 
-  test('creating a suite shows suite name in panel', async ({ page }) => {
+  const suiteSelect = (page: import('@playwright/test').Page) =>
+    page.getByRole('combobox', { name: 'Suite', exact: true })
+
+  test('lists all tests until a suite is picked', async ({ page }) => {
+    await expect(suiteSelect(page).locator('option:checked')).toHaveText('All tests')
+  })
+
+  test('creating a suite selects it', async ({ page }) => {
     await createSuiteViaUI(page, 'Control Suite')
-    await expect(page.getByRole('heading', { name: 'Suite: Control Suite' })).toBeVisible()
+    await expect(suiteSelect(page).locator('option:checked')).toHaveText('Control Suite')
   })
 
-  test('suite selector dropdown exists after creating suite', async ({ page }) => {
-    await createSuiteViaUI(page, 'Dropdown Suite')
-
-    // The suite name should be visible (in dropdown or header)
-    await expect(page.getByRole('heading', { name: 'Suite: Dropdown Suite' })).toBeVisible()
-  })
-
-  test('New Test button or test creation is available after suite creation', async ({ page }) => {
-    await createSuiteViaUI(page, 'Test Suite')
-
-    // Look for "New Test" button or similar
-    const newTestBtn = page.getByRole('button', { name: /new test/i })
-    const addTestBtn = page.getByRole('button', { name: /add test/i })
-
-    const hasNew = await newTestBtn.isVisible().catch(() => false)
-    const hasAdd = await addTestBtn.isVisible().catch(() => false)
-    // At minimum the suite should be created
-    await expect(page.getByRole('heading', { name: 'Suite: Test Suite' })).toBeVisible()
-  })
-
-  test('Run Output section is in the DOM', async ({ page }) => {
-    const runOutput = page.getByText('Run Output')
-    const count = await runOutput.count()
-    expect(count).toBeGreaterThanOrEqual(1)
-  })
-
-  test('multiple suites can be created sequentially', async ({ page }) => {
+  test('multiple suites can be created and are all offered', async ({ page }) => {
     await createSuiteViaUI(page, 'Suite One')
     await createSuiteViaUI(page, 'Suite Two')
     await createSuiteViaUI(page, 'Suite Three')
 
-    // The active suite name is shown in the dropdown button
-    await expect(page.getByRole('heading', { name: 'Suite: Suite Three' })).toBeVisible()
-
-    // All suites are listed in the suite selector
-    const options = page.locator('select[aria-label="Select a Suite"] option')
+    await expect(suiteSelect(page).locator('option:checked')).toHaveText('Suite Three')
+    const options = suiteSelect(page).locator('option')
     await expect(options.filter({ hasText: 'Suite One' })).toHaveCount(1)
     await expect(options.filter({ hasText: 'Suite Two' })).toHaveCount(1)
+  })
+
+  test('Run suite needs a suite', async ({ page }) => {
+    await page.getByRole('button', { name: 'Suite actions' }).click()
+    await expect(page.getByRole('menuitem', { name: 'Run suite' })).toBeDisabled()
+    // The menu button toggles the menu closed again
+    await page.getByRole('button', { name: 'Suite actions' }).click()
+
+    await createSuiteViaUI(page, 'Runnable Suite')
+    await page.getByRole('button', { name: 'Suite actions' }).click()
+    await expect(page.getByRole('menuitem', { name: 'Run suite' })).toBeEnabled()
   })
 })

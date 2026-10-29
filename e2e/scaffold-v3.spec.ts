@@ -1,6 +1,11 @@
 import { test, expect } from './electronApp'
-import { goToOverview } from './helpers/navigation'
+import { goToOverview, mockRubyReady } from './helpers/navigation'
 import { mockRubyInstalled, mockReadDirectory } from './helpers/ipc-mock'
+
+// The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
+test.beforeEach(async ({ electronApp, page }) => {
+  await mockRubyReady(electronApp, page)
+})
 
 test.describe('Scaffold Panel v3 Features', () => {
   test.beforeEach(async ({ page }) => {

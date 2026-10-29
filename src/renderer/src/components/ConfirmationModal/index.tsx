@@ -4,6 +4,8 @@ import Button from '@components/Button'
 interface ConfirmationModalProps {
   title?: string
   message: string
+  /** What the confirmation is about, shown above the message */
+  subject?: string
   onConfirm: () => void
   onCancel: () => void
 }
@@ -11,6 +13,7 @@ interface ConfirmationModalProps {
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   title = 'Confirm',
   message,
+  subject,
   onConfirm,
   onCancel
 }) => {
@@ -37,6 +40,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
         {/* Body */}
         <div className="px-6 py-4">
+          {subject && <p className="font-medium text-neutral-dark mb-2 break-words">{subject}</p>}
           <p className="text-neutral-dk">{message}</p>
         </div>
 

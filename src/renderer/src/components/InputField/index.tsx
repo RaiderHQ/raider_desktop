@@ -4,6 +4,7 @@ interface InputFieldProps {
   value: string
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
   placeholder?: string
   type?: string
   className?: string
@@ -16,6 +17,7 @@ const InputField: React.FC<InputFieldProps> = ({
   value,
   onChange,
   onKeyDown,
+  onBlur,
   placeholder = '',
   type = 'text',
   className = '',
@@ -42,6 +44,7 @@ const InputField: React.FC<InputFieldProps> = ({
         value={value}
         onChange={onChange}
         onKeyDown={onKeyDown}
+        onBlur={onBlur}
         placeholder={placeholder}
         disabled={disabled}
         autoFocus={autoFocus}

@@ -7,6 +7,16 @@ import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
 import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
+import {
+  activeSuiteMode,
+  addSuites,
+  broadcast,
+  filesStore,
+  importFailed,
+  isCurrent,
+  lockedError,
+  PROJECT_CHANGED_ERROR
+} from '../tests/suiteStore'
 
 export default async function importProject(
   mainWindow: BrowserWindow
@@ -15,6 +25,9 @@ export default async function importProject(
     return { success: false, error: 'Main window not found' }
   }
   try {
+    if ((await activeSuiteMode()) === 'locked') return { success: false, error: lockedError() }
+    // Taken before the dialog: the import goes to the project that was open when it started
+    const store = filesStore()
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory']
     })
@@ -29,10 +42,12 @@ export default async function importProject(
       .filter((dirent) => dirent.isDirectory())
       .map((dirent) => dirent.name)
 
+    if (store && !isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
     // Importing replaces every suite, so keep a copy of the current file first.
     // If the copy fails the import stops, rather than risk losing the user's suites.
-    if (appState.projectPath) await backupSuitesFile(appState.projectPath)
-    appState.suites.clear()
+    const activePath = store?.projectPath ?? appState.projectPath
+    if (activePath) await backupSuitesFile(activePath)
+    const imported: Suite[] = []
 
     for (const suiteDir of subdirectories) {
       const suitePath = path.join(projectPath, suiteDir)
@@ -63,9 +78,19 @@ export default async function importProject(
           newSuite.tests.push(newTest)
         }
       }
-      appState.suites.set(newSuite.id, newSuite)
+      imported.push(newSuite)
     }
 
+    if (store) {
+      // The replaced suites' tests keep their files: they stay in the project as recorded tests
+      const { failed } = await addSuites(store, imported, { replace: true })
+      broadcast(store)
+      mainWindow.reload()
+      return failed > 0 ? { success: false, error: importFailed(failed) } : { success: true }
+    }
+
+    appState.suites.clear()
+    imported.forEach((suite) => appState.suites.set(suite.id, suite))
     await persistActiveSuites()
     mainWindow.webContents.send('suite-updated', Array.from(appState.suites.values()))
     mainWindow.reload()

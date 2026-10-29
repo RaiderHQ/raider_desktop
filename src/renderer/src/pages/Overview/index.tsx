@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { sample } from 'lodash'
 import { FaTerminal } from 'react-icons/fa'
@@ -13,13 +13,17 @@ import ProjectDashboard from '@components/ProjectDashboard'
 import Editor from '@components/Editor'
 import Terminal from '@components/Terminal'
 import Tooltip from '@components/Tooltip'
+import TestsWorkspace from '@components/TestsWorkspace'
 import InfoButton from '@components/InfoButton'
 import useProjectStore from '@foundation/Stores/projectStore'
+import useRecorderStore from '@foundation/Stores/recorderStore'
+import { isEmptyRecording } from '../../hooks/useTestRecording'
+import { useRecorderSettings } from '../../hooks/useRecorderSettings'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { FileNode } from '@foundation/Types/fileNode'
 import { getFileLanguage } from '@foundation/helpers'
 
-type OverviewTab = 'files' | 'scaffold' | 'dashboard'
+type OverviewTab = 'tests' | 'files' | 'scaffold' | 'dashboard'
 
 
 const Overview: React.FC = () => {
@@ -29,7 +33,30 @@ const Overview: React.FC = () => {
   const { rubyCommand } = useRubyStore()
   const navigate = useNavigate()
   const toastIdRef = useRef<string | null>(null)
-  const [activeTab, setActiveTab] = useState<OverviewTab>('files')
+  const { testKey } = useParams()
+  const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
+    useRecorderSettings()
+  const [activeTab, setActiveTab] = useState<OverviewTab>('tests')
+
+  // Until the project's settings load, the fields hold defaults that must not overwrite the config
+  const saveWait = async (
+    patch: { implicitWait: number } | { explicitWait: number }
+  ): Promise<void> => {
+    if (!loaded) return
+    try {
+      const result = await window.api.updateRecordingSettings(patch)
+      if (!result.success) {
+        toast.error(`${t('settings.recording.error.unexpected')} : ${result.error}`)
+      }
+    } catch (error) {
+      toast.error(`${t('settings.recording.error.unexpected')} : ${error}`)
+    }
+  }
+
+  // A test route always shows the Tests tab
+  useEffect(() => {
+    if (testKey) setActiveTab('tests')
+  }, [testKey])
   const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression'>('all')
 
   // Test settings state
@@ -146,6 +173,55 @@ const Overview: React.FC = () => {
       if (isCurrent()) setConfigLoaded(true)
     })
   }, [projectPath])
+
+  // A quick-record project lives in Raider's own folder until the user saves it somewhere
+  const [isQuick, setIsQuick] = useState(false)
+  useEffect(() => {
+    setIsQuick(false)
+    if (!projectPath) return
+    let current = true
+    Promise.resolve(window.api.isQuickProject(projectPath))
+      .then((quick) => {
+        if (current) setIsQuick(quick)
+      })
+      .catch(() => {})
+    return (): void => {
+      current = false
+    }
+  }, [projectPath])
+
+  const [saving, setSaving] = useState(false)
+  // Moving the project resets the recorder, so it waits until nothing recorded is at stake
+  const recorderBusy = useRecorderStore(
+    (r) =>
+      r.isRecording ||
+      r.isReplayingToBreakpoint ||
+      r.recordingTarget != null ||
+      // An empty draft is never saved, so there is nothing to lose
+      (r.draftTest != null &&
+        !isEmptyRecording(r.activeTest?.id === r.draftTest.id ? r.activeTest : r.draftTest)) ||
+      r.unsavedExample != null
+  )
+
+  const handleSaveProjectTo = async (): Promise<void> => {
+    if (!projectPath || saving || recorderBusy) return
+    setSaving(true)
+    try {
+      const folder = await window.api.selectFolder(t('quickRecord.saveToTitle'))
+      if (!folder) return
+      const result = await window.api.saveQuickProjectTo(projectPath, folder)
+      if (!result.success) {
+        toast.error(t('quickRecord.saveFailed', { error: result.error }))
+        return
+      }
+      useProjectStore.getState().setProjectPath(result.projectPath)
+      toast.success(t('quickRecord.saved', { path: result.projectPath }))
+    } catch (error) {
+      toast.error(t('quickRecord.saveFailed', { error: String(error) }))
+    } finally {
+      setSaving(false)
+    }
+  }
 
   // Detect mobile project
   useEffect(() => {
@@ -478,6 +554,16 @@ const Overview: React.FC = () => {
       {/* Tabs */}
       <div className="flex items-center border-b border-neutral-bdr mb-4">
         <button
+          onClick={() => setActiveTab('tests')}
+          className={`px-5 py-2 text-sm font-semibold transition-colors ${
+            activeTab === 'tests'
+              ? 'text-neutral-dark border-b-2 border-ruby'
+              : 'text-neutral-mid hover:text-neutral-dk'
+          }`}
+        >
+          {t('overview.tabs.tests')}
+        </button>
+        <button
           onClick={() => setActiveTab('files')}
           className={`px-5 py-2 text-sm font-semibold transition-colors ${
             activeTab === 'files'
@@ -524,6 +610,26 @@ const Overview: React.FC = () => {
           />
         </div>
       </div>
+
+      {isQuick && (
+        <div className="flex items-center justify-between gap-4 mb-4 px-4 py-2 rounded-lg border border-neutral-bdr bg-ruby-sub text-sm text-neutral-dk">
+          <span>{t('quickRecord.banner')}</span>
+          <button
+            onClick={() => void handleSaveProjectTo()}
+            disabled={saving || recorderBusy}
+            title={recorderBusy ? t('quickRecord.stopFirst') : undefined}
+            className="px-3 py-1 text-xs font-semibold text-ruby border border-ruby rounded hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t('quickRecord.saveTo')}
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'tests' && (
+        <div className="relative w-full">
+          <TestsWorkspace />
+        </div>
+      )}
 
       {activeTab === 'files' && (
         <div className="relative w-full">
@@ -649,6 +755,46 @@ const Overview: React.FC = () => {
                 </div>
               </div>
             )}
+            <div className="flex items-center gap-4 flex-wrap">
+              <Tooltip content={t('tooltips.recorder.implicitWait')} position="right">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                    {t('settings.recording.implicitWait.label')}
+                  </label>
+                  <input
+                    type="number"
+                    id="implicit-wait"
+                    value={implicitWait}
+                    onChange={(e) => {
+                      const val = Number(e.target.value)
+                      if (val >= 0) setImplicitWait(val)
+                    }}
+                    onBlur={() => saveWait({ implicitWait })}
+                    min="0"
+                    className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                  />
+                </div>
+              </Tooltip>
+              <Tooltip content={t('tooltips.recorder.explicitWait')} position="right">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                    {t('settings.recording.explicitWait.label')}
+                  </label>
+                  <input
+                    type="number"
+                    id="explicit-wait"
+                    value={explicitWait}
+                    onChange={(e) => {
+                      const val = Number(e.target.value)
+                      if (val >= 0) setExplicitWait(val)
+                    }}
+                    onBlur={() => saveWait({ explicitWait })}
+                    min="0"
+                    className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                  />
+                </div>
+              </Tooltip>
+            </div>
           </div>
           <div className="relative h-[62vh] border border-t-0 border-neutral-bdr rounded-b-lg shadow-card flex flex-col bg-white">
             {/* Split: file tree left + editor preview right */}

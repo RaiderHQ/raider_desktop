@@ -1,96 +1,67 @@
 import { test, expect } from './electronApp'
-import { goToRecorder, createSuiteViaUI } from './helpers/navigation'
+import type { Page } from '@playwright/test'
+import { goToOverview, createSuiteViaUI, mockRubyReady } from './helpers/navigation'
+import { setupProjectContext, mockIPCCapture, getIPCCalls } from './helpers/ipc-mock'
 
-test.describe('Recorder Import/Export', () => {
+// Import and export sit in the suite actions menu above the Tests list
+const openMenu = (page: Page): Promise<void> =>
+  page.getByRole('button', { name: 'Suite actions' }).click()
+
+// The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
+test.beforeEach(async ({ electronApp, page }) => {
+  await mockRubyReady(electronApp, page)
+})
+
+test.describe('Tests list import/export', () => {
   test.beforeEach(async ({ page }) => {
-    await goToRecorder(page)
+    await setupProjectContext(page)
+    await goToOverview(page)
+  })
+
+  test('the menu offers every import and export', async ({ page }) => {
+    await openMenu(page)
+    for (const name of [
+      'Import test',
+      'Import suite',
+      'Import project',
+      'Export suite',
+      'Export project'
+    ]) {
+      await expect(page.getByRole('menuitem', { name })).toBeVisible()
+    }
+  })
+
+  test('Export suite needs a suite', async ({ page }) => {
+    await openMenu(page)
+    await expect(page.getByRole('menuitem', { name: 'Export suite' })).toBeDisabled()
+  })
+
+  test('export suite sends the selected suite and says where it went', async ({ page }) => {
     await createSuiteViaUI(page, 'IE Suite')
+    await mockIPCCapture(page, 'exportSuite', { success: true, path: '/mock/export/suite.json' })
+    await openMenu(page)
+    await page.getByRole('menuitem', { name: 'Export suite' }).click()
+
+    await expect(page.getByText('Suite exported to /mock/export/suite.json')).toBeVisible()
+    const calls = await getIPCCalls(page, 'exportSuite')
+    expect(calls).toHaveLength(1)
+    const selected = await page.getByRole('combobox', { name: 'Suite', exact: true }).inputValue()
+    expect(calls[0]).toEqual([selected])
   })
 
-  test('More dropdown shows import options', async ({ page }) => {
-    const moreBtn = page.getByText('More')
-    if (await moreBtn.isVisible().catch(() => false)) {
-      await moreBtn.click()
-      await page.waitForTimeout(300)
-
-      const importTest = page.getByText('Import Test', { exact: false })
-      const importSuite = page.getByText('Import Suite', { exact: false })
-      const importProject = page.getByText('Import Project', { exact: false })
-
-      // At least some import options should be visible
-      const anyImportVisible =
-        (await importTest.isVisible().catch(() => false)) ||
-        (await importSuite.isVisible().catch(() => false)) ||
-        (await importProject.isVisible().catch(() => false))
-      expect(anyImportVisible).toBe(true)
-    }
+  test('a failed export says why', async ({ page }) => {
+    await mockIPCCapture(page, 'exportProject', { success: false, error: 'No suites to export' })
+    await openMenu(page)
+    await page.getByRole('menuitem', { name: 'Export project' }).click()
+    await expect(page.getByText(/No suites to export/)).toBeVisible()
   })
 
-  test('More dropdown shows export options', async ({ page }) => {
-    const moreBtn = page.getByText('More')
-    if (await moreBtn.isVisible().catch(() => false)) {
-      await moreBtn.click()
-      await page.waitForTimeout(300)
-
-      const exportTest = page.getByText('Export Test', { exact: false })
-      const exportSuite = page.getByText('Export Suite', { exact: false })
-      const exportProject = page.getByText('Export Project', { exact: false })
-
-      const anyExportVisible =
-        (await exportTest.isVisible().catch(() => false)) ||
-        (await exportSuite.isVisible().catch(() => false)) ||
-        (await exportProject.isVisible().catch(() => false))
-      expect(anyExportVisible).toBe(true)
-    }
-  })
-
-  test('export test with no steps shows error', async ({ page }) => {
-    // Mock the export to simulate the behavior
-    await page.evaluate(() => {
-      ;(window as any).api.exportTest = async () => ({
-        success: false,
-        error: 'No steps to export'
-      })
-    })
-
-    const moreBtn = page.getByText('More')
-    if (await moreBtn.isVisible().catch(() => false)) {
-      await moreBtn.click()
-      await page.waitForTimeout(300)
-
-      const exportTest = page.getByText('Export Test', { exact: false })
-      if (await exportTest.isVisible().catch(() => false)) {
-        await exportTest.click()
-        await page.waitForTimeout(500)
-        // Should show an error toast or message
-      }
-    }
-  })
-
-  test('export suite triggers IPC call', async ({ page }) => {
-    let called = false
-    await page.evaluate(() => {
-      ;(window as any).__exportSuiteCalled = false
-      ;(window as any).api.exportSuite = async () => {
-        ;(window as any).__exportSuiteCalled = true
-        return { success: true, path: '/mock/export/path.json' }
-      }
-    })
-
-    const moreBtn = page.getByText('More')
-    if (await moreBtn.isVisible().catch(() => false)) {
-      await moreBtn.click()
-      await page.waitForTimeout(300)
-
-      const exportSuite = page.getByText('Export Suite', { exact: false })
-      if (await exportSuite.isVisible().catch(() => false)) {
-        await exportSuite.click()
-        await page.waitForTimeout(500)
-
-        called = await page.evaluate(() => (window as any).__exportSuiteCalled)
-      }
-    }
-    // This tests that the option exists and can be clicked
-    expect(true).toBe(true)
+  test('import test with all tests listed imports outside any suite', async ({ page }) => {
+    await mockIPCCapture(page, 'importTest', { success: true })
+    await openMenu(page)
+    await page.getByRole('menuitem', { name: 'Import test' }).click()
+    await expect(page.getByText('Test imported successfully!')).toBeVisible()
+    const calls = await getIPCCalls(page, 'importTest')
+    expect(calls).toEqual([['not-in-a-suite']])
   })
 })

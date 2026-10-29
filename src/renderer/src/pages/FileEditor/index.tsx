@@ -11,6 +11,8 @@ interface FileEditorProps {
   fileName: string
   filePath: string
   line?: number
+  /** Where the back button goes: the page the file was opened from */
+  returnTo?: string
 }
 
 const FileEditor: React.FC = (): JSX.Element => {
@@ -18,7 +20,7 @@ const FileEditor: React.FC = (): JSX.Element => {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const { fileName, filePath, line } = location.state as FileEditorProps
+  const { fileName, filePath, line, returnTo } = location.state as FileEditorProps
 
   const [fileContent, setFileContent] = useState<string>('')
   const [, setIsSaving] = useState<boolean>(false)
@@ -94,7 +96,7 @@ const FileEditor: React.FC = (): JSX.Element => {
             <>
               <div className="flex items-center mb-4">
                 <button
-                  onClick={() => navigate('/overview')}
+                  onClick={() => navigate(returnTo ?? '/overview')}
                   className="mr-2 ml-2 focus:outline-none text-neutral-dk hover:text-ruby transition-colors"
                 >
                   <FaArrowLeft />

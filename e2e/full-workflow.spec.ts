@@ -1,12 +1,18 @@
 import { test, expect } from './electronApp'
 import {
   goToLanding,
-  goToRecorder,
+  goToOverview,
   createSuiteViaUI,
-  enterMainLayout,
-  mockRubyReady
+  mockRubyReady,
+  navigateTo
 } from './helpers/navigation'
-import { mockIPC, mockIPCSync } from './helpers/ipc-mock'
+import {
+  setupProjectContext,
+  mockIPC,
+  mockIPCCapture,
+  getIPCCalls,
+  setRubyCommand
+} from './helpers/ipc-mock'
 
 test.describe('User Workflows', () => {
   test.beforeEach(async ({ electronApp, page }) => {
@@ -32,64 +38,50 @@ test.describe('User Workflows', () => {
     await page.getByRole('button', { name: 'Back' }).click()
   })
 
-  test('explore all main pages once a project is open', async ({ electronApp, page }) => {
-    await enterMainLayout(electronApp, page)
-    await page.locator('a[href="#/recorder"]').click()
-    await page.waitForTimeout(500)
-    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).toBeVisible()
-
-    await page.locator('a[href="#/overview"]').click()
-    await page.waitForTimeout(500)
-    await expect(page).toHaveURL(/#\/overview/)
-  })
-
-  test('recorder suite management workflow', async ({ page }) => {
-    await goToRecorder(page)
+  test('with a project: the Tests tab, a suite, and a new test in it', async ({ page }) => {
+    await setupProjectContext(page)
+    await goToOverview(page)
+    await expect(page.getByText('Select a test, or create a new one.')).toBeVisible()
 
     await createSuiteViaUI(page, 'Login Tests')
-    await expect(page.getByRole('heading', { name: 'Suite: Login Tests' })).toBeVisible()
-
     await createSuiteViaUI(page, 'Checkout Tests')
-    await expect(page.getByRole('heading', { name: 'Suite: Checkout Tests' })).toBeVisible()
+    const suite = page.getByRole('combobox', { name: 'Suite', exact: true })
+    await expect(suite.locator('option:checked')).toHaveText('Checkout Tests')
+    await expect(suite.locator('option').filter({ hasText: 'Login Tests' })).toHaveCount(1)
 
-    // The suite selector lists both suites, with the last created one selected
-    const suiteSelect = page.locator('select[aria-label="Select a Suite"]')
-    const options = await suiteSelect.locator('option').allTextContents()
-    expect(options).toContain('Login Tests')
-    expect(options).toContain('Checkout Tests')
-    await expect(suiteSelect.locator('option:checked')).toHaveText('Checkout Tests')
+    await page.getByRole('button', { name: 'New test', exact: true }).click()
+    await expect(page).toHaveURL(/#\/overview\/tests\/new$/)
+    await expect(page.getByLabel('Test name')).toBeVisible()
   })
 
-  test('recorder tab navigation and state', async ({ page }) => {
-    // Mock IPC methods used on Recorder mount
+  test('quick record makes a project and opens a new test in it', async ({ page }) => {
+    await setRubyCommand(page, 'ruby')
+    await mockIPCCapture(page, 'createQuickProject', {
+      success: true,
+      projectPath: '/mock/quick-project'
+    })
+    await mockIPC(page, 'listProjectTests', [])
+    await mockIPC(page, 'readDirectory', [])
     await mockIPC(page, 'getSuites', [])
-    await mockIPCSync(page, 'onTestRunStatus')
-    await mockIPCSync(page, 'removeTestRunStatusListener')
-    await goToRecorder(page)
-    await page.waitForTimeout(500)
+    await goToLanding(page)
 
-    // The wait settings now live on the Recording tab (there is no Settings tab)
-    await expect(page.getByText('Implicit Wait')).toBeVisible()
+    await page.getByRole('button', { name: 'Quick record' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Quick record' })
+    await expect(dialog).toBeVisible()
+    await dialog.getByPlaceholder('https://example.com').fill('example.com')
+    await dialog.getByPlaceholder('Checkout works').fill('Checkout works')
+    await dialog.getByRole('button', { name: 'Start' }).click()
 
-    // Switch to Dashboard tab
-    const dashboardTab = page.locator('button').filter({ hasText: 'Dashboard' })
-    await dashboardTab.click()
-    await page.waitForTimeout(500)
-    await expect(page.getByText('Implicit Wait')).not.toBeVisible()
-    await expect(page.getByText('No recording results yet')).toBeVisible()
-
-    // Switch back to Recording tab
-    const recordingTab = page.locator('button').filter({ hasText: 'Recording' }).first()
-    await recordingTab.click()
-    await page.waitForTimeout(500)
-    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).toBeVisible()
-    await expect(page.getByText('Implicit Wait')).toBeVisible()
+    await expect(page).toHaveURL(/#\/overview\/tests\/new$/)
+    // A bare address gets https://
+    expect((await getIPCCalls(page, 'createQuickProject'))[0][0]).toBe('https://example.com')
+    await expect(page.getByLabel('Test name')).toHaveValue('Checkout works')
   })
 
   test('landing page info modals show correct content', async ({ page }) => {
     await goToLanding(page)
 
-    // Cards are ordered Recorder, Create, Open
+    // Cards are ordered Quick record, Create, Open
     const infoIcons = page.locator('button[aria-label="Help"]')
     await expect(infoIcons).toHaveCount(3)
 
@@ -100,7 +92,7 @@ test.describe('User Workflows', () => {
     ).toBeVisible()
   })
 
-  test('full navigation round trip: all pages', async ({ electronApp, page }) => {
+  test('full navigation round trip: all pages', async ({ page }) => {
     await goToLanding(page)
     await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
 
@@ -111,29 +103,11 @@ test.describe('User Workflows', () => {
     await page.getByRole('button', { name: 'Back' }).click()
     await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
 
-    await enterMainLayout(electronApp, page)
-    await page.locator('a[href="#/recorder"]').click()
-    await page.waitForTimeout(500)
-    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).toBeVisible()
+    await setupProjectContext(page)
+    await navigateTo(page, '/overview')
+    await expect(page.getByText('Select a test, or create a new one.')).toBeVisible()
 
-    await page.locator('a[href="#/overview"]').click()
-    await page.waitForTimeout(500)
-    await expect(page).toHaveURL(/#\/overview/)
-  })
-
-  test('multiple suites can be created and are all visible', async ({ page }) => {
-    await goToRecorder(page)
-
-    await createSuiteViaUI(page, 'Suite A')
-    await createSuiteViaUI(page, 'Suite B')
-    await createSuiteViaUI(page, 'Suite C')
-
-    // The active suite (last created) is shown in dropdown button
-    await expect(page.getByRole('heading', { name: 'Suite: Suite C' })).toBeVisible()
-
-    // The suite selector lists every suite
-    const suiteSelect = page.locator('select[aria-label="Select a Suite"]')
-    const options = await suiteSelect.locator('option').allTextContents()
-    expect(options).toEqual(expect.arrayContaining(['Suite A', 'Suite B', 'Suite C']))
+    await navigateTo(page, '/overview/tests/new')
+    await expect(page.getByLabel('Test name')).toBeVisible()
   })
 })
