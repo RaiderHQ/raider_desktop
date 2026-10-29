@@ -260,7 +260,11 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
           ) : (
             view && (
               <div className="flex-1 min-h-[12rem] flex flex-row gap-4">
-                <ul aria-label={t('testPage.examples')} className="w-56 shrink-0 space-y-1">
+                {/* Narrow windows keep room for the code beside the list */}
+                <ul
+                  aria-label={t('testPage.examples')}
+                  className="w-56 max-w-[40%] shrink-0 space-y-1"
+                >
                   {view.examples.map((example, index) => (
                     <li key={`${index}-${example.name}`}>
                       <button
