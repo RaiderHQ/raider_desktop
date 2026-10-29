@@ -13,31 +13,18 @@ type ElectronFixtures = {
  */
 async function getMainWindow(app: ElectronApplication): Promise<Page> {
   // Wait for at least one window
-  let mainWindow = await app.firstWindow()
+  await app.firstWindow()
 
-  // Check if this is the DevTools window
-  const url = mainWindow.url()
-  if (url.includes('devtools://')) {
-    // Wait for the actual app window to appear
-    mainWindow = await new Promise<Page>((resolve) => {
-      const check = () => {
-        for (const win of app.windows()) {
-          if (!win.url().includes('devtools://')) {
-            resolve(win)
-            return
-          }
-        }
-      }
-      // Check existing windows first
-      check()
-      // Listen for new windows
-      app.on('window', () => {
-        check()
-      })
-    })
+  // The DevTools window can open first and briefly report about:blank before its
+  // devtools:// URL, so poll until a window is showing the app itself.
+  const isAppWindow = (win: Page): boolean => /^(file|https?):/.test(win.url())
+  const deadline = Date.now() + 15000
+  while (Date.now() < deadline) {
+    const mainWindow = app.windows().find(isAppWindow)
+    if (mainWindow) return mainWindow
+    await new Promise((resolve) => setTimeout(resolve, 100))
   }
-
-  return mainWindow
+  throw new Error(`No app window found; windows: ${app.windows().map((w) => w.url()).join(', ')}`)
 }
 
 /**

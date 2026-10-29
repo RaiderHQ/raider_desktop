@@ -225,6 +225,56 @@ describe('loadRaiderResults', () => {
     expect(rows![1].screenshot).toBeUndefined()
   })
 
+  it('maps the first video/* attachment to row.video under resultsDir', async () => {
+    const api = makeApi({
+      'run.json': run([
+        r('F: vid', 'failed', {
+          attachments: [
+            { name: 'v', content_type: 'video/webm', path: 'attachments/0-video.webm' },
+            { name: 'v2', content_type: 'video/mp4', path: 'attachments/1-video.mp4' }
+          ]
+        })
+      ])
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows![0].video).toBe('/proj/raider-results/attachments/0-video.webm')
+  })
+
+  it('ignores a video with an unsafe path', async () => {
+    const api = makeApi({
+      'run.json': run([
+        r('F: vid', 'failed', {
+          attachments: [{ name: 'v', content_type: 'video/webm', path: '../../etc/x.webm' }]
+        })
+      ])
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows![0].video).toBeUndefined()
+  })
+
+  it('accepts only flat attachments(-N)/<file> paths for screenshots and videos alike', async () => {
+    const both = (p: string): object => ({
+      attachments: [
+        { name: 's', content_type: 'image/png', path: p.replace('.webm', '.png') },
+        { name: 'v', content_type: 'video/webm', path: p }
+      ]
+    })
+    const api = makeApi({
+      'run.json': run([
+        r('F: nested', 'failed', both('attachments/x/0-video.webm')),
+        r('F: shard', 'failed', both('attachments-2/0-video.webm')),
+        r('F: bare', 'failed', both('attachments'))
+      ])
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows![0].screenshot).toBeUndefined()
+    expect(rows![0].video).toBeUndefined()
+    expect(rows![1].screenshot).toBe('/proj/raider-results/attachments-2/0-video.png')
+    expect(rows![1].video).toBe('/proj/raider-results/attachments-2/0-video.webm')
+    expect(rows![2].screenshot).toBeUndefined()
+    expect(rows![2].video).toBeUndefined()
+  })
+
   it('returns null when the folder is missing', async () => {
     expect(await loadRaiderResults('/proj', makeApi({}))).toBeNull()
   })

@@ -42,13 +42,15 @@ const KEPT_STATUSES = new Set(['passed', 'failed', 'quarantined'])
 export const mapStatus = (status: string | undefined): string =>
   status !== undefined && KEPT_STATUSES.has(status) ? status : 'skipped'
 
-// run.json is untrusted: only accept relative paths inside attachments[-<n>]/.
+// run.json is untrusted: only accept attachments[-<n>]/<file>. raider_reporter
+// writes every attachment flat there (Payload#attachments_dir), and the
+// raider-media protocol serves videos only from that same flat shape.
 const safeAttachmentPath = (raw: string): string | null => {
   const p = raw.replace(/\\/g, '/')
   if (p.startsWith('/') || /^[A-Za-z]:/.test(p)) return null
   const segments = p.split('/')
   if (segments.some((seg) => seg === '' || seg === '..' || seg === '.')) return null
-  if (!/^attachments(-\d+)?$/.test(segments[0]) || segments.length < 2) return null
+  if (!/^attachments(-\d+)?$/.test(segments[0]) || segments.length !== 2) return null
   return p
 }
 
@@ -70,6 +72,11 @@ const toRow = (result: RaiderResult, resultsDir: string): TestResult => {
   )
   const safe = image?.path ? safeAttachmentPath(image.path) : null
   if (safe) row.screenshot = `${resultsDir}/${safe}`
+  const video = (result.attachments ?? []).find(
+    (a) => a.content_type?.startsWith('video/') && a.path
+  )
+  const safeVideo = video?.path ? safeAttachmentPath(video.path) : null
+  if (safeVideo) row.video = `${resultsDir}/${safeVideo}`
   return row
 }
 

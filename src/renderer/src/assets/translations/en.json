@@ -355,6 +355,7 @@
     "breakdown": "Test Results Breakdown",
     "status": "Status",
     "viewScreenshot": "View Screenshot",
+    "video": "Failure video",
     "passed": "Passed",
     "failed": "Failed",
     "skipped": "Skipped",

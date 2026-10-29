@@ -21,6 +21,7 @@ import rerunFailedTests from './handlers/testing/rerunFailedTests'
 import readFile from './handlers/io/readFile'
 import readImage from './handlers/io/readImage'
 import { openReport, reportExists } from './handlers/openReport'
+import { registerMediaScheme, registerMediaHandler } from './handlers/media/mediaProtocol'
 import editFile from './handlers/io/editFile'
 import deleteFile from './handlers/io/deleteFile'
 import renameFile from './handlers/io/renameFile'
@@ -146,8 +147,11 @@ function createWindow(): void {
   }
 }
 
+registerMediaScheme()
+
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.ruby-raider')
+  registerMediaHandler()
 
   app.on('before-quit', () => {
     quitting = true

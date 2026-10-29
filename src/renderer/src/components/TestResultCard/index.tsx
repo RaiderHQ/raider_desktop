@@ -17,6 +17,7 @@ import toast from 'react-hot-toast'
 import TraceTimeline from '@components/TraceTimeline'
 import TraceDetailPanel from '@components/TraceDetailPanel'
 import Tooltip from '@components/Tooltip'
+import { toMediaUrl } from '@foundation/mediaUrl'
 import type { TraceStep } from '@foundation/Types/traceStep'
 
 interface A11yNode {
@@ -67,6 +68,7 @@ interface TestResultCardProps {
   name: string
   status: string
   screenshot?: string
+  video?: string
   message?: string | null
   backtrace?: string[]
   traceTestId?: string
@@ -165,6 +167,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
   name,
   status,
   screenshot,
+  video,
   message,
   backtrace,
   traceTestId
@@ -269,6 +272,21 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
                 {backtrace.join('\n')}
               </pre>
             </div>
+          )}
+
+          {video && (
+            <details className="mt-3" onClick={(e) => e.stopPropagation()}>
+              <summary className="text-xs text-ruby cursor-pointer hover:underline">
+                {t('testResults.video')}
+              </summary>
+              <video
+                controls
+                preload="metadata"
+                src={toMediaUrl(video)}
+                data-testid="result-video"
+                className="mt-2 w-full max-w-xl rounded border border-neutral-bdr"
+              />
+            </details>
           )}
 
           <div className="flex gap-3 mt-2">

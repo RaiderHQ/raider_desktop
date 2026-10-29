@@ -14,5 +14,6 @@ export interface TestResult {
   status: string
   attachments?: Attachment[]
   screenshot?: string
+  video?: string
   statusDetails?: StatusDetails
 }
