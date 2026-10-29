@@ -99,8 +99,22 @@ describe('renderStep secret type steps', () => {
     )
   })
 
-  it('falls back to RAIDER_SECRET for a step that has no name yet', () => {
-    expect(renderStep(secret, 'watir')).toContain("ENV.fetch('RAIDER_SECRET')")
+  it('refuses a secret step that has no variable yet', () => {
+    expect(() => renderStep(secret, 'watir')).toThrow(/no variable/)
+  })
+
+  it.each(['GITHUB_TOKEN', 'RAIDER_TOKEN', 'RAIDER_SECRET'])(
+    'refuses to read %s, which is not a RAIDER_SECRET_ variable',
+    (secretName) => {
+      const bad = { ...secret, secretName } as Step
+      expect(() => renderStep(bad, 'selenium')).toThrow(/RAIDER_SECRET_/)
+    }
+  )
+
+  it('reads RAIDER_SECRET_LOGIN', () => {
+    expect(renderStep({ ...secret, secretName: 'RAIDER_SECRET_LOGIN' } as Step, 'watir')).toContain(
+      "ENV.fetch('RAIDER_SECRET_LOGIN')"
+    )
   })
 })
 

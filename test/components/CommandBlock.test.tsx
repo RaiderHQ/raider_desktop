@@ -96,9 +96,19 @@ describe('CommandBlock', () => {
 
       it('renames the variable', async () => {
         const onEdit = vi.fn()
-        await rename(onEdit, 'ADMIN_PASSWORD')
-        expect(onEdit).toHaveBeenCalledWith(0, { ...secret, secretName: 'ADMIN_PASSWORD' })
+        await rename(onEdit, 'RAIDER_SECRET_ADMIN')
+        expect(onEdit).toHaveBeenCalledWith(0, { ...secret, secretName: 'RAIDER_SECRET_ADMIN' })
       })
+
+      it.each(['admin password', 'GITHUB_TOKEN', 'RAIDER_TOKEN', 'RAIDER_SECRET'])(
+        'refuses %j, which is not a RAIDER_SECRET_ variable',
+        async (name) => {
+          const onEdit = vi.fn()
+          await rename(onEdit, name)
+          expect(onEdit).not.toHaveBeenCalled()
+          expect(screen.getByText('recorder.step.secretNameInvalid')).toBeInTheDocument()
+        }
+      )
 
       it('refuses a name that is not an environment variable name', async () => {
         const onEdit = vi.fn()

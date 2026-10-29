@@ -104,7 +104,11 @@ function recorderEvent(data: RecorderEventData): void {
   const traceStep: TraceStep = {
     id: randomUUID(),
     stepId: step.id,
-    command: renderStep(step, toAutomation(appState.projectAutomation)),
+    // The app names a secret step when it adds it, after this; the trace shows a placeholder
+    command: renderStep(
+      step.kind === 'type' && step.secret ? { ...step, secretName: 'RAIDER_SECRET_N' } : step,
+      toAutomation(appState.projectAutomation)
+    ),
     timestamp: Date.now(),
     url: data.pageUrl || '',
     elementInfo: {

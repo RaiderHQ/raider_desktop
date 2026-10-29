@@ -78,3 +78,7 @@ async function showAllCode(listing: string): Promise<void> {
 }
 
 export const importCancelled = (): string => englishText(`${K}.cancelled`)
+
+/** Why an import was refused: a secret step reads a variable that isn't RAIDER_SECRET_. */
+export const secretRefused = (name: string): string =>
+  englishText(`${K}.secretNameRefused`, { name })

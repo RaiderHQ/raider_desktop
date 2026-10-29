@@ -443,7 +443,8 @@
       "showAll": "Show all code",
       "truncated": "Showing the first {{shown}} of {{total}} lines.",
       "cancel": "Cancel",
-      "cancelled": "Nothing was imported."
+      "cancelled": "Nothing was imported.",
+      "secretNameRefused": "A password step in this file reads {{name}}. Password steps can only read variables that start with RAIDER_SECRET_, so nothing was imported."
     },
     "saved": "Saved to your project as {{name}} ({{file}})",
     "savedNoFile": "Saved to your project as {{name}}",
@@ -615,7 +616,9 @@
       "custom": "Custom code step",
       "secretRename": "Change variable",
       "secretNameLabel": "Variable name",
-      "secretNameInvalid": "Use capital letters, digits and _, starting with a letter, for example ADMIN_PASSWORD.",
+      "secretNameInvalid": "Use RAIDER_SECRET_ followed by capital letters, digits or _, for example RAIDER_SECRET_ADMIN.",
+      "secretNameRefused": "This step reads {{name}}. A password step can only read a variable that starts with RAIDER_SECRET_, so it wasn't used.",
+      "secretUnnamed": "This password step has no variable yet.",
       "secretMissing": "This step types a password from {{name}}, which isn't set on this computer. Set it, restart Raider, and try again.",
       "renderFailed": "Couldn't render code"
     }

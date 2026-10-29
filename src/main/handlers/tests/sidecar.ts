@@ -2,7 +2,7 @@ import fs from 'fs/promises'
 import { randomBytes } from 'crypto'
 import { dirname, isAbsolute, join, relative, resolve } from 'path'
 import { isStep } from '../../../shared/types/step'
-import { withSecretNames } from '../../../shared/secretSteps'
+import { refusedSecretName, withSecretNames } from '../../../shared/secretSteps'
 import type { Sidecar } from '../../../shared/types/projectTest'
 
 export class SidecarUnreadableError extends Error {
@@ -160,6 +160,15 @@ export async function readSidecar(projectPath: string, fileRel: string): Promise
     parsed = JSON.parse(raw)
   } catch {
     throw new SidecarUnreadableError(`Sidecar is not valid JSON: ${fileRel}`)
+  }
+  const steps = (parsed as { steps?: unknown }).steps
+  const refused = Array.isArray(steps)
+    ? steps.map(refusedSecretName).find((name) => name !== undefined)
+    : undefined
+  if (refused !== undefined) {
+    throw new SidecarUnreadableError(
+      `Sidecar ${fileRel} has a password step that reads ${refused}. Only RAIDER_SECRET_ variables are allowed.`
+    )
   }
   if (!isSidecar(parsed)) throw new SidecarUnreadableError(`Sidecar has a bad shape: ${fileRel}`)
   // Secret steps saved before names were stored are named once here; the next save keeps them

@@ -5,7 +5,7 @@ import { persistActiveSuites } from '../suitePersistence'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
 import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
-import { confirmCustomCode, importCancelled } from './confirmCustomCode'
+import { confirmCustomCode, importCancelled, secretRefused } from './confirmCustomCode'
 import {
   activeSuiteMode,
   broadcast,
@@ -51,6 +51,9 @@ export default async function importTest(
 
     // Exported files carry their steps as JSON; older files hold Ruby lines
     const header = readExportHeader(fileContent)
+    if (header.refusedSecret !== undefined) {
+      return { success: false, error: secretRefused(header.refusedSecret) }
+    }
     const stepIds = new Set(suite.tests.flatMap((t) => t.steps.map((step) => step.id)))
     const steps = withUniqueIds(header.steps ?? [], stepIds)
     const newTest: Test = {

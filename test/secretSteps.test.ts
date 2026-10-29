@@ -35,7 +35,7 @@ describe('nextSecretName', () => {
   })
 
   it('ignores renamed variables that are not RAIDER_SECRET_<n>', () => {
-    expect(nextSecretName([secret('a', 'ADMIN_PASSWORD')])).toBe('RAIDER_SECRET_1')
+    expect(nextSecretName([secret('a', 'RAIDER_SECRET_ADMIN')])).toBe('RAIDER_SECRET_1')
   })
 })
 
@@ -49,7 +49,7 @@ describe('nameSecretStep', () => {
   it('leaves other steps and named secrets alone', () => {
     const click: Step = { id: 'c', kind: 'click', element: el }
     expect(nameSecretStep(click, [])).toBe(click)
-    const named = secret('d', 'USER_PASSWORD')
+    const named = secret('d', 'RAIDER_SECRET_USER')
     expect(nameSecretStep(named, [])).toBe(named)
   })
 })
@@ -78,18 +78,32 @@ describe('withSecretNames', () => {
 })
 
 describe('isValidSecretName', () => {
-  it.each(['RAIDER_SECRET_1', 'ADMIN_PASSWORD', 'A'])('accepts %s', (name) =>
-    expect(isValidSecretName(name)).toBe(true)
+  it.each(['RAIDER_SECRET_1', 'RAIDER_SECRET_LOGIN', 'RAIDER_SECRET_ADMIN_2'])(
+    'accepts %s',
+    (name) => expect(isValidSecretName(name)).toBe(true)
   )
-  it.each(['', 'admin', '1PASSWORD', 'MY-PASS', 'A B', '_X', "X'"])('refuses %j', (name) =>
-    expect(isValidSecretName(name)).toBe(false)
-  )
+  it.each([
+    'GITHUB_TOKEN',
+    'RAIDER_TOKEN',
+    'RAIDER_ENDPOINT',
+    'RAIDER_SECRET',
+    'RAIDER_SECRET_',
+    'raider_secret_1',
+    'RAIDER_SECRET_a',
+    'RAIDER_SECRET_1 X',
+    'PATH',
+    ''
+  ])('refuses %j', (name) => expect(isValidSecretName(name)).toBe(false))
 })
 
 describe('missingSecrets', () => {
   it('lists the variables that are not set, once each, in order', () => {
-    const steps = [secret('a', 'USER_PW'), secret('b', 'ADMIN_PW'), secret('c', 'USER_PW')]
-    expect(missingSecrets(steps, { ADMIN_PW: 'x' })).toEqual(['USER_PW'])
-    expect(missingSecrets(steps, { USER_PW: '', ADMIN_PW: 'x' })).toEqual([])
+    const steps = [
+      secret('a', 'RAIDER_SECRET_USER'),
+      secret('b', 'RAIDER_SECRET_ADMIN'),
+      secret('c', 'RAIDER_SECRET_USER')
+    ]
+    expect(missingSecrets(steps, { RAIDER_SECRET_ADMIN: 'x' })).toEqual(['RAIDER_SECRET_USER'])
+    expect(missingSecrets(steps, { RAIDER_SECRET_USER: '', RAIDER_SECRET_ADMIN: 'x' })).toEqual([])
   })
 })

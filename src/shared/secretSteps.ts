@@ -5,10 +5,22 @@ export type SecretStep = Extract<Step, { kind: 'type' }> & { secret: true }
 export const isSecretStep = (step: Step): step is SecretStep =>
   step.kind === 'type' && step.secret === true
 
-/** The variable a secret step reads before it has a name (e.g. a trace command). */
+/** Shown for a secret step that has no variable yet; never read or generated. */
 export const SECRET_ENV_FALLBACK = 'RAIDER_SECRET'
 
 export const isValidSecretName = (name: string): boolean => SECRET_NAME.test(name)
+
+/**
+ * The variable a step would read when it isn't one a secret step may read, e.g. from
+ * an imported file or a sidecar; undefined otherwise. Works on unchecked JSON too.
+ */
+export function refusedSecretName(step: unknown): string | undefined {
+  if (typeof step !== 'object' || step === null) return undefined
+  const { kind, secretName } = step as { kind?: unknown; secretName?: unknown }
+  if (kind !== 'type' || secretName === undefined) return undefined
+  if (typeof secretName === 'string' && isValidSecretName(secretName)) return undefined
+  return String(secretName)
+}
 
 // Custom code (e.g. a hand-edited secret step) can read a variable too
 const NUMBERED = /RAIDER_SECRET_(\d+)/g

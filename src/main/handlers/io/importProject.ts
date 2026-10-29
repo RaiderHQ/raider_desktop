@@ -7,7 +7,12 @@ import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
 import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
-import { confirmCustomCode, importCancelled, type ImportedTest } from './confirmCustomCode'
+import {
+  confirmCustomCode,
+  importCancelled,
+  secretRefused,
+  type ImportedTest
+} from './confirmCustomCode'
 import {
   activeSuiteMode,
   addSuites,
@@ -65,6 +70,9 @@ export default async function importProject(
 
           // Exported files carry their steps as JSON; older files hold Ruby lines
           const header = readExportHeader(fileContent)
+          if (header.refusedSecret !== undefined) {
+            return { success: false, error: secretRefused(header.refusedSecret) }
+          }
           const steps = withUniqueIds(header.steps ?? [], stepIds)
           const newTest: Test = {
             id: randomUUID(),

@@ -116,18 +116,32 @@ describe('replayInWebview', () => {
       expect(result).toEqual({ success: true, skippedStepIds: [] })
     })
 
+    it('refuses a variable that is not RAIDER_SECRET_, and never reads or types it', async () => {
+      process.env.GITHUB_TOKEN = 'ghp_leak'
+      try {
+        const result = await run([{ ...secret('a'), secretName: 'GITHUB_TOKEN' } as Step])
+        expect(result.success).toBe(false)
+        expect(result.failedStepId).toBe('a')
+        expect(result.error).toContain('GITHUB_TOKEN')
+        expect(result.error).toContain('RAIDER_SECRET_')
+        expect(JSON.stringify(mockExecuteJavaScript.mock.calls)).not.toContain('ghp_leak')
+      } finally {
+        delete process.env.GITHUB_TOKEN
+      }
+    })
+
     it('reads the variable stored on the step, wherever the step now is', async () => {
-      process.env.ADMIN_PW = 'admin-secret'
+      process.env.RAIDER_SECRET_ADMIN = 'admin-secret'
       process.env.RAIDER_SECRET_1 = 'user-secret'
       try {
         await run([
-          { ...secret('b'), secretName: 'ADMIN_PW' } as Step,
+          { ...secret('b'), secretName: 'RAIDER_SECRET_ADMIN' } as Step,
           { ...secret('a'), secretName: 'RAIDER_SECRET_1' } as Step
         ])
         expect(jsAt(0)).toContain(`setter.call(el, ${JSON.stringify('admin-secret')})`)
         expect(jsAt(1)).toContain(`setter.call(el, ${JSON.stringify('user-secret')})`)
       } finally {
-        delete process.env.ADMIN_PW
+        delete process.env.RAIDER_SECRET_ADMIN
       }
     })
 

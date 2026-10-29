@@ -8,7 +8,7 @@ import { generateRspecFile, toAutomation } from '../../codegen/testFile'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
 import { quoteShellArg } from '../../utils/shellQuote'
 import type { Step } from '../../../shared/types/step'
-import { missingSecrets } from '../../../shared/secretSteps'
+import { missingSecrets, refusedSecretName } from '../../../shared/secretSteps'
 import { englishText } from '../../../shared/describeStepEnglish'
 
 interface ReplayResult {
@@ -32,6 +32,13 @@ async function replayStepsAndRecord(
 ): Promise<ReplayResult> {
   if (!isValidRubyCommand(rubyCommand)) {
     return { success: false, error: 'The Ruby command is not valid, so the replay did not run.' }
+  }
+  const refused = stepsToReplay.map(refusedSecretName).find((name) => name !== undefined)
+  if (refused !== undefined) {
+    return {
+      success: false,
+      error: englishText('recorder.step.secretNameRefused', { name: refused })
+    }
   }
   // The replayed spec reads secrets with ENV.fetch, so say which one is missing up front
   const [missing] = missingSecrets(stepsToReplay, process.env)

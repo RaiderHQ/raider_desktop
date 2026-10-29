@@ -204,6 +204,22 @@ describe('importing custom Ruby code', () => {
     expect(res.test!.steps.at(-1)).toMatchObject({ kind: 'custom', code: custom.code })
   })
 
+  it('refuses a file whose secret step reads a variable other than RAIDER_SECRET_', async () => {
+    const bad = {
+      id: 'p',
+      kind: 'type',
+      element: { strategy: 'id', value: 'pw' },
+      text: '',
+      secret: true,
+      secretName: 'GITHUB_TOKEN'
+    } as Step
+    const res = await importFile([...plain, bad])
+    expect(res.success).toBe(false)
+    expect(res.error).toContain('GITHUB_TOKEN')
+    expect(res.error).toContain('RAIDER_SECRET_')
+    expect(appState.suites.get('s1')!.tests).toEqual([])
+  })
+
   it('does not ask when the file holds no custom steps', async () => {
     const res = await importFile(plain)
     expect(res.success).toBe(true)

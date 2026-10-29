@@ -136,6 +136,27 @@ describe('replayStepsAndRecord', () => {
     expect(mockExec).not.toHaveBeenCalled()
   })
 
+  it('refuses a secret step that reads a variable other than RAIDER_SECRET_', async () => {
+    process.env.RAIDER_TOKEN = 'hideout-token'
+    try {
+      const bad = {
+        id: 's',
+        kind: 'type',
+        element: { strategy: 'id', value: 'pw' },
+        text: '',
+        secret: true,
+        secretName: 'RAIDER_TOKEN'
+      } as Step
+      const result = await replayStepsAndRecord({} as never, 'T', [bad], 'ruby')
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('RAIDER_TOKEN')
+      expect(mockExec).not.toHaveBeenCalled()
+      expect(mockWriteFile).not.toHaveBeenCalled()
+    } finally {
+      delete process.env.RAIDER_TOKEN
+    }
+  })
+
   it('reports a failed replay', async () => {
     mockExec.mockImplementation(
       (

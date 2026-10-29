@@ -1,7 +1,7 @@
 import { webContents } from 'electron'
 import { appState } from '../appState'
 import { describeStepEnglish, englishText } from '../../../shared/describeStepEnglish'
-import { secretNameOf, withSecretNames } from '../../../shared/secretSteps'
+import { isValidSecretName, secretNameOf, withSecretNames } from '../../../shared/secretSteps'
 import type { ElementTarget, Step } from '../../../shared/types/step'
 
 const POLL_INTERVAL_MS = 100
@@ -299,6 +299,10 @@ function runSecretType(
   timeoutMs: number
 ): Promise<string | null> {
   const secretName = secretNameOf(step)
+  // Never read a variable a secret step may not name (e.g. GITHUB_TOKEN from a shared test)
+  if (!isValidSecretName(secretName)) {
+    return Promise.resolve(englishText('recorder.step.secretNameRefused', { name: secretName }))
+  }
   const value = process.env[secretName]
   if (value === undefined) {
     return Promise.resolve(englishText('recorder.step.secretMissing', { name: secretName }))

@@ -38,8 +38,12 @@ export type Step =
   | { id: string; kind: 'custom'; code: string }
 
 const STRATEGIES = ['id', 'css', 'xpath']
-/** An environment variable name a user may give a secret: capitals, digits and _. */
-export const SECRET_NAME = /^[A-Z][A-Z0-9_]*$/
+/**
+ * The variables a secret step may read: RAIDER_SECRET_ then capitals, digits and _.
+ * Only these, so a shared test can't read a real credential (GITHUB_TOKEN, or the
+ * Hideout client's RAIDER_TOKEN) and type it into a page.
+ */
+export const SECRET_NAME = /^RAIDER_SECRET_[A-Z0-9_]+$/
 const WAIT_UNTIL = ['visible', 'hidden', 'enabled']
 const ASSERT_KINDS: AssertKind[] = [
   'displayed',

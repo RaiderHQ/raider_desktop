@@ -69,6 +69,21 @@ describe('sidecar store', () => {
     ])
   })
 
+  it('readSidecar refuses a secret step that reads a variable other than RAIDER_SECRET_', async () => {
+    const pw = { strategy: 'id' as const, value: 'pw' }
+    const bad = sidecar('spec/a_spec.rb', {
+      steps: [
+        { id: 'a', kind: 'type', element: pw, text: '', secret: true, secretName: 'GITHUB_TOKEN' }
+      ]
+    })
+    await mkdir(join(testsDir(), 'spec'), { recursive: true })
+    await writeFile(sidecarPath(project, 'spec/a_spec.rb'), JSON.stringify(bad))
+    const error = await readSidecar(project, 'spec/a_spec.rb').catch((e: Error) => e)
+    expect(error).toBeInstanceOf(SidecarUnreadableError)
+    expect((error as Error).message).toContain('GITHUB_TOKEN')
+    expect((error as Error).message).toContain('RAIDER_SECRET_')
+  })
+
   it('readSidecar returns null when missing', async () => {
     expect(await readSidecar(project, 'spec/none_spec.rb')).toBeNull()
   })
