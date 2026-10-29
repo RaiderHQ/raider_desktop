@@ -1,37 +1,63 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { parsePrefixedOutput } from '../../../src/main/handlers/run/outputPrefix'
+import { OutputPrefixParser } from '../../../src/main/handlers/run/outputPrefix'
 
-describe('parsePrefixedOutput', () => {
+describe('OutputPrefixParser', () => {
   it('splits per worker and maps an empty number to worker 1', () => {
-    const parts = parsePrefixedOutput('[2] ..F\n[] done\n')
-    expect(parts.map((p) => p.worker)).toEqual([2, 1])
-    expect(parts.map((p) => p.text)).toEqual(['..F\n', 'done\n'])
-  })
-
-  it('leaves unprefixed text with an undefined worker', () => {
-    expect(parsePrefixedOutput('hello\nworld\n')).toEqual([
-      { worker: undefined, text: 'hello\nworld\n' }
+    const p = new OutputPrefixParser()
+    expect(p.push('[TEST GROUP 2] ..F\n[TEST GROUP ] done\n')).toEqual([
+      { worker: 2, text: '..F\n' },
+      { worker: 1, text: 'done\n' }
     ])
   })
 
-  it('coalesces consecutive lines of the same worker', () => {
-    expect(parsePrefixedOutput('[3] a\n[3] b\n')).toEqual([{ worker: 3, text: 'a\nb\n' }])
-  })
-
-  it('understands the parallel_tests "[TEST GROUP N]" prefix', () => {
-    const parts = parsePrefixedOutput('[TEST GROUP 2] x\n[TEST GROUP ] y\n')
-    expect(parts).toEqual([
-      { worker: 2, text: 'x\n' },
-      { worker: 1, text: 'y\n' }
+  it('gives text before any prefix an undefined worker', () => {
+    const p = new OutputPrefixParser()
+    expect(p.push('hello\n[TEST GROUP 3] x\n')).toEqual([
+      { worker: undefined, text: 'hello\n' },
+      { worker: 3, text: 'x\n' }
     ])
   })
 
-  it('keeps a trailing partial line without a newline', () => {
-    expect(parsePrefixedOutput('[2] abc')).toEqual([{ worker: 2, text: 'abc' }])
+  it('lets a multi-line read inherit its worker, across pushes too', () => {
+    const p = new OutputPrefixParser()
+    expect(p.push('[TEST GROUP 2] a\nb\n')).toEqual([{ worker: 2, text: 'a\nb\n' }])
+    expect(p.push('c\n')).toEqual([{ worker: 2, text: 'c\n' }])
   })
 
-  it('returns nothing for an empty chunk', () => {
-    expect(parsePrefixedOutput('')).toEqual([])
+  it('switches worker on a mid-line prefix and strips it', () => {
+    const p = new OutputPrefixParser()
+    expect(p.push('[TEST GROUP 2] .[TEST GROUP ] F')).toEqual([
+      { worker: 2, text: '.' },
+      { worker: 1, text: 'F' }
+    ])
+  })
+
+  it('handles a prefix split across two pushes', () => {
+    const p = new OutputPrefixParser()
+    expect(p.push('[TEST GR')).toEqual([])
+    expect(p.push('OUP 2] x')).toEqual([{ worker: 2, text: 'x' }])
+    expect(p.push('a[TEST GROUP 1')).toEqual([{ worker: 2, text: 'a' }])
+    expect(p.push('2] y')).toEqual([{ worker: 12, text: 'y' }])
+  })
+
+  it('handles two writes merged in one push', () => {
+    const p = new OutputPrefixParser()
+    expect(p.push('[TEST GROUP 1] a\n[TEST GROUP 2] b\n')).toEqual([
+      { worker: 1, text: 'a\n' },
+      { worker: 2, text: 'b\n' }
+    ])
+  })
+
+  it('flush releases a held fragment that was not a prefix', () => {
+    const p = new OutputPrefixParser()
+    expect(p.push('[TEST GROUP 2] ok [TEST')).toEqual([{ worker: 2, text: 'ok ' }])
+    expect(p.flush()).toEqual([{ worker: 2, text: '[TEST' }])
+    expect(p.flush()).toEqual([])
+  })
+
+  it('does not treat bare [N] as a prefix', () => {
+    const p = new OutputPrefixParser()
+    expect(p.push('[1] pry(main)> ')).toEqual([{ worker: undefined, text: '[1] pry(main)> ' }])
   })
 })
