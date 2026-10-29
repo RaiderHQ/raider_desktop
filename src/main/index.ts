@@ -231,8 +231,8 @@ app.whenReady().then(() => {
   ipcMain.handle('install-gems', (_event, rubyCommand: string, gems: string[]) =>
     installGems(rubyCommand, gems)
   )
-  ipcMain.handle('render-step', (_event, step: Step) =>
-    renderStep(step, toAutomation(appState.projectAutomation))
+  ipcMain.handle('render-step', (_event, step: Step, secretName?: string) =>
+    renderStep(step, toAutomation(appState.projectAutomation), { secretName })
   )
   ipcMain.handle('get-suites', getSuites)
   ipcMain.handle('list-project-tests', listProjectTestsHandler)

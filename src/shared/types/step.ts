@@ -21,7 +21,9 @@ export type AssertKind =
 export type Step =
   | { id: string; kind: 'navigate'; url: string }
   | { id: string; kind: 'click'; element: ElementTarget }
-  | { id: string; kind: 'type'; element: ElementTarget; text: string }
+  // A secret step (a password field) never holds its value: text is '' and the value
+  // comes from a RAIDER_SECRET_<n> environment variable when the test runs
+  | { id: string; kind: 'type'; element: ElementTarget; text: string; secret?: true }
   | { id: string; kind: 'pressKey'; element: ElementTarget; key: string }
   | { id: string; kind: 'wait'; element: ElementTarget; until: 'visible' | 'hidden' | 'enabled' }
   | { id: string; kind: 'assert'; check: AssertKind; element?: ElementTarget; expected?: string }
@@ -80,6 +82,7 @@ export function isStep(value: unknown): value is Step {
     case 'click':
       return isElementTarget(value.element)
     case 'type':
+      if (value.secret !== undefined && !(value.secret === true && value.text === '')) return false
       return isElementTarget(value.element) && isStr(value.text)
     case 'pressKey':
       return isElementTarget(value.element) && isStr(value.key)

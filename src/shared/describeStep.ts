@@ -1,4 +1,5 @@
 import type { AssertKind, ElementTarget, Step } from './types/step'
+import { SECRET_ENV_FALLBACK } from './secretSteps'
 
 /** An i18n key plus its interpolation values; the friendly view never shows Ruby. */
 export interface StepDescription {
@@ -30,13 +31,27 @@ const elementName = (el: ElementTarget | undefined): string =>
 
 const keyName = (key: string): string => (key === ' ' ? 'Space' : key)
 
-export function describeStep(step: Step): StepDescription {
+export interface DescribeOptions {
+  /** The variable a secret type step reads (see secretEnvNames) */
+  secretName?: string
+}
+
+export function describeStep(step: Step, opts: DescribeOptions = {}): StepDescription {
   switch (step.kind) {
     case 'navigate':
       return { key: `${P}.visit`, values: { url: step.url } }
     case 'click':
       return { key: `${P}.clickElement`, values: { element: elementName(step.element) } }
     case 'type':
+      if (step.secret) {
+        return {
+          key: `${P}.typeSecret`,
+          values: {
+            element: elementName(step.element),
+            name: opts.secretName ?? SECRET_ENV_FALLBACK
+          }
+        }
+      }
       return {
         key: `${P}.typeText`,
         values: { element: elementName(step.element), text: step.text }

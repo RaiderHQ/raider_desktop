@@ -1,6 +1,7 @@
 import { webContents } from 'electron'
 import { appState } from '../appState'
-import { describeStepEnglish } from '../../../shared/describeStepEnglish'
+import { describeStepEnglish, englishText } from '../../../shared/describeStepEnglish'
+import { SECRET_ENV_FALLBACK, secretEnvNames } from '../../../shared/secretSteps'
 import type { ElementTarget, Step } from '../../../shared/types/step'
 
 const POLL_INTERVAL_MS = 100
@@ -288,8 +289,30 @@ async function runAssert(
   return `expected ${last.expected}, got ${last.actual}`
 }
 
+/**
+ * A secret step types the value of its environment variable. When that isn't set, the
+ * step fails with a message saying so rather than typing an empty password.
+ */
+function runSecretType(
+  wc: WebContents,
+  step: Extract<Step, { kind: 'type' }>,
+  secretName: string,
+  timeoutMs: number
+): Promise<string | null> {
+  const value = process.env[secretName]
+  if (value === undefined) {
+    return Promise.resolve(englishText('recorder.step.secretMissing', { name: secretName }))
+  }
+  return runAction(wc, typeJS(step.element, value), step.element, timeoutMs)
+}
+
 /** Returns an error message, or null on success, or 'skipped' for steps replay doesn't run. */
-async function runStep(wc: WebContents, step: Step, timeoutMs: number): Promise<string | null> {
+async function runStep(
+  wc: WebContents,
+  step: Step,
+  timeoutMs: number,
+  secretName = SECRET_ENV_FALLBACK
+): Promise<string | null> {
   switch (step.kind) {
     case 'navigate':
       await navigate(wc, step.url, timeoutMs)
@@ -297,6 +320,7 @@ async function runStep(wc: WebContents, step: Step, timeoutMs: number): Promise<
     case 'click':
       return runAction(wc, clickJS(step.element), step.element, timeoutMs)
     case 'type':
+      if (step.secret) return runSecretType(wc, step, secretName, timeoutMs)
       return runAction(wc, typeJS(step.element, step.text), step.element, timeoutMs)
     case 'pressKey': {
       const key = KEY_MAP[step.key.toLowerCase()] ?? step.key
@@ -338,21 +362,23 @@ async function replayInWebview(
 
     const timeoutMs = appState.recorderSettings.explicitWait * 1000
     const skippedStepIds: string[] = []
+    const secrets = secretEnvNames(steps)
 
     for (let i = 0; i < steps.length; i++) {
       if (cancelRequested) return { success: false, cancelled: true }
 
       const step = steps[i]
+      const secretName = secrets.get(step.id)
       const fail = (message: string): WebviewReplayResult => ({
         success: false,
-        error: `Step ${i + 1} (${describeStepEnglish(step)}): ${message}`,
+        error: `Step ${i + 1} (${describeStepEnglish(step, { secretName })}): ${message}`,
         failedStepId: step.id,
         skippedStepIds
       })
 
       let outcome: string | null
       try {
-        outcome = await runStep(wc, step, timeoutMs)
+        outcome = await runStep(wc, step, timeoutMs, secretName)
       } catch (e: unknown) {
         return fail(e instanceof Error ? e.message : String(e))
       }

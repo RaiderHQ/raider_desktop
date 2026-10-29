@@ -1,6 +1,7 @@
 import { ipcRenderer } from 'electron'
 
 import { DEFAULT_PRIORITIES, getPrioritizedSelector as buildSelector } from './selectorStrategy'
+import { fieldValue, isSecretField } from './secretField'
 
 // Events fired before the IPC call resolves use the default list.
 let selectorPriorities: string[] = DEFAULT_PRIORITIES
@@ -62,7 +63,8 @@ document.addEventListener(
         selector,
         strategy,
         tagName: target.tagName,
-        value: target.value,
+        // A password's value never leaves the page; the step reads it from the environment
+        ...fieldValue(target),
         pageUrl: window.location.href,
         innerText: (target.innerText || '').slice(0, 200),
         ...labelHints(target),
@@ -117,7 +119,7 @@ document.addEventListener(
     if (target) {
       const { selector, strategy } = getPrioritizedSelector(target)
       const elementText = target.innerText || ''
-      const elementValue = (target as HTMLInputElement).value ?? ''
+      const elementValue = isSecretField(target) ? '' : ((target as HTMLInputElement).value ?? '')
       const inputType =
         target.tagName === 'INPUT' ? (target as HTMLInputElement).type.toLowerCase() : ''
       const pageTitle = document.title

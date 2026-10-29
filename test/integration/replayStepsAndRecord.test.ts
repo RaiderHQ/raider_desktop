@@ -121,6 +121,21 @@ describe('replayStepsAndRecord', () => {
     expect(mockExec.mock.calls[0][0]).toBe(`ruby -S rspec '${tempFile.replace(/'/g, `'\\''`)}'`)
   })
 
+  it('refuses to replay a secret step whose variable is not set, and runs nothing', async () => {
+    delete process.env.RAIDER_SECRET_1
+    const secret: Step = {
+      id: 's',
+      kind: 'type',
+      element: { strategy: 'id', value: 'pw' },
+      text: '',
+      secret: true
+    }
+    const result = await replayStepsAndRecord({} as never, 'T', [secret], 'ruby')
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('RAIDER_SECRET_1')
+    expect(mockExec).not.toHaveBeenCalled()
+  })
+
   it('reports a failed replay', async () => {
     mockExec.mockImplementation(
       (

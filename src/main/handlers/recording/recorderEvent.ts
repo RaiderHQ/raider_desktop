@@ -14,6 +14,8 @@ export interface RecorderEventData {
   strategy: string
   tagName: string
   value?: string
+  /** A password field: the preload sends this flag and never the value */
+  secret?: boolean
   pageUrl?: string
   innerText?: string
   ariaLabel?: string
@@ -75,6 +77,7 @@ export function recorderEventToStep(data: RecorderEventData): Step | null {
     case 'click':
       return { id, kind: 'click', element }
     case 'type':
+      if (data.secret) return { id, kind: 'type', element, text: '', secret: true }
       // A SELECT change records its selected value; it gets its own step kind later
       return data.value === undefined ? null : { id, kind: 'type', element, text: data.value }
     case 'sendKeys':

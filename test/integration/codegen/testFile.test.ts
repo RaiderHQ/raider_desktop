@@ -79,6 +79,25 @@ describe('generateRspecFile', () => {
     expect(code).not.toContain('sleep(')
   })
 
+  it('numbers secret steps per test and never writes a typed value', () => {
+    const pw = { strategy: 'id' as const, value: 'pw' }
+    const code = generateRspecFile(
+      {
+        name: 'Login',
+        steps: [
+          { id: 'a', kind: 'type', element: pw, text: '', secret: true },
+          { id: 'b', kind: 'type', element: pw, text: 'visible' },
+          { id: 'c', kind: 'type', element: pw, text: '', secret: true }
+        ]
+      },
+      'selenium',
+      settings
+    )
+    expect(code).toContain("send_keys(ENV.fetch('RAIDER_SECRET_1'))")
+    expect(code).toContain("send_keys('visible')")
+    expect(code).toContain("send_keys(ENV.fetch('RAIDER_SECRET_2'))")
+  })
+
   it('quotes the test name safely', () => {
     const code = generateRspecFile({ name: `It's "ok"`, steps: [] }, 'selenium', settings)
     expect(code).toContain(`describe 'It\\'s "ok"' do`)

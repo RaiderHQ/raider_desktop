@@ -1,5 +1,5 @@
 import en from '../renderer/src/assets/translations/en.json'
-import { describeStep } from './describeStep'
+import { describeStep, type DescribeOptions } from './describeStep'
 import type { Step } from './types/step'
 
 /** Walks a dotted i18n key through the English catalog. */
@@ -13,11 +13,16 @@ function lookup(key: string): string | undefined {
 }
 
 /**
- * English text for a step, for main-process messages (main can't use react-i18next).
- * Interpolates `{{name}}` placeholders from describeStep's values.
+ * English text for an i18n key, for main-process messages (main can't use react-i18next).
+ * Interpolates `{{name}}` placeholders from `values`.
  */
-export function describeStepEnglish(step: Step): string {
-  const { key, values } = describeStep(step)
+export function englishText(key: string, values: Record<string, string> = {}): string {
   const template = lookup(key) ?? key
   return template.replace(/\{\{(\w+)\}\}/g, (_m, name: string) => values[name] ?? '')
+}
+
+/** English text for a step, from describeStep. */
+export function describeStepEnglish(step: Step, opts: DescribeOptions = {}): string {
+  const { key, values } = describeStep(step, opts)
+  return englishText(key, values)
 }

@@ -587,6 +587,7 @@
       "clickElement": "Click \"{{element}}\"",
       "pressKey": "Press the {{key}} key on \"{{element}}\"",
       "typeText": "Type \"{{text}}\" into \"{{element}}\"",
+      "typeSecret": "Type secret (from {{name}}) into \"{{element}}\"",
       "switchToFrame": "Switch to frame \"{{element}}\"",
       "switchToDefaultContent": "Switch back to main content",
       "assertElementDisplayed": "Assert that \"{{element}}\" is displayed",
@@ -602,6 +603,7 @@
     },
     "step": {
       "custom": "Custom code step",
+      "secretMissing": "This step types a password from {{name}}, which isn't set on this computer. Set it, restart Raider, and try again.",
       "renderFailed": "Couldn't render code"
     }
   },

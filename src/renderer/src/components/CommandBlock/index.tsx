@@ -21,6 +21,8 @@ interface CommandBlockProps {
   readOnly?: boolean
   /** The step recorded last */
   latest?: boolean
+  /** The variable a secret type step reads (see secretEnvNames) */
+  secretName?: string
 }
 
 const CommandBlock: React.FC<CommandBlockProps> = ({
@@ -37,7 +39,8 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   onClearBreakpoint,
   onRecordFromHere,
   readOnly = false,
-  latest = false
+  latest = false,
+  secretName
 }) => {
   const { t } = useTranslation()
   // Ruby for the code view, rendered by the main process for the project's automation
@@ -55,7 +58,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
     setCode(null)
     setRenderFailed(false)
     window.api
-      .renderStep(step)
+      .renderStep(step, secretName)
       .then((ruby) => {
         if (isMounted) setCode(ruby)
       })
@@ -65,7 +68,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
     return (): void => {
       isMounted = false
     }
-  }, [step, showCode])
+  }, [step, showCode, secretName])
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -145,7 +148,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
     }
 
     // Friendly view
-    const { key, values } = describeStep(step)
+    const { key, values } = describeStep(step, { secretName })
     return <span className="text-neutral-dark">{t(key, values)}</span>
   }
 

@@ -80,7 +80,7 @@ describe('CommandBlock', () => {
   describe('code view', () => {
     it('shows the Ruby rendered by the main process', async () => {
       await renderBlock({ step: watirClick, showCode: true })
-      expect(renderStep).toHaveBeenCalledWith(watirClick)
+      expect(renderStep).toHaveBeenCalledWith(watirClick, undefined)
       expect(await screen.findByText('ruby for c1')).toBeInTheDocument()
     })
 

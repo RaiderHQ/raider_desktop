@@ -1,5 +1,6 @@
 import type { ElementTarget, Step } from '../../shared/types/step'
 import { rubyString } from './ruby'
+import { SECRET_ENV_FALLBACK } from '../../shared/secretSteps'
 
 export type Automation = 'selenium' | 'watir'
 
@@ -32,6 +33,8 @@ const locator = (el: ElementTarget): string => `${el.strategy}: ${rubyString(el.
 export type Receiver = 'ivar' | 'helper'
 export interface RenderOptions {
   receiver?: Receiver
+  /** The variable a secret type step reads (see secretEnvNames) */
+  secretName?: string
 }
 
 interface Names {
@@ -156,7 +159,10 @@ export function renderStep(step: Step, automation: Automation, opts: RenderOptio
         ? `${n.wait}.until { ${sel(step.element)}.displayed? }\n${sel(step.element)}.click`
         : `${wat(step.element)}.click`
     case 'type': {
-      const text = rubyString(step.text)
+      // A secret's value is never in the step; the test reads it when it runs
+      const text = step.secret
+        ? `ENV.fetch(${rubyString(opts.secretName ?? SECRET_ENV_FALLBACK)})`
+        : rubyString(step.text)
       return selenium
         ? [
             `${n.wait}.until { ${sel(step.element)}.displayed? }`,

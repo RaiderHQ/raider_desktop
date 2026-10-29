@@ -1,7 +1,8 @@
-import React, { useRef } from 'react'
+import React, { useMemo, useRef } from 'react'
 import CommandBlock from '@components/CommandBlock'
 import { useTranslation } from 'react-i18next'
 import type { Step } from '@shared/types/step'
+import { secretEnvNames } from '@shared/secretSteps'
 
 interface CommandListProps {
   steps: Step[]
@@ -33,6 +34,8 @@ const CommandList: React.FC<CommandListProps> = ({
 }) => {
   const { t } = useTranslation()
   const dragItemIndex = useRef<number | null>(null)
+  // Secrets are numbered in step order, so a drag renumbers them as the spec will
+  const secretNames = useMemo(() => secretEnvNames(steps), [steps])
 
   const handleDragStart = (index: number): void => {
     if (readOnly) return
@@ -74,6 +77,7 @@ const CommandList: React.FC<CommandListProps> = ({
               onRecordFromHere={onRecordFromHere}
               readOnly={readOnly}
               latest={markLatest && index === steps.length - 1}
+              secretName={secretNames.get(step.id)}
             />
           ))
         ) : (
