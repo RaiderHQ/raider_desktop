@@ -440,6 +440,8 @@
       "many": "These tests run custom Ruby code. Import anyway?",
       "detail": "Only import files you trust. This is the code that will run:",
       "confirm": "Import anyway",
+      "showAll": "Show all code",
+      "truncated": "Showing the first {{shown}} of {{total}} lines.",
       "cancel": "Cancel",
       "cancelled": "Nothing was imported."
     },

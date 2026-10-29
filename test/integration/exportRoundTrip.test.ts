@@ -8,9 +8,11 @@ const mockDialog = vi.hoisted(() => ({
   showOpenDialog: vi.fn(),
   showMessageBox: vi.fn()
 }))
+const mockOpenPath = vi.hoisted(() => vi.fn())
 vi.mock('electron', () => ({
   BrowserWindow: { getFocusedWindow: (): object => ({}) },
-  dialog: mockDialog
+  dialog: mockDialog,
+  shell: { openPath: mockOpenPath }
 }))
 
 import { appState } from '../../src/main/handlers/appState'
@@ -152,6 +154,48 @@ describe('importing custom Ruby code', () => {
     expect(box.defaultId).toBe(1)
     expect(res.success).toBe(false)
     expect(appState.suites.get('s1')!.tests).toEqual([])
+  })
+
+  it('says how much is hidden when the code is long, and can open all of it as text', async () => {
+    const long: Step = {
+      id: 'l',
+      kind: 'custom',
+      code: Array.from({ length: 120 }, (_, i) => `puts ${i}`).join('\n')
+    }
+    mockOpenPath.mockResolvedValue('')
+    mockDialog.showMessageBox
+      .mockResolvedValueOnce({ response: 1 }) // Show all code
+      .mockResolvedValueOnce({ response: 2 }) // Cancel
+    const res = await importFile([long])
+
+    expect(mockDialog.showMessageBox).toHaveBeenCalledTimes(2)
+    const box = mockDialog.showMessageBox.mock.calls[0][1]
+    // the test's name line plus 120 lines of code
+    expect(box.detail).toContain('Showing the first 40 of 121 lines.')
+    expect(box.detail).toContain('puts 38')
+    expect(box.detail).not.toContain('puts 39')
+    expect(box.buttons).toEqual(['Import anyway', 'Show all code', 'Cancel'])
+    expect(box.defaultId).toBe(2)
+    expect(box.cancelId).toBe(2)
+
+    const opened = mockOpenPath.mock.calls[0][0] as string
+    expect(opened.endsWith('.txt')).toBe(true)
+    const text = await readFile(opened, 'utf-8')
+    expect(text).toContain('puts 0')
+    expect(text).toContain('puts 119')
+    await rm(opened, { force: true })
+    expect(res.success).toBe(false)
+  })
+
+  it('cuts very long lines too, so nothing is pushed out of view', async () => {
+    mockDialog.showMessageBox.mockResolvedValue({ response: 2 })
+    await importFile([
+      { id: 'w', kind: 'custom', code: `x = '${'a'.repeat(10_000)}'\nsystem('id')` }
+    ])
+    const box = mockDialog.showMessageBox.mock.calls[0][1]
+    expect(box.detail.length).toBeLessThan(5000)
+    expect(box.detail).toMatch(/Showing the first \d+ of 3 lines\./)
+    expect(box.buttons).toContain('Show all code')
   })
 
   it('imports when the user confirms', async () => {
