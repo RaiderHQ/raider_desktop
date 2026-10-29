@@ -14,12 +14,19 @@ vi.mock('react-i18next', () => ({
 vi.mock('@components/Editor', () => ({
   default: ({
     value,
-    onChange
+    onChange,
+    revealLine
   }: {
     value: string
     onChange: (value: string) => void
+    revealLine?: number
   }): JSX.Element => (
-    <textarea data-testid="editor" value={value} onChange={(e) => onChange(e.target.value)} />
+    <textarea
+      data-testid="editor"
+      data-reveal-line={revealLine === undefined ? '' : String(revealLine)}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
   )
 }))
 
@@ -70,6 +77,20 @@ describe('FileEditor Page', () => {
     expect(screen.getByText('test.txt')).toBeInTheDocument()
     expect(screen.getByTestId('editor')).toBeInTheDocument()
     expect(screen.getByTestId('editor')).toHaveValue('file content')
+  })
+
+  it('passes the requested line to the editor as revealLine', async () => {
+    await act(async () => {
+      renderComponent({ line: 7 })
+    })
+    expect(screen.getByTestId('editor')).toHaveAttribute('data-reveal-line', '7')
+  })
+
+  it('passes no revealLine when no line is requested', async () => {
+    await act(async () => {
+      renderComponent()
+    })
+    expect(screen.getByTestId('editor')).toHaveAttribute('data-reveal-line', '')
   })
 
   it('Back goes to the overview by default', async () => {

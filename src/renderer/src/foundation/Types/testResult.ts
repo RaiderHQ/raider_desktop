@@ -9,6 +9,13 @@ export interface StatusDetails {
   trace?: string
 }
 
+export interface FailureInfo {
+  message: string
+  exceptionClass?: string
+  backtrace: string[]
+  appFrame?: string
+}
+
 export interface TestResult {
   name: string
   status: string
@@ -16,4 +23,7 @@ export interface TestResult {
   screenshot?: string
   video?: string
   statusDetails?: StatusDetails
+  failure?: FailureInfo
+  durationMs?: number
+  browser?: string
 }

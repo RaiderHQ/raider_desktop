@@ -24,13 +24,15 @@ vi.mock('@components/TestResultCard', () => ({
   default: ({
     name,
     status,
-    video
+    video,
+    failure
   }: {
     name: string
     status: string
     video?: string
+    failure?: unknown
   }): JSX.Element => (
-    <div data-testid="row" data-video={video}>{`${name}|${status}`}</div>
+    <div data-testid="row" data-video={video} data-failure={failure ? 'yes' : 'no'}>{`${name}|${status}`}</div>
   )
 }))
 
@@ -76,6 +78,8 @@ describe('ProjectDashboard with raider-results', () => {
     expect(screen.getByText('Login: ok|passed')).toBeInTheDocument()
     expect(screen.getByText('Login: bad|failed')).toBeInTheDocument()
     expect(readDirectory).not.toHaveBeenCalledWith('/proj/allure-results')
+    expect(screen.getByText('Login: bad|failed')).toHaveAttribute('data-failure', 'yes')
+    expect(screen.getByText('Login: ok|passed')).toHaveAttribute('data-failure', 'no')
   })
 })
 

@@ -68,7 +68,7 @@ describe('loadRaiderResults', () => {
       ['F: wip', 'skipped'],
       ['F: skip', 'skipped']
     ])
-    expect(rows![1].statusDetails?.message).toBe('boom\na:1\nb:2')
+    expect(rows![1].statusDetails?.message).toBe('boom')
   })
 
   it('merges run-1.json and run-2.json shards when there is no run.json', async () => {
@@ -181,6 +181,7 @@ describe('loadRaiderResults', () => {
     })
     const rows = await loadRaiderResults('/proj', api)
     expect(rows![0].statusDetails?.message).toBe('ab')
+    expect(rows![0].failure?.message).toBe('ab')
   })
 
   it('reports unreadable files through onError', async () => {
@@ -340,6 +341,100 @@ describe('loadRaiderResults with schema 2', () => {
       ['F: flaky', 'quarantined'],
       ['F: ok', 'passed']
     ])
-    expect(rows![0].statusDetails?.message).toBe('timeout\na:1')
+    expect(rows![0].statusDetails?.message).toBe('timeout')
+  })
+
+  it('survives a malformed run.json', async () => {
+    const api = makeApi({
+      'run.json': JSON.stringify({
+        schema_version: 2,
+        client_run_id: 'x',
+        run: {},
+        results: [
+          null,
+          'str',
+          7,
+          r('F: bad', 'failed', {
+            failure: {
+              message: 'm',
+              backtrace: [{ x: 1 }, 'a:1', 3],
+              app_frame: {},
+              exception_class: 5
+            },
+            attachments: [null, 'x', { content_type: 5, path: {} }]
+          }),
+          r('F: nofailure', 'failed', { failure: 'oops' })
+        ]
+      })
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows!.map((x) => x.name)).toEqual(['F: bad', 'F: nofailure'])
+    expect(rows![0].failure).toEqual({
+      message: 'm',
+      exceptionClass: undefined,
+      backtrace: ['a:1'],
+      appFrame: undefined
+    })
+    expect(rows![1].failure).toBeUndefined()
+    const api2 = makeApi({ 'run.json': JSON.stringify({ run: {}, results: { a: 1 } }) })
+    expect(await loadRaiderResults('/proj', api2)).toEqual([])
+  })
+
+  describe('failure details', () => {
+    const one = async (
+      result: Record<string, unknown>,
+      runObj: Record<string, unknown> = {}
+    ): Promise<import('@foundation/Types/testResult').TestResult> => {
+      const api = makeApi({
+        'run.json': JSON.stringify({ schema_version: 1, run: runObj, results: [result] })
+      })
+      return (await loadRaiderResults('/proj', api))![0]
+    }
+
+    it('passes failure, appFrame, backtrace and durationMs through', async () => {
+      const row = await one(
+        r('F: bad', 'failed', {
+          duration_ms: 1234,
+          failure: {
+            message: 'boom',
+            exception_class: 'E',
+            backtrace: ['a:1', 'b:2'],
+            app_frame: 'spec/a_spec.rb:12:in x'
+          }
+        })
+      )
+      expect(row.failure).toEqual({
+        message: 'boom',
+        exceptionClass: 'E',
+        backtrace: ['a:1', 'b:2'],
+        appFrame: 'spec/a_spec.rb:12:in x'
+      })
+      expect(row.durationMs).toBe(1234)
+    })
+
+    it('gives an empty backtrace and no appFrame when the failure has none', async () => {
+      const row = await one(r('F: bad', 'failed', { failure: { message: 'boom' } }))
+      expect(row.failure?.backtrace).toEqual([])
+      expect(row.failure?.appFrame).toBeUndefined()
+    })
+
+    it('reads browser from run.environment and leaves it undefined when absent', async () => {
+      const withBrowser = await one(r('a', 'passed'), { environment: { browser: 'chrome' } })
+      expect(withBrowser.browser).toBe('chrome')
+      const without = await one(r('a', 'passed'))
+      expect(without.browser).toBeUndefined()
+    })
+
+    it('prefers the attachment named screenshot over an earlier image', async () => {
+      const row = await one(
+        r('a', 'failed', {
+          attachments: [
+            { name: 'other', content_type: 'image/png', path: 'attachments/other.png' },
+            { name: 'screenshot', content_type: 'image/png', path: 'attachments/shot.png' }
+          ]
+        })
+      )
+      expect(row.screenshot).toBe('/proj/raider-results/attachments/shot.png')
+    })
   })
 })

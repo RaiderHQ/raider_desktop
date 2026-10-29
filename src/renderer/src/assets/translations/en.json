@@ -339,6 +339,10 @@
     "quarantined": "Quarantined",
     "quarantinedTooltip": "Failed, but quarantined in Raider; did not fail the build",
     "viewTrace": "View Trace",
+    "failedAt": "Failed at",
+    "stackTrace": "Stack trace",
+    "moreFrames": "… {{count}} more",
+    "screenshotAlt": "Failure screenshot",
     "error": {
       "imageRead": "Error reading image",
       "imageAccess": "Error accessing image file"

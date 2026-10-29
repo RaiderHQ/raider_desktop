@@ -55,7 +55,8 @@ test.describe('Failure video playback', () => {
     fs.rmSync(projectDir, { recursive: true, force: true })
   })
 
-  test('plays and seeks a failure video served via raider-media', async ({ page }) => {
+  test('plays and seeks a failure video served via raider-media', async ({ electronApp, page }) => {
+    await mockRubyReady(electronApp, page)
     await setProjectPath(page, projectDir)
     await goToOverview(page)
     await page.locator('button').filter({ hasText: 'Dashboard' }).click()
