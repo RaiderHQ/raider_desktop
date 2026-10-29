@@ -10,8 +10,10 @@ import type { ProjectLayout } from '@shared/types/projectLayout'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { IpcRendererEvent } from 'electron'
+import type { RunApi } from '@shared/types/runEvents'
 
-export interface WindowApi {
+/** Live-run methods (startRun, cancelRun, getActiveRun, getRunDefaults, onRunEvent) come from RunApi. */
+export interface WindowApi extends RunApi {
   // --- Project Management ---
   runRubyRaider: (
     folderPath: string,

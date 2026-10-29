@@ -27,7 +27,7 @@ export async function getProjectLayoutHandler(): Promise<ProjectLayout | null> {
 }
 
 // Only a file the scanner lists may be opened or run, never an arbitrary path
-async function listedFile(
+export async function listedFile(
   file: unknown
 ): Promise<{ projectPath: string; layout: ProjectLayout; file: string }> {
   await activationSettled()

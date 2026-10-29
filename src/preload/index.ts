@@ -11,6 +11,13 @@ import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
+import type {
+  ActiveRun,
+  RunDefaults,
+  RunEvent,
+  RunRequest,
+  StartRunResult
+} from '@shared/types/runEvents'
 
 declare global {
   interface Window {
@@ -259,6 +266,20 @@ const api = {
     }
   },
   flushRecordingDone: (): void => ipcRenderer.send('flush-recording-done'),
+  // --- Live test runs (RunApi) ---
+  startRun: async (request: RunRequest): Promise<StartRunResult> =>
+    ipcRenderer.invoke('start-run', request),
+  cancelRun: async (runId: string): Promise<void> => ipcRenderer.invoke('cancel-run', runId),
+  getActiveRun: async (): Promise<ActiveRun | null> => ipcRenderer.invoke('get-active-run'),
+  getRunDefaults: async (): Promise<RunDefaults> => ipcRenderer.invoke('get-run-defaults'),
+  /** Subscribes to live run events; the returned function removes only this subscription */
+  onRunEvent: (callback: (event: RunEvent) => void): (() => void) => {
+    const listener = (_event: IpcRendererEvent, runEvent: RunEvent): void => callback(runEvent)
+    ipcRenderer.on('run-event', listener)
+    return (): void => {
+      ipcRenderer.removeListener('run-event', listener)
+    }
+  },
   loadUrlRequest: async (url: string): Promise<CommandType> =>
     ipcRenderer.invoke('load-url-request', url),
   renderStep: (step: Step): Promise<string> => ipcRenderer.invoke('render-step', step),
