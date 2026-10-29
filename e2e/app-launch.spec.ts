@@ -38,14 +38,14 @@ test.describe('App Launch', () => {
     expect(criticalErrors).toHaveLength(0)
   })
 
-  test('default route loads the Recorder page', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Test Suites', exact: true })).toBeVisible()
-    await expect(page.getByText('Recorded Steps')).toBeVisible()
+  test('default route loads the Landing page', async ({ page }) => {
+    await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Quick record' })).toBeVisible()
   })
 
-  test('all navigation links are present on initial load', async ({ page }) => {
-    await expect(page.locator('a[href="#/recorder"]')).toBeVisible()
-    await expect(page.locator('a[href="#/overview"]')).toBeVisible()
+  test('without a project the header title is not a link', async ({ page }) => {
+    await expect(page.locator('header').getByText('Ruby Raider', { exact: true })).toBeVisible()
+    await expect(page.locator('header a[href="#/overview"]')).toHaveCount(0)
   })
 
   test('header logo is visible on launch', async ({ page }) => {

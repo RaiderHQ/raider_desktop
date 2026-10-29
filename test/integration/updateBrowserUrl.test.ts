@@ -33,8 +33,15 @@ describe('updateBrowserUrl handler', () => {
     mockExecSuccess()
     await handler({} as any, '/my/project', 'https://example.com')
     const call = mockExec.mock.calls[0][0] as string
-    expect(call).toContain('raider u url https://example.com')
+    expect(call).toContain("raider u url 'https://example.com'")
     expect(call).toContain('/my/project')
+  })
+
+  it('passes a hostile URL as one quoted argument', async () => {
+    mockExecSuccess()
+    await handler({} as any, '/my/project', 'https://a.test/x; rm -rf x')
+    const call = mockExec.mock.calls[0][0] as string
+    expect(call).toContain("raider u url 'https://a.test/x; rm -rf x'")
   })
 
   it('returns success when command succeeds', async () => {

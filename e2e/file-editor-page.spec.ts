@@ -1,5 +1,5 @@
 import { test, expect } from './electronApp'
-import { goToOverview } from './helpers/navigation'
+import { goToOverviewFiles } from './helpers/navigation'
 import {
   setupProjectContext,
   mockIPCCapture,
@@ -41,7 +41,7 @@ test.describe('File Editor Page', () => {
         data: 'class LoginPage\nend'
       })
     })
-    await goToOverview(page)
+    await goToOverviewFiles(page)
 
     await page.getByText('login_page.rb').click()
     await page.waitForTimeout(1500)
@@ -62,7 +62,7 @@ test.describe('File Editor Page', () => {
       ;(window as any).api.readFile = () =>
         new Promise((resolve) => setTimeout(() => resolve({ success: true, data: 'content' }), 3000))
     })
-    await goToOverview(page)
+    await goToOverviewFiles(page)
 
     await page.getByText('slow_file.rb').click()
     await page.waitForTimeout(500)
@@ -85,7 +85,7 @@ test.describe('File Editor Page', () => {
         data: 'original content'
       })
     })
-    await goToOverview(page)
+    await goToOverviewFiles(page)
     await page.getByText('edit_me.rb').click()
     await page.waitForTimeout(1500)
 
@@ -112,7 +112,7 @@ test.describe('File Editor Page', () => {
         data: 'content'
       })
     })
-    await goToOverview(page)
+    await goToOverviewFiles(page)
     await page.getByText('save_test.rb').click()
     await page.waitForTimeout(1500)
     await mockIPCCapture(page, 'editFile', { success: true })
@@ -135,7 +135,7 @@ test.describe('File Editor Page', () => {
         data: 'content'
       })
     })
-    await goToOverview(page)
+    await goToOverviewFiles(page)
     await page.getByText('fail_save.rb').click()
     await page.waitForTimeout(1500)
     await mockIPCCaptureFailure(page, 'editFile', 'Permission denied')
@@ -158,7 +158,7 @@ test.describe('File Editor Page', () => {
         data: 'content'
       })
     })
-    await goToOverview(page)
+    await goToOverviewFiles(page)
     await page.getByText('back_test.rb').click()
     await page.waitForTimeout(1500)
 

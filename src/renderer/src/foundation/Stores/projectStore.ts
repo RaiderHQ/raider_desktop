@@ -4,12 +4,15 @@ import i18n from 'i18next'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { FileNode } from '@foundation/Types/fileNode'
 import { RaiderConfig } from '@foundation/Types/raiderConfig'
+import type { ProjectLayout } from '@shared/types/projectLayout'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 
 interface ProjectStore {
   projectPath: string | null
   projectConfig: RaiderConfig | null
   projectAutomation: string | null
   projectFramework: string | null
+  layout: ProjectLayout | null
   files: FileNode[]
   selectedFiles: string[]
   setProjectPath: (path: string) => void
@@ -26,6 +29,7 @@ const useProjectStore = create(
     projectConfig: null,
     projectAutomation: null,
     projectFramework: null,
+    layout: null,
     files: [],
     selectedFiles: [],
     setProjectPath: (path: string): void => {
@@ -34,7 +38,8 @@ const useProjectStore = create(
       if (path === get().projectPath) syncActiveProject(path)
       else set({ projectPath: path })
     },
-    setProjectAutomation: (automation: string | null): void => set({ projectAutomation: automation }),
+    setProjectAutomation: (automation: string | null): void =>
+      set({ projectAutomation: automation }),
     setProjectFramework: (framework: string | null): void => set({ projectFramework: framework }),
 
     loadFiles: async (path: string): Promise<void> => {
@@ -89,6 +94,10 @@ const useProjectStore = create(
 useProjectStore.subscribe(
   (state) => state.projectPath,
   (projectPath) => {
+    // The layout belongs to one project, so it never outlives a switch
+    useProjectStore.setState({ layout: null })
+    // Nor does the recorder's open test: saving it would write it into the new project
+    useRecorderStore.getState().resetForProject()
     if (projectPath) {
       return
     }
@@ -114,6 +123,10 @@ const syncActiveProject = (projectPath: string | null): void => {
   window.api
     .setActiveProject(projectPath)
     .then((result) => {
+      // Only keep the layout if the project is still the one that was activated
+      if (useProjectStore.getState().projectPath === projectPath) {
+        useProjectStore.setState({ layout: result.layout ?? null })
+      }
       if (!result.success) {
         // Main has closed the project, so nothing is saved until it opens cleanly
         toast.error(i18n.t('project.activationFailed', { error: result.error }), {
@@ -122,6 +135,9 @@ const syncActiveProject = (projectPath: string | null): void => {
       }
     })
     .catch((error: unknown) => {
+      if (useProjectStore.getState().projectPath === projectPath) {
+        useProjectStore.setState({ layout: null })
+      }
       console.error('Error setting active project:', error)
     })
 }

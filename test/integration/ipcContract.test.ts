@@ -48,6 +48,11 @@ describe('IPC Contract', () => {
   const expectedMethods = [
     // Project Management
     'runRubyRaider',
+    'recordOverExample',
+    'createQuickProject',
+    'isQuickProject',
+    'listQuickProjects',
+    'saveQuickProjectTo',
     'selectFolder',
     'readDirectory',
     'readFile',
@@ -88,6 +93,10 @@ describe('IPC Contract', () => {
 
     // Suite Management
     'getSuites',
+    'listProjectTests',
+    'openCodeTest',
+    'getProjectLayout',
+    'runProjectFile',
     'createSuite',
     'deleteSuite',
     'exportSuite',
@@ -108,6 +117,9 @@ describe('IPC Contract', () => {
     'replayInWebview',
     'registerRecorderWebContents',
     'stopRecordingMain',
+    'setRecordingState',
+    'onFlushRecording',
+    'flushRecordingDone',
     'loadUrlRequest',
     'updateRecordingSettings',
     'setActiveProject',
@@ -121,6 +133,10 @@ describe('IPC Contract', () => {
     // Event Listeners
     'onTestRunStatus',
     'removeTestRunStatusListener',
+    'onTestsMigrated',
+    'removeTestsMigratedListener',
+    'onSuitesTooNew',
+    'removeSuitesTooNewListener',
 
     // Scaffolding
     'scaffoldGenerate',

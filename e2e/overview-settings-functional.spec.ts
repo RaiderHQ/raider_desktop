@@ -52,7 +52,8 @@ test.describe('Overview Settings Tab - Functional', () => {
     // Set localStorage value
     await page.evaluate(() => localStorage.setItem('browserUrl', 'https://persisted.com'))
     // Navigate away and back
-    await page.evaluate(() => { window.location.hash = '#/recorder' })
+    // (/recorder now opens the Tests tab of this same page, so it wouldn't remount it)
+    await page.evaluate(() => { window.location.hash = '#/start-project' })
     await page.waitForTimeout(800)
     await page.evaluate(() => { window.location.hash = '#/overview' })
     await page.waitForTimeout(800)

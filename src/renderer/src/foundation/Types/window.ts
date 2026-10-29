@@ -6,6 +6,9 @@ import type { TraceStep } from '@shared/types/traceStep'
 import type { Step } from '@shared/types/step'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
+import type { ProjectLayout } from '@shared/types/projectLayout'
+import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
+import type { QuickProject } from '@shared/types/quickProject'
 import type { IpcRendererEvent } from 'electron'
 
 export interface WindowApi {
@@ -19,6 +22,17 @@ export interface WindowApi {
     mobile?: string | null,
     options?: ProjectCreationOptions
   ) => Promise<CommandType>
+  createQuickProject: (
+    url: string,
+    rubyCommand: string
+  ) => Promise<{ success: true; projectPath: string } | { success: false; error: string }>
+  isQuickProject: (projectPath: string) => Promise<boolean>
+  /** Quick record projects in Raider's own folder, newest first */
+  listQuickProjects: () => Promise<QuickProject[]>
+  saveQuickProjectTo: (
+    projectPath: string,
+    destFolder: string
+  ) => Promise<{ success: true; projectPath: string } | { success: false; error: string }>
   selectFolder: (title: string) => Promise<string | null>
   readDirectory: (folderPath: string) => Promise<FileNode[]>
   readFile: (
@@ -29,8 +43,13 @@ export interface WindowApi {
   ) => Promise<{ success: boolean; data?: string; fileExt?: string; error?: string }>
   editFile: (filePath: string, newContent: string) => Promise<{ success: boolean; error?: string }>
   deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
-  renameFile: (filePath: string, newName: string) => Promise<{ success: boolean; newPath?: string; error?: string }>
-  duplicateFile: (filePath: string) => Promise<{ success: boolean; newPath?: string; error?: string }>
+  renameFile: (
+    filePath: string,
+    newName: string
+  ) => Promise<{ success: boolean; newPath?: string; error?: string }>
+  duplicateFile: (
+    filePath: string
+  ) => Promise<{ success: boolean; newPath?: string; error?: string }>
   openReport: (projectPath: string) => Promise<{ success: boolean; error?: string }>
   reportExists: (projectPath: string) => Promise<boolean>
 
@@ -107,11 +126,13 @@ export interface WindowApi {
     folderPath: string,
     rubyCommand: string
   ) => Promise<{ success: boolean; output?: string; error?: string }>
+  /** `test`, when given, is saved before it runs, so the run never lags behind the editor */
   runTest: (
     suiteId: string,
     testId: string,
     projectPath: string,
-    rubyCommand: string
+    rubyCommand: string,
+    test?: Test
   ) => Promise<{ success: boolean; output: string }>
   runSuite: (
     suiteId: string,
@@ -125,6 +146,27 @@ export interface WindowApi {
 
   // --- Suite Management ---
   getSuites: () => Promise<Suite[]>
+  /** Every spec file of the active project (recorded or hand-written); [] without a project */
+  listProjectTests: () => Promise<ProjectTestEntry[]>
+  /** Read-only view of a listed spec file; rejects for any other path */
+  openCodeTest: (file: string) => Promise<CodeTestView>
+  getProjectLayout: () => Promise<ProjectLayout | null>
+  /** Runs one listed spec file from the active project (same result as runTest) */
+  runProjectFile: (
+    file: string,
+    rubyCommand: string
+  ) => Promise<{ success: boolean; output: string }>
+  /** Replaces the one example named `exampleName` in a listed spec file with `steps` */
+  recordOverExample: (
+    file: string,
+    exampleName: string,
+    steps: Step[],
+    rubyCommand: string
+  ) => Promise<
+    | { success: true }
+    | { success: false; error: 'notUnique'; count: number }
+    | { success: false; error: string }
+  >
   createSuite: (suiteName: string) => Promise<{ success: boolean; suite?: Suite; error?: string }>
   deleteSuite: (suiteId: string) => Promise<{ success: boolean }>
   exportSuite: (suiteId: string) => Promise<{ success: boolean; path?: string; error?: string }>
@@ -134,7 +176,11 @@ export interface WindowApi {
   importTest: (suiteId: string) => Promise<{ success: boolean; test?: Test; error?: string }>
 
   // --- Test Management ---
-  saveRecording: (suiteId: string, testData: Test) => Promise<{ success: boolean; error?: string }>
+  /** `test` is the test as saved, with its project file when it has one */
+  saveRecording: (
+    suiteId: string,
+    testData: Test
+  ) => Promise<{ success: boolean; error?: string; test?: Test }>
   deleteTest: (suiteId: string, testId: string) => Promise<void>
   exportTest: (
     testName: string,
@@ -147,7 +193,13 @@ export interface WindowApi {
     testName: string,
     stepsToReplay: Step[],
     rubyCommand: string
-  ) => Promise<{ success: boolean; url?: string; preloadPath?: string; error?: string; cancelled?: boolean }>
+  ) => Promise<{
+    success: boolean
+    url?: string
+    preloadPath?: string
+    error?: string
+    cancelled?: boolean
+  }>
   cancelReplay: () => Promise<{ success: boolean }>
   replayInWebview: (steps: Step[]) => Promise<{
     success: boolean
@@ -158,13 +210,21 @@ export interface WindowApi {
   }>
   registerRecorderWebContents: (webContentsId: number) => Promise<void>
   stopRecordingMain: () => Promise<CommandType>
+  /** Tells main whether a recording is open, so closing the window saves it first */
+  setRecordingState: (active: boolean) => void
+  /** Main asks the page to save its recording before the window closes; returns an unsubscribe */
+  onFlushRecording: (callback: () => void) => () => void
+  flushRecordingDone: () => void
   loadUrlRequest: (url: string) => Promise<CommandType>
   updateRecordingSettings: (
     settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
   ) => Promise<{ success: boolean; error?: string }>
-  setActiveProject: (
-    projectPath: string | null
-  ) => Promise<{ success: boolean; settings?: RecorderSettings; error?: string }>
+  setActiveProject: (projectPath: string | null) => Promise<{
+    success: boolean
+    settings?: RecorderSettings
+    layout?: ProjectLayout
+    error?: string
+  }>
   getRecorderSettings: () => Promise<RecorderSettings>
 
   // --- Trace Management ---
@@ -179,6 +239,16 @@ export interface WindowApi {
   removeTestRunStatusListener: (
     callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
   ) => Electron.IpcRenderer
+  /** Sent once when opening a project moved (or could not yet move) its recorded tests into project files */
+  onTestsMigrated: (
+    callback: (event: IpcRendererEvent, info: { migrated: number; postponed: boolean }) => void
+  ) => Electron.IpcRenderer
+  removeTestsMigratedListener: (
+    callback: (event: IpcRendererEvent, info: { migrated: number; postponed: boolean }) => void
+  ) => Electron.IpcRenderer
+  /** Sent when the project's suites were saved by a newer Raider and are left untouched */
+  onSuitesTooNew: (callback: (event: IpcRendererEvent) => void) => Electron.IpcRenderer
+  removeSuitesTooNewListener: (callback: (event: IpcRendererEvent) => void) => Electron.IpcRenderer
 
   // --- Scaffolding ---
   scaffoldGenerate: (
@@ -196,9 +266,7 @@ export interface WindowApi {
     projectPath: string,
     enabled: boolean
   ) => Promise<{ success: boolean; output?: string; error?: string }>
-  getProjectConfig: (
-    projectPath: string
-  ) => Promise<{
+  getProjectConfig: (projectPath: string) => Promise<{
     success: boolean
     config?: {
       baseUrl?: string
@@ -229,8 +297,12 @@ export interface WindowApi {
   terminalWrite: (data: string) => Promise<void>
   terminalResize: (cols: number, rows: number) => Promise<void>
   terminalKill: () => Promise<void>
-  onTerminalData: (callback: (event: IpcRendererEvent, data: string) => void) => Electron.IpcRenderer
-  removeTerminalDataListener: (callback: (event: IpcRendererEvent, data: string) => void) => Electron.IpcRenderer
+  onTerminalData: (
+    callback: (event: IpcRendererEvent, data: string) => void
+  ) => Electron.IpcRenderer
+  removeTerminalDataListener: (
+    callback: (event: IpcRendererEvent, data: string) => void
+  ) => Electron.IpcRenderer
   onTerminalExit: (callback: (event: IpcRendererEvent) => void) => Electron.IpcRenderer
   removeTerminalExitListener: (callback: (event: IpcRendererEvent) => void) => Electron.IpcRenderer
 

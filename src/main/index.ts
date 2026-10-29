@@ -9,6 +9,12 @@ import type { TraceStep } from '@foundation/Types/traceStep'
 import selectFolder from './handlers/project/selectFolder'
 import readDirectory from './handlers/io/readDirectory'
 import runRubyRaider from './handlers/project/runRubyRaider'
+import {
+  createQuickProject,
+  isQuickProject,
+  listQuickProjects,
+  saveQuickProjectTo
+} from './handlers/project/quickProject'
 import runRaiderTests from './handlers/testing/runRaiderTests'
 import runRakeTask from './handlers/testing/runRakeTask'
 import rerunFailedTests from './handlers/testing/rerunFailedTests'
@@ -32,11 +38,18 @@ import isRvmRubyInstalled from './handlers/ruby/isRvmRubyInstalled'
 import isSystemRubyInstalled from './handlers/ruby/isSystemRubyInstalled'
 import installRbenvAndRuby from './handlers/ruby/installRbenvAndRuby'
 import installGems from './handlers/ruby/installGems'
-import runRecording from './handlers/testing/runRecording'
 import getSuites from './handlers/getSuites'
 import createSuite from './handlers/createSuite'
 import deleteSuite from './handlers/deleteSuite'
-import runSuite from './handlers/testing/runSuite'
+import {
+  getProjectLayoutHandler,
+  listProjectTestsHandler,
+  openCodeTestHandler,
+  recordOverExampleHandler,
+  runProjectFileHandler
+} from './handlers/tests/projectTestIpc'
+import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTests'
+import { isListed } from './handlers/tests/suiteStore'
 import exportTest from './handlers/io/exportTest'
 import exportSuite from './handlers/io/exportSuite'
 import exportProject from './handlers/io/exportProject'
@@ -54,6 +67,7 @@ import replayStepsAndRecord from './handlers/recording/replayStepsAndRecord'
 import replayInWebview, { cancelWebviewReplay } from './handlers/recording/replayInWebview'
 import stopRecordingMain from './handlers/recording/stopRecordingMain'
 import saveRecording from './handlers/recording/saveRecording'
+import { installCloseFlush } from './handlers/recording/closeFlush'
 import saveTrace from './handlers/trace/saveTrace'
 import loadTrace from './handlers/trace/loadTrace'
 import deleteTrace from './handlers/trace/deleteTrace'
@@ -86,6 +100,9 @@ const iconPath = join(
       : '../../resources/ruby-raider.png' // Linux
 )
 
+// Set once the app is quitting, so a close held for saving a recording quits afterwards
+let quitting = false
+
 function createWindow(): void {
   const newMainWindow = new BrowserWindow({
     width: 1200,
@@ -103,6 +120,11 @@ function createWindow(): void {
 
   // Set the main window instance in our app state module
   setMainWindow(newMainWindow)
+
+  // Closing while recording saves the recording first
+  installCloseFlush(newMainWindow, ipcMain, {
+    close: () => (quitting ? app.quit() : newMainWindow.close())
+  })
 
   if (is.dev && appState.mainWindow) {
     appState.mainWindow.webContents.openDevTools()
@@ -126,6 +148,10 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.ruby-raider')
+
+  app.on('before-quit', () => {
+    quitting = true
+  })
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
@@ -177,6 +203,14 @@ app.whenReady().then(() => {
     (_event, folderPath: string, rubyCommand: string) =>
       rerunFailedTests(appState.mainWindow!, folderPath, rubyCommand)
   )
+  ipcMain.handle('create-quick-project', (_event, url: string, rubyCommand: string) =>
+    createQuickProject(url, rubyCommand)
+  )
+  ipcMain.handle('is-quick-project', (_event, projectPath: string) => isQuickProject(projectPath))
+  ipcMain.handle('list-quick-projects', () => listQuickProjects())
+  ipcMain.handle('save-quick-project-to', (_event, projectPath: string, destFolder: string) =>
+    saveQuickProjectTo(projectPath, destFolder)
+  )
   ipcMain.handle('is-mobile-project', isMobileProject)
   ipcMain.handle('update-browser-url', (event, projectPath: string, url: string) =>
     updateBrowserUrl(event, projectPath, url)
@@ -200,6 +234,17 @@ app.whenReady().then(() => {
     renderStep(step, toAutomation(appState.projectAutomation))
   )
   ipcMain.handle('get-suites', getSuites)
+  ipcMain.handle('list-project-tests', listProjectTestsHandler)
+  ipcMain.handle('open-code-test', (_event, file: string) => openCodeTestHandler(file))
+  ipcMain.handle('get-project-layout', getProjectLayoutHandler)
+  ipcMain.handle('run-project-file', (_event, file: string, rubyCommand: string) =>
+    runProjectFileHandler(file, rubyCommand)
+  )
+  ipcMain.handle(
+    'record-over-example',
+    (_event, file: string, exampleName: string, steps: Step[], rubyCommand: string) =>
+      recordOverExampleHandler(file, exampleName, steps, rubyCommand)
+  )
   ipcMain.handle('create-suite', (_event, suiteName: string) =>
     createSuite(appState.mainWindow!, suiteName)
   )
@@ -208,27 +253,14 @@ app.whenReady().then(() => {
   )
   ipcMain.handle(
     'run-test',
-    (_event, suiteId: string, testId: string, projectPath: string, rubyCommand: string) => {
-      const suite = appState.suites.get(suiteId)
-      const test = suite?.tests.find((t) => t.id === testId)
-
-      if (!test) {
-        return { success: false, output: `Test with ID ${testId} not found.` }
-      }
-
-      const { implicitWait, explicitWait, browser, headless } = appState.recorderSettings
-      return runRecording({
-        savedTest: test,
-        implicitWait,
-        explicitWait,
-        browser,
-        headless,
-        projectPath,
-        rubyCommand,
-        projectAutomation: appState.projectAutomation,
-        projectFramework: appState.projectFramework
-      })
-    }
+    (
+      _event,
+      suiteId: string,
+      testId: string,
+      projectPath: string,
+      rubyCommand: string,
+      test?: Test
+    ) => runTestHandler(suiteId, testId, projectPath, rubyCommand, test)
   )
   ipcMain.handle(
     'update-recording-settings',
@@ -244,8 +276,8 @@ app.whenReady().then(() => {
     }
   )
 
-  ipcMain.handle('run-suite', (_event, suiteId: string, _projectPath: string, rubyCommand: string) =>
-    runSuite(suiteId, rubyCommand)
+  ipcMain.handle('run-suite', (_event, suiteId: string, projectPath: string, rubyCommand: string) =>
+    runSuiteHandler(suiteId, projectPath, rubyCommand)
   )
   ipcMain.handle('export-test', (_event, testData: TestData) => exportTest(testData))
   ipcMain.handle('export-suite', (_event, suiteId: string) => exportSuite(suiteId))
@@ -257,7 +289,8 @@ app.whenReady().then(() => {
   )
   ipcMain.handle('delete-test', async (_event, args) => {
     const result = await deleteTest(appState.mainWindow!, args)
-    deleteTrace(args.testId)
+    // A test listed in another suite keeps its trace
+    if (result.success && !isListed(args.testId)) deleteTrace(args.testId)
     return result
   })
   ipcMain.handle('set-active-project', (_event, projectPath: string | null) =>

@@ -6,8 +6,11 @@ import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import type { TraceStep } from '@foundation/Types/traceStep'
 import type { Step } from '@shared/types/step'
+import type { QuickProject } from '@shared/types/quickProject'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
+import type { ProjectLayout } from '@shared/types/projectLayout'
+import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 
 declare global {
   interface Window {
@@ -54,9 +57,7 @@ const api = {
     newContent: string
   ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('edit-file', filePath, newContent),
-  deleteFile: async (
-    filePath: string
-  ): Promise<{ success: boolean; error?: string }> =>
+  deleteFile: async (filePath: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('delete-file', filePath),
   renameFile: async (
     filePath: string,
@@ -88,6 +89,19 @@ const api = {
     rubyCommand: string
   ): Promise<{ success: boolean; output?: string; error?: string }> =>
     ipcRenderer.invoke('rerun-failed-tests', folderPath, rubyCommand),
+  createQuickProject: async (
+    url: string,
+    rubyCommand: string
+  ): Promise<{ success: true; projectPath: string } | { success: false; error: string }> =>
+    ipcRenderer.invoke('create-quick-project', url, rubyCommand),
+  isQuickProject: async (projectPath: string): Promise<boolean> =>
+    ipcRenderer.invoke('is-quick-project', projectPath),
+  listQuickProjects: async (): Promise<QuickProject[]> => ipcRenderer.invoke('list-quick-projects'),
+  saveQuickProjectTo: async (
+    projectPath: string,
+    destFolder: string
+  ): Promise<{ success: true; projectPath: string } | { success: false; error: string }> =>
+    ipcRenderer.invoke('save-quick-project-to', projectPath, destFolder),
   updateBrowserUrl: async (
     projectPath: string,
     url: string
@@ -154,6 +168,24 @@ const api = {
 
   // Suite Management
   getSuites: async (): Promise<Suite[]> => ipcRenderer.invoke('get-suites'),
+  listProjectTests: (): Promise<ProjectTestEntry[]> => ipcRenderer.invoke('list-project-tests'),
+  openCodeTest: (file: string): Promise<CodeTestView> => ipcRenderer.invoke('open-code-test', file),
+  getProjectLayout: (): Promise<ProjectLayout | null> => ipcRenderer.invoke('get-project-layout'),
+  runProjectFile: (
+    file: string,
+    rubyCommand: string
+  ): Promise<{ success: boolean; output: string }> =>
+    ipcRenderer.invoke('run-project-file', file, rubyCommand),
+  recordOverExample: (
+    file: string,
+    exampleName: string,
+    steps: Step[],
+    rubyCommand: string
+  ): Promise<
+    | { success: true }
+    | { success: false; error: 'notUnique'; count: number }
+    | { success: false; error: string }
+  > => ipcRenderer.invoke('record-over-example', file, exampleName, steps, rubyCommand),
   createSuite: async (
     suiteName: string
   ): Promise<{ success: boolean; suite?: Suite; error?: string }> =>
@@ -181,7 +213,7 @@ const api = {
   saveRecording: async (
     suiteId: string,
     testData: Test
-  ): Promise<{ success: boolean; error?: string }> =>
+  ): Promise<{ success: boolean; error?: string; test?: Test }> =>
     ipcRenderer.invoke('save-recording', suiteId, testData),
   deleteTest: (suiteId: string, testId: string): Promise<void> =>
     ipcRenderer.invoke('delete-test', { suiteId, testId }),
@@ -189,8 +221,7 @@ const api = {
     ipcRenderer.invoke('save-trace', testId, trace),
   loadTrace: (testId: string): Promise<{ success: boolean; trace?: TraceStep[] }> =>
     ipcRenderer.invoke('load-trace', testId),
-  deleteTrace: (testId: string): Promise<void> =>
-    ipcRenderer.invoke('delete-trace', testId),
+  deleteTrace: (testId: string): Promise<void> => ipcRenderer.invoke('delete-trace', testId),
   // Recording Session Control
   startRecordingMain: async (): Promise<{ success: boolean; url: string; preloadPath: string }> =>
     ipcRenderer.invoke('start-recording-main'),
@@ -198,10 +229,14 @@ const api = {
     testName: string,
     stepsToReplay: Step[],
     rubyCommand: string
-  ): Promise<{ success: boolean; url?: string; preloadPath?: string; error?: string; cancelled?: boolean }> =>
-    ipcRenderer.invoke('replay-steps-and-record', testName, stepsToReplay, rubyCommand),
-  cancelReplay: async (): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke('cancel-replay'),
+  ): Promise<{
+    success: boolean
+    url?: string
+    preloadPath?: string
+    error?: string
+    cancelled?: boolean
+  }> => ipcRenderer.invoke('replay-steps-and-record', testName, stepsToReplay, rubyCommand),
+  cancelReplay: async (): Promise<{ success: boolean }> => ipcRenderer.invoke('cancel-replay'),
   replayInWebview: async (
     steps: Step[]
   ): Promise<{
@@ -214,6 +249,17 @@ const api = {
   registerRecorderWebContents: async (webContentsId: number): Promise<void> =>
     ipcRenderer.invoke('register-recorder-webcontents', webContentsId),
   stopRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('stop-recording-main'),
+  /** Tells main whether a recording is open, so closing the window saves it first */
+  setRecordingState: (active: boolean): void => ipcRenderer.send('recording-state', active),
+  /** Main asks the page to save its recording before the window closes; returns an unsubscribe */
+  onFlushRecording: (callback: () => void): (() => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('flush-recording', listener)
+    return (): void => {
+      ipcRenderer.removeListener('flush-recording', listener)
+    }
+  },
+  flushRecordingDone: (): void => ipcRenderer.send('flush-recording-done'),
   loadUrlRequest: async (url: string): Promise<CommandType> =>
     ipcRenderer.invoke('load-url-request', url),
   renderStep: (step: Step): Promise<string> => ipcRenderer.invoke('render-step', step),
@@ -226,25 +272,39 @@ const api = {
     suiteId: string,
     testId: string,
     projectPath: string,
-    rubyCommand: string
+    rubyCommand: string,
+    test?: Test
   ): Promise<{ success: boolean; output: string }> =>
-    ipcRenderer.invoke('run-test', suiteId, testId, projectPath, rubyCommand),
+    ipcRenderer.invoke('run-test', suiteId, testId, projectPath, rubyCommand, test),
   updateRecordingSettings: (
     settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
   ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('update-recording-settings', settings),
   setActiveProject: (
     projectPath: string | null
-  ): Promise<{ success: boolean; settings?: RecorderSettings; error?: string }> =>
-    ipcRenderer.invoke('set-active-project', projectPath),
-  getRecorderSettings: (): Promise<RecorderSettings> =>
-    ipcRenderer.invoke('get-recorder-settings'),
+  ): Promise<{
+    success: boolean
+    settings?: RecorderSettings
+    layout?: ProjectLayout
+    error?: string
+  }> => ipcRenderer.invoke('set-active-project', projectPath),
+  getRecorderSettings: (): Promise<RecorderSettings> => ipcRenderer.invoke('get-recorder-settings'),
   onTestRunStatus: (
     callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
   ): Electron.IpcRenderer => ipcRenderer.on('test-run-status', callback),
   removeTestRunStatusListener: (
     callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
   ): Electron.IpcRenderer => ipcRenderer.removeListener('test-run-status', callback),
+  onTestsMigrated: (
+    callback: (event: IpcRendererEvent, info: { migrated: number; postponed: boolean }) => void
+  ): Electron.IpcRenderer => ipcRenderer.on('tests-migrated', callback),
+  removeTestsMigratedListener: (
+    callback: (event: IpcRendererEvent, info: { migrated: number; postponed: boolean }) => void
+  ): Electron.IpcRenderer => ipcRenderer.removeListener('tests-migrated', callback),
+  onSuitesTooNew: (callback: (event: IpcRendererEvent) => void): Electron.IpcRenderer =>
+    ipcRenderer.on('suites-too-new', callback),
+  removeSuitesTooNewListener: (callback: (event: IpcRendererEvent) => void): Electron.IpcRenderer =>
+    ipcRenderer.removeListener('suites-too-new', callback),
   closeApp: (): Promise<void> => ipcRenderer.invoke('close-app'),
 
   // --- Scaffolding APIs ---
@@ -256,26 +316,16 @@ const api = {
     ipcRenderer.invoke('scaffold-generate', params, projectPath, rubyCommand),
 
   // --- Extended Project Settings APIs ---
-  updateTimeout: async (
-    projectPath: string,
-    seconds: number
-  ): Promise<CommandType> =>
+  updateTimeout: async (projectPath: string, seconds: number): Promise<CommandType> =>
     ipcRenderer.invoke('update-timeout', projectPath, seconds),
   updateViewport: async (
     projectPath: string,
     width: number,
     height: number
-  ): Promise<CommandType> =>
-    ipcRenderer.invoke('update-viewport', projectPath, width, height),
-  updateDebugMode: async (
-    projectPath: string,
-    enabled: boolean
-  ): Promise<CommandType> =>
+  ): Promise<CommandType> => ipcRenderer.invoke('update-viewport', projectPath, width, height),
+  updateDebugMode: async (projectPath: string, enabled: boolean): Promise<CommandType> =>
     ipcRenderer.invoke('update-debug-mode', projectPath, enabled),
-  updateBrowserOptions: async (
-    projectPath: string,
-    options: string[]
-  ): Promise<CommandType> =>
+  updateBrowserOptions: async (projectPath: string, options: string[]): Promise<CommandType> =>
     ipcRenderer.invoke('update-browser-options', projectPath, options),
   startAppium: async (projectPath: string): Promise<CommandType> =>
     ipcRenderer.invoke('start-appium', projectPath),
@@ -301,8 +351,7 @@ const api = {
     projectPath: string,
     pathValue: string,
     pathType?: string
-  ): Promise<CommandType> =>
-    ipcRenderer.invoke('update-paths', projectPath, pathValue, pathType),
+  ): Promise<CommandType> => ipcRenderer.invoke('update-paths', projectPath, pathValue, pathType),
 
   // --- Longship Integration APIs ---
   getLongshipConfig: async (): Promise<{
@@ -320,16 +369,16 @@ const api = {
   // --- Terminal APIs ---
   terminalSpawn: async (cwd: string, cols: number, rows: number): Promise<void> =>
     ipcRenderer.invoke('terminal-spawn', cwd, cols, rows),
-  terminalWrite: async (data: string): Promise<void> =>
-    ipcRenderer.invoke('terminal-write', data),
+  terminalWrite: async (data: string): Promise<void> => ipcRenderer.invoke('terminal-write', data),
   terminalResize: async (cols: number, rows: number): Promise<void> =>
     ipcRenderer.invoke('terminal-resize', cols, rows),
-  terminalKill: async (): Promise<void> =>
-    ipcRenderer.invoke('terminal-kill'),
-  onTerminalData: (callback: (event: IpcRendererEvent, data: string) => void): Electron.IpcRenderer =>
-    ipcRenderer.on('terminal-data', callback),
-  removeTerminalDataListener: (callback: (event: IpcRendererEvent, data: string) => void): Electron.IpcRenderer =>
-    ipcRenderer.removeListener('terminal-data', callback),
+  terminalKill: async (): Promise<void> => ipcRenderer.invoke('terminal-kill'),
+  onTerminalData: (
+    callback: (event: IpcRendererEvent, data: string) => void
+  ): Electron.IpcRenderer => ipcRenderer.on('terminal-data', callback),
+  removeTerminalDataListener: (
+    callback: (event: IpcRendererEvent, data: string) => void
+  ): Electron.IpcRenderer => ipcRenderer.removeListener('terminal-data', callback),
   onTerminalExit: (callback: (event: IpcRendererEvent) => void): Electron.IpcRenderer =>
     ipcRenderer.on('terminal-exit', callback),
   removeTerminalExitListener: (callback: (event: IpcRendererEvent) => void): Electron.IpcRenderer =>

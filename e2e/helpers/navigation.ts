@@ -18,12 +18,34 @@ export async function goToNewProject(page: Page): Promise<void> {
   await navigateTo(page, '/new')
 }
 
-export async function goToRecorder(page: Page): Promise<void> {
-  await navigateTo(page, '/recorder')
+/**
+ * The route of a test on the Tests tab. `key` is `id:<testId>` or `file:<relpath>`,
+ * sent as base64url (as the app's toRouteParam does).
+ */
+export const testRoute = (key: string): string =>
+  `/overview/tests/${Buffer.from(key, 'utf-8').toString('base64url')}`
+
+/** Open a test on the Tests tab by its key (`id:<testId>` or `file:<relpath>`). */
+export async function goToTest(page: Page, key: string): Promise<void> {
+  await navigateTo(page, testRoute(key))
+}
+
+/** Open the new-test form on the Tests tab. */
+export async function goToNewTest(page: Page): Promise<void> {
+  await navigateTo(page, '/overview/tests/new')
 }
 
 export async function goToOverview(page: Page): Promise<void> {
   await navigateTo(page, '/overview')
+}
+
+/**
+ * Navigate to Overview page and click the Files tab (the Overview opens on Tests).
+ */
+export async function goToOverviewFiles(page: Page): Promise<void> {
+  await navigateTo(page, '/overview')
+  await page.getByRole('button', { name: 'Files', exact: true }).click()
+  await page.waitForTimeout(300)
 }
 
 export async function goToFileEditor(page: Page): Promise<void> {
@@ -72,32 +94,6 @@ export async function goToOverviewDashboard(page: Page): Promise<void> {
 }
 
 /**
- * Navigate to Recorder page and click the Settings tab.
- */
-export async function goToRecorderSettings(page: Page): Promise<void> {
-  await navigateTo(page, '/recorder')
-  await page.waitForTimeout(500)
-  const settingsTab = page.locator('button').filter({ hasText: 'Settings' })
-  if (await settingsTab.isVisible().catch(() => false)) {
-    await settingsTab.click()
-    await page.waitForTimeout(500)
-  }
-}
-
-/**
- * Navigate to Recorder page and click the Dashboard tab.
- */
-export async function goToRecorderDashboard(page: Page): Promise<void> {
-  await navigateTo(page, '/recorder')
-  await page.waitForTimeout(500)
-  const dashboardTab = page.locator('button').filter({ hasText: 'Dashboard' })
-  if (await dashboardTab.isVisible().catch(() => false)) {
-    await dashboardTab.click()
-    await page.waitForTimeout(500)
-  }
-}
-
-/**
  * Click a nav link by its href route.
  */
 export async function clickNavLink(page: Page, route: string): Promise<void> {
@@ -106,31 +102,11 @@ export async function clickNavLink(page: Page, route: string): Promise<void> {
 }
 
 /**
- * Create a test suite via the UI.
- * Handles both empty state ("Create Suite") and populated state (dropdown with "+ New Suite...").
+ * Create a test suite from the Tests list's suite actions menu (on the Tests tab).
  */
 export async function createSuiteViaUI(page: Page, suiteName: string): Promise<void> {
-  // Check for empty state "Create Suite" button
-  const createSuiteBtn = page.getByRole('button', { name: 'Create Suite' })
-
-  if (await createSuiteBtn.isVisible().catch(() => false)) {
-    // Empty state - click "Create Suite" to show input
-    await createSuiteBtn.click()
-  } else {
-    // Has suites already - pick "+ New Suite..." in the suite <select>
-    const suiteSelect = page.locator('select[aria-label="Select a Suite"]')
-    if (await suiteSelect.isVisible().catch(() => false)) {
-      await suiteSelect.selectOption('__new__')
-    }
-  }
-
-  await page.waitForTimeout(300)
-
-  // Fill in the suite name
-  const input = page.getByPlaceholder('New suite name...')
-  await input.fill(suiteName)
-
-  // Click the "Create" confirmation button
+  await page.getByRole('button', { name: 'Suite actions' }).click()
+  await page.getByRole('menuitem', { name: 'New suite' }).click()
+  await page.getByRole('textbox', { name: 'New suite' }).fill(suiteName)
   await page.getByRole('button', { name: 'Create', exact: true }).click()
-  await page.waitForTimeout(1000)
 }

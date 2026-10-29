@@ -24,9 +24,38 @@ const keyArg = (key: string): string =>
   Object.hasOwn(KEY_SYMBOLS, key) ? `:${KEY_SYMBOLS[key]}` : rubyString(key)
 
 const locator = (el: ElementTarget): string => `${el.strategy}: ${rubyString(el.value)}`
-const sel = (el: ElementTarget): string => `@driver.find_element(${locator(el)})`
-const sels = (el: ElementTarget): string => `@driver.find_elements(${locator(el)})`
-const wat = (el: ElementTarget): string => `@browser.element(${locator(el)})`
+
+/**
+ * 'ivar' reads the standalone-file instance variables (@driver, @wait, @browser);
+ * 'helper' reads the project's spec_helper methods (driver, wait, browser).
+ */
+export type Receiver = 'ivar' | 'helper'
+export interface RenderOptions {
+  receiver?: Receiver
+}
+
+interface Names {
+  driver: string
+  wait: string
+  browser: string
+  sel: (el: ElementTarget) => string
+  sels: (el: ElementTarget) => string
+  wat: (el: ElementTarget) => string
+}
+
+function namesFor(receiver: Receiver): Names {
+  const p = receiver === 'helper' ? '' : '@'
+  const driver = `${p}driver`
+  const browser = `${p}browser`
+  return {
+    driver,
+    wait: `${p}wait`,
+    browser,
+    sel: (el) => `${driver}.find_element(${locator(el)})`,
+    sels: (el) => `${driver}.find_elements(${locator(el)})`,
+    wat: (el) => `${browser}.element(${locator(el)})`
+  }
+}
 
 function need<T>(value: T | undefined, what: string, check: string): T {
   if (value === undefined) throw new Error(`Invalid assert step: '${check}' requires ${what}`)
@@ -35,12 +64,17 @@ function need<T>(value: T | undefined, what: string, check: string): T {
 
 // Each check first waits (up to the explicit wait) for its condition, then asserts it,
 // so content that renders late passes on Run just as it does in in-app replay
-function renderAssert(step: Extract<Step, { kind: 'assert' }>, automation: Automation): string {
+function renderAssert(
+  step: Extract<Step, { kind: 'assert' }>,
+  automation: Automation,
+  n: Names
+): string {
   const { check } = step
+  const { sel, sels, wat } = n
   const selenium = automation === 'selenium'
   // Selenium waits on @wait with a plain condition; Watir waits on the element (or browser) itself
   const lines = (condition: string, assertion: string): string =>
-    `${selenium ? `@wait.until { ${condition} }` : condition}\n${assertion}`
+    `${selenium ? `${n.wait}.until { ${condition} }` : condition}\n${assertion}`
 
   if (check === 'titleEquals' || check === 'urlIncludes') {
     const expected = rubyString(need(step.expected, 'an expected string', check))
@@ -50,12 +84,12 @@ function renderAssert(step: Extract<Step, { kind: 'assert' }>, automation: Autom
     const matcher = title ? 'eq' : 'include'
     return selenium
       ? lines(
-          `@driver.${subject}${matches}`,
-          `expect(@driver.${subject}).to ${matcher}(${expected})`
+          `${n.driver}.${subject}${matches}`,
+          `expect(${n.driver}.${subject}).to ${matcher}(${expected})`
         )
       : lines(
-          `@browser.wait_until { |b| b.${subject}${matches} }`,
-          `expect(@browser.${subject}).to ${matcher}(${expected})`
+          `${n.browser}.wait_until { |b| b.${subject}${matches} }`,
+          `expect(${n.browser}.${subject}).to ${matcher}(${expected})`
         )
   }
   const el = need(step.element, 'an element', check)
@@ -108,22 +142,24 @@ function renderAssert(step: Extract<Step, { kind: 'assert' }>, automation: Autom
 }
 
 /** Ruby for one step: one or more lines, no trailing newline, no indentation. */
-export function renderStep(step: Step, automation: Automation): string {
+export function renderStep(step: Step, automation: Automation, opts: RenderOptions = {}): string {
   const selenium = automation === 'selenium'
+  const n = namesFor(opts.receiver ?? 'ivar')
+  const { sel, sels, wat } = n
   switch (step.kind) {
     case 'navigate':
       return selenium
-        ? `@driver.navigate.to(${rubyString(step.url)})`
-        : `@browser.goto(${rubyString(step.url)})`
+        ? `${n.driver}.navigate.to(${rubyString(step.url)})`
+        : `${n.browser}.goto(${rubyString(step.url)})`
     case 'click':
       return selenium
-        ? `@wait.until { ${sel(step.element)}.displayed? }\n${sel(step.element)}.click`
+        ? `${n.wait}.until { ${sel(step.element)}.displayed? }\n${sel(step.element)}.click`
         : `${wat(step.element)}.click`
     case 'type': {
       const text = rubyString(step.text)
       return selenium
         ? [
-            `@wait.until { ${sel(step.element)}.displayed? }`,
+            `${n.wait}.until { ${sel(step.element)}.displayed? }`,
             `${sel(step.element)}.clear`,
             `${sel(step.element)}.send_keys(${text})`
           ].join('\n')
@@ -134,22 +170,22 @@ export function renderStep(step: Step, automation: Automation): string {
     case 'wait':
       if (selenium) {
         if (step.until === 'hidden')
-          return `@wait.until { ${sels(step.element)}.none?(&:displayed?) }`
-        return `@wait.until { ${sel(step.element)}.${step.until === 'visible' ? 'displayed?' : 'enabled?'} }`
+          return `${n.wait}.until { ${sels(step.element)}.none?(&:displayed?) }`
+        return `${n.wait}.until { ${sel(step.element)}.${step.until === 'visible' ? 'displayed?' : 'enabled?'} }`
       }
       if (step.until === 'hidden') return `${wat(step.element)}.wait_while(&:present?)`
       return `${wat(step.element)}.wait_until(&:${step.until === 'visible' ? 'present?' : 'enabled?'})`
     case 'assert':
-      return renderAssert(step, automation)
+      return renderAssert(step, automation, n)
     case 'switchFrame':
       if (selenium) {
         return step.element
-          ? `@driver.switch_to.frame(${sel(step.element)})`
-          : '@driver.switch_to.default_content'
+          ? `${n.driver}.switch_to.frame(${sel(step.element)})`
+          : `${n.driver}.switch_to.default_content`
       }
       return step.element
-        ? `# Watir iframe objects scope only their own calls, so switch the underlying driver\n@browser.wd.switch_to.frame(${wat(step.element)}.wd)`
-        : '@browser.wd.switch_to.default_content'
+        ? `# Watir iframe objects scope only their own calls, so switch the underlying driver\n${n.browser}.wd.switch_to.frame(${wat(step.element)}.wd)`
+        : `${n.browser}.wd.switch_to.default_content`
     case 'custom':
       return step.code
   }

@@ -1,5 +1,6 @@
 import { test, expect } from './electronApp'
-import { goToLanding } from './helpers/navigation'
+import { goToLanding, navigateTo } from './helpers/navigation'
+import { mockIPC, setRubyCommand } from './helpers/ipc-mock'
 
 test.describe('Landing Page', () => {
   test.beforeEach(async ({ page }) => {
@@ -31,6 +32,55 @@ test.describe('Landing Page', () => {
     await expect(page.getByRole('button', { name: 'Open' })).toBeVisible()
   })
 
+  test('lists quick recordings not saved to a folder, and opens one on its tests', async ({
+    page
+  }) => {
+    await mockIPC(page, 'listQuickProjects', [
+      { path: '/mock/quick-record/shop_test', name: 'shop_test', modifiedAt: Date.now() }
+    ])
+    await mockIPC(page, 'listProjectTests', [])
+    await mockIPC(page, 'getSuites', [])
+    await mockIPC(page, 'readDirectory', [])
+    // Landing reads the list when it opens
+    await navigateTo(page, '/new')
+    await goToLanding(page)
+
+    await expect(page.getByRole('heading', { name: 'Quick recordings' })).toBeVisible()
+    await page.getByRole('button', { name: /shop_test/ }).click()
+    await expect(page).toHaveURL(/#\/overview\/tests$/)
+  })
+
+  test('shows Quick record option', async ({ page }) => {
+    await expect(page.getByText('Record a test without a project')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Quick record' })).toBeVisible()
+  })
+
+  test('Quick record opens its dialog and Cancel closes it', async ({ page }) => {
+    await setRubyCommand(page, 'ruby')
+    await page.getByRole('button', { name: 'Quick record' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Quick record' })
+    await expect(dialog).toBeVisible()
+    // Both the address and a name are needed
+    await expect(dialog.getByRole('button', { name: 'Start' })).toBeDisabled()
+    await dialog.getByPlaceholder('https://example.com').fill('example.com')
+    await expect(dialog.getByRole('button', { name: 'Start' })).toBeDisabled()
+    await dialog.getByPlaceholder('Checkout works').fill('Checkout works')
+    await expect(dialog.getByRole('button', { name: 'Start' })).toBeEnabled()
+
+    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await expect(dialog).toHaveCount(0)
+    expect(page.url()).toContain('#/start-project')
+  })
+
+  test('the Quick record card help explains Quick record', async ({ page }) => {
+    // The Quick record card comes first, so its help icon is the first one
+    await page.locator('button[aria-label="Help"]').first().click()
+    await expect(
+      page.getByText('Quick record lets you record a website as a test', { exact: false })
+    ).toBeVisible()
+    await expect(page.getByText('Open Recorder')).toHaveCount(0)
+  })
+
   test('clicking Create navigates to new project page', async ({ page }) => {
     await page.getByRole('button', { name: 'Create' }).click()
     await page.waitForTimeout(1000)
@@ -45,16 +95,18 @@ test.describe('Landing Page', () => {
   })
 
   test('info icon on Create card opens modal', async ({ page }) => {
+    // Quick record's card comes first; Create's help icon is the second
     const infoIcons = page.locator('button[aria-label="Help"]')
-    await infoIcons.first().click()
+    await infoIcons.nth(1).click()
     await page.waitForTimeout(500)
     // Modal should appear with project creation info
     await expect(page.getByText('Creating a New Project')).toBeVisible()
   })
 
   test('info modal can be closed', async ({ page }) => {
+    // Quick record's card comes first; Create's help icon is the second
     const infoIcons = page.locator('button[aria-label="Help"]')
-    await infoIcons.first().click()
+    await infoIcons.nth(1).click()
     await page.waitForTimeout(500)
     await expect(page.getByText('Creating a New Project')).toBeVisible()
 

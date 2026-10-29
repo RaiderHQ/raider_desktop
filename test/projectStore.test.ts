@@ -23,6 +23,7 @@ describe('projectStore', () => {
       projectConfig: null,
       projectAutomation: null,
       projectFramework: null,
+      layout: null,
       files: [],
       selectedFiles: []
     })
@@ -141,6 +142,57 @@ describe('projectStore', () => {
       })
       useProjectStore.getState().toggleAll(true)
       expect(useProjectStore.getState().selectedFiles).toEqual(['/test/dir/c.rb'])
+    })
+  })
+
+  describe('layout', () => {
+    const layoutFor = (automation: 'selenium' | 'watir'): object => ({
+      framework: 'rspec',
+      automation,
+      specPath: 'spec',
+      featurePath: 'features',
+      helperPath: 'helpers',
+      recordable: true
+    })
+
+    it('clears the previous layout as soon as another project is selected', async () => {
+      vi.mocked(window.api.setActiveProject).mockResolvedValueOnce({
+        success: true,
+        layout: layoutFor('watir')
+      } as never)
+      useProjectStore.getState().setProjectPath('/a')
+      await vi.waitFor(() => expect(useProjectStore.getState().layout).not.toBeNull())
+      vi.mocked(window.api.setActiveProject).mockReturnValueOnce(new Promise(() => {}))
+      useProjectStore.getState().setProjectPath('/b')
+      expect(useProjectStore.getState().layout).toBeNull()
+    })
+
+    it('leaves layout null when activating the next project rejects', async () => {
+      vi.mocked(window.api.setActiveProject).mockResolvedValueOnce({
+        success: true,
+        layout: layoutFor('watir')
+      } as never)
+      useProjectStore.getState().setProjectPath('/a')
+      await vi.waitFor(() => expect(useProjectStore.getState().layout).not.toBeNull())
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      vi.mocked(window.api.setActiveProject).mockRejectedValueOnce(new Error('boom'))
+      useProjectStore.getState().setProjectPath('/b')
+      await vi.waitFor(() => expect(consoleError).toHaveBeenCalled())
+      expect(useProjectStore.getState().layout).toBeNull()
+      consoleError.mockRestore()
+    })
+
+    it('ignores a stale result for a project that is no longer open', async () => {
+      let resolveA: (value: unknown) => void = () => {}
+      vi.mocked(window.api.setActiveProject).mockReturnValueOnce(
+        new Promise((resolve) => (resolveA = resolve)) as never
+      )
+      useProjectStore.getState().setProjectPath('/a')
+      vi.mocked(window.api.setActiveProject).mockReturnValueOnce(new Promise(() => {}))
+      useProjectStore.getState().setProjectPath('/b')
+      resolveA({ success: true, layout: layoutFor('watir') })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(useProjectStore.getState().layout).toBeNull()
     })
   })
 })

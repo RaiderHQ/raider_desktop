@@ -5,6 +5,7 @@ import path from 'path'
 import { appState } from '../appState'
 import startRecordingMain from './startRecordingMain'
 import { generateRspecFile, toAutomation } from '../../codegen/testFile'
+import { isValidRubyCommand } from '../../utils/rubyCommand'
 import type { Step } from '../../../shared/types/step'
 
 interface ReplayResult {
@@ -26,6 +27,9 @@ async function replayStepsAndRecord(
   stepsToReplay: Step[],
   rubyCommand: string
 ): Promise<ReplayResult> {
+  if (!isValidRubyCommand(rubyCommand)) {
+    return { success: false, error: 'The Ruby command is not valid, so the replay did not run.' }
+  }
   const { implicitWait, explicitWait } = appState.recorderSettings
   const tempFilePath = path.join(os.tmpdir(), `replay_${Date.now()}_spec.rb`)
 
