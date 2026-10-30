@@ -11,8 +11,6 @@ jobs:
   dependencies:
     name: Dependency Vulnerabilities
     runs-on: ubuntu-latest
-    # Report-only until the dependency upgrade PR clears the current findings; then remove this
-    continue-on-error: true
 
     steps:
       - name: Checkout code

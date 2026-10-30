@@ -2,7 +2,7 @@ import { render, screen, act } from '@testing-library/react'
 import InstallGuide from '@pages/Info/InstallGuide'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter } from 'react-router'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({

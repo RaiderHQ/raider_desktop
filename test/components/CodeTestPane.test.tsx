@@ -2,7 +2,7 @@ import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import type { IpcRendererEvent } from 'electron'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import CodeTestPane from '@components/CodeTestPane'
 import TestsWorkspace from '@components/TestsWorkspace'
 import useRecorderStore from '@foundation/Stores/recorderStore'
@@ -88,10 +88,7 @@ const LocationProbe = (): JSX.Element => <div data-testid="location">{useLocatio
 
 const renderPane = (): ReturnType<typeof render> =>
   render(
-    <MemoryRouter
-      initialEntries={['/overview/tests/x']}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={['/overview/tests/x']}>
       <Routes>
         <Route path="/overview/tests/:testKey" element={<CodeTestPane row={codeRow} />} />
         <Route path="/file-editor" element={<EditorProbe />} />
@@ -425,7 +422,6 @@ describe('CodeTestPane', () => {
       render(
         <MemoryRouter
           initialEntries={[`/overview/tests/${toRouteParam('file:spec/login_spec.rb')}`]}
-          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
         >
           <Routes>
             <Route path="/overview/tests/:testKey" element={<TestsWorkspace />} />

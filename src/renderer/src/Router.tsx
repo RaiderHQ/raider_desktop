@@ -1,5 +1,5 @@
-import { createHashRouter, Navigate, RouterProvider } from 'react-router-dom'
-import type { RouteObject } from 'react-router-dom'
+import { createHashRouter, Navigate, RouterProvider } from 'react-router'
+import type { RouteObject } from 'react-router'
 import FileEditor from '@pages/FileEditor'
 import MainTemplate from '@templates/Main'
 import NewProject from '@pages/New'

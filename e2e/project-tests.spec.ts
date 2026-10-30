@@ -158,7 +158,11 @@ test.describe('Project Tests tab', () => {
     await row(page, 'Login').click()
 
     await expect(page).toHaveURL(/#\/overview\/tests\/[A-Za-z0-9_-]+$/)
-    expect(await getIPCCalls(page, 'openCodeTest')).toEqual([['spec/login_page_spec.rb']])
+    // The pane mounts after the URL changes (navigations render in a transition since
+    // react-router 7), so its openCodeTest call may land a moment later
+    await expect
+      .poll(() => getIPCCalls(page, 'openCodeTest'))
+      .toEqual([['spec/login_page_spec.rb']])
     await expect(page.getByRole('button', { name: 'logs in with right credentials' })).toBeVisible()
     await expect(
       page.getByRole('button', { name: 'shows an error with a wrong password' })

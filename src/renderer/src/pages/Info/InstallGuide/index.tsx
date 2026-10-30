@@ -4,7 +4,7 @@ import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import Logo from '@assets/images/logo.svg'
 import { FaArrowLeft } from 'react-icons/fa'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 
 interface RubyError {
   code: string

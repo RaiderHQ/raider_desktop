@@ -2,7 +2,7 @@ import { render, screen, act, fireEvent } from '@testing-library/react'
 import FileEditor from '@pages/FileEditor'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({

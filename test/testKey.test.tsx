@@ -1,6 +1,6 @@
 import { createElement } from 'react'
 import { render, screen } from '@testing-library/react'
-import { RouterProvider, createHashRouter, useParams } from 'react-router-dom'
+import { RouterProvider, createHashRouter, useParams } from 'react-router'
 import { describe, it, expect } from 'vitest'
 import { fromRouteParam, parseTestKey, testKeyOf, toRouteParam } from '@foundation/testKey'
 
