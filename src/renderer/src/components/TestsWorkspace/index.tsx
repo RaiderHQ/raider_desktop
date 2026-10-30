@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useMatch, useNavigate, useParams } from 'react-router-dom'
+import { useMatch, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import TestsList from '@components/TestsList'
 import TestPage from '@components/TestPage'
@@ -49,7 +49,9 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
   const visibleRows = suiteFilter ? rows?.filter((r) => r.suiteIds.includes(suiteFilter)) : rows
   const selectedRow = rows?.find((r) => testKeyOf(r) === selectedKey) ?? null
 
-  const select = (key: TestKey): void => navigate(`/overview/tests/${toRouteParam(key)}`)
+  const select = (key: TestKey): void => {
+    void navigate(`/overview/tests/${toRouteParam(key)}`)
+  }
 
   const pane = renderPane ? (
     renderPane(selectedRow)
@@ -93,7 +95,12 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
               headerExtra={<SuiteFilter value={suiteFilter} onChange={setSuiteFilter} />}
               selectedKey={selectedKey}
               onSelect={select}
-              onNewTest={onNewTest ?? ((): void => navigate('/overview/tests/new'))}
+              onNewTest={
+                onNewTest ??
+                ((): void => {
+                  void navigate('/overview/tests/new')
+                })
+              }
             />
           )}
         </div>

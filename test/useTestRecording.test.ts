@@ -1,7 +1,7 @@
 import { createElement } from 'react'
 import type { ReactNode } from 'react'
 import { renderHook, act } from '@testing-library/react'
-import { MemoryRouter, useLocation } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { IpcRendererEvent } from 'electron'
 import { useTestRecording } from '../src/renderer/src/hooks/useTestRecording'
@@ -71,8 +71,7 @@ const wrapper = ({ children }: { children: ReactNode }): ReactNode =>
   createElement(
     MemoryRouter,
     {
-      initialEntries: ['/overview/tests/x'],
-      future: { v7_startTransition: true, v7_relativeSplatPath: true }
+      initialEntries: ['/overview/tests/x']
     },
     children
   )

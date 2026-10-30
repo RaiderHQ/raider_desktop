@@ -3,7 +3,7 @@ import '@testing-library/jest-dom'
 import type { ReactElement } from 'react'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { IpcRendererEvent } from 'electron'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import TestPage from '@components/TestPage'
 import TestsWorkspace from '@components/TestsWorkspace'
 import { testKeyOf, toRouteParam } from '@foundation/testKey'
@@ -95,10 +95,7 @@ const api = {
 }
 
 const page = (test: Test): ReactElement => (
-  <MemoryRouter
-    initialEntries={['/overview/tests/x']}
-    future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-  >
+  <MemoryRouter initialEntries={['/overview/tests/x']}>
     <Routes>
       <Route path="/overview/tests/:testKey" element={<TestPage row={row(test)} />} />
       <Route path="/overview/tests" element={<div>tests list route</div>} />
@@ -157,10 +154,7 @@ afterEach(() => vi.useRealTimers())
 describe('TestPage leaving a new test', () => {
   const renderDraft = (): ReturnType<typeof render> =>
     render(
-      <MemoryRouter
-        initialEntries={['/overview/tests/new']}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
+      <MemoryRouter initialEntries={['/overview/tests/new']}>
         <Routes>
           <Route path="/overview/tests/new" element={<TestPage />} />
           <Route path="/overview/tests" element={<div>tests list route</div>} />
@@ -300,10 +294,7 @@ describe('TestPage', () => {
     const renderWithEditor = (test: Test): void => {
       api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [test, empty] }])
       render(
-        <MemoryRouter
-          initialEntries={['/overview/tests/x']}
-          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-        >
+        <MemoryRouter initialEntries={['/overview/tests/x']}>
           <Routes>
             <Route path="/overview/tests/:testKey" element={<TestPage row={row(test)} />} />
             <Route path="/file-editor" element={<EditorProbe />} />
@@ -545,10 +536,7 @@ describe('TestPage', () => {
 describe('TestsWorkspace pane', () => {
   const renderWorkspace = (key: string): void => {
     render(
-      <MemoryRouter
-        initialEntries={[`/overview/tests/${toRouteParam(key)}`]}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
+      <MemoryRouter initialEntries={[`/overview/tests/${toRouteParam(key)}`]}>
         <Routes>
           <Route path="/overview/tests/:testKey" element={<TestsWorkspace />} />
         </Routes>

@@ -2,7 +2,7 @@ import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import type { IpcRendererEvent } from 'electron'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import TestsWorkspace from '@components/TestsWorkspace'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
@@ -84,10 +84,7 @@ const Location = (): null => {
 
 const renderAt = (path: string): ReturnType<typeof render> =>
   render(
-    <MemoryRouter
-      initialEntries={[path]}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={[path]}>
       <Location />
       <Routes>
         <Route path="/overview/tests" element={<TestsWorkspace />} />

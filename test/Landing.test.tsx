@@ -2,7 +2,7 @@ import { render, screen, act, fireEvent } from '@testing-library/react'
 import Landing from '@pages/Landing'
 import '@testing-library/jest-dom'
 import { vi, beforeEach } from 'vitest'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({

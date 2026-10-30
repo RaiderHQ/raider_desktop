@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { MessageContent } from '@components/TestResultCard/MessageContent'
 import { foldFrames, parseFrame } from '@foundation/stackFrames'
 import { resolveEditorTarget, type EditorTarget } from '@foundation/openInEditor'

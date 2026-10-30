@@ -2,7 +2,7 @@ import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import type { IpcRendererEvent } from 'electron'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router'
 import TestsWorkspace from '@components/TestsWorkspace'
 import { toRouteParam } from '@foundation/testKey'
 import useRecorderStore from '@foundation/Stores/recorderStore'
@@ -78,10 +78,7 @@ const keyOf = (test: Test): string => toRouteParam(`id:${test.id}`)
 
 const renderWorkspace = (test: Test = search): void => {
   render(
-    <MemoryRouter
-      initialEntries={[`/overview/tests/${keyOf(test)}`]}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={[`/overview/tests/${keyOf(test)}`]}>
       <Routes>
         <Route path="/overview/tests/:testKey" element={<TestsWorkspace />} />
         <Route path="/overview/tests" element={<TestsWorkspace />} />

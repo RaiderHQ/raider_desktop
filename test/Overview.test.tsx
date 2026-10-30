@@ -2,7 +2,7 @@ import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import Overview from '@pages/Overview'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter } from 'react-router'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import toast from 'react-hot-toast'
@@ -37,8 +37,8 @@ vi.mock('@foundation/helpers', () => ({
 }))
 
 const mockNavigate = vi.fn()
-vi.mock('react-router-dom', async () => {
-  const original = await vi.importActual('react-router-dom')
+vi.mock('react-router', async () => {
+  const original = await vi.importActual('react-router')
   return {
     ...original,
     useNavigate: (): (() => void) => mockNavigate
