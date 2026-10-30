@@ -165,6 +165,13 @@ describe('IPC Contract', () => {
     'getLongshipConfig',
     'setLongshipConfig',
 
+    // Live test runs (RunApi)
+    'startRun',
+    'cancelRun',
+    'getActiveRun',
+    'getRunDefaults',
+    'onRunEvent',
+
     // App Lifecycle
     'closeApp'
   ]
@@ -194,5 +201,32 @@ describe('IPC Contract', () => {
     for (const key of Object.keys(api)) {
       expect(typeof api[key], `${key} should be a function`).toBe('function')
     }
+  })
+
+  it('onRunEvent unsubscribes exactly its own listener and passes only the event', async () => {
+    const { contextBridge, ipcRenderer } = await import('electron')
+    const calls = (contextBridge.exposeInMainWorld as ReturnType<typeof vi.fn>).mock.calls
+    const api = calls.find((c) => c[0] === 'api')?.[1]
+    if (!api) return
+    const on = ipcRenderer.on as ReturnType<typeof vi.fn>
+    const off = ipcRenderer.removeListener as ReturnType<typeof vi.fn>
+    on.mockClear()
+    off.mockClear()
+
+    const first = vi.fn()
+    const second = vi.fn()
+    const unsubscribeFirst = api.onRunEvent(first)
+    api.onRunEvent(second)
+    const [[channelA, listenerA], [, listenerB]] = on.mock.calls
+    expect(channelA).toBe('run-event')
+    expect(listenerA).not.toBe(listenerB)
+
+    const event = { type: 'run:phase', runId: 'r1', phase: 'booting' }
+    listenerB({}, event)
+    expect(second).toHaveBeenCalledWith(event)
+
+    unsubscribeFirst()
+    expect(off).toHaveBeenCalledTimes(1)
+    expect(off).toHaveBeenCalledWith('run-event', listenerA)
   })
 })

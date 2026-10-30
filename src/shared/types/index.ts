@@ -13,3 +13,17 @@ export type {
   ScaffoldResult
 } from './scaffoldTypes'
 export type { ProjectCreationOptions } from './projectCreationTypes'
+export type {
+  RunScope,
+  RunRequest,
+  ExampleStatus,
+  RunPhase,
+  PlannedTest,
+  RunDefaults,
+  RunFinishedStatus,
+  RunCounts,
+  RunEvent,
+  StartRunResult,
+  ActiveRun,
+  RunApi
+} from './runEvents'

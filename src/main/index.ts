@@ -54,6 +54,8 @@ import {
 } from './handlers/tests/projectTestIpc'
 import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTests'
 import { isListed } from './handlers/tests/suiteStore'
+import { registerRunIpc } from './handlers/run/runIpc'
+import { killActiveRun } from './handlers/run/runner'
 import exportTest from './handlers/io/exportTest'
 import exportSuite from './handlers/io/exportSuite'
 import exportProject from './handlers/io/exportProject'
@@ -172,6 +174,8 @@ app.whenReady().then(() => {
 
   app.on('before-quit', () => {
     quitting = true
+    // The run is detached in its own process group, so it would outlive the app
+    killActiveRun()
   })
 
   app.on('browser-window-created', (_, window) => {
@@ -260,6 +264,7 @@ app.whenReady().then(() => {
   ipcMain.handle('run-project-file', (_event, file: string, rubyCommand: string) =>
     runProjectFileHandler(file, rubyCommand)
   )
+  registerRunIpc(ipcMain)
   ipcMain.handle(
     'record-over-example',
     (_event, file: string, exampleName: string, steps: Step[], rubyCommand: string) =>
