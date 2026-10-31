@@ -19,6 +19,11 @@ describe('run settings', () => {
     expect(loadRunSettings('/a')).toEqual({ parallel: true, workers: 3, quarantinedFails: true })
     expect(loadRunSettings('/b').parallel).toBe(false)
   })
+  it('stores settings under a namespaced key', () => {
+    const s = { parallel: true, workers: 2, quarantinedFails: false }
+    saveRunSettings('/a', s)
+    expect(JSON.parse(localStorage.getItem('raider.runSettings:/a') as string)).toEqual(s)
+  })
   it('workersFor is undefined when not parallel', () => {
     expect(workersFor({ ...on, parallel: false }, d, { kind: 'all' })).toBeUndefined()
   })
