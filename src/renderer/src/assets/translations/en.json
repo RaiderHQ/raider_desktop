@@ -820,6 +820,7 @@
     "moreOptions": "More options",
     "workers": "Workers",
     "quarantinedFails": "Count quarantined failures as failures",
+    "originProject": "This project",
     "notifyTitle": "Run finished",
     "saveToRun": "Save this test to run it",
     "skippedMissing_one": "{{count}} test was skipped: its file is missing",

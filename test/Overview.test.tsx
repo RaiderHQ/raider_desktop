@@ -6,6 +6,8 @@ import { MemoryRouter } from 'react-router'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import toast from 'react-hot-toast'
+import { useRunStore } from '@foundation/Stores/runStore'
+import type { RunView } from '@foundation/run/runModel'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
@@ -15,8 +17,21 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('@components/Library/Folder', () => ({
-  default: ({ name }: { name: string | undefined }): JSX.Element => (
-    <div data-testid="folder">{name}</div>
+  default: ({
+    name,
+    onRunTests,
+    runDisabled
+  }: {
+    name: string | undefined
+    onRunTests?: () => void
+    runDisabled?: boolean
+  }): JSX.Element => (
+    <div data-testid="folder">
+      {name}
+      {onRunTests && (
+        <button data-testid="run-tests" onClick={onRunTests} disabled={runDisabled} />
+      )}
+    </div>
   )
 }))
 
@@ -47,10 +62,13 @@ vi.mock('react-router', async () => {
 
 vi.mock('@foundation/Stores/rubyStore', () => ({
   __esModule: true,
-  default: vi.fn(() => ({
-    rubyCommand: '/usr/bin/ruby',
-    setRubyCommand: vi.fn()
-  }))
+  default: Object.assign(
+    vi.fn(() => ({
+      rubyCommand: '/usr/bin/ruby',
+      setRubyCommand: vi.fn()
+    })),
+    { getState: (): { rubyCommand: string } => ({ rubyCommand: '/usr/bin/ruby' }) }
+  )
 }))
 
 // The project opens on the Tests tab; most of these tests are about the Files tab
@@ -92,12 +110,16 @@ const mockApi = {
   editFile: vi.fn().mockResolvedValue({ success: true }),
   deleteFile: vi.fn().mockResolvedValue({ success: true }),
   renameFile: vi.fn().mockResolvedValue({ success: true, newPath: '' }),
-  duplicateFile: vi.fn().mockResolvedValue({ success: true, newPath: '' })
+  duplicateFile: vi.fn().mockResolvedValue({ success: true, newPath: '' }),
+  startRun: vi.fn().mockResolvedValue({ runId: 'r1' }),
+  getRunDefaults: vi.fn().mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 })
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
+  useRunStore.setState({ run: null, origin: null, isActive: false })
+  useRecorderStore.setState({ isRunning: false })
   // @ts-expect-error - Mocking window.api
   window.api = mockApi
 })
@@ -672,5 +694,170 @@ describe('Overview wait settings', (): void => {
       fireEvent.blur(input)
     })
     expect(mockApi.updateRecordingSettings).not.toHaveBeenCalled()
+  })
+})
+
+describe('Overview live runs', (): void => {
+  const renderOverview = async (): Promise<void> => {
+    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+    await openFilesTab()
+  }
+
+  const failedRun = (): RunView => ({
+    runId: 'r0',
+    projectPath: '/fake/project',
+    scope: { kind: 'all' },
+    framework: 'rspec',
+    workers: 1,
+    liveEvents: true,
+    startedAt: '2026-01-01T00:00:00Z',
+    phase: 'running',
+    tests: {
+      t1: {
+        id: 't1',
+        file: 'spec/login_spec.rb',
+        line: 12,
+        description: 'logs in',
+        fullName: 'Login logs in',
+        state: 'failed'
+      }
+    },
+    order: ['t1'],
+    output: [],
+    finished: {
+      status: 'failed',
+      counts: { total: 1, passed: 0, failed: 1, pending: 0, skipped: 0, quarantined: 0 },
+      exitCode: 1,
+      finishedAt: '2026-01-01T00:01:00Z'
+    }
+  })
+
+  const scopeSent = (): unknown => mockApi.startRun.mock.calls[0][0].scope
+
+  it('starts a live run of every test from Run Tests', async () => {
+    await renderOverview()
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('run-tests'))
+    })
+    expect(mockApi.startRun).toHaveBeenCalledTimes(1)
+    expect(scopeSent()).toEqual({ kind: 'all' })
+    expect(useRunStore.getState().origin).toEqual({
+      route: '/overview',
+      label: 'run.originProject'
+    })
+    expect(mockApi.runRaiderTests).not.toHaveBeenCalled()
+  })
+
+  it('runs the smoke tag when the run mode is Smoke', async () => {
+    await renderOverview()
+    fireEvent.change(screen.getByTestId('overview-run-mode-select'), {
+      target: { value: 'smoke' }
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('run-tests'))
+    })
+    expect(scopeSent()).toEqual({ kind: 'tags', tags: ['smoke'] })
+    expect(mockApi.runRakeTask).not.toHaveBeenCalled()
+  })
+
+  it('sends the recommended workers when Run in parallel is on', async () => {
+    await renderOverview()
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('overview-parallel-toggle'))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('run-tests'))
+    })
+    expect(mockApi.startRun.mock.calls[0][0].workers).toBe(2)
+  })
+
+  it('keeps the parallel choice and workers in More options', async () => {
+    await renderOverview()
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('overview-parallel-toggle'))
+    })
+    fireEvent.click(screen.getByTestId('overview-more-options'))
+    const workers = screen.getByTestId('overview-workers-input')
+    expect(workers).toHaveAttribute('max', '8')
+    expect(workers).toHaveAttribute('placeholder', '2')
+    fireEvent.change(workers, { target: { value: '3' } })
+    fireEvent.click(screen.getByTestId('overview-quarantined-fails-toggle'))
+    expect(JSON.parse(localStorage.getItem('raider.runSettings:/fake/project') as string)).toEqual({
+      parallel: true,
+      workers: 3,
+      quarantinedFails: true
+    })
+  })
+
+  it('re-runs the failed tests of the last run by location', async () => {
+    useRunStore.setState({ run: failedRun(), origin: null, isActive: false })
+    await renderOverview()
+    const rerun = screen.getByTestId('overview-rerun-failed-btn')
+    expect(rerun).toBeEnabled()
+    await act(async () => {
+      fireEvent.click(rerun)
+    })
+    expect(scopeSent()).toEqual({ kind: 'locations', locations: ['spec/login_spec.rb:12'] })
+    expect(mockApi.rerunFailedTests).not.toHaveBeenCalled()
+  })
+
+  it('disables Re-run failed when nothing failed', async () => {
+    await renderOverview()
+    const rerun = screen.getByTestId('overview-rerun-failed-btn')
+    expect(rerun).toBeDisabled()
+    expect(rerun).toHaveAttribute('title', 'run.nothingFailed')
+  })
+
+  it('disables the run buttons while a run is active', async () => {
+    useRunStore.setState({
+      run: { ...failedRun(), finished: null },
+      origin: { route: '/overview', label: 'run.originProject' },
+      isActive: true
+    })
+    await renderOverview()
+    expect(screen.getByTestId('run-tests')).toBeDisabled()
+    expect(screen.getByTestId('overview-rerun-failed-btn')).toBeDisabled()
+  })
+
+  it('disables the run buttons while the recorder is running a test', async () => {
+    useRunStore.setState({ run: failedRun(), origin: null, isActive: false })
+    useRecorderStore.setState({ isRunning: true })
+    await renderOverview()
+    expect(screen.getByTestId('run-tests')).toBeDisabled()
+    expect(screen.getByTestId('overview-rerun-failed-btn')).toBeDisabled()
+  })
+
+  it('shows the run panel above every tab', async () => {
+    useRunStore.setState({
+      run: { ...failedRun(), finished: null },
+      origin: { route: '/overview', label: 'run.originProject' },
+      isActive: true
+    })
+    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+    expect(screen.getByTestId('run-panel')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('overview.tabs.dashboard'))
+    expect(screen.getByTestId('run-panel')).toBeInTheDocument()
+  })
+
+  it('never listens for the old test-run status', async () => {
+    await renderOverview()
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('run-tests'))
+    })
+    expect(mockApi.onTestRunStatus).not.toHaveBeenCalled()
   })
 })

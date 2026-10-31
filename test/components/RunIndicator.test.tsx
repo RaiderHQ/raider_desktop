@@ -90,6 +90,22 @@ describe('RunIndicator', () => {
     expect(screen.queryByTestId('run-indicator')).toBeNull()
   })
 
+  it('is hidden on an Overview sub-route when the run started on Overview', () => {
+    useRunStore.setState({
+      run: makeRun(),
+      origin: { route: '/overview', label: 'This project' },
+      isActive: true
+    })
+    renderAt('/overview/tests')
+    expect(screen.queryByTestId('run-indicator')).toBeNull()
+  })
+
+  it('shows on a sub-route of any other origin', () => {
+    useRunStore.setState({ run: makeRun(), origin, isActive: true })
+    renderAt('/tests/abc')
+    expect(screen.getByTestId('run-indicator')).toBeInTheDocument()
+  })
+
   it('treats /overview as the origin when it is unknown', () => {
     useRunStore.setState({ run: makeRun(), origin: null, isActive: true })
     renderAt('/overview')

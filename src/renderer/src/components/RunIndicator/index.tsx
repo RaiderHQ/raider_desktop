@@ -36,7 +36,12 @@ const RunIndicator: React.FC = (): JSX.Element | null => {
   }, [isActive, finished, runId])
 
   const route = origin?.route ?? FALLBACK_ROUTE
-  if (!run || pathname === route) return null
+  // Overview's tabs live under /overview, and the run panel shows on all of them
+  const onOrigin =
+    route === '/overview'
+      ? pathname === route || pathname.startsWith('/overview/')
+      : pathname === route
+  if (!run || onOrigin) return null
 
   let label: string
   if (isActive) {
