@@ -808,6 +808,59 @@ describe('Overview live runs', (): void => {
     expect(mockApi.rerunFailedTests).not.toHaveBeenCalled()
   })
 
+  it('re-runs the last results after a cancelled run that recorded no failures', async () => {
+    const cancelled = failedRun()
+    useRunStore.setState({
+      run: {
+        ...cancelled,
+        tests: {},
+        order: [],
+        finished: {
+          ...cancelled.finished!,
+          status: 'cancelled',
+          counts: { ...cancelled.finished!.counts, total: 0, failed: 0 }
+        }
+      },
+      origin: null,
+      isActive: false
+    })
+    mockApi.readDirectory.mockImplementation(async (dir: string) =>
+      dir === '/fake/project/raider-results'
+        ? [{ name: 'run.json', type: 'file', path: '/fake/project/raider-results/run.json' }]
+        : []
+    )
+    mockApi.readFile.mockImplementation(async (path: string) =>
+      path === '/fake/project/raider-results/run.json'
+        ? {
+            success: true,
+            data: JSON.stringify({
+              results: [
+                {
+                  full_name: 'Cart: adds',
+                  status: 'failed',
+                  file_path: './spec/cart_spec.rb',
+                  line_number: 7,
+                  attachments: []
+                }
+              ]
+            })
+          }
+        : { success: true, data: '' }
+    )
+    try {
+      await renderOverview()
+      const rerun = screen.getByTestId('overview-rerun-failed-btn')
+      await waitFor(() => expect(rerun).toBeEnabled())
+      await act(async () => {
+        fireEvent.click(rerun)
+      })
+      expect(scopeSent()).toEqual({ kind: 'locations', locations: ['spec/cart_spec.rb:7'] })
+    } finally {
+      mockApi.readDirectory.mockResolvedValue([])
+      mockApi.readFile.mockResolvedValue({ success: true, data: '' })
+    }
+  })
+
   it('disables Re-run failed when nothing failed', async () => {
     await renderOverview()
     const rerun = screen.getByTestId('overview-rerun-failed-btn')

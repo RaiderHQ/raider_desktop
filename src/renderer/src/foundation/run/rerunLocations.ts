@@ -8,7 +8,10 @@ const location = (file: string, line: number | null | undefined): string =>
 export function failedLocations(run: RunView | null, results: TestResult[] | null): string[] {
   const fromRun = run ? Object.values(run.tests).filter((t) => t.state === 'failed') : []
   const expected = run?.finished?.counts.failed ?? 0
-  const runUsable = fromRun.every((t) => t.file) && (expected === 0 || fromRun.length > 0)
+  // A cancelled, errored or unfinished run only saw some of its failures
+  const ranToEnd = run?.finished?.status === 'passed' || run?.finished?.status === 'failed'
+  const runUsable =
+    ranToEnd && fromRun.every((t) => t.file) && (expected === 0 || fromRun.length > 0)
 
   const pairs: [string, number | null | undefined][] = runUsable
     ? fromRun.map((t) => [t.file, t.line])

@@ -69,6 +69,21 @@ describe('failedLocations', () => {
     expect(failedLocations(runWith([test('a', 'spec/a_spec.rb', 1, 'passed')], 0), [])).toEqual([])
     expect(failedLocations(null, null)).toEqual([])
   })
+  it.each(['cancelled', 'errored'] as const)(
+    'falls back to results when a run is %s with no failures recorded',
+    (status) => {
+      const run = runWith([], 0)
+      run.finished = { ...run.finished!, status }
+      expect(failedLocations(run, [result('spec/a_spec.rb', 5)])).toEqual(['spec/a_spec.rb:5'])
+    }
+  )
+  it('falls back to results while the run is unfinished', () => {
+    const run = { ...runWith([test('a', 'spec/a_spec.rb', 1)]), finished: null }
+    expect(failedLocations(run, [result('spec/b_spec.rb', 2)])).toEqual(['spec/b_spec.rb:2'])
+  })
+  it('falls back to results with no run', () => {
+    expect(failedLocations(null, [result('spec/b_spec.rb', 2)])).toEqual(['spec/b_spec.rb:2'])
+  })
   it('removes duplicates', () => {
     const run = runWith([test('a', 'spec/a_spec.rb', 4), test('b', 'spec/a_spec.rb', 4)])
     expect(failedLocations(run, null)).toEqual(['spec/a_spec.rb:4'])
