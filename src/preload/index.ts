@@ -10,6 +10,7 @@ import type { QuickProject } from '@shared/types/quickProject'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
+import type { PrepareSuiteRunResult, PrepareTestRunResult } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type {
   ActiveRun,
@@ -204,6 +205,10 @@ const api = {
     rubyCommand: string
   ): Promise<{ success: boolean; output: string }> =>
     ipcRenderer.invoke('run-suite', suiteId, projectPath, rubyCommand),
+  prepareTestRun: (suiteId: string, testId: string, test?: Test): Promise<PrepareTestRunResult> =>
+    ipcRenderer.invoke('prepare-test-run', suiteId, testId, test),
+  prepareSuiteRun: (suiteId: string): Promise<PrepareSuiteRunResult> =>
+    ipcRenderer.invoke('prepare-suite-run', suiteId),
   exportSuite: (suiteId: string): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('export-suite', suiteId),
   exportProject: (): Promise<{ success: boolean; path?: string; error?: string }> =>

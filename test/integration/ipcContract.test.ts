@@ -86,6 +86,8 @@ describe('IPC Contract', () => {
     'rerunFailedTests',
     'runTest',
     'runSuite',
+    'prepareTestRun',
+    'prepareSuiteRun',
 
     // Step Rendering
     'renderStep',

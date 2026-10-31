@@ -7,6 +7,7 @@ import type { Step } from '@shared/types/step'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
+import type { PrepareSuiteRunResult, PrepareTestRunResult } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { IpcRendererEvent } from 'electron'
@@ -140,6 +141,10 @@ export interface WindowApi extends RunApi {
     projectPath: string,
     rubyCommand: string
   ) => Promise<{ success: boolean; output: string }>
+  /** Saves `test` when needed and returns the spec file to run live; runs nothing */
+  prepareTestRun: (suiteId: string, testId: string, test?: Test) => Promise<PrepareTestRunResult>
+  /** Restores missing recorded files and returns the suite's spec files; runs nothing */
+  prepareSuiteRun: (suiteId: string) => Promise<PrepareSuiteRunResult>
 
   // --- Step Rendering ---
   /** Ruby for one step, in the active project's automation (Selenium or Watir). */

@@ -52,6 +52,7 @@ import {
   recordOverExampleHandler,
   runProjectFileHandler
 } from './handlers/tests/projectTestIpc'
+import { prepareSuiteRun, prepareTestRun } from './handlers/testing/prepareRuns'
 import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTests'
 import { isListed } from './handlers/tests/suiteStore'
 import { registerRunIpc } from './handlers/run/runIpc'
@@ -304,6 +305,10 @@ app.whenReady().then(() => {
   ipcMain.handle('run-suite', (_event, suiteId: string, projectPath: string, rubyCommand: string) =>
     runSuiteHandler(suiteId, projectPath, rubyCommand)
   )
+  ipcMain.handle('prepare-test-run', (_event, suiteId: string, testId: string, test?: Test) =>
+    prepareTestRun(suiteId, testId, test)
+  )
+  ipcMain.handle('prepare-suite-run', (_event, suiteId: string) => prepareSuiteRun(suiteId))
   ipcMain.handle('export-test', (_event, testData: TestData) => exportTest(testData))
   ipcMain.handle('export-suite', (_event, suiteId: string) => exportSuite(suiteId))
   ipcMain.handle('export-project', exportProject)
