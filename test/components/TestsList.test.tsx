@@ -4,6 +4,8 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import TestsList from '@components/TestsList'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
+import { useRunStore } from '@foundation/Stores/runStore'
+import type { RunTestView, RunView } from '@foundation/run/runModel'
 import type { TestRow } from '@foundation/testKey'
 
 vi.mock('react-i18next', () => ({
@@ -30,7 +32,13 @@ const suites = [
   { id: 's1', name: 'Smoke', tests: [{ id: 't1', name: 'Login works', url: '', steps: [] }] }
 ]
 
-const api = { saveRecording: vi.fn(), getSuites: vi.fn(), listProjectTests: vi.fn() }
+const api = {
+  saveRecording: vi.fn(),
+  getSuites: vi.fn(),
+  listProjectTests: vi.fn(),
+  setActiveProject: vi.fn().mockResolvedValue({ success: true }),
+  readDirectory: vi.fn().mockResolvedValue([])
+}
 
 const setup = (over: Partial<React.ComponentProps<typeof TestsList>> = {}) => {
   const props = {
@@ -52,9 +60,36 @@ beforeEach(() => {
   // @ts-expect-error - Mocking window.api
   window.api = api
   useTestsListStore.setState({ rows: null })
+  useRunStore.setState({ run: null, origin: null, isActive: false })
+  useProjectStore.setState({ projectPath: '/p' })
 })
 
-afterEach(() => useProjectStore.setState({ layout: null }))
+afterEach(() => useProjectStore.setState({ layout: null, projectPath: null }))
+
+const runTest = (id: string, file: string, state: RunTestView['state']): RunTestView => ({
+  id,
+  file,
+  line: 1,
+  description: id,
+  fullName: id,
+  state
+})
+
+const runWith = (tests: RunTestView[], over: Partial<RunView> = {}): RunView => ({
+  runId: 'r1',
+  projectPath: '/p',
+  scope: { kind: 'all' },
+  framework: 'rspec',
+  workers: 1,
+  liveEvents: true,
+  startedAt: '2026-10-31T10:00:00Z',
+  phase: 'running',
+  tests: Object.fromEntries(tests.map((x) => [x.id, x])),
+  order: tests.map((x) => x.id),
+  output: [],
+  finished: null,
+  ...over
+})
 
 describe('TestsList', () => {
   it('clicking a row selects it by key, with no Edit or View buttons', () => {
@@ -102,6 +137,30 @@ describe('TestsList', () => {
     const slots = screen.getAllByTestId('row-status')
     expect(slots).toHaveLength(rows.length)
     slots.forEach((s) => expect(s).toBeEmptyDOMElement())
+  })
+
+  it("shows each file's status in the last run", () => {
+    useRunStore.setState({
+      run: runWith([
+        runTest('a', 'spec/login_spec.rb', 'passed'),
+        runTest('b', 'spec/login_spec.rb', 'failed'),
+        runTest('c', 'spec/cart_spec.rb', 'started')
+      ])
+    })
+    setup()
+    const slots = screen.getAllByTestId('row-status')
+    expect(slots[0]).toHaveTextContent('run.state.failed')
+    expect(slots[1]).toHaveTextContent('run.state.started')
+    expect(slots[2]).toBeEmptyDOMElement()
+    expect(slots[3]).toBeEmptyDOMElement()
+  })
+
+  it('shows no status from a run in another project', () => {
+    useRunStore.setState({
+      run: runWith([runTest('b', 'spec/login_spec.rb', 'failed')], { projectPath: '/other' })
+    })
+    setup()
+    screen.getAllByTestId('row-status').forEach((s) => expect(s).toBeEmptyDOMElement())
   })
 
   it('New test calls onNewTest', () => {

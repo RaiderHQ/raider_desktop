@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
+import { useRunStore } from '@foundation/Stores/runStore'
+import { fileStatus } from '@foundation/run/runModel'
 import { testKeyOf } from '@foundation/testKey'
 import type { TestKey, TestRow } from '@foundation/testKey'
 
@@ -13,6 +15,13 @@ interface TestsListProps {
   onNewTest: () => void
   headerExtra?: React.ReactNode
 }
+
+// The run panel's state labels and colours, for each file's status in the last run
+const statusPill = {
+  running: { label: 'run.state.started', className: 'bg-neutral-lt text-neutral-dk' },
+  passed: { label: 'run.state.passed', className: 'bg-status-ok-bg text-status-ok' },
+  failed: { label: 'run.state.failed', className: 'bg-status-err-bg text-status-err' }
+} as const
 
 const rowButton =
   'text-xs px-2.5 py-1 rounded border border-neutral-bdr text-neutral-dk bg-white hover:bg-neutral-50 transition-colors font-medium'
@@ -26,6 +35,9 @@ const TestsList: React.FC<TestsListProps> = ({
 }) => {
   const { t } = useTranslation()
   const layout = useProjectStore((s) => s.layout)
+  const projectPath = useProjectStore((s) => s.projectPath)
+  // Only a run of this project says anything about its files
+  const run = useRunStore((s) => (s.run && s.run.projectPath === projectPath ? s.run : null))
 
   const restore = async (row: TestRow): Promise<void> => {
     const fail = (error: unknown): void => {
@@ -72,6 +84,7 @@ const TestsList: React.FC<TestsListProps> = ({
             const key = testKeyOf(row)
             const selected = key === selectedKey
             const editedInCode = row.ownership === 'code' || row.ownership === 'codeOwnedWasRecorded'
+            const status = row.file ? fileStatus(run, row.file) : null
             return (
               <li
                 key={key}
@@ -112,7 +125,15 @@ const TestsList: React.FC<TestsListProps> = ({
                     </button>
                   </>
                 )}
-                <span data-testid="row-status" />
+                <span data-testid="row-status">
+                  {status && (
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${statusPill[status].className}`}
+                    >
+                      {t(statusPill[status].label)}
+                    </span>
+                  )}
+                </span>
               </li>
             )
           })}

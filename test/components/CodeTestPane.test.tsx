@@ -9,6 +9,8 @@ import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import { useRunStore } from '@foundation/Stores/runStore'
+import type { RunView } from '@foundation/run/runModel'
 import { toRouteParam } from '@foundation/testKey'
 import type { TestRow } from '@foundation/testKey'
 import type { Step } from '@shared/types/step'
@@ -65,6 +67,8 @@ const api = {
   listProjectTests: vi.fn(),
   openCodeTest: vi.fn(),
   runProjectFile: vi.fn(),
+  startRun: vi.fn(),
+  getRunDefaults: vi.fn(),
   recordOverExample: vi.fn(),
   saveRecording: vi.fn(),
   saveTrace: vi.fn(),
@@ -123,6 +127,9 @@ beforeEach(() => {
   api.listProjectTests.mockResolvedValue([])
   api.openCodeTest.mockResolvedValue(view)
   api.runProjectFile.mockResolvedValue({ success: true, output: 'ran ok' })
+  api.startRun.mockResolvedValue({ runId: 'r1' })
+  api.getRunDefaults.mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 })
+  useRunStore.setState({ run: null, origin: null, isActive: false })
   api.recordOverExample.mockResolvedValue({ success: true })
   api.saveRecording.mockResolvedValue({
     success: true,
@@ -215,14 +222,46 @@ describe('CodeTestPane', () => {
     expect(screen.queryByText('goto https://x.test/first-example')).not.toBeInTheDocument()
   })
 
-  it('Run runs the file', async () => {
+  it('Run runs the file live, from this page', async () => {
     renderPane()
     await screen.findByRole('button', { name: 'logs in' })
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'testPage.run' }))
     })
-    expect(api.runProjectFile).toHaveBeenCalledWith('spec/login_spec.rb', 'ruby')
-    expect(useRunOutputStore.getState().runOutput).toBe('ran ok')
+    expect(api.startRun).toHaveBeenCalledTimes(1)
+    expect(api.startRun.mock.calls[0][0].scope).toEqual({
+      kind: 'files',
+      files: ['spec/login_spec.rb']
+    })
+    expect(useRunStore.getState().origin).toEqual({ route: '/overview/tests/x', label: 'Login' })
+    expect(api.runProjectFile).not.toHaveBeenCalled()
+  })
+
+  it('shows the run panel for its own run, and Run is off while a run is going', async () => {
+    const run: RunView = {
+      runId: 'r1',
+      projectPath: '/Users/me/project',
+      scope: { kind: 'files', files: ['spec/login_spec.rb'] },
+      framework: 'rspec',
+      workers: 1,
+      liveEvents: true,
+      startedAt: new Date().toISOString(),
+      phase: 'running',
+      tests: {},
+      order: [],
+      output: [],
+      finished: null
+    }
+    useRunStore.setState({
+      run,
+      origin: { route: '/overview/tests/x', label: 'Login' },
+      isActive: true
+    })
+    renderPane()
+    await screen.findByRole('button', { name: 'logs in' })
+    expect(screen.getByTestId('run-panel')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'testPage.run' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'run.rerunFailed' })).not.toBeInTheDocument()
   })
 
   it('Edit code opens the file editor with the exact state', async () => {

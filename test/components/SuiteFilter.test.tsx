@@ -7,17 +7,21 @@ import TestsList from '@components/TestsList'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import useProjectStore from '@foundation/Stores/projectStore'
+import { useRunStore } from '@foundation/Stores/runStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import type { TestRow } from '@foundation/testKey'
 import en from '@assets/translations/en.json'
 
-const translate = (key: string, options: Record<string, string> = {}): string => {
-  const value = key
+const translate = (key: string, options: Record<string, string | number> = {}): string => {
+  const plural =
+    typeof options.count === 'number' ? `${key}_${options.count === 1 ? 'one' : 'other'}` : key
+  const value = plural
     .split('.')
     .reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], en)
   if (typeof value !== 'string') return key
-  return value.replace(/\{\{(\w+)\}\}/g, (_, name: string) => options[name] ?? '')
+  return value.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(options[name] ?? ''))
 }
 vi.mock('react-i18next', () => ({
   useTranslation: (): { t: typeof translate } => ({ t: translate })
@@ -36,13 +40,18 @@ const api = {
   createSuite: vi.fn(),
   deleteSuite: vi.fn(),
   runSuite: vi.fn(),
+  prepareSuiteRun: vi.fn(),
+  startRun: vi.fn(),
+  getRunDefaults: vi.fn(),
   importTest: vi.fn(),
   importSuite: vi.fn(),
   importProject: vi.fn(),
   exportSuite: vi.fn(),
   exportProject: vi.fn(),
   getSuites: vi.fn(),
-  listProjectTests: vi.fn()
+  listProjectTests: vi.fn(),
+  setActiveProject: vi.fn().mockResolvedValue({ success: true }),
+  readDirectory: vi.fn().mockResolvedValue([])
 }
 
 const suites = [
@@ -74,6 +83,12 @@ const Harness = ({ initial = null }: { initial?: string | null }): JSX.Element =
   )
 }
 
+/** A project is open; opening one resets the recorder, so the suites are put back */
+const openProject = (): void => {
+  useProjectStore.setState({ projectPath: '/p' })
+  useRecorderStore.setState({ suites })
+}
+
 const openMenu = (): void => {
   fireEvent.click(screen.getByRole('button', { name: 'Suite actions' }))
 }
@@ -86,6 +101,11 @@ beforeEach(() => {
   api.createSuite.mockResolvedValue({ success: true, suite: { id: 's3', name: 'New', tests: [] } })
   api.deleteSuite.mockResolvedValue({ success: true })
   api.runSuite.mockResolvedValue({ success: true, output: 'ok' })
+  api.prepareSuiteRun.mockResolvedValue({ mode: 'legacy' })
+  api.startRun.mockResolvedValue({ runId: 'r1' })
+  api.getRunDefaults.mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 })
+  useRunStore.setState({ run: null, origin: null, isActive: false })
+  useProjectStore.setState({ projectPath: null })
   api.importTest.mockResolvedValue({ success: true })
   api.importSuite.mockResolvedValue({ success: true })
   api.importProject.mockResolvedValue({ success: true })
@@ -150,6 +170,63 @@ describe('SuiteFilter', () => {
     await waitFor(() => expect(api.runSuite).toHaveBeenCalledWith('s1', '', 'ruby'))
     await waitFor(() => expect(useRunOutputStore.getState().runOutput).toBe('ok'))
     expect(useRecorderStore.getState().isRunning).toBe(false)
+  })
+
+  it('runs a suite in files mode live, from the Tests list', async () => {
+    openProject()
+    api.prepareSuiteRun.mockResolvedValue({
+      mode: 'files',
+      files: ['spec/a_spec.rb', 'spec/b_spec.rb'],
+      skipped: []
+    })
+    render(<Harness initial="s1" />)
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Run suite' }))
+    await waitFor(() => expect(api.startRun).toHaveBeenCalledTimes(1))
+    expect(api.prepareSuiteRun).toHaveBeenCalledWith('s1')
+    expect(api.startRun.mock.calls[0][0].scope).toEqual({
+      kind: 'files',
+      files: ['spec/a_spec.rb', 'spec/b_spec.rb']
+    })
+    await waitFor(() =>
+      expect(useRunStore.getState().origin).toEqual({ route: '/overview/tests', label: 'Smoke' })
+    )
+    expect(api.runSuite).not.toHaveBeenCalled()
+    expect(mockToast).not.toHaveBeenCalled()
+  })
+
+  it('says how many tests a files-mode suite run skipped', async () => {
+    openProject()
+    api.prepareSuiteRun.mockResolvedValue({
+      mode: 'files',
+      files: ['spec/a_spec.rb'],
+      skipped: ['spec/gone_spec.rb']
+    })
+    render(<Harness initial="s1" />)
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Run suite' }))
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith('1 test was skipped: its file is missing', {
+        icon: '⚠️'
+      })
+    )
+  })
+
+  it('toasts why a suite could not be prepared', async () => {
+    api.prepareSuiteRun.mockResolvedValue({ error: 'no suite' })
+    render(<Harness initial="s1" />)
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Run suite' }))
+    await waitFor(() => expect(mockToast.error).toHaveBeenCalledWith('no suite'))
+    expect(api.startRun).not.toHaveBeenCalled()
+    expect(api.runSuite).not.toHaveBeenCalled()
+  })
+
+  it('disables Run suite while a live run is going', () => {
+    useRunStore.setState({ isActive: true })
+    render(<Harness initial="s1" />)
+    openMenu()
+    expect(screen.getByRole('menuitem', { name: 'Run suite' })).toBeDisabled()
   })
 
   it('toasts the outcome of a run and shows the output', async () => {

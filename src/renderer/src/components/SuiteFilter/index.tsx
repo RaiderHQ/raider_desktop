@@ -5,6 +5,7 @@ import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import { useRunStore } from '@foundation/Stores/runStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 
@@ -23,7 +24,9 @@ const menuItem =
 const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
   const { t } = useTranslation()
   const suites = useRecorderStore((s) => s.suites)
-  const isRunning = useRecorderStore((s) => s.isRunning)
+  const runActive = useRunStore((s) => s.isActive)
+  const recorderRunning = useRecorderStore((s) => s.isRunning)
+  const runBusy = runActive || recorderRunning
   const [open, setOpen] = useState(false)
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState('')
@@ -81,6 +84,32 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
       toast.error(t('recorder.noRuby'))
       return
     }
+    let prepared: Awaited<ReturnType<typeof window.api.prepareSuiteRun>>
+    try {
+      prepared = await window.api.prepareSuiteRun(suite.id)
+    } catch (error) {
+      console.error('Preparing the suite run failed:', error)
+      toast.error(error instanceof Error ? error.message : String(error))
+      return
+    }
+    if ('error' in prepared) {
+      toast.error(prepared.error)
+      return
+    }
+    if (prepared.mode === 'files') {
+      if (prepared.skipped.length > 0) {
+        toast(t('run.skippedMissing', { count: prepared.skipped.length }), { icon: '⚠️' })
+      }
+      // Its panel shows on the Tests list
+      void useRunStore
+        .getState()
+        .start(
+          { kind: 'files', files: prepared.files },
+          { route: '/overview/tests', label: suite.name }
+        )
+      return
+    }
+    // Projects still on the old suite format run a temporary copy of the suite
     const { setIsRunning, setIsOutputVisible } = useRecorderStore.getState()
     const { setRunOutput, setRunResult } = useRunOutputStore.getState()
     setIsRunning(true)
@@ -165,7 +194,7 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
           <button
             role="menuitem"
             className={menuItem}
-            disabled={!suite || isRunning}
+            disabled={!suite || runBusy}
             onClick={runSuite}
           >
             {t('tests.suiteFilter.run')}

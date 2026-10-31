@@ -3,14 +3,13 @@ import { Link, useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import CommandList from '@components/CommandList'
 import ConfirmationModal from '@components/ConfirmationModal'
-import OutputPanel from '@components/OutputPanel'
 import StyledPanel from '@components/StyledPanel'
 import AssertionTextModal from '@components/AssertionTextModal'
+import RunPanel from '@components/RunPanel'
 import RecordingLayout from '@components/TestPage/RecordingLayout'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
-import useRubyStore from '@foundation/Stores/rubyStore'
-import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import { useRunStore } from '@foundation/Stores/runStore'
 import { buildAssertionStep, assertionModalType } from '@foundation/assertionStep'
 import type { TestRow } from '@foundation/testKey'
 import type { CodeTestView } from '@shared/types/projectTest'
@@ -37,14 +36,16 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
   const activeTest = useRecorderStore((s) => s.activeTest)
   const recordingTarget = useRecorderStore((s) => s.recordingTarget)
   const unsavedExample = useRecorderStore((s) => s.unsavedExample)
-  const isRunning = useRecorderStore((s) => s.isRunning)
+  const runActive = useRunStore((s) => s.isActive)
+  const recorderRunning = useRecorderStore((s) => s.isRunning)
+  const runBusy = runActive || recorderRunning
+  // Only this page's own run: Overview's panel already shows a run from elsewhere
+  const ownRun = useRunStore((s) => s.origin?.route === location.pathname)
   const showCode = useRecorderStore((s) => s.showCode)
-  const isOutputVisible = useRecorderStore((s) => s.isOutputVisible)
   const isReplaying = useRecorderStore((s) => s.isReplayingToBreakpoint)
   const recordingDisabled = useProjectStore((s) => s.layout?.recordable === false)
-  const runOutput = useRunOutputStore((s) => s.runOutput)
   const projectPath = useProjectStore((s) => s.projectPath)
-  const { updateActiveTest, setShowCode, setIsOutputVisible } = useRecorderStore.getState()
+  const { updateActiveTest, setShowCode } = useRecorderStore.getState()
   const file = row.file ?? ''
 
   const [view, setView] = useState<CodeTestView | null>(null)
@@ -82,24 +83,10 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
   const stepsMatchFile = !!selected && selected.steps.every((step) => step.kind !== 'custom')
   const exampleAsCode = !(showSteps && stepsMatchFile)
 
-  const run = async (): Promise<void> => {
-    const { setRunOutput, setRunResult } = useRunOutputStore.getState()
-    const { setIsRunning } = useRecorderStore.getState()
-    const cmd = useRubyStore.getState().rubyCommand
-    if (!cmd) {
-      setRunOutput(t('recorder.noRuby'))
-      return
-    }
-    setIsRunning(true)
-    setRunOutput(`Running test: ${row.name}...`)
-    try {
-      const result = await window.api.runProjectFile(file, cmd)
-      setRunResult(result.output, result.success)
-    } catch (error) {
-      console.error('Running the test failed:', error)
-      setRunResult(t('recorder.runFailed'), false)
-    }
-    setIsRunning(false)
+  const run = (): void => {
+    void useRunStore
+      .getState()
+      .start({ kind: 'files', files: [file] }, { route: location.pathname, label: row.name })
   }
 
   const editCode = (): void => {
@@ -200,8 +187,8 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
               </button>
             )}
             <button
-              onClick={() => void run()}
-              disabled={busy || isRunning || !file}
+              onClick={run}
+              disabled={busy || runBusy || !file}
               className={`${toolbarButton} text-green-700 hover:bg-green-50`}
             >
               {t('testPage.run')}
@@ -222,13 +209,6 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
               className={`${toolbarButton} ${codePressed ? 'bg-neutral-lt' : ''} text-neutral-dk hover:bg-neutral-50`}
             >
               {t('testPage.code')}
-            </button>
-            <button
-              onClick={() => setIsOutputVisible(!isOutputVisible)}
-              aria-pressed={isOutputVisible}
-              className={`${toolbarButton} ${isOutputVisible ? 'bg-neutral-lt' : ''} text-neutral-dk hover:bg-neutral-50`}
-            >
-              {t('testPage.lastRun')}
             </button>
           </div>
 
@@ -300,13 +280,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
             )
           )}
 
-          {isOutputVisible && (
-            <div className="h-48" data-testid="last-run">
-              <StyledPanel>
-                <OutputPanel output={runOutput} />
-              </StyledPanel>
-            </div>
-          )}
+          {ownRun && <RunPanel routeKey={location.pathname} onRunAgain={run} />}
         </>
       )}
 

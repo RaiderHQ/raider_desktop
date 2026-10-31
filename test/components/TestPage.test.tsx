@@ -9,6 +9,8 @@ import TestsWorkspace from '@components/TestsWorkspace'
 import { testKeyOf, toRouteParam } from '@foundation/testKey'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import { useRunStore } from '@foundation/Stores/runStore'
+import type { RunView } from '@foundation/run/runModel'
 import useProjectStore from '@foundation/Stores/projectStore'
 import type { TestRow } from '@foundation/testKey'
 import type { Test } from '@foundation/Types/test'
@@ -147,6 +149,7 @@ beforeEach(() => {
   useRecorderStore.getState().resetForProject()
   useRecorderStore.setState({ showCode: false, isOutputVisible: false })
   useRunOutputStore.setState({ runOutput: '' })
+  useRunStore.setState({ run: null, origin: null, isActive: false })
 })
 
 afterEach(() => vi.useRealTimers())
@@ -272,18 +275,61 @@ describe('TestPage', () => {
     expect(api.saveRecording).not.toHaveBeenCalled()
   })
 
-  it('has Record, Run, Code, Last run and More', async () => {
+  it('has Record, Run, Code and More', async () => {
     renderPage()
     await opened()
-    for (const label of [
-      'testPage.record',
-      'testPage.run',
-      'testPage.code',
-      'testPage.lastRun',
-      'testPage.more'
-    ]) {
+    for (const label of ['testPage.record', 'testPage.run', 'testPage.code', 'testPage.more']) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     }
+  })
+
+  it('offers Last run only when there is output from an earlier run to show', async () => {
+    renderPage()
+    await opened()
+    expect(screen.queryByRole('button', { name: 'testPage.lastRun' })).not.toBeInTheDocument()
+    act(() => useRunOutputStore.setState({ runOutput: 'Running test: Login works...' }))
+    expect(screen.getByRole('button', { name: 'testPage.lastRun' })).toBeInTheDocument()
+  })
+
+  describe('the live run', () => {
+    const run: RunView = {
+      runId: 'r1',
+      projectPath: '/p',
+      scope: { kind: 'files', files: ['spec/login_works_spec.rb'] },
+      framework: 'rspec',
+      workers: 1,
+      liveEvents: true,
+      startedAt: new Date().toISOString(),
+      phase: 'running',
+      tests: {},
+      order: [],
+      output: [],
+      finished: null
+    }
+
+    it('shows the run panel for a run started from this page', async () => {
+      useRunStore.setState({
+        run,
+        origin: { route: '/overview/tests/x', label: 'Login works' },
+        isActive: true
+      })
+      renderPage()
+      await opened()
+      expect(screen.getByTestId('run-panel')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'testPage.run' })).toBeDisabled()
+      expect(screen.queryByRole('button', { name: 'run.rerunFailed' })).not.toBeInTheDocument()
+    })
+
+    it('shows no run panel for a run started elsewhere', async () => {
+      useRunStore.setState({
+        run,
+        origin: { route: '/overview', label: 'This project' },
+        isActive: true
+      })
+      renderPage()
+      await opened()
+      expect(screen.queryByTestId('run-panel')).not.toBeInTheDocument()
+    })
   })
 
   describe('Edit code', () => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import useRecorderStore from '@foundation/Stores/recorderStore'
@@ -7,6 +7,7 @@ import type { RecordingTarget } from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import { useRunStore } from '@foundation/Stores/runStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { handleSaveResult } from '@foundation/saveResult'
 import { testKeyOf, toRouteParam } from '@foundation/testKey'
@@ -290,6 +291,8 @@ async function stopAndSave(t: Translate, options: StopOptions = {}): Promise<voi
 export function useTestRecording(): TestRecording {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // A run started here links back to this page
+  const { pathname } = useLocation()
   const recordingUrl = useRecorderStore((s) => s.recordingUrl)
   const preloadPath = useRecorderStore((s) => s.preloadPath)
   const isRecording = useRecorderStore((s) => s.isRecording)
@@ -472,38 +475,52 @@ export function useTestRecording(): TestRecording {
 
   const run = useCallback(async (): Promise<void> => {
     const { activeSuiteId: suiteId, activeTest: test, readOnlyView: view, setIsRunning } = store()
-    const { setRunOutput, setRunResult } = useRunOutputStore.getState()
-    const cmd = useRubyStore.getState().rubyCommand
-    const path = useProjectStore.getState().projectPath
+    const startLive = (file: string, label: string): void => {
+      void useRunStore.getState().start({ kind: 'files', files: [file] }, { route: pathname, label })
+    }
     // Tests that are code run straight from their file, never from a copy of the steps
     const codeFile =
       view?.file ?? (test?.ownership && test.ownership !== 'recorded' ? test.file : undefined)
-    if (codeFile && !cmd) {
-      setRunOutput(t('recorder.noRuby'))
+    if (codeFile) {
+      startLive(codeFile, view ? (store().readOnlyTitle ?? '') : (test?.name ?? ''))
       return
     }
-    if (codeFile && cmd) {
-      setIsRunning(true)
-      setRunOutput(`Running test: ${view ? (store().readOnlyTitle ?? '') : (test?.name ?? '')}...`)
-      try {
-        const result = await window.api.runProjectFile(codeFile, cmd)
-        setRunResult(result.output, result.success)
-      } catch (error) {
-        console.error('Running the test failed:', error)
-        setRunResult(t('recorder.runFailed'), false)
-      }
-      setIsRunning(false)
-      return
-    }
-    if (suiteId && test?.id && cmd) {
-      setIsRunning(true)
-      setRunOutput(`Running test: ${test.name}...`)
+    if (!suiteId || !test?.id) return
+    try {
       // The test itself goes along, so a pending autosave can't make the run use older steps
+      const prepared = await window.api.prepareTestRun(suiteId, test.id, test)
+      if ('error' in prepared) {
+        toast.error(prepared.error)
+        return
+      }
+      if (prepared.mode === 'files') {
+        startLive(prepared.file, test.name)
+        return
+      }
+    } catch (error) {
+      console.error('Preparing the test run failed:', error)
+      toast.error(t('recorder.runFailed'))
+      return
+    }
+    // Projects still on the old suite format run a temporary copy of the steps
+    const cmd = useRubyStore.getState().rubyCommand
+    if (!cmd) {
+      toast.error(t('recorder.noRuby'))
+      return
+    }
+    const { setRunOutput, setRunResult } = useRunOutputStore.getState()
+    const path = useProjectStore.getState().projectPath
+    setIsRunning(true)
+    setRunOutput(`Running test: ${test.name}...`)
+    try {
       const result = await window.api.runTest(suiteId, test.id, path || '.', cmd, test)
       setRunResult(result.output, result.success)
-      setIsRunning(false)
+    } catch (error) {
+      console.error('Running the test failed:', error)
+      setRunResult(t('recorder.runFailed'), false)
     }
-  }, [])
+    setIsRunning(false)
+  }, [pathname, t])
 
   const cancelReplay = useCallback(async (): Promise<void> => {
     await window.api.cancelReplay()
