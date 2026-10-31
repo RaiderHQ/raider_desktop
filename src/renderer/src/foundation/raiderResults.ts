@@ -15,6 +15,9 @@ export interface RaiderResultsApi {
 }
 
 interface RaiderResult {
+  identifier?: string
+  file_path?: string
+  line_number?: number
   full_name?: string
   status?: string
   duration_ms?: number
@@ -82,6 +85,9 @@ const toRow = (result: RaiderResult, resultsDir: string, browser?: string): Test
       appFrame: typeof failure.app_frame === 'string' ? failure.app_frame : undefined
     }
   }
+  if (typeof result.identifier === 'string') row.identifier = result.identifier
+  if (typeof result.file_path === 'string') row.file = result.file_path.replace(/^\.\//, '')
+  if (typeof result.line_number === 'number') row.line = result.line_number
   if (typeof result.duration_ms === 'number') row.durationMs = result.duration_ms
   if (browser) row.browser = browser
   const attachments = (Array.isArray(result.attachments) ? result.attachments : []).filter(

@@ -71,6 +71,39 @@ describe('loadRaiderResults', () => {
     expect(rows![1].statusDetails?.message).toBe('boom')
   })
 
+  it('keeps identifier, file_path and line_number', async () => {
+    const api = makeApi({
+      'run.json': run([
+        r('F: ok', 'passed', {
+          identifier: 'spec/a_spec.rb[1:1]',
+          file_path: './spec/a_spec.rb',
+          line_number: 12
+        }),
+        r('F: bare', 'passed', {
+          identifier: 7,
+          file_path: null,
+          line_number: '3'
+        }),
+        r('F: gone', 'passed', {
+          identifier: undefined,
+          file_path: undefined,
+          line_number: undefined
+        })
+      ])
+    })
+    const rows = (await loadRaiderResults('/proj', api)) ?? []
+    expect(rows[0]).toMatchObject({
+      identifier: 'spec/a_spec.rb[1:1]',
+      file: 'spec/a_spec.rb',
+      line: 12
+    })
+    for (const row of rows.slice(1)) {
+      expect(row).not.toHaveProperty('identifier')
+      expect(row).not.toHaveProperty('file')
+      expect(row).not.toHaveProperty('line')
+    }
+  })
+
   it('merges run-1.json and run-2.json shards when there is no run.json', async () => {
     const api = makeApi({
       'run-2.json': run([r('F: two', 'passed')]),
