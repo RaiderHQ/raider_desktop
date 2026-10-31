@@ -10,6 +10,7 @@ import {
   sendMainEvent,
   setProjectLayout
 } from './helpers/ipc-mock'
+import { mockRunner, getStartRequests, started, phase, output, finished } from './helpers/run-mock'
 
 const entries: Parameters<typeof mockProjectTests>[1] = [
   { file: 'spec/login_page_spec.rb', name: 'Login', ownership: 'code' },
@@ -188,32 +189,41 @@ test.describe('Project Tests tab', () => {
     await expect(page.getByText(/example\.com\/login/)).toHaveCount(0)
   })
 
-  test('Run on a test edited in code runs the project file', async ({ page }) => {
+  test('Run on a test edited in code runs the project file', async ({ page, electronApp }) => {
     await mockIPC(page, 'openCodeTest', codeView)
-    await mockIPCCapture(page, 'runProjectFile', { success: true, output: '1 example, 0 failures' })
+    await mockRunner(electronApp, { events: [started(), phase('booting')] })
     await goToOverview(page)
     await row(page, 'Login').click()
 
     await page.getByRole('button', { name: 'Run', exact: true }).click()
-    await expect
-      .poll(() => getIPCCalls(page, 'runProjectFile'))
-      // The app's own Ruby check may replace the mocked command, so only its shape is checked
-      .toEqual([['spec/login_page_spec.rb', expect.stringMatching(/ruby$/)]])
+    await expect.poll(() => getStartRequests(electronApp)).toHaveLength(1)
+    const [request] = await getStartRequests(electronApp)
+    expect(request.scope).toEqual({ kind: 'files', files: ['spec/login_page_spec.rb'] })
+    // The app's own Ruby check may replace the mocked command, so only its shape is checked
+    expect(request.rubyCommand).toMatch(/ruby$/)
+    // The test's own page shows its run
+    await expect(page.getByTestId('run-phase')).toHaveText('Starting Ruby…')
   })
 
-  test('Last run shows the output of a run that stopped on a load error', async ({ page }) => {
+  test('a run that stopped on a load error keeps its output', async ({ page, electronApp }) => {
     await mockIPC(page, 'openCodeTest', codeView)
     // rspec counts 0 failures when a missing gem stops it before any example
-    await mockIPC(page, 'runProjectFile', {
-      success: false,
-      output: '0 examples, 0 failures, 1 error occurred outside of examples'
+    await mockRunner(electronApp, {
+      events: [
+        started({ scope: { kind: 'files', files: ['spec/login_page_spec.rb'] } }),
+        phase('booting'),
+        output('0 examples, 0 failures, 1 error occurred outside of examples\n'),
+        finished('errored', { total: 0 })
+      ]
     })
     await goToOverview(page)
     await row(page, 'Login').click()
     await page.getByRole('button', { name: 'Run', exact: true }).click()
-    await page.getByRole('button', { name: 'Last run', exact: true }).click()
 
-    await expect(page.getByTestId('last-run')).toContainText('1 error occurred outside of examples')
+    await expect(page.getByTestId('run-phase')).toHaveText("Couldn't run")
+    const details = page.getByTestId('run-tech-details')
+    await details.getByText('Technical details').click()
+    await expect(details).toContainText('1 error occurred outside of examples')
   })
 
   // A change to the open test starts the test page's 500ms autosave

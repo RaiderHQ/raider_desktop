@@ -1,11 +1,22 @@
 import { test, expect } from './electronApp'
 import { goToOverview, goToOverviewFiles, mockRubyReady } from './helpers/navigation'
+import { setupProjectContext } from './helpers/ipc-mock'
 import {
-  setupProjectContext,
-  mockIPCCapture,
-  mockIPCCaptureFailure,
-  getIPCCalls
-} from './helpers/ipc-mock'
+  mockRunner,
+  getStartRequests,
+  started,
+  phase,
+  planned,
+  example,
+  finished
+} from './helpers/run-mock'
+
+const login = {
+  id: './spec/login_spec.rb[1:1]',
+  file: 'spec/login_spec.rb',
+  line: 4,
+  description: 'logs in'
+}
 
 // The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
 test.beforeEach(async ({ electronApp, page }) => {
@@ -94,74 +105,78 @@ test.describe('Overview/Tests Page', () => {
     expect(page.url()).toContain('#/overview')
   })
 
-  test('run tests triggers runRaiderTests IPC', async ({ page }) => {
+  test('Run tests runs the whole project', async ({ electronApp, page }) => {
     const mockTree = [{ name: 'test.rb', type: 'file', path: '/mock/test-project/test.rb' }]
     await setupProjectContext(page, { files: mockTree })
     await goToOverviewFiles(page)
-    await mockIPCCapture(page, 'runRaiderTests', { success: true })
+    await mockRunner(electronApp, { events: [started(), phase('booting')] })
 
-    // Find and click the Run Tests button (inside the Folder component)
-    const runBtn = page.getByText('Run Tests', { exact: false }).first()
-    if (await runBtn.isVisible().catch(() => false)) {
-      await runBtn.click()
-      await page.waitForTimeout(1000)
+    await page.getByTitle('Run tests').click()
 
-      const calls = await getIPCCalls(page, 'runRaiderTests')
-      expect(calls.length).toBe(1)
-      expect(calls[0][0]).toBe('/mock/test-project')
-    }
+    await expect.poll(() => getStartRequests(electronApp)).toHaveLength(1)
+    const [request] = await getStartRequests(electronApp)
+    expect(request.scope).toEqual({ kind: 'all' })
+    // The app's own Ruby check may replace the mocked command, so only its shape is checked
+    expect(request.rubyCommand).toMatch(/ruby$/)
+    expect(request.workers).toBeUndefined()
+    await expect(page.getByTestId('run-phase')).toHaveText('Starting Ruby…')
   })
 
-  test('parallel toggle passes parallel=true', async ({ page }) => {
-    const mockTree = [{ name: 'test.rb', type: 'file', path: '/mock/test-project/test.rb' }]
-    await setupProjectContext(page, { files: mockTree })
-    await goToOverviewFiles(page)
-    await mockIPCCapture(page, 'runRaiderTests', { success: true })
-
-    // Toggle parallel on
-    const parallelToggle = page.locator('[role="switch"]').first()
-    await parallelToggle.click()
-    await page.waitForTimeout(300)
-
-    const runBtn = page.getByText('Run Tests', { exact: false }).first()
-    if (await runBtn.isVisible().catch(() => false)) {
-      await runBtn.click()
-      await page.waitForTimeout(1000)
-
-      const calls = await getIPCCalls(page, 'runRaiderTests')
-      expect(calls.length).toBe(1)
-      // Third arg is parallel flag
-      expect(calls[0][2]).toBe(true)
-    }
-  })
-
-  test('run tests success shows toast', async ({ page }) => {
+  test('the parallel toggle runs on several workers', async ({ electronApp, page }) => {
     await setupProjectContext(page)
     await goToOverviewFiles(page)
-    await mockIPCCapture(page, 'runRaiderTests', { success: true })
+    await mockRunner(electronApp, { events: [started(), phase('booting')] })
 
-    const runBtn = page.getByText('Run Tests', { exact: false }).first()
-    if (await runBtn.isVisible().catch(() => false)) {
-      await runBtn.click()
-      await page.waitForTimeout(1000)
+    const toggle = page.getByTestId('overview-parallel-toggle')
+    await expect(toggle).toHaveAttribute('aria-checked', 'false')
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-checked', 'true')
+    await page.getByTitle('Run tests').click()
 
-      const toast = page.locator('[role="status"]').first()
-      await expect(toast).toBeVisible({ timeout: 5000 })
-    }
+    await expect.poll(() => getStartRequests(electronApp)).toHaveLength(1)
+    // The mocked runner recommends 2 workers
+    expect((await getStartRequests(electronApp))[0].workers).toBe(2)
   })
 
-  test('run tests failure shows error toast', async ({ page }) => {
+  test('a passing run shows Passed', async ({ electronApp, page }) => {
     await setupProjectContext(page)
     await goToOverviewFiles(page)
-    await mockIPCCaptureFailure(page, 'runRaiderTests', 'Tests failed')
+    await mockRunner(electronApp, {
+      events: [
+        started(),
+        phase('booting'),
+        planned([login]),
+        phase('running'),
+        example(login, 'passed'),
+        finished('passed', { total: 1, passed: 1 })
+      ]
+    })
 
-    const runBtn = page.getByText('Run Tests', { exact: false }).first()
-    if (await runBtn.isVisible().catch(() => false)) {
-      await runBtn.click()
-      await page.waitForTimeout(1000)
+    await page.getByTitle('Run tests').click()
 
-      const toast = page.locator('[role="status"]').first()
-      await expect(toast).toBeVisible({ timeout: 5000 })
-    }
+    await expect(page.getByTestId('run-phase')).toHaveText('Passed')
+    await expect(page.getByTestId('run-test-row')).toContainText(['Passed'])
+  })
+
+  test('a failing run shows Failed and the test that failed', async ({ electronApp, page }) => {
+    await setupProjectContext(page)
+    await goToOverviewFiles(page)
+    await mockRunner(electronApp, {
+      events: [
+        started(),
+        phase('booting'),
+        planned([login]),
+        phase('running'),
+        example(login, 'failed'),
+        finished('failed', { total: 1, failed: 1 })
+      ]
+    })
+
+    await page.getByTitle('Run tests').click()
+
+    await expect(page.getByTestId('run-phase')).toHaveText('Failed')
+    await expect(page.getByTestId('run-test-row')).toContainText(['Failed'])
+    await expect(page.getByTestId('run-test-row')).toContainText(['logs in'])
+    await expect(page.getByTestId('run-rerun-failed')).toBeVisible()
   })
 })
