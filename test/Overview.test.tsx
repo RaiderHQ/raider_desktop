@@ -112,7 +112,8 @@ const mockApi = {
   renameFile: vi.fn().mockResolvedValue({ success: true, newPath: '' }),
   duplicateFile: vi.fn().mockResolvedValue({ success: true, newPath: '' }),
   startRun: vi.fn().mockResolvedValue({ runId: 'r1' }),
-  getRunDefaults: vi.fn().mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 })
+  getRunDefaults: vi.fn().mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 }),
+  prepareSuiteRun: vi.fn().mockResolvedValue({ mode: 'legacy' })
 }
 
 beforeEach(() => {
@@ -904,6 +905,45 @@ describe('Overview live runs', (): void => {
     expect(screen.getByTestId('run-panel')).toBeInTheDocument()
     fireEvent.click(screen.getByText('overview.tabs.dashboard'))
     expect(screen.getByTestId('run-panel')).toBeInTheDocument()
+  })
+
+  it("shows a suite run started on the Tests tab in Overview's panel", async () => {
+    mockApi.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [] }])
+    mockApi.prepareSuiteRun.mockResolvedValue({
+      mode: 'files',
+      files: ['spec/login_spec.rb'],
+      skipped: []
+    })
+    try {
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/overview']}>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      const select = await screen.findByLabelText('tests.suiteFilter.label')
+      await waitFor(() => expect(select.querySelectorAll('option')).toHaveLength(2))
+      fireEvent.change(select, { target: { value: 's1' } })
+      fireEvent.click(screen.getByRole('button', { name: 'tests.suiteFilter.actions' }))
+      await act(async () => {
+        fireEvent.click(screen.getByRole('menuitem', { name: 'tests.suiteFilter.run' }))
+      })
+      await waitFor(() => expect(mockApi.startRun).toHaveBeenCalledTimes(1))
+      expect(useRunStore.getState().origin).toEqual({ route: '/overview', label: 'Smoke' })
+      // Main reports the run started
+      act(() =>
+        useRunStore.setState({
+          run: { ...failedRun(), scope: { kind: 'files', files: ['spec/login_spec.rb'] } },
+          isActive: false
+        })
+      )
+      expect(screen.getByTestId('run-panel')).toBeInTheDocument()
+    } finally {
+      mockApi.getSuites.mockResolvedValue([])
+      mockApi.prepareSuiteRun.mockResolvedValue({ mode: 'legacy' })
+    }
   })
 
   it('never listens for the old test-run status', async () => {

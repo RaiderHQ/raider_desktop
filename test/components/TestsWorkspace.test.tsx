@@ -8,8 +8,6 @@ import { toRouteParam } from '@foundation/testKey'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
-import { useRunStore } from '@foundation/Stores/runStore'
-import type { RunView } from '@foundation/run/runModel'
 import type { Test } from '@foundation/Types/test'
 import en from '@assets/translations/en.json'
 
@@ -133,56 +131,6 @@ beforeEach(() => {
   useRecorderStore.setState({ showCode: false, isOutputVisible: false })
   useTestsListStore.setState({ rows: null })
   useRunOutputStore.setState({ runOutput: '' })
-  useRunStore.setState({ run: null, origin: null, isActive: false })
-})
-
-describe('TestsWorkspace suite runs', () => {
-  const run: RunView = {
-    runId: 'r1',
-    projectPath: '',
-    scope: { kind: 'files', files: ['spec/search_products_spec.rb'] },
-    framework: 'rspec',
-    workers: 1,
-    liveEvents: true,
-    startedAt: new Date().toISOString(),
-    phase: 'running',
-    tests: {},
-    order: [],
-    output: [],
-    finished: null
-  }
-  const renderAt = (path: string): void => {
-    render(
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/overview/tests/:testKey" element={<TestsWorkspace />} />
-          <Route path="/overview/tests" element={<TestsWorkspace />} />
-        </Routes>
-      </MemoryRouter>
-    )
-  }
-
-  it('shows the run panel on the Tests list for a suite run', async () => {
-    useRunStore.setState({
-      run,
-      origin: { route: '/overview/tests', label: 'Smoke' },
-      isActive: true
-    })
-    renderAt('/overview/tests')
-    expect(await screen.findByTestId('run-panel')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Re-run failed' })).not.toBeInTheDocument()
-  })
-
-  it("doesn't show the suite's run panel on a test page", async () => {
-    useRunStore.setState({
-      run,
-      origin: { route: '/overview/tests', label: 'Smoke' },
-      isActive: true
-    })
-    renderAt(`/overview/tests/${keyOf(search)}`)
-    await screen.findByDisplayValue(search.name)
-    expect(screen.queryByTestId('run-panel')).not.toBeInTheDocument()
-  })
 })
 
 describe('TestsWorkspace recording mode', () => {

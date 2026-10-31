@@ -100,13 +100,10 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
       if (prepared.skipped.length > 0) {
         toast(t('run.skippedMissing', { count: prepared.skipped.length }), { icon: '⚠️' })
       }
-      // Its panel shows on the Tests list
+      // Overview's own panel shows it, above the tabs
       void useRunStore
         .getState()
-        .start(
-          { kind: 'files', files: prepared.files },
-          { route: '/overview/tests', label: suite.name }
-        )
+        .start({ kind: 'files', files: prepared.files }, { route: '/overview', label: suite.name })
       return
     }
     // Projects still on the old suite format run a temporary copy of the suite

@@ -5,10 +5,8 @@ import TestsList from '@components/TestsList'
 import TestPage from '@components/TestPage'
 import CodeTestPane from '@components/CodeTestPane'
 import SuiteFilter from '@components/SuiteFilter'
-import RunPanel from '@components/RunPanel'
 import { useTestsList } from '../../hooks/useTestsList'
 import useRecorderStore from '@foundation/Stores/recorderStore'
-import { useRunStore } from '@foundation/Stores/runStore'
 import { fromRouteParam, testKeyOf, toRouteParam } from '@foundation/testKey'
 import type { TestKey, TestRow } from '@foundation/testKey'
 import type { Suite } from '@foundation/Types/suite'
@@ -28,9 +26,6 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
   const isNewTest = useMatch('/overview/tests/new') !== null
   const rows = useTestsList()
   const isRecording = useRecorderStore((s) => s.isRecording)
-  // A suite run's panel; Overview's own panel already shows a run from elsewhere
-  const onList = useMatch('/overview/tests') !== null
-  const suiteRun = useRunStore((s) => s.origin?.route === '/overview/tests') && onList
   // null: all tests. A new test joins the filtered suite, or sits outside any suite
   const [suiteFilter, setSuiteFilter] = useState<string | null>(null)
 
@@ -72,16 +67,8 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
       <CodeTestPane key={testKeyOf(selectedRow)} row={selectedRow} />
     )
   ) : (
-    <div className="flex flex-col h-full">
-      {/* The Tests list itself (no test open) is where a suite run is shown */}
-      {suiteRun && (
-        <div className="p-4">
-          <RunPanel routeKey="/overview/tests" />
-        </div>
-      )}
-      <div className="flex flex-1 items-center justify-center text-neutral-mid text-sm p-8 text-center">
-        {t('tests.selectOrCreate')}
-      </div>
+    <div className="flex items-center justify-center h-full text-neutral-mid text-sm p-8 text-center">
+      {t('tests.selectOrCreate')}
     </div>
   )
 

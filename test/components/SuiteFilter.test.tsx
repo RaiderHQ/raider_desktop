@@ -168,11 +168,15 @@ describe('SuiteFilter', () => {
     openMenu()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Run suite' }))
     await waitFor(() => expect(api.runSuite).toHaveBeenCalledWith('s1', '', 'ruby'))
+    expect(api.prepareSuiteRun).toHaveBeenCalledWith('s1')
+    expect(api.prepareSuiteRun.mock.invocationCallOrder[0]).toBeLessThan(
+      api.runSuite.mock.invocationCallOrder[0]
+    )
     await waitFor(() => expect(useRunOutputStore.getState().runOutput).toBe('ok'))
     expect(useRecorderStore.getState().isRunning).toBe(false)
   })
 
-  it('runs a suite in files mode live, from the Tests list', async () => {
+  it('runs a suite in files mode live, shown in Overview\'s panel', async () => {
     openProject()
     api.prepareSuiteRun.mockResolvedValue({
       mode: 'files',
@@ -189,7 +193,7 @@ describe('SuiteFilter', () => {
       files: ['spec/a_spec.rb', 'spec/b_spec.rb']
     })
     await waitFor(() =>
-      expect(useRunStore.getState().origin).toEqual({ route: '/overview/tests', label: 'Smoke' })
+      expect(useRunStore.getState().origin).toEqual({ route: '/overview', label: 'Smoke' })
     )
     expect(api.runSuite).not.toHaveBeenCalled()
     expect(mockToast).not.toHaveBeenCalled()
