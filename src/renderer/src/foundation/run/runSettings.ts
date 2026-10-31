@@ -8,7 +8,7 @@ export interface RunSettings {
 
 const DEFAULTS: RunSettings = { parallel: false, workers: null, quarantinedFails: false }
 
-const keyFor = (projectPath: string): string => `runSettings:${projectPath}`
+const keyFor = (projectPath: string): string => `raider.runSettings:${projectPath}`
 
 export function loadRunSettings(projectPath: string): RunSettings {
   try {
