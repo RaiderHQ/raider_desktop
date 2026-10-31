@@ -786,6 +786,11 @@
       "cancelled": "Cancelled"
     },
     "progress": "{{done}} of {{total}}",
+    "indicator": {
+      "running": "Running · {{done}} of {{total}}",
+      "failed": "{{count}} failed",
+      "show": "Show the run"
+    },
     "cancel": "Cancel",
     "runAgain": "Run again",
     "rerunFailed": "Re-run failed",

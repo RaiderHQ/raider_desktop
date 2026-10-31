@@ -3,6 +3,7 @@ import { Link, Outlet } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import toast, { Toaster } from 'react-hot-toast'
 import Logo from '@components/Logo'
+import RunIndicator from '@components/RunIndicator'
 import ConceptsModal from '@components/ConceptsModal'
 import RubyInstallModal from '@components/RubyInstallModal'
 import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
@@ -119,7 +120,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
             </span>
           )}
         </div>
-
+        <RunIndicator />
       </header>
 
       <main className="flex flex-col items-center justify-center flex-grow animate-page-enter pt-8 pb-8">
