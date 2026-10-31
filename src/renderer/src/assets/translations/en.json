@@ -795,6 +795,13 @@
     "busy": "A run is already in progress.",
     "otherProject": "A run is in progress in {{project}}.",
     "technicalDetails": "Technical details",
+    "trimmed": "The start of this output was trimmed.",
+    "filter": {
+      "all": "All",
+      "failed": "Failed",
+      "running": "Running",
+      "queued": "Queued"
+    },
     "parallel": "Run in parallel",
     "moreOptions": "More options",
     "workers": "Workers",
