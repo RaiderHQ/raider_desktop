@@ -10,6 +10,7 @@ import useVersionStore from '@foundation/Stores/versionStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { installMissingGems } from '@foundation/installGems'
+import { subscribeRunEvents } from '@foundation/Stores/runStore'
 
 const MainTemplate: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -77,6 +78,9 @@ const MainTemplate: React.FC = (): JSX.Element => {
       window.api.removeSuitesTooNewListener(onTooNew)
     }
   }, [])
+
+  // One subscription for the whole app; the run panel and indicators read the store
+  useEffect(() => subscribeRunEvents(), [])
 
   const { rubyCommand } = useRubyStore()
 
