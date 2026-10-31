@@ -80,23 +80,6 @@ const api = {
     ipcRenderer.invoke('open-report', projectPath),
   reportExists: async (projectPath: string): Promise<boolean> =>
     ipcRenderer.invoke('report-exists', projectPath),
-  runRaiderTests: async (
-    folderPath: string,
-    rubyCommand: string,
-    parallel?: boolean
-  ): Promise<{ success: boolean; output?: string; error?: string }> =>
-    ipcRenderer.invoke('run-raider-tests', folderPath, rubyCommand, parallel),
-  runRakeTask: async (
-    folderPath: string,
-    rubyCommand: string,
-    taskName: string
-  ): Promise<{ success: boolean; output?: string; error?: string }> =>
-    ipcRenderer.invoke('run-rake-task', folderPath, rubyCommand, taskName),
-  rerunFailedTests: async (
-    folderPath: string,
-    rubyCommand: string
-  ): Promise<{ success: boolean; output?: string; error?: string }> =>
-    ipcRenderer.invoke('rerun-failed-tests', folderPath, rubyCommand),
   createQuickProject: async (
     url: string,
     rubyCommand: string
@@ -178,11 +161,6 @@ const api = {
   listProjectTests: (): Promise<ProjectTestEntry[]> => ipcRenderer.invoke('list-project-tests'),
   openCodeTest: (file: string): Promise<CodeTestView> => ipcRenderer.invoke('open-code-test', file),
   getProjectLayout: (): Promise<ProjectLayout | null> => ipcRenderer.invoke('get-project-layout'),
-  runProjectFile: (
-    file: string,
-    rubyCommand: string
-  ): Promise<{ success: boolean; output: string }> =>
-    ipcRenderer.invoke('run-project-file', file, rubyCommand),
   recordOverExample: (
     file: string,
     exampleName: string,
@@ -319,12 +297,6 @@ const api = {
     error?: string
   }> => ipcRenderer.invoke('set-active-project', projectPath),
   getRecorderSettings: (): Promise<RecorderSettings> => ipcRenderer.invoke('get-recorder-settings'),
-  onTestRunStatus: (
-    callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
-  ): Electron.IpcRenderer => ipcRenderer.on('test-run-status', callback),
-  removeTestRunStatusListener: (
-    callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
-  ): Electron.IpcRenderer => ipcRenderer.removeListener('test-run-status', callback),
   onTestsMigrated: (
     callback: (event: IpcRendererEvent, info: { migrated: number; postponed: boolean }) => void
   ): Electron.IpcRenderer => ipcRenderer.on('tests-migrated', callback),

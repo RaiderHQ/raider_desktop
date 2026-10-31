@@ -25,7 +25,6 @@ import importSuite from '../../../src/main/handlers/io/importSuite'
 import importProject from '../../../src/main/handlers/io/importProject'
 import saveTrace from '../../../src/main/handlers/trace/saveTrace'
 import getSuites from '../../../src/main/handlers/getSuites'
-import { runSuiteHandler, runTestHandler } from '../../../src/main/handlers/testing/runProjectTests'
 import * as migration from '../../../src/main/handlers/tests/migrateToProjectFiles'
 import * as assembly from '../../../src/main/handlers/tests/assembleSuites'
 import { saveRecordedTest } from '../../../src/main/handlers/tests/recordedTests'
@@ -304,90 +303,6 @@ describe('recorded tests as project files', () => {
     expect(lastSuites()[0].tests[0].hasTrace).toBe(true)
   })
 
-  it('run uses project file', async () => {
-    await setActiveProject(project)
-    const suiteId = await newSuite()
-    await saveRecording(win, suiteId, checkout())
-
-    const result = await runTestHandler(suiteId, 't-checkout', '/elsewhere', 'ruby')
-
-    expect(result.success).toBe(true)
-    expect(mockSafeExec).toHaveBeenCalledTimes(1)
-    const [command, options] = mockSafeExec.mock.calls[0]
-    expect(command).toContain('spec/checkout_spec.rb')
-    expect(command).toContain('-S rspec')
-    expect(command).toContain('--format json')
-    // No generated temporary file (those are named test_<time>.rb)
-    expect(command).not.toMatch(/test_\d+[^ ]*\.rb/)
-    expect(options.cwd).toBe(project)
-  })
-
-  it('run saves the test it was given before running it', async () => {
-    await setActiveProject(project)
-    const suiteId = await newSuite()
-    await saveRecording(win, suiteId, checkout())
-    const edited = {
-      ...checkout(),
-      steps: [{ id: 'n', kind: 'navigate', url: 'https://shop.test/edited' }]
-    } as Test
-
-    await runTestHandler(suiteId, 't-checkout', project, 'ruby', edited)
-
-    expect(await readFile(join(project, 'spec', 'checkout_spec.rb'), 'utf-8')).toContain(
-      'https://shop.test/edited'
-    )
-  })
-
-  it('run still runs a code-owned file', async () => {
-    await setActiveProject(project)
-    const suiteId = await newSuite()
-    await saveRecording(win, suiteId, checkout())
-    const spec = join(project, 'spec', 'checkout_spec.rb')
-    await writeFile(spec, (await readFile(spec, 'utf-8')) + '\nputs "hand edit"\n')
-
-    await runTestHandler(suiteId, 't-checkout', project, 'ruby', { ...checkout(), name: 'New' })
-
-    expect(mockSafeExec.mock.calls[0][0]).toContain('spec/checkout_spec.rb')
-    expect(await readFile(spec, 'utf-8')).toContain('hand edit')
-  })
-
-  it('run suite runs every file of the suite in one rspec call', async () => {
-    await setActiveProject(project)
-    const suiteId = await newSuite()
-    await saveRecording(win, suiteId, checkout())
-    await saveRecording(win, suiteId, { ...checkout('t-login'), name: 'Login' })
-
-    const result = await runSuiteHandler(suiteId, '', 'ruby')
-
-    expect(result.success).toBe(true)
-    const [command, options] = mockSafeExec.mock.calls[0]
-    expect(command).toContain('spec/checkout_spec.rb')
-    expect(command).toContain('spec/login_spec.rb')
-    expect(options.cwd).toBe(project)
-  })
-
-  it('run suite restores a missing recorded file but not a code-owned one', async () => {
-    await setActiveProject(project)
-    const suiteId = await newSuite()
-    await saveRecording(win, suiteId, checkout())
-    await saveRecording(win, suiteId, { ...checkout('t-login'), name: 'Login' })
-    await rm(join(project, 'spec', 'checkout_spec.rb'))
-    const login = join(project, 'spec', 'login_spec.rb')
-    await writeFile(login, (await readFile(login, 'utf-8')) + '\nputs "hand edit"\n')
-    // Loading the project notices the hand edit and marks the test code-owned
-    await setActiveProject(project)
-    await rm(login)
-    await setActiveProject(project)
-    const result = await runSuiteHandler(suiteId, '', 'ruby')
-
-    expect(result.success).toBe(true)
-    expect(await exists(join(project, 'spec', 'checkout_spec.rb'))).toBe(true)
-    expect(await exists(login)).toBe(false)
-    const [command] = mockSafeExec.mock.calls[0]
-    expect(command).toContain('spec/checkout_spec.rb')
-    expect(command).not.toContain('spec/login_spec.rb')
-  })
-
   it('restart round trip', async () => {
     await setActiveProject(project)
     const suiteId = await newSuite()
@@ -516,33 +431,6 @@ describe('fix round 1', () => {
     recordable: true
   } as const
 
-  it('run restores a missing recorded file before running it', async () => {
-    await setActiveProject(project)
-    const suiteId = await newSuite()
-    await saveRecording(win, suiteId, checkout())
-    const spec = join(project, 'spec', 'checkout_spec.rb')
-    await rm(spec)
-
-    const result = await runTestHandler(suiteId, 't-checkout', project, 'ruby')
-
-    expect(result.success).toBe(true)
-    expect(await exists(spec)).toBe(true)
-    expect(mockSafeExec.mock.calls[0][0]).toContain('spec/checkout_spec.rb')
-  })
-
-  it('run saves a test that is not saved yet instead of saying not found', async () => {
-    await setActiveProject(project)
-    const suiteId = await newSuite()
-
-    const result = await runTestHandler(suiteId, 't-new', project, 'ruby', checkout('t-new'))
-
-    expect(result.success).toBe(true)
-    expect(mockSafeExec.mock.calls[0][0]).toContain('spec/checkout_spec.rb')
-    expect((await readJson(suitesJson(project))).suites).toEqual([
-      { id: suiteId, name: 'Smoke', testIds: ['t-new'] }
-    ])
-  })
-
   it('deleting a test that is not in the suite never deletes its file', async () => {
     await setActiveProject(project)
     const suiteId = await newSuite()
@@ -634,33 +522,6 @@ describe('fix round 1', () => {
     )
     // The move itself stands: the tests are safe in the project
     expect((await readJson(suitesJson(project))).version).toBe(3)
-  })
-})
-
-describe('task 11 fix round 1', () => {
-  // rspec prints load errors and failing examples to stdout, so stderr can be empty
-  const stdout = 'LoadError: cannot load such file -- allure\n0 examples, 0 failures, 1 error'
-
-  it('run reports a non-zero exit as failed even with nothing on stderr', async () => {
-    await setActiveProject(project)
-    const suiteId = await newSuite()
-    await saveRecording(win, suiteId, checkout())
-    mockSafeExec.mockResolvedValue({ stdout, stderr: '', exitCode: 1 })
-
-    const result = await runTestHandler(suiteId, 't-checkout', project, 'ruby')
-
-    expect(result).toEqual({ success: false, output: stdout })
-  })
-
-  it('run suite reports a non-zero exit as failed even with nothing on stderr', async () => {
-    await setActiveProject(project)
-    const suiteId = await newSuite()
-    await saveRecording(win, suiteId, checkout())
-    mockSafeExec.mockResolvedValue({ stdout, stderr: '', exitCode: 1 })
-
-    const result = await runSuiteHandler(suiteId, '', 'ruby')
-
-    expect(result).toEqual({ success: false, output: stdout })
   })
 })
 

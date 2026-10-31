@@ -66,7 +66,6 @@ const api = {
   getSuites: vi.fn(),
   listProjectTests: vi.fn(),
   openCodeTest: vi.fn(),
-  runProjectFile: vi.fn(),
   startRun: vi.fn(),
   getRunDefaults: vi.fn(),
   recordOverExample: vi.fn(),
@@ -126,7 +125,6 @@ beforeEach(() => {
   api.getSuites.mockResolvedValue([])
   api.listProjectTests.mockResolvedValue([])
   api.openCodeTest.mockResolvedValue(view)
-  api.runProjectFile.mockResolvedValue({ success: true, output: 'ran ok' })
   api.startRun.mockResolvedValue({ runId: 'r1' })
   api.getRunDefaults.mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 })
   useRunStore.setState({ run: null, origin: null, isActive: false })
@@ -234,7 +232,6 @@ describe('CodeTestPane', () => {
       files: ['spec/login_spec.rb']
     })
     expect(useRunStore.getState().origin).toEqual({ route: '/overview/tests/x', label: 'Login' })
-    expect(api.runProjectFile).not.toHaveBeenCalled()
   })
 
   it('shows the run panel for its own run, and Run is off while a run is going', async () => {

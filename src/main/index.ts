@@ -16,9 +16,6 @@ import {
   listQuickProjects,
   saveQuickProjectTo
 } from './handlers/project/quickProject'
-import runRaiderTests from './handlers/testing/runRaiderTests'
-import runRakeTask from './handlers/testing/runRakeTask'
-import rerunFailedTests from './handlers/testing/rerunFailedTests'
 import readFile from './handlers/io/readFile'
 import readImage from './handlers/io/readImage'
 import { openReport, reportExists } from './handlers/openReport'
@@ -49,8 +46,7 @@ import {
   getProjectLayoutHandler,
   listProjectTestsHandler,
   openCodeTestHandler,
-  recordOverExampleHandler,
-  runProjectFileHandler
+  recordOverExampleHandler
 } from './handlers/tests/projectTestIpc'
 import { prepareSuiteRun, prepareTestRun } from './handlers/testing/prepareRuns'
 import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTests'
@@ -214,21 +210,6 @@ app.whenReady().then(() => {
     ) =>
       runRubyRaider(event, folderPath, projectName, framework, automation, rubyCommand, mobile, options)
   )
-  ipcMain.handle(
-    'run-raider-tests',
-    (_event, folderPath: string, rubyCommand: string, parallel?: boolean) =>
-      runRaiderTests(appState.mainWindow!, folderPath, rubyCommand, parallel)
-  )
-  ipcMain.handle(
-    'run-rake-task',
-    (_event, folderPath: string, rubyCommand: string, taskName: string) =>
-      runRakeTask(appState.mainWindow!, folderPath, rubyCommand, taskName)
-  )
-  ipcMain.handle(
-    'rerun-failed-tests',
-    (_event, folderPath: string, rubyCommand: string) =>
-      rerunFailedTests(appState.mainWindow!, folderPath, rubyCommand)
-  )
   ipcMain.handle('create-quick-project', (_event, url: string, rubyCommand: string) =>
     createQuickProject(url, rubyCommand)
   )
@@ -262,9 +243,6 @@ app.whenReady().then(() => {
   ipcMain.handle('list-project-tests', listProjectTestsHandler)
   ipcMain.handle('open-code-test', (_event, file: string) => openCodeTestHandler(file))
   ipcMain.handle('get-project-layout', getProjectLayoutHandler)
-  ipcMain.handle('run-project-file', (_event, file: string, rubyCommand: string) =>
-    runProjectFileHandler(file, rubyCommand)
-  )
   registerRunIpc(ipcMain)
   ipcMain.handle(
     'record-over-example',

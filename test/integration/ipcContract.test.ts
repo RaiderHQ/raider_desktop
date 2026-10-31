@@ -81,9 +81,6 @@ describe('IPC Contract', () => {
 
     // Test Execution
     'runCommand',
-    'runRaiderTests',
-    'runRakeTask',
-    'rerunFailedTests',
     'runTest',
     'runSuite',
     'prepareTestRun',
@@ -97,7 +94,6 @@ describe('IPC Contract', () => {
     'listProjectTests',
     'openCodeTest',
     'getProjectLayout',
-    'runProjectFile',
     'createSuite',
     'deleteSuite',
     'exportSuite',
@@ -132,8 +128,6 @@ describe('IPC Contract', () => {
     'deleteTrace',
 
     // Event Listeners
-    'onTestRunStatus',
-    'removeTestRunStatusListener',
     'onTestsMigrated',
     'removeTestsMigratedListener',
     'onSuitesTooNew',

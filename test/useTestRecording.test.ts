@@ -58,7 +58,6 @@ const api = {
   replayInWebview: vi.fn(),
   cancelReplay: vi.fn(),
   runTest: vi.fn(),
-  runProjectFile: vi.fn(),
   prepareTestRun: vi.fn(),
   startRun: vi.fn(),
   getRunDefaults: vi.fn(),
@@ -536,7 +535,6 @@ describe('useTestRecording', () => {
       await act(() => rec.run())
       expect(scopeSent()).toEqual({ kind: 'files', files: ['spec/a_spec.rb'] })
       expect(useRunStore.getState().origin).toEqual({ route: location, label: 'Login works' })
-      expect(api.runProjectFile).not.toHaveBeenCalled()
       expect(api.prepareTestRun).not.toHaveBeenCalled()
     })
   })

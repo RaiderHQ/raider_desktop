@@ -1,14 +1,11 @@
 import { appState } from '../appState'
 import { activationSettled } from '../project/setActiveProject'
-import { runSpecFiles, toRunResult } from '../testing/runSpecFiles'
 import { listProjectTests } from './listProjectTests'
-import { assertSpecFile, readCodeTest } from './readCodeTest'
+import { readCodeTest } from './readCodeTest'
 import { ExampleNotUniqueError, replaceExample } from './replaceExample'
 import { isStep } from '../../../shared/types/step'
 import type { CodeTestView, ProjectTestEntry } from '../../../shared/types/projectTest'
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
-
-type RunResult = { success: boolean; output: string }
 
 const NO_PROJECT = 'No project is open.'
 
@@ -53,17 +50,6 @@ export async function listedFiles(
 export async function openCodeTestHandler(file: string): Promise<CodeTestView> {
   const target = await listedFile(file)
   return readCodeTest(target.projectPath, target.file)
-}
-
-/** 'run-project-file': runs one listed spec file from the project, like run-test does. */
-export async function runProjectFileHandler(file: string, rubyCommand: string): Promise<RunResult> {
-  try {
-    const target = await listedFile(file)
-    await assertSpecFile(target.projectPath, target.file)
-    return toRunResult(await runSpecFiles(target.projectPath, [target.file], rubyCommand))
-  } catch (error) {
-    return { success: false, output: error instanceof Error ? error.message : String(error) }
-  }
 }
 
 type RecordOverResult =

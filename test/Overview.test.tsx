@@ -83,17 +83,12 @@ const mockApi = {
   getSuites: vi.fn().mockResolvedValue([]),
   readDirectory: vi.fn().mockResolvedValue([]),
   setActiveProject: vi.fn().mockResolvedValue({ success: true }),
-  onTestRunStatus: vi.fn(),
-  removeTestRunStatusListener: vi.fn(),
   scaffoldGenerate: vi.fn().mockResolvedValue({ success: true, output: '' }),
   updateBrowserUrl: vi.fn().mockResolvedValue({ success: true }),
   updateBrowserType: vi.fn().mockResolvedValue({ success: true }),
   updateBrowserOptions: vi.fn().mockResolvedValue({ success: true }),
   updateHeadlessMode: vi.fn().mockResolvedValue({ success: true }),
   getProjectConfig: vi.fn().mockResolvedValue({ success: true, config: {} }),
-  runRaiderTests: vi.fn().mockResolvedValue({ success: true }),
-  runRakeTask: vi.fn().mockResolvedValue({ success: true }),
-  rerunFailedTests: vi.fn().mockResolvedValue({ success: true }),
   isMobileProject: vi.fn().mockResolvedValue({ success: true, isMobileProject: false }),
   isQuickProject: vi.fn().mockResolvedValue(false),
   selectFolder: vi.fn().mockResolvedValue(null),
@@ -753,7 +748,6 @@ describe('Overview live runs', (): void => {
       route: '/overview',
       label: 'run.originProject'
     })
-    expect(mockApi.runRaiderTests).not.toHaveBeenCalled()
   })
 
   it('runs the smoke tag when the run mode is Smoke', async () => {
@@ -765,7 +759,6 @@ describe('Overview live runs', (): void => {
       fireEvent.click(screen.getByTestId('run-tests'))
     })
     expect(scopeSent()).toEqual({ kind: 'tags', tags: ['smoke'] })
-    expect(mockApi.runRakeTask).not.toHaveBeenCalled()
   })
 
   it('sends the recommended workers when Run in parallel is on', async () => {
@@ -806,7 +799,6 @@ describe('Overview live runs', (): void => {
       fireEvent.click(rerun)
     })
     expect(scopeSent()).toEqual({ kind: 'locations', locations: ['spec/login_spec.rb:12'] })
-    expect(mockApi.rerunFailedTests).not.toHaveBeenCalled()
   })
 
   it('re-runs the last results after a cancelled run that recorded no failures', async () => {
@@ -944,13 +936,5 @@ describe('Overview live runs', (): void => {
       mockApi.getSuites.mockResolvedValue([])
       mockApi.prepareSuiteRun.mockResolvedValue({ mode: 'legacy' })
     }
-  })
-
-  it('never listens for the old test-run status', async () => {
-    await renderOverview()
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('run-tests'))
-    })
-    expect(mockApi.onTestRunStatus).not.toHaveBeenCalled()
   })
 })

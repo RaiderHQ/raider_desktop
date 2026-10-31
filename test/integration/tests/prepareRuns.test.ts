@@ -101,6 +101,14 @@ describe('prepareTestRun', () => {
     })
   })
 
+  it('adds a test that is not saved yet to the suite index', async () => {
+    await setActiveProject(project)
+    const suiteId = await newSuite()
+    await prepareTestRun(suiteId, 't-new', checkout('t-new'))
+    const index = JSON.parse(await readFile(join(project, '.raider', 'suites.json'), 'utf-8'))
+    expect(index.suites).toEqual([{ id: suiteId, name: 'Smoke', testIds: ['t-new'] }])
+  })
+
   it('restores a missing recorded file', async () => {
     await setActiveProject(project)
     const suiteId = await newSuite()

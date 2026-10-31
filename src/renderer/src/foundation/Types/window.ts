@@ -114,20 +114,6 @@ export interface WindowApi extends RunApi {
 
   // --- Test Execution ---
   runCommand: (command: string) => Promise<CommandType>
-  runRaiderTests: (
-    folderPath: string,
-    rubyCommand: string,
-    parallel?: boolean
-  ) => Promise<{ success: boolean; output?: string; error?: string }>
-  runRakeTask: (
-    folderPath: string,
-    rubyCommand: string,
-    taskName: string
-  ) => Promise<{ success: boolean; output?: string; error?: string }>
-  rerunFailedTests: (
-    folderPath: string,
-    rubyCommand: string
-  ) => Promise<{ success: boolean; output?: string; error?: string }>
   /** `test`, when given, is saved before it runs, so the run never lags behind the editor */
   runTest: (
     suiteId: string,
@@ -157,11 +143,6 @@ export interface WindowApi extends RunApi {
   /** Read-only view of a listed spec file; rejects for any other path */
   openCodeTest: (file: string) => Promise<CodeTestView>
   getProjectLayout: () => Promise<ProjectLayout | null>
-  /** Runs one listed spec file from the active project (same result as runTest) */
-  runProjectFile: (
-    file: string,
-    rubyCommand: string
-  ) => Promise<{ success: boolean; output: string }>
   /** Replaces the one example named `exampleName` in a listed spec file with `steps` */
   recordOverExample: (
     file: string,
@@ -245,12 +226,6 @@ export interface WindowApi extends RunApi {
   deleteTrace: (testId: string) => Promise<void>
 
   // --- Event Listeners ---
-  onTestRunStatus: (
-    callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
-  ) => Electron.IpcRenderer
-  removeTestRunStatusListener: (
-    callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
-  ) => Electron.IpcRenderer
   /** Sent once when opening a project moved (or could not yet move) its recorded tests into project files */
   onTestsMigrated: (
     callback: (event: IpcRendererEvent, info: { migrated: number; postponed: boolean }) => void

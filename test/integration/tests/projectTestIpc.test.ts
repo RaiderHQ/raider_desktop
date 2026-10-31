@@ -13,8 +13,7 @@ import {
   listProjectTestsHandler,
   listedFiles,
   openCodeTestHandler,
-  recordOverExampleHandler,
-  runProjectFileHandler
+  recordOverExampleHandler
 } from '../../../src/main/handlers/tests/projectTestIpc'
 
 let project: string
@@ -93,73 +92,9 @@ describe('project test IPC', () => {
     await expect(openCodeTestHandler('other_spec.rb')).rejects.toThrow(/Not a project test/)
   })
 
-  it('run-project-file refuses a safe spec file the scanner does not list', async () => {
-    await setActiveProject(project)
-    const result = await runProjectFileHandler('other_spec.rb', 'ruby')
-    expect(result.success).toBe(false)
-    expect(result.output).toMatch(/Not a project test/)
-    expect(mockSafeExec).not.toHaveBeenCalled()
-  })
-
-  it('run-project-file refuses a ruby command with shell characters', async () => {
-    await setActiveProject(project)
-    const result = await runProjectFileHandler('spec/a_spec.rb', 'ruby; touch /tmp/pwned #')
-    expect(result.success).toBe(false)
-    expect(mockSafeExec).not.toHaveBeenCalled()
-  })
-
   it('open-code-test refuses without a project', async () => {
     await setActiveProject(null)
     await expect(openCodeTestHandler('spec/a_spec.rb')).rejects.toThrow()
-  })
-
-  it('run-project-file runs a listed file from the project', async () => {
-    await setActiveProject(project)
-    const result = await runProjectFileHandler('spec/a_spec.rb', 'ruby')
-    expect(result.success).toBe(true)
-    const [command, options] = mockSafeExec.mock.calls[0]
-    expect(command).toContain('-S rspec')
-    expect(command).toContain('spec/a_spec.rb')
-    expect(command).toContain('--format json')
-    expect(options.cwd).toBe(project)
-  })
-
-  it('run-project-file refuses unlisted paths and runs nothing', async () => {
-    await setActiveProject(project)
-    for (const bad of [
-      join(outside, 'secret_spec.rb'),
-      '../x_spec.rb',
-      'helper.rb',
-      'spec/link_spec.rb'
-    ]) {
-      const result = await runProjectFileHandler(bad, 'ruby')
-      expect(result.success, bad).toBe(false)
-    }
-    expect(mockSafeExec).not.toHaveBeenCalled()
-  })
-
-  it('run-project-file refuses without a project', async () => {
-    await setActiveProject(null)
-    expect((await runProjectFileHandler('spec/a_spec.rb', 'ruby')).success).toBe(false)
-    expect(mockSafeExec).not.toHaveBeenCalled()
-  })
-
-  it('a non-zero exit with nothing on stderr is a failed run', async () => {
-    await setActiveProject(project)
-    const stdout = 'LoadError: cannot load such file -- allure\n0 examples, 0 failures, 1 error'
-    mockSafeExec.mockResolvedValue({ stdout, stderr: '', exitCode: 1 })
-    expect(await runProjectFileHandler('spec/a_spec.rb', 'ruby')).toEqual({
-      success: false,
-      output: stdout
-    })
-  })
-
-  it('reports a failed run', async () => {
-    await setActiveProject(project)
-    mockSafeExec.mockResolvedValue({ stdout: 'o', stderr: 'boom', exitCode: 1 })
-    const result = await runProjectFileHandler('spec/a_spec.rb', 'ruby')
-    expect(result.success).toBe(false)
-    expect(result.output).toContain('boom')
   })
 
   it('record-over-example replaces the example in a listed file', async () => {
