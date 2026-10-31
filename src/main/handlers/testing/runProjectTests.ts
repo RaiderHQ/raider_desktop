@@ -17,7 +17,7 @@ export async function runTestHandler(
   testId: string,
   projectPath: string,
   rubyCommand: string,
-  _test?: Test
+  _test?: Test // kept for the IPC signature; the legacy path runs the cached test
 ): Promise<RunResult> {
   if ((await activeSuiteMode()) === 'files') return { success: false, output: USE_LIVE_RUNNER }
 
