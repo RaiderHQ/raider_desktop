@@ -773,6 +773,37 @@
       "timeout": "Maximum seconds a single test can take before it is automatically marked as failed."
     }
   },
+  "run": {
+    "phase": {
+      "installing": "Installing gems…",
+      "booting": "Starting Ruby…",
+      "running": "Running"
+    },
+    "result": {
+      "passed": "Passed",
+      "failed": "Failed",
+      "errored": "Couldn't run",
+      "cancelled": "Cancelled"
+    },
+    "progress": "{{done}} of {{total}}",
+    "cancel": "Cancel",
+    "runAgain": "Run again",
+    "rerunFailed": "Re-run failed",
+    "nothingFailed": "Nothing failed in the last run.",
+    "rerunSerial": "Re-runs run one at a time.",
+    "updateReporter": "Update raider_reporter to see each test live.",
+    "busy": "A run is already in progress.",
+    "otherProject": "A run is in progress in {{project}}.",
+    "technicalDetails": "Technical details",
+    "parallel": "Run in parallel",
+    "moreOptions": "More options",
+    "workers": "Workers",
+    "quarantinedFails": "Count quarantined failures as failures",
+    "notifyTitle": "Run finished",
+    "saveToRun": "Save this test to run it",
+    "skippedMissing_one": "{{count}} test was skipped: its file is missing",
+    "skippedMissing_other": "{{count}} tests were skipped: their files are missing"
+  },
   "common": {
     "close": "Close",
     "cancel": "Cancel"

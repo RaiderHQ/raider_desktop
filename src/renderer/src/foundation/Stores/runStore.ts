@@ -1,7 +1,12 @@
 import { create } from 'zustand'
+import toast from 'react-hot-toast'
+import i18n from 'i18next'
 import useProjectStore from '@foundation/Stores/projectStore'
+import useRubyStore from '@foundation/Stores/rubyStore'
+import { loadRunSettings, workersFor } from '@foundation/run/runSettings'
+import { notifyRunFinished } from '@foundation/run/notifyRunFinished'
 import { reduceRun, viewFromActiveRun, type RunView } from '@foundation/run/runModel'
-import type { RunEvent } from '@shared/types/runEvents'
+import type { RunEvent, RunScope } from '@shared/types/runEvents'
 
 /** Where a run was started from, so the panel can link back to it. */
 export interface RunOrigin {
@@ -15,6 +20,13 @@ interface RunStore {
   isActive: boolean
   ingest: (e: RunEvent) => void
   restore: () => Promise<void>
+  start: (scope: RunScope, origin: RunOrigin) => Promise<'started' | 'busy' | 'error'>
+  cancel: () => Promise<void>
+}
+
+// The app uses a hash router, so setting the hash navigates without needing router access here
+const navigateTo = (to: string): void => {
+  window.location.hash = to
 }
 
 const isActiveRun = (run: RunView | null): boolean => run !== null && run.finished === null
@@ -27,6 +39,9 @@ export const useRunStore = create<RunStore>(
     ingest: (e: RunEvent): void => {
       const run = reduceRun(get().run, e, useProjectStore.getState().projectPath ?? undefined)
       set({ run, isActive: isActiveRun(run) })
+      if (e.type === 'run:finished' && run && run.runId === e.runId) {
+        notifyRunFinished(run, get().origin, navigateTo)
+      }
     },
     restore: async (): Promise<void> => {
       try {
@@ -37,6 +52,46 @@ export const useRunStore = create<RunStore>(
         if (run) set({ run, isActive: isActiveRun(run) })
       } catch (error) {
         console.error('Restoring the active run failed:', error)
+      }
+    },
+    start: async (scope: RunScope, origin: RunOrigin): Promise<'started' | 'busy' | 'error'> => {
+      const rubyCommand = useRubyStore.getState().rubyCommand
+      const projectPath = useProjectStore.getState().projectPath
+      if (!rubyCommand || !projectPath) {
+        toast.error(i18n.t('recorder.noRuby'))
+        return 'error'
+      }
+      try {
+        const settings = loadRunSettings(projectPath)
+        const defaults = await window.api.getRunDefaults()
+        const result = await window.api.startRun({
+          scope,
+          workers: workersFor(settings, defaults, scope),
+          rubyCommand,
+          quarantinedFails: settings.quarantinedFails
+        })
+        if ('runId' in result) {
+          set({ origin })
+          return 'started'
+        }
+        if (result.error === 'busy') {
+          toast.error(i18n.t('run.busy'))
+          return 'busy'
+        }
+        toast.error(result.error)
+        return 'error'
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : String(error))
+        return 'error'
+      }
+    },
+    cancel: async (): Promise<void> => {
+      const run = get().run
+      if (!run || run.finished) return
+      try {
+        await window.api.cancelRun(run.runId)
+      } catch (error) {
+        console.error('Cancelling the run failed:', error)
       }
     }
   })

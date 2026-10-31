@@ -70,6 +70,7 @@ describe('runStore', () => {
   })
 
   it('is inactive once the run finishes', () => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
     events.forEach((e) => useRunStore.getState().ingest(e))
     useRunStore.getState().ingest({
       type: 'run:finished',
