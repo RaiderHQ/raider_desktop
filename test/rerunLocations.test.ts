@@ -27,6 +27,8 @@ const runWith = (
   tests: Object.fromEntries(tests.map((t) => [t.id, t])),
   order: tests.map((t) => t.id),
   output: [],
+  outputSize: 0,
+  outputTrimmed: false,
   finished: {
     status: 'failed',
     counts: { total: tests.length, passed: 0, failed, quarantined: 0, pending: 0, skipped: 0 },

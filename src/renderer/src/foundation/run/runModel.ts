@@ -10,6 +10,9 @@ import type {
 
 export type TestState = 'queued' | ExampleStatus
 
+/** Retained output is capped at this many chars, mirroring the main process's cap. */
+export const OUTPUT_CAP = 2 * 1024 * 1024
+
 export interface RunTestView {
   id: string
   file: string
@@ -35,6 +38,10 @@ export interface RunView {
   /** First-seen id order */
   order: string[]
   output: { stream: 'stdout' | 'stderr'; chunk: string; worker?: number }[]
+  /** Total chars held in output */
+  outputSize: number
+  /** True once the oldest output was dropped to stay under OUTPUT_CAP */
+  outputTrimmed: boolean
   finished: {
     status: RunFinishedStatus
     counts: RunCounts
@@ -71,6 +78,8 @@ export function reduceRun(
       tests: {},
       order: [],
       output: [],
+      outputSize: 0,
+      outputTrimmed: false,
       finished: null
     }
   }
@@ -87,18 +96,24 @@ export function reduceRun(
       }
       return next
     }
-    case 'run:output':
+    case 'run:output': {
+      const output = view.output.concat({
+        stream: event.stream,
+        chunk: event.chunk,
+        ...(event.worker !== undefined ? { worker: event.worker } : {})
+      })
+      let outputSize = view.outputSize + event.chunk.length
+      let drop = 0
+      while (outputSize > OUTPUT_CAP && drop < output.length) {
+        outputSize -= output[drop++].chunk.length
+      }
       return {
         ...view,
-        output: [
-          ...view.output,
-          {
-            stream: event.stream,
-            chunk: event.chunk,
-            ...(event.worker !== undefined ? { worker: event.worker } : {})
-          }
-        ]
+        output: drop > 0 ? output.slice(drop) : output,
+        outputSize,
+        outputTrimmed: view.outputTrimmed || drop > 0
       }
+    }
     case 'run:example': {
       const existing = view.tests[event.id]
       // A late 'started' (events can arrive out of order) must not undo a result
@@ -148,6 +163,23 @@ export function viewFromActiveRun(active: ActiveRun): RunView | null {
   let view: RunView | null = null
   for (const event of active.events) view = reduceRun(view, event, active.projectPath)
   return view
+}
+
+const REASON_MAX = 200
+
+const firstLine = (view: RunView, stream: 'stdout' | 'stderr'): string | null => {
+  // Join first: a line can be split across chunks
+  const text = view.output
+    .filter((o) => o.stream === stream)
+    .map((o) => o.chunk)
+    .join('')
+  const line = text.split(/\r?\n/).find((l) => l.trim() !== '')
+  return line === undefined ? null : line.trim().slice(0, REASON_MAX)
+}
+
+/** Why a run couldn't run: the first non-blank stderr line, else the first stdout one. */
+export function errorReason(view: RunView): string | null {
+  return firstLine(view, 'stderr') ?? firstLine(view, 'stdout')
 }
 
 export function progress(view: RunView): { done: number; total: number } {

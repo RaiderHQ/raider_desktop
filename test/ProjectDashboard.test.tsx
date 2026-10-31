@@ -229,6 +229,8 @@ describe('ProjectDashboard after a live run', () => {
     tests: {},
     order: [],
     output: [],
+    outputSize: 0,
+    outputTrimmed: false,
     finished: {
       status: 'passed',
       counts: { total: 0, passed: 0, failed: 0, quarantined: 0, pending: 0, skipped: 0 },

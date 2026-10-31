@@ -727,6 +727,8 @@ describe('Overview live runs', (): void => {
     },
     order: ['t1'],
     output: [],
+    outputSize: 0,
+    outputTrimmed: false,
     finished: {
       status: 'failed',
       counts: { total: 1, passed: 0, failed: 1, pending: 0, skipped: 0, quarantined: 0 },
@@ -795,6 +797,7 @@ describe('Overview live runs', (): void => {
     await renderOverview()
     const rerun = screen.getByTestId('overview-rerun-failed-btn')
     expect(rerun).toBeEnabled()
+    expect(rerun).toHaveAttribute('title', 'run.rerunSerial')
     await act(async () => {
       fireEvent.click(rerun)
     })

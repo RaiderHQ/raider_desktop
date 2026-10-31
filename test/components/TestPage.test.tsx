@@ -175,6 +175,15 @@ describe('TestPage leaving a new test', () => {
     expect(useRecorderStore.getState().activeTest).toBeNull()
   })
 
+  it('asks for a draft to be saved before it can run', async () => {
+    useRecorderStore.getState().startDraft('Quick', 'https://x.test')
+    renderDraft()
+    await screen.findByDisplayValue('Quick')
+    const run = screen.getByRole('button', { name: 'testPage.run' })
+    expect(run).toBeDisabled()
+    expect(run).toHaveAttribute('title', 'run.saveToRun')
+  })
+
   it('keeps a draft that has recorded steps', async () => {
     useRecorderStore.getState().startDraft('Quick', 'https://x.test')
     act(() =>
@@ -281,6 +290,7 @@ describe('TestPage', () => {
     for (const label of ['testPage.record', 'testPage.run', 'testPage.code', 'testPage.more']) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     }
+    expect(screen.getByRole('button', { name: 'testPage.run' })).not.toHaveAttribute('title')
   })
 
   it('offers Last run only when there is output from an earlier run to show', async () => {
@@ -304,6 +314,8 @@ describe('TestPage', () => {
       tests: {},
       order: [],
       output: [],
+      outputSize: 0,
+      outputTrimmed: false,
       finished: null
     }
 

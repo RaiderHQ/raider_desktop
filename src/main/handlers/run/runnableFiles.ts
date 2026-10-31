@@ -8,7 +8,12 @@ const FEATURE = /^features\/(?:[^/]+\/)*[^/]+\.feature$/
 
 /** The renderer-given path must be a regular .feature file that really lives inside the project. */
 async function isProjectFeature(projectPath: string, file: unknown): Promise<boolean> {
-  if (typeof file !== 'string' || !FEATURE.test(file) || file.split('/').includes('..')) {
+  if (
+    typeof file !== 'string' ||
+    !FEATURE.test(file) ||
+    file.includes('\\') ||
+    file.split('/').includes('..')
+  ) {
     return false
   }
   try {

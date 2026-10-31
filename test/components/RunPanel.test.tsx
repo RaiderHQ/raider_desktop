@@ -5,6 +5,8 @@ import { useRunStore } from '@foundation/Stores/runStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import type { RunView, RunTestView } from '@foundation/run/runModel'
 
+vi.mock('i18next', () => ({ default: { t: (key: string) => key } }))
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, opts?: Record<string, unknown>) =>
@@ -34,6 +36,8 @@ const makeRun = (over: Partial<RunView> = {}, tests: RunTestView[] = []): RunVie
   tests: Object.fromEntries(tests.map((t) => [t.id, t])),
   order: tests.map((t) => t.id),
   output: [],
+  outputSize: 0,
+  outputTrimmed: false,
   finished: null,
   ...over
 })
@@ -210,7 +214,7 @@ describe('RunPanel', () => {
     expect(screen.getByTestId('run-test-row')).not.toHaveTextContent('w2')
   })
 
-  it('keeps output under collapsed technical details with a trimmed note', () => {
+  it('renders the output only once technical details are opened', () => {
     setRun(
       makeRun({
         output: [
@@ -221,10 +225,75 @@ describe('RunPanel', () => {
       })
     )
     render(<RunPanel routeKey="/tests" />)
-    const details = screen.getByTestId('run-tech-details')
+    const details = screen.getByTestId('run-tech-details') as HTMLDetailsElement
     expect(details.tagName).toBe('DETAILS')
     expect(details).not.toHaveAttribute('open')
+    expect(details).not.toHaveTextContent('[w1] hello')
+    details.open = true
+    fireEvent(details, new Event('toggle'))
     expect(details).toHaveTextContent('[w1] hello')
     expect(details).toHaveTextContent('run.trimmed')
+  })
+
+  it('notes output trimmed in the app while the run is still going', () => {
+    setRun(makeRun({ outputTrimmed: true }))
+    render(<RunPanel routeKey="/tests" />)
+    expect(screen.getByTestId('run-tech-details')).toHaveTextContent('run.trimmed')
+  })
+
+  it("shows nothing for another project's finished run", () => {
+    setRun(makeRun({ projectPath: '/work/other', finished: finished('passed') }))
+    const { container } = render(<RunPanel routeKey="/tests" />)
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('gives the reason a run could not run', () => {
+    setRun(
+      makeRun({
+        output: [{ stream: 'stderr', chunk: '\nCould not find gem\nmore detail\n' }],
+        finished: finished('errored', 0)
+      })
+    )
+    render(<RunPanel routeKey="/tests" />)
+    expect(screen.getByTestId('run-error-reason')).toHaveTextContent(/^Could not find gem$/)
+  })
+
+  it('gives no reason for a run that failed normally', () => {
+    setRun(
+      makeRun({
+        output: [{ stream: 'stderr', chunk: 'boom\n' }],
+        finished: finished('failed', 1)
+      })
+    )
+    render(<RunPanel routeKey="/tests" />)
+    expect(screen.queryByTestId('run-error-reason')).toBeNull()
+  })
+
+  it('shows a run restored after a reload on Overview, with Cancel', async () => {
+    useRunStore.setState({ run: null, origin: null, isActive: false })
+    const restored = makeRun()
+    window.api = {
+      getActiveRun: vi.fn().mockResolvedValue({
+        runId: restored.runId,
+        projectPath: '/work/shop',
+        request: { scope: { kind: 'all' }, rubyCommand: 'ruby' },
+        events: [
+          {
+            type: 'run:started',
+            runId: restored.runId,
+            startedAt: restored.startedAt,
+            framework: 'rspec',
+            scope: { kind: 'all' },
+            workers: 1,
+            liveEvents: true
+          },
+          { type: 'run:phase', runId: restored.runId, phase: 'running' }
+        ]
+      })
+    } as unknown as typeof window.api
+    await useRunStore.getState().restore()
+    render(<RunPanel routeKey="/overview" />)
+    expect(screen.getByTestId('run-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('run-cancel')).toBeInTheDocument()
   })
 })

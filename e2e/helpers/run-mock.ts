@@ -13,8 +13,9 @@ export interface RunScript {
  * Replace the main process's live runner with a scripted one. start-run records
  * the request and plays the script's events on 'run-event', stamped with the
  * runId it returns; cancel-run stops the script and finishes the run as
- * cancelled; get-active-run returns the events so far. Calling it again swaps
- * the script for the next run and keeps the requests recorded so far.
+ * cancelled; get-active-run returns the open project and the events so far.
+ * Calling it again swaps the script for the next run and keeps the requests
+ * recorded so far.
  */
 export async function mockRunner(app: ElectronApplication, script: RunScript): Promise<void> {
   await app.evaluate(({ ipcMain, BrowserWindow }, json) => {
@@ -25,7 +26,12 @@ export async function mockRunner(app: ElectronApplication, script: RunScript): P
     const mock = {
       requests: (previous?.requests ?? []) as unknown[],
       runs: previous?.runs ?? 0,
-      active: null as null | { runId: string; request: unknown; events: unknown[] },
+      active: null as null | {
+        runId: string
+        projectPath: string
+        request: unknown
+        events: unknown[]
+      },
       timer: null as ReturnType<typeof setTimeout> | null
     }
     g.__RUN_MOCK__ = mock
@@ -36,12 +42,17 @@ export async function mockRunner(app: ElectronApplication, script: RunScript): P
     }
 
     ipcMain.removeHandler('start-run')
-    ipcMain.handle('start-run', (_event, request) => {
+    ipcMain.handle('start-run', async (event, request) => {
       mock.requests.push(request)
       if (startResult) return startResult
+      // The open project, as the real runner records it; e2e sets it in the renderer's store
+      const projectPath: string =
+        (await event.sender
+          .executeJavaScript('window.__TEST_STORES__?.projectStore?.getState().projectPath')
+          .catch(() => null)) ?? ''
       mock.runs += 1
       const runId = `run-${mock.runs}`
-      mock.active = { runId, request, events: [] }
+      mock.active = { runId, projectPath, request, events: [] }
       let index = 0
       const next = (): void => {
         if (index >= events.length) {
@@ -72,7 +83,7 @@ export async function mockRunner(app: ElectronApplication, script: RunScript): P
 
     ipcMain.removeHandler('get-active-run')
     ipcMain.handle('get-active-run', () =>
-      mock.active ? { ...mock.active, projectPath: '', events: [...mock.active.events] } : null
+      mock.active ? { ...mock.active, events: [...mock.active.events] } : null
     )
 
     ipcMain.removeHandler('get-run-defaults')

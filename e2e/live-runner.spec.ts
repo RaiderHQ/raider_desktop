@@ -143,6 +143,34 @@ test.describe('Live runner', () => {
     await expect(page.getByTestId('run-panel')).toHaveCount(0)
   })
 
+  test('reloading mid-run shows the run and Cancel again on Overview', async ({
+    electronApp,
+    page
+  }) => {
+    // No run:finished: the run is still going when the window reloads
+    await mockRunner(electronApp, {
+      events: [
+        started(),
+        phase('booting'),
+        planned(tests),
+        phase('running'),
+        example(passing, 'passed')
+      ]
+    })
+    await runTests(page)
+    await expect(page.getByTestId('run-progress')).toContainText('1 of 5')
+
+    // A reload empties the renderer's stores and mocks, so set the project up again
+    await mockRubyReady(electronApp, page)
+    await setupProjectContext(page, { projectPath })
+    await goToOverviewFiles(page)
+
+    await expect(page.getByTestId('run-panel')).toBeVisible()
+    await expect(runPhase(page)).toHaveText('Running')
+    await expect(page.getByTestId('run-progress')).toContainText('1 of 5')
+    await expect(page.getByTestId('run-cancel')).toBeVisible()
+  })
+
   // Overview's tabs (Files included) all show the run panel, so the header's
   // indicator only appears once the app leaves Overview
   test('leaving Overview mid-run shows the run indicator, which leads back to the run', async ({

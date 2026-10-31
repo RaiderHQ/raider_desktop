@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRunStore } from '@foundation/Stores/runStore'
 import useProjectStore from '@foundation/Stores/projectStore'
-import { progress, type RunTestView, type TestState } from '@foundation/run/runModel'
+import { errorReason, progress, type RunTestView, type TestState } from '@foundation/run/runModel'
 
 interface RunPanelProps {
   routeKey: string
@@ -49,6 +49,7 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
   const projectPath = useProjectStore((s) => s.projectPath)
   const [filter, setFilter] = useState<Filter>('all')
   const [now, setNow] = useState(() => Date.now())
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   const active = run !== null && run.finished === null
   useEffect(() => {
@@ -60,7 +61,9 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
 
   if (!run) return null
 
-  if (active && projectPath && run.projectPath !== projectPath) {
+  if (projectPath && run.projectPath !== projectPath) {
+    // Another project's result means nothing here
+    if (!active) return null
     const project = run.projectPath.split(/[\\/]/).filter(Boolean).pop() ?? run.projectPath
     return (
       <div data-testid="run-panel" className="p-3 text-sm text-neutral-dk">
@@ -81,6 +84,7 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
   const elapsed = formatElapsed(end - Date.parse(run.startedAt))
   const tests = run.order.map((id) => run.tests[id]).filter((x) => matches(filter, x.state))
   const files = [...new Set(tests.map((x) => x.file))]
+  const reason = finished?.status === 'errored' ? errorReason(run) : null
   const hasFailures =
     Object.values(run.tests).some((x) => x.state === 'failed') || (finished?.counts.failed ?? 0) > 0
 
@@ -160,6 +164,12 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
         )}
       </div>
 
+      {reason && (
+        <p data-testid="run-error-reason" className="px-3 py-2 text-xs text-neutral-dk">
+          {reason}
+        </p>
+      )}
+
       {!run.liveEvents && (
         <p className="px-3 py-2 text-xs text-neutral-dk bg-neutral-lt">{t('run.updateReporter')}</p>
       )}
@@ -188,16 +198,26 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
         ))}
       </div>
 
-      <details data-testid="run-tech-details" className="border-t border-neutral-bdr p-3">
+      <details
+        data-testid="run-tech-details"
+        className="border-t border-neutral-bdr p-3"
+        open={detailsOpen}
+        onToggle={(e) => setDetailsOpen(e.currentTarget.open)}
+      >
         <summary className="text-xs text-neutral-dk cursor-pointer">
           {t('run.technicalDetails')}
         </summary>
-        {finished?.truncated && <p className="text-xs text-neutral-mid mt-2">{t('run.trimmed')}</p>}
-        <pre className="mt-2 p-2 rounded bg-black text-white text-xs overflow-auto whitespace-pre-wrap">
-          {run.output
-            .map((o) => (o.worker !== undefined ? `[w${o.worker}] ${o.chunk}` : o.chunk))
-            .join('')}
-        </pre>
+        {(finished?.truncated || run.outputTrimmed) && (
+          <p className="text-xs text-neutral-mid mt-2">{t('run.trimmed')}</p>
+        )}
+        {/* Joining megabytes of output on every event is costly, so only while it's on show */}
+        {detailsOpen && (
+          <pre className="mt-2 p-2 rounded bg-black text-white text-xs overflow-auto whitespace-pre-wrap">
+            {run.output
+              .map((o) => (o.worker !== undefined ? `[w${o.worker}] ${o.chunk}` : o.chunk))
+              .join('')}
+          </pre>
+        )}
       </details>
     </div>
   )

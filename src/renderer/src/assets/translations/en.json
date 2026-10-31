@@ -268,8 +268,6 @@
   },
   "overview": {
     "error": {
-      "runTests": "Failed to run tests",
-      "rerun": "Failed to re-run tests",
       "permission": {
         "title": "Permission Error",
         "message": "The application needs write permissions to modify files in the project directory. Please grant permissions to the folder containing the path: {{path}}.",
@@ -277,19 +275,12 @@
         "cancel": "Cancel"
       }
     },
-    "running": "Tests are being executed...",
-    "runTestsSuccess": "Tests completed successfully!",
-    "rerunning": "Re-running failed tests...",
-    "rerunSuccess": "Failed tests re-run completed!",
     "tabs": {
       "tests": "Tests",
       "files": "Files",
       "dashboard": "Dashboard",
       "settings": "Settings"
     },
-    "parallelToggle": "Run in parallel",
-    "installingDependencies": "Installing dependencies...",
-    "starting": "Starting test run...",
     "settings": {
       "urlLabel": "URL",
       "urlPlaceholder": "https://example.com",
@@ -822,6 +813,7 @@
     "quarantinedFails": "Count quarantined failures as failures",
     "originProject": "This project",
     "notifyTitle": "Run finished",
+    "notifyBody": "{{passed}} passed, {{failed}} failed",
     "saveToRun": "Save this test to run it",
     "skippedMissing_one": "{{count}} test was skipped: its file is missing",
     "skippedMissing_other": "{{count}} tests were skipped: their files are missing"

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useRunStore, subscribeRunEvents } from '@foundation/Stores/runStore'
 import type { ActiveRun, RunEvent } from '@shared/types/runEvents'
 
+vi.mock('i18next', () => ({ default: { t: (key: string) => key } }))
 vi.mock('@foundation/Stores/projectStore', () => ({
   default: { getState: () => ({ projectPath: '/proj' }) }
 }))
@@ -50,6 +51,22 @@ describe('runStore', () => {
 
     expect(useRunStore.getState().run).toEqual(ingested)
     expect(useRunStore.getState().isActive).toBe(true)
+  })
+
+  it('sends a run restored after a reload back to Overview', async () => {
+    api.getActiveRun.mockResolvedValue(active)
+    await useRunStore.getState().restore()
+    expect(useRunStore.getState().origin).toEqual({
+      route: '/overview',
+      label: 'run.originProject'
+    })
+  })
+
+  it('keeps the origin a run was started from', async () => {
+    useRunStore.setState({ origin: { route: '/tests/7', label: 'Login' } })
+    api.getActiveRun.mockResolvedValue(active)
+    await useRunStore.getState().restore()
+    expect(useRunStore.getState().origin).toEqual({ route: '/tests/7', label: 'Login' })
   })
 
   it('lets the snapshot win over live events that arrived while it was in flight', async () => {

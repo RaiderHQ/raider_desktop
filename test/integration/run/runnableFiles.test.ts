@@ -24,6 +24,8 @@ describe('runnableFiles', () => {
     fs.writeFileSync(path.join(project, 'features', 'a.feature'), 'Feature: a\n')
     fs.writeFileSync(path.join(project, 'features', 'sub', 'b.feature'), 'Feature: b\n')
     fs.writeFileSync(path.join(project, 'features', 'notes.txt'), 'notes\n')
+    // A real file whose name holds a backslash, so only the backslash check rejects it
+    fs.writeFileSync(path.join(project, 'features', 'sub\\a.feature'), 'Feature: c\n')
     fs.writeFileSync(path.join(outside, 'x.feature'), 'Feature: x\n')
     fs.symlinkSync(path.join(outside, 'x.feature'), path.join(project, 'features', 'out.feature'))
     appState.projectPath = project
@@ -44,6 +46,7 @@ describe('runnableFiles', () => {
     '../x.feature',
     '/abs/a.feature',
     'features\\a.feature',
+    'features/sub\\a.feature',
     'features/notes.txt',
     'features/missing.feature',
     'features/out.feature'

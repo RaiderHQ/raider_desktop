@@ -5,7 +5,7 @@ import { useRunStore } from '@foundation/Stores/runStore'
 import { progress } from '@foundation/run/runModel'
 
 const RESULT_DISPLAY_MS = 10_000
-// The origin is lost on a reload, so fall back to the page that shows the project
+// Restoring after a reload sets the origin to Overview; this covers a run with none yet
 const FALLBACK_ROUTE = '/overview'
 
 const RunIndicator: React.FC = (): JSX.Element | null => {

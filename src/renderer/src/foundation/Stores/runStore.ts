@@ -49,7 +49,10 @@ export const useRunStore = create<RunStore>(
         if (!active) return
         // The snapshot already holds any events that arrived while this was in flight
         const run = viewFromActiveRun(active)
-        if (run) set({ run, isActive: isActiveRun(run) })
+        if (!run) return
+        // The origin doesn't survive a reload, so the run goes back to the page that shows the project
+        const origin = get().origin ?? { route: '/overview', label: i18n.t('run.originProject') }
+        set({ run, origin, isActive: isActiveRun(run) })
       } catch (error) {
         console.error('Restoring the active run failed:', error)
       }

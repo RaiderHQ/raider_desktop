@@ -6,7 +6,7 @@ const bodyFor = (finished: NonNullable<RunView['finished']>): string => {
   if (finished.status === 'errored') return i18n.t('run.result.errored')
   if (finished.status === 'cancelled') return i18n.t('run.result.cancelled')
   const { passed, failed } = finished.counts
-  return `${passed} passed, ${failed} failed`
+  return i18n.t('run.notifyBody', { passed, failed })
 }
 
 /** Tells the user a run is over when the app isn't in front. Clicking it returns to where the run began. */

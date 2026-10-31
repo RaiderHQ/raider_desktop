@@ -2,6 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { notifyRunFinished } from '@foundation/run/notifyRunFinished'
 import type { RunView } from '@foundation/run/runModel'
 
+vi.mock('i18next', () => ({
+  default: {
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key} ${JSON.stringify(opts)}` : key
+  }
+}))
+
 const run = {
   runId: 'r',
   finished: {
@@ -41,7 +48,7 @@ describe('notifyRunFinished', () => {
     const navigate = vi.fn()
     notifyRunFinished(run, { route: '/overview/tests', label: 'Tests' }, navigate)
     expect(instances).toHaveLength(1)
-    expect(instances[0].opts.body).toBe('38 passed, 2 failed')
+    expect(instances[0].opts.body).toBe('run.notifyBody {"passed":38,"failed":2}')
     instances[0].onclick?.()
     expect(window.focus).toHaveBeenCalled()
     expect(navigate).toHaveBeenCalledWith('/overview/tests')

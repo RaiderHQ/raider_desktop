@@ -324,6 +324,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             <button
               onClick={() => void recording.run()}
               disabled={busy || runBusy || isDraft}
+              title={isDraft ? t('run.saveToRun') : undefined}
               className={`${toolbarButton} text-green-700 hover:bg-green-50`}
             >
               {t('testPage.run')}

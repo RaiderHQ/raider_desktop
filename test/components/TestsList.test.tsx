@@ -87,6 +87,8 @@ const runWith = (tests: RunTestView[], over: Partial<RunView> = {}): RunView => 
   tests: Object.fromEntries(tests.map((x) => [x.id, x])),
   order: tests.map((x) => x.id),
   output: [],
+  outputSize: 0,
+  outputTrimmed: false,
   finished: null,
   ...over
 })

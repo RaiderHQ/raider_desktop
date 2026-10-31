@@ -26,6 +26,8 @@ const makeRun = (overrides: Partial<RunView> = {}): RunView => ({
   tests: {},
   order: [],
   output: [],
+  outputSize: 0,
+  outputTrimmed: false,
   finished: null,
   ...overrides
 })

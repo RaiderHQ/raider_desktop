@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { reduceRun, progress, fileStatus, type RunView } from '@foundation/run/runModel'
+import {
+  reduceRun,
+  progress,
+  fileStatus,
+  errorReason,
+  OUTPUT_CAP,
+  type RunView
+} from '@foundation/run/runModel'
 import type { PlannedTest, RunCounts, RunEvent } from '@shared/types/runEvents'
 
 const runId = 'r1'
@@ -191,5 +198,56 @@ describe('runModel', () => {
         )
       ).toBe('passed')
     })
+  })
+})
+
+describe('output cap', () => {
+  const out = (chunk: string, stream: 'stdout' | 'stderr' = 'stdout'): RunEvent => ({
+    type: 'run:output',
+    runId,
+    stream,
+    chunk
+  })
+
+  it('drops the oldest output past the cap and flags it', () => {
+    const half = 'x'.repeat(OUTPUT_CAP / 2)
+    const v = fold([started(), out('first'), out(half), out(half)])
+    expect(v.output.map((o) => o.chunk)).toEqual([half, half])
+    expect(v.outputSize).toBe(OUTPUT_CAP)
+    expect(v.outputTrimmed).toBe(true)
+  })
+
+  it('is not flagged while under the cap', () => {
+    const v = fold([started(), out('a'), out('b')])
+    expect(v.outputSize).toBe(2)
+    expect(v.outputTrimmed).toBe(false)
+  })
+})
+
+describe('errorReason', () => {
+  const withOutput = (output: RunView['output']): RunView =>
+    ({ ...fold([started()]), output }) as RunView
+
+  it('takes the first non-blank stderr line, even across chunks', () => {
+    const v = withOutput([
+      { stream: 'stdout', chunk: 'Installing gems\n' },
+      { stream: 'stderr', chunk: '\n   \n  cannot load ' },
+      { stream: 'stderr', chunk: 'such file\nmore\n' }
+    ])
+    expect(errorReason(v)).toBe('cannot load such file')
+  })
+
+  it('falls back to the first non-blank stdout line', () => {
+    const v = withOutput([
+      { stream: 'stdout', chunk: '\n  Could not find gem  \n' },
+      { stream: 'stderr', chunk: '  \n' }
+    ])
+    expect(errorReason(v)).toBe('Could not find gem')
+  })
+
+  it('is null without output and caps long lines', () => {
+    expect(errorReason(withOutput([]))).toBeNull()
+    const reason = errorReason(withOutput([{ stream: 'stderr', chunk: 'e'.repeat(500) }]))
+    expect(reason).toHaveLength(200)
   })
 })

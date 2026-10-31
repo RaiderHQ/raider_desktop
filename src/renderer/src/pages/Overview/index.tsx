@@ -724,7 +724,7 @@ const Overview: React.FC = () => {
                 <button
                   onClick={handleRerunFailed}
                   disabled={runBusy || !canRerunFailed}
-                  title={canRerunFailed ? undefined : t('run.nothingFailed')}
+                  title={canRerunFailed ? t('run.rerunSerial') : t('run.nothingFailed')}
                   className="px-3 py-1 text-sm font-medium text-neutral-dk border border-neutral-bdr rounded hover:bg-neutral-lt transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   data-testid="overview-rerun-failed-btn"
                 >

@@ -247,6 +247,8 @@ describe('CodeTestPane', () => {
       tests: {},
       order: [],
       output: [],
+      outputSize: 0,
+      outputTrimmed: false,
       finished: null
     }
     useRunStore.setState({
