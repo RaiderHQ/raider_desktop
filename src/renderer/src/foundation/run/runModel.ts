@@ -152,7 +152,14 @@ export function viewFromActiveRun(active: ActiveRun): RunView | null {
 
 export function progress(view: RunView): { done: number; total: number } {
   const done = Object.values(view.tests).filter((t) => isTerminal(t.state)).length
-  return { done, total: view.finished ? view.finished.counts.total : view.order.length }
+  const { finished } = view
+  if (!finished) return { done, total: view.order.length }
+  // Without per-test events the final counts are all there is
+  if (view.order.length === 0) {
+    const c = finished.counts
+    return { done: c.passed + c.failed + c.quarantined + c.pending + c.skipped, total: c.total }
+  }
+  return { done, total: finished.counts.total }
 }
 
 /** The state of a file's tests in the current run, or null when the run has none in it. */

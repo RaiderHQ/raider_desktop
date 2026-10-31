@@ -72,7 +72,7 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
 
   const { finished } = run
   const { done, total } = progress(run)
-  const indeterminate = !finished && (run.phase === null || run.phase === 'booting')
+  const indeterminate = !finished && (run.phase === null || run.phase === 'booting' || total === 0)
   const percent = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0
   const label = finished
     ? t(`run.result.${finished.status}`)
@@ -81,7 +81,8 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
   const elapsed = formatElapsed(end - Date.parse(run.startedAt))
   const tests = run.order.map((id) => run.tests[id]).filter((x) => matches(filter, x.state))
   const files = [...new Set(tests.map((x) => x.file))]
-  const hasFailures = Object.values(run.tests).some((x) => x.state === 'failed')
+  const hasFailures =
+    Object.values(run.tests).some((x) => x.state === 'failed') || (finished?.counts.failed ?? 0) > 0
 
   const row = (test: RunTestView): React.ReactElement => (
     <li
@@ -92,7 +93,7 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
       <span
         className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${stateClass[test.state]}`}
       >
-        {test.state}
+        {t(`run.state.${test.state}`)}
       </span>
       <span className="flex-1 min-w-0 truncate text-neutral-dark">{test.description}</span>
       {run.workers > 1 && test.worker !== undefined && (

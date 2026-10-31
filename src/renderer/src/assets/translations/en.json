@@ -796,6 +796,15 @@
     "otherProject": "A run is in progress in {{project}}.",
     "technicalDetails": "Technical details",
     "trimmed": "The start of this output was trimmed.",
+    "state": {
+      "queued": "Queued",
+      "started": "Running",
+      "passed": "Passed",
+      "failed": "Failed",
+      "quarantined": "Quarantined",
+      "pending": "Pending",
+      "skipped": "Skipped"
+    },
     "filter": {
       "all": "All",
       "failed": "Failed",

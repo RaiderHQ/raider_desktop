@@ -136,6 +136,28 @@ describe('RunPanel', () => {
     expect(screen.queryByTestId('run-rerun-failed')).toBeNull()
   })
 
+  it('offers Re-run failed for a degraded run using the final counts', () => {
+    const f = finished('failed', 5)
+    f.counts.failed = 2
+    setRun(makeRun({ liveEvents: false, finished: f }))
+    render(<RunPanel routeKey="/tests" onRerunFailed={vi.fn()} />)
+    expect(screen.getByTestId('run-rerun-failed')).toBeInTheDocument()
+  })
+
+  it('shows an indeterminate bar and no fraction for an active run with no tests yet', () => {
+    setRun(makeRun({ liveEvents: false }))
+    render(<RunPanel routeKey="/tests" />)
+    const progressEl = screen.getByTestId('run-progress')
+    expect(progressEl.querySelector('[data-indeterminate]')).not.toBeNull()
+    expect(progressEl).not.toHaveTextContent('run.progress')
+  })
+
+  it('labels row states in plain words', () => {
+    setRun(makeRun({}, [test1('a1', 'started')]))
+    render(<RunPanel routeKey="/tests" />)
+    expect(screen.getByTestId('run-test-row')).toHaveTextContent('run.state.started')
+  })
+
   it('shows errored', () => {
     setRun(makeRun({ finished: finished('errored', 0) }))
     render(<RunPanel routeKey="/tests" />)

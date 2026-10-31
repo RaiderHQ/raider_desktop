@@ -78,10 +78,7 @@ describe('runModel', () => {
   })
 
   it('keeps worker, duration and attempt', () => {
-    const v = fold([
-      started(),
-      example('a', 'failed', { attempt: 2, worker: 1, durationMs: 40 })
-    ])
+    const v = fold([started(), example('a', 'failed', { attempt: 2, worker: 1, durationMs: 40 })])
     expect(v.tests.a).toMatchObject({ state: 'failed', attempt: 2, worker: 1, durationMs: 40 })
   })
 
@@ -108,6 +105,21 @@ describe('runModel', () => {
     expect(v.liveEvents).toBe(false)
     expect(v.order).toEqual([])
     expect(progress(v)).toEqual({ done: 0, total: 7 })
+  })
+
+  it('derives done from the final counts when a finished run has no per-test entries', () => {
+    const v = fold([
+      started(false),
+      {
+        type: 'run:finished',
+        runId,
+        finishedAt: 'x',
+        exitCode: 1,
+        status: 'failed',
+        counts: { ...counts(7), passed: 4, failed: 2, skipped: 1 }
+      }
+    ])
+    expect(progress(v)).toEqual({ done: 7, total: 7 })
   })
 
   it('turns queued and started tests into skipped when cancelled', () => {
