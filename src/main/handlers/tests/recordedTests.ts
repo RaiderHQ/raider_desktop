@@ -3,6 +3,7 @@ import { realpathSync } from 'fs'
 import { dirname, posix, resolve } from 'path'
 import { generateProjectSpecFile, RECORDED_MARKER, toAutomation } from '../../codegen/testFile'
 import { hashRuby } from './codeHash'
+import { detectWaitHelper } from '../project/waitHelperDetection'
 import { withSecretNames } from '../../../shared/secretSteps'
 import {
   assertRealInside,
@@ -134,8 +135,21 @@ const buildSidecar = (
 const generate = (test: Test, layout: ProjectLayout, file: string): string =>
   generateProjectSpecFile(test, toAutomation(layout.automation), {
     fileRelPath: file,
-    helperPath: layout.helperPath
+    helperPath: layout.helperPath,
+    waitHelper: layout.waitHelper
   })
+
+/** `layout` with `waitHelper` checked on disk now: the project may have changed since it was read. */
+async function withCurrentWaitHelper(
+  projectPath: string,
+  layout: ProjectLayout
+): Promise<ProjectLayout> {
+  const waitHelper =
+    layout.automation === 'selenium' &&
+    layout.framework === 'rspec' &&
+    (await detectWaitHelper(projectPath, layout.helperPath))
+  return { ...layout, waitHelper }
+}
 
 /**
  * Picks a free `<slug>[_n]_spec.rb` in `root` (default: the spec folder) and
@@ -180,16 +194,10 @@ const isUntitledFile = (file: string): boolean => UNTITLED_FILE.test(posix.basen
 const hasRealName = (test: Test): boolean =>
   /[a-z0-9]/i.test(test.name.normalize('NFKD')) && slugify(test.name) !== UNTITLED_SLUG
 
-const sameRecord = (
-  sidecar: Sidecar,
-  test: Test,
-  layout: ProjectLayout,
-  content: string
-): boolean =>
+const sameRecord = (sidecar: Sidecar, test: Test, layout: ProjectLayout): boolean =>
   sidecar.name === test.name &&
   sidecar.url === test.url &&
   sidecar.automation === toAutomation(layout.automation) &&
-  sidecar.hash === hashRuby(content) &&
   JSON.stringify(sidecar.steps) === JSON.stringify(test.steps)
 
 /**
@@ -272,14 +280,15 @@ export function saveRecordedTest(
 ): Promise<Sidecar> {
   return serialize(testQueues, testKey(projectPath, test.id), async () => {
     const now = new Date().toISOString()
+    const current = await withCurrentWaitHelper(projectPath, layout)
     const existing =
       options.knownFile !== undefined
         ? await sidecarAt(projectPath, test.id, options.knownFile)
         : await findSidecarById(projectPath, test.id)
 
     if (!existing) {
-      const { file, content, target } = await createNewSpec(projectPath, layout, test)
-      const sidecar = buildSidecar(test, layout, file, content, now, now)
+      const { file, content, target } = await createNewSpec(projectPath, current, test)
+      const sidecar = buildSidecar(test, current, file, content, now, now)
       try {
         await writeSidecar(projectPath, sidecar)
       } catch (error) {
@@ -298,12 +307,18 @@ export function saveRecordedTest(
     }
 
     if (isUntitledFile(existing.file) && hasRealName(test)) {
-      return moveToRealName(projectPath, layout, test, existing, target, onDisk !== null, now)
+      return moveToRealName(projectPath, current, test, existing, target, onDisk !== null, now)
     }
 
-    const content = generate(test, layout, existing.file)
-    // Nothing changed: keep the files and their timestamps as they are
-    if (onDisk === content && sameRecord(existing, test, layout, content)) return existing
+    // Nothing changed: keep the files and their timestamps as they are, even when
+    // Raider would now write the same test differently (e.g. with the wait helper)
+    if (
+      onDisk !== null &&
+      hashRuby(onDisk) === existing.hash &&
+      sameRecord(existing, test, current)
+    )
+      return existing
+    const content = generate(test, current, existing.file)
     if (onDisk === null) {
       // Sidecar without its file: restore it, but never over a file that appeared meanwhile
       await fs.mkdir(dirname(target), { recursive: true })
@@ -311,7 +326,7 @@ export function saveRecordedTest(
     } else {
       await writeFileAtomic(target, content)
     }
-    const sidecar = buildSidecar(test, layout, existing.file, content, existing.createdAt, now)
+    const sidecar = buildSidecar(test, current, existing.file, content, existing.createdAt, now)
     await writeSidecar(projectPath, sidecar)
     return sidecar
   })

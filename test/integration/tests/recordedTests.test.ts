@@ -409,3 +409,69 @@ describe('unchanged saves', () => {
     expect(again.updatedAt).not.toBe(first.updatedAt)
   })
 })
+
+describe('projects with the wait helper', () => {
+  const click: Step = { id: 'c1', kind: 'click', element: { strategy: 'css', value: '#go' } }
+  const clickTest = (over: Partial<Test> = {}): Test => test({ steps: [click], ...over })
+  const withHelper: ProjectLayout = { ...layout, waitHelper: true }
+
+  async function addWaitHelper(): Promise<void> {
+    await mkdir(join(project, 'helpers'), { recursive: true })
+    await writeFile(join(project, 'helpers', 'wait_helper.rb'), 'module WaitHelper; end\n')
+    await writeFile(
+      join(project, 'helpers', 'spec_helper.rb'),
+      "require_relative 'wait_helper'\n\nRSpec.configure do |config|\n  config.include WaitHelper\nend\n"
+    )
+  }
+
+  it('a new test is written with the helper and its sidecar matches the file', async () => {
+    await addWaitHelper()
+    const sidecar = await saveRecordedTest(project, withHelper, clickTest())
+    const content = await readFile(join(project, sidecar.file), 'utf-8')
+    expect(content).toContain("click({ css: '#go' })")
+    expect(content).not.toContain('let(:wait)')
+    expect(hashRuby(content)).toBe(sidecar.hash)
+  })
+
+  it('an unchanged old-style test is kept byte for byte; a changed one moves to the helper', async () => {
+    // Saved before the project had the helper
+    const first = await saveRecordedTest(project, layout, clickTest())
+    const spec = join(project, first.file)
+    const sidecarFile = join(project, '.raider', 'tests', 'spec', 'checkout_spec.rb.json')
+    const before = [await readFile(spec, 'utf-8'), await readFile(sidecarFile, 'utf-8')]
+    expect(before[0]).toContain('let(:wait)')
+    await addWaitHelper()
+
+    const again = await saveRecordedTest(project, withHelper, clickTest())
+
+    expect(again).toEqual(first)
+    expect([await readFile(spec, 'utf-8'), await readFile(sidecarFile, 'utf-8')]).toEqual(before)
+
+    const changed = { ...click, element: { strategy: 'css' as const, value: '#pay' } }
+    const edited = await saveRecordedTest(project, withHelper, clickTest({ steps: [changed] }))
+    const content = await readFile(spec, 'utf-8')
+    expect(content).toContain("click({ css: '#pay' })")
+    expect(content).not.toContain('let(:wait)')
+    expect(hashRuby(content)).toBe(edited.hash)
+  })
+
+  it('a layout that still says helper is ignored once wait_helper.rb is gone', async () => {
+    await addWaitHelper()
+    await saveRecordedTest(project, withHelper, clickTest())
+    await rm(join(project, 'helpers', 'wait_helper.rb'))
+
+    const saved = await saveRecordedTest(project, withHelper, clickTest({ steps: [click, click] }))
+
+    const content = await readFile(join(project, saved.file), 'utf-8')
+    expect(content).toContain('let(:wait)')
+    expect(content).not.toContain("click({ css: '#go' })")
+  })
+
+  it('a renamed untitled test moves to the helper form', async () => {
+    await saveRecordedTest(project, layout, clickTest({ name: 'Untitled Test' }))
+    await addWaitHelper()
+    const saved = await saveRecordedTest(project, withHelper, clickTest())
+    expect(saved.file).toBe('spec/checkout_spec.rb')
+    expect(await readFile(join(project, saved.file), 'utf-8')).toContain("click({ css: '#go' })")
+  })
+})

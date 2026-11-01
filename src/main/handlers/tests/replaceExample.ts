@@ -2,6 +2,7 @@ import fs from 'fs/promises'
 import { STRING_LITERAL } from '../../codegen/ruby'
 import { renderStep } from '../../codegen/steps'
 import { toAutomation } from '../../codegen/testFile'
+import { detectWaitHelper } from '../project/waitHelperDetection'
 import { withSecretNames } from '../../../shared/secretSteps'
 import type { Receiver } from '../../codegen/steps'
 import { locateExamples } from './exampleLocator'
@@ -109,8 +110,14 @@ export async function replaceExample(
     const close = keep ? lines[endLine - 1] : `${indent}end${cr}`
 
     const receiver = receiverFor(source)
+    // Checked now, not from the cached layout: the helper may have been added or removed
+    const waitHelper =
+      receiver === 'helper' &&
+      layout.automation === 'selenium' &&
+      layout.framework === 'rspec' &&
+      (await detectWaitHelper(projectPath, layout.helperPath))
     const body = withSecretNames(steps).flatMap((step) =>
-      renderStep(step, toAutomation(layout.automation), { receiver }).split('\n')
+      renderStep(step, toAutomation(layout.automation), { receiver, waitHelper }).split('\n')
     )
     const wait = WAIT[receiver]
     const usesWait = body.some((line) => wait.uses.test(line.replace(STRING_LITERAL, "''")))
