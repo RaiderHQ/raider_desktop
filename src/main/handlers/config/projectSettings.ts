@@ -5,7 +5,36 @@ import type { RecorderSettings } from '@shared/types/recorderSettings'
 
 export type { RecorderSettings }
 
-export const DEFAULT_SELECTOR_PRIORITY: string[] = ['id', 'data-testid', 'css', 'xpath']
+export const DEFAULT_SELECTOR_PRIORITY: string[] = [
+  'role',
+  'label',
+  'testId',
+  'text',
+  'id',
+  'css',
+  'xpath'
+]
+export const DEFAULT_TEST_ID_ATTRIBUTE = 'data-testid'
+
+// The default before stable locators; a project still carrying it gets the new order.
+const OLD_DEFAULT_PRIORITY = ['id', 'data-testid', 'css', 'xpath']
+const ATTRIBUTE_NAME = /^[A-Za-z_][\w.:-]*$/
+
+/**
+ * Maps a configured selector_priority to the recorder's names. data-testid becomes
+ * testId; any other unknown name is kept and read as a test-id style attribute.
+ */
+export function normalizePriority(list: string[] | undefined): string[] {
+  if (
+    !list ||
+    list.length === 0 ||
+    (list.length === OLD_DEFAULT_PRIORITY.length &&
+      list.every((p, i) => p === OLD_DEFAULT_PRIORITY[i]))
+  ) {
+    return [...DEFAULT_SELECTOR_PRIORITY]
+  }
+  return list.map((p) => (p === 'data-testid' ? 'testId' : p))
+}
 
 export const DEFAULT_RECORDER_SETTINGS: RecorderSettings = {
   baseUrl: '',
@@ -13,7 +42,8 @@ export const DEFAULT_RECORDER_SETTINGS: RecorderSettings = {
   headless: false,
   implicitWait: 0,
   explicitWait: 10,
-  selectorPriority: [...DEFAULT_SELECTOR_PRIORITY]
+  selectorPriority: [...DEFAULT_SELECTOR_PRIORITY],
+  testIdAttribute: DEFAULT_TEST_ID_ATTRIBUTE
 }
 
 type WritableSettings = Partial<
@@ -47,10 +77,14 @@ export async function readRecorderSettings(projectPath: string): Promise<Recorde
     typeof v === 'number' && Number.isFinite(v) ? v : undefined
 
   const priority = config['selector_priority']
-  const selectorPriority =
-    Array.isArray(priority) && priority.length > 0 && priority.every((p) => typeof p === 'string')
+  const selectorPriority = normalizePriority(
+    Array.isArray(priority) && priority.every((p) => typeof p === 'string')
       ? (priority as string[])
-      : [...DEFAULT_SELECTOR_PRIORITY]
+      : undefined
+  )
+  const testId = config['test_id_attribute']
+  const testIdAttribute =
+    typeof testId === 'string' && ATTRIBUTE_NAME.test(testId) ? testId : DEFAULT_TEST_ID_ATTRIBUTE
 
   return {
     baseUrl:
@@ -63,7 +97,8 @@ export async function readRecorderSettings(projectPath: string): Promise<Recorde
     headless: typeof config['headless'] === 'boolean' ? config['headless'] : false,
     implicitWait: num(config['implicit_wait']) ?? 0,
     explicitWait: num(config['explicit_wait']) ?? num(config['timeout']) ?? 10,
-    selectorPriority
+    selectorPriority,
+    testIdAttribute
   }
 }
 

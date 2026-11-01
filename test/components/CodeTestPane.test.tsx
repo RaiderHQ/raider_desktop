@@ -37,7 +37,7 @@ const navigateStep = (id: string, url: string): Step => ({ id, kind: 'navigate',
 const clickStep: Step = {
   id: 'rec-click',
   kind: 'click',
-  element: { strategy: 'css', value: '#recorded-button' }
+  element: { strategy: 'css', value: '#recorded-button', label: 'recorded-button' }
 }
 
 const view = {

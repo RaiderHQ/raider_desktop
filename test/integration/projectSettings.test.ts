@@ -16,6 +16,7 @@ import { mkdtemp, mkdir, readFile, writeFile, rm } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import {
+  normalizePriority,
   readRecorderSettings,
   writeRecorderSettings
 } from '../../src/main/handlers/config/projectSettings'
@@ -27,6 +28,25 @@ viewport:
   width: 1920
   height: 1080
 `
+
+describe('normalizePriority', () => {
+  const DEFAULT = ['role', 'label', 'testId', 'text', 'id', 'css', 'xpath']
+
+  it('gives the new default for a missing or old-default list', () => {
+    expect(normalizePriority(undefined)).toEqual(DEFAULT)
+    expect(normalizePriority([])).toEqual(DEFAULT)
+    expect(normalizePriority(['id', 'data-testid', 'css', 'xpath'])).toEqual(DEFAULT)
+  })
+
+  it('maps data-testid to testId and keeps known and custom names', () => {
+    expect(normalizePriority(['label', 'data-testid', 'data-qa', 'css'])).toEqual([
+      'label',
+      'testId',
+      'data-qa',
+      'css'
+    ])
+  })
+})
 
 describe('projectSettings', () => {
   let dir: string
@@ -50,7 +70,8 @@ describe('projectSettings', () => {
       headless: false,
       implicitWait: 0,
       explicitWait: 10,
-      selectorPriority: ['id', 'data-testid', 'css', 'xpath']
+      selectorPriority: ['role', 'label', 'testId', 'text', 'id', 'css', 'xpath'],
+      testIdAttribute: 'data-testid'
     })
   })
 
@@ -69,8 +90,42 @@ describe('projectSettings', () => {
       headless: true,
       implicitWait: 3,
       explicitWait: 7,
-      selectorPriority: ['css', 'id']
+      selectorPriority: ['css', 'id'],
+      testIdAttribute: 'data-testid'
     })
+  })
+
+  it('reads test_id_attribute', async () => {
+    await seed(`test_id_attribute: data-qa\n`)
+    expect((await readRecorderSettings(dir)).testIdAttribute).toBe('data-qa')
+  })
+
+  it('ignores an unusable test_id_attribute', async () => {
+    await seed(`test_id_attribute: 'not valid!'\n`)
+    expect((await readRecorderSettings(dir)).testIdAttribute).toBe('data-testid')
+  })
+
+  it('reads the old default selector_priority as the new default', async () => {
+    await seed(`selector_priority: [id, data-testid, css, xpath]\n`)
+    expect((await readRecorderSettings(dir)).selectorPriority).toEqual([
+      'role',
+      'label',
+      'testId',
+      'text',
+      'id',
+      'css',
+      'xpath'
+    ])
+  })
+
+  it('maps data-testid and keeps a custom attribute in selector_priority', async () => {
+    await seed(`selector_priority: [data-testid, data-cy, text, xpath]\n`)
+    expect((await readRecorderSettings(dir)).selectorPriority).toEqual([
+      'testId',
+      'data-cy',
+      'text',
+      'xpath'
+    ])
   })
 
   it('replaces existing key in place', async () => {

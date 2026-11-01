@@ -26,7 +26,8 @@ vi.mock('../../src/main/handlers/appState', () => ({
       headless: false,
       implicitWait: 3,
       explicitWait: 20,
-      selectorPriority: []
+      selectorPriority: [],
+      testIdAttribute: 'data-testid'
     }
   }
 }))

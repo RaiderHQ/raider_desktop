@@ -53,6 +53,21 @@ describe('sidecar store', () => {
     expect(await readSidecar(project, 'spec/a_spec.rb')).toEqual(s)
   })
 
+  it('round-trips a locator and still loads a sidecar written without one', async () => {
+    const locator = { by: 'role' as const, role: 'button', name: 'Log in' }
+    const withLocator = sidecar('spec/a_spec.rb', {
+      steps: [{ id: 's1', kind: 'click', element: { strategy: 'id', value: 'go', locator } }]
+    })
+    await writeSidecar(project, withLocator)
+    expect(await readSidecar(project, 'spec/a_spec.rb')).toEqual(withLocator)
+
+    const old = sidecar('spec/b_spec.rb', {
+      steps: [{ id: 's1', kind: 'click', element: { strategy: 'id', value: 'go' } }]
+    })
+    await writeSidecar(project, old)
+    expect(await readSidecar(project, 'spec/b_spec.rb')).toEqual(old)
+  })
+
   it('readSidecar names old secret steps once, in order', async () => {
     const pw = { strategy: 'id' as const, value: 'pw' }
     const old = sidecar('spec/a_spec.rb', {

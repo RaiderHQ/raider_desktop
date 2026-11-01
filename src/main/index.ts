@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, session } from 'electron'
+import { app, BrowserWindow, ipcMain, session } from 'electron'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -60,10 +60,7 @@ import importProject from './handlers/io/importProject'
 import importSuite from './handlers/io/importSuite'
 import importTest from './handlers/io/importTest'
 import deleteTest from './handlers/deleteTest'
-import recorderEvent, {
-  RecorderEventData,
-  toElementTarget
-} from './handlers/recording/recorderEvent'
+import recorderEvent, { RecorderEventData } from './handlers/recording/recorderEvent'
 import loadUrlRequest from './handlers/loadUrlRequest'
 import startRecordingMain from './handlers/recording/startRecordingMain'
 import replayStepsAndRecord from './handlers/recording/replayStepsAndRecord'
@@ -71,6 +68,7 @@ import replayInWebview, { cancelWebviewReplay } from './handlers/recording/repla
 import stopRecordingMain from './handlers/recording/stopRecordingMain'
 import saveRecording from './handlers/recording/saveRecording'
 import { installCloseFlush } from './handlers/recording/closeFlush'
+import { showAssertionContextMenu } from './handlers/recording/assertionContextMenu'
 import saveTrace from './handlers/trace/saveTrace'
 import loadTrace from './handlers/trace/loadTrace'
 import deleteTrace from './handlers/trace/deleteTrace'
@@ -88,11 +86,9 @@ import updateHeadlessMode from './handlers/config/updateHeadlessMode'
 import getProjectConfig from './handlers/config/getProjectConfig'
 import { spawnTerminal, writeTerminal, resizeTerminal, killTerminal } from './handlers/terminal/terminalManager'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
-import type { AssertKind, Step } from '@shared/types/step'
-import type { AssertionMessage } from '@shared/types/pendingAssertion'
+import type { Step } from '@shared/types/step'
 import { renderStep } from './codegen/steps'
 import { toAutomation } from './codegen/testFile'
-import { randomUUID } from 'crypto'
 
 const iconPath = join(
   __dirname,
@@ -308,10 +304,10 @@ app.whenReady().then(() => {
   ipcMain.handle('get-recorder-settings', () => getRecorderSettings())
   ipcMain.handle('list-saved-logins', listSavedLoginsHandler)
   ipcMain.handle('forget-saved-login', (_event, name: unknown) => forgetSavedLoginHandler(name))
-  ipcMain.handle(
-    'get-selector-priority',
-    async () => (await getRecorderSettings()).selectorPriority
-  )
+  ipcMain.handle('get-selector-priority', async () => {
+    const { selectorPriority, testIdAttribute } = await getRecorderSettings()
+    return { selectorPriority, testIdAttribute }
+  })
   ipcMain.handle('load-url-request', (_event, url: string) => loadUrlRequest(url))
   ipcMain.handle('start-recording-main', startRecordingMain)
   ipcMain.handle(
@@ -397,102 +393,7 @@ app.whenReady().then(() => {
   })
 
   // --- Assertion Context Menu Handler ---
-  ipcMain.on(
-    'show-assertion-context-menu',
-    (
-      _event,
-      {
-        selector,
-        strategy,
-        ariaLabel,
-        placeholder,
-        elementText,
-        elementValue,
-        inputType,
-        pageTitle,
-        pageUrl
-      }
-    ): void => {
-      if (!appState.mainWindow) return
-
-      const element =
-        toElementTarget(strategy, selector, { innerText: elementText, ariaLabel, placeholder }) ??
-        undefined
-      const post = (message: AssertionMessage): void => {
-        appState.mainWindow!.webContents.send('add-assertion-step', message)
-      }
-      // Element waits and state checks are complete steps; the rest ask for expected text
-      const wait = (until: 'visible' | 'hidden' | 'enabled'): void => {
-        if (element) post({ id: randomUUID(), kind: 'wait', element, until })
-      }
-      const check = (kind: AssertKind): void => {
-        if (element) post({ id: randomUUID(), kind: 'assert', check: kind, element })
-      }
-      const ask = (kind: AssertKind, text: string, needsElement = true): void => {
-        if (needsElement && !element) return
-        post({ pendingAssertion: kind, ...(needsElement ? { element } : {}), text })
-      }
-
-      const isCheckable = inputType === 'checkbox' || inputType === 'radio'
-
-      const template: (Electron.MenuItemConstructorOptions | Electron.MenuItem)[] = [
-        { label: 'Raider Assertions', enabled: false },
-        { type: 'separator' },
-
-        // --- Wait submenu ---
-        {
-          label: 'Wait for element',
-          submenu: [
-            { label: 'to appear', click: (): void => wait('visible') },
-            { label: 'to disappear', click: (): void => wait('hidden') },
-            { label: 'to be enabled', click: (): void => wait('enabled') }
-          ]
-        },
-        { type: 'separator' },
-
-        // --- Assert element state ---
-        { label: 'Assert element is displayed', click: (): void => check('displayed') },
-        { label: 'Assert element is NOT displayed', click: (): void => check('notDisplayed') },
-        { label: 'Assert element is enabled', click: (): void => check('enabled') },
-        ...(isCheckable
-          ? [{ label: 'Assert element is checked', click: (): void => check('checked') }]
-          : []),
-        { type: 'separator' },
-
-        // --- Assert content ---
-        {
-          label: 'Assert element text equals',
-          click: (): void => ask('textEquals', (elementText || '').trim())
-        },
-        {
-          label: 'Assert element text includes',
-          click: (): void => ask('textIncludes', (elementText || '').trim())
-        },
-        {
-          label: 'Assert element value',
-          click: (): void => ask('valueEquals', (elementValue || '').trim())
-        },
-        { type: 'separator' },
-
-        // --- Assert page ---
-        {
-          label: 'Assert page title',
-          click: (): void => ask('titleEquals', pageTitle || '', false)
-        },
-        {
-          label: 'Assert current URL contains',
-          click: (): void => ask('urlIncludes', pageUrl || '', false)
-        }
-      ]
-
-      const menu = Menu.buildFromTemplate(template)
-      if (appState.recorderWindow) {
-        menu.popup({ window: appState.recorderWindow })
-      } else if (appState.mainWindow) {
-        menu.popup({ window: appState.mainWindow })
-      }
-    }
-  )
+  ipcMain.on('show-assertion-context-menu', showAssertionContextMenu)
 })
 
 app.on('window-all-closed', () => {

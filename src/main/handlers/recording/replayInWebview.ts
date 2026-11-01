@@ -1,6 +1,7 @@
 import { webContents } from 'electron'
 import { appState } from '../appState'
 import { describeStepEnglish, englishText } from '../../../shared/describeStepEnglish'
+import { elementName } from '../../../shared/describeStep'
 import { isValidSecretName, secretNameOf, withSecretNames } from '../../../shared/secretSteps'
 import type { ElementTarget, Step } from '../../../shared/types/step'
 
@@ -164,7 +165,7 @@ async function navigate(wc: WebContents, url: string, timeoutMs: number): Promis
 }
 
 const requireElement = (target: ElementTarget): string =>
-  `element not found: ${target.strategy}=${target.value}`
+  englishText('recorder.step.notFound', { element: elementName(target) })
 
 /** Runs an element action, polling until the element exists. Returns an error message or null. */
 async function runAction(
@@ -200,7 +201,7 @@ async function runWait(
   )
   if (ok) return null
   return withError(
-    `timed out waiting for the element to be ${step.until}: ${step.element.strategy}=${step.element.value}`,
+    `timed out waiting for ${elementName(step.element)} to be ${step.until}`,
     error
   )
 }

@@ -87,14 +87,6 @@ const TraceDetailPanel: React.FC<TraceDetailPanelProps> = ({ step }): JSX.Elemen
               <span className="font-medium text-neutral-dk">Tag:</span>{' '}
               <code className="text-ruby">&lt;{step.elementInfo.tagName.toLowerCase()}&gt;</code>
             </p>
-            <p>
-              <span className="font-medium text-neutral-dk">Strategy:</span>{' '}
-              {step.elementInfo.strategy}
-            </p>
-            <p className="break-all">
-              <span className="font-medium text-neutral-dk">Selector:</span>{' '}
-              <code className="text-xs">{step.elementInfo.selector}</code>
-            </p>
             {step.elementInfo.innerText && (
               <p className="break-all">
                 <span className="font-medium text-neutral-dk">Text:</span>{' '}

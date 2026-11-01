@@ -1,4 +1,5 @@
-import { describeStep } from '@shared/describeStep'
+import { describeStep, foundBy } from '@shared/describeStep'
+import { englishText } from '@shared/describeStepEnglish'
 import type { ElementTarget } from '@shared/types/step'
 
 const labelled: ElementTarget = { strategy: 'id', value: 'login', label: 'Log in' }
@@ -20,11 +21,25 @@ describe('describeStep', () => {
     })
   })
 
-  it('shows strategy=value when there is no label', () => {
+  it('says "this element" when there is no label and no locator, never a raw selector', () => {
     expect(describeStep({ id, kind: 'click', element: bare })).toEqual({
       key: 'recorder.commandParser.clickElement',
-      values: { element: 'css=.btn' }
+      values: { element: 'this element' }
     })
+    const xp: ElementTarget = { strategy: 'xpath', value: '//div[2]/a' }
+    const { values } = describeStep({ id, kind: 'click', element: xp })
+    expect(JSON.stringify(values)).not.toMatch(/css=|xpath=|id=/)
+  })
+
+  it('falls back to the locator name when there is no label', () => {
+    const el = (locator: ElementTarget['locator']): ElementTarget => ({ ...bare, locator })
+    const name = (l: ElementTarget['locator']): string =>
+      describeStep({ id, kind: 'click', element: el(l) }).values.element
+    expect(name({ by: 'role', role: 'button', name: 'Save' })).toBe('Save')
+    expect(name({ by: 'label', text: 'Email' })).toBe('Email')
+    expect(name({ by: 'text', text: 'Welcome' })).toBe('Welcome')
+    expect(name({ by: 'testId', attribute: 'data-testid', value: 'save-btn' })).toBe('save-btn')
+    expect(name({ by: 'css', value: '.a', positional: true })).toBe('this element')
   })
 
   it('describes type', () => {
@@ -53,7 +68,7 @@ describe('describeStep', () => {
   it('describes pressKey, naming the space bar', () => {
     expect(describeStep({ id, kind: 'pressKey', element: bare, key: 'Enter' })).toEqual({
       key: 'recorder.commandParser.pressKey',
-      values: { element: 'css=.btn', key: 'Enter' }
+      values: { element: 'this element', key: 'Enter' }
     })
     expect(describeStep({ id, kind: 'pressKey', element: bare, key: ' ' }).values.key).toBe('Space')
   })
@@ -88,7 +103,7 @@ describe('describeStep', () => {
   ] as const)('describes the %s assertion with its expected text', (check, key) => {
     expect(describeStep({ id, kind: 'assert', check, element: bare, expected: 'Hi' })).toEqual({
       key: `recorder.commandParser.${key}`,
-      values: { element: 'css=.btn', text: 'Hi' }
+      values: { element: 'this element', text: 'Hi' }
     })
   })
 
@@ -106,7 +121,7 @@ describe('describeStep', () => {
   it('describes switching into and out of a frame', () => {
     expect(describeStep({ id, kind: 'switchFrame', element: bare })).toEqual({
       key: 'recorder.commandParser.switchToFrame',
-      values: { element: 'css=.btn' }
+      values: { element: 'this element' }
     })
     expect(describeStep({ id, kind: 'switchFrame' })).toEqual({
       key: 'recorder.commandParser.switchToDefaultContent',
@@ -161,5 +176,60 @@ describe('describeStep', () => {
       expect(typeof lookup(describeStep(step).key), describeStep(step).key).toBe('string')
     }
     expect(lookup('recorder.step.custom')).toBe('Custom code step')
+  })
+})
+
+describe('foundBy', () => {
+  const el = (locator: ElementTarget['locator'], strategy: ElementTarget['strategy'] = 'css') =>
+    ({ strategy, value: 'x', locator }) as ElementTarget
+  const text = (e: ElementTarget): string | null => {
+    const f = foundBy(e)
+    return f && englishText(f.key, f.values)
+  }
+
+  it('returns null without an element', () => {
+    expect(foundBy(undefined)).toBeNull()
+  })
+
+  it.each([
+    [{ by: 'role', role: 'button', name: 'Save' }, 'Found by role · button "Save"', false],
+    [{ by: 'role', role: 'textbox', name: 'Email' }, 'Found by role · text box "Email"', false],
+    [{ by: 'role', role: 'radio', name: 'Red' }, 'Found by role · radio button "Red"', false],
+    [{ by: 'role', role: 'combobox', name: 'Country' }, 'Found by role · dropdown "Country"', false],
+    [{ by: 'role', role: 'tab', name: 'Home' }, 'Found by role · tab "Home"', false],
+    [{ by: 'label', text: 'Email' }, 'Found by label · "Email"', false],
+    [{ by: 'testId', attribute: 'data-qa', value: 'save' }, 'Found by test id · save', false],
+    [{ by: 'text', text: 'Hello' }, 'Found by text · "Hello"', false],
+    [{ by: 'id', value: 'login' }, 'Found by id', false],
+    [{ by: 'css', value: '.a', positional: false }, 'Found by CSS', false],
+    [{ by: 'css', value: '.a > b:nth-child(2)', positional: true }, 'Found by CSS', true],
+    [{ by: 'xpath', value: '//a' }, 'Found by XPath', true]
+  ] as const)('describes %j', (locator, expected, weak) => {
+    expect(text(el(locator))).toBe(expected)
+    expect(foundBy(el(locator))?.weak).toBe(weak)
+  })
+
+  it('describes older steps that have no locator', () => {
+    expect(text(el(undefined, 'css'))).toBe('Found by CSS (older recording)')
+    expect(foundBy(el(undefined, 'css'))?.weak).toBe(true)
+    expect(text(el(undefined, 'xpath'))).toBe('Found by XPath (older recording)')
+    expect(foundBy(el(undefined, 'xpath'))?.weak).toBe(true)
+    expect(text(el(undefined, 'id'))).toBe('Found by id')
+    expect(foundBy(el(undefined, 'id'))?.weak).toBe(false)
+  })
+
+  it.each([
+    ['[data-testid="save"]', false],
+    ['[name="email"]', false],
+    ['#login', false],
+    ['#ember1234', true],
+    ['#a1b2c3d4e5', true],
+    ['form > button:nth-of-type(2)', true],
+    ['.btn', true],
+    ['[data-testid="a"] button', true]
+  ])('flags the older css %s as weak only when it is fragile', (value, weak) => {
+    const older = { strategy: 'css', value } as ElementTarget
+    expect(text(older)).toBe('Found by CSS (older recording)')
+    expect(foundBy(older)?.weak).toBe(weak)
   })
 })

@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { renderStep } from '../../../src/main/codegen/steps'
-import type { Step, AssertKind } from '../../../src/shared/types/step'
+import type { Step, AssertKind, ElementTarget, Locator } from '../../../src/shared/types/step'
 
 const css = (value: string): { strategy: 'css'; value: string } => ({
   strategy: 'css' as const,
@@ -316,6 +316,65 @@ describe('ruby syntax', () => {
     for (const automation of ['selenium', 'watir'] as const) {
       const dir = mkdtempSync(join(tmpdir(), 'steps-'))
       const file = join(dir, 'x.rb')
+      writeFileSync(file, steps.map((s) => renderStep(s, automation)).join('\n') + '\n')
+      const r = spawnSync(rubyBin!, ['-c', file], { encoding: 'utf8' })
+      expect(r.stderr + r.stdout).toContain('Syntax OK')
+    }
+  })
+})
+
+describe('semantic locators', () => {
+  const xp = "//button[normalize-space()='Go']"
+  const xpRb = xp.replace(/'/g, "\\'")
+  const target = (locator: Locator): ElementTarget => ({ strategy: 'xpath', value: xp, locator })
+  const role = (
+    r: string,
+    nameFrom?: 'content' | 'aria-label' | 'other',
+    tag?: string
+  ): Locator => ({ by: 'role', role: r, name: 'It\'s "Go"', nameFrom, tag })
+
+  it('watir ignores the locator and keeps the plain xpath', () => {
+    const plain = renderStep(
+      { id: '1', kind: 'click', element: { strategy: 'xpath', value: xp } },
+      'watir'
+    )
+    const withLocator = renderStep(
+      { id: '1', kind: 'click', element: target(role('button', 'aria-label', 'button')) },
+      'watir'
+    )
+    expect(withLocator).toBe(plain)
+    expect(withLocator).toBe(`@browser.element(xpath: '${xpRb}').click`)
+  })
+
+  it('id, css and xpath locators render as the strategy does', () => {
+    const el: ElementTarget = {
+      strategy: 'css',
+      value: '#a',
+      locator: { by: 'css', value: '#a', positional: false }
+    }
+    expect(renderStep({ id: '1', kind: 'click', element: el }, 'watir')).toBe(
+      "@browser.element(css: '#a').click"
+    )
+  })
+
+  it('selenium output ignores the locator', () => {
+    const step: Step = {
+      id: '1',
+      kind: 'click',
+      element: target(role('button', 'content', 'button'))
+    }
+    expect(renderStep(step, 'selenium')).toBe(
+      `@wait.until { @driver.find_element(xpath: '${xpRb}').displayed? }\n@driver.find_element(xpath: '${xpRb}').click`
+    )
+  })
+
+  it.skipIf(!rubyBin)('quote-heavy locators pass ruby -c', () => {
+    const steps: Step[] = [
+      role('button', 'aria-label', 'button'),
+      role('link', 'content', 'a')
+    ].map((l, i) => ({ id: `${i}`, kind: 'click', element: target(l) }))
+    for (const automation of ['selenium', 'watir'] as const) {
+      const file = join(mkdtempSync(join(tmpdir(), 'steps-')), 'x.rb')
       writeFileSync(file, steps.map((s) => renderStep(s, automation)).join('\n') + '\n')
       const r = spawnSync(rubyBin!, ['-c', file], { encoding: 'utf8' })
       expect(r.stderr + r.stdout).toContain('Syntax OK')

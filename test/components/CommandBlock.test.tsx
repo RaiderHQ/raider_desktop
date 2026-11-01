@@ -63,6 +63,40 @@ describe('CommandBlock', () => {
       expect(renderStep).not.toHaveBeenCalled()
     })
 
+    describe('found by', () => {
+      const withLocator = (locator: NonNullable<Step & { kind: 'click' }>['element']['locator']): Step => ({
+        id: 'f',
+        kind: 'click',
+        element: { strategy: 'css', value: 'button', label: 'Save', locator }
+      })
+
+      it('shows how a stable element was found, without the weak icon', async () => {
+        await renderBlock({ step: withLocator({ by: 'role', role: 'button', name: 'Save' }) })
+        expect(screen.getByTestId('step-found-by')).toHaveTextContent(
+          'recorder.foundBy.role {"role":"button","name":"Save"}'
+        )
+        expect(screen.queryByTestId('step-weak-locator')).not.toBeInTheDocument()
+      })
+
+      it('shows a weak icon with text for a weak locator', async () => {
+        await renderBlock({ step: withLocator({ by: 'xpath', value: '//a' }) })
+        expect(screen.getByTestId('step-found-by')).toHaveTextContent('recorder.foundBy.xpath')
+        const weak = screen.getByTestId('step-weak-locator')
+        expect(weak).toHaveAttribute('title', 'recorder.foundBy.weak')
+        expect(weak).toHaveAttribute('aria-label', 'recorder.foundBy.weak')
+      })
+
+      it('shows nothing for steps without an element', async () => {
+        await renderBlock({ step: navigate })
+        expect(screen.queryByTestId('step-found-by')).not.toBeInTheDocument()
+      })
+
+      it('is hidden in the code view', async () => {
+        await renderBlock({ step: withLocator({ by: 'xpath', value: '//a' }), showCode: true })
+        expect(screen.queryByTestId('step-found-by')).not.toBeInTheDocument()
+      })
+    })
+
     it('shows "Custom code step" for custom steps instead of their code', async () => {
       await renderBlock({ step: { id: 'x', kind: 'custom', code: 'puts "secret ruby"' } })
       expect(screen.getByText('recorder.step.custom')).toBeInTheDocument()

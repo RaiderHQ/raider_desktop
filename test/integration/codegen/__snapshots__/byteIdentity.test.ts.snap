@@ -1,0 +1,133 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`codegen without locators is unchanged > selenium project spec 1`] = `
+"# frozen_string_literal: true
+
+# Recorded with Raider. Edit in Raider; editing here makes the test code-owned.
+# rubocop:disable RSpec/ExampleLength, RSpec/MultipleExpectations
+require_relative '../helpers/spec_helper'
+
+describe 'Checkout' do
+  let(:wait) do
+    config = YAML.load_file('config/config.yml')
+    Selenium::WebDriver::Wait.new(timeout: config.fetch('explicit_wait', config.fetch('timeout', 10)))
+  end
+
+  it 'Checkout' do
+    driver.navigate.to('https://x.io')
+    wait.until { driver.find_element(id: 'email').displayed? }
+    driver.find_element(id: 'email').clear
+    driver.find_element(id: 'email').send_keys('a\\'b')
+    wait.until { driver.find_element(xpath: '//a[text()=\\'Go\\']').displayed? }
+    driver.find_element(xpath: '//a[text()=\\'Go\\']').click
+    driver.find_element(css: '#a').send_keys(:enter)
+    wait.until { driver.find_elements(css: '#a').none?(&:displayed?) }
+    wait.until { driver.find_element(css: '#a').text.include?('ok') }
+    expect(driver.find_element(css: '#a').text).to include('ok')
+    wait.until { driver.find_element(css: '#a').selected? }
+    expect(driver.find_element(css: '#a')).to be_selected
+    driver.switch_to.frame(driver.find_element(css: '#a'))
+  end
+end
+# rubocop:enable RSpec/ExampleLength, RSpec/MultipleExpectations
+"
+`;
+
+exports[`codegen without locators is unchanged > selenium standalone spec 1`] = `
+"require 'selenium-webdriver'
+require 'rspec'
+
+describe 'Checkout' do
+  before(:each) do
+    @driver = Selenium::WebDriver.for :chrome
+    @driver.manage.timeouts.implicit_wait = 0
+    @wait = Selenium::WebDriver::Wait.new(timeout: 10)
+  end
+
+  after(:each) do
+    @driver.quit
+  end
+
+  it 'Checkout' do
+    @driver.navigate.to('https://x.io')
+    @wait.until { @driver.find_element(id: 'email').displayed? }
+    @driver.find_element(id: 'email').clear
+    @driver.find_element(id: 'email').send_keys('a\\'b')
+    @wait.until { @driver.find_element(xpath: '//a[text()=\\'Go\\']').displayed? }
+    @driver.find_element(xpath: '//a[text()=\\'Go\\']').click
+    @driver.find_element(css: '#a').send_keys(:enter)
+    @wait.until { @driver.find_elements(css: '#a').none?(&:displayed?) }
+    @wait.until { @driver.find_element(css: '#a').text.include?('ok') }
+    expect(@driver.find_element(css: '#a').text).to include('ok')
+    @wait.until { @driver.find_element(css: '#a').selected? }
+    expect(@driver.find_element(css: '#a')).to be_selected
+    @driver.switch_to.frame(@driver.find_element(css: '#a'))
+  end
+end
+"
+`;
+
+exports[`codegen without locators is unchanged > watir project spec 1`] = `
+"# frozen_string_literal: true
+
+# Recorded with Raider. Edit in Raider; editing here makes the test code-owned.
+# rubocop:disable RSpec/ExampleLength, RSpec/MultipleExpectations
+require_relative '../helpers/spec_helper'
+
+describe 'Checkout' do
+  before do
+    # touch browser first: the helper resets the timeout when it creates the browser
+    browser
+    config = YAML.load_file('config/config.yml')
+    Watir.default_timeout = config.fetch('explicit_wait', config.fetch('timeout', 10))
+  end
+
+  it 'Checkout' do
+    browser.goto('https://x.io')
+    browser.element(id: 'email').to_subtype.set('a\\'b')
+    browser.element(xpath: '//a[text()=\\'Go\\']').click
+    browser.element(css: '#a').send_keys(:enter)
+    browser.element(css: '#a').wait_while(&:present?)
+    browser.element(css: '#a').wait_until { |el| el.text.include?('ok') }
+    expect(browser.element(css: '#a').text).to include('ok')
+    browser.element(css: '#a').to_subtype.wait_until(&:set?)
+    expect(browser.element(css: '#a').to_subtype).to be_set
+    # Watir iframe objects scope only their own calls, so switch the underlying driver
+    browser.wd.switch_to.frame(browser.element(css: '#a').wd)
+  end
+end
+# rubocop:enable RSpec/ExampleLength, RSpec/MultipleExpectations
+"
+`;
+
+exports[`codegen without locators is unchanged > watir standalone spec 1`] = `
+"require 'watir'
+require 'rspec'
+
+describe 'Checkout' do
+  before(:each) do
+    Watir.default_timeout = 10
+    @browser = Watir::Browser.new :chrome
+    @browser.driver.manage.timeouts.implicit_wait = 0
+  end
+
+  after(:each) do
+    @browser.close
+  end
+
+  it 'Checkout' do
+    @browser.goto('https://x.io')
+    @browser.element(id: 'email').to_subtype.set('a\\'b')
+    @browser.element(xpath: '//a[text()=\\'Go\\']').click
+    @browser.element(css: '#a').send_keys(:enter)
+    @browser.element(css: '#a').wait_while(&:present?)
+    @browser.element(css: '#a').wait_until { |el| el.text.include?('ok') }
+    expect(@browser.element(css: '#a').text).to include('ok')
+    @browser.element(css: '#a').to_subtype.wait_until(&:set?)
+    expect(@browser.element(css: '#a').to_subtype).to be_set
+    # Watir iframe objects scope only their own calls, so switch the underlying driver
+    @browser.wd.switch_to.frame(@browser.element(css: '#a').wd)
+  end
+end
+"
+`;

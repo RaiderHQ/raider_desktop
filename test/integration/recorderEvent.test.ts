@@ -136,6 +136,30 @@ describe('recorderEventToStep', () => {
   })
 })
 
+describe('locator on recorder events', () => {
+  const base = { action: 'click', selector: 'login', strategy: 'id', tagName: 'BUTTON' } as const
+
+  it('keeps a valid locator on the step element', () => {
+    const locator = { by: 'role', role: 'button', name: 'Log in' }
+    const step = recorderEventToStep({ ...base, locator })
+    expect(step).toMatchObject({
+      kind: 'click',
+      element: { strategy: 'id', value: 'login', locator }
+    })
+    expect(isStep(step)).toBe(true)
+  })
+
+  it('drops an invalid locator and keeps the step valid', () => {
+    const step = recorderEventToStep({ ...base, locator: { by: 'role', role: 'button' } })
+    expect(step).toEqual({
+      id: expect.any(String),
+      kind: 'click',
+      element: { strategy: 'id', value: 'login' }
+    })
+    expect(isStep(step)).toBe(true)
+  })
+})
+
 describe('toElementTarget', () => {
   it('caps a long text label at 60 characters', () => {
     const el = toElementTarget('css', '.x', { innerText: 'a'.repeat(100) })

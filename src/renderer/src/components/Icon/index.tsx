@@ -49,6 +49,11 @@ const icons: Record<string, (s: number, c: string) => React.ReactNode> = {
       <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
     </svg>
   ),
+  warning: (s, c) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  ),
   rec: (s, _c) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="12" r="8" fill="#C62828" /><circle cx="12" cy="12" r="3.5" fill="#fff" />
