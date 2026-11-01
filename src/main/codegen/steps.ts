@@ -1,4 +1,4 @@
-import type { ElementTarget, Step } from '../../shared/types/step'
+import type { ElementTarget, Locator, Step } from '../../shared/types/step'
 import { rubyString } from './ruby'
 import { isValidSecretName } from '../../shared/secretSteps'
 import { englishText } from '../../shared/describeStepEnglish'
@@ -26,6 +26,45 @@ const keyArg = (key: string): string =>
   Object.hasOwn(KEY_SYMBOLS, key) ? `:${KEY_SYMBOLS[key]}` : rubyString(key)
 
 const locator = (el: ElementTarget): string => `${el.strategy}: ${rubyString(el.value)}`
+
+// Watir element types whose role tells us the tag; the rest stay a generic element
+const WATIR_TYPED_ROLES: Record<string, string> = {
+  textbox: 'text_field',
+  checkbox: 'checkbox',
+  radio: 'radio',
+  combobox: 'select_list'
+}
+
+// Native Watir form for a semantic locator, or undefined to fall back to the XPath
+function nativeWatir(l: Locator, browser: string): string | undefined {
+  switch (l.by) {
+    case 'role': {
+      const name = rubyString(l.name)
+      if (l.role === 'button' || l.role === 'link') {
+        if (l.nameFrom === 'content') return `${browser}.${l.role}(text: ${name})`
+        if (l.nameFrom === 'aria-label') return `${browser}.${l.role}(aria_label: ${name})`
+        return undefined
+      }
+      // A <label> name is recorded as 'other', so label: can't be used; only aria-label is certain
+      const type = WATIR_TYPED_ROLES[l.role]
+      return type !== undefined && l.nameFrom === 'aria-label'
+        ? `${browser}.${type}(aria_label: ${name})`
+        : undefined
+    }
+    case 'testId':
+      return `${browser}.element(${l.attribute.replace(/-/g, '_')}: ${rubyString(l.value)})`
+    case 'text':
+      return `${browser}.element(visible_text: ${rubyString(l.text)})`
+    default:
+      return undefined
+  }
+}
+
+/** Watir finder for an element: native methods for stable picks, else strategy/value. */
+export function watirElement(el: ElementTarget, browser: string): string {
+  const native = el.locator && nativeWatir(el.locator, browser)
+  return native ?? `${browser}.element(${locator(el)})`
+}
 
 /**
  * 'ivar' reads the standalone-file instance variables (@driver, @wait, @browser);
@@ -55,7 +94,7 @@ function namesFor(receiver: Receiver): Names {
     browser,
     sel: (el) => `${driver}.find_element(${locator(el)})`,
     sels: (el) => `${driver}.find_elements(${locator(el)})`,
-    wat: (el) => `${browser}.element(${locator(el)})`
+    wat: (el) => watirElement(el, browser)
   }
 }
 

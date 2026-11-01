@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { renderStep } from '../../../src/main/codegen/steps'
-import type { Step, AssertKind } from '../../../src/shared/types/step'
+import type { Step, AssertKind, ElementTarget, Locator } from '../../../src/shared/types/step'
 
 const css = (value: string): { strategy: 'css'; value: string } => ({
   strategy: 'css' as const,
@@ -316,6 +316,101 @@ describe('ruby syntax', () => {
     for (const automation of ['selenium', 'watir'] as const) {
       const dir = mkdtempSync(join(tmpdir(), 'steps-'))
       const file = join(dir, 'x.rb')
+      writeFileSync(file, steps.map((s) => renderStep(s, automation)).join('\n') + '\n')
+      const r = spawnSync(rubyBin!, ['-c', file], { encoding: 'utf8' })
+      expect(r.stderr + r.stdout).toContain('Syntax OK')
+    }
+  })
+})
+
+describe('semantic locators', () => {
+  const xp = "//button[normalize-space()='Go']"
+  const xpRb = xp.replace(/'/g, "\\'")
+  const target = (locator: Locator): ElementTarget => ({ strategy: 'xpath', value: xp, locator })
+  const watir = (locator: Locator): string =>
+    renderStep({ id: '1', kind: 'click', element: target(locator) }, 'watir')
+  const role = (r: string, nameFrom?: 'content' | 'aria-label' | 'other'): Locator => ({
+    by: 'role',
+    role: r,
+    name: 'It\'s "Go"',
+    nameFrom
+  })
+
+  const rows: Array<[string, Locator, string]> = [
+    ['button content', role('button', 'content'), ".button(text: 'It\\'s \"Go\"')"],
+    ['button aria-label', role('button', 'aria-label'), ".button(aria_label: 'It\\'s \"Go\"')"],
+    ['button other', role('button', 'other'), `.element(xpath: '${xpRb}')`],
+    ['button no nameFrom', role('button'), `.element(xpath: '${xpRb}')`],
+    ['link content', role('link', 'content'), ".link(text: 'It\\'s \"Go\"')"],
+    ['link aria-label', role('link', 'aria-label'), ".link(aria_label: 'It\\'s \"Go\"')"],
+    [
+      'textbox aria-label',
+      role('textbox', 'aria-label'),
+      ".text_field(aria_label: 'It\\'s \"Go\"')"
+    ],
+    [
+      'checkbox aria-label',
+      role('checkbox', 'aria-label'),
+      ".checkbox(aria_label: 'It\\'s \"Go\"')"
+    ],
+    ['radio aria-label', role('radio', 'aria-label'), ".radio(aria_label: 'It\\'s \"Go\"')"],
+    [
+      'combobox aria-label',
+      role('combobox', 'aria-label'),
+      ".select_list(aria_label: 'It\\'s \"Go\"')"
+    ],
+    ['textbox other', role('textbox', 'other'), `.element(xpath: '${xpRb}')`],
+    ['checkbox content', role('checkbox', 'content'), `.element(xpath: '${xpRb}')`],
+    ['heading', role('heading', 'content'), `.element(xpath: '${xpRb}')`],
+    ['label', { by: 'label', text: 'Email' }, `.element(xpath: '${xpRb}')`],
+    [
+      'testId',
+      { by: 'testId', attribute: 'data-test-id', value: "a'b" },
+      ".element(data_test_id: 'a\\'b')"
+    ],
+    ['text', { by: 'text', text: "Don't" }, ".element(visible_text: 'Don\\'t')"]
+  ]
+  for (const [name, locator, tail] of rows)
+    it(`watir ${name}`, () => expect(watir(locator)).toBe(`@browser${tail}.click`))
+
+  it('id, css and xpath locators render as the strategy does', () => {
+    const el: ElementTarget = {
+      strategy: 'css',
+      value: '#a',
+      locator: { by: 'css', value: '#a', positional: false }
+    }
+    expect(renderStep({ id: '1', kind: 'click', element: el }, 'watir')).toBe(
+      "@browser.element(css: '#a').click"
+    )
+  })
+
+  it('type step keeps to_subtype with native forms', () => {
+    const step: Step = {
+      id: '1',
+      kind: 'type',
+      element: target(role('textbox', 'aria-label')),
+      text: 'x'
+    }
+    expect(renderStep(step, 'watir')).toBe(
+      "@browser.text_field(aria_label: 'It\\'s \"Go\"').to_subtype.set('x')"
+    )
+  })
+
+  it('selenium output ignores the locator', () => {
+    const step: Step = { id: '1', kind: 'click', element: target(role('button', 'content')) }
+    expect(renderStep(step, 'selenium')).toBe(
+      `@wait.until { @driver.find_element(xpath: '${xpRb}').displayed? }\n@driver.find_element(xpath: '${xpRb}').click`
+    )
+  })
+
+  it.skipIf(!rubyBin)('quote-heavy locators pass ruby -c', () => {
+    const steps: Step[] = rows.map(([, l], i) => ({
+      id: `${i}`,
+      kind: 'click',
+      element: target(l)
+    }))
+    for (const automation of ['selenium', 'watir'] as const) {
+      const file = join(mkdtempSync(join(tmpdir(), 'steps-')), 'x.rb')
       writeFileSync(file, steps.map((s) => renderStep(s, automation)).join('\n') + '\n')
       const r = spawnSync(rubyBin!, ['-c', file], { encoding: 'utf8' })
       expect(r.stderr + r.stdout).toContain('Syntax OK')
