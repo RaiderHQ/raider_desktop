@@ -468,6 +468,18 @@
     "recordOverFailed": "Raider couldn't save the recording into this file: {{error}}. Your steps are still here."
   },
   "recorder": {
+    "foundBy": {
+      "role": "Found by role · {{role}} \"{{name}}\"",
+      "label": "Found by label · \"{{text}}\"",
+      "testId": "Found by test id · {{value}}",
+      "text": "Found by text · \"{{text}}\"",
+      "id": "Found by id",
+      "css": "Found by CSS",
+      "xpath": "Found by XPath",
+      "cssOlder": "Found by CSS (older recording)",
+      "xpathOlder": "Found by XPath (older recording)",
+      "weak": "May break if the page changes"
+    },
     "unsupported": {
       "mobile": "Mobile projects can't be recorded yet.",
       "minitest": "This project uses a test style Raider can't record into yet.",
@@ -606,6 +618,8 @@
     },
     "step": {
       "custom": "Custom code step",
+      "thisElement": "this element",
+      "notFound": "Couldn't find {{element}}",
       "secretRename": "Change variable",
       "secretNameLabel": "Variable name",
       "secretNameInvalid": "Use RAIDER_SECRET_ followed by capital letters, digits or _, for example RAIDER_SECRET_ADMIN.",

@@ -189,7 +189,7 @@ describe('replayInWebview', () => {
     const result = await run([{ id: 'abc', kind: 'click', element: el }])
     expect(result).toEqual({
       success: false,
-      error: 'Step 1 (Click "Login button"): element not found: css=#btn',
+      error: 'Step 1 (Click "Login button"): Couldn\'t find Login button',
       failedStepId: 'abc',
       skippedStepIds: []
     })
@@ -371,7 +371,8 @@ describe('replayInWebview', () => {
     mockExecuteJavaScript.mockRejectedValue(new Error('navigating'))
     const result = await run([{ id: '1', kind: 'click', element: el }])
     expect(result.success).toBe(false)
-    expect(result.error).toContain('element not found: css=#btn (navigating)')
+    expect(result.error).toContain("Couldn't find Login button (navigating)")
+    expect(result.error).not.toMatch(/css=|xpath=/)
   })
 
   it('resets isReplayingInWebview when progress reporting throws', async () => {

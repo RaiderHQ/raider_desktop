@@ -1,3 +1,4 @@
+import { isWeakLocator } from './types/step'
 import type { AssertKind, ElementTarget, Step } from './types/step'
 import { secretNameOf } from './secretSteps'
 
@@ -25,9 +26,71 @@ const WAIT_KEYS = {
   enabled: 'waitForElementEnabled'
 }
 
-/** The element's human label when it has one, else `strategy=value`. */
-const elementName = (el: ElementTarget | undefined): string =>
-  !el ? '' : el.label || `${el.strategy}=${el.value}`
+/** Matches `recorder.step.thisElement` in en.json; values are interpolated, so it can't be a key. */
+export const THIS_ELEMENT = 'this element'
+
+/** The element's human label, else the human part of its locator, else "this element". */
+export const elementName = (el: ElementTarget | undefined): string => {
+  if (!el) return ''
+  if (el.label) return el.label
+  const l = el.locator
+  if (l?.by === 'role') return l.name
+  if (l?.by === 'label' || l?.by === 'text') return l.text
+  if (l?.by === 'testId') return l.value
+  return THIS_ELEMENT
+}
+
+const ROLE_WORDS: Record<string, string> = {
+  button: 'button',
+  link: 'link',
+  textbox: 'text box',
+  checkbox: 'checkbox',
+  radio: 'radio button',
+  combobox: 'dropdown',
+  heading: 'heading'
+}
+
+const F = 'recorder.foundBy'
+
+export interface FoundBy {
+  key: string
+  values: Record<string, string>
+  weak: boolean
+}
+
+/** How the recorder found an element, in plain words; null when there is nothing to say. */
+export function foundBy(el?: ElementTarget): FoundBy | null {
+  if (!el) return null
+  const l = el.locator
+  if (!l) {
+    // An older recording: only strategy/value, so say how it was found and flag the fragile ones.
+    if (el.strategy === 'css') return { key: `${F}.cssOlder`, values: {}, weak: true }
+    if (el.strategy === 'xpath') return { key: `${F}.xpathOlder`, values: {}, weak: true }
+    if (el.strategy === 'id') return { key: `${F}.id`, values: {}, weak: false }
+    return null
+  }
+  const weak = isWeakLocator(l)
+  switch (l.by) {
+    case 'role':
+      return {
+        key: `${F}.role`,
+        values: { role: ROLE_WORDS[l.role] ?? l.role, name: l.name },
+        weak
+      }
+    case 'label':
+      return { key: `${F}.label`, values: { text: l.text }, weak }
+    case 'testId':
+      return { key: `${F}.testId`, values: { value: l.value }, weak }
+    case 'text':
+      return { key: `${F}.text`, values: { text: l.text }, weak }
+    case 'id':
+      return { key: `${F}.id`, values: {}, weak }
+    case 'css':
+      return { key: `${F}.css`, values: {}, weak }
+    case 'xpath':
+      return { key: `${F}.xpath`, values: {}, weak }
+  }
+}
 
 const keyName = (key: string): string => (key === ' ' ? 'Space' : key)
 

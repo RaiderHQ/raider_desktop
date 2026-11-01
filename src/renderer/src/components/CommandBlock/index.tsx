@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@components/Tooltip'
+import Icon from '@components/Icon'
 import type { Step } from '@shared/types/step'
-import { describeStep } from '@shared/describeStep'
+import { describeStep, foundBy } from '@shared/describeStep'
 import { isSecretStep, isValidSecretName, secretNameOf } from '@shared/secretSteps'
 
 interface CommandBlockProps {
@@ -205,9 +206,26 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
 
     // Friendly view
     const { key, values } = describeStep(step)
+    const found = 'element' in step ? foundBy(step.element) : null
     return (
       <span className="text-neutral-dark">
         {t(key, values)}
+        {found && (
+          <span className="flex items-center gap-1 text-xs text-neutral-mid">
+            <span data-testid="step-found-by">{t(found.key, found.values)}</span>
+            {found.weak && (
+              <span
+                data-testid="step-weak-locator"
+                role="img"
+                title={t('recorder.foundBy.weak')}
+                aria-label={t('recorder.foundBy.weak')}
+                className="inline-flex"
+              >
+                <Icon name="warning" size={12} color="currentColor" />
+              </span>
+            )}
+          </span>
+        )}
         {isSecretStep(step) && !readOnly && onEdit && (
           <SecretRename
             name={secretNameOf(step)}
