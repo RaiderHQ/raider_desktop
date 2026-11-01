@@ -6,6 +6,7 @@ import {
   mockProjectTests,
   setProjectLayout
 } from './helpers/ipc-mock'
+import { mockRunner, getStartRequests, started, phase } from './helpers/run-mock'
 
 // The recorder lives on the Overview's Tests tab: a list of tests, and the selected one
 const suites = [
@@ -82,17 +83,37 @@ test.describe('Tests tab (recorder)', () => {
     await goToTest(page, 'id:t1')
     await expect(page.getByLabel('Test name')).toHaveValue('Search products')
     await expect(page.getByLabel('Start URL')).toHaveValue('https://example.com')
-    for (const name of ['Record', 'Run', 'Code', 'Last run', 'More']) {
+    for (const name of ['Record', 'Run', 'Code', 'More']) {
       await expect(page.getByRole('button', { name, exact: true })).toBeVisible()
     }
+    // A test's runs show in its run panel; Last run is only for projects on the old suite format
+    await expect(page.getByRole('button', { name: 'Last run', exact: true })).toHaveCount(0)
   })
 
-  test('Last run shows and hides the run output', async ({ page }) => {
+  test('Run on a recorded test runs its project file live', async ({ page, electronApp }) => {
+    await mockIPC(page, 'prepareTestRun', { mode: 'files', file: 'spec/search_spec.rb' })
+    await mockRunner(electronApp, { events: [started(), phase('booting')] })
     await goToTest(page, 'id:t1')
+    await page.getByRole('button', { name: 'Run', exact: true }).click()
+
+    await expect.poll(() => getStartRequests(electronApp)).toHaveLength(1)
+    expect((await getStartRequests(electronApp))[0].scope).toEqual({
+      kind: 'files',
+      files: ['spec/search_spec.rb']
+    })
+    await expect(page.getByTestId('run-phase')).toHaveText('Starting Ruby…')
+  })
+
+  test('Last run shows and hides the run output of an old-format project', async ({ page }) => {
+    await mockIPC(page, 'prepareTestRun', { mode: 'legacy' })
+    await mockIPC(page, 'runTest', { success: true, output: '1 example, 0 failures' })
+    await goToTest(page, 'id:t1')
+    await page.getByRole('button', { name: 'Run', exact: true }).click()
+
     const lastRun = page.getByRole('button', { name: 'Last run', exact: true })
     await expect(page.getByTestId('last-run')).toHaveCount(0)
     await lastRun.click()
-    await expect(page.getByTestId('last-run')).toBeVisible()
+    await expect(page.getByTestId('last-run')).toContainText('1 example, 0 failures')
     await lastRun.click()
     await expect(page.getByTestId('last-run')).toHaveCount(0)
   })

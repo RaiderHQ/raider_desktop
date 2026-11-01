@@ -9,6 +9,7 @@ import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import { useRunStore } from '@foundation/Stores/runStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { toRouteParam } from '@foundation/testKey'
 import type { Test } from '@foundation/Types/test'
@@ -57,7 +58,11 @@ const api = {
   replayInWebview: vi.fn(),
   cancelReplay: vi.fn(),
   runTest: vi.fn(),
-  runProjectFile: vi.fn(),
+  prepareTestRun: vi.fn(),
+  startRun: vi.fn(),
+  getRunDefaults: vi.fn(),
+  setActiveProject: vi.fn(),
+  readDirectory: vi.fn(),
   listProjectTests: vi.fn(),
   setRecordingState: vi.fn(),
   onFlushRecording: vi.fn(),
@@ -116,6 +121,11 @@ beforeEach(() => {
   api.replayInWebview.mockResolvedValue({ success: true })
   api.cancelReplay.mockResolvedValue({ success: true })
   api.runTest.mockResolvedValue({ success: true, output: 'ok' })
+  api.prepareTestRun.mockResolvedValue({ mode: 'legacy' })
+  api.startRun.mockResolvedValue({ runId: 'r1' })
+  api.getRunDefaults.mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 })
+  api.setActiveProject.mockResolvedValue({ success: true })
+  api.readDirectory.mockResolvedValue([])
   api.saveTrace.mockResolvedValue({ success: true })
   api.listProjectTests.mockResolvedValue([])
   flushRecording = null
@@ -139,7 +149,8 @@ beforeEach(() => {
   useRecorderStore.getState().resetForProject()
   useRecorderStore.setState({ activeSuiteId: 's1', activeTest: test1 })
   useTestsListStore.setState({ rows: null })
-  useProjectStore.setState({ layout: null })
+  useProjectStore.setState({ layout: null, projectPath: '/p' })
+  useRunStore.setState({ run: null, origin: null, isActive: false })
   useRubyStore.setState({ rubyCommand: '/usr/bin/ruby' })
   useRunOutputStore.setState({ runOutput: '', runFailed: false })
 })
@@ -484,22 +495,48 @@ describe('useTestRecording', () => {
     expect(s.recordingTarget).toBeNull()
   })
 
-  it('run runs the recorded test with its current steps', async () => {
-    const rec = await mount()
-    await act(() => rec.run())
-    expect(api.runTest).toHaveBeenCalledWith('s1', 't1', '.', '/usr/bin/ruby', test1)
-    expect(useRunOutputStore.getState().runOutput).toBe('ok')
-  })
+  describe('run', () => {
+    const scopeSent = (): unknown => api.startRun.mock.calls[0][0].scope
 
-  it('run runs a test edited in code from its file', async () => {
-    const edited: Test = { ...test1, ownership: 'codeOwnedWasRecorded', file: 'spec/login_spec.rb' }
-    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [edited] }])
-    useRecorderStore.setState({ activeTest: edited })
-    api.runProjectFile.mockResolvedValue({ success: false, output: 'boom' })
-    const rec = await mount()
-    await act(() => rec.run())
-    expect(api.runProjectFile).toHaveBeenCalledWith('spec/login_spec.rb', '/usr/bin/ruby')
-    expect(useRunOutputStore.getState().runFailed).toBe(true)
+    it('runs a recorded test in legacy mode with its current steps', async () => {
+      const rec = await mount()
+      await act(() => rec.run())
+      expect(api.prepareTestRun).toHaveBeenCalledWith('s1', 't1', test1)
+      expect(api.runTest).toHaveBeenCalledWith('s1', 't1', '/p', '/usr/bin/ruby', test1)
+      expect(useRunOutputStore.getState().runOutput).toBe('ok')
+      expect(api.startRun).not.toHaveBeenCalled()
+    })
+
+    it('runs a recorded test in files mode live, from the current page', async () => {
+      api.prepareTestRun.mockResolvedValue({ mode: 'files', file: 'spec/login_works_spec.rb' })
+      const rec = await mount()
+      await act(() => rec.run())
+      expect(api.prepareTestRun).toHaveBeenCalledWith('s1', 't1', test1)
+      expect(scopeSent()).toEqual({ kind: 'files', files: ['spec/login_works_spec.rb'] })
+      expect(useRunStore.getState().origin).toEqual({ route: location, label: 'Login works' })
+      expect(location).toBe('/overview/tests/x')
+      expect(api.runTest).not.toHaveBeenCalled()
+    })
+
+    it('toasts why a recorded test could not be prepared', async () => {
+      api.prepareTestRun.mockResolvedValue({ error: 'no file' })
+      const rec = await mount()
+      await act(() => rec.run())
+      expect(mockToast.error).toHaveBeenCalledWith('no file')
+      expect(api.startRun).not.toHaveBeenCalled()
+      expect(api.runTest).not.toHaveBeenCalled()
+    })
+
+    it('runs a test edited in code live from its file', async () => {
+      const edited: Test = { ...test1, ownership: 'codeOwnedWasRecorded', file: 'spec/a_spec.rb' }
+      api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [edited] }])
+      useRecorderStore.setState({ activeTest: edited })
+      const rec = await mount()
+      await act(() => rec.run())
+      expect(scopeSent()).toEqual({ kind: 'files', files: ['spec/a_spec.rb'] })
+      expect(useRunStore.getState().origin).toEqual({ route: location, label: 'Login works' })
+      expect(api.prepareTestRun).not.toHaveBeenCalled()
+    })
   })
 
   it('autosaves a recorded test 500 ms after it changes', async () => {

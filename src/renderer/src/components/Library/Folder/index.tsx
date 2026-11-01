@@ -11,6 +11,7 @@ interface FolderProps {
   onFileClick: (filePath: string) => void
   isRoot?: boolean
   onRunTests?: () => void
+  runDisabled?: boolean
   onFileContextMenu?: (e: React.MouseEvent, filePath: string, fileName: string) => void
   onFolderContextMenu?: (e: React.MouseEvent, folderPath: string, folderName: string) => void
 }
@@ -23,6 +24,7 @@ const Folder: React.FC<FolderProps> = ({
   onFileClick,
   isRoot = false,
   onRunTests,
+  runDisabled = false,
   onFileContextMenu,
   onFolderContextMenu
 }) => {
@@ -57,8 +59,9 @@ const Folder: React.FC<FolderProps> = ({
         {isRoot && onRunTests && (
           <button
             onClick={onRunTests}
+            disabled={runDisabled}
             title="Run tests"
-            className="ml-auto w-7 h-7 flex items-center justify-center rounded-full text-green-600 hover:bg-green-50 transition-colors"
+            className="ml-auto w-7 h-7 flex items-center justify-center rounded-full text-green-600 hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
               <polygon points="5,3 19,12 5,21" />

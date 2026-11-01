@@ -26,4 +26,7 @@ export interface TestResult {
   failure?: FailureInfo
   durationMs?: number
   browser?: string
+  identifier?: string
+  file?: string
+  line?: number
 }

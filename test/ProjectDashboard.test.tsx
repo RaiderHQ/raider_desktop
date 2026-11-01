@@ -1,9 +1,11 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 import toast from 'react-hot-toast'
 import ProjectDashboard from '@components/ProjectDashboard'
 import useProjectStore from '@foundation/Stores/projectStore'
+import { useRunStore } from '@foundation/Stores/runStore'
+import type { RunView } from '@foundation/run/runModel'
 
 const t = (key: string): string => key
 vi.mock('react-i18next', () => ({
@@ -211,5 +213,63 @@ describe('ProjectDashboard with quarantined results', () => {
     expect(screen.getByTestId('pie')).toHaveTextContent('1|1|0|1')
     expect(screen.getByText('Login: flaky|quarantined')).toBeInTheDocument()
     expect(screen.getAllByText('dashboard.quarantined')).toHaveLength(2)
+  })
+})
+
+describe('ProjectDashboard after a live run', () => {
+  const finishedRun = (projectPath: string, finishedAt: string): RunView => ({
+    runId: finishedAt,
+    projectPath,
+    scope: { kind: 'all' },
+    framework: 'rspec',
+    workers: 1,
+    liveEvents: true,
+    startedAt: '2026-01-01T00:00:00Z',
+    phase: 'running',
+    tests: {},
+    order: [],
+    output: [],
+    outputSize: 0,
+    outputTrimmed: false,
+    finished: {
+      status: 'passed',
+      counts: { total: 0, passed: 0, failed: 0, quarantined: 0, pending: 0, skipped: 0 },
+      exitCode: 0,
+      finishedAt
+    }
+  })
+
+  const resultsReads = (readDirectory: ReturnType<typeof vi.fn>): number =>
+    readDirectory.mock.calls.filter(([dir]) => dir === '/proj/raider-results').length
+
+  const setup = async (): Promise<ReturnType<typeof vi.fn>> => {
+    useRunStore.setState({ run: null, origin: null, isActive: false })
+    useProjectStore.setState({ projectPath: '/proj' })
+    const readDirectory = vi.fn().mockResolvedValue([])
+    window.api = {
+      setActiveProject: vi.fn().mockResolvedValue({ success: true }),
+      reportExists: vi.fn().mockResolvedValue(false),
+      readDirectory
+    } as unknown as typeof window.api
+    render(<ProjectDashboard />)
+    await waitFor(() => expect(resultsReads(readDirectory)).toBe(1))
+    return readDirectory
+  }
+
+  it('reloads the results when a run of the open project finishes', async () => {
+    const readDirectory = await setup()
+    act(() => {
+      useRunStore.setState({ run: finishedRun('/proj', '2026-01-01T00:01:00Z') })
+    })
+    await waitFor(() => expect(resultsReads(readDirectory)).toBe(2))
+  })
+
+  it('ignores a run of another project finishing', async () => {
+    const readDirectory = await setup()
+    act(() => {
+      useRunStore.setState({ run: finishedRun('/other', '2026-01-01T00:01:00Z') })
+    })
+    await new Promise((r) => setTimeout(r, 20))
+    expect(resultsReads(readDirectory)).toBe(1)
   })
 })

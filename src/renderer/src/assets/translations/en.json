@@ -268,8 +268,6 @@
   },
   "overview": {
     "error": {
-      "runTests": "Failed to run tests",
-      "rerun": "Failed to re-run tests",
       "permission": {
         "title": "Permission Error",
         "message": "The application needs write permissions to modify files in the project directory. Please grant permissions to the folder containing the path: {{path}}.",
@@ -277,19 +275,12 @@
         "cancel": "Cancel"
       }
     },
-    "running": "Tests are being executed...",
-    "runTestsSuccess": "Tests completed successfully!",
-    "rerunning": "Re-running failed tests...",
-    "rerunSuccess": "Failed tests re-run completed!",
     "tabs": {
       "tests": "Tests",
       "files": "Files",
       "dashboard": "Dashboard",
       "settings": "Settings"
     },
-    "parallelToggle": "Run in parallel",
-    "installingDependencies": "Installing dependencies...",
-    "starting": "Starting test run...",
     "settings": {
       "urlLabel": "URL",
       "urlPlaceholder": "https://example.com",
@@ -772,6 +763,60 @@
       "rerunFailed": "Re-run only the tests that failed in the last run — useful for quickly confirming a fix.",
       "timeout": "Maximum seconds a single test can take before it is automatically marked as failed."
     }
+  },
+  "run": {
+    "phase": {
+      "installing": "Installing gems…",
+      "booting": "Starting Ruby…",
+      "running": "Running"
+    },
+    "result": {
+      "passed": "Passed",
+      "failed": "Failed",
+      "errored": "Couldn't run",
+      "cancelled": "Cancelled"
+    },
+    "progress": "{{done}} of {{total}}",
+    "indicator": {
+      "running": "Running · {{done}} of {{total}}",
+      "failed": "{{count}} failed",
+      "show": "Show the run"
+    },
+    "cancel": "Cancel",
+    "runAgain": "Run again",
+    "rerunFailed": "Re-run failed",
+    "nothingFailed": "Nothing failed in the last run.",
+    "rerunSerial": "Re-runs run one at a time.",
+    "updateReporter": "Update raider_reporter to see each test live.",
+    "busy": "A run is already in progress.",
+    "otherProject": "A run is in progress in {{project}}.",
+    "technicalDetails": "Technical details",
+    "trimmed": "The start of this output was trimmed.",
+    "state": {
+      "queued": "Queued",
+      "started": "Running",
+      "passed": "Passed",
+      "failed": "Failed",
+      "quarantined": "Quarantined",
+      "pending": "Pending",
+      "skipped": "Skipped"
+    },
+    "filter": {
+      "all": "All",
+      "failed": "Failed",
+      "running": "Running",
+      "queued": "Queued"
+    },
+    "parallel": "Run in parallel",
+    "moreOptions": "More options",
+    "workers": "Workers",
+    "quarantinedFails": "Count quarantined failures as failures",
+    "originProject": "This project",
+    "notifyTitle": "Run finished",
+    "notifyBody": "{{passed}} passed, {{failed}} failed",
+    "saveToRun": "Save this test to run it",
+    "skippedMissing_one": "{{count}} test was skipped: its file is missing",
+    "skippedMissing_other": "{{count}} tests were skipped: their files are missing"
   },
   "common": {
     "close": "Close",

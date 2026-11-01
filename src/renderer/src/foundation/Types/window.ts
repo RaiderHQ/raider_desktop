@@ -7,6 +7,7 @@ import type { Step } from '@shared/types/step'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
+import type { PrepareSuiteRunResult, PrepareTestRunResult } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { IpcRendererEvent } from 'electron'
@@ -113,20 +114,6 @@ export interface WindowApi extends RunApi {
 
   // --- Test Execution ---
   runCommand: (command: string) => Promise<CommandType>
-  runRaiderTests: (
-    folderPath: string,
-    rubyCommand: string,
-    parallel?: boolean
-  ) => Promise<{ success: boolean; output?: string; error?: string }>
-  runRakeTask: (
-    folderPath: string,
-    rubyCommand: string,
-    taskName: string
-  ) => Promise<{ success: boolean; output?: string; error?: string }>
-  rerunFailedTests: (
-    folderPath: string,
-    rubyCommand: string
-  ) => Promise<{ success: boolean; output?: string; error?: string }>
   /** `test`, when given, is saved before it runs, so the run never lags behind the editor */
   runTest: (
     suiteId: string,
@@ -140,6 +127,10 @@ export interface WindowApi extends RunApi {
     projectPath: string,
     rubyCommand: string
   ) => Promise<{ success: boolean; output: string }>
+  /** Saves `test` when needed and returns the spec file to run live; runs nothing */
+  prepareTestRun: (suiteId: string, testId: string, test?: Test) => Promise<PrepareTestRunResult>
+  /** Restores missing recorded files and returns the suite's spec files; runs nothing */
+  prepareSuiteRun: (suiteId: string) => Promise<PrepareSuiteRunResult>
 
   // --- Step Rendering ---
   /** Ruby for one step, in the active project's automation (Selenium or Watir). */
@@ -152,11 +143,6 @@ export interface WindowApi extends RunApi {
   /** Read-only view of a listed spec file; rejects for any other path */
   openCodeTest: (file: string) => Promise<CodeTestView>
   getProjectLayout: () => Promise<ProjectLayout | null>
-  /** Runs one listed spec file from the active project (same result as runTest) */
-  runProjectFile: (
-    file: string,
-    rubyCommand: string
-  ) => Promise<{ success: boolean; output: string }>
   /** Replaces the one example named `exampleName` in a listed spec file with `steps` */
   recordOverExample: (
     file: string,
@@ -240,12 +226,6 @@ export interface WindowApi extends RunApi {
   deleteTrace: (testId: string) => Promise<void>
 
   // --- Event Listeners ---
-  onTestRunStatus: (
-    callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
-  ) => Electron.IpcRenderer
-  removeTestRunStatusListener: (
-    callback: (event: IpcRendererEvent, ...args: { status: string }[]) => void
-  ) => Electron.IpcRenderer
   /** Sent once when opening a project moved (or could not yet move) its recorded tests into project files */
   onTestsMigrated: (
     callback: (event: IpcRendererEvent, info: { migrated: number; postponed: boolean }) => void

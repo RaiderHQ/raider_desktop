@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import useProjectStore from '@foundation/Stores/projectStore'
+import { useRunStore } from '@foundation/Stores/runStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import PieChartWidget from '@components/PieChartWidget'
 import TestResultCard from '@components/TestResultCard'
@@ -109,6 +110,10 @@ const Index: React.FC = (): JSX.Element => {
   const [hasReport, setHasReport] = useState(false)
   const projectPath: string | null = useProjectStore((state) => state.projectPath)
   const suites = useRecorderStore((s) => s.suites)
+  // A finished run of this project rewrites raider-results, so the dashboard reloads
+  const lastRunFinishedAt = useRunStore((s) =>
+    s.run && s.run.projectPath === projectPath ? (s.run.finished?.finishedAt ?? null) : null
+  )
 
   const testByName = new Map<string, { id: string; hasTrace?: boolean }>()
   for (const suite of suites) {
@@ -146,7 +151,7 @@ const Index: React.FC = (): JSX.Element => {
     return (): void => {
       active = false
     }
-  }, [projectPath, t])
+  }, [projectPath, lastRunFinishedAt, t])
 
   const recheck = async (): Promise<void> => {
     try {

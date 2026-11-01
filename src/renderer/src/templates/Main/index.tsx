@@ -3,6 +3,7 @@ import { Link, Outlet } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import toast, { Toaster } from 'react-hot-toast'
 import Logo from '@components/Logo'
+import RunIndicator from '@components/RunIndicator'
 import ConceptsModal from '@components/ConceptsModal'
 import RubyInstallModal from '@components/RubyInstallModal'
 import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
@@ -10,6 +11,7 @@ import useVersionStore from '@foundation/Stores/versionStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { installMissingGems } from '@foundation/installGems'
+import { subscribeRunEvents } from '@foundation/Stores/runStore'
 
 const MainTemplate: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -78,6 +80,9 @@ const MainTemplate: React.FC = (): JSX.Element => {
     }
   }, [])
 
+  // One subscription for the whole app; the run panel and indicators read the store
+  useEffect(() => subscribeRunEvents(), [])
+
   const { rubyCommand } = useRubyStore()
 
   const handleInstallGems = async (): Promise<void> => {
@@ -115,7 +120,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
             </span>
           )}
         </div>
-
+        <RunIndicator />
       </header>
 
       <main className="flex flex-col items-center justify-center flex-grow animate-page-enter pt-8 pb-8">

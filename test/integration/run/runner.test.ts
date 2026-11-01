@@ -399,6 +399,19 @@ describe('runner', () => {
     expect(listedFiles).toHaveBeenCalledWith(['spec/a_spec.rb', 'spec/b_spec.rb'])
   })
 
+  it('runs a cucumber locations scope features/a.feature:12', async () => {
+    fs.rmSync(path.join(project, 'spec'), { recursive: true })
+    fs.mkdirSync(path.join(project, 'features'))
+    fs.writeFileSync(path.join(project, 'features', 'a.feature'), 'Feature: a\n')
+    const runId = await run({
+      scope: { kind: 'locations', locations: ['features/a.feature:12'] },
+      rubyCommand: 'ruby'
+    })
+    await finishedEvent(runId)
+    expect(ofRun(runId)[0]).toMatchObject({ type: 'run:started', framework: 'cucumber' })
+    expect(deps.spawnCommand.mock.calls[0][0]).toContain('features/a.feature:12')
+  })
+
   it('degraded mode: liveEvents false, no plan, finishes by exit code', async () => {
     fs.writeFileSync(path.join(project, 'Gemfile.lock'), OLD_LOCK)
     // A stale run.json from an earlier run must not be counted

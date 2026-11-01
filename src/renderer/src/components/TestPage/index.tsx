@@ -9,10 +9,12 @@ import Dropdown from '@components/Dropdown'
 import DeleteModal from '@components/DeleteModal'
 import ConfirmationModal from '@components/ConfirmationModal'
 import AssertionTextModal from '@components/AssertionTextModal'
+import RunPanel from '@components/RunPanel'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import type { RecordingTarget } from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import { useRunStore } from '@foundation/Stores/runStore'
 import { buildAssertionStep, assertionModalType } from '@foundation/assertionStep'
 import { handleSaveResult } from '@foundation/saveResult'
 import { testKeyOf } from '@foundation/testKey'
@@ -45,13 +47,19 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const activeTest = useRecorderStore((s) => s.activeTest)
   const activeSuiteId = useRecorderStore((s) => s.activeSuiteId)
   const draftTest = useRecorderStore((s) => s.draftTest)
-  const isRunning = useRecorderStore((s) => s.isRunning)
+  const runActive = useRunStore((s) => s.isActive)
+  const recorderRunning = useRecorderStore((s) => s.isRunning)
+  const runBusy = runActive || recorderRunning
+  // Only this page's own run: Overview's panel already shows a run from elsewhere
+  const ownRun = useRunStore((s) => s.origin?.route === location.pathname)
   const showCode = useRecorderStore((s) => s.showCode)
   const isOutputVisible = useRecorderStore((s) => s.isOutputVisible)
   const breakpointIndex = useRecorderStore((s) => s.breakpointIndex)
   const isReplaying = useRecorderStore((s) => s.isReplayingToBreakpoint)
   const recordingDisabled = useProjectStore((s) => s.layout?.recordable === false)
   const runOutput = useRunOutputStore((s) => s.runOutput)
+  // Output of a run on the old suite format; live runs show in the run panel instead
+  const hasLegacyOutput = runOutput !== ''
   const projectPath = useProjectStore((s) => s.projectPath)
   const { updateActiveTest, setShowCode, setIsOutputVisible, setBreakpointIndex } =
     useRecorderStore.getState()
@@ -315,7 +323,8 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             )}
             <button
               onClick={() => void recording.run()}
-              disabled={busy || isRunning || isDraft}
+              disabled={busy || runBusy || isDraft}
+              title={isDraft ? t('run.saveToRun') : undefined}
               className={`${toolbarButton} text-green-700 hover:bg-green-50`}
             >
               {t('testPage.run')}
@@ -337,13 +346,15 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             >
               {t('testPage.code')}
             </button>
-            <button
-              onClick={() => setIsOutputVisible(!isOutputVisible)}
-              aria-pressed={isOutputVisible}
-              className={`${toolbarButton} ${isOutputVisible ? 'bg-neutral-lt' : ''} text-neutral-dk hover:bg-neutral-50`}
-            >
-              {t('testPage.lastRun')}
-            </button>
+            {hasLegacyOutput && (
+              <button
+                onClick={() => setIsOutputVisible(!isOutputVisible)}
+                aria-pressed={isOutputVisible}
+                className={`${toolbarButton} ${isOutputVisible ? 'bg-neutral-lt' : ''} text-neutral-dk hover:bg-neutral-50`}
+              >
+                {t('testPage.lastRun')}
+              </button>
+            )}
             {!isDraft && (
               <Dropdown
                 buttonText={t('testPage.more')}
@@ -362,7 +373,11 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             </div>
           )}
 
-          {isOutputVisible && (
+          {ownRun && (
+            <RunPanel routeKey={location.pathname} onRunAgain={() => void recording.run()} />
+          )}
+
+          {isOutputVisible && hasLegacyOutput && (
             <div className="h-48" data-testid="last-run">
               <StyledPanel>
                 <OutputPanel output={runOutput} />

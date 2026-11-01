@@ -10,9 +10,9 @@
 
 export type RunScope =
   | { kind: 'all' }
-  /** Project-relative POSIX spec or feature paths; each must be a listed project test file. */
+  /** Project-relative POSIX spec or feature paths; each must be a project test file (spec, or feature in Cucumber projects). */
   | { kind: 'files'; files: string[] }
-  /** "spec/a_spec.rb:12" for run-one / run-line; the file part must be a listed project test file. */
+  /** "spec/a_spec.rb:12" for run-one / run-line; the file part must be a project test file (spec, or feature in Cucumber projects). */
   | { kind: 'locations'; locations: string[] }
   /** Each tag must match /^[A-Za-z0-9_:-]+$/. */
   | { kind: 'tags'; tags: string[] }

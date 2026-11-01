@@ -51,6 +51,8 @@ beforeAll(() => {
       .mockResolvedValue({ success: true, rubyCommand: 'ruby', rubyVersion: '3.2.0' }),
     closeApp: vi.fn(),
     onTestsMigrated: vi.fn(),
+    onRunEvent: vi.fn(() => vi.fn()),
+    getActiveRun: vi.fn().mockResolvedValue(null),
     removeTestsMigratedListener: vi.fn(),
     onSuitesTooNew: vi.fn(),
     removeSuitesTooNewListener: vi.fn()

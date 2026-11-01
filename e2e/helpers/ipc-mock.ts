@@ -272,8 +272,9 @@ export async function setupProjectContext(
   await mockIPC(page, 'readDirectory', opts?.files || [])
   // The Overview opens on the Tests tab, which lists the project's spec files
   await mockIPC(page, 'listProjectTests', opts?.tests || [])
-  await mockIPCSync(page, 'onTestRunStatus')
-  await mockIPCSync(page, 'removeTestRunStatusListener')
+
+  // Run settings persist per project; start on the serial defaults
+  await page.evaluate((p) => localStorage.removeItem(`raider.runSettings:${p}`), projectPath)
 
   // Set store state
   await setProjectPath(page, projectPath)

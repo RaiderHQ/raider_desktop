@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router'
 import toast from 'react-hot-toast'
 import { sample } from 'lodash'
-import { FaTerminal } from 'react-icons/fa'
+import { FaChevronDown, FaChevronRight, FaTerminal } from 'react-icons/fa'
 import Folder from '@components/Library/Folder'
 import ScaffoldPanel from '@components/ScaffoldPanel'
 import ContextMenu from '@components/ContextMenu'
@@ -15,13 +15,19 @@ import Terminal from '@components/Terminal'
 import Tooltip from '@components/Tooltip'
 import TestsWorkspace from '@components/TestsWorkspace'
 import InfoButton from '@components/InfoButton'
+import RunPanel from '@components/RunPanel'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { isEmptyRecording } from '../../hooks/useTestRecording'
 import { useRecorderSettings } from '../../hooks/useRecorderSettings'
-import useRubyStore from '@foundation/Stores/rubyStore'
+import { useRunStore } from '@foundation/Stores/runStore'
+import { loadRunSettings, saveRunSettings, type RunSettings } from '@foundation/run/runSettings'
+import { failedLocations } from '@foundation/run/rerunLocations'
+import { loadRaiderResults } from '@foundation/raiderResults'
 import { FileNode } from '@foundation/Types/fileNode'
+import type { TestResult } from '@foundation/Types/testResult'
 import { getFileLanguage } from '@foundation/helpers'
+import type { RunDefaults, RunScope } from '@shared/types/runEvents'
 
 type OverviewTab = 'tests' | 'files' | 'scaffold' | 'dashboard'
 
@@ -30,9 +36,7 @@ const Overview: React.FC = () => {
   const { t } = useTranslation()
   const projectPath: string | null = useProjectStore((state) => state.projectPath)
   const files: FileNode[] = useProjectStore((state) => state.files)
-  const { rubyCommand } = useRubyStore()
   const navigate = useNavigate()
-  const toastIdRef = useRef<string | null>(null)
   const { testKey } = useParams()
   const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
     useRecorderSettings()
@@ -58,6 +62,22 @@ const Overview: React.FC = () => {
     if (testKey) setActiveTab('tests')
   }, [testKey])
   const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression'>('all')
+
+  // Live run state
+  const run = useRunStore((state) => state.run)
+  const runActive = useRunStore((state) => state.isActive)
+  const recorderRunning = useRecorderStore((s) => s.isRunning)
+  const runBusy = runActive || recorderRunning
+  const [runSettings, setRunSettings] = useState<RunSettings>(() =>
+    loadRunSettings(projectPath ?? '')
+  )
+  const [runDefaults, setRunDefaults] = useState<RunDefaults | null>(null)
+  const [moreOptionsOpen, setMoreOptionsOpen] = useState(false)
+  const [lastResults, setLastResults] = useState<TestResult[] | null>(null)
+  // A run of another project says nothing about this one's failures
+  const projectRun = run && run.projectPath === projectPath ? run : null
+  const projectRunFinishedAt = projectRun?.finished?.finishedAt ?? null
+  const canRerunFailed = failedLocations(projectRun, lastResults).length > 0
 
   // Test settings state
   const [browserUrl, setBrowserUrl] = useState('')
@@ -356,77 +376,69 @@ const Overview: React.FC = () => {
   }
 
   useEffect(() => {
-    const handleStatusUpdate = (
-      _event: Electron.IpcRendererEvent,
-      { status }: { status: string }
-    ): void => {
-      const id = toastIdRef.current
-      if (!id) return
+    if (!projectPath) return
+    setRunSettings(loadRunSettings(projectPath))
+  }, [projectPath])
 
-      if (status === 'installing') {
-        toast.loading(t('overview.installingDependencies'), { id })
-      } else if (status === 'running') {
-        toast.loading(t('overview.running'), { id })
-      }
-    }
-
-    window.api.onTestRunStatus(handleStatusUpdate)
-
+  useEffect(() => {
+    let current = true
+    window.api
+      .getRunDefaults()
+      .then((defaults) => {
+        if (current) setRunDefaults(defaults)
+      })
+      .catch(() => {})
     return (): void => {
-      window.api.removeTestRunStatusListener(handleStatusUpdate)
+      current = false
     }
-  }, [t])
+  }, [])
 
-  const handleRunRaiderTests = async (): Promise<void> => {
-    const toastId = toast.loading(t('overview.starting'))
-    toastIdRef.current = toastId
-
-    try {
-      let result: { success: boolean; output?: string; error?: string }
-
-      if (runMode === 'all') {
-        result = await window.api.runRaiderTests(
-          projectPath || '', rubyCommand || '', false
-        )
-      } else {
-        result = await window.api.runRakeTask(projectPath || '', rubyCommand || '', runMode)
-      }
-
-      toastIdRef.current = null
-      toast.dismiss(toastId)
-
-      if (!result.success) {
-        throw new Error(result.error || 'Test execution failed')
-      }
-
-      toast.success(t('overview.runTestsSuccess'))
-    } catch (error) {
-      toastIdRef.current = null
-      if (toastId) toast.dismiss(toastId)
-      toast.error(`${t('overview.error.runTests')}: ${(error as Error).message}`)
+  // Last results back Re-run failed when the live run has no usable failures; a finished run rewrites them
+  useEffect(() => {
+    if (!projectPath) return
+    let current = true
+    loadRaiderResults(projectPath, window.api)
+      .then((results) => {
+        if (current) setLastResults(results)
+      })
+      .catch(() => {
+        if (current) setLastResults(null)
+      })
+    return (): void => {
+      current = false
     }
+  }, [projectPath, projectRunFinishedAt])
+
+  const updateRunSettings = (patch: Partial<RunSettings>): void => {
+    if (!projectPath) return
+    const next = { ...runSettings, ...patch }
+    setRunSettings(next)
+    saveRunSettings(projectPath, next)
   }
 
-  const handleRerunFailed = async (): Promise<void> => {
-    const toastId = toast.loading(t('overview.rerunning'))
-    toastIdRef.current = toastId
+  const startRun = (scope: RunScope): void => {
+    void useRunStore.getState().start(scope, { route: '/overview', label: t('run.originProject') })
+  }
 
-    try {
-      const result = await window.api.rerunFailedTests(projectPath || '', rubyCommand || '')
+  const runModeScope = (): RunScope =>
+    runMode === 'all' ? { kind: 'all' } : { kind: 'tags', tags: [runMode] }
 
-      toastIdRef.current = null
-      toast.dismiss(toastId)
+  const handleRunRaiderTests = (): void => {
+    if (runBusy) return
+    startRun(runModeScope())
+  }
 
-      if (!result.success) {
-        throw new Error(result.error || 'Re-run failed')
-      }
+  const handleRerunFailed = (): void => {
+    if (runBusy) return
+    const locations = failedLocations(projectRun, lastResults)
+    if (locations.length === 0) return
+    startRun({ kind: 'locations', locations })
+  }
 
-      toast.success(t('overview.rerunSuccess'))
-    } catch (error) {
-      toastIdRef.current = null
-      if (toastId) toast.dismiss(toastId)
-      toast.error(`${t('overview.error.rerun')}: ${(error as Error).message}`)
-    }
+  // The panel only shows Overview's own run, so its scope is the one Overview last started
+  const handleRunAgain = (): void => {
+    if (runBusy) return
+    startRun(projectRun?.scope ?? runModeScope())
   }
 
   const handleOpenFile = async (filePath: string): Promise<void> => {
@@ -611,6 +623,15 @@ const Overview: React.FC = () => {
         </div>
       </div>
 
+      {/* Above the tabs, so the run stays in view when switching tabs mid-run */}
+      <div className="mb-4 empty:hidden">
+        <RunPanel
+          routeKey="/overview"
+          onRunAgain={handleRunAgain}
+          onRerunFailed={handleRerunFailed}
+        />
+      </div>
+
       {isQuick && (
         <div className="flex items-center justify-between gap-4 mb-4 px-4 py-2 rounded-lg border border-neutral-bdr bg-ruby-sub text-sm text-neutral-dk">
           <span>{t('quickRecord.banner')}</span>
@@ -702,12 +723,29 @@ const Overview: React.FC = () => {
               <Tooltip content={t('tooltips.overview.rerunFailed')} position="right">
                 <button
                   onClick={handleRerunFailed}
-                  className="px-3 py-1 text-sm font-medium text-neutral-dk border border-neutral-bdr rounded hover:bg-neutral-lt transition-colors"
+                  disabled={runBusy || !canRerunFailed}
+                  title={canRerunFailed ? t('run.rerunSerial') : t('run.nothingFailed')}
+                  className="px-3 py-1 text-sm font-medium text-neutral-dk border border-neutral-bdr rounded hover:bg-neutral-lt transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   data-testid="overview-rerun-failed-btn"
                 >
                   {t('overview.settings.rerunFailed')}
                 </button>
               </Tooltip>
+              <ToggleSwitch
+                label={t('run.parallel')}
+                checked={runSettings.parallel}
+                onChange={(parallel) => updateRunSettings({ parallel })}
+                testId="overview-parallel-toggle"
+              />
+              <button
+                onClick={() => setMoreOptionsOpen((open) => !open)}
+                aria-expanded={moreOptionsOpen}
+                className="flex items-center gap-1 text-sm font-medium text-neutral-dk hover:text-neutral-dark transition-colors"
+                data-testid="overview-more-options"
+              >
+                {moreOptionsOpen ? <FaChevronDown size={10} /> : <FaChevronRight size={10} />}
+                {t('run.moreOptions')}
+              </button>
               {!isMobileProject && (
                 <Tooltip content={t('tooltips.overview.timeout')} position="right">
                   <div className="flex items-center gap-2">
@@ -729,6 +767,37 @@ const Overview: React.FC = () => {
                 </Tooltip>
               )}
             </div>
+            {moreOptionsOpen && (
+              <div className="flex items-center gap-4 flex-wrap" data-testid="overview-more-options-panel">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="workers-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                    {t('run.workers')}
+                  </label>
+                  <input
+                    type="number"
+                    id="workers-input"
+                    value={runSettings.workers ?? ''}
+                    onChange={(e) => {
+                      const value = e.target.valueAsNumber
+                      updateRunSettings({
+                        workers: Number.isFinite(value) && value >= 1 ? Math.floor(value) : null
+                      })
+                    }}
+                    min={1}
+                    max={runDefaults?.maxWorkers}
+                    placeholder={runDefaults ? String(runDefaults.recommendedWorkers) : undefined}
+                    className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
+                    data-testid="overview-workers-input"
+                  />
+                </div>
+                <ToggleSwitch
+                  label={t('run.quarantinedFails')}
+                  checked={runSettings.quarantinedFails}
+                  onChange={(quarantinedFails) => updateRunSettings({ quarantinedFails })}
+                  testId="overview-quarantined-fails-toggle"
+                />
+              </div>
+            )}
             {!isMobileProject && (
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
@@ -809,6 +878,7 @@ const Overview: React.FC = () => {
                   onFileClick={handleOpenFile}
                   isRoot={true}
                   onRunTests={handleRunRaiderTests}
+                  runDisabled={runBusy}
                   onFileContextMenu={handleFileContextMenu}
                   onFolderContextMenu={handleFolderContextMenu}
                 />
