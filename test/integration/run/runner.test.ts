@@ -489,6 +489,35 @@ describe('runner', () => {
     expect(deps.spawnCommand.mock.calls[0][0]).toContain(shellQuote('spec/a_spec.rb:12'))
   })
 
+  describe('loginState', () => {
+    const inherited = process.env.RAIDER_LOGIN_STATE
+    afterEach(() => {
+      if (inherited === undefined) delete process.env.RAIDER_LOGIN_STATE
+      else process.env.RAIDER_LOGIN_STATE = inherited
+    })
+
+    it.each(['off', 'refresh'] as const)('sets RAIDER_LOGIN_STATE=%s', async (loginState) => {
+      script = { steps: [], exitCode: 0 }
+      await finishedEvent(await run({ ...ALL, loginState }))
+      expect(deps.spawnCommand.mock.calls[0][2].RAIDER_LOGIN_STATE).toBe(loginState)
+    })
+
+    it('removes an inherited RAIDER_LOGIN_STATE when loginState is unset', async () => {
+      process.env.RAIDER_LOGIN_STATE = 'off'
+      script = { steps: [], exitCode: 0 }
+      await finishedEvent(await run(ALL))
+      expect(deps.spawnCommand.mock.calls[0][2]).not.toHaveProperty('RAIDER_LOGIN_STATE')
+    })
+
+    it.each(['', 'OFF', 'reuse', 1])('rejects loginState %s without spawning', async (bad) => {
+      expect(
+        await startRun({ ...ALL, loginState: bad } as unknown as RunRequest, deps)
+      ).toHaveProperty('error')
+      expect(deps.spawnCommand).not.toHaveBeenCalled()
+      expect(events).toEqual([])
+    })
+  })
+
   it('installing phase is sent only when ensureBundle reports missing gems', async () => {
     const phases = (runId: string): string[] =>
       ofRun(runId).flatMap((e) => (e.type === 'run:phase' ? [e.phase] : []))

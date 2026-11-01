@@ -4,9 +4,15 @@ export interface RunSettings {
   parallel: boolean
   workers: number | null
   quarantinedFails: boolean
+  reuseLogins: boolean
 }
 
-const DEFAULTS: RunSettings = { parallel: false, workers: null, quarantinedFails: false }
+const DEFAULTS: RunSettings = {
+  parallel: false,
+  workers: null,
+  quarantinedFails: false,
+  reuseLogins: true
+}
 
 const keyFor = (projectPath: string): string => `raider.runSettings:${projectPath}`
 
@@ -18,7 +24,8 @@ export function loadRunSettings(projectPath: string): RunSettings {
     return {
       parallel: parsed.parallel === true,
       workers: typeof parsed.workers === 'number' ? parsed.workers : null,
-      quarantinedFails: parsed.quarantinedFails === true
+      quarantinedFails: parsed.quarantinedFails === true,
+      reuseLogins: parsed.reuseLogins !== false
     }
   } catch {
     return { ...DEFAULTS }
@@ -39,4 +46,10 @@ export function workersFor(s: RunSettings, d: RunDefaults, scope: RunScope): num
   if (scope.kind === 'files' && scope.files.length <= 1) return undefined
   const wanted = s.workers ?? d.recommendedWorkers
   return Math.min(Math.max(wanted, 1), d.maxWorkers)
+}
+
+/** Undefined leaves the saved login state to the default: reuse it, capturing it when missing. */
+export function loginStateFor(s: RunSettings, freshNext: boolean): 'off' | 'refresh' | undefined {
+  if (!s.reuseLogins) return 'off'
+  return freshNext ? 'refresh' : undefined
 }

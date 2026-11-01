@@ -75,6 +75,7 @@ import deleteTrace from './handlers/trace/deleteTrace'
 import setActiveProject, { getRecorderSettings } from './handlers/project/setActiveProject'
 import updateRecordingSettings from './handlers/config/updateRecordingSettings'
 import { closeApp } from './handlers/closeApp'
+import { listSavedLoginsHandler, forgetSavedLoginHandler } from './handlers/logins/savedLoginsIpc'
 import scaffoldGenerate from './handlers/project/scaffoldGenerate'
 import updateTimeout from './handlers/config/updateTimeout'
 import updateViewport from './handlers/config/updateViewport'
@@ -301,6 +302,8 @@ app.whenReady().then(() => {
     setActiveProject(projectPath)
   )
   ipcMain.handle('get-recorder-settings', () => getRecorderSettings())
+  ipcMain.handle('list-saved-logins', listSavedLoginsHandler)
+  ipcMain.handle('forget-saved-login', (_event, name: unknown) => forgetSavedLoginHandler(name))
   ipcMain.handle('get-selector-priority', async () => {
     const { selectorPriority, testIdAttribute } = await getRecorderSettings()
     return { selectorPriority, testIdAttribute }

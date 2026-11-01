@@ -12,6 +12,7 @@ import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import type { PrepareSuiteRunResult, PrepareTestRunResult } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
+import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type {
   ActiveRun,
   RunDefaults,
@@ -260,6 +261,10 @@ const api = {
   cancelRun: async (runId: string): Promise<void> => ipcRenderer.invoke('cancel-run', runId),
   getActiveRun: async (): Promise<ActiveRun | null> => ipcRenderer.invoke('get-active-run'),
   getRunDefaults: async (): Promise<RunDefaults> => ipcRenderer.invoke('get-run-defaults'),
+  // --- Saved logins (active project) ---
+  listSavedLogins: async (): Promise<SavedLoginsResult> => ipcRenderer.invoke('list-saved-logins'),
+  forgetSavedLogin: async (name: string): Promise<{ ok: true } | { error: string }> =>
+    ipcRenderer.invoke('forget-saved-login', name),
   /** Subscribes to live run events; the returned function removes only this subscription */
   onRunEvent: (callback: (event: RunEvent) => void): (() => void) => {
     const listener = (_event: IpcRendererEvent, runEvent: RunEvent): void => callback(runEvent)

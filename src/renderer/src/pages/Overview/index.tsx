@@ -66,6 +66,8 @@ const Overview: React.FC = () => {
   // Live run state
   const run = useRunStore((state) => state.run)
   const runActive = useRunStore((state) => state.isActive)
+  const freshLoginNext = useRunStore((state) => state.freshLoginNext)
+  const setFreshLoginNext = useRunStore((state) => state.setFreshLoginNext)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
   const runBusy = runActive || recorderRunning
   const [runSettings, setRunSettings] = useState<RunSettings>(() =>
@@ -796,6 +798,25 @@ const Overview: React.FC = () => {
                   onChange={(quarantinedFails) => updateRunSettings({ quarantinedFails })}
                   testId="overview-quarantined-fails-toggle"
                 />
+                <ToggleSwitch
+                  label={t('run.reuseLogins')}
+                  checked={runSettings.reuseLogins}
+                  onChange={(reuseLogins) => updateRunSettings({ reuseLogins })}
+                  testId="overview-reuse-logins"
+                />
+                <div className="flex flex-col">
+                  <label className="flex items-center gap-2 text-sm text-neutral-dk">
+                    <input
+                      type="checkbox"
+                      checked={freshLoginNext}
+                      disabled={!runSettings.reuseLogins}
+                      onChange={(e) => setFreshLoginNext(e.target.checked)}
+                      data-testid="overview-fresh-login"
+                    />
+                    {t('run.freshLoginNext')}
+                  </label>
+                  <span className="text-xs text-neutral-mid">{t('run.freshLoginHint')}</span>
+                </div>
               </div>
             )}
             {!isMobileProject && (
