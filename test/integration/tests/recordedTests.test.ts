@@ -467,6 +467,43 @@ describe('projects with the wait helper', () => {
     expect(content).not.toContain("click({ css: '#go' })")
   })
 
+  it('regenerates when helper_path changed, keeps when it did not', async () => {
+    await addWaitHelper()
+    const first = await saveRecordedTest(project, withHelper, clickTest())
+    const spec = join(project, first.file)
+    const before = await readFile(spec, 'utf-8')
+    expect(before).toContain("require_relative '../helpers/spec_helper'")
+
+    await saveRecordedTest(project, withHelper, clickTest())
+    expect(await readFile(spec, 'utf-8')).toBe(before)
+
+    await mkdir(join(project, 'support'), { recursive: true })
+    await writeFile(join(project, 'support', 'wait_helper.rb'), 'module WaitHelper; end\n')
+    await writeFile(
+      join(project, 'support', 'spec_helper.rb'),
+      'RSpec.configure do |config|\n  config.include WaitHelper\nend\n'
+    )
+    const moved = await saveRecordedTest(project, { ...withHelper, helperPath: 'support' }, clickTest())
+    const content = await readFile(spec, 'utf-8')
+    expect(content).toContain("require_relative '../support/spec_helper'")
+    expect(content).not.toContain('../helpers/spec_helper')
+    expect(hashRuby(content)).toBe(moved.hash)
+  })
+
+  it('saving one test leaves a second, unsaved recorded file byte-identical', async () => {
+    await addWaitHelper()
+    const a = await saveRecordedTest(project, withHelper, clickTest({ id: 'a', name: 'Checkout' }))
+    const b = await saveRecordedTest(project, layout, clickTest({ id: 'b', name: 'Payment' }))
+    const fileB = join(project, b.file)
+    const sidecarB = join(project, '.raider', 'tests', 'spec', 'payment_spec.rb.json')
+    const before = [await readFile(fileB, 'utf-8'), await readFile(sidecarB, 'utf-8')]
+
+    await saveRecordedTest(project, withHelper, clickTest({ id: 'a', name: 'Checkout', steps: [click, click] }))
+
+    expect(a.file).not.toBe(b.file)
+    expect([await readFile(fileB, 'utf-8'), await readFile(sidecarB, 'utf-8')]).toEqual(before)
+  })
+
   it('a renamed untitled test moves to the helper form', async () => {
     await saveRecordedTest(project, layout, clickTest({ name: 'Untitled Test' }))
     await addWaitHelper()

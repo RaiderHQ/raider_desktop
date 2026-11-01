@@ -28,6 +28,12 @@ afterEach(async () => {
 })
 
 describe('detectWaitHelper', () => {
+  it('is false when wait_helper.rb is a directory', async () => {
+    await helpers(config('  config.include WaitHelper'), { waitHelper: false })
+    await mkdir(join(dir, 'helpers', 'wait_helper.rb'))
+    expect(await detectWaitHelper(dir, 'helpers')).toBe(false)
+  })
+
   it('true with wait_helper.rb and a parenthesised include', async () => {
     await helpers(config('    config.include(WaitHelper)'))
     expect(await detectWaitHelper(dir, 'helpers')).toBe(true)

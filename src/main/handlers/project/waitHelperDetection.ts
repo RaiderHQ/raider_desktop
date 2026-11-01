@@ -1,5 +1,7 @@
-import { readFile } from 'fs/promises'
+import { readFile, stat } from 'fs/promises'
 import { join } from 'path'
+
+import type { ProjectLayout } from '@shared/types/projectLayout'
 
 // An active `config.include(WaitHelper)` / `config.include WaitHelper` line
 const INCLUDE_WAIT_HELPER = /^\s*config\.include[\s(]+WaitHelper\b/
@@ -10,7 +12,7 @@ const INCLUDE_WAIT_HELPER = /^\s*config\.include[\s(]+WaitHelper\b/
  */
 export async function detectWaitHelper(projectPath: string, helperPath: string): Promise<boolean> {
   try {
-    await readFile(join(projectPath, helperPath, 'wait_helper.rb'), 'utf-8')
+    if (!(await stat(join(projectPath, helperPath, 'wait_helper.rb'))).isFile()) return false
     const specHelper = await readFile(join(projectPath, helperPath, 'spec_helper.rb'), 'utf-8')
     return specHelper
       .split('\n')
@@ -18,4 +20,16 @@ export async function detectWaitHelper(projectPath: string, helperPath: string):
   } catch {
     return false
   }
+}
+
+/** Whether specs for this project are written with the wait helper: Selenium + RSpec + helper detected. */
+export async function usesWaitHelper(
+  projectPath: string,
+  layout: Pick<ProjectLayout, 'automation' | 'framework' | 'helperPath'>
+): Promise<boolean> {
+  return (
+    layout.automation === 'selenium' &&
+    layout.framework === 'rspec' &&
+    (await detectWaitHelper(projectPath, layout.helperPath))
+  )
 }

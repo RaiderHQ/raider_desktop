@@ -3,7 +3,7 @@ import { realpathSync } from 'fs'
 import { dirname, posix, resolve } from 'path'
 import { generateProjectSpecFile, RECORDED_MARKER, toAutomation } from '../../codegen/testFile'
 import { hashRuby } from './codeHash'
-import { detectWaitHelper } from '../project/waitHelperDetection'
+import { usesWaitHelper } from '../project/waitHelperDetection'
 import { withSecretNames } from '../../../shared/secretSteps'
 import {
   assertRealInside,
@@ -132,6 +132,9 @@ const buildSidecar = (
   updatedAt: now
 })
 
+const requireLine = (content: string): string | undefined =>
+  content.split(/\r?\n/).find((line) => line.startsWith('require_relative '))
+
 const generate = (test: Test, layout: ProjectLayout, file: string): string =>
   generateProjectSpecFile(test, toAutomation(layout.automation), {
     fileRelPath: file,
@@ -144,11 +147,7 @@ async function withCurrentWaitHelper(
   projectPath: string,
   layout: ProjectLayout
 ): Promise<ProjectLayout> {
-  const waitHelper =
-    layout.automation === 'selenium' &&
-    layout.framework === 'rspec' &&
-    (await detectWaitHelper(projectPath, layout.helperPath))
-  return { ...layout, waitHelper }
+  return { ...layout, waitHelper: await usesWaitHelper(projectPath, layout) }
 }
 
 /**
@@ -310,15 +309,17 @@ export function saveRecordedTest(
       return moveToRealName(projectPath, current, test, existing, target, onDisk !== null, now)
     }
 
+    const content = generate(test, current, existing.file)
     // Nothing changed: keep the files and their timestamps as they are, even when
-    // Raider would now write the same test differently (e.g. with the wait helper)
+    // Raider would now write the same test differently (e.g. with the wait helper).
+    // The file is already known to match its recorded hash (isRaiderFile above). The
+    // require line must still be the one generated now, so a moved helper_path rewrites.
     if (
       onDisk !== null &&
-      hashRuby(onDisk) === existing.hash &&
-      sameRecord(existing, test, current)
+      sameRecord(existing, test, current) &&
+      requireLine(onDisk) === requireLine(content)
     )
       return existing
-    const content = generate(test, current, existing.file)
     if (onDisk === null) {
       // Sidecar without its file: restore it, but never over a file that appeared meanwhile
       await fs.mkdir(dirname(target), { recursive: true })

@@ -2,7 +2,7 @@ import fs from 'fs/promises'
 import { STRING_LITERAL } from '../../codegen/ruby'
 import { renderStep } from '../../codegen/steps'
 import { toAutomation } from '../../codegen/testFile'
-import { detectWaitHelper } from '../project/waitHelperDetection'
+import { usesWaitHelper } from '../project/waitHelperDetection'
 import { withSecretNames } from '../../../shared/secretSteps'
 import type { Receiver } from '../../codegen/steps'
 import { locateExamples } from './exampleLocator'
@@ -111,11 +111,7 @@ export async function replaceExample(
 
     const receiver = receiverFor(source)
     // Checked now, not from the cached layout: the helper may have been added or removed
-    const waitHelper =
-      receiver === 'helper' &&
-      layout.automation === 'selenium' &&
-      layout.framework === 'rspec' &&
-      (await detectWaitHelper(projectPath, layout.helperPath))
+    const waitHelper = receiver === 'helper' && (await usesWaitHelper(projectPath, layout))
     const body = withSecretNames(steps).flatMap((step) =>
       renderStep(step, toAutomation(layout.automation), { receiver, waitHelper }).split('\n')
     )
