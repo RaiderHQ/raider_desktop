@@ -1,24 +1,32 @@
 import { ipcRenderer } from 'electron'
 
-import { DEFAULT_PRIORITIES, getPrioritizedSelector as buildSelector } from './selectorStrategy'
+import {
+  DEFAULT_PRIORITIES,
+  DEFAULT_TEST_ID_ATTRIBUTE,
+  getPrioritizedSelector as buildSelector
+} from './selectorStrategy'
 import { fieldValue, isSecretField } from './secretField'
 
-// Events fired before the IPC call resolves use the default list.
+// Events fired before the IPC call resolves use the defaults.
 let selectorPriorities: string[] = DEFAULT_PRIORITIES
+let testIdAttribute = DEFAULT_TEST_ID_ATTRIBUTE
 
 ipcRenderer
   .invoke('get-selector-priority')
-  .then((priorities: unknown) => {
-    if (Array.isArray(priorities) && priorities.length > 0) {
-      selectorPriorities = priorities.filter((p): p is string => typeof p === 'string')
+  .then((config: unknown) => {
+    if (typeof config !== 'object' || config === null) return
+    const { selectorPriority, testIdAttribute: attribute } = config as Record<string, unknown>
+    if (Array.isArray(selectorPriority) && selectorPriority.length > 0) {
+      selectorPriorities = selectorPriority.filter((p): p is string => typeof p === 'string')
     }
+    if (typeof attribute === 'string' && attribute) testIdAttribute = attribute
   })
   .catch(() => {
     // keep defaults
   })
 
 function getPrioritizedSelector(el: Element): ReturnType<typeof buildSelector> {
-  return buildSelector(el, selectorPriorities)
+  return buildSelector(el, selectorPriorities, testIdAttribute)
 }
 
 // Fallbacks for naming an element when it has no visible text (e.g. inputs)
@@ -35,12 +43,13 @@ document.addEventListener(
     const target = event.target as HTMLElement
     if (target.tagName === 'HTML') return
 
-    const { selector, strategy } = getPrioritizedSelector(target)
+    const { selector, strategy, locator } = getPrioritizedSelector(target)
     const rect = target.getBoundingClientRect()
     ipcRenderer.send('recorder-event', {
       action: 'click',
       selector,
       strategy,
+      locator,
       tagName: target.tagName,
       pageUrl: window.location.href,
       innerText: (target.innerText || '').slice(0, 200),
@@ -56,12 +65,13 @@ document.addEventListener(
   (event) => {
     const target = event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
-      const { selector, strategy } = getPrioritizedSelector(target)
+      const { selector, strategy, locator } = getPrioritizedSelector(target)
       const rect = target.getBoundingClientRect()
       ipcRenderer.send('recorder-event', {
         action: 'type',
         selector,
         strategy,
+        locator,
         tagName: target.tagName,
         // A password's value never leaves the page; the step reads it from the environment
         ...fieldValue(target),
@@ -92,12 +102,13 @@ document.addEventListener(
     if (recordableKeys.includes(key)) {
       const target = event.target as HTMLElement
       if (target) {
-        const { selector, strategy } = getPrioritizedSelector(target)
+        const { selector, strategy, locator } = getPrioritizedSelector(target)
         const rect = target.getBoundingClientRect()
         ipcRenderer.send('recorder-event', {
           action: 'sendKeys',
           selector,
           strategy,
+          locator,
           tagName: target.tagName,
           value: key,
           pageUrl: window.location.href,
@@ -117,7 +128,7 @@ document.addEventListener(
     event.preventDefault()
     const target = event.target as HTMLElement
     if (target) {
-      const { selector, strategy } = getPrioritizedSelector(target)
+      const { selector, strategy, locator } = getPrioritizedSelector(target)
       const elementText = target.innerText || ''
       const elementValue = isSecretField(target) ? '' : ((target as HTMLInputElement).value ?? '')
       const inputType =
@@ -127,6 +138,7 @@ document.addEventListener(
       ipcRenderer.send('show-assertion-context-menu', {
         selector,
         strategy,
+        locator,
         ...labelHints(target),
         elementText,
         elementValue,

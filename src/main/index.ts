@@ -305,10 +305,10 @@ app.whenReady().then(() => {
     setActiveProject(projectPath)
   )
   ipcMain.handle('get-recorder-settings', () => getRecorderSettings())
-  ipcMain.handle(
-    'get-selector-priority',
-    async () => (await getRecorderSettings()).selectorPriority
-  )
+  ipcMain.handle('get-selector-priority', async () => {
+    const { selectorPriority, testIdAttribute } = await getRecorderSettings()
+    return { selectorPriority, testIdAttribute }
+  })
   ipcMain.handle('load-url-request', (_event, url: string) => loadUrlRequest(url))
   ipcMain.handle('start-recording-main', startRecordingMain)
   ipcMain.handle(
@@ -401,6 +401,7 @@ app.whenReady().then(() => {
       {
         selector,
         strategy,
+        locator,
         ariaLabel,
         placeholder,
         elementText,
@@ -413,7 +414,12 @@ app.whenReady().then(() => {
       if (!appState.mainWindow) return
 
       const element =
-        toElementTarget(strategy, selector, { innerText: elementText, ariaLabel, placeholder }) ??
+        toElementTarget(strategy, selector, {
+          innerText: elementText,
+          ariaLabel,
+          placeholder,
+          locator
+        }) ??
         undefined
       const post = (message: AssertionMessage): void => {
         appState.mainWindow!.webContents.send('add-assertion-step', message)

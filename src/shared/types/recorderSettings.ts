@@ -5,4 +5,6 @@ export interface RecorderSettings {
   implicitWait: number
   explicitWait: number
   selectorPriority: string[]
+  /** config.yml test_id_attribute: the attribute a test-id locator reads */
+  testIdAttribute: string
 }
