@@ -3,7 +3,7 @@
 
 export const NAME_MAX = 80
 
-// Input types typed into as text; a missing or unknown type is a text field.
+// Input types typed into as text; a missing type is a text field.
 export const TEXT_INPUT_TYPES = ['text', 'email', 'password', 'search', 'tel', 'url', 'number']
 const BUTTON_INPUT_TYPES = ['button', 'submit', 'reset']
 const NAMED_BY_CONTENT = ['button', 'link', 'heading']
@@ -30,10 +30,10 @@ export function implicitRole(el: Element): string | null {
   if (/^h[1-6]$/.test(tag)) return 'heading'
   if (tag === 'input') {
     const type = inputType(el)
-    if (BUTTON_INPUT_TYPES.includes(type)) return 'button'
+    if (BUTTON_INPUT_TYPES.includes(type) || type === 'image') return 'button'
     if (type === 'checkbox' || type === 'radio') return type
-    if (type === 'hidden') return null
-    return 'textbox'
+    // file, range, date, color and the like are not typed into
+    return TEXT_INPUT_TYPES.includes(type) ? 'textbox' : null
   }
   return null
 }
@@ -80,26 +80,38 @@ export function roleOf(el: Element): string | null {
   return explicit || implicitRole(el)
 }
 
-/** First non-empty of the spec's name sources; null when empty or over the cap. */
-export function accessibleName(el: Element): string | null {
+/** Where a name came from: visible content (or a button's value), aria-label, or elsewhere. */
+export type NameSource = 'content' | 'aria-label' | 'other'
+
+/** First non-empty of the spec's name sources and which it was; null when empty or over the cap. */
+export function accessibleNameSource(el: Element): { name: string; from: NameSource } | null {
   const role = roleOf(el)
-  const sources: Array<() => string> = [
-    () => squash(el.getAttribute('aria-label')),
-    () => labelledBy(el),
-    () => (isFormControl(el) ? forLabel(el) : ''),
-    () => (isFormControl(el) ? wrappingLabel(el) : ''),
-    () =>
-      el.tagName === 'INPUT' && BUTTON_INPUT_TYPES.includes(inputType(el))
-        ? squash(el.getAttribute('value'))
-        : '',
-    () => (role && NAMED_BY_CONTENT.includes(role) ? normalizedText(el) : ''),
-    () => squash(el.getAttribute('placeholder'))
+  const isInput = el.tagName === 'INPUT'
+  const sources: Array<[NameSource, () => string]> = [
+    ['aria-label', () => squash(el.getAttribute('aria-label'))],
+    ['other', () => labelledBy(el)],
+    ['other', () => (isFormControl(el) ? forLabel(el) : '')],
+    ['other', () => (isFormControl(el) ? wrappingLabel(el) : '')],
+    [
+      'content',
+      () =>
+        isInput && BUTTON_INPUT_TYPES.includes(inputType(el))
+          ? squash(el.getAttribute('value'))
+          : ''
+    ],
+    ['other', () => (isInput && inputType(el) === 'image' ? squash(el.getAttribute('alt')) : '')],
+    ['content', () => (role && NAMED_BY_CONTENT.includes(role) ? normalizedText(el) : '')],
+    ['other', () => squash(el.getAttribute('placeholder'))]
   ]
-  for (const source of sources) {
+  for (const [from, source] of sources) {
     const name = source()
-    if (name) return capped(name)
+    if (name) return capped(name) ? { name, from } : null
   }
   return null
+}
+
+export function accessibleName(el: Element): string | null {
+  return accessibleNameSource(el)?.name ?? null
 }
 
 /** Ids and classes a framework minted at runtime, which change between builds or loads. */

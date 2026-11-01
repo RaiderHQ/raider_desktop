@@ -65,6 +65,9 @@ describe('isStep', () => {
 const goodLocators = [
   { by: 'role', role: 'button', name: 'Log in' },
   { by: 'role', role: 'tab', name: 'Billing' },
+  { by: 'role', role: 'button', name: 'Save', nameFrom: 'content' },
+  { by: 'role', role: 'button', name: 'Close', nameFrom: 'aria-label' },
+  { by: 'role', role: 'textbox', name: 'Email', nameFrom: 'other' },
   { by: 'label', text: 'Email' },
   { by: 'testId', attribute: 'data-testid', value: 'submit' },
   { by: 'text', text: 'Sign up' },
@@ -82,6 +85,8 @@ const badLocators = [
   { by: 'role', role: 'button' },
   { by: 'role', role: '', name: 'x' },
   { by: 'role', role: 'button', name: '' },
+  { by: 'role', role: 'button', name: 'x', nameFrom: 'title' },
+  { by: 'role', role: 'button', name: 'x', nameFrom: null },
   { by: 'label', text: '' },
   { by: 'label' },
   { by: 'testId', attribute: '', value: 'x' },

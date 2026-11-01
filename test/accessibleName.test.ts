@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   implicitRole,
   accessibleName,
+  accessibleNameSource,
   labelText,
   looksGenerated
 } from '../src/preload/accessibleName'
@@ -18,6 +19,9 @@ describe('implicitRole', () => {
     ['<input type="submit">', 'button'],
     ['<input type="button">', 'button'],
     ['<input type="reset">', 'button'],
+    ['<input type="image" alt="Go">', 'button'],
+    ['<input type="search">', 'textbox'],
+    ['<input type="password">', 'textbox'],
     ['<a href="/x">x</a>', 'link'],
     ['<input>', 'textbox'],
     ['<input type="email">', 'textbox'],
@@ -32,13 +36,18 @@ describe('implicitRole', () => {
     expect(implicitRole(document.body.firstElementChild!)).toBe(role)
   })
 
-  it.each([['<a>no href</a>'], ['<div>x</div>'], ['<input type="hidden">']])(
-    '%s has no implicit role',
-    (html) => {
-      document.body.innerHTML = html
-      expect(implicitRole(document.body.firstElementChild!)).toBeNull()
-    }
-  )
+  it.each([
+    ['<a>no href</a>'],
+    ['<div>x</div>'],
+    ['<input type="hidden">'],
+    ['<input type="file">'],
+    ['<input type="range">'],
+    ['<input type="date">'],
+    ['<input type="color">']
+  ])('%s has no implicit role', (html) => {
+    document.body.innerHTML = html
+    expect(implicitRole(document.body.firstElementChild!)).toBeNull()
+  })
 })
 
 describe('accessibleName', () => {
@@ -92,6 +101,31 @@ describe('accessibleName', () => {
     const [empty, long] = document.querySelectorAll('button')
     expect(accessibleName(empty)).toBeNull()
     expect(accessibleName(long)).toBeNull()
+  })
+})
+
+describe('accessibleNameSource', () => {
+  beforeEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  it.each([
+    ['<button>Save</button>', 'button', 'Save', 'content'],
+    ['<input type="submit" value="Send">', 'input', 'Send', 'content'],
+    ['<button aria-label="Close">X</button>', 'button', 'Close', 'aria-label'],
+    ['<span id="l">Billing</span><input aria-labelledby="l">', 'input', 'Billing', 'other'],
+    ['<label for="e">Email</label><input id="e">', 'input', 'Email', 'other'],
+    ['<label>Agree <input type="checkbox"></label>', 'input', 'Agree', 'other'],
+    ['<input placeholder="Search">', 'input', 'Search', 'other'],
+    ['<input type="image" alt="Go">', 'input', 'Go', 'other']
+  ])('%s is named %s from %s', (html, selector, name, from) => {
+    document.body.innerHTML = html
+    expect(accessibleNameSource(first(selector))).toEqual({ name, from })
+  })
+
+  it('is null without a name', () => {
+    document.body.innerHTML = '<input>'
+    expect(accessibleNameSource(first('input'))).toBeNull()
   })
 })
 

@@ -2,7 +2,7 @@ import type { Locator, Strategy } from '../shared/types/step'
 import {
   NAME_MAX,
   TEXT_INPUT_TYPES,
-  accessibleName,
+  accessibleNameSource,
   labelText,
   looksGenerated,
   normalizedText,
@@ -185,6 +185,7 @@ const checked = (el: Element, pick: Candidate): Candidate | null =>
   pick.selector && findsOnly(el, pick.strategy, pick.selector) ? pick : null
 
 const BUTTON_INPUT = "input[@type='submit' or @type='button' or @type='reset']"
+const IMAGE_INPUT = "input[@type='image']"
 const TEXT_INPUT = `input[not(@type) or ${TEXT_INPUT_TYPES.map((t) => `@type='${t}'`).join(' or ')}]`
 const HEADING = '*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6]'
 
@@ -201,7 +202,9 @@ const ROLE_KINDS: Record<string, { kinds: string[]; byContent: boolean }> = {
 
 // A union over every way the name can be given, so it finds the element whichever
 // source named it; the uniqueness check rejects it if it also finds anything else.
-function roleXPath(role: string, name: string): string {
+// aria-labelledby is matched by its literal ids, and only when the target uses it, so the
+// expression never scans the whole document per candidate node.
+function roleXPath(role: string, name: string, labelledBy: string | null): string {
   const n = xpathLiteral(name)
   const { kinds, byContent } = ROLE_KINDS[role]
   const named = `[normalize-space()=${n} or @aria-label=${n}]`
@@ -215,24 +218,30 @@ function roleXPath(role: string, name: string): string {
           `//${kind}[@placeholder=${n}]`
         ]
   )
-  if (role === 'button') parts.push(`//${BUTTON_INPUT}[@value=${n} or @aria-label=${n}]`)
-  parts.push(
-    `//*[@role=${xpathLiteral(role)}]${named}`,
-    ...[...kinds, `*[@role=${xpathLiteral(role)}]`].map(
-      (kind) => `//${kind}[@aria-labelledby=//*[normalize-space()=${n}]/@id]`
+  if (role === 'button') {
+    parts.push(
+      `//${BUTTON_INPUT}[@value=${n} or @aria-label=${n}]`,
+      `//${IMAGE_INPUT}[@alt=${n} or @aria-label=${n}]`
     )
-  )
+  }
+  const explicit = `*[@role=${xpathLiteral(role)}]`
+  parts.push(`//${explicit}${named}`)
+  if (labelledBy) {
+    const ids = xpathLiteral(labelledBy)
+    parts.push(...[...kinds, explicit].map((kind) => `//${kind}[@aria-labelledby=${ids}]`))
+  }
   return parts.join(' | ')
 }
 
 function byRole(el: Element): Candidate | null {
   const role = roleOf(el)
-  const name = accessibleName(el)
-  if (!role || !(role in ROLE_KINDS) || !name) return null
+  const named = accessibleNameSource(el)
+  if (!role || !(role in ROLE_KINDS) || !named) return null
+  const { name, from: nameFrom } = named
   return checked(el, {
-    selector: roleXPath(role, name),
+    selector: roleXPath(role, name, el.getAttribute('aria-labelledby')),
     strategy: 'xpath',
-    locator: { by: 'role', role, name }
+    locator: { by: 'role', role, name, nameFrom }
   })
 }
 
@@ -241,7 +250,7 @@ function byLabel(el: Element): Candidate | null {
   if (!text) return null
   const t = xpathLiteral(text)
   const selector =
-    `//*[@id=//label[normalize-space()=${t}]/@for]` +
+    `//*[self::input or self::textarea or self::select][@id=//label[normalize-space()=${t}]/@for]` +
     ` | //label[normalize-space()=${t}]//*[self::input or self::textarea or self::select]` +
     ` | //*[@aria-label=${t}]`
   return checked(el, { selector, strategy: 'xpath', locator: { by: 'label', text } })

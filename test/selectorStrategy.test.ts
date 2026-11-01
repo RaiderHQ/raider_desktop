@@ -56,7 +56,33 @@ describe('getPrioritizedSelector: candidates', () => {
     document.body.innerHTML = `<main>${html}</main>`
     const result = pick(document.querySelector(selector)!)
     expect(result.strategy).toBe('xpath')
-    expect(result.locator).toEqual({ by: 'role', role, name })
+    expect(result.locator).toMatchObject({ by: 'role', role, name })
+  })
+
+  it.each([
+    ['<button>Save</button>', 'button', 'content'],
+    ['<input type="button" value="Apply">', 'input', 'content'],
+    ['<button aria-label="Close"><svg></svg></button>', 'button', 'aria-label'],
+    ['<label for="e">Email</label><input id="e">', 'input', 'other'],
+    ['<input type="image" alt="Go" src="go.png">', 'input', 'other']
+  ])('%s records where its name came from', (html, selector, nameFrom) => {
+    document.body.innerHTML = html
+    expect(pick(document.querySelector(selector)!).locator).toMatchObject({ by: 'role', nameFrom })
+  })
+
+  it('gets role button for an input of type button', () => {
+    document.body.innerHTML = '<input type="button" value="Apply"><input type="text">'
+    expect(pick(document.querySelector('input')!).locator).toEqual({
+      by: 'role',
+      role: 'button',
+      name: 'Apply',
+      nameFrom: 'content'
+    })
+  })
+
+  it('does not give a file input the textbox role', () => {
+    document.body.innerHTML = '<label for="f">Upload</label><input id="f" type="file">'
+    expect(pick(document.querySelector('input')!).locator).toEqual({ by: 'label', text: 'Upload' })
   })
 
   it('picks the label for a text field when role is not first', () => {
@@ -117,10 +143,9 @@ describe('getPrioritizedSelector: candidates', () => {
     })
   })
 
-  it('never returns a pick matching two identical buttons', () => {
+  it.each([0, 1])('never returns a pick matching two identical buttons (button %i)', (index) => {
     document.body.innerHTML = '<form><button>Save</button><button>Save</button></form>'
-    const second = document.querySelectorAll('button')[1]
-    const result = pick(second)
+    const result = pick(document.querySelectorAll('button')[index])
     expect(result.locator).toEqual({ by: 'css', value: result.selector, positional: true })
   })
 
@@ -128,7 +153,12 @@ describe('getPrioritizedSelector: candidates', () => {
     document.body.innerHTML = `<button>Don't "save"</button>`
     const result = pick(document.querySelector('button')!)
     expect(result.selector).toContain('concat(')
-    expect(result.locator).toEqual({ by: 'role', role: 'button', name: `Don't "save"` })
+    expect(result.locator).toEqual({
+      by: 'role',
+      role: 'button',
+      name: `Don't "save"`,
+      nameFrom: 'content'
+    })
   })
 
   it('prefers a short css selector over the positional path', () => {

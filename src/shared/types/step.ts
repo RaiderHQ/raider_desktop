@@ -2,7 +2,8 @@ export type Strategy = 'id' | 'css' | 'xpath'
 
 /** A semantic way to find an element, richer than the strategy/value pair. */
 export type Locator =
-  | { by: 'role'; role: string; name: string }
+  // nameFrom: where the name came from; Watir's text: only matches 'content' names
+  | { by: 'role'; role: string; name: string; nameFrom?: 'content' | 'aria-label' | 'other' }
   | { by: 'label'; text: string }
   | { by: 'testId'; attribute: string; value: string }
   | { by: 'text'; text: string }
@@ -90,11 +91,17 @@ const isStr = (v: unknown): v is string => typeof v === 'string'
 
 const isNonEmpty = (v: unknown): v is string => isStr(v) && v !== ''
 
+const NAME_SOURCES = ['content', 'aria-label', 'other']
+
 export function isLocator(v: unknown): v is Locator {
   if (!isObj(v)) return false
   switch (v.by) {
     case 'role':
-      return isNonEmpty(v.role) && isNonEmpty(v.name)
+      return (
+        isNonEmpty(v.role) &&
+        isNonEmpty(v.name) &&
+        (v.nameFrom === undefined || NAME_SOURCES.includes(v.nameFrom as string))
+      )
     case 'label':
     case 'text':
       return isNonEmpty(v.text)
