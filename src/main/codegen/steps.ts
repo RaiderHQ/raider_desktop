@@ -34,6 +34,8 @@ const locator = (el: ElementTarget): string => `${el.strategy}: ${rubyString(el.
 export type Receiver = 'ivar' | 'helper'
 export interface RenderOptions {
   receiver?: Receiver
+  /** Render selenium steps through the project's wait helper; needs the 'helper' receiver. */
+  waitHelper?: boolean
 }
 
 interface Names {
@@ -143,6 +145,71 @@ function renderAssert(
   }
 }
 
+// The wait helper polls inside each call, so a step is one call; assertions retry in eventually
+function renderAssertWithHelper(step: Extract<Step, { kind: 'assert' }>): string {
+  const { check } = step
+  const eventually = (body: string): string => `eventually { ${body} }`
+  if (check === 'titleEquals' || check === 'urlIncludes') {
+    const expected = rubyString(need(step.expected, 'an expected string', check))
+    return check === 'titleEquals'
+      ? eventually(`expect(driver.title).to eq(${expected})`)
+      : eventually(`expect(driver.current_url).to include(${expected})`)
+  }
+  const loc = `{ ${locator(need(step.element, 'an element', check))} }`
+  switch (check) {
+    case 'displayed':
+      return eventually(`expect(displayed?(${loc})).to be(true)`)
+    case 'notDisplayed':
+      return eventually(`expect(find_elements(${loc}, timeout: 0).none?(&:displayed?)).to be(true)`)
+    case 'enabled':
+      return eventually(`expect(enabled?(${loc})).to be(true)`)
+    case 'checked':
+      return eventually(`expect(selected?(${loc})).to be(true)`)
+    case 'textEquals':
+    case 'textIncludes': {
+      const expected = rubyString(need(step.expected, 'an expected string', check))
+      return eventually(
+        `expect(text(${loc})).to ${check === 'textEquals' ? 'eq' : 'include'}(${expected})`
+      )
+    }
+    case 'valueEquals': {
+      const expected = rubyString(need(step.expected, 'an expected string', check))
+      return eventually(`expect(attribute(${loc}, 'value')).to eq(${expected})`)
+    }
+  }
+}
+
+function renderStepWithHelper(step: Step): string {
+  const loc = (el: ElementTarget): string => `{ ${locator(el)} }`
+  switch (step.kind) {
+    case 'navigate':
+      return `driver.navigate.to(${rubyString(step.url)})`
+    case 'click':
+      return `click(${loc(step.element)})`
+    case 'type': {
+      const text = step.secret
+        ? `ENV.fetch(${rubyString(secretVariable(step))})`
+        : rubyString(step.text)
+      return `clear(${loc(step.element)})\nsend_keys(${loc(step.element)}, ${text})`
+    }
+    case 'pressKey':
+      return `send_keys(${loc(step.element)}, ${keyArg(step.key)})`
+    case 'wait':
+      if (step.until === 'visible') return `find_element(${loc(step.element)})`
+      if (step.until === 'enabled')
+        return `eventually { expect(enabled?(${loc(step.element)})).to be(true) }`
+      return `eventually { expect(find_elements(${loc(step.element)}, timeout: 0).none?(&:displayed?)).to be(true) }`
+    case 'assert':
+      return renderAssertWithHelper(step)
+    case 'switchFrame':
+      return step.element
+        ? `driver.switch_to.frame(find_element(${loc(step.element)}).native)`
+        : 'driver.switch_to.default_content'
+    case 'custom':
+      return step.code
+  }
+}
+
 // A generated test only ever reads RAIDER_SECRET_ variables (see SECRET_NAME)
 function secretVariable(step: Extract<Step, { kind: 'type' }>): string {
   const name = step.secretName
@@ -155,6 +222,7 @@ function secretVariable(step: Extract<Step, { kind: 'type' }>): string {
 /** Ruby for one step: one or more lines, no trailing newline, no indentation. */
 export function renderStep(step: Step, automation: Automation, opts: RenderOptions = {}): string {
   const selenium = automation === 'selenium'
+  if (selenium && opts.receiver === 'helper' && opts.waitHelper) return renderStepWithHelper(step)
   const n = namesFor(opts.receiver ?? 'ivar')
   const { sel, sels, wat } = n
   switch (step.kind) {

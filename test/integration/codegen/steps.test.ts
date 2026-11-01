@@ -381,3 +381,140 @@ describe('semantic locators', () => {
     }
   })
 })
+
+describe('wait helper', () => {
+  const opts = { receiver: 'helper', waitHelper: true } as const
+  const L = "{ css: '#a' }"
+  const a = css('#a')
+  const eventually = (body: string): string => `eventually { ${body} }`
+  const assertStep = (check: AssertKind, expected?: string): Step => ({
+    id: '1',
+    kind: 'assert',
+    check,
+    element: a,
+    expected
+  })
+  const rows: Array<[string, Step, string]> = [
+    ['click', { id: '1', kind: 'click', element: a }, `click(${L})`],
+    [
+      'type',
+      { id: '1', kind: 'type', element: a, text: 'hi' },
+      `clear(${L})\nsend_keys(${L}, 'hi')`
+    ],
+    [
+      'type secret',
+      {
+        id: '1',
+        kind: 'type',
+        element: a,
+        text: '',
+        secret: true,
+        secretName: 'RAIDER_SECRET_PASSWORD'
+      },
+      `clear(${L})\nsend_keys(${L}, ENV.fetch('RAIDER_SECRET_PASSWORD'))`
+    ],
+    [
+      'pressKey',
+      { id: '1', kind: 'pressKey', element: a, key: 'Enter' },
+      `send_keys(${L}, :enter)`
+    ],
+    ['wait visible', { id: '1', kind: 'wait', element: a, until: 'visible' }, `find_element(${L})`],
+    [
+      'wait enabled',
+      { id: '1', kind: 'wait', element: a, until: 'enabled' },
+      eventually(`expect(enabled?(${L})).to be(true)`)
+    ],
+    [
+      'wait hidden',
+      { id: '1', kind: 'wait', element: a, until: 'hidden' },
+      eventually(`expect(find_elements(${L}, timeout: 0).none?(&:displayed?)).to be(true)`)
+    ],
+    [
+      'assert notDisplayed',
+      assertStep('notDisplayed'),
+      eventually(`expect(find_elements(${L}, timeout: 0).none?(&:displayed?)).to be(true)`)
+    ],
+    [
+      'assert displayed',
+      assertStep('displayed'),
+      eventually(`expect(displayed?(${L})).to be(true)`)
+    ],
+    ['assert enabled', assertStep('enabled'), eventually(`expect(enabled?(${L})).to be(true)`)],
+    ['assert checked', assertStep('checked'), eventually(`expect(selected?(${L})).to be(true)`)],
+    ['textEquals', assertStep('textEquals', 'ok'), eventually(`expect(text(${L})).to eq('ok')`)],
+    [
+      'textIncludes',
+      assertStep('textIncludes', 'ok'),
+      eventually(`expect(text(${L})).to include('ok')`)
+    ],
+    [
+      'valueEquals',
+      assertStep('valueEquals', 'ok'),
+      eventually(`expect(attribute(${L}, 'value')).to eq('ok')`)
+    ],
+    [
+      'titleEquals',
+      { id: '1', kind: 'assert', check: 'titleEquals', expected: 'ok' },
+      eventually(`expect(driver.title).to eq('ok')`)
+    ],
+    [
+      'urlIncludes',
+      { id: '1', kind: 'assert', check: 'urlIncludes', expected: 'ok' },
+      eventually(`expect(driver.current_url).to include('ok')`)
+    ],
+    [
+      'switchFrame element',
+      { id: '1', kind: 'switchFrame', element: a },
+      `driver.switch_to.frame(find_element(${L}).native)`
+    ],
+    ['switchFrame default', { id: '1', kind: 'switchFrame' }, 'driver.switch_to.default_content'],
+    [
+      'navigate',
+      { id: '1', kind: 'navigate', url: 'https://x.io' },
+      "driver.navigate.to('https://x.io')"
+    ],
+    ['custom', { id: '1', kind: 'custom', code: 'foo(1)' }, 'foo(1)'],
+    [
+      'xpath locator',
+      { id: '1', kind: 'click', element: { strategy: 'xpath', value: "//a[@x='1']" } },
+      "click({ xpath: '//a[@x=\\'1\\']' })"
+    ],
+    ['id locator', { id: '1', kind: 'click', element: id('email') }, "click({ id: 'email' })"]
+  ]
+
+  it.each(rows)('%s', (_name, step, expected) => {
+    expect(renderStep(step, 'selenium', opts)).toBe(expected)
+  })
+
+  it('is ignored with the ivar receiver or watir', () => {
+    const all = rows.map(([, s]) => s)
+    for (const s of all) {
+      expect(renderStep(s, 'selenium', { receiver: 'ivar', waitHelper: true })).toBe(
+        renderStep(s, 'selenium', { receiver: 'ivar' })
+      )
+      expect(renderStep(s, 'selenium', { waitHelper: true })).toBe(renderStep(s, 'selenium'))
+      expect(renderStep(s, 'watir', opts)).toBe(renderStep(s, 'watir', { receiver: 'helper' }))
+      expect(renderStep(s, 'watir', { receiver: 'ivar', waitHelper: true })).toBe(
+        renderStep(s, 'watir')
+      )
+    }
+  })
+
+  it.skipIf(!rubyBin)('passes ruby -c, quote-heavy xpath included', () => {
+    const tricky: Step[] = [
+      {
+        id: 'x',
+        kind: 'click',
+        element: { strategy: 'xpath', value: `//a[text()="it's" and @b='a#{b}']` }
+      },
+      assertStep('textEquals', 'a#{b}')
+    ]
+    const body = [...rows.map(([, s]) => s), ...tricky]
+      .map((s) => renderStep(s, 'selenium', opts))
+      .join('\n')
+    const file = join(mkdtempSync(join(tmpdir(), 'steps-')), 'x.rb')
+    writeFileSync(file, `describe 'x' do\nit 'y' do\n${body}\nend\nend\n`)
+    const r = spawnSync(rubyBin!, ['-c', file], { encoding: 'utf8' })
+    expect(r.stderr + r.stdout).toContain('Syntax OK')
+  })
+})
