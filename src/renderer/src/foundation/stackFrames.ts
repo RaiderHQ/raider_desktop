@@ -1,16 +1,11 @@
 // Stack-frame helpers shared by the failed-test card. The rules mirror the
 // raider_saas implementation: keep them identical.
 
-const FRAME_RE = /^((?:[A-Za-z]:)?[^:]+):(\d+)(?::in .*)?$/
+import { parseFrame } from '@shared/stackFrames'
+
+export { parseFrame }
 
 export type FrameSegment = { kind: 'project'; text: string } | { kind: 'folded'; lines: string[] }
-
-export const parseFrame = (s: string): { file: string; line: number } | null => {
-  const text = s.replace(/\r$/, '')
-  if (/[\n\r\u2028\u2029]/.test(text)) return null
-  const m = FRAME_RE.exec(text)
-  return m ? { file: m[1], line: Number(m[2]) } : null
-}
 
 export const isProjectFrame = (line: string, appFrame?: string): boolean => {
   const frame = parseFrame(line)

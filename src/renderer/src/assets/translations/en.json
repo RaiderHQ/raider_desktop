@@ -857,6 +857,44 @@
       "osVersion": "For example 17.0 or 14."
     }
   },
+  "failedStep": {
+    "title": "Failed at step {{n}}: {{step}}",
+    "whenRecorded": "When recorded",
+    "whenFailed": "When it failed",
+    "technicalDetails": "Technical details",
+    "unmapped": "Couldn't tell which step failed",
+    "noRecordingPicture": "No picture from the recording for this step",
+    "noRunPicture": "No picture from this run",
+    "changedSinceRun": "This test changed after its last run. Run it again to see where it fails.",
+    "editValue": "Edit value",
+    "rePick": "Re-pick element",
+    "reRecord": "Re-record from here",
+    "fixInTest": "Fix in test",
+    "runAgain": "Run again",
+    "fixed": "Fixed. Run again to check.",
+    "pageShowed": "The page showed: {{actual}}",
+    "useThis": "Use this",
+    "pickBanner": "Click the element step {{n}} should use. Press Esc to cancel.",
+    "replayFailed": "Couldn't get to step {{n}}: step {{m}} didn't work.",
+    "reRecordFrom": "Re-record from step {{m}}",
+    "reRecordConfirmTitle": "Re-record from step {{n}}?",
+    "reRecordConfirmBody": "Steps {{n}}–{{last}} will be replaced by what you record.",
+    "save": "Save",
+    "reason": {
+      "notFound": "Couldn't find {{element}}.",
+      "hidden": "Found {{element}}, but it was hidden.",
+      "disabled": "Found {{element}}, but it was disabled.",
+      "covered": "Found {{element}}, but something was covering it.",
+      "unusable": "Found {{element}}, but it couldn't be used.",
+      "timedOut": "Waited for {{element}}, but it didn't show up in time.",
+      "notInteractable": "Found {{element}}, but it couldn't be used. Something may be covering it, or it may be disabled.",
+      "stale": "{{element}} changed while the test was using it.",
+      "expected": "Expected {{expected}}, but the page showed {{actual}}.",
+      "checkFailed": "The check on {{element}} didn't pass.",
+      "cantOpen": "Couldn't open {{url}}.",
+      "generic": "This step didn't work."
+    }
+  },
   "common": {
     "close": "Close",
     "cancel": "Cancel"
