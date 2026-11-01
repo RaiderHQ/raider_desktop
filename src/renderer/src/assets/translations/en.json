@@ -839,6 +839,8 @@
     "readError": "Couldn't read this project's device settings (config/capabilities.yml).",
     "saved": "Saved",
     "saveFailed": "Couldn't save the device settings.",
+    "chooseFailed": "Couldn't open the file picker.",
+    "notAnApp": "Choose an .app, .ipa, .apk or .aab file.",
     "help": {
       "deviceName": "The simulator, emulator or phone name, for example iPhone 15.",
       "osVersion": "For example 17.0 or 14."

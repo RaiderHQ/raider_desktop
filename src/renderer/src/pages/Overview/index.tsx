@@ -38,8 +38,10 @@ const Overview: React.FC = () => {
   const projectPath: string | null = useProjectStore((state) => state.projectPath)
   const files: FileNode[] = useProjectStore((state) => state.files)
   const layout = useProjectStore((state) => state.layout)
-  // A mobile project has device settings in place of the browser ones
+  // A mobile project has device settings in place of the browser ones; until the layout
+  // is known neither shows, so web values can't be saved into a mobile project
   const isMobileProject = layout?.automation === 'appium'
+  const showWebSettings = layout !== null && !isMobileProject
   const navigate = useNavigate()
   const { testKey } = useParams()
   const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
@@ -129,7 +131,12 @@ const Overview: React.FC = () => {
 
   // Load test settings from config files, falling back to localStorage. A mobile project has none.
   useEffect(() => {
-    if (!projectPath || isMobileProject) return
+    if (!projectPath) return
+    if (isMobileProject) {
+      // Discards a web load that started before the layout said mobile
+      ++configRequestRef.current
+      return
+    }
     setConfigLoaded(false)
     const token = ++configRequestRef.current
     const isCurrent = (): boolean => token === configRequestRef.current
@@ -652,9 +659,9 @@ const Overview: React.FC = () => {
           {/* Test settings toolbar */}
           <div className="border border-neutral-bdr rounded-t-lg bg-neutral-50 px-4 py-3 space-y-2">
             {isMobileProject && projectPath && layout && (
-              <DeviceSettings projectPath={projectPath} layout={layout} />
+              <DeviceSettings key={projectPath} projectPath={projectPath} layout={layout} />
             )}
-            {!isMobileProject && (
+            {showWebSettings && (
               <Tooltip content={t('tooltips.overview.urlInput')} position="right" className="w-full">
                 <div className="flex items-center gap-2 w-full">
                   <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
@@ -676,7 +683,7 @@ const Overview: React.FC = () => {
               </Tooltip>
             )}
             <div className="flex items-center gap-4 flex-wrap">
-              {!isMobileProject && (
+              {showWebSettings && (
                 <Tooltip content={t('tooltips.overview.browserSelect')} position="right">
                   <div className="flex items-center gap-2">
                     <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
@@ -697,7 +704,7 @@ const Overview: React.FC = () => {
                   </div>
                 </Tooltip>
               )}
-              {!isMobileProject && (
+              {showWebSettings && (
                 <Tooltip content={t('tooltips.overview.headlessToggle')} position="right">
                   <ToggleSwitch
                     label={t('overview.settings.headlessLabel')}
@@ -750,7 +757,7 @@ const Overview: React.FC = () => {
                 {moreOptionsOpen ? <FaChevronDown size={10} /> : <FaChevronRight size={10} />}
                 {t('run.moreOptions')}
               </button>
-              {!isMobileProject && (
+              {showWebSettings && (
                 <Tooltip content={t('tooltips.overview.timeout')} position="right">
                   <div className="flex items-center gap-2">
                     <label htmlFor="timeout-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
@@ -821,7 +828,7 @@ const Overview: React.FC = () => {
                 </div>
               </div>
             )}
-            {!isMobileProject && (
+            {showWebSettings && (
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                   {t('settings.section.browserOptions')}

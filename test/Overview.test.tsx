@@ -113,14 +113,27 @@ const mockApi = {
   prepareSuiteRun: vi.fn().mockResolvedValue({ mode: 'legacy' })
 }
 
-beforeEach(() => {
+// Web controls only show once the layout says the project isn't mobile
+const webLayout = {
+  framework: 'rspec',
+  automation: 'selenium',
+  specPath: 'spec',
+  featurePath: 'features',
+  helperPath: 'helpers',
+  recordable: true
+} as const
+
+beforeEach(async () => {
   vi.clearAllMocks()
   localStorage.clear()
-  useProjectStore.setState({ layout: null })
-  useRunStore.setState({ run: null, origin: null, isActive: false, freshLoginNext: false })
-  useRecorderStore.setState({ isRunning: false })
   // @ts-expect-error - Mocking window.api
   window.api = mockApi
+  // A project switch clears the layout and re-activates, so settle that before setting one
+  useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+  await act(async () => {})
+  useProjectStore.setState({ layout: webLayout })
+  useRunStore.setState({ run: null, origin: null, isActive: false, freshLoginNext: false })
+  useRecorderStore.setState({ isRunning: false })
 })
 
 describe('Overview Page', (): void => {
@@ -314,15 +327,7 @@ describe('Overview Settings Toolbar', (): void => {
   })
 
   it('keeps the web settings and no Device section for a selenium project', async () => {
-    useProjectStore.setState({
-      layout: {
-        ...appiumLayout,
-        automation: 'selenium',
-        mobilePlatform: undefined,
-        recordable: true,
-        unsupportedReason: undefined
-      }
-    })
+    useProjectStore.setState({ layout: webLayout })
     await renderOverview()
 
     expect(screen.queryByTestId('device-settings')).not.toBeInTheDocument()
@@ -331,6 +336,41 @@ describe('Overview Settings Toolbar', (): void => {
     expect(screen.getByTestId('overview-headless-toggle')).toBeInTheDocument()
     expect(screen.getByLabelText('settings.timeout.label')).toBeInTheDocument()
     expect(screen.getByText('settings.section.browserOptions')).toBeInTheDocument()
+  })
+
+  it('shows neither the web settings nor the Device section until the layout is known', async () => {
+    useProjectStore.setState({ layout: null })
+    await renderOverview()
+
+    expect(screen.queryByTestId('overview-url-input')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('overview-browser-select')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('overview-headless-toggle')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('settings.timeout.label')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('device-settings')).not.toBeInTheDocument()
+  })
+
+  it('discards a web config load that lands after the layout says mobile', async () => {
+    let resolveConfig: (value: unknown) => void = () => {}
+    mockApi.getProjectConfig.mockImplementationOnce(
+      () => new Promise((resolve) => (resolveConfig = resolve))
+    )
+    useProjectStore.setState({ layout: null })
+    await renderOverview()
+
+    await act(async () => {
+      useProjectStore.setState({ layout: appiumLayout })
+    })
+    await act(async () => {
+      resolveConfig({
+        success: true,
+        config: { baseUrl: 'https://late.com', browser: 'firefox', headless: true }
+      })
+    })
+
+    expect(localStorage.getItem('browserUrl')).toBeNull()
+    expect(localStorage.getItem('selectedBrowser')).toBeNull()
+    expect(localStorage.getItem('headless')).toBeNull()
+    expect(screen.getByTestId('device-settings')).toBeInTheDocument()
   })
 
   it('settings toolbar is not visible on Scaffolding tab', async () => {

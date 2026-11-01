@@ -2,6 +2,7 @@ import React, { createRef } from 'react'
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import DeviceSettings from '@components/DeviceSettings'
+import useProjectStore from '@foundation/Stores/projectStore'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import type { DeviceFields, DeviceSettings as Settings } from '@shared/types/deviceSettings'
 import en from '../../src/renderer/src/assets/translations/en.json'
@@ -52,7 +53,10 @@ const api = {
   getDeviceSettings: vi.fn(),
   saveDeviceSettings: vi.fn(),
   checkMobileReady: vi.fn(),
-  chooseAppFile: vi.fn()
+  chooseAppFile: vi.fn(),
+  // Opening a project in the store activates it and lists its files
+  setActiveProject: vi.fn().mockResolvedValue({ success: true }),
+  readDirectory: vi.fn().mockResolvedValue([])
 }
 
 beforeEach(() => {
@@ -63,6 +67,7 @@ beforeEach(() => {
   api.chooseAppFile.mockResolvedValue({ cancelled: true })
   // @ts-expect-error - partial window.api
   window.api = api
+  useProjectStore.setState({ projectPath: PROJECT })
 })
 
 const renderSection = async (
@@ -150,6 +155,85 @@ describe('DeviceSettings, single platform', () => {
     })
     expect(toastError).toHaveBeenCalledWith("Couldn't save the device settings.")
     expect(toastSuccess).not.toHaveBeenCalled()
+  })
+
+  it('saves once when Enter is followed by a blur', async () => {
+    let resolveSave: (value: { ok: true }) => void = () => {}
+    api.saveDeviceSettings.mockImplementationOnce(
+      () => new Promise((resolve) => (resolveSave = resolve))
+    )
+    await renderSection()
+    const input = screen.getByLabelText('Device name')
+    fireEvent.change(input, { target: { value: 'iPhone 16' } })
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter' })
+      fireEvent.blur(input)
+    })
+    await act(async () => resolveSave({ ok: true }))
+    expect(api.saveDeviceSettings).toHaveBeenCalledTimes(1)
+    expect(toastSuccess).toHaveBeenCalledTimes(1)
+  })
+
+  it('saves the same value again after a failed save', async () => {
+    api.saveDeviceSettings.mockResolvedValueOnce({ error: 'x' })
+    await renderSection()
+    const input = screen.getByLabelText('Device name')
+    fireEvent.change(input, { target: { value: 'iPhone 16' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter' })
+    })
+    expect(api.saveDeviceSettings).toHaveBeenCalledTimes(2)
+  })
+
+  it('puts an emptied field back to the saved value without saving', async () => {
+    await renderSection()
+    const input = screen.getByLabelText('App file')
+    fireEvent.change(input, { target: { value: '' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(input).toHaveValue('RaiderTestApp.app')
+    expect(api.saveDeviceSettings).not.toHaveBeenCalled()
+  })
+
+  it('ignores a save that finishes after the project changed', async () => {
+    let resolveSave: (value: { ok: true }) => void = () => {}
+    api.saveDeviceSettings.mockImplementationOnce(
+      () => new Promise((resolve) => (resolveSave = resolve))
+    )
+    await renderSection()
+    const input = screen.getByLabelText('Device name')
+    fireEvent.change(input, { target: { value: 'iPhone 16' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    await act(async () => {
+      useProjectStore.setState({ projectPath: '/projects/other' })
+    })
+    await act(async () => resolveSave({ ok: true }))
+    expect(toastSuccess).not.toHaveBeenCalled()
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('ignores a failed save that finishes after the project changed', async () => {
+    let resolveSave: (value: { error: string }) => void = () => {}
+    api.saveDeviceSettings.mockImplementationOnce(
+      () => new Promise((resolve) => (resolveSave = resolve))
+    )
+    await renderSection()
+    const input = screen.getByLabelText('Device name')
+    fireEvent.change(input, { target: { value: 'iPhone 16' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    await act(async () => {
+      useProjectStore.setState({ projectPath: '/projects/other' })
+    })
+    await act(async () => resolveSave({ error: 'This project is not open.' }))
+    expect(toastError).not.toHaveBeenCalled()
   })
 
   it('saves Android fields to the top block', async () => {
@@ -290,6 +374,29 @@ describe('DeviceSettings, app file', () => {
     expect(api.checkMobileReady).toHaveBeenCalledTimes(2)
     expect(screen.queryByText("Can't find this file")).not.toBeInTheDocument()
     expect(screen.queryByText('Choose the app file to test before running.')).not.toBeInTheDocument()
+  })
+
+  it('says to pick an app file when a plain folder was chosen', async () => {
+    api.chooseAppFile.mockResolvedValue({ error: 'not-an-app' })
+    await renderSection()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Choose…' }))
+    })
+    expect(toastError).toHaveBeenCalledWith('Choose an .app, .ipa, .apk or .aab file.')
+    expect(api.saveDeviceSettings).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['returns an error', (): void => void api.chooseAppFile.mockResolvedValue({ error: 'boom' })],
+    ['throws', (): void => void api.chooseAppFile.mockRejectedValue(new Error('ipc down'))]
+  ])('says the picker could not open when the dialog %s', async (_name, arrange) => {
+    arrange()
+    await renderSection()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Choose…' }))
+    })
+    expect(toastError).toHaveBeenCalledWith("Couldn't open the file picker.")
+    expect(api.saveDeviceSettings).not.toHaveBeenCalled()
   })
 
   it('saves nothing when Choose… is cancelled', async () => {

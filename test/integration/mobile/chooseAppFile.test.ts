@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtemp, mkdir, rm, realpath } from 'fs/promises'
+import { mkdtemp, mkdir, rm, realpath, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -59,7 +59,8 @@ describe('choose-app-file', () => {
 
   it('does not count a sibling folder that shares the project name prefix as inside', async () => {
     const sibling = `${project}-copy`
-    await mkdir(join(sibling, 'a.apk'), { recursive: true })
+    await mkdir(sibling, { recursive: true })
+    await writeFile(join(sibling, 'a.apk'), '')
     try {
       showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [join(sibling, 'a.apk')] })
       expect(await chooseAppFileHandler(project, 'android')).toEqual({
@@ -68,6 +69,20 @@ describe('choose-app-file', () => {
     } finally {
       await rm(sibling, { recursive: true, force: true })
     }
+  })
+
+  it('refuses a plain folder, which is not an app', async () => {
+    showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [join(project, 'builds')] })
+    expect(await chooseAppFileHandler(project, 'ios')).toEqual({ error: 'not-an-app' })
+  })
+
+  it('accepts an .ipa file', async () => {
+    await writeFile(join(project, 'builds', 'Shop.ipa'), '')
+    showOpenDialog.mockResolvedValue({
+      canceled: false,
+      filePaths: [join(project, 'builds', 'Shop.ipa')]
+    })
+    expect(await chooseAppFileHandler(project, 'ios')).toEqual({ path: 'builds/Shop.ipa' })
   })
 
   it('returns cancelled when the dialog is closed', async () => {

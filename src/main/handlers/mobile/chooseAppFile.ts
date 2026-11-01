@@ -1,6 +1,6 @@
 import { dialog } from 'electron'
-import { realpath } from 'fs/promises'
-import { isAbsolute, relative, resolve, sep } from 'path'
+import { realpath, stat } from 'fs/promises'
+import { basename, isAbsolute, relative, resolve, sep } from 'path'
 import { safeError } from '../../utils/safeLog'
 import { lastDialogDirectory, rememberDialogPick } from '../../utils/dialogDirectory'
 import { appState } from '../appState'
@@ -8,6 +8,8 @@ import { activationSettled } from '../project/setActiveProject'
 
 const NOT_OPEN = 'This project is not open.'
 const NOT_CHOSEN = "Couldn't choose the app file."
+// The renderer maps this one to its own copy
+const NOT_AN_APP = 'not-an-app'
 
 // An iOS simulator build is a .app folder, so iOS also opens folders. Leaving out
 // 'treatPackageAsDirectory' makes macOS pick a .app bundle whole rather than browse into it.
@@ -34,7 +36,12 @@ async function projectRelative(project: string, picked: string): Promise<string>
   return picked
 }
 
-/** 'choose-app-file': a file picker for the app a mobile project tests */
+/** A folder is only an app when it's a .app bundle; the iOS picker also lets plain folders through */
+async function isAppPick(picked: string): Promise<boolean> {
+  return !(await stat(picked)).isDirectory() || basename(picked).toLowerCase().endsWith('.app')
+}
+
+/** 'choose-app-file': a file picker for the app a mobile project tests; a plain folder gives { error: 'not-an-app' } */
 export async function chooseAppFileHandler(
   projectPath: unknown,
   platform: unknown
@@ -57,6 +64,7 @@ export async function chooseAppFileHandler(
     })
     if (result.canceled || result.filePaths.length === 0) return { cancelled: true }
     rememberDialogPick(result.filePaths)
+    if (!(await isAppPick(result.filePaths[0]))) return { error: NOT_AN_APP }
     return { path: await projectRelative(project, result.filePaths[0]) }
   } catch (error) {
     safeError('choose-app-file failed:', error)

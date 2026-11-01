@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import SegmentedControl from '@components/SegmentedControl'
+import useProjectStore from '@foundation/Stores/projectStore'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import type {
   DeviceEdit,
@@ -53,18 +54,26 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ projectPath, layout, fo
   // Latest-request-wins tokens, so a slow answer for an earlier project or edit never lands
   const loadRef = useRef(0)
   const checkRef = useRef(0)
+  // The value each field last sent, so Enter then blur saves once
+  const submittedRef = useRef(new Map<string, string>())
+
+  // An answer that arrives after the user switched projects is about the old one
+  const isCurrentProject = useCallback(
+    (): boolean => useProjectStore.getState().projectPath === projectPath,
+    [projectPath]
+  )
 
   // Only a missing app counts here; Appium being down or a failed check isn't this section's concern
   const checkApp = useCallback(async (): Promise<void> => {
     const token = ++checkRef.current
     try {
       const result = await window.api.checkMobileReady(projectPath)
-      if (token !== checkRef.current) return
+      if (token !== checkRef.current || !isCurrentProject()) return
       setAppMissing('ok' in result && !result.ok && result.reason === 'app')
     } catch {
       if (token === checkRef.current) setAppMissing(false)
     }
-  }, [projectPath])
+  }, [projectPath, isCurrentProject])
 
   useEffect(() => {
     const token = ++loadRef.current
@@ -79,7 +88,7 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ projectPath, layout, fo
     const load = async (): Promise<void> => {
       try {
         const result = await window.api.getDeviceSettings(projectPath)
-        if (token !== loadRef.current) return
+        if (token !== loadRef.current || !isCurrentProject()) return
         if ('error' in result) {
           setReadError(true)
           return
@@ -94,7 +103,7 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ projectPath, layout, fo
     }
     void load()
     void checkApp()
-  }, [projectPath, layout.mobilePlatform, checkApp])
+  }, [projectPath, layout.mobilePlatform, checkApp, isCurrentProject])
 
   const setDraft = (platform: Platform, field: EditableField, value: string): void => {
     setDrafts((current) => {
@@ -103,16 +112,24 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ projectPath, layout, fo
     })
   }
 
-  /** True when the value was saved; an empty or unchanged one never is */
+  /** True when the value was saved; an unchanged one never is, and an empty one goes back to the saved value */
   const saveField = async (group: Group, field: EditableField, raw: string): Promise<boolean> => {
     const value = raw.trim()
-    if (!value || value === group.fields[field]) return false
+    if (!value) {
+      setDraft(group.platform, field, group.fields[field])
+      return false
+    }
+    const key = `${group.platform}.${field}`
+    if (value === group.fields[field] || value === submittedRef.current.get(key)) return false
+    submittedRef.current.set(key, value)
     try {
       const result = await window.api.saveDeviceSettings(projectPath, {
         block: group.block,
         edit: { [field]: value }
       })
+      if (!isCurrentProject()) return false
       if ('error' in result) {
+        submittedRef.current.delete(key)
         toast.error(t('device.saveFailed'))
         return false
       }
@@ -125,7 +142,8 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ projectPath, layout, fo
       toast.success(t('device.saved'))
       return true
     } catch {
-      toast.error(t('device.saveFailed'))
+      submittedRef.current.delete(key)
+      if (isCurrentProject()) toast.error(t('device.saveFailed'))
       return false
     }
   }
@@ -137,9 +155,9 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ projectPath, layout, fo
   const handleChoose = async (group: Group): Promise<void> => {
     try {
       const result = await window.api.chooseAppFile(projectPath, group.platform)
-      if ('cancelled' in result) return
+      if ('cancelled' in result || !isCurrentProject()) return
       if ('error' in result) {
-        toast.error(t('device.saveFailed'))
+        toast.error(t(result.error === 'not-an-app' ? 'device.notAnApp' : 'device.chooseFailed'))
         return
       }
       setDraft(group.platform, 'app', result.path)
@@ -147,7 +165,7 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ projectPath, layout, fo
       // The same path picked again may now exist, so check even when nothing was saved
       void checkApp()
     } catch {
-      toast.error(t('device.saveFailed'))
+      if (isCurrentProject()) toast.error(t('device.chooseFailed'))
     }
   }
 
@@ -157,11 +175,13 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ projectPath, layout, fo
     setSettings({ ...settings, runOn })
     try {
       const result = await window.api.saveDeviceSettings(projectPath, { runOn })
+      if (!isCurrentProject()) return
       if ('error' in result) throw new Error(result.error)
       toast.success(t('device.saved'))
       // A run now needs the other platform's app file
       void checkApp()
     } catch {
+      if (!isCurrentProject()) return
       setSettings((current) => (current ? { ...current, runOn: previous } : current))
       toast.error(t('device.saveFailed'))
     }
