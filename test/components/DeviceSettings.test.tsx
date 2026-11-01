@@ -32,6 +32,7 @@ const layout = (mobilePlatform: ProjectLayout['mobilePlatform']): ProjectLayout 
   specPath: 'spec',
   featurePath: 'features',
   helperPath: 'helpers',
+  waitHelper: false,
   recordable: false,
   unsupportedReason: 'mobile'
 })

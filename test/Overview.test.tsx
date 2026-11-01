@@ -138,6 +138,7 @@ const webLayout = {
   specPath: 'spec',
   featurePath: 'features',
   helperPath: 'helpers',
+  waitHelper: false,
   recordable: true
 } as const
 
@@ -320,6 +321,7 @@ describe('Overview Settings Toolbar', (): void => {
     specPath: 'spec',
     featurePath: 'features',
     helperPath: 'helpers',
+    waitHelper: false,
     recordable: false,
     unsupportedReason: 'mobile'
   } as const

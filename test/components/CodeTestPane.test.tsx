@@ -171,6 +171,7 @@ const mobileLayout = {
   specPath: 'spec',
   featurePath: 'features',
   helperPath: 'helpers',
+  waitHelper: false,
   recordable: false,
   unsupportedReason: 'mobile'
 } as const
