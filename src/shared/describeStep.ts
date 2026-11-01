@@ -1,6 +1,7 @@
 import { isWeakLocator } from './types/step'
 import type { AssertKind, ElementTarget, Step } from './types/step'
 import { secretNameOf } from './secretSteps'
+import { looksGenerated } from './looksGenerated'
 
 /** An i18n key plus its interpolation values; the friendly view never shows Ruby. */
 export interface StepDescription {
@@ -58,13 +59,23 @@ export interface FoundBy {
   weak: boolean
 }
 
+// An older css value that is one attribute or a stable id holds up as well as a fresh pick.
+const ATTRIBUTE_CSS = /^\[[\w-]+="[^"]*"\]$/
+const ID_CSS = /^#([\w-]+)$/
+const isSturdyCss = (value: string): boolean => {
+  const id = ID_CSS.exec(value)?.[1]
+  return ATTRIBUTE_CSS.test(value) || (id !== undefined && !looksGenerated(id))
+}
+
 /** How the recorder found an element, in plain words; null when there is nothing to say. */
 export function foundBy(el?: ElementTarget): FoundBy | null {
   if (!el) return null
   const l = el.locator
   if (!l) {
     // An older recording: only strategy/value, so say how it was found and flag the fragile ones.
-    if (el.strategy === 'css') return { key: `${F}.cssOlder`, values: {}, weak: true }
+    if (el.strategy === 'css') {
+      return { key: `${F}.cssOlder`, values: {}, weak: !isSturdyCss(el.value) }
+    }
     if (el.strategy === 'xpath') return { key: `${F}.xpathOlder`, values: {}, weak: true }
     if (el.strategy === 'id') return { key: `${F}.id`, values: {}, weak: false }
     return null

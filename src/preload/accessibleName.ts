@@ -114,12 +114,5 @@ export function accessibleName(el: Element): string | null {
   return accessibleNameSource(el)?.name ?? null
 }
 
-/** Ids and classes a framework minted at runtime, which change between builds or loads. */
-export function looksGenerated(id: string): boolean {
-  return (
-    /\d{4,}/.test(id) ||
-    /[0-9a-f]{8,}/i.test(id) ||
-    id.startsWith(':') ||
-    /^(ember|ext-gen|react-|mui-|radix-)/.test(id)
-  )
-}
+// Shared so the step list can judge older recordings the same way
+export { looksGenerated } from '../shared/looksGenerated'

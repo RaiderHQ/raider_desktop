@@ -217,4 +217,19 @@ describe('foundBy', () => {
     expect(text(el(undefined, 'id'))).toBe('Found by id')
     expect(foundBy(el(undefined, 'id'))?.weak).toBe(false)
   })
+
+  it.each([
+    ['[data-testid="save"]', false],
+    ['[name="email"]', false],
+    ['#login', false],
+    ['#ember1234', true],
+    ['#a1b2c3d4e5', true],
+    ['form > button:nth-of-type(2)', true],
+    ['.btn', true],
+    ['[data-testid="a"] button', true]
+  ])('flags the older css %s as weak only when it is fragile', (value, weak) => {
+    const older = { strategy: 'css', value } as ElementTarget
+    expect(text(older)).toBe('Found by CSS (older recording)')
+    expect(foundBy(older)?.weak).toBe(weak)
+  })
 })
