@@ -114,6 +114,32 @@ describe('getPrioritizedSelector: candidates', () => {
     })
   })
 
+  // A label scan per candidate field took ~16 s here in jsdom; one scan via id() takes ~0.3 s.
+  // The bound leaves headroom for slow machines while still catching the quadratic form.
+  describe('on a large form with a repeated label', () => {
+    beforeEach(() => {
+      const rows = Array.from(
+        { length: 500 },
+        (_, i) => `<div><label for="q${i}">Quantity</label><input id="q${i}" type="number"></div>`
+      ).join('')
+      document.body.innerHTML = `${rows}<label for="e">Email</label><input id="e" type="email">`
+    })
+
+    it('stays fast and picks the uniquely labelled field', () => {
+      const start = performance.now()
+      const result = pick(document.getElementById('e')!)
+      expect(performance.now() - start).toBeLessThan(2000)
+      expect(result.locator).toMatchObject({ by: 'role', role: 'textbox', name: 'Email' })
+    })
+
+    it('stays fast and rejects the label shared by every row', () => {
+      const start = performance.now()
+      const result = pick(document.getElementById('q250')!, ['role', 'label', 'css'])
+      expect(performance.now() - start).toBeLessThan(2000)
+      expect(result.locator?.by).toBe('css')
+    })
+  })
+
   it('uses the configured test-id attribute', () => {
     document.body.innerHTML = '<div data-qa="cart"></div><div data-testid="cart"></div>'
     const el = document.querySelector('[data-qa]')!
@@ -189,6 +215,37 @@ describe('getPrioritizedSelector: candidates', () => {
     document.body.innerHTML = '<div><i class="css-1a2b3c4d"></i><i></i></div>'
     const result = pick(document.querySelector('i')!, ['css'])
     expect(result.locator).toMatchObject({ by: 'css', positional: true })
+  })
+
+  it.each([
+    ['<p>a</p><p id=":r1:">b</p>', 'p:nth-of-type(2)', 'html > body > p:nth-of-type(2)'],
+    [
+      '<div id="ember123"><p>a</p><p>b</p></div>',
+      'div p:nth-of-type(2)',
+      'html > body > div > p:nth-of-type(2)'
+    ]
+  ])('does not anchor the css path on a generated id in %s', (html, selector, expected) => {
+    document.body.innerHTML = html
+    expect(pick(document.querySelector(selector)!, ['css']).locator).toEqual({
+      by: 'css',
+      value: expected,
+      positional: true
+    })
+  })
+
+  it.each([
+    ['<p>a</p><p id=":r1:">b</p>', 'p:nth-of-type(2)', '/html/body/p[2]'],
+    ['<div id="ember123"><p>a</p><p>b</p></div>', 'div p:nth-of-type(2)', '/html/body/div[1]/p[2]']
+  ])('does not anchor the xpath on a generated id in %s', (html, selector, expected) => {
+    document.body.innerHTML = html
+    expect(pick(document.querySelector(selector)!, ['xpath']).selector).toBe(expected)
+  })
+
+  it('still anchors the fallback paths on a stable id', () => {
+    document.body.innerHTML = '<div id="cart"><p>a</p><p>b</p></div>'
+    const el = document.querySelector('div p:nth-of-type(2)')!
+    expect(pick(el, ['css']).selector).toBe('#cart > p:nth-of-type(2)')
+    expect(pick(el, ['xpath']).selector).toBe('//*[@id="cart"]/p[2]')
   })
 
   it('falls back to xpath when nothing else is unique', () => {

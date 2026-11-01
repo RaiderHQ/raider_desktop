@@ -2,7 +2,8 @@ export type Strategy = 'id' | 'css' | 'xpath'
 
 /** A semantic way to find an element, richer than the strategy/value pair. */
 export type Locator =
-  // nameFrom: where the name came from; tag: the element's lowercase tagName (picks the Watir method)
+  // nameFrom: where the name came from; tag: the element's lowercase tagName. Both are kept
+  // for future readable forms; nothing reads them today.
   | {
       by: 'role'
       role: string

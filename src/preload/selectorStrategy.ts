@@ -65,7 +65,8 @@ export function getCssPath(el: Element): string {
   const path: string[] = []
   while (el.nodeType === Node.ELEMENT_NODE) {
     let selector = el.nodeName.toLowerCase()
-    if (el.id) {
+    // A generated id changes between page loads, so the path keeps walking up instead
+    if (el.id && !looksGenerated(el.id)) {
       selector = '#' + cssEscape(el.id)
       path.unshift(selector)
       break
@@ -98,7 +99,7 @@ export function xpathLiteral(value: string): string {
 }
 
 export function getXPath(element: Element): string {
-  if (element.id !== '') {
+  if (element.id !== '' && !looksGenerated(element.id)) {
     return `//*[@id=${xpathLiteral(element.id)}]`
   }
   if (element === document.body) {
@@ -202,8 +203,9 @@ const ROLE_KINDS: Record<string, { kinds: string[]; byContent: boolean }> = {
 
 // A union over every way the name can be given, so it finds the element whichever
 // source named it; the uniqueness check rejects it if it also finds anything else.
-// aria-labelledby is matched by its literal ids, and only when the target uses it, so the
-// expression never scans the whole document per candidate node.
+// aria-labelledby is matched by its literal ids, and only when the target uses it, and a
+// label's field is reached through id(), so the expression never scans the whole document
+// per candidate node.
 function roleXPath(role: string, name: string, labelledBy: string | null): string {
   const n = xpathLiteral(name)
   const { kinds, byContent } = ROLE_KINDS[role]
@@ -212,7 +214,7 @@ function roleXPath(role: string, name: string, labelledBy: string | null): strin
     byContent
       ? [`//${kind}${named}`]
       : [
-          `//${kind}[@id=//label[normalize-space()=${n}]/@for]`,
+          `id(//label[normalize-space()=${n}]/@for)/self::${kind}`,
           `//label[normalize-space()=${n}]//${kind}`,
           `//${kind}[@aria-label=${n}]`,
           `//${kind}[@placeholder=${n}]`
@@ -238,7 +240,7 @@ function byRole(el: Element): Candidate | null {
   const named = accessibleNameSource(el)
   if (!role || !(role in ROLE_KINDS) || !named) return null
   const { name } = named
-  // Watir's aria_label: matches the raw attribute, so call it that only when the name is exactly it
+  // Kept for future readable forms (no consumer today): 'aria-label' only when the name is the raw attribute
   const nameFrom =
     named.from === 'aria-label' && el.getAttribute('aria-label') !== name ? 'other' : named.from
   return checked(el, {
@@ -253,7 +255,7 @@ function byLabel(el: Element): Candidate | null {
   if (!text) return null
   const t = xpathLiteral(text)
   const selector =
-    `//*[self::input or self::textarea or self::select][@id=//label[normalize-space()=${t}]/@for]` +
+    `id(//label[normalize-space()=${t}]/@for)[self::input or self::textarea or self::select]` +
     ` | //label[normalize-space()=${t}]//*[self::input or self::textarea or self::select]` +
     ` | //*[@aria-label=${t}]`
   return checked(el, { selector, strategy: 'xpath', locator: { by: 'label', text } })
