@@ -6,6 +6,9 @@ interface ConfirmationModalProps {
   message: string
   /** What the confirmation is about, shown above the message */
   subject?: string
+  /** Button texts, for callers that are not in English-only context or want a specific verb */
+  confirmLabel?: string
+  cancelLabel?: string
   onConfirm: () => void
   onCancel: () => void
 }
@@ -14,6 +17,8 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   title = 'Confirm',
   message,
   subject,
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
   onConfirm,
   onCancel
 }) => {
@@ -47,10 +52,10 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         {/* Footer */}
         <div className="border-t border-neutral-bdr px-6 py-4 flex justify-end space-x-2">
           <Button onClick={onCancel} type="secondary">
-            Cancel
+            {cancelLabel}
           </Button>
           <Button onClick={onConfirm} type="danger">
-            Confirm
+            {confirmLabel}
           </Button>
         </div>
       </div>

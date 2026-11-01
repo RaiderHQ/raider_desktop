@@ -821,6 +821,18 @@
     "skippedMissing_one": "{{count}} test was skipped: its file is missing",
     "skippedMissing_other": "{{count}} tests were skipped: their files are missing"
   },
+  "logins": {
+    "title": "Saved logins",
+    "saved": "Saved {{age}}",
+    "expired": "Expired",
+    "expiredAge": "Older than the login lifetime",
+    "expiredSite": "Saved for a different site",
+    "unknownFormat": "Saved login (unknown format)",
+    "empty": "No saved logins yet. Tests that use a saved login keep it here after their first run.",
+    "updateGem": "Update ruby_raider to 3.11 to save logins.",
+    "forgetConfirm": "Forget the saved login \"{{name}}\"? The next run logs in again.",
+    "forget": "Forget"
+  },
   "common": {
     "close": "Close",
     "cancel": "Cancel"
