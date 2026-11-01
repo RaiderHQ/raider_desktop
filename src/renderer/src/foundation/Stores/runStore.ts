@@ -3,7 +3,7 @@ import toast from 'react-hot-toast'
 import i18n from 'i18next'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
-import { loadRunSettings, workersFor } from '@foundation/run/runSettings'
+import { loadRunSettings, loginStateFor, workersFor } from '@foundation/run/runSettings'
 import { notifyRunFinished } from '@foundation/run/notifyRunFinished'
 import { reduceRun, viewFromActiveRun, type RunView } from '@foundation/run/runModel'
 import type { RunEvent, RunScope } from '@shared/types/runEvents'
@@ -18,6 +18,8 @@ interface RunStore {
   run: RunView | null
   origin: RunOrigin | null
   isActive: boolean
+  freshLoginNext: boolean
+  setFreshLoginNext: (v: boolean) => void
   ingest: (e: RunEvent) => void
   restore: () => Promise<void>
   start: (scope: RunScope, origin: RunOrigin) => Promise<'started' | 'busy' | 'error'>
@@ -36,6 +38,8 @@ export const useRunStore = create<RunStore>(
     run: null,
     origin: null,
     isActive: false,
+    freshLoginNext: false,
+    setFreshLoginNext: (v: boolean): void => set({ freshLoginNext: v }),
     ingest: (e: RunEvent): void => {
       const run = reduceRun(get().run, e, useProjectStore.getState().projectPath ?? undefined)
       set({ run, isActive: isActiveRun(run) })
@@ -67,14 +71,16 @@ export const useRunStore = create<RunStore>(
       try {
         const settings = loadRunSettings(projectPath)
         const defaults = await window.api.getRunDefaults()
+        const loginState = loginStateFor(settings, get().freshLoginNext)
         const result = await window.api.startRun({
           scope,
           workers: workersFor(settings, defaults, scope),
           rubyCommand,
-          quarantinedFails: settings.quarantinedFails
+          quarantinedFails: settings.quarantinedFails,
+          ...(loginState ? { loginState } : {})
         })
         if ('runId' in result) {
-          set({ origin })
+          set({ origin, freshLoginNext: false })
           return 'started'
         }
         if (result.error === 'busy') {
