@@ -44,20 +44,26 @@ vi.mock('@components/ProjectDashboard', () => ({
   default: (): JSX.Element => <div data-testid="project-dashboard">ProjectDashboard</div>
 }))
 
-vi.mock('@components/DeviceSettings', () => ({
-  default: ({
-    projectPath,
-    focusRef
-  }: {
-    projectPath: string
-    focusRef?: React.Ref<HTMLInputElement>
-  }): JSX.Element => (
-    <div data-testid="device-settings">
-      {projectPath}
-      <input aria-label="device-app" ref={focusRef} />
-    </div>
-  )
-}))
+// A stand-in by default; the real component where its async load matters
+const realDeviceSettings = vi.hoisted(() => ({ on: false }))
+vi.mock('@components/DeviceSettings', async () => {
+  const { default: Real } = await vi.importActual<
+    typeof import('@components/DeviceSettings')
+  >('@components/DeviceSettings')
+  return {
+    default: (
+      props: React.ComponentProps<typeof Real> & { focusRef?: React.Ref<HTMLInputElement> }
+    ): JSX.Element =>
+      realDeviceSettings.on ? (
+        <Real {...props} />
+      ) : (
+        <div data-testid="device-settings">
+          {props.projectPath}
+          <input aria-label="device-app" ref={props.focusRef} />
+        </div>
+      )
+  }
+})
 
 vi.mock('@components/Editor', () => ({
   default: (): JSX.Element => <div data-testid="editor">Editor</div>
@@ -120,7 +126,9 @@ const mockApi = {
   duplicateFile: vi.fn().mockResolvedValue({ success: true, newPath: '' }),
   startRun: vi.fn().mockResolvedValue({ runId: 'r1' }),
   getRunDefaults: vi.fn().mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 }),
-  prepareSuiteRun: vi.fn().mockResolvedValue({ mode: 'legacy' })
+  prepareSuiteRun: vi.fn().mockResolvedValue({ mode: 'legacy' }),
+  checkMobileReady: vi.fn().mockResolvedValue({ ok: true }),
+  getDeviceSettings: vi.fn()
 }
 
 // Web controls only show once the layout says the project isn't mobile
@@ -148,7 +156,8 @@ beforeEach(async () => {
     isActive: false,
     freshLoginNext: false,
     notReady: null,
-    deviceFocusRequested: false
+    deviceFocusRequested: false,
+    checking: false
   })
   useRecorderStore.setState({ isRunning: false })
 })
@@ -355,6 +364,45 @@ describe('Overview Settings Toolbar', (): void => {
     })
     expect(await screen.findByLabelText('device-app')).toHaveFocus()
     expect(useRunStore.getState().deviceFocusRequested).toBe(false)
+  })
+
+  it('focuses the real app file field once its settings load', async () => {
+    let loaded: (v: unknown) => void = () => {}
+    mockApi.getDeviceSettings.mockReturnValueOnce(new Promise((resolve) => (loaded = resolve)))
+    realDeviceSettings.on = true
+    try {
+      useProjectStore.setState({ layout: appiumLayout, projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      await act(async () => {
+        useRunStore.getState().requestDeviceFocus()
+      })
+      // The tab is open but the field isn't there yet, so the request waits
+      expect(screen.getByTestId('device-settings')).toBeInTheDocument()
+      expect(screen.queryByTestId('device-ios-app')).not.toBeInTheDocument()
+      expect(useRunStore.getState().deviceFocusRequested).toBe(true)
+
+      await act(async () => {
+        loaded({
+          platform: 'ios',
+          ios: {
+            deviceName: 'iPhone 15',
+            platformVersion: '17.0',
+            app: '/apps/Shop.app',
+            automationName: 'XCUITest'
+          }
+        })
+      })
+      expect(await screen.findByTestId('device-ios-app')).toHaveFocus()
+      expect(useRunStore.getState().deviceFocusRequested).toBe(false)
+    } finally {
+      realDeviceSettings.on = false
+    }
   })
 
   it('focuses the app file when the Files tab is already open', async () => {
@@ -909,6 +957,15 @@ describe('Overview live runs', (): void => {
       route: '/overview',
       label: 'run.originProject'
     })
+  })
+
+  it('keeps Run Tests and Re-run failed off while a mobile check is running', async () => {
+    await renderOverview()
+    act(() => useRunStore.setState({ checking: true }))
+    expect(screen.getByTestId('run-tests')).toBeDisabled()
+    expect(screen.getByTestId('overview-rerun-failed-btn')).toBeDisabled()
+    act(() => useRunStore.setState({ checking: false }))
+    expect(screen.getByTestId('run-tests')).toBeEnabled()
   })
 
   it('runs the smoke tag when the run mode is Smoke', async () => {

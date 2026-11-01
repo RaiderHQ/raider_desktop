@@ -31,6 +31,8 @@ interface RunStore {
   notReady: MobileNotReady | null
   /** Asks Overview to show the device settings and focus the app file */
   deviceFocusRequested: boolean
+  /** A mobile readiness check is in flight; a run is about to start or not */
+  checking: boolean
   setFreshLoginNext: (v: boolean) => void
   ingest: (e: RunEvent) => void
   restore: () => Promise<void>
@@ -60,6 +62,7 @@ export const useRunStore = create<RunStore>(
     freshLoginNext: false,
     notReady: null,
     deviceFocusRequested: false,
+    checking: false,
     setFreshLoginNext: (v: boolean): void => set({ freshLoginNext: v }),
     ingest: (e: RunEvent): void => {
       const run = reduceRun(get().run, e, useProjectStore.getState().projectPath ?? undefined)
@@ -87,6 +90,8 @@ export const useRunStore = create<RunStore>(
       origin: RunOrigin,
       opts: { skipMobileCheck?: boolean } = {}
     ): Promise<'started' | 'busy' | 'error'> => {
+      // A second click while checking would only check again, then hit a busy run
+      if (get().checking) return 'busy'
       set({ notReady: null })
       const rubyCommand = useRubyStore.getState().rubyCommand
       const { projectPath, layout } = useProjectStore.getState()
@@ -96,12 +101,16 @@ export const useRunStore = create<RunStore>(
       }
       // Appium drives one device, so a mobile run is always serial
       const mobile = layout?.automation === 'appium'
-      if (mobile && !opts.skipMobileCheck) {
+      // Until the layout loads it could be mobile; main answers ok for a web project
+      if ((mobile || layout === null) && !opts.skipMobileCheck) {
         let ready: Awaited<ReturnType<typeof window.api.checkMobileReady>> | null = null
+        set({ checking: true })
         try {
           ready = await window.api.checkMobileReady(projectPath)
         } catch (error) {
           console.error('Checking the mobile project failed:', error)
+        } finally {
+          set({ checking: false })
         }
         // The answer is about a project that's no longer open
         if (useProjectStore.getState().projectPath !== projectPath) return 'error'

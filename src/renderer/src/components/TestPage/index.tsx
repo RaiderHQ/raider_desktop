@@ -47,7 +47,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const activeTest = useRecorderStore((s) => s.activeTest)
   const activeSuiteId = useRecorderStore((s) => s.activeSuiteId)
   const draftTest = useRecorderStore((s) => s.draftTest)
-  const runActive = useRunStore((s) => s.isActive)
+  const runActive = useRunStore((s) => s.isActive || s.checking)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
   const runBusy = runActive || recorderRunning
   // Only this page's own run: Overview's panel already shows a run from elsewhere

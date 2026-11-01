@@ -28,6 +28,8 @@ beforeEach(() => {
   vi.mocked(toast.error).mockClear()
   Object.values(api).forEach((f) => f.mockReset())
   api.getRunDefaults.mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 4 })
+  // Main answers ok for web projects
+  api.checkMobileReady.mockResolvedValue({ ok: true })
   ;(window as unknown as { api: typeof api }).api = api
   useRubyStore.setState({ rubyCommand: 'ruby' })
   project.state = { projectPath: '/proj', layout: null }
@@ -37,7 +39,8 @@ beforeEach(() => {
     isActive: false,
     freshLoginNext: false,
     notReady: null,
-    deviceFocusRequested: false
+    deviceFocusRequested: false,
+    checking: false
   })
 })
 
@@ -225,11 +228,66 @@ describe('runStore.start, mobile projects', () => {
 })
 
 describe('runStore.start, web projects', () => {
-  it('never checks mobile readiness', async () => {
+  it('never checks mobile readiness once the layout is known', async () => {
     project.state = { projectPath: '/proj', layout: { automation: 'selenium' } }
     api.startRun.mockResolvedValue({ runId: 'r1' })
     expect(await useRunStore.getState().start(scope, origin)).toBe('started')
     expect(api.checkMobileReady).not.toHaveBeenCalled()
+  })
+})
+
+describe('runStore.start, before the layout is known', () => {
+  beforeEach(() => {
+    project.state = { projectPath: '/proj', layout: null }
+    api.startRun.mockResolvedValue({ runId: 'r1' })
+  })
+
+  it('checks, and does not run a project that turns out not ready', async () => {
+    api.checkMobileReady.mockResolvedValue({
+      ok: false,
+      reason: 'appium',
+      detail: '127.0.0.1:4723'
+    })
+    expect(await useRunStore.getState().start(scope, origin)).toBe('error')
+    expect(api.startRun).not.toHaveBeenCalled()
+    expect(useRunStore.getState().notReady?.reason).toBe('appium')
+  })
+
+  it('checks, then runs with the saved workers when ready', async () => {
+    saveRunSettings('/proj', {
+      parallel: true,
+      workers: 3,
+      quarantinedFails: false,
+      reuseLogins: true
+    })
+    expect(await useRunStore.getState().start(scope, origin)).toBe('started')
+    expect(api.checkMobileReady).toHaveBeenCalledWith('/proj')
+    expect(api.startRun.mock.calls[0][0].workers).toBe(3)
+  })
+})
+
+describe('runStore.start, one check at a time', () => {
+  it('a second start while checking is busy, silently', async () => {
+    project.state = { projectPath: '/proj', layout: { automation: 'appium' } }
+    api.startRun.mockResolvedValue({ runId: 'r1' })
+    let answer: (r: unknown) => void = () => {}
+    api.checkMobileReady.mockReturnValue(new Promise((resolve) => (answer = resolve)))
+    const first = useRunStore.getState().start(scope, origin)
+    expect(useRunStore.getState().checking).toBe(true)
+    expect(await useRunStore.getState().start(scope, origin)).toBe('busy')
+    answer({ ok: true })
+    expect(await first).toBe('started')
+    expect(api.checkMobileReady).toHaveBeenCalledTimes(1)
+    expect(api.startRun).toHaveBeenCalledTimes(1)
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(useRunStore.getState().checking).toBe(false)
+  })
+
+  it('stops checking when the check fails', async () => {
+    project.state = { projectPath: '/proj', layout: { automation: 'appium' } }
+    api.checkMobileReady.mockRejectedValue(new Error('boom'))
+    await useRunStore.getState().start(scope, origin)
+    expect(useRunStore.getState().checking).toBe(false)
   })
 })
 

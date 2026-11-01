@@ -59,6 +59,7 @@ beforeEach(async () => {
     isActive: false,
     notReady: null,
     deviceFocusRequested: false,
+    checking: false,
     start
   })
 })
@@ -100,6 +101,19 @@ describe('MobileNotReady', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open device settings' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Run anyway' })).not.toBeInTheDocument()
+  })
+
+  it('can be dismissed', () => {
+    useRunStore.setState({ notReady: notReady('appium', '127.0.0.1:4723') })
+    renderAt('/overview', <MobileNotReady notReady={notReady('appium', '127.0.0.1:4723')} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(useRunStore.getState().notReady).toBeNull()
+  })
+
+  it('Try again is off while a check is running', () => {
+    useRunStore.setState({ checking: true })
+    renderAt('/overview', <MobileNotReady notReady={notReady('app', '/a.app')} />)
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeDisabled()
   })
 
   it('Open device settings asks for focus and goes to the project page', () => {

@@ -36,7 +36,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
   const activeTest = useRecorderStore((s) => s.activeTest)
   const recordingTarget = useRecorderStore((s) => s.recordingTarget)
   const unsavedExample = useRecorderStore((s) => s.unsavedExample)
-  const runActive = useRunStore((s) => s.isActive)
+  const runActive = useRunStore((s) => s.isActive || s.checking)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
   const runBusy = runActive || recorderRunning
   // Only this page's own run: Overview's panel already shows a run from elsewhere

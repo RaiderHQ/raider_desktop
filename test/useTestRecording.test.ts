@@ -60,6 +60,8 @@ const api = {
   runTest: vi.fn(),
   prepareTestRun: vi.fn(),
   startRun: vi.fn(),
+  // Main answers ok for a web project; the layout here is often not loaded yet
+  checkMobileReady: vi.fn().mockResolvedValue({ ok: true }),
   getRunDefaults: vi.fn(),
   setActiveProject: vi.fn(),
   readDirectory: vi.fn(),

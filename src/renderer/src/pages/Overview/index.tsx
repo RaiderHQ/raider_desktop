@@ -94,7 +94,7 @@ const Overview: React.FC = () => {
 
   // Live run state
   const run = useRunStore((state) => state.run)
-  const runActive = useRunStore((state) => state.isActive)
+  const runActive = useRunStore((state) => state.isActive || state.checking)
   const freshLoginNext = useRunStore((state) => state.freshLoginNext)
   const setFreshLoginNext = useRunStore((state) => state.setFreshLoginNext)
   const recorderRunning = useRecorderStore((s) => s.isRunning)

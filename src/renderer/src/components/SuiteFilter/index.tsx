@@ -24,7 +24,7 @@ const menuItem =
 const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
   const { t } = useTranslation()
   const suites = useRecorderStore((s) => s.suites)
-  const runActive = useRunStore((s) => s.isActive)
+  const runActive = useRunStore((s) => s.isActive || s.checking)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
   const runBusy = runActive || recorderRunning
   // Suites can't run in a mobile project yet
