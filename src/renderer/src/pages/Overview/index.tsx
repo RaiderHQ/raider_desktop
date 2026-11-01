@@ -840,25 +840,30 @@ const Overview: React.FC = () => {
                   onChange={(quarantinedFails) => updateRunSettings({ quarantinedFails })}
                   testId="overview-quarantined-fails-toggle"
                 />
-                <ToggleSwitch
-                  label={t('run.reuseLogins')}
-                  checked={runSettings.reuseLogins}
-                  onChange={(reuseLogins) => updateRunSettings({ reuseLogins })}
-                  testId="overview-reuse-logins"
-                />
-                <div className="flex flex-col">
-                  <label className="flex items-center gap-2 text-sm text-neutral-dk">
-                    <input
-                      type="checkbox"
-                      checked={freshLoginNext}
-                      disabled={!runSettings.reuseLogins}
-                      onChange={(e) => setFreshLoginNext(e.target.checked)}
-                      data-testid="overview-fresh-login"
+                {/* Saved browser logins mean nothing to an Appium run */}
+                {!isMobileProject && (
+                  <>
+                    <ToggleSwitch
+                      label={t('run.reuseLogins')}
+                      checked={runSettings.reuseLogins}
+                      onChange={(reuseLogins) => updateRunSettings({ reuseLogins })}
+                      testId="overview-reuse-logins"
                     />
-                    {t('run.freshLoginNext')}
-                  </label>
-                  <span className="text-xs text-neutral-mid">{t('run.freshLoginHint')}</span>
-                </div>
+                    <div className="flex flex-col">
+                      <label className="flex items-center gap-2 text-sm text-neutral-dk">
+                        <input
+                          type="checkbox"
+                          checked={freshLoginNext}
+                          disabled={!runSettings.reuseLogins}
+                          onChange={(e) => setFreshLoginNext(e.target.checked)}
+                          data-testid="overview-fresh-login"
+                        />
+                        {t('run.freshLoginNext')}
+                      </label>
+                      <span className="text-xs text-neutral-mid">{t('run.freshLoginHint')}</span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
             {showWebSettings && (
@@ -887,46 +892,49 @@ const Overview: React.FC = () => {
                 </div>
               </div>
             )}
-            <div className="flex items-center gap-4 flex-wrap">
-              <Tooltip content={t('tooltips.recorder.implicitWait')} position="right">
-                <div className="flex items-center gap-2">
-                  <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                    {t('settings.recording.implicitWait.label')}
-                  </label>
-                  <input
-                    type="number"
-                    id="implicit-wait"
-                    value={implicitWait}
-                    onChange={(e) => {
-                      const val = Number(e.target.value)
-                      if (val >= 0) setImplicitWait(val)
-                    }}
-                    onBlur={() => saveWait({ implicitWait })}
-                    min="0"
-                    className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
-                  />
-                </div>
-              </Tooltip>
-              <Tooltip content={t('tooltips.recorder.explicitWait')} position="right">
-                <div className="flex items-center gap-2">
-                  <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                    {t('settings.recording.explicitWait.label')}
-                  </label>
-                  <input
-                    type="number"
-                    id="explicit-wait"
-                    value={explicitWait}
-                    onChange={(e) => {
-                      const val = Number(e.target.value)
-                      if (val >= 0) setExplicitWait(val)
-                    }}
-                    onBlur={() => saveWait({ explicitWait })}
-                    min="0"
-                    className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
-                  />
-                </div>
-              </Tooltip>
-            </div>
+            {/* The recorder waits apply to recorded web tests only */}
+            {!isMobileProject && (
+              <div className="flex items-center gap-4 flex-wrap">
+                <Tooltip content={t('tooltips.recorder.implicitWait')} position="right">
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                      {t('settings.recording.implicitWait.label')}
+                    </label>
+                    <input
+                      type="number"
+                      id="implicit-wait"
+                      value={implicitWait}
+                      onChange={(e) => {
+                        const val = Number(e.target.value)
+                        if (val >= 0) setImplicitWait(val)
+                      }}
+                      onBlur={() => saveWait({ implicitWait })}
+                      min="0"
+                      className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                    />
+                  </div>
+                </Tooltip>
+                <Tooltip content={t('tooltips.recorder.explicitWait')} position="right">
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                      {t('settings.recording.explicitWait.label')}
+                    </label>
+                    <input
+                      type="number"
+                      id="explicit-wait"
+                      value={explicitWait}
+                      onChange={(e) => {
+                        const val = Number(e.target.value)
+                        if (val >= 0) setExplicitWait(val)
+                      }}
+                      onBlur={() => saveWait({ explicitWait })}
+                      min="0"
+                      className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                    />
+                  </div>
+                </Tooltip>
+              </div>
+            )}
           </div>
           <div className="relative h-[62vh] border border-t-0 border-neutral-bdr rounded-b-lg shadow-card flex flex-col bg-white">
             {/* Split: file tree left + editor preview right */}

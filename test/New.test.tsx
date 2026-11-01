@@ -3,6 +3,7 @@ import CreateProject from '@pages/New'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 import { MemoryRouter } from 'react-router'
+import useVersionStore from '@foundation/Stores/versionStore'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
@@ -34,13 +35,16 @@ vi.mock('@foundation/Stores/projectStore', () => ({
   }
 }))
 
-const versionState = { version: '3.12.0' }
 vi.mock('@foundation/Stores/versionStore', async (importActual) => {
   const actual = await importActual<typeof import('@foundation/Stores/versionStore')>()
+  const { create } = await import('zustand')
   return {
     ...actual,
     __esModule: true,
-    default: (selector: (state: { version: string }) => unknown): unknown => selector(versionState)
+    default: create<{ version: string; loadVersion: () => Promise<void> }>(() => ({
+      version: '3.12.0',
+      loadVersion: async (): Promise<void> => {}
+    }))
   }
 })
 
@@ -77,7 +81,7 @@ const create = async (runRubyRaider: ReturnType<typeof vi.fn>): Promise<void> =>
 
 describe('CreateProject Page', (): void => {
   beforeEach(() => {
-    versionState.version = '3.12.0'
+    useVersionStore.setState({ version: '3.12.0', loadVersion: async (): Promise<void> => {} })
   })
 
   it('renders correctly', async (): Promise<void> => {
@@ -221,7 +225,7 @@ describe('CreateProject Page', (): void => {
   })
 
   it.each(['3.11.0', '2.0.0'])('gates Mobile app and examples on gem %s', async (version): Promise<void> => {
-    versionState.version = version
+    useVersionStore.setState({ version })
     const run = vi.fn().mockResolvedValue({ success: false, error: 'stop' })
     await renderPage()
     const mobile = screen.getByRole('radio', { name: 'newProject.target.mobile' })
@@ -232,6 +236,29 @@ describe('CreateProject Page', (): void => {
     expect(screen.queryByRole('checkbox', { name: /newProject.addons.examples/ })).not.toBeInTheDocument()
     await create(run)
     expect(run.mock.calls[0][6]).toEqual({ accessibility: false, ci: 'github' })
+  })
+
+  it('reads the gem version again each time the page opens', async (): Promise<void> => {
+    const versions = ['3.11.0', '3.12.0']
+    const loadVersion = vi.fn(async (): Promise<void> => {
+      useVersionStore.setState({ version: versions.shift() as string })
+    })
+    useVersionStore.setState({ version: '3.11.0', loadVersion })
+    const mobile = (): HTMLElement => screen.getByRole('radio', { name: 'newProject.target.mobile' })
+
+    const first = render(
+      <MemoryRouter>
+        <CreateProject />
+      </MemoryRouter>
+    )
+    await act(async (): Promise<void> => {})
+    expect(mobile()).toHaveAttribute('aria-disabled', 'true')
+    first.unmount()
+
+    // Ruby Raider was updated meanwhile
+    await renderPage()
+    expect(loadVersion).toHaveBeenCalledTimes(2)
+    expect(mobile()).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('offers Mobile app and examples from gem 3.12.0', async (): Promise<void> => {
@@ -287,7 +314,7 @@ describe('CreateProject Page', (): void => {
     })
 
     it('keeps Website selected on ArrowRight when Mobile app is disabled', async (): Promise<void> => {
-      versionState.version = '3.11.0'
+      useVersionStore.setState({ version: '3.11.0' })
       await renderPage()
       fireEvent.keyDown(web(), { key: 'ArrowRight' })
       expect(web()).toHaveAttribute('aria-checked', 'true')

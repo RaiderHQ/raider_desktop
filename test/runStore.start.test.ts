@@ -75,6 +75,7 @@ describe('runStore.start', () => {
     expect(api.startRun).not.toHaveBeenCalled()
   })
   it('sends the settings workers and quarantinedFails', async () => {
+    project.state = { projectPath: '/proj', layout: { automation: 'selenium' } }
     saveRunSettings('/proj', {
       parallel: true,
       workers: 3,
@@ -172,6 +173,13 @@ describe('runStore.start, mobile projects', () => {
     expect(api.startRun.mock.calls[0][0].workers).toBeUndefined()
   })
 
+  it('never sends a login state: saved browser logins mean nothing to Appium', async () => {
+    saveRunSettings('/proj', { ...parallel, reuseLogins: false })
+    useRunStore.getState().setFreshLoginNext(true)
+    expect(await useRunStore.getState().start(scope, origin)).toBe('started')
+    expect('loginState' in api.startRun.mock.calls[0][0]).toBe(false)
+  })
+
   it('clears an earlier not-ready on the next start', async () => {
     api.checkMobileReady.mockResolvedValueOnce({ ok: false, reason: 'app', detail: '' })
     await useRunStore.getState().start(scope, origin)
@@ -253,16 +261,39 @@ describe('runStore.start, before the layout is known', () => {
     expect(useRunStore.getState().notReady?.reason).toBe('appium')
   })
 
-  it('checks, then runs with the saved workers when ready', async () => {
-    saveRunSettings('/proj', {
-      parallel: true,
-      workers: 3,
-      quarantinedFails: false,
-      reuseLogins: true
-    })
+  const parallel = {
+    parallel: true,
+    workers: 3,
+    quarantinedFails: false,
+    reuseLogins: true
+  }
+
+  it('checks, then runs serially when ready, even with parallel saved', async () => {
+    saveRunSettings('/proj', parallel)
     expect(await useRunStore.getState().start(scope, origin)).toBe('started')
     expect(api.checkMobileReady).toHaveBeenCalledWith('/proj')
+    expect(api.startRun.mock.calls[0][0].workers).toBeUndefined()
+  })
+
+  it('runs with the saved workers once the check shows a web project', async () => {
+    saveRunSettings('/proj', parallel)
+    api.checkMobileReady.mockImplementation(async () => {
+      project.state = { projectPath: '/proj', layout: { automation: 'selenium' } }
+      return { ok: true }
+    })
+    expect(await useRunStore.getState().start(scope, origin)).toBe('started')
     expect(api.startRun.mock.calls[0][0].workers).toBe(3)
+  })
+
+  it('runs serially when the check shows a mobile project', async () => {
+    saveRunSettings('/proj', parallel)
+    api.checkMobileReady.mockImplementation(async () => {
+      project.state = { projectPath: '/proj', layout: { automation: 'appium' } }
+      return { ok: true }
+    })
+    expect(await useRunStore.getState().start(scope, origin)).toBe('started')
+    expect(api.startRun.mock.calls[0][0].workers).toBeUndefined()
+    expect('loginState' in api.startRun.mock.calls[0][0]).toBe(false)
   })
 })
 

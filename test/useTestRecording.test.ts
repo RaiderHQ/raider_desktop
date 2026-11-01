@@ -509,6 +509,15 @@ describe('useTestRecording', () => {
       expect(api.startRun).not.toHaveBeenCalled()
     })
 
+    it('says a mobile project cannot run recorded tests when main refuses', async () => {
+      api.runTest.mockResolvedValue({ success: false, output: 'refused', code: 'mobileNoLegacy' })
+      const rec = await mount()
+      await act(() => rec.run())
+      expect(useRunOutputStore.getState().runOutput).toBe('run.mobile.noLegacy')
+      expect(useRunOutputStore.getState().runFailed).toBe(true)
+      expect(mockToast.error).toHaveBeenCalledWith('run.mobile.noLegacy')
+    })
+
     it('runs a recorded test in files mode live, from the current page', async () => {
       api.prepareTestRun.mockResolvedValue({ mode: 'files', file: 'spec/login_works_spec.rb' })
       const rec = await mount()

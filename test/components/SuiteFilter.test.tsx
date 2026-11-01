@@ -147,6 +147,53 @@ describe('SuiteFilter', () => {
     expect(api.startRun).not.toHaveBeenCalled()
   })
 
+  it('cannot import recorded tests into a mobile project, and says so', async () => {
+    useProjectStore.setState({ projectPath: '/p' })
+    await act(async () => {})
+    useProjectStore.setState({
+      layout: {
+        framework: 'rspec',
+        automation: 'appium',
+        mobilePlatform: 'android',
+        specPath: 'spec',
+        featurePath: 'features',
+        helperPath: 'helpers',
+        recordable: false,
+        unsupportedReason: 'mobile'
+      }
+    })
+    useRecorderStore.setState({ suites })
+    render(<Harness initial="s1" />)
+    openMenu()
+    for (const name of ['Import test', 'Import suite']) {
+      const item = screen.getByRole('menuitem', { name })
+      expect(item).toBeDisabled()
+      expect(item).toHaveAccessibleDescription("Mobile projects can't import recorded tests yet.")
+      expect(item).toHaveAttribute('title', "Mobile projects can't import recorded tests yet.")
+      fireEvent.click(item)
+    }
+    expect(api.importTest).not.toHaveBeenCalled()
+    expect(api.importSuite).not.toHaveBeenCalled()
+  })
+
+  it('says a mobile project cannot run recorded tests when main refuses the suite', async () => {
+    // The layout isn't loaded yet, so only main knows the project is mobile
+    api.runSuite.mockResolvedValue({
+      success: false,
+      output: 'refused',
+      code: 'mobileNoLegacy'
+    })
+    render(<Harness initial="s1" />)
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Run suite' }))
+    await waitFor(() =>
+      expect(mockToast.error).toHaveBeenCalledWith("Mobile projects can't run recorded tests yet.")
+    )
+    expect(useRunOutputStore.getState().runOutput).toBe(
+      "Mobile projects can't run recorded tests yet."
+    )
+  })
+
   it('lists All tests plus each suite and filters the rows by suite', () => {
     render(<Harness />)
     const select = screen.getByLabelText('Suite')

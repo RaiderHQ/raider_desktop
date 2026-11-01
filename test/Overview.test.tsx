@@ -348,6 +348,29 @@ describe('Overview Settings Toolbar', (): void => {
     expect(screen.queryByTestId('overview-workers-input')).not.toBeInTheDocument()
   })
 
+  it('has no browser login or recorder wait controls for a mobile project', async () => {
+    useProjectStore.setState({ layout: appiumLayout })
+    await renderOverview()
+
+    fireEvent.click(screen.getByTestId('overview-more-options'))
+    expect(screen.getByTestId('overview-quarantined-fails-toggle')).toBeInTheDocument()
+    expect(screen.queryByTestId('overview-reuse-logins')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('overview-fresh-login')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('settings.recording.implicitWait.label')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('settings.recording.explicitWait.label')).not.toBeInTheDocument()
+  })
+
+  it('keeps the browser login and recorder wait controls for a web project', async () => {
+    useProjectStore.setState({ layout: { ...appiumLayout, automation: 'selenium', recordable: true } })
+    await renderOverview()
+
+    fireEvent.click(screen.getByTestId('overview-more-options'))
+    expect(screen.getByTestId('overview-reuse-logins')).toBeInTheDocument()
+    expect(screen.getByTestId('overview-fresh-login')).toBeInTheDocument()
+    expect(screen.getByLabelText('settings.recording.implicitWait.label')).toBeInTheDocument()
+    expect(screen.getByLabelText('settings.recording.explicitWait.label')).toBeInTheDocument()
+  })
+
   it('opens the Files tab and focuses the app file when device settings are asked for', async () => {
     useProjectStore.setState({ layout: appiumLayout, projectPath: '/fake/project', files: [] })
     await act(async () => {

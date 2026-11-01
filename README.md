@@ -61,7 +61,8 @@ The app contains native Windows code (it runs commands with `cd /d` instead of r
 
 #### Project Management
 
-- **Create new projects** — Pick your automation framework (Selenium, Watir) and test framework (RSpec, Cucumber), and a full web project structure is generated for you. The New Project screen creates web projects only
+- **Create new projects** — Choose **Website** or **Mobile app** (iOS, Android or both) and a test framework (RSpec, Cucumber), and the full project structure is generated for you. Mobile app needs ruby_raider 3.12 or newer
+- **Mobile projects** — The Files tab shows **Device settings** (device name, OS version and app file) in place of the browser settings. Appium must already be running (run `appium` in a terminal) before you run tests; the app checks this and the app file first, and tells you what to fix
 - **Open existing projects** — Load any Ruby Raider project and browse its file tree
 
 #### Test Screen

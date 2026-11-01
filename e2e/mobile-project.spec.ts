@@ -1,6 +1,12 @@
 import { test, expect } from './electronApp'
-import { goToOverviewFiles, mockRubyReady } from './helpers/navigation'
-import { mockIPC, mockIPCMultiple, setProjectLayout, setupProjectContext } from './helpers/ipc-mock'
+import { goToOverview, goToOverviewFiles, mockRubyReady } from './helpers/navigation'
+import {
+  mockIPC,
+  mockIPCMultiple,
+  mockProjectTests,
+  setProjectLayout,
+  setupProjectContext
+} from './helpers/ipc-mock'
 import { mockRunner, getStartRequests } from './helpers/run-mock'
 
 const projectPath = '/mock/mobile-project'
@@ -73,6 +79,30 @@ test.describe('Mobile project', () => {
       "Can't find the app file app-release.apk"
     )
     await page.getByRole('button', { name: 'Open device settings' }).click()
+    await expect(page.getByTestId('device-android-app')).toBeFocused()
+  })
+
+  test('Open device settings from the Tests tab focuses the App file field', async ({ page }) => {
+    await mockProjectTests(page, [{ file: 'spec/login_spec.rb', name: 'Login', ownership: 'code' }])
+    await mockIPCMultiple(page, {
+      openCodeTest: {
+        file: 'spec/login_spec.rb',
+        examples: [{ name: 'logs in', steps: [] }]
+      },
+      checkMobileReady: { ok: false, reason: 'app', detail: 'app-release.apk' }
+    })
+    await goToOverview(page)
+    await page.getByRole('button', { name: 'Tests', exact: true }).click()
+    await page.locator('li[role="button"]').filter({ hasText: 'Login' }).click()
+    await page.getByRole('button', { name: 'Run', exact: true }).click()
+
+    await expect(page.getByTestId('mobile-not-ready')).toContainText(
+      "Can't find the app file app-release.apk"
+    )
+    await page.getByRole('button', { name: 'Open device settings' }).click()
+    await expect(page.getByRole('button', { name: 'Files', exact: true })).toHaveClass(
+      /border-ruby/
+    )
     await expect(page.getByTestId('device-android-app')).toBeFocused()
   })
 })

@@ -10,7 +10,11 @@ import type { QuickProject } from '@shared/types/quickProject'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
-import type { PrepareSuiteRunResult, PrepareTestRunResult } from '@shared/types/prepareRun'
+import type {
+  LegacyRunResult,
+  PrepareSuiteRunResult,
+  PrepareTestRunResult
+} from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type {
@@ -183,7 +187,7 @@ const api = {
     suiteId: string,
     projectPath: string,
     rubyCommand: string
-  ): Promise<{ success: boolean; output: string }> =>
+  ): Promise<LegacyRunResult> =>
     ipcRenderer.invoke('run-suite', suiteId, projectPath, rubyCommand),
   prepareTestRun: (suiteId: string, testId: string, test?: Test): Promise<PrepareTestRunResult> =>
     ipcRenderer.invoke('prepare-test-run', suiteId, testId, test),
@@ -288,7 +292,7 @@ const api = {
     projectPath: string,
     rubyCommand: string,
     test?: Test
-  ): Promise<{ success: boolean; output: string }> =>
+  ): Promise<LegacyRunResult> =>
     ipcRenderer.invoke('run-test', suiteId, testId, projectPath, rubyCommand, test),
   updateRecordingSettings: (
     settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>

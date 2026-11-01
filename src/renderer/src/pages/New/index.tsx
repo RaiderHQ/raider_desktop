@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
@@ -36,6 +36,11 @@ const CreateProject: React.FC = () => {
 
   const gemVersion = useVersionStore((state) => state.version)
   const mobileSupported = isVersionAtLeast(gemVersion, MOBILE_MIN_VERSION)
+
+  // The page tells users to update Ruby Raider and come back, so it reads the version again
+  useEffect(() => {
+    void useVersionStore.getState().loadVersion()
+  }, [])
 
   const [target, setTarget] = useState<Target>('web')
   const [phones, setPhones] = useState<Phones>('ios')

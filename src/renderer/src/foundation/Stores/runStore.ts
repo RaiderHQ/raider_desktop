@@ -99,7 +99,6 @@ export const useRunStore = create<RunStore>(
         toast.error(i18n.t('recorder.noRuby'))
         return 'error'
       }
-      // Appium drives one device, so a mobile run is always serial
       const mobile = layout?.automation === 'appium'
       // Until the layout loads it could be mobile; main answers ok for a web project
       if ((mobile || layout === null) && !opts.skipMobileCheck) {
@@ -125,13 +124,19 @@ export const useRunStore = create<RunStore>(
           return 'error'
         }
       }
+      // The layout may have loaded during the check
+      const known = useProjectStore.getState().layout
+      const isMobile = mobile || known?.automation === 'appium'
+      // Appium drives one device, and a project not known to be web could be mobile: serial
+      const serial = isMobile || known === null
       try {
         const settings = loadRunSettings(projectPath)
         const defaults = await window.api.getRunDefaults()
-        const loginState = loginStateFor(settings, get().freshLoginNext)
+        // Saved browser logins mean nothing to an Appium run
+        const loginState = isMobile ? undefined : loginStateFor(settings, get().freshLoginNext)
         const result = await window.api.startRun({
           scope,
-          workers: mobile ? undefined : workersFor(settings, defaults, scope),
+          workers: serial ? undefined : workersFor(settings, defaults, scope),
           rubyCommand,
           quarantinedFails: settings.quarantinedFails,
           ...(loginState ? { loginState } : {})

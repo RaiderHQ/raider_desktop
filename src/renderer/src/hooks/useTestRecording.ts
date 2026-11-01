@@ -15,6 +15,7 @@ import type { TestKey } from '@foundation/testKey'
 import type { Test } from '@foundation/Types/test'
 import type { PendingAssertion } from '@shared/types/pendingAssertion'
 import { UNLISTED_SUITE_ID } from '@shared/types/suite'
+import { MOBILE_NO_LEGACY } from '@shared/types/prepareRun'
 import { useSuiteSync } from './useSuiteSync'
 import { traceSavedOnStop, useRecordingIPC } from './useRecordingIPC'
 
@@ -514,7 +515,12 @@ export function useTestRecording(): TestRecording {
     setRunOutput(`Running test: ${test.name}...`)
     try {
       const result = await window.api.runTest(suiteId, test.id, path || '.', cmd, test)
-      setRunResult(result.output, result.success)
+      if (result.code === MOBILE_NO_LEGACY) {
+        setRunResult(t('run.mobile.noLegacy'), false)
+        toast.error(t('run.mobile.noLegacy'))
+      } else {
+        setRunResult(result.output, result.success)
+      }
     } catch (error) {
       console.error('Running the test failed:', error)
       setRunResult(t('recorder.runFailed'), false)

@@ -386,6 +386,7 @@
     "cucumber": "This project's tests are Cucumber features: find them in the Files tab. Recorded tests become project files when Gherkin support arrives.",
     "actionFailed": "Raider couldn't open this test. Nothing was changed.",
     "listFailed": "Raider couldn't load the tests list. Try again in a moment.",
+    "mobileNoImport": "Mobile projects can't import recorded tests yet.",
     "rail": "Tests",
     "suiteFilter": {
       "label": "Suite",
@@ -816,7 +817,8 @@
       "tryAgain": "Try again",
       "openDeviceSettings": "Open device settings",
       "runAnyway": "Run anyway",
-      "checkFailed": "Couldn't check this project. Try again."
+      "checkFailed": "Couldn't check this project. Try again.",
+      "noLegacy": "Mobile projects can't run recorded tests yet."
     }
   },
   "logins": {

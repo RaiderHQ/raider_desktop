@@ -40,6 +40,24 @@ describe('runRecording', () => {
     expect(result.output).toContain('No test has been saved')
   })
 
+  it('refuses an Appium project and runs nothing', async () => {
+    const result = await runRecording({
+      savedTest: { id: 't', name: 'Login', url: '', steps: [] },
+      implicitWait: 5,
+      explicitWait: 10,
+      projectPath: '/project',
+      rubyCommand: 'ruby',
+      projectAutomation: 'appium'
+    })
+    expect(result).toEqual({
+      success: false,
+      output: "Mobile projects can't run recorded tests yet.",
+      code: 'mobileNoLegacy'
+    })
+    expect(mockWriteFile).not.toHaveBeenCalled()
+    expect(mockExec).not.toHaveBeenCalled()
+  })
+
   it('generates and executes rspec test by default', async () => {
     mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) => {
       cb(null, '{"examples": []}', '')
