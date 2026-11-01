@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Stable locators</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 16px;
+      }
+      section {
+        margin-bottom: 12px;
+      }
+      .avatar {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        background: #ccc;
+      }
+    </style>
+  </head>
+  <body>
+    <section>
+      <button>Save</button>
+    </section>
+    <section>
+      <label for="email">Email</label>
+      <input id="email" type="email" />
+    </section>
+    <section>
+      <div data-testid="promo">Summer sale</div>
+    </section>
+    <section>
+      <span>Pricing</span>
+    </section>
+    <section>
+      <span id=":r1:" class="avatar"></span>
+    </section>
+    <section>
+      <ul>
+        <li>Report A <button>Delete</button></li>
+        <li>Report B <button>Delete</button></li>
+      </ul>
+    </section>
+    <footer>
+      <!-- An unlabelled field with the same placeholder: "Email" alone doesn't single out the field above -->
+      <input type="email" placeholder="Email" />
+    </footer>
+  </body>
+</html>
