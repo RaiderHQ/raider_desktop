@@ -10,6 +10,7 @@ import type { MobileReady } from '@shared/types/deviceSettings'
 const APPIUM_STATUS_URL = 'http://127.0.0.1:4723/status'
 const APPIUM_ADDRESS = '127.0.0.1:4723'
 const NOT_OPEN = 'This project is not open.'
+const NOT_CHECKED = "Couldn't check this project."
 
 interface ReadyOptions {
   statusUrl?: string
@@ -48,7 +49,7 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
-/** Checks the app file, then that Appium is running. Cloud runs and non-mobile projects are ready. */
+/** Checks the app file (an empty one still needs choosing), then that Appium is running. Cloud runs and non-mobile projects are ready. */
 export async function checkMobileReady(
   projectPath: string,
   opts: ReadyOptions = {}
@@ -65,7 +66,7 @@ export async function checkMobileReady(
       ? readRunOn(await readOptional(join(projectPath, 'config', 'config.yml')))
       : 'top'
   const app = readDeviceFields(caps, block)?.app ?? ''
-  if (app && !(await exists(resolve(projectPath, app)))) {
+  if (!app || !(await exists(resolve(projectPath, app)))) {
     return { ok: false, reason: 'app', detail: app }
   }
 
@@ -91,6 +92,6 @@ export async function checkMobileReadyHandler(
     return await checkMobileReady(appState.projectPath)
   } catch (error) {
     safeError('check-mobile-ready failed:', error)
-    return { error: NOT_OPEN }
+    return { error: NOT_CHECKED }
   }
 }

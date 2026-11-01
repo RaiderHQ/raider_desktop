@@ -1,11 +1,20 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createServer, type Server } from 'http'
 import type { Socket } from 'net'
 import { mkdtemp, mkdir, writeFile, rm } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-import { checkMobileReady } from '../../../src/main/handlers/mobile/checkMobileReady'
+vi.mock('electron', () => ({ BrowserWindow: class {}, app: { getPath: (): string => '/' } }))
+vi.mock('../../../src/main/utils/safeExec', () => ({
+  safeExec: vi.fn().mockResolvedValue({ stdout: '{"examples":[]}', stderr: '', exitCode: 0 })
+}))
+
+import setActiveProject from '../../../src/main/handlers/project/setActiveProject'
+import {
+  checkMobileReady,
+  checkMobileReadyHandler
+} from '../../../src/main/handlers/mobile/checkMobileReady'
 
 const caps = (app: string): string =>
   `platformName: 'iOS'\nappium:options:\n  deviceName: 'iPhone 15'\n  app: '${app}'\n`
@@ -115,6 +124,17 @@ describe('checkMobileReady', () => {
       expect(requests).toBe(0)
     })
 
+    it.each(["app: ''", ''])('asks to choose the app when it is empty (%j)', async (line) => {
+      await writeCaps(`platformName: 'iOS'\nappium:options:\n  deviceName: 'iPhone'\n  ${line}\n`)
+      const statusUrl = await startServer(200)
+      expect(await checkMobileReady(project, { statusUrl, env: {} })).toEqual({
+        ok: false,
+        reason: 'app',
+        detail: ''
+      })
+      expect(requests).toBe(0)
+    })
+
     it('accepts an app bundle that is a directory, under a path with a space', async () => {
       await mkdir(join(project, 'RaiderTestApp.app'))
       await writeCaps(caps('RaiderTestApp.app'))
@@ -169,6 +189,29 @@ describe('checkMobileReady', () => {
       expect(
         await checkMobileReady(project, { statusUrl: await closedPortUrl(), env: {} })
       ).toEqual({ ok: true })
+    })
+  })
+
+  describe('handler', () => {
+    afterEach(async () => {
+      await setActiveProject(null)
+    })
+
+    it('rejects a path that is not the active project', async () => {
+      await mkdir(join(project, 'RaiderTestApp.app'))
+      await writeCaps(caps('RaiderTestApp.app'))
+      await setActiveProject(join(root, 'elsewhere'))
+      expect(await checkMobileReadyHandler(project)).toEqual({ error: 'This project is not open.' })
+      expect(await checkMobileReadyHandler(42)).toEqual({ error: 'This project is not open.' })
+      expect(requests).toBe(0)
+    })
+
+    it('says the project could not be checked on an unexpected error', async () => {
+      await mkdir(join(project, 'config', 'capabilities.yml'), { recursive: true })
+      await setActiveProject(project)
+      expect(await checkMobileReadyHandler(project)).toEqual({
+        error: "Couldn't check this project."
+      })
     })
   })
 })
