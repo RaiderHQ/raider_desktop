@@ -1,0 +1,25 @@
+android:
+  platformName: Android
+  appium:options:
+    platformVersion: '14'
+    automationName: UiAutomator2
+    deviceName: Pixel 8 API 34
+    app: app-release.apk
+ios:
+  platformName: iOS
+  appium:options:
+    platformVersion: '17.0'
+    deviceName: iPhone 15
+    automationName: XCUITest
+    app: RaiderTestApp.app
+    autoDismissAlerts: true
+
+browserstack:
+  platformName: Android
+  os_version: '9.0'
+  deviceName: Google Pixel 3
+  app: app: 
+  browserstack.user: 
+  browserstack.key: 
+  project: 'RaiderTestApp'
+  name: 'RaiderTestApp-Android'
