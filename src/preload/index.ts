@@ -13,7 +13,11 @@ import type { ProjectLayout } from '@shared/types/projectLayout'
 import type { PrepareSuiteRunResult, PrepareTestRunResult } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
-import type { DeviceSettings, DeviceSettingsChange } from '@shared/types/deviceSettings'
+import type {
+  DeviceSettings,
+  DeviceSettingsChange,
+  MobileReady
+} from '@shared/types/deviceSettings'
 import type {
   ActiveRun,
   RunDefaults,
@@ -148,6 +152,8 @@ const api = {
     change: DeviceSettingsChange
   ): Promise<{ ok: true } | { error: string }> =>
     ipcRenderer.invoke('save-device-settings', projectPath, change),
+  checkMobileReady: async (projectPath: string): Promise<MobileReady | { error: string }> =>
+    ipcRenderer.invoke('check-mobile-ready', projectPath),
 
   // --- Recorder and Test Suite APIs ---
 

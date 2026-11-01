@@ -20,3 +20,6 @@ export type DeviceSettings = {
 export type DeviceSettingsChange =
   | { block: 'top' | 'ios' | 'android'; edit: DeviceEdit }
   | { runOn: 'ios' | 'android' }
+
+/** Whether a mobile project can run now: its app file exists and Appium answers */
+export type MobileReady = { ok: true } | { ok: false; reason: 'appium' | 'app'; detail: string }

@@ -78,6 +78,7 @@ describe('IPC Contract', () => {
     'isMobileProject',
     'getDeviceSettings',
     'saveDeviceSettings',
+    'checkMobileReady',
 
     // Test Execution
     'runCommand',

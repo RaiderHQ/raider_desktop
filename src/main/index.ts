@@ -77,6 +77,7 @@ import {
   getDeviceSettingsHandler,
   saveDeviceSettingsHandler
 } from './handlers/mobile/deviceSettingsIpc'
+import { checkMobileReadyHandler } from './handlers/mobile/checkMobileReady'
 import { listSavedLoginsHandler, forgetSavedLoginHandler } from './handlers/logins/savedLoginsIpc'
 import scaffoldGenerate from './handlers/project/scaffoldGenerate'
 import updateTimeout from './handlers/config/updateTimeout'
@@ -229,6 +230,9 @@ app.whenReady().then(() => {
   )
   ipcMain.handle('save-device-settings', (_event, projectPath: unknown, change: unknown) =>
     saveDeviceSettingsHandler(projectPath, change)
+  )
+  ipcMain.handle('check-mobile-ready', (_event, projectPath: unknown) =>
+    checkMobileReadyHandler(projectPath)
   )
   ipcMain.handle('is-ruby-installed', isRubyInstalled)
   ipcMain.handle('is-rbenv-ruby-installed', isRbenvRubyInstalled)

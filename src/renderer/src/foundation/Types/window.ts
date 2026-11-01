@@ -13,7 +13,11 @@ import type { QuickProject } from '@shared/types/quickProject'
 import type { IpcRendererEvent } from 'electron'
 import type { RunApi } from '@shared/types/runEvents'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
-import type { DeviceSettings, DeviceSettingsChange } from '@shared/types/deviceSettings'
+import type {
+  DeviceSettings,
+  DeviceSettingsChange,
+  MobileReady
+} from '@shared/types/deviceSettings'
 
 /** Live-run methods (startRun, cancelRun, getActiveRun, getRunDefaults, onRunEvent) come from RunApi. */
 export interface WindowApi extends RunApi {
@@ -106,6 +110,7 @@ export interface WindowApi extends RunApi {
     projectPath: string,
     change: DeviceSettingsChange
   ) => Promise<{ ok: true } | { error: string }>
+  checkMobileReady: (projectPath: string) => Promise<MobileReady | { error: string }>
 
   // --- Test Execution ---
   runCommand: (command: string) => Promise<CommandType>
