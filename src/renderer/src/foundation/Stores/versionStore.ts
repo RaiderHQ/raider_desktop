@@ -7,7 +7,7 @@ export interface VersionStore {
 
 const MIN_VERSION = '2.0.0'
 
-const isVersionAtLeast = (version: string, minimum: string): boolean => {
+export const isVersionAtLeast = (version: string, minimum: string): boolean => {
   const [vMajor, vMinor, vPatch] = version.split('.').map(Number)
   const [mMajor, mMinor, mPatch] = minimum.split('.').map(Number)
   if (vMajor !== mMajor) return vMajor > mMajor

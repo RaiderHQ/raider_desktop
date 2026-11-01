@@ -4,6 +4,11 @@ import { goToNewProject, mockRubyReady } from './helpers/navigation'
 test.describe('New Project Page', () => {
   test.beforeEach(async ({ electronApp, page }) => {
     await goToNewProject(page)
+    // The gem version gates the Mobile app option; mockRubyReady's reload re-reads it
+    await electronApp.evaluate(async ({ ipcMain }) => {
+      ipcMain.removeHandler('run-command')
+      ipcMain.handle('run-command', async () => ({ success: true, output: 'Ruby Raider 3.12.0' }))
+    })
     await mockRubyReady(electronApp, page)
   })
 
@@ -29,26 +34,19 @@ test.describe('New Project Page', () => {
     await expect(input).toHaveValue('my_test_project')
   })
 
-  test('shows automation framework dropdown', async ({ page }) => {
-    await expect(page.getByText('Select your automation framework')).toBeVisible()
+  test('shows the Website / Mobile app choice', async ({ page }) => {
+    await expect(page.getByText('What are you testing?')).toBeVisible()
+    await expect(page.getByRole('radio', { name: 'Website' })).toBeChecked()
+    await expect(page.getByRole('radio', { name: 'Mobile app' })).toBeEnabled()
+    await expect(page.getByText('Watir')).toHaveCount(0)
   })
 
   test('shows test framework dropdown', async ({ page }) => {
     await expect(page.getByText('Select your test framework')).toBeVisible()
   })
 
-  test('automation dropdown has correct options', async ({ page }) => {
-    const automationSelect = page.locator('select').first()
-    const options = automationSelect.locator('option')
-    const optionTexts = await options.allTextContents()
-    expect(optionTexts).toContain('Selenium')
-    expect(optionTexts).toContain('Watir')
-    expect(optionTexts).not.toContain('Capybara')
-    expect(optionTexts).not.toContain('Appium')
-  })
-
   test('test framework dropdown has correct options', async ({ page }) => {
-    const testSelect = page.locator('select').nth(1)
+    const testSelect = page.locator('select').first()
     const options = testSelect.locator('option')
     const optionTexts = await options.allTextContents()
     expect(optionTexts).toContain('Rspec')
@@ -111,23 +109,37 @@ test.describe('New Project Page', () => {
     await expect(page).toHaveURL(/#\/overview/)
   })
 
-  test('all automation framework options can be selected', async ({ page }) => {
-    const automationSelect = page.locator('select').first()
-    const frameworks = ['Selenium', 'Watir']
-
-    for (const fw of frameworks) {
-      await automationSelect.selectOption(fw)
-      await expect(automationSelect).toHaveValue(fw)
-    }
-  })
-
   test('all test framework options can be selected', async ({ page }) => {
-    const testSelect = page.locator('select').nth(1)
+    const testSelect = page.locator('select').first()
     const frameworks = ['Rspec', 'Cucumber']
 
     for (const fw of frameworks) {
       await testSelect.selectOption(fw)
       await expect(testSelect).toHaveValue(fw)
     }
+  })
+
+  test('Mobile app creation sends the chosen phone platform', async ({ electronApp, page }) => {
+    await electronApp.evaluate(async ({ ipcMain }) => {
+      ipcMain.removeHandler('select-folder')
+      ipcMain.handle('select-folder', async () => '/mock/folder')
+      ipcMain.removeHandler('run-ruby-raider')
+      ipcMain.handle('run-ruby-raider', async (_event, ...args) => {
+        ;(globalThis as Record<string, unknown>).__raiderArgs = args
+        return { success: true, output: 'Project created successfully' }
+      })
+    })
+
+    await page.getByRole('radio', { name: 'Mobile app' }).click()
+    await page.getByRole('radio', { name: 'Android' }).click()
+    await page.getByPlaceholder('Enter project name').fill('mobile_project')
+    await page.getByRole('button', { name: 'Create', exact: true }).click()
+
+    await expect(page).toHaveURL(/#\/overview/)
+    const args = await electronApp.evaluate(
+      () => (globalThis as Record<string, unknown>).__raiderArgs as unknown[]
+    )
+    expect(args[5]).toBe('android')
+    expect(args[6]).toEqual({ accessibility: false, ci: 'github', examples: true })
   })
 })

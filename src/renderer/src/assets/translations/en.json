@@ -43,20 +43,32 @@
       "placeholder": "Enter project name"
     },
     "question": {
-      "automation": "Select your automation framework",
-      "mobile": "Select your mobile platform",
+      "target": "What are you testing?",
+      "phones": "Which phones?",
       "test": "Select your test framework"
     },
     "ci": {
       "label": "CI provider",
       "github": "GitHub Actions",
-      "azure": "Azure Pipelines"
+      "azure": "Azure Pipelines",
+      "mobileAzure": "Azure Pipelines isn't available for mobile projects yet."
+    },
+    "target": {
+      "web": "Website",
+      "mobile": "Mobile app",
+      "mobileNeedsUpdate": "Mobile apps need Ruby Raider 3.12 or later. Update Ruby Raider, then come back to this page."
+    },
+    "phones": {
+      "ios": "iPhone (iOS)",
+      "android": "Android",
+      "both": "Both"
     },
     "addons": {
       "title": "Add-ons",
       "accessibility": "Accessibility testing (axe)",
       "accessibilityHelp": "Adds axe-core for automated accessibility checks",
-      "disabledMobile": "Add-ons are not available for mobile (Appium) projects"
+      "examples": "Include example tests",
+      "examplesHelp": "Sample tests you can run straight away. Turn off for an empty project."
     },
     "versionWarning": "Your Ruby version may not be compatible with Ruby Raider v3"
   },
