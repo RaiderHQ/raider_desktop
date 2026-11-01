@@ -94,6 +94,22 @@ describe('SavedLogins', () => {
     expect(rows[2].textContent).toContain('yesterday')
   })
 
+  it('says saved just now under a minute, and for a time in the future', async () => {
+    listSavedLogins.mockResolvedValue(
+      result([
+        login({ name: 'a', savedAt: '2026-11-01T11:59:30Z' }),
+        login({ name: 'b', savedAt: '2026-11-01T12:05:00Z' })
+      ])
+    )
+    render(<SavedLogins />)
+    const rows = await screen.findAllByTestId('saved-login-row')
+    for (const row of rows) {
+      expect(row.textContent).toContain('logins.savedJustNow')
+      expect(row.textContent).not.toContain('now"')
+    }
+    expect(en.logins.savedJustNow).toBe('Saved just now')
+  })
+
   it('shows no age or site when they are null or unparseable', async () => {
     listSavedLogins.mockResolvedValue(
       result([

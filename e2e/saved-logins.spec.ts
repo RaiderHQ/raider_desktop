@@ -34,11 +34,8 @@ test.beforeEach(async ({ electronApp, page }) => {
 
   // The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
   await mockRubyReady(electronApp, page)
+  // No waiting for activation: main's handlers wait for it, so the Dashboard can open at once
   await setupProjectContext(page, { projectPath })
-  // Main has activated the project once the renderer has its layout
-  await page.waitForFunction(
-    () => (window as any).__TEST_STORES__?.projectStore?.getState().layout !== null
-  )
 })
 
 test.afterEach(() => {

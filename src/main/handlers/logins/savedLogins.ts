@@ -1,4 +1,6 @@
-import { lstat, readdir, readFile, realpath, unlink } from 'fs/promises'
+import { constants } from 'fs'
+import { open, readdir, readFile, realpath, unlink } from 'fs/promises'
+import type { FileHandle } from 'fs/promises'
 import { join, sep } from 'path'
 import yaml from 'js-yaml'
 import type { SavedLogin, SavedLoginsResult } from '@shared/types/savedLogins'
@@ -11,6 +13,9 @@ import { safeWarn } from '../../utils/safeLog'
 const LOGIN_FILE = /^[a-z0-9_-]+\.json$/
 const LOGIN_NAME = /^[a-z0-9_-]+$/
 const DEFAULT_MAX_AGE = 3600
+const MAX_LOGIN_BYTES = 10 * 1024 * 1024
+// No following a symlinked file, and no blocking on a FIFO
+const READ_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK
 const FORGET_ERROR = 'The saved login could not be removed.'
 
 const isMissing = (error: unknown): boolean => (error as NodeJS.ErrnoException)?.code === 'ENOENT'
@@ -104,20 +109,29 @@ function toSavedLogin(
   return login
 }
 
+/** The login's fields; null when unreadable as a login (too big or not JSON); undefined to skip it */
 async function readLogin(authDir: string, file: string): Promise<LoginFields | null | undefined> {
-  const path = join(authDir, file)
+  let handle: FileHandle | undefined
   try {
-    if (!(await lstat(path)).isFile()) return undefined
-    return pickFields(await readFile(path, 'utf-8'))
+    handle = await open(join(authDir, file), READ_FLAGS)
+    const stats = await handle.stat()
+    if (!stats.isFile()) return undefined
+    if (stats.size > MAX_LOGIN_BYTES) return null
+    return pickFields(await handle.readFile('utf8'))
   } catch (error) {
-    if (!isMissing(error)) safeWarn(`Could not read saved login ${file}`)
+    const code = (error as NodeJS.ErrnoException)?.code
+    if (code !== 'ENOENT' && code !== 'ELOOP') safeWarn(`Could not read saved login ${file}`)
     return undefined
+  } finally {
+    await handle?.close().catch(() => undefined)
   }
 }
 
+/** False only when Gemfile.lock lists a ruby_raider too old to save logins; unknown counts as supported */
 async function gemSupportsLogins(projectPath: string): Promise<boolean> {
   const lock = await readFile(join(projectPath, 'Gemfile.lock'), 'utf-8').catch(() => '')
-  return supportsLoginReuse(rubyRaiderVersion(lock))
+  const version = rubyRaiderVersion(lock)
+  return version === null || supportsLoginReuse(version)
 }
 
 export async function listSavedLogins(

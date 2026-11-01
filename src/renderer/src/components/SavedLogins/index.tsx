@@ -12,12 +12,15 @@ const DAY_MS = 24 * HOUR_MS
 
 const relativeFormat = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
 
-/** "2 days ago", using the largest unit of minutes, hours or days; null when the date is unusable */
-const ageOf = (savedAt: string | null): string | null => {
+/** Milliseconds since `savedAt`, never negative; null when the date is unusable */
+const elapsedSince = (savedAt: string | null): number | null => {
   if (!savedAt) return null
   const saved = Date.parse(savedAt)
-  if (Number.isNaN(saved)) return null
-  const elapsed = Math.max(0, Date.now() - saved)
+  return Number.isNaN(saved) ? null : Math.max(0, Date.now() - saved)
+}
+
+/** "2 days ago", using the largest unit of minutes, hours or days */
+const ageOf = (elapsed: number): string => {
   if (elapsed < HOUR_MS) return relativeFormat.format(-Math.floor(elapsed / MINUTE_MS), 'minute')
   if (elapsed < DAY_MS) return relativeFormat.format(-Math.floor(elapsed / HOUR_MS), 'hour')
   return relativeFormat.format(-Math.floor(elapsed / DAY_MS), 'day')
@@ -65,7 +68,13 @@ const SavedLogins: React.FC = () => {
 
   const renderRow = (login: SavedLogin): JSX.Element => {
     const host = hostOf(login.origin)
-    const age = ageOf(login.savedAt)
+    const elapsed = elapsedSince(login.savedAt)
+    const saved =
+      elapsed === null
+        ? null
+        : elapsed < MINUTE_MS
+          ? t('logins.savedJustNow')
+          : t('logins.saved', { age: ageOf(elapsed) })
     return (
       <li
         key={login.name}
@@ -78,7 +87,7 @@ const SavedLogins: React.FC = () => {
             {login.known ? (
               <>
                 {host && <span>{host}</span>}
-                {age && <span>{t('logins.saved', { age })}</span>}
+                {saved && <span>{saved}</span>}
               </>
             ) : (
               <span>{t('logins.unknownFormat')}</span>

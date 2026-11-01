@@ -824,6 +824,7 @@
   "logins": {
     "title": "Saved logins",
     "saved": "Saved {{age}}",
+    "savedJustNow": "Saved just now",
     "expired": "Expired",
     "expiredAge": "Older than the login lifetime",
     "expiredSite": "Saved for a different site",

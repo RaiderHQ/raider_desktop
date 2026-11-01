@@ -10,7 +10,13 @@ vi.mock('fs/promises', async (importActual) => {
     }
     return actual.readFile(...args)
   }) as typeof actual.readFile
-  return { ...actual, readFile, default: { ...actual, readFile } }
+  const open = ((...args: Parameters<typeof actual.open>) => {
+    if (failRead.file && String(args[0]).endsWith(failRead.file)) {
+      return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
+    }
+    return actual.open(...args)
+  }) as typeof actual.open
+  return { ...actual, readFile, open, default: { ...actual, readFile, open } }
 })
 const safeLogMock = vi.hoisted(() => ({ safeLog: vi.fn(), safeError: vi.fn(), safeWarn: vi.fn() }))
 vi.mock('../../../src/main/utils/safeLog', () => safeLogMock)
@@ -100,7 +106,7 @@ describe('saved logins', () => {
   })
 
   it('lists nothing when there is no .raider/auth folder', async () => {
-    expect(await listSavedLogins(project, NOW)).toEqual({ logins: [], gemSupportsLogins: false })
+    expect(await listSavedLogins(project, NOW)).toEqual({ logins: [], gemSupportsLogins: true })
   })
 
   it('ignores names outside ^[a-z0-9_-]+\\.json$, .lock files and tmp files', async () => {
@@ -125,6 +131,21 @@ describe('saved logins', () => {
     const result = await listSavedLogins(project, NOW)
 
     expect(result.logins.map((l) => l.name)).toEqual(['admin'])
+    expect(safeLogMock.safeWarn).not.toHaveBeenCalled()
+  })
+
+  it('lists a file over 10 MB as unknown without reading it, and it can still be forgotten', async () => {
+    await seed('admin.json', login('admin'))
+    await seed('big.json', login('big', { padding: 'x'.repeat(10 * 1024 * 1024) }))
+
+    const result = await listSavedLogins(project, NOW)
+
+    expect(result.logins).toEqual([
+      expect.objectContaining({ name: 'admin', known: true }),
+      { name: 'big', origin: null, savedAt: null, format: null, known: false, expired: false }
+    ])
+    expect(await forgetSavedLogin(project, 'big')).toEqual({ ok: true })
+    expect(await readdir(authDir())).toEqual(['admin.json'])
   })
 
   it('lists nothing when .raider/auth is a symlink out of the project', async () => {
@@ -242,6 +263,17 @@ describe('saved logins', () => {
 
     await writeFile(join(project, 'Gemfile.lock'), 'GEM\n  specs:\n    ruby_raider (3.10.2)\n')
     expect((await listSavedLogins(project, NOW)).gemSupportsLogins).toBe(false)
+  })
+
+  it('gives no update hint when the ruby_raider version is unknown', async () => {
+    expect((await listSavedLogins(project, NOW)).gemSupportsLogins).toBe(true)
+
+    await writeFile(join(project, 'Gemfile.lock'), 'GEM\n  specs:\n    rspec (3.13.0)\n')
+    expect((await listSavedLogins(project, NOW)).gemSupportsLogins).toBe(true)
+
+    await rm(join(project, 'Gemfile.lock'))
+    await mkdir(join(project, 'Gemfile.lock'))
+    expect((await listSavedLogins(project, NOW)).gemSupportsLogins).toBe(true)
   })
 
   it('forget deletes only <name>.json and keeps <name>.lock', async () => {
