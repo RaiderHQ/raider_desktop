@@ -1,6 +1,8 @@
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import TestResultCard from '@components/TestResultCard'
 import '@testing-library/jest-dom'
+import { readFileSync } from 'fs'
+import { loadRaiderResults } from '@foundation/raiderResults'
 
 vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string) => string } => ({ t: (key: string): string => key })
@@ -138,5 +140,39 @@ describe('TestResultCard failure details', () => {
     expect(screen.queryByTestId('failure-details')).not.toBeInTheDocument()
     expect(screen.getByText('old msg')).toBeInTheDocument()
     expect(screen.getByText('testResults.viewScreenshot')).toBeInTheDocument()
+  })
+})
+
+describe('TestResultCard with a mobile (Appium) result', () => {
+  it('shows the mp4 video and no browser row', async () => {
+    const run = readFileSync('test/fixtures/results/mobile-run.json', 'utf8')
+    const rows = await loadRaiderResults('/proj', {
+      readDirectory: async () => [
+        { name: 'run.json', type: 'file', path: '/proj/raider-results/run.json' }
+      ],
+      readFile: async () => ({ success: true, data: run })
+    })
+    const row = rows!.find((r) => r.status === 'failed')!
+    render(
+      <TestResultCard
+        name={row.name}
+        status={row.status}
+        screenshot={row.screenshot}
+        video={row.video}
+        message={row.statusDetails?.message}
+        failure={row.failure}
+        durationMs={row.durationMs}
+        browser={row.browser}
+        projectPath="/proj"
+      />
+    )
+    fireEvent.click(screen.getByText('Login rejects a wrong password'))
+    const video = screen.getByTestId('result-video')
+    expect(video.getAttribute('src')).toBe(
+      `raider-media://file/${encodeURIComponent('/proj/raider-results/attachments/0-video.mp4')}`
+    )
+    expect(screen.getByTestId('failure-details')).toBeInTheDocument()
+    expect(screen.getByText(/6100 ms/)).toBeInTheDocument()
+    expect(screen.queryByText(/chrome|firefox|safari|browser/i)).not.toBeInTheDocument()
   })
 })

@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "client_run_id": "mobile-fixture",
+  "run": {
+    "finished_at": "2026-11-01T10:00:00Z",
+    "environment": {}
+  },
+  "results": [
+    {
+      "identifier": "spec/login_spec.rb:5",
+      "full_name": "Login signs in with a valid account",
+      "file_path": "spec/login_spec.rb",
+      "line_number": 5,
+      "status": "passed",
+      "duration_ms": 4200,
+      "attachments": []
+    },
+    {
+      "identifier": "spec/login_spec.rb:12",
+      "full_name": "Login rejects a wrong password",
+      "file_path": "spec/login_spec.rb",
+      "line_number": 12,
+      "status": "failed",
+      "duration_ms": 6100,
+      "failure": {
+        "message": "element with accessibility id 'error-banner' not found",
+        "exception_class": "Selenium::WebDriver::Error::NoSuchElementError",
+        "backtrace": ["spec/login_spec.rb:14:in `block (2 levels) in <top (required)>'"],
+        "app_frame": "spec/login_spec.rb:14:in `block (2 levels) in <top (required)>'"
+      },
+      "attachments": [
+        { "name": "screenshot", "content_type": "image/png", "path": "attachments/0-screenshot.png" },
+        { "name": "video", "content_type": "video/mp4", "path": "attachments/0-video.mp4" }
+      ]
+    }
+  ]
+}
