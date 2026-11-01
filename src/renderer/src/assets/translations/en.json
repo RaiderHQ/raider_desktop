@@ -121,7 +121,6 @@
     "section": {
       "baseUrl": "Base Url",
       "browser": "Browser",
-      "appiumSettings": "Appium Settings",
       "timeout": "Timeout",
       "viewport": "Viewport",
       "browserOptions": "Browser Options",
@@ -141,14 +140,11 @@
     },
     "updateUrlButton": "Update URL",
     "updateBrowserButton": "Update Browser",
-    "updateMobileSettingsButton": "Update Settings",
     "updating": "Updating...",
     "error": {
       "browserUpdateFailed": "Failed to update browser. Please try again.",
       "urlUpdateFailed": "Failed to update browser URL. Please try again.",
-      "unexpected": "An unexpected error occurred. Please try again.",
-      "mobileUrlUpdateFailed": "Failed to update Appium URL. Please try again.",
-      "mobileCapabilitiesUpdateFailed": "Failed to update mobile settings. Please try again."
+      "unexpected": "An unexpected error occurred. Please try again."
     },
     "urlUpdateSuccess": "URL successfully updated!",
     "browserUpdateSuccess": "Browser successfully updated!",

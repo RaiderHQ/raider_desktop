@@ -109,21 +109,28 @@ export function writeDeviceFields(capsText: string, block: BlockKey, edit: Devic
   for (const [key, value] of entries) {
     const quoted = `'${value.replace(/'/g, "''")}'`
     const end = lastChildLine(all, at)
+    const cr = all[end === -1 ? at : end].endsWith('\r') ? '\r' : ''
+    if (end === -1) {
+      // An empty block: the key becomes its first child
+      all.splice(at + 1, 0, `${' '.repeat(indentOf(all[at]) + 2)}${key}: ${quoted}${cr}`)
+      continue
+    }
+    const first = all.slice(at + 1).findIndex((line) => !isBlank(line)) + at + 1
+    const childIndent = indentOf(all[first])
     const keyLine = new RegExp(`^(\\s*)${key}:(?:\\s|$)`)
+    // Only direct children, never a same-named key inside a deeper map
     let target = -1
-    for (let i = at + 1; i <= end; i++) {
-      if (!isBlank(all[i]) && keyLine.test(all[i])) {
+    for (let i = first; i <= end; i++) {
+      if (!isBlank(all[i]) && indentOf(all[i]) === childIndent && keyLine.test(all[i])) {
         target = i
         break
       }
     }
     if (target !== -1) {
-      const cr = all[target].endsWith('\r') ? '\r' : ''
-      all[target] = `${all[target].match(keyLine)![1]}${key}: ${quoted}${cr}`
+      all[target] =
+        `${' '.repeat(childIndent)}${key}: ${quoted}${all[target].endsWith('\r') ? '\r' : ''}`
     } else {
-      const first = all.slice(at + 1).findIndex((line) => !isBlank(line)) + at + 1
-      const cr = all[end].endsWith('\r') ? '\r' : ''
-      all.splice(end + 1, 0, `${' '.repeat(indentOf(all[first]))}${key}: ${quoted}${cr}`)
+      all.splice(end + 1, 0, `${' '.repeat(childIndent)}${key}: ${quoted}${cr}`)
     }
   }
   return all.join('\n')

@@ -236,6 +236,35 @@ describe('writeDeviceFields', () => {
   })
 })
 
+describe('writeDeviceFields edge cases', () => {
+  it('adds a key to an empty options block as its first child', () => {
+    const text = 'platformName: iOS\nappium:options:\n\nother: 1\n'
+    expect(writeDeviceFields(text, 'top', { app: 'a.app' })).toBe(
+      "platformName: iOS\nappium:options:\n  app: 'a.app'\n\nother: 1\n"
+    )
+  })
+
+  it('never edits a same-named key inside a deeper map', () => {
+    const text = [
+      'appium:options:',
+      '  extra:',
+      '    app: nested.apk',
+      '  deviceName: Pixel',
+      ''
+    ].join('\n')
+    expect(writeDeviceFields(text, 'top', { app: 'real.apk' })).toBe(
+      [
+        'appium:options:',
+        '  extra:',
+        '    app: nested.apk',
+        '  deviceName: Pixel',
+        "  app: 'real.apk'",
+        ''
+      ].join('\n')
+    )
+  })
+})
+
 describe('writeRunOn', () => {
   it('creates the file content when there is none', () => {
     expect(writeRunOn(null, 'android')).toBe('platform: android\n')

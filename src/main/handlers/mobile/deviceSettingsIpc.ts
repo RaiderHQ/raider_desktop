@@ -1,5 +1,6 @@
-import { readFile, writeFile, rename, rm } from 'fs/promises'
+import { readFile, writeFile, rename, rm, realpath, stat, chmod } from 'fs/promises'
 import { join, resolve } from 'path'
+import { safeError } from '../../utils/safeLog'
 import { appState } from '../appState'
 import { activationSettled } from '../project/setActiveProject'
 import {
@@ -34,16 +35,43 @@ async function readOptional(path: string): Promise<string | null> {
   }
 }
 
-/** Writes through a temp file in the same folder, so a crash never leaves a half-written file */
+let tempCounter = 0
+
+/**
+ * Writes through a temp file in the same folder, so a crash never leaves a half-written file.
+ * A symlinked file is written at its target, and the file keeps its mode.
+ */
 async function writeAtomic(path: string, text: string): Promise<void> {
-  const temp = `${path}.${process.pid}.tmp`
+  let target = path
+  let mode: number | undefined
+  try {
+    target = await realpath(path)
+    mode = (await stat(target)).mode & 0o7777
+  } catch (error) {
+    if (!isMissing(error)) throw error
+  }
+  const temp = `${target}.${process.pid}.${tempCounter++}.tmp`
   try {
     await writeFile(temp, text)
-    await rename(temp, path)
+    if (mode !== undefined) await chmod(temp, mode)
+    await rename(temp, target)
   } catch (error) {
     await rm(temp, { force: true })
     throw error
   }
+}
+
+// Saves run one after another per file, so overlapping edits never read the same text
+const saveQueues = new Map<string, Promise<unknown>>()
+
+function serialized<T>(key: string, task: () => Promise<T>): Promise<T> {
+  const run = (saveQueues.get(key) ?? Promise.resolve()).then(task)
+  const tail = run.catch(() => undefined)
+  saveQueues.set(key, tail)
+  void tail.then(() => {
+    if (saveQueues.get(key) === tail) saveQueues.delete(key)
+  })
+  return run
 }
 
 /** 'get-device-settings': the device fields of each platform block, and which one runs */
@@ -65,7 +93,8 @@ export async function getDeviceSettingsHandler(
     if (!ios || !android) return { error: NO_DEVICE_SETTINGS }
     const config = await readOptional(join(project, 'config', 'config.yml'))
     return { platform, runOn: readRunOn(config), ios, android }
-  } catch {
+  } catch (error) {
+    safeError('get-device-settings failed:', error)
     return { error: NO_DEVICE_SETTINGS }
   }
 }
@@ -94,21 +123,29 @@ export async function saveDeviceSettingsHandler(
   const parsed = parseChange(change)
   if (!parsed) return { error: NOT_SAVED }
   try {
-    const capsPath = join(project, 'config', 'capabilities.yml')
-    const caps = await readOptional(capsPath)
-    const platform = caps === null ? null : detectMobilePlatform(caps)
-    if (caps === null || !platform) return { error: NOT_SAVED }
-    if ('runOn' in parsed) {
-      if (platform !== 'cross_platform') return { error: NOT_SAVED }
-      const configPath = join(project, 'config', 'config.yml')
-      await writeAtomic(configPath, writeRunOn(await readOptional(configPath), parsed.runOn))
-      return { ok: true }
-    }
-    // A single-platform file has only its top block; a cross-platform one only ios and android
-    if ((platform === 'cross_platform') === (parsed.block === 'top')) return { error: NOT_SAVED }
-    await writeAtomic(capsPath, writeDeviceFields(caps, parsed.block, parsed.edit))
-    return { ok: true }
-  } catch {
+    return await serialized(project, () => applyChange(project, parsed))
+  } catch (error) {
+    safeError('save-device-settings failed:', error)
     return { error: NOT_SAVED }
   }
+}
+
+async function applyChange(
+  project: string,
+  parsed: DeviceSettingsChange
+): Promise<{ ok: true } | { error: string }> {
+  const capsPath = join(project, 'config', 'capabilities.yml')
+  const caps = await readOptional(capsPath)
+  const platform = caps === null ? null : detectMobilePlatform(caps)
+  if (caps === null || !platform) return { error: NOT_SAVED }
+  if ('runOn' in parsed) {
+    if (platform !== 'cross_platform') return { error: NOT_SAVED }
+    const configPath = join(project, 'config', 'config.yml')
+    await writeAtomic(configPath, writeRunOn(await readOptional(configPath), parsed.runOn))
+    return { ok: true }
+  }
+  // A single-platform file has only its top block; a cross-platform one only ios and android
+  if ((platform === 'cross_platform') === (parsed.block === 'top')) return { error: NOT_SAVED }
+  await writeAtomic(capsPath, writeDeviceFields(caps, parsed.block, parsed.edit))
+  return { ok: true }
 }

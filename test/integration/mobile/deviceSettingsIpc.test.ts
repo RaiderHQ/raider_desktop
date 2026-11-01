@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtemp, mkdir, writeFile, readFile, readdir, rm } from 'fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, chmod, stat, symlink } from 'fs/promises'
 import { readFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -129,6 +129,39 @@ describe('save-device-settings', () => {
     await openProject(fixture('cross_platform-3.12.capabilities.yml'))
     expect(await saveDeviceSettingsHandler(project, { runOn: 'android' })).toEqual({ ok: true })
     expect(await readFile(configPath(), 'utf-8')).toBe('platform: android\n')
+  })
+
+  it('keeps both edits when saves overlap', async () => {
+    await openProject(fixture('ios-3.12.capabilities.yml'))
+    const results = await Promise.all([
+      saveDeviceSettingsHandler(project, { block: 'top', edit: { deviceName: 'One' } }),
+      saveDeviceSettingsHandler(project, { block: 'top', edit: { app: 'two.app' } }),
+      saveDeviceSettingsHandler(project, { block: 'top', edit: { platformVersion: '18' } })
+    ])
+    expect(results).toEqual([{ ok: true }, { ok: true }, { ok: true }])
+    expect(await getDeviceSettingsHandler(project)).toMatchObject({
+      ios: { deviceName: 'One', app: 'two.app', platformVersion: '18' }
+    })
+    expect(await readdir(join(project, 'config'))).toEqual(['capabilities.yml'])
+  })
+
+  it('keeps the file mode', async () => {
+    await openProject(fixture('ios-3.12.capabilities.yml'))
+    await chmod(capsPath(), 0o640)
+    await saveDeviceSettingsHandler(project, { block: 'top', edit: { app: 'x.app' } })
+    expect((await stat(capsPath())).mode & 0o777).toBe(0o640)
+  })
+
+  it('writes through a symlinked file to its target', async () => {
+    await openProject(null)
+    const real = join(project, 'real.yml')
+    await writeFile(real, fixture('ios-3.12.capabilities.yml'))
+    await symlink(real, capsPath())
+    expect(
+      await saveDeviceSettingsHandler(project, { block: 'top', edit: { app: 'x.app' } })
+    ).toEqual({ ok: true })
+    expect((await stat(capsPath())).isFile()).toBe(true)
+    expect(await readFile(real, 'utf-8')).toContain("app: 'x.app'")
   })
 
   it('refuses runOn on a single-platform project', async () => {
