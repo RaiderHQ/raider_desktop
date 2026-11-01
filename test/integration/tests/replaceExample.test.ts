@@ -24,6 +24,7 @@ const layout: ProjectLayout = {
   specPath: 'spec',
   featurePath: 'features',
   helperPath: 'helpers',
+  waitHelper: false,
   recordable: true
 }
 const steps: Step[] = [
@@ -299,5 +300,61 @@ describe.skipIf(!hasRuby)('replaceExample', () => {
         "\n  end\r\n  it 'b' do\n    y\n  end\nend\r\n"
     )
     expect(spawnSync('ruby', ['-c', join(project, FILE)]).status).toBe(0)
+  })
+})
+
+describe.skipIf(!hasRuby)('replaceExample in a project with the wait helper', () => {
+  beforeEach(async () => {
+    await mkdir(join(project, 'helpers'))
+    await writeFile(join(project, 'helpers', 'wait_helper.rb'), 'module WaitHelper; end\n')
+    await writeFile(
+      join(project, 'helpers', 'spec_helper.rb'),
+      'RSpec.configure do |config|\n  config.include WaitHelper\nend\n'
+    )
+  })
+
+  it('writes the helper form into a file that uses the driver helper', async () => {
+    await write([
+      "describe 'Shop' do",
+      "  it 'A' do",
+      "    driver.find_element(id: 'a').click",
+      '  end',
+      "  it 'B' do",
+      '    b',
+      '  end',
+      'end',
+      ''
+    ])
+    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
+    const out = (await read()).split('\n')
+    expect(out.slice(5, 7)).toEqual([
+      "    driver.navigate.to('https://x.test')",
+      "    click({ css: '#go' })"
+    ])
+    // The helper form never reads `wait`, so none is added
+    expect(out.some((l) => /\bwait\b/.test(l))).toBe(false)
+  })
+
+  it('keeps the old form in a file that drives @driver', async () => {
+    await write([
+      "describe 'Shop' do",
+      "  it 'A' do",
+      "    @driver.find_element(id: 'a').click",
+      '  end',
+      "  it 'B' do",
+      '    b',
+      '  end',
+      'end',
+      ''
+    ])
+    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
+    const body = steps.flatMap((s) =>
+      renderStep(s, layout.automation, { receiver: 'ivar' })
+        .split('\n')
+        .map((l) => '    ' + l)
+    )
+    const out = (await read()).split('\n')
+    expect(out[5]).toMatch(/^    @wait = Selenium::WebDriver::Wait\.new/)
+    expect(out.slice(6, 6 + body.length)).toEqual(body)
   })
 })

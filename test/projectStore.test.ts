@@ -152,6 +152,7 @@ describe('projectStore', () => {
       specPath: 'spec',
       featurePath: 'features',
       helperPath: 'helpers',
+      waitHelper: false,
       recordable: true
     })
 

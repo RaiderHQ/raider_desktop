@@ -168,6 +168,62 @@ describe('generateProjectSpecFile', () => {
     expect(generateProjectSpecFile(test, 'selenium', opts)).not.toContain('raider-steps')
   })
 
+  describe('waitHelper', () => {
+    const on = { ...opts, waitHelper: true }
+    const custom = (code: string): Step => ({ id: 'c', kind: 'custom', code })
+
+    it('drops the wait setup and uses the helper form (selenium)', () => {
+      const out = generateProjectSpecFile(test, 'selenium', on)
+      expect(out).not.toContain('let(:wait)')
+      expect(out).not.toContain('YAML.load_file')
+      expect(out).toContain('driver.navigate.to(')
+      expect(out).not.toContain('wait.until {')
+      expect(out).toContain('# Recorded with Raider.')
+      expect(out).toContain("require_relative '../helpers/spec_helper'")
+      expect(out).toContain('# rubocop:disable RSpec/ExampleLength, RSpec/MultipleExpectations')
+      expect(out).toMatch(/describe 'Checkout' do\n {2}it 'Checkout' do\n/)
+    })
+
+    it('keeps let(:wait) when custom code uses wait', () => {
+      const out = generateProjectSpecFile(
+        { name: 'Login', steps: [steps[0], custom('wait.until { true }')] },
+        'selenium',
+        on
+      )
+      expect(out).toContain('let(:wait) do')
+    })
+
+    it('drops let(:wait) when wait only appears in a string', () => {
+      const out = generateProjectSpecFile(
+        { name: 'Login', steps: [steps[0], custom("puts 'wait here'")] },
+        'selenium',
+        on
+      )
+      expect(out).not.toContain('let(:wait)')
+    })
+
+    it('is unchanged for watir', () => {
+      expect(generateProjectSpecFile(test, 'watir', on)).toBe(
+        generateProjectSpecFile(test, 'watir', opts)
+      )
+    })
+
+    it('is unchanged when off', () => {
+      expect(generateProjectSpecFile(test, 'selenium', { ...opts, waitHelper: false })).toBe(
+        generateProjectSpecFile(test, 'selenium', opts)
+      )
+    })
+
+    it.skipIf(!findRuby())('ruby -c accepts output', () => {
+      for (const steps of [test.steps, [custom('wait.until { true }')]]) {
+        const file = join(mkdtempSync(join(tmpdir(), 'proj-')), 'x_spec.rb')
+        writeFileSync(file, generateProjectSpecFile({ name: 'Checkout', steps }, 'selenium', on))
+        const r = spawnSync(findRuby()!, ['-c', file], { encoding: 'utf8' })
+        expect(r.stderr + r.stdout).toContain('Syntax OK')
+      }
+    })
+  })
+
   const ruby = findRuby()
   it.skipIf(!ruby)('ruby -c accepts output', () => {
     for (const automation of ['selenium', 'watir'] as const) {

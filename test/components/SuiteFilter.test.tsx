@@ -131,6 +131,7 @@ describe('SuiteFilter', () => {
         specPath: 'spec',
         featurePath: 'features',
         helperPath: 'helpers',
+        waitHelper: false,
         recordable: false,
         unsupportedReason: 'mobile'
       }
@@ -158,6 +159,7 @@ describe('SuiteFilter', () => {
         specPath: 'spec',
         featurePath: 'features',
         helperPath: 'helpers',
+        waitHelper: false,
         recordable: false,
         unsupportedReason: 'mobile'
       }

@@ -11,6 +11,8 @@ export interface ProjectLayout {
   featurePath: string
   /** Config `helper_path`, default 'helpers' */
   helperPath: string
+  /** True for selenium RSpec projects that ship and include Ruby Raider's WaitHelper (3.12+) */
+  waitHelper: boolean
   /** False for appium / minitest / capybara / no Gemfile */
   recordable: boolean
   unsupportedReason?: 'mobile' | 'minitest' | 'capybara' | 'noGemfile'

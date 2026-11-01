@@ -428,6 +428,7 @@ describe('fix round 1', () => {
     specPath: 'spec',
     featurePath: 'features',
     helperPath: 'helpers',
+    waitHelper: false,
     recordable: true
   } as const
 
@@ -532,6 +533,7 @@ describe('recorded tests no suite lists', () => {
     specPath: 'spec',
     featurePath: 'features',
     helperPath: 'helpers',
+    waitHelper: false,
     recordable: true
   } as const
   const NOT_IN_A_SUITE = 'Not in a suite'

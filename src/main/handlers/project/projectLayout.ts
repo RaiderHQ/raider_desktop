@@ -3,6 +3,7 @@ import { isAbsolute, join, normalize } from 'path'
 import yaml from 'js-yaml'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import { detectMobilePlatform } from '../mobile/capabilitiesFile'
+import { usesWaitHelper } from './waitHelperDetection'
 
 const DEFAULT_PATHS = { specPath: 'spec', featurePath: 'features', helperPath: 'helpers' }
 
@@ -53,6 +54,7 @@ export async function detectProjectLayout(projectPath: string): Promise<ProjectL
     framework: 'rspec',
     automation: 'selenium',
     ...paths,
+    waitHelper: false,
     recordable: true
   }
   if (gemfile === null) return { ...base, recordable: false, unsupportedReason: 'noGemfile' }
@@ -79,5 +81,11 @@ export async function detectProjectLayout(projectPath: string): Promise<ProjectL
   }
   if (has('minitest') && !has('rspec') && !has('cucumber')) return unsupported('minitest')
   if (has('capybara')) return unsupported('capybara')
-  return { ...base, framework, automation: has('watir') ? 'watir' : 'selenium' }
+  const automation = has('watir') ? 'watir' : 'selenium'
+  const waitHelper = await usesWaitHelper(projectPath, {
+    automation,
+    framework,
+    helperPath: paths.helperPath
+  })
+  return { ...base, framework, automation, waitHelper }
 }

@@ -96,6 +96,7 @@ describe('run-test / run-suite, mobile projects', () => {
       specPath: 'spec',
       featurePath: 'features',
       helperPath: 'helpers',
+      waitHelper: false,
       recordable: false,
       unsupportedReason: 'mobile'
     }
