@@ -18,6 +18,9 @@ test.beforeEach(async ({ electronApp, page }) => {
   projectPath = realpathSync(mkdtempSync(join(tmpdir(), 'raider-saved-logins-')))
   mkdirSync(join(projectPath, 'config'))
   writeFileSync(join(projectPath, 'config', 'config.yml'), 'url: https://shop.example.com\n')
+  // ruby_raider 3.11 generates this helper; without it the Dashboard says how to get saved logins
+  mkdirSync(join(projectPath, 'helpers'))
+  writeFileSync(join(projectPath, 'helpers', 'session_state.rb'), 'class SessionState; end\n')
   mkdirSync(authDir(), { recursive: true })
   writeFileSync(
     join(authDir(), 'admin.json'),
@@ -75,8 +78,20 @@ test.describe('Saved logins', () => {
       .click()
 
     await expect(page.getByTestId('saved-login-row')).toHaveCount(0)
+    await expect(page.getByText('No saved logins yet.', { exact: false })).toBeVisible()
+    await expect(page.getByTestId('saved-logins-hint')).toHaveCount(0)
     expect(existsSync(join(authDir(), 'admin.json'))).toBe(false)
     expect(existsSync(join(authDir(), 'admin.lock'))).toBe(true)
+  })
+
+  test('a project made before saved logins says how to get them', async ({ page }) => {
+    rmSync(join(authDir(), 'admin.json'))
+    rmSync(join(projectPath, 'helpers', 'session_state.rb'))
+    await goToOverviewDashboard(page)
+
+    await expect(page.getByTestId('saved-logins-hint')).toHaveText(
+      'This project was made before saved logins. Recreate it with ruby_raider 3.11 or later to save logins.'
+    )
   })
 })
 

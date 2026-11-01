@@ -6,8 +6,11 @@ import type { SavedLoginsResult } from '@shared/types/savedLogins'
 /** 'list-saved-logins': the active project's saved logins, once activation has finished. */
 export async function listSavedLoginsHandler(): Promise<SavedLoginsResult> {
   await activationSettled()
-  const { projectPath } = appState
-  return projectPath ? listSavedLogins(projectPath) : { logins: [], gemSupportsLogins: false }
+  const { projectPath, layout } = appState
+  if (!projectPath) return { logins: [], unsupportedReason: null }
+  return listSavedLogins(projectPath, new Date(), {
+    mobile: layout?.unsupportedReason === 'mobile'
+  })
 }
 
 /** 'forget-saved-login' */

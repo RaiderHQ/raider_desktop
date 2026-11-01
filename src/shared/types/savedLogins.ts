@@ -11,7 +11,11 @@ export interface SavedLogin {
   expiredReason?: 'age' | 'site'
 }
 
+/** 'gem': ruby_raider is older than 3.11; 'helper': the project lacks helpers/session_state.rb */
+export type LoginsUnsupportedReason = 'gem' | 'helper'
+
 export interface SavedLoginsResult {
   logins: SavedLogin[]
-  gemSupportsLogins: boolean
+  /** Why the project cannot save logins; null when it can, or when it is not known to be unable */
+  unsupportedReason: LoginsUnsupportedReason | null
 }

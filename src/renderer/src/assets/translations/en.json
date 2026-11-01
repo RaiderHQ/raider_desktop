@@ -831,6 +831,7 @@
     "unknownFormat": "Saved login (unknown format)",
     "empty": "No saved logins yet. Tests that use a saved login keep it here after their first run.",
     "updateGem": "Update ruby_raider to 3.11 to save logins.",
+    "addHelper": "This project was made before saved logins. Recreate it with ruby_raider 3.11 or later to save logins.",
     "forgetConfirm": "Forget the saved login \"{{name}}\"? The next run logs in again.",
     "forget": "Forget"
   },

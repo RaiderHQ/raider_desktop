@@ -49,7 +49,7 @@ const SavedLogins: React.FC = () => {
     try {
       setData(await window.api.listSavedLogins())
     } catch {
-      setData({ logins: [], gemSupportsLogins: true })
+      setData({ logins: [], unsupportedReason: null })
     }
   }, [])
 
@@ -125,7 +125,11 @@ const SavedLogins: React.FC = () => {
       {data.logins.length === 0 ? (
         <div className="px-4 pb-4 text-xs text-neutral-mid">
           <p>{t('logins.empty')}</p>
-          {!data.gemSupportsLogins && <p className="mt-1">{t('logins.updateGem')}</p>}
+          {data.unsupportedReason && (
+            <p data-testid="saved-logins-hint" className="mt-1">
+              {t(data.unsupportedReason === 'gem' ? 'logins.updateGem' : 'logins.addHelper')}
+            </p>
+          )}
         </div>
       ) : (
         <ul className="divide-y divide-neutral-bdr">{data.logins.map(renderRow)}</ul>

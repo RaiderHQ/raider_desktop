@@ -1,9 +1,13 @@
 import { constants } from 'fs'
-import { open, readdir, readFile, realpath, unlink } from 'fs/promises'
+import { open, readdir, readFile, realpath, stat, unlink } from 'fs/promises'
 import type { FileHandle } from 'fs/promises'
 import { join, sep } from 'path'
 import yaml from 'js-yaml'
-import type { SavedLogin, SavedLoginsResult } from '@shared/types/savedLogins'
+import type {
+  LoginsUnsupportedReason,
+  SavedLogin,
+  SavedLoginsResult
+} from '@shared/types/savedLogins'
 import { rubyRaiderVersion, supportsLoginReuse } from './rubyRaiderVersion'
 import { safeWarn } from '../../utils/safeLog'
 
@@ -33,7 +37,8 @@ async function authDirFor(projectPath: string): Promise<string | null> {
 }
 
 interface ExpiryRules {
-  maxAgeSeconds: number
+  /** null when the gem cannot read login_state.max_age, so it treats every login as stale */
+  maxAgeSeconds: number | null
   siteOrigin: string | null
 }
 
@@ -47,6 +52,26 @@ const originOf = (url: unknown): string | null => {
   }
 }
 
+const DECIMAL_INTEGER = /^\s*[+-]?(0|[1-9]\d*)\s*$/
+
+/**
+ * login_state.max_age as the gem's session_state.rb reads it, `Integer(max_age || 3600)`:
+ * floats truncate, decimal strings count, and anything else or a non-positive age is null
+ */
+function maxAgeOf(config: Record<string, unknown>): number | null {
+  const loginState = config['login_state']
+  if (loginState === undefined || loginState === null) return DEFAULT_MAX_AGE
+  if (typeof loginState !== 'object' || Array.isArray(loginState)) return null
+  const value = (loginState as Record<string, unknown>)['max_age']
+  // Ruby's `||` falls back on nil and false alike
+  if (value === undefined || value === null || value === false) return DEFAULT_MAX_AGE
+  let seconds: number
+  if (typeof value === 'number') seconds = Math.trunc(value)
+  else if (typeof value === 'string' && DECIMAL_INTEGER.test(value)) seconds = Number(value)
+  else return null
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null
+}
+
 async function readExpiryRules(projectPath: string): Promise<ExpiryRules> {
   let config: Record<string, unknown> = {}
   try {
@@ -55,18 +80,7 @@ async function readExpiryRules(projectPath: string): Promise<ExpiryRules> {
   } catch {
     // missing or unparseable config: fall back to defaults
   }
-  const loginState = config['login_state']
-  const maxAge =
-    loginState && typeof loginState === 'object'
-      ? (loginState as Record<string, unknown>)['max_age']
-      : undefined
-  return {
-    maxAgeSeconds:
-      typeof maxAge === 'number' && Number.isFinite(maxAge) && maxAge > 0
-        ? maxAge
-        : DEFAULT_MAX_AGE,
-    siteOrigin: originOf(typeof config['url'] === 'string' ? config['url'] : config['base_url'])
-  }
+  return { maxAgeSeconds: maxAgeOf(config), siteOrigin: originOf(config['url']) }
 }
 
 type LoginFields = Pick<SavedLogin, 'origin' | 'savedAt' | 'format'>
@@ -98,8 +112,13 @@ function toSavedLogin(
     return { name, origin: null, savedAt: null, format: null, known: false, expired: false }
   }
   const login: SavedLogin = { name, ...fields, known: fields.format === 1, expired: false }
+  // Like the gem, a login is fresh only while younger than max_age
   const savedAt = fields.savedAt ? Date.parse(fields.savedAt) : NaN
-  if (!Number.isNaN(savedAt) && now.getTime() - savedAt > rules.maxAgeSeconds * 1000) {
+  if (
+    rules.maxAgeSeconds === null ||
+    Number.isNaN(savedAt) ||
+    now.getTime() - savedAt >= rules.maxAgeSeconds * 1000
+  ) {
     return { ...login, expired: true, expiredReason: 'age' }
   }
   const origin = originOf(fields.origin)
@@ -127,18 +146,29 @@ async function readLogin(authDir: string, file: string): Promise<LoginFields | n
   }
 }
 
-/** False only when Gemfile.lock lists a ruby_raider too old to save logins; unknown counts as supported */
-async function gemSupportsLogins(projectPath: string): Promise<boolean> {
+/**
+ * Why this project cannot save logins: 'gem' when Gemfile.lock lists a ruby_raider older than
+ * 3.11.0, 'helper' when it lacks the generated helpers/session_state.rb; null when it can, or
+ * for a mobile project, which never gets the helper
+ */
+async function loginsUnsupportedReason(
+  projectPath: string,
+  mobile: boolean
+): Promise<LoginsUnsupportedReason | null> {
+  if (mobile) return null
   const lock = await readFile(join(projectPath, 'Gemfile.lock'), 'utf-8').catch(() => '')
   const version = rubyRaiderVersion(lock)
-  return version === null || supportsLoginReuse(version)
+  if (version !== null && !supportsLoginReuse(version)) return 'gem'
+  const helper = await stat(join(projectPath, 'helpers', 'session_state.rb')).catch(() => null)
+  return helper?.isFile() ? null : 'helper'
 }
 
 export async function listSavedLogins(
   projectPath: string,
-  now: Date = new Date()
+  now: Date = new Date(),
+  { mobile = false }: { mobile?: boolean } = {}
 ): Promise<SavedLoginsResult> {
-  const supported = await gemSupportsLogins(projectPath)
+  const unsupportedReason = await loginsUnsupportedReason(projectPath, mobile)
   let authDir: string | null
   let files: string[]
   try {
@@ -146,9 +176,9 @@ export async function listSavedLogins(
     files = authDir ? await readdir(authDir) : []
   } catch {
     safeWarn('Could not list saved logins')
-    return { logins: [], gemSupportsLogins: supported }
+    return { logins: [], unsupportedReason }
   }
-  if (!authDir) return { logins: [], gemSupportsLogins: supported }
+  if (!authDir) return { logins: [], unsupportedReason }
 
   const rules = await readExpiryRules(projectPath)
   const logins: SavedLogin[] = []
@@ -158,7 +188,7 @@ export async function listSavedLogins(
     logins.push(toSavedLogin(file.slice(0, -'.json'.length), fields, rules, now))
   }
   logins.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
-  return { logins, gemSupportsLogins: supported }
+  return { logins, unsupportedReason }
 }
 
 export async function forgetSavedLogin(

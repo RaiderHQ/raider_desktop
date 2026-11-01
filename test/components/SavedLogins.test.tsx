@@ -36,10 +36,10 @@ const modal = (): HTMLElement => document.getElementById('confirm-modal-overlay'
 const listSavedLogins = vi.fn()
 const forgetSavedLogin = vi.fn()
 
-const result = (logins: SavedLogin[], gemSupportsLogins = true): SavedLoginsResult => ({
-  logins,
-  gemSupportsLogins
-})
+const result = (
+  logins: SavedLogin[],
+  unsupportedReason: SavedLoginsResult['unsupportedReason'] = null
+): SavedLoginsResult => ({ logins, unsupportedReason })
 
 const finishedRun = (finishedAt: string, projectPath = '/p'): RunView =>
   ({
@@ -152,17 +152,28 @@ describe('SavedLogins', () => {
     expect(row.textContent).not.toContain('logins.saved')
   })
 
-  it('shows the empty state, plus the update hint when the gem is too old', async () => {
-    listSavedLogins.mockResolvedValue(result([], true))
-    const { unmount } = render(<SavedLogins />)
-    expect(await screen.findByText('logins.empty')).toBeInTheDocument()
-    expect(screen.queryByText('logins.updateGem')).not.toBeInTheDocument()
-    unmount()
-
-    listSavedLogins.mockResolvedValue(result([], false))
+  it('shows the empty state with no hint when the project can save logins', async () => {
+    listSavedLogins.mockResolvedValue(result([]))
     render(<SavedLogins />)
     expect(await screen.findByText('logins.empty')).toBeInTheDocument()
-    expect(screen.getByText('logins.updateGem')).toBeInTheDocument()
+    expect(screen.queryByTestId('saved-logins-hint')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['gem', 'logins.updateGem'],
+    ['helper', 'logins.addHelper']
+  ] as const)('shows the %s hint with the empty state', async (reason, key) => {
+    listSavedLogins.mockResolvedValue(result([], reason))
+    render(<SavedLogins />)
+    expect(await screen.findByText('logins.empty')).toBeInTheDocument()
+    expect(screen.getByTestId('saved-logins-hint')).toHaveTextContent(key)
+  })
+
+  it('words the hints in en.json', () => {
+    expect(en.logins.updateGem).toBe('Update ruby_raider to 3.11 to save logins.')
+    expect(en.logins.addHelper).toBe(
+      'This project was made before saved logins. Recreate it with ruby_raider 3.11 or later to save logins.'
+    )
   })
 
   it('Forget asks first, then forgets and reloads on confirm', async () => {
