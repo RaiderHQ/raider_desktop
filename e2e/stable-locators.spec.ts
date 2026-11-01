@@ -108,9 +108,12 @@ test('a recorded page gets stable locators, and each step says how it was found'
   // A generated id (:r1:) changes between loads, so it is never used
   await expect(foundBy.nth(4)).not.toHaveText('Found by id')
   await expect(foundBy.nth(4)).toHaveText('Found by CSS')
-  // Two identical Delete buttons: neither their role nor their text tells them apart
+  // Two identical Delete buttons: neither their role nor their text tells them apart, so
+  // each falls back to a position-based pick that is flagged as fragile
   for (const i of [5, 6]) {
     await expect(foundBy.nth(i)).not.toHaveText(/role|text/)
+    await expect(foundBy.nth(i)).toHaveText(/^Found by (CSS|XPath)/)
+    await expect(foundBy.nth(i).locator('..').getByTestId('step-weak-locator')).toBeVisible()
   }
 
   // The Selenium code finds Save by its role and name
