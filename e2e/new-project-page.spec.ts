@@ -73,7 +73,7 @@ test.describe('New Project Page', () => {
       page.getByRole('heading', { name: 'Create a New Project', exact: true })
     ).toBeVisible()
     await expect(
-      page.getByText('Choose your automation framework (Selenium is the most common')
+      page.getByText("Give your project a name, choose whether you're testing a website or a mobile app")
     ).toBeVisible()
   })
 

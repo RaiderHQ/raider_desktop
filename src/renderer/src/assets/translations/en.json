@@ -726,7 +726,7 @@
     },
     "createProject": {
       "title": "Create a New Project",
-      "message": "Choose your automation framework (Selenium is the most common for web apps), your test style (RSpec or Cucumber), and give your project a name.\n\nRuby Raider will generate a ready-to-use folder structure for you."
+      "message": "Give your project a name, choose whether you're testing a website or a mobile app, then pick how you want to write tests. RSpec suits people who write code; Cucumber uses plain-English steps.\n\nRuby Raider will generate a ready-to-use folder structure for you."
     },
     "landing": {
       "title": "Welcome to Ruby Raider",

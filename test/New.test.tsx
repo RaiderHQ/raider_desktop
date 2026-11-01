@@ -243,14 +243,58 @@ describe('CreateProject Page', (): void => {
     expect(screen.queryByText('newProject.target.mobileNeedsUpdate')).not.toBeInTheDocument()
   })
 
-  it('moves the selection with ArrowRight', async (): Promise<void> => {
-    await renderPage()
-    const web = screen.getByRole('radio', { name: 'newProject.target.web' })
-    expect(web).toHaveAttribute('aria-checked', 'true')
-    fireEvent.keyDown(web, { key: 'ArrowRight' })
-    expect(screen.getByRole('radio', { name: 'newProject.target.mobile' })).toHaveAttribute(
-      'aria-checked',
-      'true'
-    )
+  describe('target keyboard navigation', () => {
+    const radio = (name: string): HTMLElement => screen.getByRole('radio', { name })
+    const web = (): HTMLElement => radio('newProject.target.web')
+    const mobile = (): HTMLElement => radio('newProject.target.mobile')
+
+    it('moves the selection with ArrowRight and ArrowLeft', async (): Promise<void> => {
+      await renderPage()
+      expect(web()).toHaveAttribute('aria-checked', 'true')
+      fireEvent.keyDown(web(), { key: 'ArrowRight' })
+      expect(mobile()).toHaveAttribute('aria-checked', 'true')
+      fireEvent.keyDown(mobile(), { key: 'ArrowLeft' })
+      expect(web()).toHaveAttribute('aria-checked', 'true')
+    })
+
+    it('wraps at both ends', async (): Promise<void> => {
+      await renderPage()
+      fireEvent.keyDown(web(), { key: 'ArrowLeft' })
+      expect(mobile()).toHaveAttribute('aria-checked', 'true')
+      fireEvent.keyDown(mobile(), { key: 'ArrowRight' })
+      expect(web()).toHaveAttribute('aria-checked', 'true')
+    })
+
+    it('jumps with Home and End', async (): Promise<void> => {
+      await renderPage()
+      fireEvent.keyDown(web(), { key: 'End' })
+      expect(mobile()).toHaveAttribute('aria-checked', 'true')
+      fireEvent.keyDown(mobile(), { key: 'Home' })
+      expect(web()).toHaveAttribute('aria-checked', 'true')
+    })
+
+    it('has exactly one tabbable radio', async (): Promise<void> => {
+      await renderPage()
+      const tabbableIn = (group: HTMLElement): number =>
+        Array.from(group.querySelectorAll('[role="radio"]')).filter(
+          (r) => r.getAttribute('tabindex') === '0'
+        ).length
+      expect(tabbableIn(screen.getByRole('radiogroup'))).toBe(1)
+      fireEvent.keyDown(web(), { key: 'ArrowRight' })
+      const groups = screen.getAllByRole('radiogroup')
+      expect(groups).toHaveLength(2)
+      groups.forEach((group) => expect(tabbableIn(group)).toBe(1))
+    })
+
+    it('keeps Website selected on ArrowRight when Mobile app is disabled', async (): Promise<void> => {
+      versionState.version = '3.11.0'
+      await renderPage()
+      fireEvent.keyDown(web(), { key: 'ArrowRight' })
+      expect(web()).toHaveAttribute('aria-checked', 'true')
+      expect(mobile()).toHaveAttribute('tabindex', '-1')
+      expect(screen.getByRole('radiogroup')).toHaveAccessibleDescription(
+        'newProject.target.mobileNeedsUpdate'
+      )
+    })
   })
 })

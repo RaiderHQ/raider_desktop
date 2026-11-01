@@ -41,6 +41,12 @@ function SegmentedControl<T extends string>({
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
       event.preventDefault()
       move(index, 1)
+    } else if (event.key === 'Home') {
+      event.preventDefault()
+      move(-1, 1)
+    } else if (event.key === 'End') {
+      event.preventDefault()
+      move(options.length, -1)
     } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
       event.preventDefault()
       move(index, -1)
@@ -55,6 +61,7 @@ function SegmentedControl<T extends string>({
       <div
         role="radiogroup"
         aria-label={label}
+        aria-describedby={options.find((o) => o.disabled && o.describedBy)?.describedBy}
         data-testid={testId}
         className="inline-flex rounded-md border border-neutral-bdr bg-white p-1 gap-1"
       >
@@ -71,7 +78,7 @@ function SegmentedControl<T extends string>({
               aria-checked={selected}
               aria-disabled={option.disabled || undefined}
               aria-describedby={option.describedBy}
-              tabIndex={selected || option.disabled ? 0 : -1}
+              tabIndex={selected ? 0 : -1}
               onClick={() => !option.disabled && onChange(option.value)}
               onKeyDown={(e) => handleKeyDown(e, index)}
               className={`px-4 py-2 text-sm rounded transition-colors focus:outline-none focus:ring-2 focus:ring-ruby ${
