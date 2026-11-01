@@ -7,12 +7,21 @@ import type { Step } from '@shared/types/step'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
-import type { PrepareSuiteRunResult, PrepareTestRunResult } from '@shared/types/prepareRun'
+import type {
+  LegacyRunResult,
+  PrepareSuiteRunResult,
+  PrepareTestRunResult
+} from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { IpcRendererEvent } from 'electron'
 import type { RunApi } from '@shared/types/runEvents'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
+import type {
+  DeviceSettings,
+  DeviceSettingsChange,
+  MobileReady
+} from '@shared/types/deviceSettings'
 
 /** Live-run methods (startRun, cancelRun, getActiveRun, getRunDefaults, onRunEvent) come from RunApi. */
 export interface WindowApi extends RunApi {
@@ -97,21 +106,16 @@ export interface WindowApi extends RunApi {
     projectPath: string,
     browser: string
   ) => Promise<{ success: boolean; output?: string; error?: string }>
-  isMobileProject: (
-    projectPath: string
-  ) => Promise<{ success: boolean; isMobileProject?: boolean; error?: string }>
-  updateMobileCapabilities: (
+  getDeviceSettings: (projectPath: string) => Promise<DeviceSettings | { error: string }>
+  saveDeviceSettings: (
     projectPath: string,
-    capabilities: {
-      platformVersion: string
-      automationName: string
-      deviceName: string
-      app: string
-    }
-  ) => Promise<{ success: boolean; output?: string; error?: string }>
-  getMobileCapabilities: (
-    projectPath: string
-  ) => Promise<{ success: boolean; capabilities?: Record<string, unknown>; error?: string }>
+    change: DeviceSettingsChange
+  ) => Promise<{ ok: true } | { error: string }>
+  checkMobileReady: (projectPath: string) => Promise<MobileReady | { error: string }>
+  chooseAppFile: (
+    projectPath: string,
+    platform: 'ios' | 'android'
+  ) => Promise<{ path: string } | { cancelled: true } | { error: string }>
 
   // --- Test Execution ---
   runCommand: (command: string) => Promise<CommandType>
@@ -122,12 +126,12 @@ export interface WindowApi extends RunApi {
     projectPath: string,
     rubyCommand: string,
     test?: Test
-  ) => Promise<{ success: boolean; output: string }>
+  ) => Promise<LegacyRunResult>
   runSuite: (
     suiteId: string,
     projectPath: string,
     rubyCommand: string
-  ) => Promise<{ success: boolean; output: string }>
+  ) => Promise<LegacyRunResult>
   /** Saves `test` when needed and returns the spec file to run live; runs nothing */
   prepareTestRun: (suiteId: string, testId: string, test?: Test) => Promise<PrepareTestRunResult>
   /** Restores missing recorded files and returns the suite's spec files; runs nothing */
@@ -269,7 +273,6 @@ export interface WindowApi extends RunApi {
     }
     error?: string
   }>
-  startAppium: (projectPath: string) => Promise<CommandType>
 
   // --- Path Configuration ---
   updatePaths: (projectPath: string, pathValue: string, pathType?: string) => Promise<CommandType>

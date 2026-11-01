@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import useRecorderStore from '@foundation/Stores/recorderStore'
@@ -8,6 +8,7 @@ import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import { useRunStore } from '@foundation/Stores/runStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { UNLISTED_SUITE_ID } from '@shared/types/suite'
+import { MOBILE_NO_LEGACY } from '@shared/types/prepareRun'
 
 interface SuiteFilterProps {
   /** The suite whose tests are listed; null means all tests. */
@@ -24,9 +25,13 @@ const menuItem =
 const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
   const { t } = useTranslation()
   const suites = useRecorderStore((s) => s.suites)
-  const runActive = useRunStore((s) => s.isActive)
+  const runActive = useRunStore((s) => s.isActive || s.checking)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
   const runBusy = runActive || recorderRunning
+  // Suites can't run in a mobile project yet
+  const mobileProject = useProjectStore((s) => s.layout?.automation === 'appium')
+  const mobileNoteId = useId()
+  const mobileImportNoteId = useId()
   const [open, setOpen] = useState(false)
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState('')
@@ -79,7 +84,7 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
     setOpen(false)
     const cmd = useRubyStore.getState().rubyCommand
     const path = useProjectStore.getState().projectPath
-    if (!suite) return
+    if (!suite || useProjectStore.getState().layout?.automation === 'appium') return
     if (!cmd) {
       toast.error(t('recorder.noRuby'))
       return
@@ -113,6 +118,13 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
     setRunOutput(`Running suite: ${suite.name}...`)
     try {
       const result = await window.api.runSuite(suite.id, path || '', cmd)
+      // Main found the project is mobile before this page knew
+      if (result.code === MOBILE_NO_LEGACY) {
+        setRunResult(t('run.mobile.noLegacy'), false)
+        setIsOutputVisible(true)
+        toast.error(t('run.mobile.noLegacy'))
+        return
+      }
       setRunResult(result.output, result.success)
       setIsOutputVisible(true)
       if (result.success) toast.success(t('tests.suiteFilter.runPassed', { suite: suite.name }))
@@ -191,11 +203,17 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
           <button
             role="menuitem"
             className={menuItem}
-            disabled={!suite || runBusy}
+            disabled={!suite || runBusy || mobileProject}
+            aria-describedby={mobileProject ? mobileNoteId : undefined}
             onClick={runSuite}
           >
             {t('tests.suiteFilter.run')}
           </button>
+          {mobileProject && (
+            <p id={mobileNoteId} className="px-3 pb-1.5 text-xs text-neutral-mid">
+              {t('suites.mobileUnavailable')}
+            </p>
+          )}
           <button
             role="menuitem"
             className={menuItem}
@@ -215,6 +233,9 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
           <button
             role="menuitem"
             className={menuItem}
+            disabled={mobileProject}
+            title={mobileProject ? t('tests.mobileNoImport') : undefined}
+            aria-describedby={mobileProject ? mobileImportNoteId : undefined}
             onClick={() =>
               act('import', 'Test', () => window.api.importTest(value ?? UNLISTED_SUITE_ID))
             }
@@ -224,10 +245,18 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
           <button
             role="menuitem"
             className={menuItem}
+            disabled={mobileProject}
+            title={mobileProject ? t('tests.mobileNoImport') : undefined}
+            aria-describedby={mobileProject ? mobileImportNoteId : undefined}
             onClick={() => act('import', 'Suite', () => window.api.importSuite())}
           >
             {t('tests.suiteFilter.importSuite')}
           </button>
+          {mobileProject && (
+            <p id={mobileImportNoteId} className="px-3 pb-1.5 text-xs text-neutral-mid">
+              {t('tests.mobileNoImport')}
+            </p>
+          )}
           <button
             role="menuitem"
             className={menuItem}

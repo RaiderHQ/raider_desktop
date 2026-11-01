@@ -12,10 +12,6 @@ async function openOverview(
 ): Promise<void> {
   await mockRubyReady(electronApp, page)
   await mockMainIPCCapture(electronApp, 'get-project-config', { success: true, config })
-  await mockMainIPCCapture(electronApp, 'is-mobile-project', {
-    success: true,
-    isMobileProject: false
-  })
   await mockMainIPCCapture(electronApp, 'read-directory', [])
   await enterMainLayout(electronApp, page, PROJECT)
   // The Overview opens on the Tests tab; the settings toolbar is on Files

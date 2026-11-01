@@ -27,10 +27,10 @@ test.describe('User Workflows', () => {
     await page.waitForTimeout(800)
 
     await page.getByPlaceholder('Enter project name').fill('test_automation_project')
-    const automationSelect = page.locator('select').first()
-    await automationSelect.selectOption('Watir')
+    await page.getByRole('radio', { name: 'Website' }).click()
+    await expect(page.getByRole('radio', { name: 'Website' })).toHaveAttribute('aria-checked', 'true')
 
-    const testSelect = page.locator('select').nth(1)
+    const testSelect = page.locator('select').first()
     await testSelect.selectOption('Cucumber')
 
     await expect(page.getByPlaceholder('Enter project name')).toHaveValue('test_automation_project')

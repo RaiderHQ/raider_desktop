@@ -1,0 +1,17 @@
+platformName: Android
+appium:options:
+  url: http://localhost:4723/wd/hub
+  platformVersion: '14'
+  automationName: UiAutomator2
+  deviceName: Pixel 8 API 34
+  app: app-release.apk
+
+browserstack:
+  platformName: Android
+  os_version: '9.0'
+  deviceName: Google Pixel 3
+  app: app: 
+  browserstack.user: 
+  browserstack.key: 
+  project: 'RaiderTestApp'
+  name: 'RaiderTestApp-Android'

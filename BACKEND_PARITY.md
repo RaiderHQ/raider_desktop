@@ -25,15 +25,15 @@ Key handler files:
 
 ### Supported Framework Combinations
 
-The gem creates web projects (Selenium, Watir) and mobile projects (Appium: iOS, Android, cross-platform) with RSpec or Cucumber. The desktop New Project screen creates **web projects only** (Selenium, Watir).
+The gem creates web projects (Selenium, Watir) and mobile projects (Appium: iOS, Android, cross-platform) with RSpec or Cucumber. The desktop New Project screen offers **Website** (Selenium) or **Mobile app** (Appium, needs gem 3.12+). Watir projects can still be opened, but not created from the desktop.
 
 | Automation | Frameworks | Desktop Status |
 |------------|-----------|----------------|
 | Selenium | Cucumber, RSpec | Supported |
-| Watir | Cucumber, RSpec | Supported |
-| Appium iOS (`ios`) | Cucumber, RSpec | Gem only (not offered on the New Project screen) |
-| Appium Android (`android`) | Cucumber, RSpec | Gem only (not offered on the New Project screen) |
-| Appium Cross-Platform (`cross_platform`) | Cucumber, RSpec | Gem only (not offered on the New Project screen) |
+| Watir | Cucumber, RSpec | Gem only (opens in the desktop; not offered on the New Project screen) |
+| Appium iOS (`ios`) | Cucumber, RSpec | Supported (Mobile app, gem 3.12+) |
+| Appium Android (`android`) | Cucumber, RSpec | Supported (Mobile app, gem 3.12+) |
+| Appium Cross-Platform (`cross_platform`) | Cucumber, RSpec | Supported (Mobile app, gem 3.12+) |
 
 ### CLI Flags for `raider new`
 
@@ -105,7 +105,7 @@ raider new project_name -p framework:rspec automation:selenium --accessibility
 | `raider u raid -p` | Run tests in parallel | **MISSING** | MEDIUM | Uses `parallel_rspec` / `parallel_cucumber` |
 | `raider u raid -o "--format doc"` | Pass extra test options | **PARTIAL** | LOW | Desktop may pass some options |
 | `raider u desktop` | Download Raider Desktop | N/A | — | Not needed in desktop app |
-| `raider u start_appium` | Start Appium server | Handler exists (`startAppium.ts`), no reachable UI | LOW | `pages/ProjectSettings` is not routed, so mobile capabilities and Start Appium have no UI today. |
+| `raider u start_appium` | Start Appium server | Not offered | — | The desktop doesn't start Appium. Before a mobile run it checks that Appium answers and asks the user to start it. Device settings (device, OS version, app file) are edited on the Files tab. |
 | `raider u video install\|status\|on\|off` | Manage failure video recording | **MISSING** | MEDIUM | `install` is not usable yet: every asset in `lib/ruby_raider/ffmpeg.rb` has `sha256: nil`, so it fails until the release and checksums exist. Use `RAIDER_FFMPEG_PATH`.  `status` shows which ffmpeg is used, `on`/`off` toggles `video.enabled` |
 
 ### Implementation for Desktop
@@ -156,7 +156,7 @@ Shipped: the `--accessibility` checkbox, the CI provider select, and component a
 
 ### LOW — Nice to have
 3. **Scaffold UI for `g scaffold`**
-4. **Mobile capabilities and Start Appium**: route or replace the unrouted ProjectSettings page
+4. ~~**Mobile capabilities and Start Appium**~~: shipped as Device settings on the Files tab; the desktop asks the user to start Appium instead of starting it
 5. **Viewport**: UI for the existing `updateViewport` handler
 6. **Platform**: `raider u platform` for cross-platform projects
 7. **Scaffold output path**: `--path` on individual generators

@@ -2,6 +2,7 @@ import { readFile } from 'fs/promises'
 import { isAbsolute, join, normalize } from 'path'
 import yaml from 'js-yaml'
 import type { ProjectLayout } from '@shared/types/projectLayout'
+import { detectMobilePlatform } from '../mobile/capabilitiesFile'
 
 const DEFAULT_PATHS = { specPath: 'spec', featurePath: 'features', helperPath: 'helpers' }
 
@@ -71,7 +72,11 @@ export async function detectProjectLayout(projectPath: string): Promise<ProjectL
     unsupportedReason: reason
   })
 
-  if (has('appium_lib')) return unsupported('mobile')
+  if (has('appium_lib')) {
+    const caps = await readOptional(join(projectPath, 'config', 'capabilities.yml'))
+    const mobilePlatform = (caps !== null && detectMobilePlatform(caps)) || undefined
+    return { ...unsupported('mobile'), automation: 'appium', mobilePlatform }
+  }
   if (has('minitest') && !has('rspec') && !has('cucumber')) return unsupported('minitest')
   if (has('capybara')) return unsupported('capybara')
   return { ...base, framework, automation: has('watir') ? 'watir' : 'selenium' }

@@ -10,9 +10,18 @@ import type { QuickProject } from '@shared/types/quickProject'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
-import type { PrepareSuiteRunResult, PrepareTestRunResult } from '@shared/types/prepareRun'
+import type {
+  LegacyRunResult,
+  PrepareSuiteRunResult,
+  PrepareTestRunResult
+} from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
+import type {
+  DeviceSettings,
+  DeviceSettingsChange,
+  MobileReady
+} from '@shared/types/deviceSettings'
 import type {
   ActiveRun,
   RunDefaults,
@@ -104,10 +113,6 @@ const api = {
     browser: string
   ): Promise<{ success: boolean; output?: string; error?: string }> =>
     ipcRenderer.invoke('update-browser-type', projectPath, browser),
-  isMobileProject: async (
-    projectPath: string
-  ): Promise<{ success: boolean; isMobileProject?: boolean; error?: string }> =>
-    ipcRenderer.invoke('is-mobile-project', projectPath),
   runCommand: async (command: string): Promise<CommandType> =>
     ipcRenderer.invoke('run-command', command),
   installGems: async (rubyCommand: string, gems: string[]): Promise<CommandType> =>
@@ -140,20 +145,20 @@ const api = {
     output?: string
     error?: string
   }> => ipcRenderer.invoke('install-rbenv-and-ruby'),
-  updateMobileCapabilities: async (
+  getDeviceSettings: async (projectPath: string): Promise<DeviceSettings | { error: string }> =>
+    ipcRenderer.invoke('get-device-settings', projectPath),
+  saveDeviceSettings: async (
     projectPath: string,
-    capabilities: {
-      platformVersion: string
-      automationName: string
-      deviceName: string
-      app: string
-    }
-  ): Promise<{ success: boolean; output?: string; error?: string }> =>
-    ipcRenderer.invoke('update-mobile-capabilities', projectPath, capabilities),
-  getMobileCapabilities: async (
-    projectPath: string
-  ): Promise<{ success: boolean; capabilities?: Record<string, unknown>; error?: string }> =>
-    ipcRenderer.invoke('get-mobile-capabilities', projectPath),
+    change: DeviceSettingsChange
+  ): Promise<{ ok: true } | { error: string }> =>
+    ipcRenderer.invoke('save-device-settings', projectPath, change),
+  checkMobileReady: async (projectPath: string): Promise<MobileReady | { error: string }> =>
+    ipcRenderer.invoke('check-mobile-ready', projectPath),
+  chooseAppFile: async (
+    projectPath: string,
+    platform: 'ios' | 'android'
+  ): Promise<{ path: string } | { cancelled: true } | { error: string }> =>
+    ipcRenderer.invoke('choose-app-file', projectPath, platform),
 
   // --- Recorder and Test Suite APIs ---
 
@@ -182,7 +187,7 @@ const api = {
     suiteId: string,
     projectPath: string,
     rubyCommand: string
-  ): Promise<{ success: boolean; output: string }> =>
+  ): Promise<LegacyRunResult> =>
     ipcRenderer.invoke('run-suite', suiteId, projectPath, rubyCommand),
   prepareTestRun: (suiteId: string, testId: string, test?: Test): Promise<PrepareTestRunResult> =>
     ipcRenderer.invoke('prepare-test-run', suiteId, testId, test),
@@ -287,7 +292,7 @@ const api = {
     projectPath: string,
     rubyCommand: string,
     test?: Test
-  ): Promise<{ success: boolean; output: string }> =>
+  ): Promise<LegacyRunResult> =>
     ipcRenderer.invoke('run-test', suiteId, testId, projectPath, rubyCommand, test),
   updateRecordingSettings: (
     settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
@@ -336,8 +341,6 @@ const api = {
     options: string[]
   ): Promise<CommandType> =>
     ipcRenderer.invoke('update-browser-options', projectPath, options),
-  startAppium: async (projectPath: string): Promise<CommandType> =>
-    ipcRenderer.invoke('start-appium', projectPath),
   updateHeadlessMode: async (
     projectPath: string,
     enabled: boolean

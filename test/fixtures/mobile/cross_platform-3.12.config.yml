@@ -1,0 +1,8 @@
+platform: :ios
+timeout: 10 # seconds that actions and eventually wait before failing
+
+video:
+  enabled: true
+  fps: 5
+  max_width: 1280
+

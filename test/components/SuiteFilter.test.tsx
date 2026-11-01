@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { useState } from 'react'
@@ -42,6 +42,8 @@ const api = {
   runSuite: vi.fn(),
   prepareSuiteRun: vi.fn(),
   startRun: vi.fn(),
+  // Main answers ok for a web project; the layout here is often not loaded yet
+  checkMobileReady: vi.fn().mockResolvedValue({ ok: true }),
   getRunDefaults: vi.fn(),
   importTest: vi.fn(),
   importSuite: vi.fn(),
@@ -105,7 +107,7 @@ beforeEach(() => {
   api.startRun.mockResolvedValue({ runId: 'r1' })
   api.getRunDefaults.mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 })
   useRunStore.setState({ run: null, origin: null, isActive: false })
-  useProjectStore.setState({ projectPath: null })
+  useProjectStore.setState({ projectPath: null, layout: null })
   api.importTest.mockResolvedValue({ success: true })
   api.importSuite.mockResolvedValue({ success: true })
   api.importProject.mockResolvedValue({ success: true })
@@ -118,6 +120,80 @@ beforeEach(() => {
 })
 
 describe('SuiteFilter', () => {
+  it('cannot run a suite in a mobile project, and says so', async () => {
+    useProjectStore.setState({ projectPath: '/p' })
+    await act(async () => {})
+    useProjectStore.setState({
+      layout: {
+        framework: 'rspec',
+        automation: 'appium',
+        mobilePlatform: 'ios',
+        specPath: 'spec',
+        featurePath: 'features',
+        helperPath: 'helpers',
+        recordable: false,
+        unsupportedReason: 'mobile'
+      }
+    })
+    useRecorderStore.setState({ suites })
+    render(<Harness initial="s1" />)
+    openMenu()
+    const run = screen.getByRole('menuitem', { name: 'Run suite' })
+    expect(run).toBeDisabled()
+    expect(screen.getByText("Suites aren't available for mobile projects yet.")).toBeInTheDocument()
+    fireEvent.click(run)
+    expect(api.runSuite).not.toHaveBeenCalled()
+    expect(api.prepareSuiteRun).not.toHaveBeenCalled()
+    expect(api.startRun).not.toHaveBeenCalled()
+  })
+
+  it('cannot import recorded tests into a mobile project, and says so', async () => {
+    useProjectStore.setState({ projectPath: '/p' })
+    await act(async () => {})
+    useProjectStore.setState({
+      layout: {
+        framework: 'rspec',
+        automation: 'appium',
+        mobilePlatform: 'android',
+        specPath: 'spec',
+        featurePath: 'features',
+        helperPath: 'helpers',
+        recordable: false,
+        unsupportedReason: 'mobile'
+      }
+    })
+    useRecorderStore.setState({ suites })
+    render(<Harness initial="s1" />)
+    openMenu()
+    for (const name of ['Import test', 'Import suite']) {
+      const item = screen.getByRole('menuitem', { name })
+      expect(item).toBeDisabled()
+      expect(item).toHaveAccessibleDescription("Mobile projects can't import recorded tests yet.")
+      expect(item).toHaveAttribute('title', "Mobile projects can't import recorded tests yet.")
+      fireEvent.click(item)
+    }
+    expect(api.importTest).not.toHaveBeenCalled()
+    expect(api.importSuite).not.toHaveBeenCalled()
+  })
+
+  it('says a mobile project cannot run recorded tests when main refuses the suite', async () => {
+    // The layout isn't loaded yet, so only main knows the project is mobile
+    api.runSuite.mockResolvedValue({
+      success: false,
+      output: 'refused',
+      code: 'mobileNoLegacy'
+    })
+    render(<Harness initial="s1" />)
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Run suite' }))
+    await waitFor(() =>
+      expect(mockToast.error).toHaveBeenCalledWith("Mobile projects can't run recorded tests yet.")
+    )
+    expect(useRunOutputStore.getState().runOutput).toBe(
+      "Mobile projects can't run recorded tests yet."
+    )
+  })
+
   it('lists All tests plus each suite and filters the rows by suite', () => {
     render(<Harness />)
     const select = screen.getByLabelText('Suite')

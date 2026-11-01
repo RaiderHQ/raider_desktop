@@ -5,6 +5,7 @@ import { safeExec } from '../../utils/safeExec'
 import { quoteShellArg } from '../../utils/shellQuote'
 import { generateRspecFile, toAutomation } from '../../codegen/testFile'
 import { migrateLegacyTest } from '../../codegen/legacy'
+import { mobileNoLegacyResult, type LegacyRunResult } from '../../../shared/types/prepareRun'
 
 interface RunRecordingState {
   savedTest: { id: string; name: string; url: string; steps: unknown[] } | null
@@ -24,10 +25,11 @@ interface RunRecordingState {
  */
 const runRecording = async (
   appState: RunRecordingState
-): Promise<{ success: boolean; output: string }> => {
+): Promise<LegacyRunResult> => {
   if (!appState.savedTest) {
     return { success: false, output: 'No test has been saved to run.' }
   }
+  if (appState.projectAutomation === 'appium') return mobileNoLegacyResult()
 
   const tempFilePath = path.join(os.tmpdir(), `test_${Date.now()}.rb`)
 

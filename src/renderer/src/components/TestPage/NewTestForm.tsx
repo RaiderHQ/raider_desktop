@@ -7,13 +7,20 @@ interface NewTestFormProps {
   onCancel: () => void
   /** Recording isn't possible in this project */
   disabled?: boolean
+  /** Why recording isn't possible, shown under the form */
+  disabledReason?: string
 }
 
 const field =
   'block w-full px-3 py-1 border border-neutral-bdr rounded text-sm focus:ring-ruby focus:border-ruby transition-colors'
 
 /** Names a new test and picks where its recording starts; nothing is saved until it stops. */
-const NewTestForm: React.FC<NewTestFormProps> = ({ onStart, onCancel, disabled = false }) => {
+const NewTestForm: React.FC<NewTestFormProps> = ({
+  onStart,
+  onCancel,
+  disabled = false,
+  disabledReason
+}) => {
   const { t } = useTranslation()
   const projectPath = useProjectStore((s) => s.projectPath)
   const [name, setName] = useState('')
@@ -73,6 +80,7 @@ const NewTestForm: React.FC<NewTestFormProps> = ({ onStart, onCancel, disabled =
         <button
           type="submit"
           disabled={!canStart}
+          title={disabled ? disabledReason : undefined}
           className="text-sm px-3 py-1.5 rounded bg-ruby text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {t('tests.startRecording')}
@@ -85,6 +93,7 @@ const NewTestForm: React.FC<NewTestFormProps> = ({ onStart, onCancel, disabled =
           {t('common.cancel')}
         </button>
       </div>
+      {disabled && disabledReason && <p className="text-xs text-neutral-mid">{disabledReason}</p>}
     </form>
   )
 }

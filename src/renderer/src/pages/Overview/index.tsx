@@ -16,6 +16,7 @@ import Tooltip from '@components/Tooltip'
 import TestsWorkspace from '@components/TestsWorkspace'
 import InfoButton from '@components/InfoButton'
 import RunPanel from '@components/RunPanel'
+import DeviceSettings from '@components/DeviceSettings'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { isEmptyRecording } from '../../hooks/useTestRecording'
@@ -36,6 +37,11 @@ const Overview: React.FC = () => {
   const { t } = useTranslation()
   const projectPath: string | null = useProjectStore((state) => state.projectPath)
   const files: FileNode[] = useProjectStore((state) => state.files)
+  const layout = useProjectStore((state) => state.layout)
+  // A mobile project has device settings in place of the browser ones; until the layout
+  // is known neither shows, so web values can't be saved into a mobile project
+  const isMobileProject = layout?.automation === 'appium'
+  const showWebSettings = layout !== null && !isMobileProject
   const navigate = useNavigate()
   const { testKey } = useParams()
   const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
@@ -61,11 +67,34 @@ const Overview: React.FC = () => {
   useEffect(() => {
     if (testKey) setActiveTab('tests')
   }, [testKey])
+
+  // "Open device settings" lands on the Files tab with the app file focused. The field mounts
+  // only once the settings load, so the ref focuses it then, or now if it's already there
+  const deviceFocusRequested = useRunStore((state) => state.deviceFocusRequested)
+  const deviceFocusEl = useRef<HTMLElement | null>(null)
+  const focusDevice = useCallback((): void => {
+    const el = deviceFocusEl.current
+    if (!el || !useRunStore.getState().deviceFocusRequested) return
+    el.focus()
+    useRunStore.getState().clearDeviceFocus()
+  }, [])
+  const deviceFocusRef = useCallback(
+    (el: HTMLElement | null): void => {
+      deviceFocusEl.current = el
+      focusDevice()
+    },
+    [focusDevice]
+  )
+  useEffect(() => {
+    if (!deviceFocusRequested) return
+    setActiveTab('files')
+    focusDevice()
+  }, [deviceFocusRequested, focusDevice])
   const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression'>('all')
 
   // Live run state
   const run = useRunStore((state) => state.run)
-  const runActive = useRunStore((state) => state.isActive)
+  const runActive = useRunStore((state) => state.isActive || state.checking)
   const freshLoginNext = useRunStore((state) => state.freshLoginNext)
   const setFreshLoginNext = useRunStore((state) => state.setFreshLoginNext)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
@@ -86,8 +115,7 @@ const Overview: React.FC = () => {
   const [selectedBrowser, setSelectedBrowser] = useState('chrome')
   const [headless, setHeadless] = useState(false)
 
-  // Project settings state (migrated from ProjectSettings)
-  const [isMobileProject, setIsMobileProject] = useState(false)
+  // Project settings state (migrated from the old settings page)
   const [timeout, setTimeout_] = useState(30)
 
   const [browserOptions, setBrowserOptions] = useState<string[]>([])
@@ -124,9 +152,14 @@ const Overview: React.FC = () => {
     }
   }, [projectPath, navigate])
 
-  // Load test settings from config files, falling back to localStorage
+  // Load test settings from config files, falling back to localStorage. A mobile project has none.
   useEffect(() => {
     if (!projectPath) return
+    if (isMobileProject) {
+      // Discards a web load that started before the layout said mobile
+      ++configRequestRef.current
+      return
+    }
     setConfigLoaded(false)
     const token = ++configRequestRef.current
     const isCurrent = (): boolean => token === configRequestRef.current
@@ -194,7 +227,7 @@ const Overview: React.FC = () => {
     void loadSettings().finally(() => {
       if (isCurrent()) setConfigLoaded(true)
     })
-  }, [projectPath])
+  }, [projectPath, isMobileProject])
 
   // A quick-record project lives in Raider's own folder until the user saves it somewhere
   const [isQuick, setIsQuick] = useState(false)
@@ -244,16 +277,6 @@ const Overview: React.FC = () => {
       setSaving(false)
     }
   }
-
-  // Detect mobile project
-  useEffect(() => {
-    if (!projectPath) return
-    window.api.isMobileProject(projectPath)
-      .then((result) => {
-        if (result.success) setIsMobileProject(result.isMobileProject || false)
-      })
-      .catch(() => {})
-  }, [projectPath])
 
   const handleUrlSave = async (): Promise<void> => {
     if (!projectPath) {
@@ -658,53 +681,67 @@ const Overview: React.FC = () => {
         <div className="relative w-full">
           {/* Test settings toolbar */}
           <div className="border border-neutral-bdr rounded-t-lg bg-neutral-50 px-4 py-3 space-y-2">
-            <Tooltip content={t('tooltips.overview.urlInput')} position="right" className="w-full">
-              <div className="flex items-center gap-2 w-full">
-                <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                  {t('overview.settings.urlLabel')}:
-                </label>
-                <input
-                  type="text"
-                  value={browserUrl}
-                  onChange={(e) => setBrowserUrl(e.target.value)}
-                  onBlur={handleUrlSave}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleUrlSave()
-                  }}
-                  placeholder={t('overview.settings.urlPlaceholder')}
-                  className="flex-1 border border-neutral-bdr rounded px-2 py-1 text-sm"
-                  data-testid="overview-url-input"
-                />
-              </div>
-            </Tooltip>
-            <div className="flex items-center gap-4 flex-wrap">
-              <Tooltip content={t('tooltips.overview.browserSelect')} position="right">
-                <div className="flex items-center gap-2">
+            {isMobileProject && projectPath && layout && (
+              <DeviceSettings
+                key={projectPath}
+                projectPath={projectPath}
+                layout={layout}
+                focusRef={deviceFocusRef}
+              />
+            )}
+            {showWebSettings && (
+              <Tooltip content={t('tooltips.overview.urlInput')} position="right" className="w-full">
+                <div className="flex items-center gap-2 w-full">
                   <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                    {t('overview.settings.browserLabel')}
+                    {t('overview.settings.urlLabel')}:
                   </label>
-                  <select
-                    value={selectedBrowser}
-                    onChange={handleBrowserChange}
-                    className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[160px]"
-                    data-testid="overview-browser-select"
-                  >
-                    <option value="chrome">{t('settings.browser.chrome')}</option>
-                    <option value="firefox">{t('settings.browser.firefox')}</option>
-                    {selectedBrowser !== 'chrome' && selectedBrowser !== 'firefox' && (
-                      <option value={selectedBrowser}>{selectedBrowser}</option>
-                    )}
-                  </select>
+                  <input
+                    type="text"
+                    value={browserUrl}
+                    onChange={(e) => setBrowserUrl(e.target.value)}
+                    onBlur={handleUrlSave}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleUrlSave()
+                    }}
+                    placeholder={t('overview.settings.urlPlaceholder')}
+                    className="flex-1 border border-neutral-bdr rounded px-2 py-1 text-sm"
+                    data-testid="overview-url-input"
+                  />
                 </div>
               </Tooltip>
-              <Tooltip content={t('tooltips.overview.headlessToggle')} position="right">
-                <ToggleSwitch
-                  label={t('overview.settings.headlessLabel')}
-                  checked={headless}
-                  onChange={handleHeadlessToggle}
-                  testId="overview-headless-toggle"
-                />
-              </Tooltip>
+            )}
+            <div className="flex items-center gap-4 flex-wrap">
+              {showWebSettings && (
+                <Tooltip content={t('tooltips.overview.browserSelect')} position="right">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                      {t('overview.settings.browserLabel')}
+                    </label>
+                    <select
+                      value={selectedBrowser}
+                      onChange={handleBrowserChange}
+                      className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[160px]"
+                      data-testid="overview-browser-select"
+                    >
+                      <option value="chrome">{t('settings.browser.chrome')}</option>
+                      <option value="firefox">{t('settings.browser.firefox')}</option>
+                      {selectedBrowser !== 'chrome' && selectedBrowser !== 'firefox' && (
+                        <option value={selectedBrowser}>{selectedBrowser}</option>
+                      )}
+                    </select>
+                  </div>
+                </Tooltip>
+              )}
+              {showWebSettings && (
+                <Tooltip content={t('tooltips.overview.headlessToggle')} position="right">
+                  <ToggleSwitch
+                    label={t('overview.settings.headlessLabel')}
+                    checked={headless}
+                    onChange={handleHeadlessToggle}
+                    testId="overview-headless-toggle"
+                  />
+                </Tooltip>
+              )}
               <Tooltip content={t('tooltips.overview.runMode')} position="right">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
@@ -733,12 +770,15 @@ const Overview: React.FC = () => {
                   {t('overview.settings.rerunFailed')}
                 </button>
               </Tooltip>
-              <ToggleSwitch
-                label={t('run.parallel')}
-                checked={runSettings.parallel}
-                onChange={(parallel) => updateRunSettings({ parallel })}
-                testId="overview-parallel-toggle"
-              />
+              {/* Appium drives one device, so a mobile project always runs one test at a time */}
+              {!isMobileProject && (
+                <ToggleSwitch
+                  label={t('run.parallel')}
+                  checked={runSettings.parallel}
+                  onChange={(parallel) => updateRunSettings({ parallel })}
+                  testId="overview-parallel-toggle"
+                />
+              )}
               <button
                 onClick={() => setMoreOptionsOpen((open) => !open)}
                 aria-expanded={moreOptionsOpen}
@@ -748,7 +788,7 @@ const Overview: React.FC = () => {
                 {moreOptionsOpen ? <FaChevronDown size={10} /> : <FaChevronRight size={10} />}
                 {t('run.moreOptions')}
               </button>
-              {!isMobileProject && (
+              {showWebSettings && (
                 <Tooltip content={t('tooltips.overview.timeout')} position="right">
                   <div className="flex items-center gap-2">
                     <label htmlFor="timeout-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
@@ -771,55 +811,62 @@ const Overview: React.FC = () => {
             </div>
             {moreOptionsOpen && (
               <div className="flex items-center gap-4 flex-wrap" data-testid="overview-more-options-panel">
-                <div className="flex items-center gap-2">
-                  <label htmlFor="workers-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                    {t('run.workers')}
-                  </label>
-                  <input
-                    type="number"
-                    id="workers-input"
-                    value={runSettings.workers ?? ''}
-                    onChange={(e) => {
-                      const value = e.target.valueAsNumber
-                      updateRunSettings({
-                        workers: Number.isFinite(value) && value >= 1 ? Math.floor(value) : null
-                      })
-                    }}
-                    min={1}
-                    max={runDefaults?.maxWorkers}
-                    placeholder={runDefaults ? String(runDefaults.recommendedWorkers) : undefined}
-                    className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
-                    data-testid="overview-workers-input"
-                  />
-                </div>
+                {!isMobileProject && (
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="workers-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                      {t('run.workers')}
+                    </label>
+                    <input
+                      type="number"
+                      id="workers-input"
+                      value={runSettings.workers ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.valueAsNumber
+                        updateRunSettings({
+                          workers: Number.isFinite(value) && value >= 1 ? Math.floor(value) : null
+                        })
+                      }}
+                      min={1}
+                      max={runDefaults?.maxWorkers}
+                      placeholder={runDefaults ? String(runDefaults.recommendedWorkers) : undefined}
+                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
+                      data-testid="overview-workers-input"
+                    />
+                  </div>
+                )}
                 <ToggleSwitch
                   label={t('run.quarantinedFails')}
                   checked={runSettings.quarantinedFails}
                   onChange={(quarantinedFails) => updateRunSettings({ quarantinedFails })}
                   testId="overview-quarantined-fails-toggle"
                 />
-                <ToggleSwitch
-                  label={t('run.reuseLogins')}
-                  checked={runSettings.reuseLogins}
-                  onChange={(reuseLogins) => updateRunSettings({ reuseLogins })}
-                  testId="overview-reuse-logins"
-                />
-                <div className="flex flex-col">
-                  <label className="flex items-center gap-2 text-sm text-neutral-dk">
-                    <input
-                      type="checkbox"
-                      checked={freshLoginNext}
-                      disabled={!runSettings.reuseLogins}
-                      onChange={(e) => setFreshLoginNext(e.target.checked)}
-                      data-testid="overview-fresh-login"
+                {/* Saved browser logins mean nothing to an Appium run */}
+                {!isMobileProject && (
+                  <>
+                    <ToggleSwitch
+                      label={t('run.reuseLogins')}
+                      checked={runSettings.reuseLogins}
+                      onChange={(reuseLogins) => updateRunSettings({ reuseLogins })}
+                      testId="overview-reuse-logins"
                     />
-                    {t('run.freshLoginNext')}
-                  </label>
-                  <span className="text-xs text-neutral-mid">{t('run.freshLoginHint')}</span>
-                </div>
+                    <div className="flex flex-col">
+                      <label className="flex items-center gap-2 text-sm text-neutral-dk">
+                        <input
+                          type="checkbox"
+                          checked={freshLoginNext}
+                          disabled={!runSettings.reuseLogins}
+                          onChange={(e) => setFreshLoginNext(e.target.checked)}
+                          data-testid="overview-fresh-login"
+                        />
+                        {t('run.freshLoginNext')}
+                      </label>
+                      <span className="text-xs text-neutral-mid">{t('run.freshLoginHint')}</span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
-            {!isMobileProject && (
+            {showWebSettings && (
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                   {t('settings.section.browserOptions')}
@@ -845,46 +892,49 @@ const Overview: React.FC = () => {
                 </div>
               </div>
             )}
-            <div className="flex items-center gap-4 flex-wrap">
-              <Tooltip content={t('tooltips.recorder.implicitWait')} position="right">
-                <div className="flex items-center gap-2">
-                  <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                    {t('settings.recording.implicitWait.label')}
-                  </label>
-                  <input
-                    type="number"
-                    id="implicit-wait"
-                    value={implicitWait}
-                    onChange={(e) => {
-                      const val = Number(e.target.value)
-                      if (val >= 0) setImplicitWait(val)
-                    }}
-                    onBlur={() => saveWait({ implicitWait })}
-                    min="0"
-                    className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
-                  />
-                </div>
-              </Tooltip>
-              <Tooltip content={t('tooltips.recorder.explicitWait')} position="right">
-                <div className="flex items-center gap-2">
-                  <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                    {t('settings.recording.explicitWait.label')}
-                  </label>
-                  <input
-                    type="number"
-                    id="explicit-wait"
-                    value={explicitWait}
-                    onChange={(e) => {
-                      const val = Number(e.target.value)
-                      if (val >= 0) setExplicitWait(val)
-                    }}
-                    onBlur={() => saveWait({ explicitWait })}
-                    min="0"
-                    className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
-                  />
-                </div>
-              </Tooltip>
-            </div>
+            {/* The recorder waits apply to recorded web tests only */}
+            {!isMobileProject && (
+              <div className="flex items-center gap-4 flex-wrap">
+                <Tooltip content={t('tooltips.recorder.implicitWait')} position="right">
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                      {t('settings.recording.implicitWait.label')}
+                    </label>
+                    <input
+                      type="number"
+                      id="implicit-wait"
+                      value={implicitWait}
+                      onChange={(e) => {
+                        const val = Number(e.target.value)
+                        if (val >= 0) setImplicitWait(val)
+                      }}
+                      onBlur={() => saveWait({ implicitWait })}
+                      min="0"
+                      className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                    />
+                  </div>
+                </Tooltip>
+                <Tooltip content={t('tooltips.recorder.explicitWait')} position="right">
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                      {t('settings.recording.explicitWait.label')}
+                    </label>
+                    <input
+                      type="number"
+                      id="explicit-wait"
+                      value={explicitWait}
+                      onChange={(e) => {
+                        const val = Number(e.target.value)
+                        if (val >= 0) setExplicitWait(val)
+                      }}
+                      onBlur={() => saveWait({ explicitWait })}
+                      min="0"
+                      className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
+                    />
+                  </div>
+                </Tooltip>
+              </div>
+            )}
           </div>
           <div className="relative h-[62vh] border border-t-0 border-neutral-bdr rounded-b-lg shadow-card flex flex-col bg-white">
             {/* Split: file tree left + editor preview right */}

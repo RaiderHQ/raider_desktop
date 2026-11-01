@@ -256,7 +256,6 @@ export async function setupProjectContext(
   opts?: {
     projectPath?: string
     rubyCommand?: string
-    isMobile?: boolean
     files?: unknown[]
     tests?: unknown[]
   }
@@ -265,10 +264,6 @@ export async function setupProjectContext(
   const rubyCommand = opts?.rubyCommand || 'ruby'
 
   // Mock IPC methods that fire on mount
-  await mockIPC(page, 'isMobileProject', {
-    success: true,
-    isMobileProject: opts?.isMobile || false
-  })
   await mockIPC(page, 'readDirectory', opts?.files || [])
   // The Overview opens on the Tests tab, which lists the project's spec files
   await mockIPC(page, 'listProjectTests', opts?.tests || [])

@@ -56,6 +56,8 @@ const handler = async (
     const isMobile = typeof mobile === 'string' && mobile.trim() !== ''
     if (options?.ci === 'azure' && !isMobile) raiderCommand += ' ci:azure'
 
+    if (options?.examples === false) raiderCommand += ' examples:false'
+
     if (options?.accessibility) raiderCommand += ' --accessibility'
 
     // Extract the Ruby version from rubyCommand (e.g. "eval ... && rbenv shell 3.4.1 && ruby")

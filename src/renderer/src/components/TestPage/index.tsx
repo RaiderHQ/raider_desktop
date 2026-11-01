@@ -47,16 +47,21 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const activeTest = useRecorderStore((s) => s.activeTest)
   const activeSuiteId = useRecorderStore((s) => s.activeSuiteId)
   const draftTest = useRecorderStore((s) => s.draftTest)
-  const runActive = useRunStore((s) => s.isActive)
+  const runActive = useRunStore((s) => s.isActive || s.checking)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
   const runBusy = runActive || recorderRunning
   // Only this page's own run: Overview's panel already shows a run from elsewhere
-  const ownRun = useRunStore((s) => s.origin?.route === location.pathname)
+  const ownRun = useRunStore(
+    (s) => s.origin?.route === location.pathname || s.notReady?.origin.route === location.pathname
+  )
   const showCode = useRecorderStore((s) => s.showCode)
   const isOutputVisible = useRecorderStore((s) => s.isOutputVisible)
   const breakpointIndex = useRecorderStore((s) => s.breakpointIndex)
   const isReplaying = useRecorderStore((s) => s.isReplayingToBreakpoint)
   const recordingDisabled = useProjectStore((s) => s.layout?.recordable === false)
+  // Only a mobile project says why Record is off, for now
+  const mobileProject = useProjectStore((s) => s.layout?.unsupportedReason === 'mobile')
+  const recordingDisabledReason = mobileProject ? t('recorder.unsupported.mobile') : undefined
   const runOutput = useRunOutputStore((s) => s.runOutput)
   // Output of a run on the old suite format; live runs show in the run panel instead
   const hasLegacyOutput = runOutput !== ''
@@ -270,6 +275,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             onStart={startDraft}
             onCancel={() => navigate('/overview/tests')}
             disabled={recordingDisabled}
+            disabledReason={recordingDisabledReason}
           />
         )
       ) : (
@@ -316,6 +322,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
               <button
                 onClick={record}
                 disabled={readOnly || busy || recordingDisabled}
+                title={recordingDisabledReason}
                 className={`${toolbarButton} text-red-600 hover:bg-red-50`}
               >
                 {t('testPage.record')}

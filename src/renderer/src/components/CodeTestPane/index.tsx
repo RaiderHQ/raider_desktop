@@ -36,14 +36,19 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
   const activeTest = useRecorderStore((s) => s.activeTest)
   const recordingTarget = useRecorderStore((s) => s.recordingTarget)
   const unsavedExample = useRecorderStore((s) => s.unsavedExample)
-  const runActive = useRunStore((s) => s.isActive)
+  const runActive = useRunStore((s) => s.isActive || s.checking)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
   const runBusy = runActive || recorderRunning
   // Only this page's own run: Overview's panel already shows a run from elsewhere
-  const ownRun = useRunStore((s) => s.origin?.route === location.pathname)
+  const ownRun = useRunStore(
+    (s) => s.origin?.route === location.pathname || s.notReady?.origin.route === location.pathname
+  )
   const showCode = useRecorderStore((s) => s.showCode)
   const isReplaying = useRecorderStore((s) => s.isReplayingToBreakpoint)
   const recordingDisabled = useProjectStore((s) => s.layout?.recordable === false)
+  // Only a mobile project says why Record is off, for now
+  const mobileProject = useProjectStore((s) => s.layout?.unsupportedReason === 'mobile')
+  const recordingDisabledReason = mobileProject ? t('recorder.unsupported.mobile') : undefined
   const projectPath = useProjectStore((s) => s.projectPath)
   const { updateActiveTest, setShowCode } = useRecorderStore.getState()
   const file = row.file ?? ''
@@ -181,6 +186,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
                 onClick={() => setConfirmingRecord(true)}
                 // Not over steps that aren't saved yet: they'd be lost
                 disabled={!selected || busy || recordingDisabled || !!recordedTest}
+                title={recordingDisabledReason}
                 className={`${toolbarButton} text-red-600 hover:bg-red-50`}
               >
                 {t('testPage.record')}

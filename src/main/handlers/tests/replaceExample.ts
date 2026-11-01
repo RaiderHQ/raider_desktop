@@ -1,5 +1,6 @@
 import fs from 'fs/promises'
 import { renderStep } from '../../codegen/steps'
+import { toAutomation } from '../../codegen/testFile'
 import { withSecretNames } from '../../../shared/secretSteps'
 import type { Receiver } from '../../codegen/steps'
 import { locateExamples } from './exampleLocator'
@@ -109,7 +110,7 @@ export async function replaceExample(
 
     const receiver = receiverFor(source)
     const body = withSecretNames(steps).flatMap((step) =>
-      renderStep(step, layout.automation, { receiver }).split('\n')
+      renderStep(step, toAutomation(layout.automation), { receiver }).split('\n')
     )
     const wait = WAIT[receiver]
     const usesWait = body.some((line) => wait.uses.test(line.replace(STRING_LITERAL, "''")))

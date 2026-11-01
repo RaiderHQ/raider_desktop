@@ -43,20 +43,32 @@
       "placeholder": "Enter project name"
     },
     "question": {
-      "automation": "Select your automation framework",
-      "mobile": "Select your mobile platform",
+      "target": "What are you testing?",
+      "phones": "Which phones?",
       "test": "Select your test framework"
     },
     "ci": {
       "label": "CI provider",
       "github": "GitHub Actions",
-      "azure": "Azure Pipelines"
+      "azure": "Azure Pipelines",
+      "mobileAzure": "Azure Pipelines isn't available for mobile projects yet."
+    },
+    "target": {
+      "web": "Website",
+      "mobile": "Mobile app",
+      "mobileNeedsUpdate": "Mobile apps need Ruby Raider 3.12 or later. Update Ruby Raider, then come back to this page."
+    },
+    "phones": {
+      "ios": "iPhone (iOS)",
+      "android": "Android",
+      "both": "Both"
     },
     "addons": {
       "title": "Add-ons",
       "accessibility": "Accessibility testing (axe)",
       "accessibilityHelp": "Adds axe-core for automated accessibility checks",
-      "disabledMobile": "Add-ons are not available for mobile (Appium) projects"
+      "examples": "Include example tests",
+      "examplesHelp": "Sample tests you can run straight away. Turn off for an empty project."
     },
     "versionWarning": "Your Ruby version may not be compatible with Ruby Raider v3"
   },
@@ -114,10 +126,6 @@
   },
   "settings": {
     "loading": "Loading settings...",
-    "mobileProject": {
-      "title": "Mobile Project",
-      "description": "For now, mobile settings are not supported. They will come in newer versions of the app."
-    },
     "header": {
       "title": "Configuration files",
       "description": "We added the following files to your project"
@@ -125,7 +133,6 @@
     "section": {
       "baseUrl": "Base Url",
       "browser": "Browser",
-      "appiumSettings": "Appium Settings",
       "timeout": "Timeout",
       "viewport": "Viewport",
       "browserOptions": "Browser Options",
@@ -145,40 +152,14 @@
     },
     "updateUrlButton": "Update URL",
     "updateBrowserButton": "Update Browser",
-    "updateMobileSettingsButton": "Update Settings",
     "updating": "Updating...",
     "error": {
       "browserUpdateFailed": "Failed to update browser. Please try again.",
       "urlUpdateFailed": "Failed to update browser URL. Please try again.",
-      "unexpected": "An unexpected error occurred. Please try again.",
-      "mobileUrlUpdateFailed": "Failed to update Appium URL. Please try again.",
-      "mobileCapabilitiesUpdateFailed": "Failed to update mobile settings. Please try again."
+      "unexpected": "An unexpected error occurred. Please try again."
     },
     "urlUpdateSuccess": "URL successfully updated!",
     "browserUpdateSuccess": "Browser successfully updated!",
-    "mobile": {
-      "appiumUrl": {
-        "label": "Appium URL:",
-        "placeholder": "Enter Appium URL"
-      },
-      "platformVersion": {
-        "label": "Platform Version:",
-        "placeholder": "Enter platform version"
-      },
-      "automationName": {
-        "label": "Automation Name:",
-        "placeholder": "Enter automation name"
-      },
-      "deviceName": {
-        "label": "Device Name:",
-        "placeholder": "Enter device name"
-      },
-      "app": {
-        "label": "App:",
-        "placeholder": "Enter app name"
-      },
-      "updateSuccess": "Mobile settings updated successfully!"
-    },
     "tabs": {
       "project": "Project Settings",
       "recording": "Recording Settings",
@@ -223,12 +204,6 @@
       "placeholder": "Add option (e.g. headless)...",
       "updateButton": "Update Options",
       "updateSuccess": "Browser options updated!"
-    },
-    "appium": {
-      "startButton": "Start Appium Server",
-      "starting": "Starting Appium...",
-      "startSuccess": "Appium server started!",
-      "startFailed": "Failed to start Appium server."
     },
     "paths": {
       "page": "Page objects path:",
@@ -379,7 +354,8 @@
       "done": "Your recorded tests are now saved as project files.",
       "postponed": "Raider couldn't move your recorded tests into the project yet. They're safe and Raider will try again next time."
     },
-    "tooNew": "This project's suites were saved by a newer version of Raider. Update Raider to see and change them."
+    "tooNew": "This project's suites were saved by a newer version of Raider. Update Raider to see and change them.",
+    "mobileUnavailable": "Suites aren't available for mobile projects yet."
   },
   "errors": {
     "ruby": {
@@ -410,6 +386,7 @@
     "cucumber": "This project's tests are Cucumber features: find them in the Files tab. Recorded tests become project files when Gherkin support arrives.",
     "actionFailed": "Raider couldn't open this test. Nothing was changed.",
     "listFailed": "Raider couldn't load the tests list. Try again in a moment.",
+    "mobileNoImport": "Mobile projects can't import recorded tests yet.",
     "rail": "Tests",
     "suiteFilter": {
       "label": "Suite",
@@ -751,7 +728,7 @@
     },
     "createProject": {
       "title": "Create a New Project",
-      "message": "Choose your automation framework (Selenium is the most common for web apps), your test style (RSpec or Cucumber), and give your project a name.\n\nRuby Raider will generate a ready-to-use folder structure for you."
+      "message": "Give your project a name, choose whether you're testing a website or a mobile app, then pick how you want to write tests. RSpec suits people who write code; Cucumber uses plain-English steps.\n\nRuby Raider will generate a ready-to-use folder structure for you."
     },
     "landing": {
       "title": "Welcome to Ruby Raider",
@@ -833,7 +810,16 @@
     "notifyBody": "{{passed}} passed, {{failed}} failed",
     "saveToRun": "Save this test to run it",
     "skippedMissing_one": "{{count}} test was skipped: its file is missing",
-    "skippedMissing_other": "{{count}} tests were skipped: their files are missing"
+    "skippedMissing_other": "{{count}} tests were skipped: their files are missing",
+    "mobile": {
+      "appium": "Can't reach Appium at {{address}}. Start Appium (run `appium` in a terminal), then try again.",
+      "app": "Can't find the app file {{file}}. Choose it in Device settings.",
+      "tryAgain": "Try again",
+      "openDeviceSettings": "Open device settings",
+      "runAnyway": "Run anyway",
+      "checkFailed": "Couldn't check this project. Try again.",
+      "noLegacy": "Mobile projects can't run recorded tests yet."
+    }
   },
   "logins": {
     "title": "Saved logins",
@@ -848,6 +834,28 @@
     "addHelper": "This project was made before saved logins. Recreate it with ruby_raider 3.11 or later to save logins.",
     "forgetConfirm": "Forget the saved login \"{{name}}\"? The next run logs in again.",
     "forget": "Forget"
+  },
+  "device": {
+    "title": "Device",
+    "runOn": "Run on",
+    "ios": "iOS",
+    "android": "Android",
+    "deviceName": "Device name",
+    "osVersion": "OS version",
+    "appFile": "App file",
+    "choose": "Choose…",
+    "driver": "Driver",
+    "fileMissing": "Can't find this file",
+    "chooseAppPrompt": "Choose the app file to test before running.",
+    "readError": "Couldn't read this project's device settings (config/capabilities.yml).",
+    "saved": "Saved",
+    "saveFailed": "Couldn't save the device settings.",
+    "chooseFailed": "Couldn't open the file picker.",
+    "notAnApp": "Choose an .app, .ipa, .apk or .aab file.",
+    "help": {
+      "deviceName": "The simulator, emulator or phone name, for example iPhone 15.",
+      "osVersion": "For example 17.0 or 14."
+    }
   },
   "common": {
     "close": "Close",

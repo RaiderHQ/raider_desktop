@@ -112,6 +112,24 @@ describe('runRubyRaider handler (integration)', () => {
     })
   })
 
+  describe('examples option', () => {
+    const run = async (options: ProjectCreationOptions | undefined): Promise<string> => {
+      mockExecSuccess()
+      await handler(...validArgs, null, options)
+      return mockExec.mock.calls[0][0] as string
+    }
+
+    it('appends examples:false when false', async () => {
+      expect(await run({ examples: false })).toContain(' examples:false')
+    })
+
+    it('passes nothing for true or absent', async () => {
+      expect(await run({ examples: true })).not.toContain('examples:')
+      vi.clearAllMocks()
+      expect(await run(undefined)).not.toContain('examples:')
+    })
+  })
+
   it('never emits -r, --skip_ci or --ruby_version', async () => {
     mockExecSuccess()
     await handler(...validArgs, null, {

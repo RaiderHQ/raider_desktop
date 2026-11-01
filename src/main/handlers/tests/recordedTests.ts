@@ -1,7 +1,7 @@
 import fs from 'fs/promises'
 import { realpathSync } from 'fs'
 import { dirname, posix, resolve } from 'path'
-import { generateProjectSpecFile, RECORDED_MARKER } from '../../codegen/testFile'
+import { generateProjectSpecFile, RECORDED_MARKER, toAutomation } from '../../codegen/testFile'
 import { hashRuby } from './codeHash'
 import { withSecretNames } from '../../../shared/secretSteps'
 import {
@@ -125,14 +125,14 @@ const buildSidecar = (
   // The names the spec was generated with (generateProjectSpecFile names the same way)
   steps: withSecretNames(test.steps),
   file,
-  automation: layout.automation,
+  automation: toAutomation(layout.automation),
   hash: hashRuby(content),
   createdAt,
   updatedAt: now
 })
 
 const generate = (test: Test, layout: ProjectLayout, file: string): string =>
-  generateProjectSpecFile(test, layout.automation, {
+  generateProjectSpecFile(test, toAutomation(layout.automation), {
     fileRelPath: file,
     helperPath: layout.helperPath
   })
@@ -188,7 +188,7 @@ const sameRecord = (
 ): boolean =>
   sidecar.name === test.name &&
   sidecar.url === test.url &&
-  sidecar.automation === layout.automation &&
+  sidecar.automation === toAutomation(layout.automation) &&
   sidecar.hash === hashRuby(content) &&
   JSON.stringify(sidecar.steps) === JSON.stringify(test.steps)
 

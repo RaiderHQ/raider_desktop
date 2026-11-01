@@ -1,4 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
 const { mockMode, mockRunRecording, mockRunSuite } = vi.hoisted(() => ({
   mockMode: vi.fn(),
@@ -22,6 +25,8 @@ beforeEach(() => {
   appState.suites = new Map([['s1', { id: 's1', name: 'Smoke', tests: [test1] }]])
   appState.projectAutomation = 'selenium'
   appState.projectFramework = 'rspec'
+  appState.projectPath = '/p'
+  appState.layout = null
   mockRunRecording.mockResolvedValue({ success: true, output: 'rec' })
   mockRunSuite.mockResolvedValue({ success: true, output: 'suite' })
 })
@@ -67,5 +72,53 @@ describe('run-test / run-suite', () => {
     mockMode.mockResolvedValue('legacy')
     expect(await runSuiteHandler('s1', '/p', 'ruby')).toEqual({ success: true, output: 'suite' })
     expect(mockRunSuite).toHaveBeenCalledWith('s1', 'ruby')
+  })
+})
+
+describe('run-test / run-suite, mobile projects', () => {
+  const refused = {
+    success: false,
+    output: "Mobile projects can't run recorded tests yet.",
+    code: 'mobileNoLegacy'
+  }
+  let dir: string
+
+  beforeEach(() => {
+    mockMode.mockResolvedValue('legacy')
+    dir = mkdtempSync(join(tmpdir(), 'raider-mobile-'))
+  })
+  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+
+  it('never runs generated code for an Appium project', async () => {
+    appState.layout = {
+      framework: 'rspec',
+      automation: 'appium',
+      specPath: 'spec',
+      featurePath: 'features',
+      helperPath: 'helpers',
+      recordable: false,
+      unsupportedReason: 'mobile'
+    }
+    appState.projectAutomation = 'appium'
+    expect(await runTestHandler('s1', 't1', '/p', 'ruby')).toEqual(refused)
+    expect(await runSuiteHandler('s1', '/p', 'ruby')).toEqual(refused)
+    expect(mockRunRecording).not.toHaveBeenCalled()
+    expect(mockRunSuite).not.toHaveBeenCalled()
+  })
+
+  it('refuses a project with appium_lib in its Gemfile while the layout is unknown', async () => {
+    writeFileSync(join(dir, 'Gemfile'), "gem 'appium_lib'\ngem 'rspec'\n")
+    appState.projectPath = dir
+    expect(await runTestHandler('s1', 't1', dir, 'ruby')).toEqual(refused)
+    expect(await runSuiteHandler('s1', dir, 'ruby')).toEqual(refused)
+    expect(mockRunRecording).not.toHaveBeenCalled()
+    expect(mockRunSuite).not.toHaveBeenCalled()
+  })
+
+  it('still runs a web project while the layout is unknown', async () => {
+    writeFileSync(join(dir, 'Gemfile'), "gem 'selenium-webdriver'\ngem 'rspec'\n")
+    appState.projectPath = dir
+    expect(await runTestHandler('s1', 't1', dir, 'ruby')).toEqual({ success: true, output: 'rec' })
+    expect(await runSuiteHandler('s1', dir, 'ruby')).toEqual({ success: true, output: 'suite' })
   })
 })

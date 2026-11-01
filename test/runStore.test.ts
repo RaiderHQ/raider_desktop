@@ -4,7 +4,7 @@ import type { ActiveRun, RunEvent } from '@shared/types/runEvents'
 
 vi.mock('i18next', () => ({ default: { t: (key: string) => key } }))
 vi.mock('@foundation/Stores/projectStore', () => ({
-  default: { getState: () => ({ projectPath: '/proj' }) }
+  default: { getState: () => ({ projectPath: '/proj' }), subscribe: () => (): void => {} }
 }))
 
 const events: RunEvent[] = [

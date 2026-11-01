@@ -1,0 +1,18 @@
+platformName: iOS
+appium:options:
+  url: http://localhost:4723/wd/hub
+  platformVersion: '17.0'
+  deviceName: iPhone 15
+  automationName: XCUITest
+  app: RaiderTestApp.app
+  autoDismissAlerts: true
+
+browserstack:
+  platformName: iOS
+  os_version: '17.5.1'
+  deviceName: iPhone 15
+  app: 
+  browserstack.user: 
+  browserstack.key: 
+  project: 'RaiderTestApp'
+  name: 'RaiderTestApp-IOS'
