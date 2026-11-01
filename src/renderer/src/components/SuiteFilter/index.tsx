@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import useRecorderStore from '@foundation/Stores/recorderStore'
@@ -27,6 +27,9 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
   const runActive = useRunStore((s) => s.isActive)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
   const runBusy = runActive || recorderRunning
+  // Suites can't run in a mobile project yet
+  const mobileProject = useProjectStore((s) => s.layout?.automation === 'appium')
+  const mobileNoteId = useId()
   const [open, setOpen] = useState(false)
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState('')
@@ -79,7 +82,7 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
     setOpen(false)
     const cmd = useRubyStore.getState().rubyCommand
     const path = useProjectStore.getState().projectPath
-    if (!suite) return
+    if (!suite || useProjectStore.getState().layout?.automation === 'appium') return
     if (!cmd) {
       toast.error(t('recorder.noRuby'))
       return
@@ -191,11 +194,17 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
           <button
             role="menuitem"
             className={menuItem}
-            disabled={!suite || runBusy}
+            disabled={!suite || runBusy || mobileProject}
+            aria-describedby={mobileProject ? mobileNoteId : undefined}
             onClick={runSuite}
           >
             {t('tests.suiteFilter.run')}
           </button>
+          {mobileProject && (
+            <p id={mobileNoteId} className="px-3 pb-1.5 text-xs text-neutral-mid">
+              {t('suites.mobileUnavailable')}
+            </p>
+          )}
           <button
             role="menuitem"
             className={menuItem}

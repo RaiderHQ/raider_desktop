@@ -14,16 +14,35 @@ export interface RunOrigin {
   label: string
 }
 
+/** A mobile run that didn't start because the project isn't ready, kept so it can be retried */
+export interface MobileNotReady {
+  reason: 'appium' | 'app'
+  detail: string
+  scope: RunScope
+  origin: RunOrigin
+  projectPath: string
+}
+
 interface RunStore {
   run: RunView | null
   origin: RunOrigin | null
   isActive: boolean
   freshLoginNext: boolean
+  notReady: MobileNotReady | null
+  /** Asks Overview to show the device settings and focus the app file */
+  deviceFocusRequested: boolean
   setFreshLoginNext: (v: boolean) => void
   ingest: (e: RunEvent) => void
   restore: () => Promise<void>
-  start: (scope: RunScope, origin: RunOrigin) => Promise<'started' | 'busy' | 'error'>
+  start: (
+    scope: RunScope,
+    origin: RunOrigin,
+    opts?: { skipMobileCheck?: boolean }
+  ) => Promise<'started' | 'busy' | 'error'>
   cancel: () => Promise<void>
+  dismissNotReady: () => void
+  requestDeviceFocus: () => void
+  clearDeviceFocus: () => void
 }
 
 // The app uses a hash router, so setting the hash navigates without needing router access here
@@ -39,6 +58,8 @@ export const useRunStore = create<RunStore>(
     origin: null,
     isActive: false,
     freshLoginNext: false,
+    notReady: null,
+    deviceFocusRequested: false,
     setFreshLoginNext: (v: boolean): void => set({ freshLoginNext: v }),
     ingest: (e: RunEvent): void => {
       const run = reduceRun(get().run, e, useProjectStore.getState().projectPath ?? undefined)
@@ -61,12 +82,39 @@ export const useRunStore = create<RunStore>(
         console.error('Restoring the active run failed:', error)
       }
     },
-    start: async (scope: RunScope, origin: RunOrigin): Promise<'started' | 'busy' | 'error'> => {
+    start: async (
+      scope: RunScope,
+      origin: RunOrigin,
+      opts: { skipMobileCheck?: boolean } = {}
+    ): Promise<'started' | 'busy' | 'error'> => {
+      set({ notReady: null })
       const rubyCommand = useRubyStore.getState().rubyCommand
-      const projectPath = useProjectStore.getState().projectPath
+      const { projectPath, layout } = useProjectStore.getState()
       if (!rubyCommand || !projectPath) {
         toast.error(i18n.t('recorder.noRuby'))
         return 'error'
+      }
+      // Appium drives one device, so a mobile run is always serial
+      const mobile = layout?.automation === 'appium'
+      if (mobile && !opts.skipMobileCheck) {
+        let ready: Awaited<ReturnType<typeof window.api.checkMobileReady>> | null = null
+        try {
+          ready = await window.api.checkMobileReady(projectPath)
+        } catch (error) {
+          console.error('Checking the mobile project failed:', error)
+        }
+        // The answer is about a project that's no longer open
+        if (useProjectStore.getState().projectPath !== projectPath) return 'error'
+        if (!ready || 'error' in ready) {
+          toast.error(i18n.t('run.mobile.checkFailed'))
+          return 'error'
+        }
+        if (!ready.ok) {
+          set({
+            notReady: { reason: ready.reason, detail: ready.detail, scope, origin, projectPath }
+          })
+          return 'error'
+        }
       }
       try {
         const settings = loadRunSettings(projectPath)
@@ -74,7 +122,7 @@ export const useRunStore = create<RunStore>(
         const loginState = loginStateFor(settings, get().freshLoginNext)
         const result = await window.api.startRun({
           scope,
-          workers: workersFor(settings, defaults, scope),
+          workers: mobile ? undefined : workersFor(settings, defaults, scope),
           rubyCommand,
           quarantinedFails: settings.quarantinedFails,
           ...(loginState ? { loginState } : {})
@@ -102,8 +150,17 @@ export const useRunStore = create<RunStore>(
       } catch (error) {
         console.error('Cancelling the run failed:', error)
       }
-    }
+    },
+    dismissNotReady: (): void => set({ notReady: null }),
+    requestDeviceFocus: (): void => set({ deviceFocusRequested: true }),
+    clearDeviceFocus: (): void => set({ deviceFocusRequested: false })
   })
+)
+
+// Why a run didn't start belongs to one project, so it never outlives a switch
+useProjectStore.subscribe(
+  (state) => state.projectPath,
+  () => useRunStore.setState({ notReady: null, deviceFocusRequested: false })
 )
 
 /** Feeds run events into the store once, then restores a run already in progress. */

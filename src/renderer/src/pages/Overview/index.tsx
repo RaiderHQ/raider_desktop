@@ -67,6 +67,29 @@ const Overview: React.FC = () => {
   useEffect(() => {
     if (testKey) setActiveTab('tests')
   }, [testKey])
+
+  // "Open device settings" lands on the Files tab with the app file focused. The field mounts
+  // only once the settings load, so the ref focuses it then, or now if it's already there
+  const deviceFocusRequested = useRunStore((state) => state.deviceFocusRequested)
+  const deviceFocusEl = useRef<HTMLElement | null>(null)
+  const focusDevice = useCallback((): void => {
+    const el = deviceFocusEl.current
+    if (!el || !useRunStore.getState().deviceFocusRequested) return
+    el.focus()
+    useRunStore.getState().clearDeviceFocus()
+  }, [])
+  const deviceFocusRef = useCallback(
+    (el: HTMLElement | null): void => {
+      deviceFocusEl.current = el
+      focusDevice()
+    },
+    [focusDevice]
+  )
+  useEffect(() => {
+    if (!deviceFocusRequested) return
+    setActiveTab('files')
+    focusDevice()
+  }, [deviceFocusRequested, focusDevice])
   const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression'>('all')
 
   // Live run state
@@ -659,7 +682,12 @@ const Overview: React.FC = () => {
           {/* Test settings toolbar */}
           <div className="border border-neutral-bdr rounded-t-lg bg-neutral-50 px-4 py-3 space-y-2">
             {isMobileProject && projectPath && layout && (
-              <DeviceSettings key={projectPath} projectPath={projectPath} layout={layout} />
+              <DeviceSettings
+                key={projectPath}
+                projectPath={projectPath}
+                layout={layout}
+                focusRef={deviceFocusRef}
+              />
             )}
             {showWebSettings && (
               <Tooltip content={t('tooltips.overview.urlInput')} position="right" className="w-full">
@@ -742,12 +770,15 @@ const Overview: React.FC = () => {
                   {t('overview.settings.rerunFailed')}
                 </button>
               </Tooltip>
-              <ToggleSwitch
-                label={t('run.parallel')}
-                checked={runSettings.parallel}
-                onChange={(parallel) => updateRunSettings({ parallel })}
-                testId="overview-parallel-toggle"
-              />
+              {/* Appium drives one device, so a mobile project always runs one test at a time */}
+              {!isMobileProject && (
+                <ToggleSwitch
+                  label={t('run.parallel')}
+                  checked={runSettings.parallel}
+                  onChange={(parallel) => updateRunSettings({ parallel })}
+                  testId="overview-parallel-toggle"
+                />
+              )}
               <button
                 onClick={() => setMoreOptionsOpen((open) => !open)}
                 aria-expanded={moreOptionsOpen}
@@ -780,27 +811,29 @@ const Overview: React.FC = () => {
             </div>
             {moreOptionsOpen && (
               <div className="flex items-center gap-4 flex-wrap" data-testid="overview-more-options-panel">
-                <div className="flex items-center gap-2">
-                  <label htmlFor="workers-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                    {t('run.workers')}
-                  </label>
-                  <input
-                    type="number"
-                    id="workers-input"
-                    value={runSettings.workers ?? ''}
-                    onChange={(e) => {
-                      const value = e.target.valueAsNumber
-                      updateRunSettings({
-                        workers: Number.isFinite(value) && value >= 1 ? Math.floor(value) : null
-                      })
-                    }}
-                    min={1}
-                    max={runDefaults?.maxWorkers}
-                    placeholder={runDefaults ? String(runDefaults.recommendedWorkers) : undefined}
-                    className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
-                    data-testid="overview-workers-input"
-                  />
-                </div>
+                {!isMobileProject && (
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="workers-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                      {t('run.workers')}
+                    </label>
+                    <input
+                      type="number"
+                      id="workers-input"
+                      value={runSettings.workers ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.valueAsNumber
+                        updateRunSettings({
+                          workers: Number.isFinite(value) && value >= 1 ? Math.floor(value) : null
+                        })
+                      }}
+                      min={1}
+                      max={runDefaults?.maxWorkers}
+                      placeholder={runDefaults ? String(runDefaults.recommendedWorkers) : undefined}
+                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
+                      data-testid="overview-workers-input"
+                    />
+                  </div>
+                )}
                 <ToggleSwitch
                   label={t('run.quarantinedFails')}
                   checked={runSettings.quarantinedFails}

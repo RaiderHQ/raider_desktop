@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { useState } from 'react'
@@ -105,7 +105,7 @@ beforeEach(() => {
   api.startRun.mockResolvedValue({ runId: 'r1' })
   api.getRunDefaults.mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 })
   useRunStore.setState({ run: null, origin: null, isActive: false })
-  useProjectStore.setState({ projectPath: null })
+  useProjectStore.setState({ projectPath: null, layout: null })
   api.importTest.mockResolvedValue({ success: true })
   api.importSuite.mockResolvedValue({ success: true })
   api.importProject.mockResolvedValue({ success: true })
@@ -118,6 +118,33 @@ beforeEach(() => {
 })
 
 describe('SuiteFilter', () => {
+  it('cannot run a suite in a mobile project, and says so', async () => {
+    useProjectStore.setState({ projectPath: '/p' })
+    await act(async () => {})
+    useProjectStore.setState({
+      layout: {
+        framework: 'rspec',
+        automation: 'appium',
+        mobilePlatform: 'ios',
+        specPath: 'spec',
+        featurePath: 'features',
+        helperPath: 'helpers',
+        recordable: false,
+        unsupportedReason: 'mobile'
+      }
+    })
+    useRecorderStore.setState({ suites })
+    render(<Harness initial="s1" />)
+    openMenu()
+    const run = screen.getByRole('menuitem', { name: 'Run suite' })
+    expect(run).toBeDisabled()
+    expect(screen.getByText("Suites aren't available for mobile projects yet.")).toBeInTheDocument()
+    fireEvent.click(run)
+    expect(api.runSuite).not.toHaveBeenCalled()
+    expect(api.prepareSuiteRun).not.toHaveBeenCalled()
+    expect(api.startRun).not.toHaveBeenCalled()
+  })
+
   it('lists All tests plus each suite and filters the rows by suite', () => {
     render(<Harness />)
     const select = screen.getByLabelText('Suite')

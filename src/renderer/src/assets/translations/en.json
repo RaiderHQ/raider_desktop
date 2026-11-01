@@ -354,7 +354,8 @@
       "done": "Your recorded tests are now saved as project files.",
       "postponed": "Raider couldn't move your recorded tests into the project yet. They're safe and Raider will try again next time."
     },
-    "tooNew": "This project's suites were saved by a newer version of Raider. Update Raider to see and change them."
+    "tooNew": "This project's suites were saved by a newer version of Raider. Update Raider to see and change them.",
+    "mobileUnavailable": "Suites aren't available for mobile projects yet."
   },
   "errors": {
     "ruby": {
@@ -808,7 +809,15 @@
     "notifyBody": "{{passed}} passed, {{failed}} failed",
     "saveToRun": "Save this test to run it",
     "skippedMissing_one": "{{count}} test was skipped: its file is missing",
-    "skippedMissing_other": "{{count}} tests were skipped: their files are missing"
+    "skippedMissing_other": "{{count}} tests were skipped: their files are missing",
+    "mobile": {
+      "appium": "Can't reach Appium at {{address}}. Start Appium (run `appium` in a terminal), then try again.",
+      "app": "Can't find the app file {{file}}. Choose it in Device settings.",
+      "tryAgain": "Try again",
+      "openDeviceSettings": "Open device settings",
+      "runAnyway": "Run anyway",
+      "checkFailed": "Couldn't check this project. Try again."
+    }
   },
   "logins": {
     "title": "Saved logins",

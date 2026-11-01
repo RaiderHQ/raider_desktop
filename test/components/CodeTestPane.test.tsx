@@ -127,7 +127,7 @@ beforeEach(() => {
   api.openCodeTest.mockResolvedValue(view)
   api.startRun.mockResolvedValue({ runId: 'r1' })
   api.getRunDefaults.mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 })
-  useRunStore.setState({ run: null, origin: null, isActive: false })
+  useRunStore.setState({ run: null, origin: null, isActive: false, notReady: null })
   api.recordOverExample.mockResolvedValue({ success: true })
   api.saveRecording.mockResolvedValue({
     success: true,
@@ -162,7 +162,52 @@ beforeEach(() => {
   useRubyStore.setState({ rubyCommand: 'ruby' })
 })
 
+const mobileLayout = {
+  framework: 'rspec',
+  automation: 'appium',
+  mobilePlatform: 'ios',
+  specPath: 'spec',
+  featurePath: 'features',
+  helperPath: 'helpers',
+  recordable: false,
+  unsupportedReason: 'mobile'
+} as const
+
 describe('CodeTestPane', () => {
+  it('says why Record is off in a mobile project', async () => {
+    useProjectStore.setState({ layout: mobileLayout })
+    renderPane()
+    const record = await screen.findByRole('button', { name: 'testPage.record' })
+    expect(record).toBeDisabled()
+    expect(record).toHaveAttribute('title', 'recorder.unsupported.mobile')
+    expect(en.recorder.unsupported.mobile).toBe("Mobile projects can't be recorded yet.")
+  })
+
+  it('keeps Record without a reason for other projects that cannot record', async () => {
+    useProjectStore.setState({
+      layout: { ...mobileLayout, automation: 'selenium', unsupportedReason: 'minitest' }
+    })
+    renderPane()
+    const record = await screen.findByRole('button', { name: 'testPage.record' })
+    expect(record).toBeDisabled()
+    expect(record).not.toHaveAttribute('title')
+  })
+
+  it('shows why a mobile run did not start, from this page', async () => {
+    useRunStore.setState({
+      notReady: {
+        reason: 'appium',
+        detail: '127.0.0.1:4723',
+        scope: { kind: 'files', files: ['spec/login_spec.rb'] },
+        origin: { route: '/overview/tests/x', label: 'Login' },
+        projectPath: '/Users/me/project'
+      }
+    })
+    renderPane()
+    await screen.findByRole('button', { name: 'logs in' })
+    expect(screen.getByRole('button', { name: 'run.mobile.runAnyway' })).toBeInTheDocument()
+  })
+
   it('lists the examples and selects the first one', async () => {
     renderPane()
     const first = await screen.findByRole('button', { name: 'logs in' })

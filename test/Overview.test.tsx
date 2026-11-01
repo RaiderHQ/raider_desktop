@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
+import type React from 'react'
 import Overview from '@pages/Overview'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
@@ -44,8 +45,17 @@ vi.mock('@components/ProjectDashboard', () => ({
 }))
 
 vi.mock('@components/DeviceSettings', () => ({
-  default: ({ projectPath }: { projectPath: string }): JSX.Element => (
-    <div data-testid="device-settings">{projectPath}</div>
+  default: ({
+    projectPath,
+    focusRef
+  }: {
+    projectPath: string
+    focusRef?: React.Ref<HTMLInputElement>
+  }): JSX.Element => (
+    <div data-testid="device-settings">
+      {projectPath}
+      <input aria-label="device-app" ref={focusRef} />
+    </div>
   )
 }))
 
@@ -132,7 +142,14 @@ beforeEach(async () => {
   useProjectStore.setState({ projectPath: '/fake/project', files: [] })
   await act(async () => {})
   useProjectStore.setState({ layout: webLayout })
-  useRunStore.setState({ run: null, origin: null, isActive: false, freshLoginNext: false })
+  useRunStore.setState({
+    run: null,
+    origin: null,
+    isActive: false,
+    freshLoginNext: false,
+    notReady: null,
+    deviceFocusRequested: false
+  })
   useRecorderStore.setState({ isRunning: false })
 })
 
@@ -310,6 +327,46 @@ describe('Overview Settings Toolbar', (): void => {
     expect(screen.queryByText('settings.section.browserOptions')).not.toBeInTheDocument()
     // Run controls stay
     expect(screen.getByTestId('overview-run-mode-select')).toBeInTheDocument()
+  })
+
+  it('has no parallel or workers controls for a mobile project', async () => {
+    useProjectStore.setState({ layout: appiumLayout })
+    await renderOverview()
+
+    expect(screen.queryByTestId('overview-parallel-toggle')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('overview-more-options'))
+    expect(screen.getByTestId('overview-more-options-panel')).toBeInTheDocument()
+    expect(screen.queryByTestId('overview-workers-input')).not.toBeInTheDocument()
+  })
+
+  it('opens the Files tab and focuses the app file when device settings are asked for', async () => {
+    useProjectStore.setState({ layout: appiumLayout, projectPath: '/fake/project', files: [] })
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+    expect(screen.queryByTestId('device-settings')).not.toBeInTheDocument()
+
+    await act(async () => {
+      useRunStore.getState().requestDeviceFocus()
+    })
+    expect(await screen.findByLabelText('device-app')).toHaveFocus()
+    expect(useRunStore.getState().deviceFocusRequested).toBe(false)
+  })
+
+  it('focuses the app file when the Files tab is already open', async () => {
+    useProjectStore.setState({ layout: appiumLayout })
+    await renderOverview()
+    expect(screen.getByLabelText('device-app')).not.toHaveFocus()
+
+    await act(async () => {
+      useRunStore.getState().requestDeviceFocus()
+    })
+    expect(screen.getByLabelText('device-app')).toHaveFocus()
+    expect(useRunStore.getState().deviceFocusRequested).toBe(false)
   })
 
   it('does not fall back to stored browser settings for a mobile project', async () => {

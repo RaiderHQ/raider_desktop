@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRunStore } from '@foundation/Stores/runStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import MobileNotReady from '@components/MobileNotReady'
 import { errorReason, progress, type RunTestView, type TestState } from '@foundation/run/runModel'
 
 interface RunPanelProps {
@@ -46,6 +47,7 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
   const { t } = useTranslation()
   const run = useRunStore((s) => s.run)
   const origin = useRunStore((s) => s.origin)
+  const notReady = useRunStore((s) => s.notReady)
   const projectPath = useProjectStore((s) => s.projectPath)
   const [filter, setFilter] = useState<Filter>('all')
   const [now, setNow] = useState(() => Date.now())
@@ -58,6 +60,11 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)
   }, [active])
+
+  // A mobile run that didn't start says why where it was started from
+  if (notReady && notReady.origin.route === routeKey && notReady.projectPath === projectPath) {
+    return <MobileNotReady notReady={notReady} />
+  }
 
   if (!run) return null
 
