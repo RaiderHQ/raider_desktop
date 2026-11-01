@@ -68,9 +68,17 @@ describe('TraceDetailPanel', () => {
     render(<TraceDetailPanel step={step} />)
     expect(screen.getByText('recorder.traceDetail.elementInfo')).toBeInTheDocument()
     expect(screen.getByText('<button>')).toBeInTheDocument()
-    expect(screen.getByText('id')).toBeInTheDocument()
-    expect(screen.getByText('#submit-btn')).toBeInTheDocument()
     expect(screen.getByText('Submit')).toBeInTheDocument()
+  })
+
+  it('keeps the raw strategy and selector out of the element info', () => {
+    const step = makeStep({
+      elementInfo: { tagName: 'BUTTON', selector: '#submit-btn', strategy: 'id' }
+    })
+    render(<TraceDetailPanel step={step} />)
+    expect(screen.queryByText('Strategy:')).not.toBeInTheDocument()
+    expect(screen.queryByText('Selector:')).not.toBeInTheDocument()
+    expect(screen.queryByText('#submit-btn')).not.toBeInTheDocument()
   })
 
   it('does not render element info section when not provided', () => {
