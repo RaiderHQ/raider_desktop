@@ -1,10 +1,21 @@
 export type Strategy = 'id' | 'css' | 'xpath'
 
+/** A semantic way to find an element, richer than the strategy/value pair. */
+export type Locator =
+  | { by: 'role'; role: string; name: string }
+  | { by: 'label'; text: string }
+  | { by: 'testId'; attribute: string; value: string }
+  | { by: 'text'; text: string }
+  | { by: 'id'; value: string }
+  | { by: 'css'; value: string; positional: boolean }
+  | { by: 'xpath'; value: string }
+
 export interface ElementTarget {
   strategy: Strategy
   value: string
   label?: string // human name, e.g. 'Login button' (from innerText/aria-label)
   ref?: { page: string; name: string }
+  locator?: Locator // semantic locator the recorder captured; strategy/value stay as the fallback
 }
 
 export type AssertKind =
@@ -77,11 +88,39 @@ const NEEDS_EXPECTED: AssertKind[] = [
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
 const isStr = (v: unknown): v is string => typeof v === 'string'
 
+const isNonEmpty = (v: unknown): v is string => isStr(v) && v !== ''
+
+export function isLocator(v: unknown): v is Locator {
+  if (!isObj(v)) return false
+  switch (v.by) {
+    case 'role':
+      return isNonEmpty(v.role) && isNonEmpty(v.name)
+    case 'label':
+    case 'text':
+      return isNonEmpty(v.text)
+    case 'testId':
+      return isNonEmpty(v.attribute) && isNonEmpty(v.value)
+    case 'id':
+    case 'xpath':
+      return isNonEmpty(v.value)
+    case 'css':
+      return isNonEmpty(v.value) && typeof v.positional === 'boolean'
+    default:
+      return false
+  }
+}
+
+/** True for locators that break when the page layout shifts: positional css and xpath. */
+export function isWeakLocator(l: Locator | undefined): boolean {
+  return l !== undefined && (l.by === 'xpath' || (l.by === 'css' && l.positional))
+}
+
 function isElementTarget(v: unknown): v is ElementTarget {
   if (!isObj(v)) return false
   if (!isStr(v.strategy) || !STRATEGIES.includes(v.strategy) || !isStr(v.value)) return false
   if (v.label !== undefined && !isStr(v.label)) return false
   if (v.ref !== undefined && !(isObj(v.ref) && isStr(v.ref.page) && isStr(v.ref.name))) return false
+  if (v.locator !== undefined && !isLocator(v.locator)) return false
   return true
 }
 

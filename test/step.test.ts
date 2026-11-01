@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isStep } from '../src/shared/types/step'
+import { isStep, isLocator, isWeakLocator } from '../src/shared/types/step'
 
 const el = { strategy: 'css', value: '#a' }
 
@@ -60,4 +60,68 @@ describe('isStep', () => {
     undefined,
     42
   ])('rejects %j', (s) => expect(isStep(s)).toBe(false))
+})
+
+const goodLocators = [
+  { by: 'role', role: 'button', name: 'Log in' },
+  { by: 'role', role: 'tab', name: 'Billing' },
+  { by: 'label', text: 'Email' },
+  { by: 'testId', attribute: 'data-testid', value: 'submit' },
+  { by: 'text', text: 'Sign up' },
+  { by: 'id', value: 'login' },
+  { by: 'css', value: '.btn', positional: false },
+  { by: 'css', value: 'li:nth-child(2)', positional: true },
+  { by: 'xpath', value: '//a[1]' }
+]
+
+const badLocators = [
+  null,
+  'role',
+  {},
+  { by: 'nope', value: 'x' },
+  { by: 'role', role: 'button' },
+  { by: 'role', role: '', name: 'x' },
+  { by: 'role', role: 'button', name: '' },
+  { by: 'label', text: '' },
+  { by: 'label' },
+  { by: 'testId', attribute: '', value: 'x' },
+  { by: 'testId', attribute: 'data-testid', value: '' },
+  { by: 'text', text: '' },
+  { by: 'id', value: '' },
+  { by: 'css', value: '.x' },
+  { by: 'css', value: '.x', positional: 'yes' },
+  { by: 'css', value: '', positional: false },
+  { by: 'xpath', value: '' }
+]
+
+describe('isLocator', () => {
+  it.each(goodLocators)('accepts %j', (l) => expect(isLocator(l)).toBe(true))
+  it.each(badLocators)('rejects %j', (l) => expect(isLocator(l)).toBe(false))
+})
+
+describe('isStep with a locator', () => {
+  it('accepts an element with a valid locator', () => {
+    const loc = { by: 'role', role: 'button', name: 'Log in' }
+    expect(isStep({ id: '1', kind: 'click', element: { ...el, locator: loc } })).toBe(true)
+  })
+  it('accepts an element without a locator', () => {
+    expect(isStep({ id: '1', kind: 'click', element: el })).toBe(true)
+  })
+  it('rejects an element with a malformed locator', () => {
+    const element = { ...el, locator: { by: 'role', role: 'button' } }
+    expect(isStep({ id: '1', kind: 'click', element })).toBe(false)
+  })
+})
+
+describe('isWeakLocator', () => {
+  it('is true for positional css and xpath', () => {
+    expect(isWeakLocator({ by: 'css', value: 'li:nth-child(2)', positional: true })).toBe(true)
+    expect(isWeakLocator({ by: 'xpath', value: '//a[1]' })).toBe(true)
+  })
+  it('is false for everything else and for undefined', () => {
+    expect(isWeakLocator({ by: 'css', value: '.x', positional: false })).toBe(false)
+    expect(isWeakLocator({ by: 'id', value: 'x' })).toBe(false)
+    expect(isWeakLocator({ by: 'role', role: 'button', name: 'x' })).toBe(false)
+    expect(isWeakLocator(undefined)).toBe(false)
+  })
 })

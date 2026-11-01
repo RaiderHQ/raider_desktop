@@ -5,7 +5,7 @@ import { webContents } from 'electron'
 import { appState } from '../appState'
 import { renderStep } from '../../codegen/steps'
 import { toAutomation } from '../../codegen/testFile'
-import type { ElementTarget, Step } from '../../../shared/types/step'
+import { isLocator, type ElementTarget, type Step } from '../../../shared/types/step'
 import type { TraceStep } from '../../../shared/types/traceStep'
 
 export interface RecorderEventData {
@@ -20,6 +20,7 @@ export interface RecorderEventData {
   innerText?: string
   ariaLabel?: string
   placeholder?: string
+  locator?: unknown
   boundingRect?: { x: number; y: number; width: number; height: number }
 }
 
@@ -27,6 +28,8 @@ export interface LabelHints {
   innerText?: string
   ariaLabel?: string
   placeholder?: string
+  /** Semantic locator from the preload; kept only when it is well-formed */
+  locator?: unknown
 }
 
 const LABEL_MAX = 60
@@ -65,7 +68,11 @@ export function toElementTarget(
 ): ElementTarget | null {
   if ((strategy !== 'id' && strategy !== 'css' && strategy !== 'xpath') || !selector) return null
   const label = elementLabel(hints)
-  return label ? { strategy, value: selector, label } : { strategy, value: selector }
+  const target: ElementTarget = label
+    ? { strategy, value: selector, label }
+    : { strategy, value: selector }
+  if (isLocator(hints.locator)) target.locator = hints.locator
+  return target
 }
 
 /** Pure mapping from a recorder DOM event to a Step; null when the event isn't recordable. */
