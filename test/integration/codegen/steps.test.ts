@@ -327,47 +327,24 @@ describe('semantic locators', () => {
   const xp = "//button[normalize-space()='Go']"
   const xpRb = xp.replace(/'/g, "\\'")
   const target = (locator: Locator): ElementTarget => ({ strategy: 'xpath', value: xp, locator })
-  const watir = (locator: Locator): string =>
-    renderStep({ id: '1', kind: 'click', element: target(locator) }, 'watir')
   const role = (
     r: string,
     nameFrom?: 'content' | 'aria-label' | 'other',
     tag?: string
   ): Locator => ({ by: 'role', role: r, name: 'It\'s "Go"', nameFrom, tag })
-  const q = ".element(xpath: '" + xpRb + "')"
-  const aria = (m: string): string => `.${m}(aria_label: 'It\\'s "Go"')`
 
-  const rows: Array<[string, Locator, string]> = [
-    ['button aria-label', role('button', 'aria-label', 'button'), aria('button')],
-    ['link aria-label', role('link', 'aria-label', 'a'), aria('link')],
-    ['textbox input aria-label', role('textbox', 'aria-label', 'input'), aria('text_field')],
-    ['textbox textarea aria-label', role('textbox', 'aria-label', 'textarea'), aria('textarea')],
-    ['checkbox aria-label', role('checkbox', 'aria-label', 'input'), aria('checkbox')],
-    ['radio aria-label', role('radio', 'aria-label', 'input'), aria('radio')],
-    ['combobox aria-label', role('combobox', 'aria-label', 'select'), aria('select_list')],
-    ['div role=button aria-label', role('button', 'aria-label', 'div'), q],
-    ['input button aria-label (ambiguous)', role('button', 'aria-label', 'input'), q],
-    ['button aria-label without tag', role('button', 'aria-label'), q],
-    ['button content', role('button', 'content', 'button'), q],
-    ['link content', role('link', 'content', 'a'), q],
-    ['button other', role('button', 'other', 'button'), q],
-    ['button no nameFrom', role('button', undefined, 'button'), q],
-    ['textbox other', role('textbox', 'other', 'input'), q],
-    ['checkbox content', role('checkbox', 'content', 'input'), q],
-    ['heading', role('heading', 'content', 'h1'), q],
-    ['label', { by: 'label', text: 'Email' }, q],
-    ['text', { by: 'text', text: "Don't" }, q],
-    [
-      'testId',
-      { by: 'testId', attribute: 'data-test-id', value: "a'b" },
-      ".element(data_test_id: 'a\\'b')"
-    ],
-    ['testId data.x', { by: 'testId', attribute: 'data.x', value: 'v' }, q],
-    ['testId data-test_id', { by: 'testId', attribute: 'data-test_id', value: 'v' }, q],
-    ['testId 1abc', { by: 'testId', attribute: '1abc', value: 'v' }, q]
-  ]
-  for (const [name, locator, tail] of rows)
-    it(`watir ${name}`, () => expect(watir(locator)).toBe(`@browser${tail}.click`))
+  it('watir ignores the locator and keeps the plain xpath', () => {
+    const plain = renderStep(
+      { id: '1', kind: 'click', element: { strategy: 'xpath', value: xp } },
+      'watir'
+    )
+    const withLocator = renderStep(
+      { id: '1', kind: 'click', element: target(role('button', 'aria-label', 'button')) },
+      'watir'
+    )
+    expect(withLocator).toBe(plain)
+    expect(withLocator).toBe(`@browser.element(xpath: '${xpRb}').click`)
+  })
 
   it('id, css and xpath locators render as the strategy does', () => {
     const el: ElementTarget = {
@@ -377,31 +354,6 @@ describe('semantic locators', () => {
     }
     expect(renderStep({ id: '1', kind: 'click', element: el }, 'watir')).toBe(
       "@browser.element(css: '#a').click"
-    )
-  })
-
-  it('odd test-id attributes fall back to the resolved css', () => {
-    for (const attribute of ['data.x', 'data-test_id', '1abc']) {
-      const el: ElementTarget = {
-        strategy: 'css',
-        value: `[${attribute}="v"]`,
-        locator: { by: 'testId', attribute, value: 'v' }
-      }
-      expect(renderStep({ id: '1', kind: 'click', element: el }, 'watir')).toBe(
-        `@browser.element(css: '[${attribute}="v"]').click`
-      )
-    }
-  })
-
-  it('type step keeps to_subtype with native forms', () => {
-    const step: Step = {
-      id: '1',
-      kind: 'type',
-      element: target(role('textbox', 'aria-label', 'input')),
-      text: 'x'
-    }
-    expect(renderStep(step, 'watir')).toBe(
-      "@browser.text_field(aria_label: 'It\\'s \"Go\"').to_subtype.set('x')"
     )
   })
 
@@ -417,11 +369,10 @@ describe('semantic locators', () => {
   })
 
   it.skipIf(!rubyBin)('quote-heavy locators pass ruby -c', () => {
-    const steps: Step[] = rows.map(([, l], i) => ({
-      id: `${i}`,
-      kind: 'click',
-      element: target(l)
-    }))
+    const steps: Step[] = [
+      role('button', 'aria-label', 'button'),
+      role('link', 'content', 'a')
+    ].map((l, i) => ({ id: `${i}`, kind: 'click', element: target(l) }))
     for (const automation of ['selenium', 'watir'] as const) {
       const file = join(mkdtempSync(join(tmpdir(), 'steps-')), 'x.rb')
       writeFileSync(file, steps.map((s) => renderStep(s, automation)).join('\n') + '\n')

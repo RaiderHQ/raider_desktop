@@ -1,4 +1,4 @@
-import type { ElementTarget, Locator, Step } from '../../shared/types/step'
+import type { ElementTarget, Step } from '../../shared/types/step'
 import { rubyString } from './ruby'
 import { isValidSecretName } from '../../shared/secretSteps'
 import { englishText } from '../../shared/describeStepEnglish'
@@ -26,39 +26,6 @@ const keyArg = (key: string): string =>
   Object.hasOwn(KEY_SYMBOLS, key) ? `:${KEY_SYMBOLS[key]}` : rubyString(key)
 
 const locator = (el: ElementTarget): string => `${el.strategy}: ${rubyString(el.value)}`
-
-// Native Watir methods per role and tag. Only aria_label: is used, since it matches the raw
-// attribute like the recorded XPath; text: and visible_text: compare rendered text and can differ.
-const WATIR_BY_ROLE_TAG: Record<string, Record<string, string>> = {
-  button: { button: 'button' },
-  link: { a: 'link' },
-  checkbox: { input: 'checkbox' },
-  radio: { input: 'radio' },
-  combobox: { select: 'select_list' },
-  textbox: { input: 'text_field', textarea: 'textarea' }
-}
-
-// attribute names Watir can take as a Ruby keyword once - becomes _
-const PLAIN_ATTRIBUTE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
-
-// Native Watir form that matches the same element as the recorded selector, or undefined to fall back
-function nativeWatir(l: Locator, browser: string): string | undefined {
-  if (l.by === 'role') {
-    const method = l.tag === undefined ? undefined : WATIR_BY_ROLE_TAG[l.role]?.[l.tag]
-    return method !== undefined && l.nameFrom === 'aria-label'
-      ? `${browser}.${method}(aria_label: ${rubyString(l.name)})`
-      : undefined
-  }
-  if (l.by === 'testId' && PLAIN_ATTRIBUTE.test(l.attribute))
-    return `${browser}.element(${l.attribute.replace(/-/g, '_')}: ${rubyString(l.value)})`
-  return undefined
-}
-
-/** Watir finder for an element: native methods for stable picks, else strategy/value. */
-export function watirElement(el: ElementTarget, browser: string): string {
-  const native = el.locator && nativeWatir(el.locator, browser)
-  return native ?? `${browser}.element(${locator(el)})`
-}
 
 /**
  * 'ivar' reads the standalone-file instance variables (@driver, @wait, @browser);
@@ -88,7 +55,7 @@ function namesFor(receiver: Receiver): Names {
     browser,
     sel: (el) => `${driver}.find_element(${locator(el)})`,
     sels: (el) => `${driver}.find_elements(${locator(el)})`,
-    wat: (el) => watirElement(el, browser)
+    wat: (el) => `${browser}.element(${locator(el)})`
   }
 }
 
