@@ -25,6 +25,8 @@ export interface RunRequest {
   rubyCommand: string
   /** When true, a quarantined failure fails the run; default false (user setting). */
   quarantinedFails?: boolean
+  /** Sets RAIDER_LOGIN_STATE for this run (off: always log in, never save; refresh: log in and save). Unset: normal reuse; an inherited RAIDER_LOGIN_STATE is removed. */
+  loginState?: 'off' | 'refresh'
 }
 
 export type ExampleStatus = 'started' | 'passed' | 'failed' | 'quarantined' | 'pending' | 'skipped'
