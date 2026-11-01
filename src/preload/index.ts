@@ -109,10 +109,6 @@ const api = {
     browser: string
   ): Promise<{ success: boolean; output?: string; error?: string }> =>
     ipcRenderer.invoke('update-browser-type', projectPath, browser),
-  isMobileProject: async (
-    projectPath: string
-  ): Promise<{ success: boolean; isMobileProject?: boolean; error?: string }> =>
-    ipcRenderer.invoke('is-mobile-project', projectPath),
   runCommand: async (command: string): Promise<CommandType> =>
     ipcRenderer.invoke('run-command', command),
   installGems: async (rubyCommand: string, gems: string[]): Promise<CommandType> =>
@@ -154,6 +150,11 @@ const api = {
     ipcRenderer.invoke('save-device-settings', projectPath, change),
   checkMobileReady: async (projectPath: string): Promise<MobileReady | { error: string }> =>
     ipcRenderer.invoke('check-mobile-ready', projectPath),
+  chooseAppFile: async (
+    projectPath: string,
+    platform: 'ios' | 'android'
+  ): Promise<{ path: string } | { cancelled: true } | { error: string }> =>
+    ipcRenderer.invoke('choose-app-file', projectPath, platform),
 
   // --- Recorder and Test Suite APIs ---
 

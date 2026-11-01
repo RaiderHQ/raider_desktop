@@ -824,6 +824,26 @@
     "forgetConfirm": "Forget the saved login \"{{name}}\"? The next run logs in again.",
     "forget": "Forget"
   },
+  "device": {
+    "title": "Device",
+    "runOn": "Run on",
+    "ios": "iOS",
+    "android": "Android",
+    "deviceName": "Device name",
+    "osVersion": "OS version",
+    "appFile": "App file",
+    "choose": "Choose…",
+    "driver": "Driver",
+    "fileMissing": "Can't find this file",
+    "chooseAppPrompt": "Choose the app file to test before running.",
+    "readError": "Couldn't read this project's device settings (config/capabilities.yml).",
+    "saved": "Saved",
+    "saveFailed": "Couldn't save the device settings.",
+    "help": {
+      "deviceName": "The simulator, emulator or phone name, for example iPhone 15.",
+      "osVersion": "For example 17.0 or 14."
+    }
+  },
   "common": {
     "close": "Close",
     "cancel": "Cancel"

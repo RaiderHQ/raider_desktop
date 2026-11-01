@@ -43,6 +43,12 @@ vi.mock('@components/ProjectDashboard', () => ({
   default: (): JSX.Element => <div data-testid="project-dashboard">ProjectDashboard</div>
 }))
 
+vi.mock('@components/DeviceSettings', () => ({
+  default: ({ projectPath }: { projectPath: string }): JSX.Element => (
+    <div data-testid="device-settings">{projectPath}</div>
+  )
+}))
+
 vi.mock('@components/Editor', () => ({
   default: (): JSX.Element => <div data-testid="editor">Editor</div>
 }))
@@ -89,7 +95,6 @@ const mockApi = {
   updateBrowserOptions: vi.fn().mockResolvedValue({ success: true }),
   updateHeadlessMode: vi.fn().mockResolvedValue({ success: true }),
   getProjectConfig: vi.fn().mockResolvedValue({ success: true, config: {} }),
-  isMobileProject: vi.fn().mockResolvedValue({ success: true, isMobileProject: false }),
   isQuickProject: vi.fn().mockResolvedValue(false),
   selectFolder: vi.fn().mockResolvedValue(null),
   saveQuickProjectTo: vi.fn(),
@@ -111,6 +116,7 @@ const mockApi = {
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
+  useProjectStore.setState({ layout: null })
   useRunStore.setState({ run: null, origin: null, isActive: false, freshLoginNext: false })
   useRecorderStore.setState({ isRunning: false })
   // @ts-expect-error - Mocking window.api
@@ -266,6 +272,65 @@ describe('Overview Settings Toolbar', (): void => {
     expect(screen.getByTestId('overview-url-input')).toBeInTheDocument()
     expect(screen.getByTestId('overview-browser-select')).toBeInTheDocument()
     expect(screen.getByText('overview.settings.headlessLabel')).toBeInTheDocument()
+  })
+
+  const appiumLayout = {
+    framework: 'rspec',
+    automation: 'appium',
+    mobilePlatform: 'ios',
+    specPath: 'spec',
+    featurePath: 'features',
+    helperPath: 'helpers',
+    recordable: false,
+    unsupportedReason: 'mobile'
+  } as const
+
+  it('shows the Device section in place of the web settings for a mobile project', async () => {
+    useProjectStore.setState({ layout: appiumLayout })
+    await renderOverview()
+
+    expect(screen.getByTestId('device-settings')).toHaveTextContent('/fake/project')
+    expect(screen.queryByTestId('overview-url-input')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('overview-browser-select')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('overview-headless-toggle')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('settings.timeout.label')).not.toBeInTheDocument()
+    expect(screen.queryByText('settings.section.browserOptions')).not.toBeInTheDocument()
+    // Run controls stay
+    expect(screen.getByTestId('overview-run-mode-select')).toBeInTheDocument()
+  })
+
+  it('does not fall back to stored browser settings for a mobile project', async () => {
+    localStorage.setItem('browserUrl', 'https://stored-url.com')
+    mockApi.getProjectConfig.mockResolvedValueOnce({
+      success: true,
+      config: { baseUrl: 'https://from-config.com', browser: 'firefox', headless: true }
+    })
+    useProjectStore.setState({ layout: appiumLayout })
+    await renderOverview()
+
+    expect(localStorage.getItem('browserUrl')).toBe('https://stored-url.com')
+    expect(localStorage.getItem('selectedBrowser')).toBeNull()
+    expect(localStorage.getItem('headless')).toBeNull()
+  })
+
+  it('keeps the web settings and no Device section for a selenium project', async () => {
+    useProjectStore.setState({
+      layout: {
+        ...appiumLayout,
+        automation: 'selenium',
+        mobilePlatform: undefined,
+        recordable: true,
+        unsupportedReason: undefined
+      }
+    })
+    await renderOverview()
+
+    expect(screen.queryByTestId('device-settings')).not.toBeInTheDocument()
+    expect(screen.getByTestId('overview-url-input')).toBeInTheDocument()
+    expect(screen.getByTestId('overview-browser-select')).toBeInTheDocument()
+    expect(screen.getByTestId('overview-headless-toggle')).toBeInTheDocument()
+    expect(screen.getByLabelText('settings.timeout.label')).toBeInTheDocument()
+    expect(screen.getByText('settings.section.browserOptions')).toBeInTheDocument()
   })
 
   it('settings toolbar is not visible on Scaffolding tab', async () => {

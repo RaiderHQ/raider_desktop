@@ -75,10 +75,10 @@ describe('IPC Contract', () => {
     // Browser & Mobile Configuration
     'updateBrowserUrl',
     'updateBrowserType',
-    'isMobileProject',
     'getDeviceSettings',
     'saveDeviceSettings',
     'checkMobileReady',
+    'chooseAppFile',
 
     // Test Execution
     'runCommand',

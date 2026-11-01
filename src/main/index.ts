@@ -29,7 +29,6 @@ import renameFile from './handlers/io/renameFile'
 import duplicateFile from './handlers/io/duplicateFile'
 import updateBrowserUrl from './handlers/config/updateBrowserUrl'
 import updateBrowserType from './handlers/config/updateBrowserType'
-import isMobileProject from './handlers/config/isMobileProject'
 import runCommand from './handlers/testing/runCommand'
 import isRubyInstalled from './handlers/ruby/isRubyInstalled'
 import isRbenvRubyInstalled from './handlers/ruby/isRbenvRubyInstalled'
@@ -78,6 +77,7 @@ import {
   saveDeviceSettingsHandler
 } from './handlers/mobile/deviceSettingsIpc'
 import { checkMobileReadyHandler } from './handlers/mobile/checkMobileReady'
+import { chooseAppFileHandler } from './handlers/mobile/chooseAppFile'
 import { listSavedLoginsHandler, forgetSavedLoginHandler } from './handlers/logins/savedLoginsIpc'
 import scaffoldGenerate from './handlers/project/scaffoldGenerate'
 import updateTimeout from './handlers/config/updateTimeout'
@@ -217,7 +217,6 @@ app.whenReady().then(() => {
   ipcMain.handle('save-quick-project-to', (_event, projectPath: string, destFolder: string) =>
     saveQuickProjectTo(projectPath, destFolder)
   )
-  ipcMain.handle('is-mobile-project', isMobileProject)
   ipcMain.handle('update-browser-url', (event, projectPath: string, url: string) =>
     updateBrowserUrl(event, projectPath, url)
   )
@@ -233,6 +232,9 @@ app.whenReady().then(() => {
   )
   ipcMain.handle('check-mobile-ready', (_event, projectPath: unknown) =>
     checkMobileReadyHandler(projectPath)
+  )
+  ipcMain.handle('choose-app-file', (_event, projectPath: unknown, platform: unknown) =>
+    chooseAppFileHandler(projectPath, platform)
   )
   ipcMain.handle('is-ruby-installed', isRubyInstalled)
   ipcMain.handle('is-rbenv-ruby-installed', isRbenvRubyInstalled)

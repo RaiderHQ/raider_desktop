@@ -102,15 +102,16 @@ export interface WindowApi extends RunApi {
     projectPath: string,
     browser: string
   ) => Promise<{ success: boolean; output?: string; error?: string }>
-  isMobileProject: (
-    projectPath: string
-  ) => Promise<{ success: boolean; isMobileProject?: boolean; error?: string }>
   getDeviceSettings: (projectPath: string) => Promise<DeviceSettings | { error: string }>
   saveDeviceSettings: (
     projectPath: string,
     change: DeviceSettingsChange
   ) => Promise<{ ok: true } | { error: string }>
   checkMobileReady: (projectPath: string) => Promise<MobileReady | { error: string }>
+  chooseAppFile: (
+    projectPath: string,
+    platform: 'ios' | 'android'
+  ) => Promise<{ path: string } | { cancelled: true } | { error: string }>
 
   // --- Test Execution ---
   runCommand: (command: string) => Promise<CommandType>

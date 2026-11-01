@@ -11,10 +11,6 @@ test.describe('Overview settings toolbar - functional', () => {
       success: true,
       config: { browser: 'chrome', headless: false, timeout: 10, browserArguments: ['no-sandbox'] }
     })
-    await mockMainIPCCapture(electronApp, 'is-mobile-project', {
-      success: true,
-      isMobileProject: false
-    })
     await mockMainIPCCapture(electronApp, 'read-directory', [])
     for (const channel of [
       'update-browser-url',

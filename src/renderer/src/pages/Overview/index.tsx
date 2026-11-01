@@ -16,6 +16,7 @@ import Tooltip from '@components/Tooltip'
 import TestsWorkspace from '@components/TestsWorkspace'
 import InfoButton from '@components/InfoButton'
 import RunPanel from '@components/RunPanel'
+import DeviceSettings from '@components/DeviceSettings'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { isEmptyRecording } from '../../hooks/useTestRecording'
@@ -36,6 +37,9 @@ const Overview: React.FC = () => {
   const { t } = useTranslation()
   const projectPath: string | null = useProjectStore((state) => state.projectPath)
   const files: FileNode[] = useProjectStore((state) => state.files)
+  const layout = useProjectStore((state) => state.layout)
+  // A mobile project has device settings in place of the browser ones
+  const isMobileProject = layout?.automation === 'appium'
   const navigate = useNavigate()
   const { testKey } = useParams()
   const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
@@ -87,7 +91,6 @@ const Overview: React.FC = () => {
   const [headless, setHeadless] = useState(false)
 
   // Project settings state (migrated from the old settings page)
-  const [isMobileProject, setIsMobileProject] = useState(false)
   const [timeout, setTimeout_] = useState(30)
 
   const [browserOptions, setBrowserOptions] = useState<string[]>([])
@@ -124,9 +127,9 @@ const Overview: React.FC = () => {
     }
   }, [projectPath, navigate])
 
-  // Load test settings from config files, falling back to localStorage
+  // Load test settings from config files, falling back to localStorage. A mobile project has none.
   useEffect(() => {
-    if (!projectPath) return
+    if (!projectPath || isMobileProject) return
     setConfigLoaded(false)
     const token = ++configRequestRef.current
     const isCurrent = (): boolean => token === configRequestRef.current
@@ -194,7 +197,7 @@ const Overview: React.FC = () => {
     void loadSettings().finally(() => {
       if (isCurrent()) setConfigLoaded(true)
     })
-  }, [projectPath])
+  }, [projectPath, isMobileProject])
 
   // A quick-record project lives in Raider's own folder until the user saves it somewhere
   const [isQuick, setIsQuick] = useState(false)
@@ -244,16 +247,6 @@ const Overview: React.FC = () => {
       setSaving(false)
     }
   }
-
-  // Detect mobile project
-  useEffect(() => {
-    if (!projectPath) return
-    window.api.isMobileProject(projectPath)
-      .then((result) => {
-        if (result.success) setIsMobileProject(result.isMobileProject || false)
-      })
-      .catch(() => {})
-  }, [projectPath])
 
   const handleUrlSave = async (): Promise<void> => {
     if (!projectPath) {
@@ -658,53 +651,62 @@ const Overview: React.FC = () => {
         <div className="relative w-full">
           {/* Test settings toolbar */}
           <div className="border border-neutral-bdr rounded-t-lg bg-neutral-50 px-4 py-3 space-y-2">
-            <Tooltip content={t('tooltips.overview.urlInput')} position="right" className="w-full">
-              <div className="flex items-center gap-2 w-full">
-                <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                  {t('overview.settings.urlLabel')}:
-                </label>
-                <input
-                  type="text"
-                  value={browserUrl}
-                  onChange={(e) => setBrowserUrl(e.target.value)}
-                  onBlur={handleUrlSave}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleUrlSave()
-                  }}
-                  placeholder={t('overview.settings.urlPlaceholder')}
-                  className="flex-1 border border-neutral-bdr rounded px-2 py-1 text-sm"
-                  data-testid="overview-url-input"
-                />
-              </div>
-            </Tooltip>
-            <div className="flex items-center gap-4 flex-wrap">
-              <Tooltip content={t('tooltips.overview.browserSelect')} position="right">
-                <div className="flex items-center gap-2">
+            {isMobileProject && projectPath && layout && (
+              <DeviceSettings projectPath={projectPath} layout={layout} />
+            )}
+            {!isMobileProject && (
+              <Tooltip content={t('tooltips.overview.urlInput')} position="right" className="w-full">
+                <div className="flex items-center gap-2 w-full">
                   <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                    {t('overview.settings.browserLabel')}
+                    {t('overview.settings.urlLabel')}:
                   </label>
-                  <select
-                    value={selectedBrowser}
-                    onChange={handleBrowserChange}
-                    className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[160px]"
-                    data-testid="overview-browser-select"
-                  >
-                    <option value="chrome">{t('settings.browser.chrome')}</option>
-                    <option value="firefox">{t('settings.browser.firefox')}</option>
-                    {selectedBrowser !== 'chrome' && selectedBrowser !== 'firefox' && (
-                      <option value={selectedBrowser}>{selectedBrowser}</option>
-                    )}
-                  </select>
+                  <input
+                    type="text"
+                    value={browserUrl}
+                    onChange={(e) => setBrowserUrl(e.target.value)}
+                    onBlur={handleUrlSave}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleUrlSave()
+                    }}
+                    placeholder={t('overview.settings.urlPlaceholder')}
+                    className="flex-1 border border-neutral-bdr rounded px-2 py-1 text-sm"
+                    data-testid="overview-url-input"
+                  />
                 </div>
               </Tooltip>
-              <Tooltip content={t('tooltips.overview.headlessToggle')} position="right">
-                <ToggleSwitch
-                  label={t('overview.settings.headlessLabel')}
-                  checked={headless}
-                  onChange={handleHeadlessToggle}
-                  testId="overview-headless-toggle"
-                />
-              </Tooltip>
+            )}
+            <div className="flex items-center gap-4 flex-wrap">
+              {!isMobileProject && (
+                <Tooltip content={t('tooltips.overview.browserSelect')} position="right">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                      {t('overview.settings.browserLabel')}
+                    </label>
+                    <select
+                      value={selectedBrowser}
+                      onChange={handleBrowserChange}
+                      className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[160px]"
+                      data-testid="overview-browser-select"
+                    >
+                      <option value="chrome">{t('settings.browser.chrome')}</option>
+                      <option value="firefox">{t('settings.browser.firefox')}</option>
+                      {selectedBrowser !== 'chrome' && selectedBrowser !== 'firefox' && (
+                        <option value={selectedBrowser}>{selectedBrowser}</option>
+                      )}
+                    </select>
+                  </div>
+                </Tooltip>
+              )}
+              {!isMobileProject && (
+                <Tooltip content={t('tooltips.overview.headlessToggle')} position="right">
+                  <ToggleSwitch
+                    label={t('overview.settings.headlessLabel')}
+                    checked={headless}
+                    onChange={handleHeadlessToggle}
+                    testId="overview-headless-toggle"
+                  />
+                </Tooltip>
+              )}
               <Tooltip content={t('tooltips.overview.runMode')} position="right">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
