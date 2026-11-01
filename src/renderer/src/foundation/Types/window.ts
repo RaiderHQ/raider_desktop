@@ -12,6 +12,7 @@ import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { IpcRendererEvent } from 'electron'
 import type { RunApi } from '@shared/types/runEvents'
+import type { SavedLoginsResult } from '@shared/types/savedLogins'
 
 /** Live-run methods (startRun, cancelRun, getActiveRun, getRunDefaults, onRunEvent) come from RunApi. */
 export interface WindowApi extends RunApi {
@@ -161,6 +162,11 @@ export interface WindowApi extends RunApi {
   importProject: () => Promise<{ success: boolean; error?: string }>
   importSuite: () => Promise<{ success: boolean; suite?: Suite; error?: string }>
   importTest: (suiteId: string) => Promise<{ success: boolean; test?: Test; error?: string }>
+
+  // --- Saved logins (active project) ---
+  /** The project's saved logins, without cookies or storage */
+  listSavedLogins: () => Promise<SavedLoginsResult>
+  forgetSavedLogin: (name: string) => Promise<{ ok: true } | { error: string }>
 
   // --- Test Management ---
   /** `test` is the test as saved, with its project file when it has one */

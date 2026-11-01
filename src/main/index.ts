@@ -77,6 +77,7 @@ import deleteTrace from './handlers/trace/deleteTrace'
 import setActiveProject, { getRecorderSettings } from './handlers/project/setActiveProject'
 import updateRecordingSettings from './handlers/config/updateRecordingSettings'
 import { closeApp } from './handlers/closeApp'
+import { listSavedLogins, forgetSavedLogin } from './handlers/logins/savedLogins'
 import scaffoldGenerate from './handlers/project/scaffoldGenerate'
 import updateTimeout from './handlers/config/updateTimeout'
 import updateViewport from './handlers/config/updateViewport'
@@ -305,6 +306,16 @@ app.whenReady().then(() => {
     setActiveProject(projectPath)
   )
   ipcMain.handle('get-recorder-settings', () => getRecorderSettings())
+  ipcMain.handle('list-saved-logins', () =>
+    appState.projectPath
+      ? listSavedLogins(appState.projectPath)
+      : { logins: [], gemSupportsLogins: false }
+  )
+  ipcMain.handle('forget-saved-login', (_event, name: unknown) =>
+    appState.projectPath
+      ? forgetSavedLogin(appState.projectPath, name)
+      : { error: 'No project is open.' }
+  )
   ipcMain.handle(
     'get-selector-priority',
     async () => (await getRecorderSettings()).selectorPriority
