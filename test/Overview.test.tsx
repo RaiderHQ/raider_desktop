@@ -114,7 +114,7 @@ const mockApi = {
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
-  useRunStore.setState({ run: null, origin: null, isActive: false })
+  useRunStore.setState({ run: null, origin: null, isActive: false, freshLoginNext: false })
   useRecorderStore.setState({ isRunning: false })
   // @ts-expect-error - Mocking window.api
   window.api = mockApi
@@ -788,8 +788,30 @@ describe('Overview live runs', (): void => {
     expect(JSON.parse(localStorage.getItem('raider.runSettings:/fake/project') as string)).toEqual({
       parallel: true,
       workers: 3,
-      quarantinedFails: true
+      quarantinedFails: true,
+      reuseLogins: true
     })
+  })
+
+  it('persists the reuse logins toggle and disables fresh login while off', async () => {
+    await renderOverview()
+    fireEvent.click(screen.getByTestId('overview-more-options'))
+    expect(screen.getByTestId('overview-fresh-login')).toBeEnabled()
+    fireEvent.click(screen.getByTestId('overview-reuse-logins'))
+    expect(
+      JSON.parse(localStorage.getItem('raider.runSettings:/fake/project') as string).reuseLogins
+    ).toBe(false)
+    expect(screen.getByTestId('overview-fresh-login')).toBeDisabled()
+  })
+
+  it('sends loginState refresh when fresh login is checked', async () => {
+    await renderOverview()
+    fireEvent.click(screen.getByTestId('overview-more-options'))
+    fireEvent.click(screen.getByTestId('overview-fresh-login'))
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('run-tests'))
+    })
+    expect(mockApi.startRun.mock.calls[0][0].loginState).toBe('refresh')
   })
 
   it('re-runs the failed tests of the last run by location', async () => {

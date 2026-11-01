@@ -6,6 +6,7 @@ import { useRunStore } from '@foundation/Stores/runStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import PieChartWidget from '@components/PieChartWidget'
 import TestResultCard from '@components/TestResultCard'
+import SavedLogins from '@components/SavedLogins'
 import NoProjectLoadedMessage from '@components/NoProjectLoadedMessage'
 import { loadRaiderResults } from '@foundation/raiderResults'
 import type { TestResult } from '@foundation/Types/testResult'
@@ -272,6 +273,7 @@ const Index: React.FC = (): JSX.Element => {
           </div>
         </>
       )}
+      <SavedLogins />
     </div>
   )
 }

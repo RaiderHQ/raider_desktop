@@ -108,9 +108,12 @@ const nonEmptyStrings = (value: unknown, what: string): string[] => {
 /** Checks the (untrusted) request; only listed project tests and safe tags may run. */
 async function validate(request: unknown, framework: Framework): Promise<RunRequest> {
   if (typeof request !== 'object' || request === null) throw new Error('No run request was given.')
-  const { scope, rubyCommand } = request as RunRequest
+  const { scope, rubyCommand, loginState } = request as RunRequest
   if (!isValidRubyCommand(rubyCommand)) {
     throw new Error('The Ruby command is not valid, so the tests were not run.')
+  }
+  if (loginState !== undefined && loginState !== 'off' && loginState !== 'refresh') {
+    throw new Error('The login option is not valid, so the tests were not run.')
   }
   if (typeof scope !== 'object' || scope === null) throw new Error('No run scope was given.')
   const s = scope as RunScope
@@ -276,7 +279,8 @@ export async function startRun(
       command,
       workers,
       liveEvents,
-      rubyCommand: valid.rubyCommand
+      rubyCommand: valid.rubyCommand,
+      loginState: valid.loginState
     })
     return { runId }
   } catch (error) {
@@ -295,6 +299,7 @@ async function launch(
     workers: number
     liveEvents: boolean
     rubyCommand: string
+    loginState?: RunRequest['loginState']
   }
 ): Promise<void> {
   const { session, runId } = active
@@ -336,6 +341,9 @@ async function launch(
       RUBYOPT: [process.env.RUBYOPT, '-EUTF-8'].filter(Boolean).join(' '),
       RAIDER_EVENTS_DIR: dir
     }
+    // Never inherit a login mode from the app's own environment
+    if (run.loginState) env.RAIDER_LOGIN_STATE = run.loginState
+    else delete env.RAIDER_LOGIN_STATE
     const child = deps.spawnCommand(
       buildShellCommand(run.projectPath, run.command),
       run.projectPath,

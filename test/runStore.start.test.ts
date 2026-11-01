@@ -26,7 +26,7 @@ beforeEach(() => {
   api.getRunDefaults.mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 4 })
   ;(window as unknown as { api: typeof api }).api = api
   useRubyStore.setState({ rubyCommand: 'ruby' })
-  useRunStore.setState({ run: null, origin: null, isActive: false })
+  useRunStore.setState({ run: null, origin: null, isActive: false, freshLoginNext: false })
 })
 
 describe('runStore.start', () => {
@@ -60,7 +60,12 @@ describe('runStore.start', () => {
     expect(api.startRun).not.toHaveBeenCalled()
   })
   it('sends the settings workers and quarantinedFails', async () => {
-    saveRunSettings('/proj', { parallel: true, workers: 3, quarantinedFails: true })
+    saveRunSettings('/proj', {
+      parallel: true,
+      workers: 3,
+      quarantinedFails: true,
+      reuseLogins: true
+    })
     api.startRun.mockResolvedValue({ runId: 'r1' })
     await useRunStore.getState().start(scope, origin)
     expect(api.startRun).toHaveBeenCalledWith({
@@ -69,6 +74,38 @@ describe('runStore.start', () => {
       rubyCommand: 'ruby',
       quarantinedFails: true
     })
+  })
+  it('sends loginState off when reuse is off', async () => {
+    saveRunSettings('/proj', {
+      parallel: false,
+      workers: null,
+      quarantinedFails: false,
+      reuseLogins: false
+    })
+    api.startRun.mockResolvedValue({ runId: 'r1' })
+    await useRunStore.getState().start(scope, origin)
+    expect(api.startRun.mock.calls[0][0].loginState).toBe('off')
+  })
+  it('sends refresh once, then nothing', async () => {
+    api.startRun.mockResolvedValue({ runId: 'r1' })
+    useRunStore.getState().setFreshLoginNext(true)
+    await useRunStore.getState().start(scope, origin)
+    expect(api.startRun.mock.calls[0][0].loginState).toBe('refresh')
+    expect(useRunStore.getState().freshLoginNext).toBe(false)
+    await useRunStore.getState().start(scope, origin)
+    expect('loginState' in api.startRun.mock.calls[1][0]).toBe(false)
+  })
+  it('keeps freshLoginNext on busy and error', async () => {
+    useRunStore.getState().setFreshLoginNext(true)
+    api.startRun.mockResolvedValue({ error: 'busy' })
+    await useRunStore.getState().start(scope, origin)
+    expect(useRunStore.getState().freshLoginNext).toBe(true)
+    api.startRun.mockResolvedValue({ error: 'nope' })
+    await useRunStore.getState().start(scope, origin)
+    expect(useRunStore.getState().freshLoginNext).toBe(true)
+    api.startRun.mockRejectedValue(new Error('boom'))
+    await useRunStore.getState().start(scope, origin)
+    expect(useRunStore.getState().freshLoginNext).toBe(true)
   })
 })
 

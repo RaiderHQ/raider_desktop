@@ -168,6 +168,10 @@ describe('IPC Contract', () => {
     'getRunDefaults',
     'onRunEvent',
 
+    // Saved logins
+    'listSavedLogins',
+    'forgetSavedLogin',
+
     // App Lifecycle
     'closeApp'
   ]
