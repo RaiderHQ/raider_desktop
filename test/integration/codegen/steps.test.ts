@@ -329,46 +329,42 @@ describe('semantic locators', () => {
   const target = (locator: Locator): ElementTarget => ({ strategy: 'xpath', value: xp, locator })
   const watir = (locator: Locator): string =>
     renderStep({ id: '1', kind: 'click', element: target(locator) }, 'watir')
-  const role = (r: string, nameFrom?: 'content' | 'aria-label' | 'other'): Locator => ({
-    by: 'role',
-    role: r,
-    name: 'It\'s "Go"',
-    nameFrom
-  })
+  const role = (
+    r: string,
+    nameFrom?: 'content' | 'aria-label' | 'other',
+    tag?: string
+  ): Locator => ({ by: 'role', role: r, name: 'It\'s "Go"', nameFrom, tag })
+  const q = ".element(xpath: '" + xpRb + "')"
+  const aria = (m: string): string => `.${m}(aria_label: 'It\\'s "Go"')`
 
   const rows: Array<[string, Locator, string]> = [
-    ['button content', role('button', 'content'), ".button(text: 'It\\'s \"Go\"')"],
-    ['button aria-label', role('button', 'aria-label'), ".button(aria_label: 'It\\'s \"Go\"')"],
-    ['button other', role('button', 'other'), `.element(xpath: '${xpRb}')`],
-    ['button no nameFrom', role('button'), `.element(xpath: '${xpRb}')`],
-    ['link content', role('link', 'content'), ".link(text: 'It\\'s \"Go\"')"],
-    ['link aria-label', role('link', 'aria-label'), ".link(aria_label: 'It\\'s \"Go\"')"],
-    [
-      'textbox aria-label',
-      role('textbox', 'aria-label'),
-      ".text_field(aria_label: 'It\\'s \"Go\"')"
-    ],
-    [
-      'checkbox aria-label',
-      role('checkbox', 'aria-label'),
-      ".checkbox(aria_label: 'It\\'s \"Go\"')"
-    ],
-    ['radio aria-label', role('radio', 'aria-label'), ".radio(aria_label: 'It\\'s \"Go\"')"],
-    [
-      'combobox aria-label',
-      role('combobox', 'aria-label'),
-      ".select_list(aria_label: 'It\\'s \"Go\"')"
-    ],
-    ['textbox other', role('textbox', 'other'), `.element(xpath: '${xpRb}')`],
-    ['checkbox content', role('checkbox', 'content'), `.element(xpath: '${xpRb}')`],
-    ['heading', role('heading', 'content'), `.element(xpath: '${xpRb}')`],
-    ['label', { by: 'label', text: 'Email' }, `.element(xpath: '${xpRb}')`],
+    ['button aria-label', role('button', 'aria-label', 'button'), aria('button')],
+    ['link aria-label', role('link', 'aria-label', 'a'), aria('link')],
+    ['textbox input aria-label', role('textbox', 'aria-label', 'input'), aria('text_field')],
+    ['textbox textarea aria-label', role('textbox', 'aria-label', 'textarea'), aria('textarea')],
+    ['checkbox aria-label', role('checkbox', 'aria-label', 'input'), aria('checkbox')],
+    ['radio aria-label', role('radio', 'aria-label', 'input'), aria('radio')],
+    ['combobox aria-label', role('combobox', 'aria-label', 'select'), aria('select_list')],
+    ['div role=button aria-label', role('button', 'aria-label', 'div'), q],
+    ['input button aria-label (ambiguous)', role('button', 'aria-label', 'input'), q],
+    ['button aria-label without tag', role('button', 'aria-label'), q],
+    ['button content', role('button', 'content', 'button'), q],
+    ['link content', role('link', 'content', 'a'), q],
+    ['button other', role('button', 'other', 'button'), q],
+    ['button no nameFrom', role('button', undefined, 'button'), q],
+    ['textbox other', role('textbox', 'other', 'input'), q],
+    ['checkbox content', role('checkbox', 'content', 'input'), q],
+    ['heading', role('heading', 'content', 'h1'), q],
+    ['label', { by: 'label', text: 'Email' }, q],
+    ['text', { by: 'text', text: "Don't" }, q],
     [
       'testId',
       { by: 'testId', attribute: 'data-test-id', value: "a'b" },
       ".element(data_test_id: 'a\\'b')"
     ],
-    ['text', { by: 'text', text: "Don't" }, ".element(visible_text: 'Don\\'t')"]
+    ['testId data.x', { by: 'testId', attribute: 'data.x', value: 'v' }, q],
+    ['testId data-test_id', { by: 'testId', attribute: 'data-test_id', value: 'v' }, q],
+    ['testId 1abc', { by: 'testId', attribute: '1abc', value: 'v' }, q]
   ]
   for (const [name, locator, tail] of rows)
     it(`watir ${name}`, () => expect(watir(locator)).toBe(`@browser${tail}.click`))
@@ -384,11 +380,24 @@ describe('semantic locators', () => {
     )
   })
 
+  it('odd test-id attributes fall back to the resolved css', () => {
+    for (const attribute of ['data.x', 'data-test_id', '1abc']) {
+      const el: ElementTarget = {
+        strategy: 'css',
+        value: `[${attribute}="v"]`,
+        locator: { by: 'testId', attribute, value: 'v' }
+      }
+      expect(renderStep({ id: '1', kind: 'click', element: el }, 'watir')).toBe(
+        `@browser.element(css: '[${attribute}="v"]').click`
+      )
+    }
+  })
+
   it('type step keeps to_subtype with native forms', () => {
     const step: Step = {
       id: '1',
       kind: 'type',
-      element: target(role('textbox', 'aria-label')),
+      element: target(role('textbox', 'aria-label', 'input')),
       text: 'x'
     }
     expect(renderStep(step, 'watir')).toBe(
@@ -397,7 +406,11 @@ describe('semantic locators', () => {
   })
 
   it('selenium output ignores the locator', () => {
-    const step: Step = { id: '1', kind: 'click', element: target(role('button', 'content')) }
+    const step: Step = {
+      id: '1',
+      kind: 'click',
+      element: target(role('button', 'content', 'button'))
+    }
     expect(renderStep(step, 'selenium')).toBe(
       `@wait.until { @driver.find_element(xpath: '${xpRb}').displayed? }\n@driver.find_element(xpath: '${xpRb}').click`
     )

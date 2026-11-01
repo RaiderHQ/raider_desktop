@@ -2,8 +2,14 @@ export type Strategy = 'id' | 'css' | 'xpath'
 
 /** A semantic way to find an element, richer than the strategy/value pair. */
 export type Locator =
-  // nameFrom: where the name came from; Watir's text: only matches 'content' names
-  | { by: 'role'; role: string; name: string; nameFrom?: 'content' | 'aria-label' | 'other' }
+  // nameFrom: where the name came from; tag: the element's lowercase tagName (picks the Watir method)
+  | {
+      by: 'role'
+      role: string
+      name: string
+      nameFrom?: 'content' | 'aria-label' | 'other'
+      tag?: string
+    }
   | { by: 'label'; text: string }
   | { by: 'testId'; attribute: string; value: string }
   | { by: 'text'; text: string }
@@ -100,7 +106,8 @@ export function isLocator(v: unknown): v is Locator {
       return (
         isNonEmpty(v.role) &&
         isNonEmpty(v.name) &&
-        (v.nameFrom === undefined || NAME_SOURCES.includes(v.nameFrom as string))
+        (v.nameFrom === undefined || NAME_SOURCES.includes(v.nameFrom as string)) &&
+        (v.tag === undefined || isNonEmpty(v.tag))
       )
     case 'label':
     case 'text':

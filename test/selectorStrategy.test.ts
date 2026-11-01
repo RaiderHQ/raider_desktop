@@ -70,13 +70,27 @@ describe('getPrioritizedSelector: candidates', () => {
     expect(pick(document.querySelector(selector)!).locator).toMatchObject({ by: 'role', nameFrom })
   })
 
+  it.each([
+    ['<button aria-label="Close"><svg></svg></button>', 'button', 'button', 'aria-label'],
+    ['<div role="button" aria-label="Close"></div>', 'div', 'div', 'aria-label'],
+    ['<textarea aria-label="Notes"></textarea>', 'textarea', 'textarea', 'aria-label']
+  ])('%s records the tag and an exact aria-label name', (html, selector, tag, nameFrom) => {
+    document.body.innerHTML = html
+    expect(pick(document.querySelector(selector)!).locator).toMatchObject({
+      by: 'role',
+      tag,
+      nameFrom
+    })
+  })
+
   it('gets role button for an input of type button', () => {
     document.body.innerHTML = '<input type="button" value="Apply"><input type="text">'
     expect(pick(document.querySelector('input')!).locator).toEqual({
       by: 'role',
       role: 'button',
       name: 'Apply',
-      nameFrom: 'content'
+      nameFrom: 'content',
+      tag: 'input'
     })
   })
 
@@ -157,7 +171,8 @@ describe('getPrioritizedSelector: candidates', () => {
       by: 'role',
       role: 'button',
       name: `Don't "save"`,
-      nameFrom: 'content'
+      nameFrom: 'content',
+      tag: 'button'
     })
   })
 

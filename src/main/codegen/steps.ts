@@ -27,37 +27,31 @@ const keyArg = (key: string): string =>
 
 const locator = (el: ElementTarget): string => `${el.strategy}: ${rubyString(el.value)}`
 
-// Watir element types whose role tells us the tag; the rest stay a generic element
-const WATIR_TYPED_ROLES: Record<string, string> = {
-  textbox: 'text_field',
-  checkbox: 'checkbox',
-  radio: 'radio',
-  combobox: 'select_list'
+// Native Watir methods per role and tag. Only aria_label: is used, since it matches the raw
+// attribute like the recorded XPath; text: and visible_text: compare rendered text and can differ.
+const WATIR_BY_ROLE_TAG: Record<string, Record<string, string>> = {
+  button: { button: 'button' },
+  link: { a: 'link' },
+  checkbox: { input: 'checkbox' },
+  radio: { input: 'radio' },
+  combobox: { select: 'select_list' },
+  textbox: { input: 'text_field', textarea: 'textarea' }
 }
 
-// Native Watir form for a semantic locator, or undefined to fall back to the XPath
+// attribute names Watir can take as a Ruby keyword once - becomes _
+const PLAIN_ATTRIBUTE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
+
+// Native Watir form that matches the same element as the recorded selector, or undefined to fall back
 function nativeWatir(l: Locator, browser: string): string | undefined {
-  switch (l.by) {
-    case 'role': {
-      const name = rubyString(l.name)
-      if (l.role === 'button' || l.role === 'link') {
-        if (l.nameFrom === 'content') return `${browser}.${l.role}(text: ${name})`
-        if (l.nameFrom === 'aria-label') return `${browser}.${l.role}(aria_label: ${name})`
-        return undefined
-      }
-      // A <label> name is recorded as 'other', so label: can't be used; only aria-label is certain
-      const type = WATIR_TYPED_ROLES[l.role]
-      return type !== undefined && l.nameFrom === 'aria-label'
-        ? `${browser}.${type}(aria_label: ${name})`
-        : undefined
-    }
-    case 'testId':
-      return `${browser}.element(${l.attribute.replace(/-/g, '_')}: ${rubyString(l.value)})`
-    case 'text':
-      return `${browser}.element(visible_text: ${rubyString(l.text)})`
-    default:
-      return undefined
+  if (l.by === 'role') {
+    const method = l.tag === undefined ? undefined : WATIR_BY_ROLE_TAG[l.role]?.[l.tag]
+    return method !== undefined && l.nameFrom === 'aria-label'
+      ? `${browser}.${method}(aria_label: ${rubyString(l.name)})`
+      : undefined
   }
+  if (l.by === 'testId' && PLAIN_ATTRIBUTE.test(l.attribute))
+    return `${browser}.element(${l.attribute.replace(/-/g, '_')}: ${rubyString(l.value)})`
+  return undefined
 }
 
 /** Watir finder for an element: native methods for stable picks, else strategy/value. */

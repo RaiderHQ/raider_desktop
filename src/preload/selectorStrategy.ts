@@ -237,11 +237,14 @@ function byRole(el: Element): Candidate | null {
   const role = roleOf(el)
   const named = accessibleNameSource(el)
   if (!role || !(role in ROLE_KINDS) || !named) return null
-  const { name, from: nameFrom } = named
+  const { name } = named
+  // Watir's aria_label: matches the raw attribute, so call it that only when the name is exactly it
+  const nameFrom =
+    named.from === 'aria-label' && el.getAttribute('aria-label') !== name ? 'other' : named.from
   return checked(el, {
     selector: roleXPath(role, name, el.getAttribute('aria-labelledby')),
     strategy: 'xpath',
-    locator: { by: 'role', role, name, nameFrom }
+    locator: { by: 'role', role, name, nameFrom, tag: el.tagName.toLowerCase() }
   })
 }
 
