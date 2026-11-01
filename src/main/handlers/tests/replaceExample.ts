@@ -1,4 +1,5 @@
 import fs from 'fs/promises'
+import { STRING_LITERAL } from '../../codegen/ruby'
 import { renderStep } from '../../codegen/steps'
 import { toAutomation } from '../../codegen/testFile'
 import { withSecretNames } from '../../../shared/secretSteps'
@@ -48,7 +49,6 @@ const USES_HELPER = /(^|[^@\w])(driver|browser)\./m
 export function receiverFor(source: string): Receiver {
   return USES_IVAR.test(source) && !USES_HELPER.test(source) ? 'ivar' : 'helper'
 }
-const STRING_LITERAL = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g
 const DO_HEADER = /\bdo\s*(?:\|[^|]*\|)?\s*(?:#.*)?$/
 
 /**

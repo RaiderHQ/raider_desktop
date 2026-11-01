@@ -1,7 +1,7 @@
 import type { RecorderSettings } from '../../shared/types/recorderSettings'
 import type { Step } from '../../shared/types/step'
 import { posix } from 'node:path'
-import { rubyString } from './ruby'
+import { rubyString, STRING_LITERAL } from './ruby'
 import { renderStep } from './steps'
 import { withSecretNames } from '../../shared/secretSteps'
 import type { Automation } from './steps'
@@ -100,8 +100,8 @@ const CONFIG_WAIT = "config.fetch('explicit_wait', config.fetch('timeout', 10))"
 const CONSTANT_LIKE = /^(?:(?:::)?[A-Z]\w*)+$/
 const EXPECTATION = /\b(?:expect|is_expected|are_expected|expect_any_instance_of)\b/g
 // Ruby string literals and trailing comments, so recorded values like 'expect delays' don't count
-const STRING_LITERAL = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g
 const TRAILING_COMMENT = /#.*$/
+const WAIT_WORD = /\bwait\b/
 
 /**
  * The cops (at rubocop-rspec defaults) a recorded test would trip. The file is
@@ -138,7 +138,7 @@ export const RECORDED_MARKER = '# Recorded with Raider.'
 export function generateProjectSpecFile(
   test: { name: string; steps: Step[] },
   automation: Automation,
-  opts: { fileRelPath: string; helperPath: string }
+  opts: { fileRelPath: string; helperPath: string; waitHelper?: boolean }
 ): string {
   const watir = automation === 'watir'
   const name = rubyString(test.name)
@@ -151,6 +151,13 @@ export function generateProjectSpecFile(
   )
     throw new Error('Project spec paths must be relative to the project root')
   const toHelper = posix.relative(posix.dirname(fileRel), posix.join(helperRel, 'spec_helper'))
+  const waitHelper = !watir && opts.waitHelper === true
+  const body = withSecretNames(test.steps).map((step) =>
+    indent(renderStep(step, automation, { receiver: 'helper', waitHelper }), 4)
+  )
+  // The helper form needs no `wait`; keep it only for custom code that still calls it
+  const needsWait =
+    !waitHelper || body.some((line) => WAIT_WORD.test(line.replace(STRING_LITERAL, "''")))
   const setup = watir
     ? [
         '  before do',
@@ -160,15 +167,14 @@ export function generateProjectSpecFile(
         `    Watir.default_timeout = ${CONFIG_WAIT}`,
         '  end'
       ]
-    : [
-        '  let(:wait) do',
-        "    config = YAML.load_file('config/config.yml')",
-        `    Selenium::WebDriver::Wait.new(timeout: ${CONFIG_WAIT})`,
-        '  end'
-      ]
-  const body = withSecretNames(test.steps).map((step) =>
-    indent(renderStep(step, automation, { receiver: 'helper' }), 4)
-  )
+    : needsWait
+      ? [
+          '  let(:wait) do',
+          "    config = YAML.load_file('config/config.yml')",
+          `    Selenium::WebDriver::Wait.new(timeout: ${CONFIG_WAIT})`,
+          '  end'
+        ]
+      : []
   const cops = copsToDisable(test.name, body).join(', ')
 
   return [
@@ -180,7 +186,7 @@ export function generateProjectSpecFile(
     '',
     `describe ${name} do`,
     ...setup,
-    '',
+    ...(setup.length ? [''] : []),
     `  it ${name} do`,
     ...body,
     '  end',
