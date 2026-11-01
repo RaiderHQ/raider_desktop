@@ -86,7 +86,7 @@ const Overview: React.FC = () => {
   const [selectedBrowser, setSelectedBrowser] = useState('chrome')
   const [headless, setHeadless] = useState(false)
 
-  // Project settings state (migrated from ProjectSettings)
+  // Project settings state (migrated from the old settings page)
   const [isMobileProject, setIsMobileProject] = useState(false)
   const [timeout, setTimeout_] = useState(30)
 

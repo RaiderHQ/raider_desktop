@@ -114,10 +114,6 @@
   },
   "settings": {
     "loading": "Loading settings...",
-    "mobileProject": {
-      "title": "Mobile Project",
-      "description": "For now, mobile settings are not supported. They will come in newer versions of the app."
-    },
     "header": {
       "title": "Configuration files",
       "description": "We added the following files to your project"
@@ -156,29 +152,6 @@
     },
     "urlUpdateSuccess": "URL successfully updated!",
     "browserUpdateSuccess": "Browser successfully updated!",
-    "mobile": {
-      "appiumUrl": {
-        "label": "Appium URL:",
-        "placeholder": "Enter Appium URL"
-      },
-      "platformVersion": {
-        "label": "Platform Version:",
-        "placeholder": "Enter platform version"
-      },
-      "automationName": {
-        "label": "Automation Name:",
-        "placeholder": "Enter automation name"
-      },
-      "deviceName": {
-        "label": "Device Name:",
-        "placeholder": "Enter device name"
-      },
-      "app": {
-        "label": "App:",
-        "placeholder": "Enter app name"
-      },
-      "updateSuccess": "Mobile settings updated successfully!"
-    },
     "tabs": {
       "project": "Project Settings",
       "recording": "Recording Settings",
@@ -223,12 +196,6 @@
       "placeholder": "Add option (e.g. headless)...",
       "updateButton": "Update Options",
       "updateSuccess": "Browser options updated!"
-    },
-    "appium": {
-      "startButton": "Start Appium Server",
-      "starting": "Starting Appium...",
-      "startSuccess": "Appium server started!",
-      "startFailed": "Failed to start Appium server."
     },
     "paths": {
       "page": "Page objects path:",

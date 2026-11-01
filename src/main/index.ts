@@ -31,8 +31,6 @@ import updateBrowserUrl from './handlers/config/updateBrowserUrl'
 import updateBrowserType from './handlers/config/updateBrowserType'
 import isMobileProject from './handlers/config/isMobileProject'
 import runCommand from './handlers/testing/runCommand'
-import updateMobileCapabilities from './handlers/config/updateMobileCapabilities'
-import getMobileCapabilities from './handlers/config/getMobileCapabilities'
 import isRubyInstalled from './handlers/ruby/isRubyInstalled'
 import isRbenvRubyInstalled from './handlers/ruby/isRbenvRubyInstalled'
 import isRvmRubyInstalled from './handlers/ruby/isRvmRubyInstalled'
@@ -75,12 +73,15 @@ import deleteTrace from './handlers/trace/deleteTrace'
 import setActiveProject, { getRecorderSettings } from './handlers/project/setActiveProject'
 import updateRecordingSettings from './handlers/config/updateRecordingSettings'
 import { closeApp } from './handlers/closeApp'
+import {
+  getDeviceSettingsHandler,
+  saveDeviceSettingsHandler
+} from './handlers/mobile/deviceSettingsIpc'
 import { listSavedLoginsHandler, forgetSavedLoginHandler } from './handlers/logins/savedLoginsIpc'
 import scaffoldGenerate from './handlers/project/scaffoldGenerate'
 import updateTimeout from './handlers/config/updateTimeout'
 import updateViewport from './handlers/config/updateViewport'
 import updateBrowserOptions from './handlers/config/updateBrowserOptions'
-import startAppium from './handlers/config/startAppium'
 import updatePaths from './handlers/config/updatePaths'
 import updateHeadlessMode from './handlers/config/updateHeadlessMode'
 import getProjectConfig from './handlers/config/getProjectConfig'
@@ -223,8 +224,12 @@ app.whenReady().then(() => {
     updateBrowserType(event, projectPath, browser)
   )
   ipcMain.handle('run-command', runCommand)
-  ipcMain.handle('update-mobile-capabilities', updateMobileCapabilities)
-  ipcMain.handle('get-mobile-capabilities', getMobileCapabilities)
+  ipcMain.handle('get-device-settings', (_event, projectPath: unknown) =>
+    getDeviceSettingsHandler(projectPath)
+  )
+  ipcMain.handle('save-device-settings', (_event, projectPath: unknown, change: unknown) =>
+    saveDeviceSettingsHandler(projectPath, change)
+  )
   ipcMain.handle('is-ruby-installed', isRubyInstalled)
   ipcMain.handle('is-rbenv-ruby-installed', isRbenvRubyInstalled)
   ipcMain.handle('is-rvm-ruby-installed', isRvmRubyInstalled)
@@ -360,9 +365,6 @@ app.whenReady().then(() => {
   )
   ipcMain.handle('get-project-config', (_event, projectPath: string) =>
     getProjectConfig(projectPath)
-  )
-  ipcMain.handle('start-appium', (event, projectPath: string) =>
-    startAppium(event, projectPath)
   )
 
   // --- Path Configuration Handler ---

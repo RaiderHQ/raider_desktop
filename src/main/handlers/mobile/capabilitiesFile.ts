@@ -2,16 +2,10 @@
 // YAML-parsed: generated Android files can hold lines like `app: app:` that a parser rejects.
 
 import type { MobilePlatform } from '@shared/types/projectLayout'
+import type { DeviceEdit, DeviceFields } from '@shared/types/deviceSettings'
 
-export type { MobilePlatform }
+export type { MobilePlatform, DeviceEdit, DeviceFields }
 export type BlockKey = 'top' | 'ios' | 'android'
-
-export interface DeviceFields {
-  deviceName: string
-  platformVersion: string
-  app: string
-  automationName: string
-}
 
 const FIELDS: Array<[keyof DeviceFields, string]> = [
   ['deviceName', 'deviceName'],
@@ -27,15 +21,17 @@ function lines(text: string): string[] {
   return text.split(/\r?\n/)
 }
 
+/** A scalar's value: quotes removed, and an inline ` # comment` after an unquoted value dropped */
 function unquote(raw: string): string {
   const value = raw.trim()
-  if (value.length >= 2 && value.startsWith("'") && value.endsWith("'")) {
-    return value.slice(1, -1).replace(/''/g, "'")
+  if (value.startsWith("'")) {
+    const close = value.match(/^'((?:[^']|'')*)'/)
+    if (close) return close[1].replace(/''/g, "'")
+  } else if (value.startsWith('"')) {
+    const close = value.match(/^"((?:[^"\\]|\\.)*)"/)
+    if (close) return close[1].replace(/\\(["\\])/g, '$1')
   }
-  if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
-    return value.slice(1, -1).replace(/\\(["\\])/g, '$1')
-  }
-  return value
+  return value.replace(/(^|\s)#.*$/, '').trim()
 }
 
 /** Line index of `appium:options:` for the block, or -1 */
@@ -81,6 +77,63 @@ export function readDeviceFields(capsText: string, block: BlockKey): DeviceField
 
 export function readRunOn(configText: string | null): 'ios' | 'android' {
   if (configText === null) return 'ios'
-  const match = configText.match(/^platform:\s*:?(\w+)/m)
-  return match && match[1] === 'android' ? 'android' : 'ios'
+  const match = configText.match(/^platform:[ \t]*([^\r\n]*)/m)
+  const value = match ? unquote(match[1]).replace(/^:/, '') : ''
+  return value === 'android' ? 'android' : 'ios'
+}
+
+/** Index of the block's last child line (blank and comment lines excluded), or -1 */
+function lastChildLine(all: string[], at: number): number {
+  const own = indentOf(all[at])
+  let last = -1
+  for (let i = at + 1; i < all.length; i++) {
+    if (isBlank(all[i])) continue
+    if (indentOf(all[i]) <= own) break
+    last = i
+  }
+  return last
+}
+
+/**
+ * Sets the given keys in a block's appium:options, as `key: 'value'`. Every other line stays
+ * byte-identical, line endings included. A missing key is added as the block's last line.
+ * Throws Error('newline') for a value with a line break, Error('block') for a missing block.
+ */
+export function writeDeviceFields(capsText: string, block: BlockKey, edit: DeviceEdit): string {
+  const entries = Object.entries(edit) as Array<[string, string]>
+  if (entries.some(([, value]) => /[\r\n]/.test(value))) throw new Error('newline')
+  // Split on \n only, so a CRLF file's lines keep their \r
+  const all = capsText.split('\n')
+  const at = findOptionsLine(all, block)
+  if (at === -1) throw new Error('block')
+  for (const [key, value] of entries) {
+    const quoted = `'${value.replace(/'/g, "''")}'`
+    const end = lastChildLine(all, at)
+    const keyLine = new RegExp(`^(\\s*)${key}:(?:\\s|$)`)
+    let target = -1
+    for (let i = at + 1; i <= end; i++) {
+      if (!isBlank(all[i]) && keyLine.test(all[i])) {
+        target = i
+        break
+      }
+    }
+    if (target !== -1) {
+      const cr = all[target].endsWith('\r') ? '\r' : ''
+      all[target] = `${all[target].match(keyLine)![1]}${key}: ${quoted}${cr}`
+    } else {
+      const first = all.slice(at + 1).findIndex((line) => !isBlank(line)) + at + 1
+      const cr = all[end].endsWith('\r') ? '\r' : ''
+      all.splice(end + 1, 0, `${' '.repeat(indentOf(all[first]))}${key}: ${quoted}${cr}`)
+    }
+  }
+  return all.join('\n')
+}
+
+/** Sets `platform:` in config.yml, adding the line first when it is missing; null means no file */
+export function writeRunOn(configText: string | null, runOn: 'ios' | 'android'): string {
+  if (configText === null) return `platform: ${runOn}\n`
+  if (/^platform:/m.test(configText)) {
+    return configText.replace(/^platform:[^\r\n]*/m, `platform: ${runOn}`)
+  }
+  return `platform: ${runOn}${configText.includes('\r\n') ? '\r\n' : '\n'}${configText}`
 }

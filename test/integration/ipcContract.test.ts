@@ -76,8 +76,8 @@ describe('IPC Contract', () => {
     'updateBrowserUrl',
     'updateBrowserType',
     'isMobileProject',
-    'updateMobileCapabilities',
-    'getMobileCapabilities',
+    'getDeviceSettings',
+    'saveDeviceSettings',
 
     // Test Execution
     'runCommand',
@@ -142,7 +142,6 @@ describe('IPC Contract', () => {
     'updateBrowserOptions',
     'updateHeadlessMode',
     'getProjectConfig',
-    'startAppium',
 
     // Path Configuration
     'updatePaths',

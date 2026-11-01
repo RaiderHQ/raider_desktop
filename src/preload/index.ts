@@ -13,6 +13,7 @@ import type { ProjectLayout } from '@shared/types/projectLayout'
 import type { PrepareSuiteRunResult, PrepareTestRunResult } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
+import type { DeviceSettings, DeviceSettingsChange } from '@shared/types/deviceSettings'
 import type {
   ActiveRun,
   RunDefaults,
@@ -140,20 +141,13 @@ const api = {
     output?: string
     error?: string
   }> => ipcRenderer.invoke('install-rbenv-and-ruby'),
-  updateMobileCapabilities: async (
+  getDeviceSettings: async (projectPath: string): Promise<DeviceSettings | { error: string }> =>
+    ipcRenderer.invoke('get-device-settings', projectPath),
+  saveDeviceSettings: async (
     projectPath: string,
-    capabilities: {
-      platformVersion: string
-      automationName: string
-      deviceName: string
-      app: string
-    }
-  ): Promise<{ success: boolean; output?: string; error?: string }> =>
-    ipcRenderer.invoke('update-mobile-capabilities', projectPath, capabilities),
-  getMobileCapabilities: async (
-    projectPath: string
-  ): Promise<{ success: boolean; capabilities?: Record<string, unknown>; error?: string }> =>
-    ipcRenderer.invoke('get-mobile-capabilities', projectPath),
+    change: DeviceSettingsChange
+  ): Promise<{ ok: true } | { error: string }> =>
+    ipcRenderer.invoke('save-device-settings', projectPath, change),
 
   // --- Recorder and Test Suite APIs ---
 
@@ -336,8 +330,6 @@ const api = {
     options: string[]
   ): Promise<CommandType> =>
     ipcRenderer.invoke('update-browser-options', projectPath, options),
-  startAppium: async (projectPath: string): Promise<CommandType> =>
-    ipcRenderer.invoke('start-appium', projectPath),
   updateHeadlessMode: async (
     projectPath: string,
     enabled: boolean

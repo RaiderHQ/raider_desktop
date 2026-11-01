@@ -4,7 +4,9 @@ import { join } from 'path'
 import {
   detectMobilePlatform,
   readDeviceFields,
-  readRunOn
+  readRunOn,
+  writeDeviceFields,
+  writeRunOn
 } from '../../../src/main/handlers/mobile/capabilitiesFile'
 
 const fixture = (name: string): string =>
@@ -102,5 +104,168 @@ describe('readRunOn', () => {
   it('reads the generated cross-platform configs', () => {
     expect(readRunOn(fixture('cross_platform-3.11.config.yml'))).toBe('ios')
     expect(readRunOn(fixture('cross_platform-3.12.config.yml'))).toBe('ios')
+  })
+})
+
+describe('reader details', () => {
+  it('drops an inline comment after an unquoted value but keeps # inside quotes', () => {
+    const text = [
+      'appium:options:',
+      '  deviceName: Pixel 8 # my phone',
+      "  platformVersion: '14' # quoted",
+      '  app: "a #1.apk" # note',
+      '  automationName: UiAutomator2#x',
+      ''
+    ].join('\n')
+    expect(readDeviceFields(text, 'top')).toEqual({
+      deviceName: 'Pixel 8',
+      platformVersion: '14',
+      app: 'a #1.apk',
+      automationName: 'UiAutomator2#x'
+    })
+  })
+
+  it('reads a CRLF file like its LF twin', () => {
+    const text = fixture('cross_platform-3.12.capabilities.yml')
+    const crlf = text.replace(/\n/g, '\r\n')
+    expect(detectMobilePlatform(crlf)).toBe('cross_platform')
+    expect(readDeviceFields(crlf, 'ios')).toEqual(readDeviceFields(text, 'ios'))
+    expect(readDeviceFields(crlf, 'android')).toEqual(readDeviceFields(text, 'android'))
+  })
+
+  it('reads quoted run-on values', () => {
+    expect(readRunOn("platform: 'android'\n")).toBe('android')
+    expect(readRunOn('platform: "android"\n')).toBe('android')
+    expect(readRunOn("platform: ':ios'\n")).toBe('ios')
+    expect(readRunOn('platform: android # on this one\n')).toBe('android')
+  })
+})
+
+const EDITABLE = ['deviceName', 'platformVersion', 'app'] as const
+
+describe('writeDeviceFields', () => {
+  const cases: Array<[string, string, 'top' | 'ios' | 'android']> = []
+  for (const version of VERSIONS) {
+    cases.push([`ios-${version}.capabilities.yml`, version, 'top'])
+    cases.push([`android-${version}.capabilities.yml`, version, 'top'])
+    cases.push([`cross_platform-${version}.capabilities.yml`, version, 'ios'])
+    cases.push([`cross_platform-${version}.capabilities.yml`, version, 'android'])
+  }
+
+  for (const [name, , block] of cases) {
+    for (const key of EDITABLE) {
+      it(`changes only the ${key} line of ${name} (${block})`, () => {
+        const before = fixture(name)
+        const after = writeDeviceFields(before, block, { [key]: 'New value' })
+        const a = before.split('\n')
+        const b = after.split('\n')
+        expect(b).toHaveLength(a.length)
+        const changed = b.map((line, i) => (line === a[i] ? -1 : i)).filter((i) => i >= 0)
+        expect(changed).toHaveLength(1)
+        expect(b[changed[0]]).toMatch(new RegExp(`^\\s+${key}: 'New value'$`))
+        expect(readDeviceFields(after, block)?.[key]).toBe('New value')
+      })
+    }
+  }
+
+  it('keeps CRLF on every line', () => {
+    const crlf = fixture('cross_platform-3.12.capabilities.yml').replace(/\n/g, '\r\n')
+    const after = writeDeviceFields(crlf, 'ios', { deviceName: 'iPhone 16', app: 'x.app' })
+    expect(after.replace(/\r\n/g, '')).not.toMatch(/[\r\n]/)
+    expect(readDeviceFields(after, 'ios')).toMatchObject({ deviceName: 'iPhone 16', app: 'x.app' })
+    const changed = after.split('\r\n').filter((line, i) => line !== crlf.split('\r\n')[i])
+    expect(changed).toHaveLength(2)
+  })
+
+  it('adds a missing key as the last line of its block at the child indentation', () => {
+    const text = [
+      'platformName: iOS',
+      'appium:options:',
+      '  automationName: XCUITest',
+      '',
+      'other:',
+      '  a: 1',
+      ''
+    ].join('\n')
+    const after = writeDeviceFields(text, 'top', { deviceName: 'iPhone 15' })
+    expect(after).toBe(
+      [
+        'platformName: iOS',
+        'appium:options:',
+        '  automationName: XCUITest',
+        "  deviceName: 'iPhone 15'",
+        '',
+        'other:',
+        '  a: 1',
+        ''
+      ].join('\n')
+    )
+  })
+
+  it('adds a missing key inside a nested block of a CRLF file', () => {
+    const text =
+      'ios:\r\n  platformName: iOS\r\n  appium:options:\r\n    app: a.app\r\nandroid:\r\n  x: 1\r\n'
+    const after = writeDeviceFields(text, 'ios', { deviceName: 'P' })
+    expect(after).toBe(
+      "ios:\r\n  platformName: iOS\r\n  appium:options:\r\n    app: a.app\r\n    deviceName: 'P'\r\nandroid:\r\n  x: 1\r\n"
+    )
+  })
+
+  it('round-trips awkward values', () => {
+    for (const value of ['Pixel 8 #2: test', "O'Brien's iPhone"]) {
+      const after = writeDeviceFields(fixture('ios-3.12.capabilities.yml'), 'top', {
+        deviceName: value
+      })
+      expect(readDeviceFields(after, 'top')?.deviceName).toBe(value)
+    }
+  })
+
+  it('refuses a newline in a value', () => {
+    expect(() =>
+      writeDeviceFields(fixture('ios-3.12.capabilities.yml'), 'top', { app: 'a\nb' })
+    ).toThrow('newline')
+    expect(() =>
+      writeDeviceFields(fixture('ios-3.12.capabilities.yml'), 'top', { app: 'a\rb' })
+    ).toThrow('newline')
+  })
+
+  it('throws when the block does not exist', () => {
+    expect(() =>
+      writeDeviceFields(fixture('ios-3.12.capabilities.yml'), 'android', { app: 'a' })
+    ).toThrow('block')
+  })
+})
+
+describe('writeRunOn', () => {
+  it('creates the file content when there is none', () => {
+    expect(writeRunOn(null, 'android')).toBe('platform: android\n')
+  })
+
+  it('replaces the platform line and leaves the rest alone', () => {
+    expect(writeRunOn('platform: :ios\ntimeout: 10\n', 'android')).toBe(
+      'platform: android\ntimeout: 10\n'
+    )
+  })
+
+  it('prepends a platform line when there is none', () => {
+    expect(writeRunOn('timeout: 10\nvideo:\n  fps: 5\n', 'ios')).toBe(
+      'platform: ios\ntimeout: 10\nvideo:\n  fps: 5\n'
+    )
+  })
+
+  it('keeps CRLF', () => {
+    expect(writeRunOn('platform: :ios\r\ntimeout: 10\r\n', 'android')).toBe(
+      'platform: android\r\ntimeout: 10\r\n'
+    )
+    expect(writeRunOn('timeout: 10\r\n', 'android')).toBe('platform: android\r\ntimeout: 10\r\n')
+  })
+
+  it('only changes the platform line of the generated config', () => {
+    const before = fixture('cross_platform-3.12.config.yml')
+    const after = writeRunOn(before, 'android')
+    expect(readRunOn(after)).toBe('android')
+    const a = before.split('\n')
+    const b = after.split('\n')
+    expect(b.filter((line, i) => line !== a[i])).toEqual(['platform: android'])
   })
 })
