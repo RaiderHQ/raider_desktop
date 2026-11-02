@@ -43,7 +43,7 @@ function elementText(step: RaiderTraceStep): TraceText {
 }
 
 // Origin and path only: a query string, fragment or credentials may carry secrets.
-function plainUrl(url: string | null): string {
+export function plainUrl(url: string | null): string {
   if (!url) return ''
   try {
     const u = new URL(url)

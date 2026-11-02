@@ -900,18 +900,23 @@
       "value": "Value",
       "hidden": "Hidden",
       "source": "Source",
-      "error": "Error"
+      "error": "Error",
+      "url": "Full address",
+      "type": "Type"
     },
     "showAll": "Show all steps",
     "unavailable": "Not available in this browser",
     "network": {
       "empty": "No network requests during this step",
       "emptyAll": "No network requests",
-      "failed": "Failed: {{error}}"
+      "failed": "Failed",
+      "size": "Size as the browser reports it, which may include headers",
+      "details": "Request details"
     },
     "console": {
       "empty": "No console messages during this step",
-      "emptyAll": "No console messages"
+      "emptyAll": "No console messages",
+      "details": "Message details"
     },
     "truncated": {
       "steps": "Older steps removed to keep the trace small",
