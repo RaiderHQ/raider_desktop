@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto'
 import { dirname, isAbsolute, join, relative, resolve } from 'path'
 import { isStep } from '../../../shared/types/step'
 import { refusedSecretName, withSecretNames } from '../../../shared/secretSteps'
-import type { Sidecar } from '../../../shared/types/projectTest'
+import type { Sidecar, StepLines } from '../../../shared/types/projectTest'
 
 export class SidecarUnreadableError extends Error {
   constructor(message: string) {
@@ -146,6 +146,22 @@ function isSidecar(value: unknown): value is Sidecar {
   )
 }
 
+const isLine = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 1
+
+function isStepLines(value: unknown): value is StepLines {
+  if (typeof value !== 'object' || value === null) return false
+  const m = value as Record<string, unknown>
+  return (
+    isStr(m.fileSha256) &&
+    Array.isArray(m.ranges) &&
+    m.ranges.every((r: unknown) => {
+      if (typeof r !== 'object' || r === null) return false
+      const { stepId, start, end } = r as Record<string, unknown>
+      return isStr(stepId) && isLine(start) && isLine(end) && end >= start
+    })
+  )
+}
+
 /** Null when there is no sidecar; throws SidecarUnreadableError for bad JSON or shape. */
 export async function readSidecar(projectPath: string, fileRel: string): Promise<Sidecar | null> {
   let raw: string
@@ -171,6 +187,8 @@ export async function readSidecar(projectPath: string, fileRel: string): Promise
     )
   }
   if (!isSidecar(parsed)) throw new SidecarUnreadableError(`Sidecar has a bad shape: ${fileRel}`)
+  // A bad map only costs the map: the test itself is still readable
+  if ('stepLines' in parsed && !isStepLines(parsed.stepLines)) delete parsed.stepLines
   // Secret steps saved before names were stored are named once here; the next save keeps them
   return { ...parsed, steps: withSecretNames(parsed.steps) }
 }

@@ -1,10 +1,12 @@
 import type { RecorderSettings } from '../../shared/types/recorderSettings'
 import type { Step } from '../../shared/types/step'
+import { createHash } from 'node:crypto'
 import { posix } from 'node:path'
 import { rubyString, STRING_LITERAL } from './ruby'
 import { renderStep } from './steps'
 import { withSecretNames } from '../../shared/secretSteps'
 import type { Automation } from './steps'
+import type { StepLines } from '../../shared/types/projectTest'
 
 export type { Automation }
 
@@ -135,11 +137,26 @@ function copsToDisable(name: string, body: string[]): string[] {
 /** Header line that marks a spec file as written by Raider (hashRuby ignores comments). */
 export const RECORDED_MARKER = '# Recorded with Raider.'
 
+/** Hex sha256 of the text's exact utf-8 bytes (re-exported by the step-lines module). */
+export const sha256Bytes = (content: string): string =>
+  createHash('sha256').update(Buffer.from(content, 'utf-8')).digest('hex')
+
+type ProjectSpecOptions = { fileRelPath: string; helperPath: string; waitHelper?: boolean }
+
 export function generateProjectSpecFile(
   test: { name: string; steps: Step[] },
   automation: Automation,
-  opts: { fileRelPath: string; helperPath: string; waitHelper?: boolean }
+  opts: ProjectSpecOptions
 ): string {
+  return generateProjectSpecFileWithMap(test, automation, opts).content
+}
+
+/** The project spec file plus the lines each step was written to. */
+export function generateProjectSpecFileWithMap(
+  test: { name: string; steps: Step[] },
+  automation: Automation,
+  opts: ProjectSpecOptions
+): { content: string; stepLines: StepLines } {
   const watir = automation === 'watir'
   const name = rubyString(test.name)
   const fileRel = opts.fileRelPath.replace(/\\/g, '/')
@@ -152,7 +169,8 @@ export function generateProjectSpecFile(
     throw new Error('Project spec paths must be relative to the project root')
   const toHelper = posix.relative(posix.dirname(fileRel), posix.join(helperRel, 'spec_helper'))
   const waitHelper = !watir && opts.waitHelper === true
-  const body = withSecretNames(test.steps).map((step) =>
+  const named = withSecretNames(test.steps)
+  const body = named.map((step) =>
     indent(renderStep(step, automation, { receiver: 'helper', waitHelper }), 4)
   )
   // The helper form needs no `wait`; keep it only for custom code that still calls it
@@ -177,7 +195,7 @@ export function generateProjectSpecFile(
       : []
   const cops = copsToDisable(test.name, body).join(', ')
 
-  return [
+  const lines = [
     '# frozen_string_literal: true',
     '',
     `${RECORDED_MARKER} Edit in Raider; editing here makes the test code-owned.`,
@@ -187,11 +205,15 @@ export function generateProjectSpecFile(
     `describe ${name} do`,
     ...setup,
     ...(setup.length ? [''] : []),
-    `  it ${name} do`,
-    ...body,
-    '  end',
-    'end',
-    ...(cops ? [`# rubocop:enable ${cops}`] : []),
-    ''
-  ].join('\n')
+    `  it ${name} do`
+  ]
+  const ranges = body.map((chunk, i) => {
+    const start = lines.length + 1
+    const chunkLines = chunk.split('\n')
+    lines.push(...chunkLines)
+    return { stepId: named[i].id, start, end: start + chunkLines.length - 1 }
+  })
+  lines.push('  end', 'end', ...(cops ? [`# rubocop:enable ${cops}`] : []), '')
+  const content = lines.join('\n')
+  return { content, stepLines: { fileSha256: sha256Bytes(content), ranges } }
 }

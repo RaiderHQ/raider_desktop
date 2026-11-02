@@ -99,6 +99,35 @@ describe('sidecar store', () => {
     expect((error as Error).message).toContain('RAIDER_SECRET_')
   })
 
+  it('round-trips a well-formed step map', async () => {
+    const s = sidecar('spec/a_spec.rb', {
+      stepLines: { fileSha256: 'f00d', ranges: [{ stepId: 's1', start: 7, end: 8 }] }
+    })
+    await writeSidecar(project, s)
+    expect(await readSidecar(project, 'spec/a_spec.rb')).toEqual(s)
+  })
+
+  it('drops a malformed step map and still reads the sidecar', async () => {
+    const bad = [
+      { fileSha256: 1, ranges: 'x' },
+      { fileSha256: 'f', ranges: [{ stepId: 's1', start: 0, end: 1 }] },
+      { fileSha256: 'f', ranges: [{ stepId: 's1', start: 3, end: 2 }] },
+      { fileSha256: 'f', ranges: [{ stepId: 's1', start: 1.5, end: 2 }] },
+      { fileSha256: 'f', ranges: [{ stepId: 2, start: 1, end: 2 }] },
+      'nope'
+    ]
+    await mkdir(join(testsDir(), 'spec'), { recursive: true })
+    for (const stepLines of bad) {
+      await writeFile(
+        sidecarPath(project, 'spec/a_spec.rb'),
+        JSON.stringify({ ...sidecar('spec/a_spec.rb'), stepLines })
+      )
+      const read = await readSidecar(project, 'spec/a_spec.rb')
+      expect(read).toEqual(sidecar('spec/a_spec.rb'))
+      expect(read).not.toHaveProperty('stepLines')
+    }
+  })
+
   it('readSidecar returns null when missing', async () => {
     expect(await readSidecar(project, 'spec/none_spec.rb')).toBeNull()
   })
