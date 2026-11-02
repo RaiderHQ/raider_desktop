@@ -49,7 +49,8 @@ import { prepareSuiteRun, prepareTestRun } from './handlers/testing/prepareRuns'
 import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTests'
 import { isListed } from './handlers/tests/suiteStore'
 import { registerRunIpc } from './handlers/run/runIpc'
-import { registerTraceIpc } from './handlers/trace/traceIpc'
+import { openTraceFromDialog, registerTraceIpc } from './handlers/trace/traceIpc'
+import { installAppMenu } from './appMenu'
 import { killActiveRun } from './handlers/run/runner'
 import exportTest from './handlers/io/exportTest'
 import exportSuite from './handlers/io/exportSuite'
@@ -180,6 +181,7 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+  installAppMenu(() => appState.mainWindow && void openTraceFromDialog(appState.mainWindow))
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

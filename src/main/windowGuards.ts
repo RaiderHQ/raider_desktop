@@ -28,8 +28,17 @@ export function isAppUrl(url: string, appUrl: string): boolean {
 }
 
 /**
+ * True when a frame inside the main window may load `url`: a trace snapshot
+ * (about:srcdoc), a blank frame, or the app's own page. A link clicked inside a
+ * snapshot may not take its frame anywhere else.
+ */
+export function isSnapshotFrameUrl(url: string, appUrl: string): boolean {
+  return url === 'about:srcdoc' || url === 'about:blank' || isAppUrl(url, appUrl)
+}
+
+/**
  * Locks down the main window: links open in the browser (http(s) only), the window
- * never navigates away from the app, and the recorder <webview> always gets the
+ * and its frames never navigate away from the app, and the recorder <webview> always gets the
  * recorder preload, an isolated world, web security, no popups and its own session,
  * whatever the page asks for. A webview may only open a website or about:blank.
  */
@@ -44,6 +53,12 @@ export function installWindowGuards(
 
   contents.on('will-navigate', (event, url) => {
     if (!isAppUrl(url, appUrl)) event.preventDefault()
+  })
+
+  // Frames in the app's own page only; the recorder webview is a separate guest
+  // whose navigation this never sees. will-navigate owns the main frame.
+  contents.on('will-frame-navigate', (event) => {
+    if (!event.isMainFrame && !isSnapshotFrameUrl(event.url, appUrl)) event.preventDefault()
   })
 
   contents.on('will-attach-webview', (event, webPreferences, params) => {
