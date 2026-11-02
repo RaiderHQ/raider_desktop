@@ -1,4 +1,4 @@
-import type { PickCandidate } from '../shared/types/pick'
+import { PICK_GRACE_MS, type PickCandidate } from '../shared/types/pick'
 
 type PickChannel = 'recorder-picked' | 'recorder-pick-cancelled'
 
@@ -16,6 +16,17 @@ const BLOCKED_EVENTS = [
   'keypress',
   'keyup'
 ]
+
+// The rest of a double-click after the pick; key events aren't held back
+const GRACE_EVENTS = new Set([
+  'pointerdown',
+  'pointerup',
+  'mousedown',
+  'mouseup',
+  'click',
+  'auxclick',
+  'dblclick'
+])
 
 const OUTLINE_STYLE: Record<string, string> = {
   position: 'fixed',
@@ -35,6 +46,9 @@ const OUTLINE_STYLE: Record<string, string> = {
  * Pick mode for the recorder guest: while on, the next click names an element instead of acting
  * on the page, and Esc cancels. The listeners sit on the window in the capture phase, so they run
  * before the page's and the recorder's own document listeners.
+ *
+ * Only the top frame gets this preload: input inside an iframe acts on that frame and picks
+ * nothing, so the app doesn't offer picking for steps inside frames.
  */
 export function installPickMode(
   win: Window,
@@ -42,14 +56,21 @@ export function installPickMode(
   candidate: (el: Element) => PickCandidate,
   // Only the user's own input picks or cancels; events made up by page scripts are just blocked
   isTrusted: (event: Event) => boolean = (event) => event.isTrusted
-): { setPicking(on: boolean): void; isPicking(): boolean } {
+): { setPicking(on: boolean): void; isPicking(): boolean; dispose(): void } {
   const doc = win.document
   let picking = false
+  // After a pick or cancel here, the rest of a double-click is swallowed until this time
+  let swallowUntil = 0
   let outline: HTMLElement | null = null
+  let hovered: Element | null = null
+  let redrawFrame = 0
 
   const removeOutline = (): void => {
+    if (redrawFrame) win.cancelAnimationFrame(redrawFrame)
+    redrawFrame = 0
     outline?.remove()
     outline = null
+    hovered = null
   }
 
   // A fixed, click-through box on the root element: it doesn't move the page's layout
@@ -63,6 +84,7 @@ export function installPickMode(
       }
       doc.documentElement.appendChild(outline)
     }
+    hovered = el
     const rect = el.getBoundingClientRect()
     outline.style.setProperty('top', `${rect.top}px`, 'important')
     outline.style.setProperty('left', `${rect.left}px`, 'important')
@@ -72,36 +94,76 @@ export function installPickMode(
 
   const setPicking = (on: boolean): void => {
     picking = on
-    if (!on) removeOutline()
+    if (on) {
+      swallowUntil = 0
+      // A focused field could still take a menu paste or cut while picking
+      const active = doc.activeElement
+      if (active instanceof HTMLElement && active !== doc.body) active.blur()
+    } else {
+      removeOutline()
+    }
+  }
+
+  const stopHere = (): void => {
+    setPicking(false)
+    swallowUntil = Date.now() + PICK_GRACE_MS
   }
 
   const block = (event: Event): void => {
-    if (!picking) return
+    if (!picking) {
+      if (Date.now() < swallowUntil && GRACE_EVENTS.has(event.type)) {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+      }
+      return
+    }
     event.preventDefault()
     event.stopImmediatePropagation()
     if (!isTrusted(event)) return
     const target = event.target
     if (event.type === 'click' && target instanceof Element && target !== outline) {
-      setPicking(false)
+      stopHere()
       send('recorder-picked', candidate(target))
     } else if (event.type === 'keydown' && (event as KeyboardEvent).key === 'Escape') {
-      setPicking(false)
+      stopHere()
       send('recorder-pick-cancelled')
     }
   }
 
-  for (const type of BLOCKED_EVENTS) win.addEventListener(type, block, true)
+  const onMouseOver = (event: Event): void => {
+    const target = event.target
+    if (picking && target instanceof Element && target !== outline) drawOutline(target)
+  }
 
-  win.addEventListener(
-    'mouseover',
-    (event) => {
-      const target = event.target
-      if (picking && target instanceof Element && target !== outline) drawOutline(target)
-    },
-    true
-  )
+  // Scrolling or resizing moves the hovered element; follow it once per frame
+  const onViewportChange = (): void => {
+    if (!picking || !hovered || redrawFrame) return
+    redrawFrame = win.requestAnimationFrame(() => {
+      redrawFrame = 0
+      if (!hovered) return
+      if (hovered.isConnected) drawOutline(hovered)
+      else removeOutline()
+    })
+  }
+
   // Leaving the page ends picking here; main ends it on navigation too
-  win.addEventListener('pagehide', () => setPicking(false))
+  const onPageHide = (): void => setPicking(false)
 
-  return { setPicking, isPicking: () => picking }
+  for (const type of BLOCKED_EVENTS) win.addEventListener(type, block, true)
+  win.addEventListener('mouseover', onMouseOver, true)
+  win.addEventListener('scroll', onViewportChange, true)
+  win.addEventListener('resize', onViewportChange)
+  win.addEventListener('pagehide', onPageHide)
+
+  const dispose = (): void => {
+    setPicking(false)
+    swallowUntil = 0
+    for (const type of BLOCKED_EVENTS) win.removeEventListener(type, block, true)
+    win.removeEventListener('mouseover', onMouseOver, true)
+    win.removeEventListener('scroll', onViewportChange, true)
+    win.removeEventListener('resize', onViewportChange)
+    win.removeEventListener('pagehide', onPageHide)
+  }
+
+  return { setPicking, isPicking: () => picking, dispose }
 }

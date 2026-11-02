@@ -20,6 +20,7 @@ function sendResult(result: PickResult): void {
 function endPickMode(result?: PickResult): void {
   if (!appState.pickMode) return
   appState.pickMode = false
+  appState.pickModeEndedAt = Date.now()
   unwatchGuest?.()
   unwatchGuest = null
   guest()?.send('recorder-pick-mode', false)
@@ -45,6 +46,8 @@ export function setPickMode(on: boolean): { success: boolean } {
     endPickMode()
     return { success: true }
   }
+  // Picking covers the top frame only: the recorder preload doesn't run in iframes, so a click
+  // inside one picks nothing. The app doesn't offer picking for steps inside frames.
   const wc = guest()
   if (!wc) return { success: false }
   if (!appState.pickMode) {

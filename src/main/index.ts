@@ -64,6 +64,7 @@ import {
   handleRecorderPicked,
   handleSetPickMode
 } from './handlers/recording/pickMode'
+import registerRecorderWebContents from './handlers/recording/registerRecorderWebContents'
 import loadUrlRequest from './handlers/loadUrlRequest'
 import startRecordingMain from './handlers/recording/startRecordingMain'
 import replayStepsAndRecord from './handlers/recording/replayStepsAndRecord'
@@ -351,9 +352,9 @@ app.whenReady().then(() => {
     handleRecorderPicked(event.sender.id, data)
   )
   ipcMain.on('recorder-pick-cancelled', (event) => handleRecorderPickCancelled(event.sender.id))
-  ipcMain.handle('register-recorder-webcontents', (_event, webContentsId: number) => {
-    appState.recorderWebContentsId = webContentsId
-  })
+  ipcMain.handle('register-recorder-webcontents', (_event, webContentsId: number) =>
+    registerRecorderWebContents(webContentsId)
+  )
 
   ipcMain.handle('save-recording', (_event, suiteId: string, test: Test) =>
     saveRecording(appState.mainWindow, suiteId, test)

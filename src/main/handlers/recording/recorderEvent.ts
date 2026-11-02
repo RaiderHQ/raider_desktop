@@ -7,6 +7,7 @@ import { renderStep } from '../../codegen/steps'
 import { toAutomation } from '../../codegen/testFile'
 import { isLocator, type ElementTarget, type Step } from '../../../shared/types/step'
 import type { TraceStep } from '../../../shared/types/traceStep'
+import { PICK_GRACE_MS } from '../../../shared/types/pick'
 
 export interface RecorderEventData {
   action: 'click' | 'type' | 'sendKeys'
@@ -99,8 +100,9 @@ export function recorderEventToStep(data: RecorderEventData): Step | null {
 function recorderEvent(data: RecorderEventData): void {
   // Ignore events triggered by the webview replay — only record real user actions
   if (appState.isReplayingInWebview) return
-  // Picking an element records nothing; Esc there is a cancel, not a key step
-  if (appState.pickMode) return
+  // Picking an element records nothing; Esc there is a cancel, not a key step. A double-click's
+  // second click lands just after the pick and isn't a step either
+  if (appState.pickMode || Date.now() - appState.pickModeEndedAt < PICK_GRACE_MS) return
 
   const step = recorderEventToStep(data)
   if (!step) return

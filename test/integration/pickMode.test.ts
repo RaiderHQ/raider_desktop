@@ -26,10 +26,15 @@ import {
   handleRecorderPicked,
   handleRecorderPickCancelled
 } from '../../src/main/handlers/recording/pickMode'
+import registerRecorderWebContents from '../../src/main/handlers/recording/registerRecorderWebContents'
 import stopRecordingMain from '../../src/main/handlers/recording/stopRecordingMain'
 import { appState } from '../../src/main/handlers/appState'
 
-const state = appState as unknown as { pickMode: boolean; recorderWebContentsId: number | null }
+const state = appState as unknown as {
+  pickMode: boolean
+  pickModeEndedAt: number
+  recorderWebContentsId: number | null
+}
 const picked = (): unknown[] => mainSend.mock.calls.filter((c) => c[0] === 'recorder-picked')
 
 describe('pick mode in main', () => {
@@ -171,5 +176,27 @@ describe('pick mode in main', () => {
     expect(guestSend).toHaveBeenCalledWith('recorder-pick-mode', false)
     expect(picked()).toEqual([['recorder-picked', { cancelled: true }]])
     expect(state.recorderWebContentsId).toBeNull()
+  })
+
+  it('notes when pick mode ended, so main can ignore the rest of a double-click', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(1_000_000)
+    setPickMode(true)
+    handleRecorderPicked(7, { strategy: 'css', selector: '#new' })
+    expect(state.pickModeEndedAt).toBe(1_000_000)
+    vi.useRealTimers()
+  })
+
+  it('ends pick mode in the old guest when another recorder registers', () => {
+    setPickMode(true)
+    guestSend.mockClear()
+    registerRecorderWebContents(7)
+    expect(state.pickMode).toBe(true)
+
+    registerRecorderWebContents(12)
+    expect(state.pickMode).toBe(false)
+    expect(guestSend).toHaveBeenCalledWith('recorder-pick-mode', false)
+    expect(picked()).toEqual([['recorder-picked', { cancelled: true }]])
+    expect(state.recorderWebContentsId).toBe(12)
   })
 })

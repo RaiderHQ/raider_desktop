@@ -34,7 +34,8 @@ describe('installPickMode', () => {
   })
 
   afterEach(() => {
-    pick.setPicking(false)
+    pick.dispose()
+    vi.useRealTimers()
     document.removeEventListener('click', recorderClick, true)
     document.removeEventListener('keydown', recorderKeydown, true)
   })
@@ -184,6 +185,107 @@ describe('installPickMode', () => {
     expect(event.defaultPrevented).toBe(true)
     expect(send).not.toHaveBeenCalled()
     expect(untrusting.isPicking()).toBe(true)
-    untrusting.setPicking(false)
+    untrusting.dispose()
+  })
+
+  describe('after a pick', () => {
+    const dispatch = (type: string, el: Element): MouseEvent => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true })
+      el.dispatchEvent(event)
+      return event
+    }
+
+    it('swallows the rest of a double-click, then lets clicks through after the grace window', () => {
+      vi.useFakeTimers()
+      const save = document.getElementById('save')!
+      const pageDblclick = vi.fn()
+      save.addEventListener('dblclick', pageDblclick)
+      pick.setPicking(true)
+      click(save)
+      expect(send).toHaveBeenCalledTimes(1)
+
+      vi.advanceTimersByTime(200)
+      for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup']) {
+        expect(dispatch(type, save).defaultPrevented).toBe(true)
+      }
+      expect(click(save).defaultPrevented).toBe(true)
+      dispatch('dblclick', save)
+      expect(pageClick).not.toHaveBeenCalled()
+      expect(recorderClick).not.toHaveBeenCalled()
+      expect(pageDblclick).not.toHaveBeenCalled()
+      expect(send).toHaveBeenCalledTimes(1)
+
+      vi.advanceTimersByTime(400)
+      expect(click(save).defaultPrevented).toBe(false)
+      expect(pageClick).toHaveBeenCalledTimes(1)
+      expect(recorderClick).toHaveBeenCalledTimes(1)
+    })
+
+    it('swallows clicks just after a cancel but lets keys through', () => {
+      vi.useFakeTimers()
+      pick.setPicking(true)
+      press('Escape')
+      click(document.getElementById('save')!)
+      press('Enter')
+      expect(pageClick).not.toHaveBeenCalled()
+      expect(recorderKeydown).toHaveBeenCalledTimes(1)
+    })
+
+    it('picks again at once when main turns picking back on (an unusable pick)', () => {
+      vi.useFakeTimers()
+      pick.setPicking(true)
+      click(document.getElementById('save')!)
+      pick.setPicking(true)
+      click(document.getElementById('link')!)
+      expect(send).toHaveBeenNthCalledWith(2, 'recorder-picked', {
+        selector: '#link',
+        strategy: 'css',
+        innerText: 'Next'
+      })
+    })
+  })
+
+  it('follows the hovered element on scroll and resize, once per frame', () => {
+    const frames: FrameRequestCallback[] = []
+    const raf = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((cb) => frames.push(cb))
+    const save = document.getElementById('save')!
+    let top = 10
+    save.getBoundingClientRect = (): DOMRect => ({ top, left: 0, width: 30, height: 40 }) as DOMRect
+    pick.setPicking(true)
+    save.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+
+    top = -50
+    document.dispatchEvent(new Event('scroll'))
+    window.dispatchEvent(new Event('resize'))
+    expect(frames).toHaveLength(1)
+    frames.shift()!(0)
+    expect((outlines()[0] as HTMLElement).style.top).toBe('-50px')
+
+    top = 5
+    window.dispatchEvent(new Event('resize'))
+    frames.shift()!(0)
+    expect((outlines()[0] as HTMLElement).style.top).toBe('5px')
+    raf.mockRestore()
+  })
+
+  it('takes focus away from the page when picking starts', () => {
+    const field = document.createElement('input')
+    document.body.appendChild(field)
+    field.focus()
+    expect(document.activeElement).toBe(field)
+    pick.setPicking(true)
+    expect(document.activeElement).not.toBe(field)
+  })
+
+  it('dispose removes its listeners and the outline', () => {
+    pick.setPicking(true)
+    document.getElementById('save')!.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+    pick.dispose()
+    click(document.getElementById('save')!)
+    expect(outlines()).toHaveLength(0)
+    expect(pageClick).toHaveBeenCalledTimes(1)
+    expect(send).not.toHaveBeenCalled()
   })
 })

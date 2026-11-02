@@ -7,6 +7,7 @@ vi.mock('../../src/main/handlers/appState', () => ({
     projectAutomation: null,
     isReplayingInWebview: false,
     pickMode: false,
+    pickModeEndedAt: 0,
     mainWindow: {
       webContents: {
         send: (...args: unknown[]) => mockSend(...args)
@@ -193,6 +194,7 @@ describe('recorderEvent handler', () => {
     ;(appState as { projectAutomation: string | null }).projectAutomation = null
     appState.isReplayingInWebview = false
     appState.pickMode = false
+    appState.pickModeEndedAt = 0
   })
 
   it('sends a structured click step, not Ruby, on a Watir project', () => {
@@ -273,5 +275,19 @@ describe('recorderEvent handler', () => {
     })
 
     expect(mockSend).not.toHaveBeenCalled()
+  })
+
+  it('drops clicks for a moment after pick mode ends, then records again', () => {
+    vi.useFakeTimers()
+    appState.pickModeEndedAt = Date.now()
+
+    vi.advanceTimersByTime(300)
+    recorderEvent({ action: 'click', selector: '#btn', strategy: 'css', tagName: 'BUTTON' })
+    expect(mockSend).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(300)
+    recorderEvent({ action: 'click', selector: '#btn', strategy: 'css', tagName: 'BUTTON' })
+    expect(sentSteps()).toHaveLength(1)
+    vi.useRealTimers()
   })
 })

@@ -39,6 +39,8 @@ interface AppState {
   isReplayingInWebview: boolean
   /** Picking one element in the recorder: no steps are recorded, the next click is the pick */
   pickMode: boolean
+  /** When pick mode last ended (ms); clicks just after it are the rest of the pick, not steps */
+  pickModeEndedAt: number
 }
 
 export const appState: AppState = {
@@ -59,7 +61,8 @@ export const appState: AppState = {
   activeTraceDir: null,
   activeReplayProcess: null,
   isReplayingInWebview: false,
-  pickMode: false
+  pickMode: false,
+  pickModeEndedAt: 0
 }
 
 export function setProjectAutomation(automation: string | null): void {
