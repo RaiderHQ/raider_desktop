@@ -207,10 +207,8 @@ describe('IPC Contract', () => {
   it('all preload API values are functions', async () => {
     const { contextBridge } = await import('electron')
     const calls = (contextBridge.exposeInMainWorld as ReturnType<typeof vi.fn>).mock.calls
-    const apiCall = calls.find((c) => c[0] === 'api')
-    if (!apiCall) return
-
-    const api = apiCall[1]
+    const api = calls.find((c) => c[0] === 'api')?.[1] ?? (globalThis as any).api
+    expect(api).toBeDefined()
     for (const key of Object.keys(api)) {
       expect(typeof api[key], `${key} should be a function`).toBe('function')
     }
@@ -219,8 +217,8 @@ describe('IPC Contract', () => {
   it('onRunEvent unsubscribes exactly its own listener and passes only the event', async () => {
     const { contextBridge, ipcRenderer } = await import('electron')
     const calls = (contextBridge.exposeInMainWorld as ReturnType<typeof vi.fn>).mock.calls
-    const api = calls.find((c) => c[0] === 'api')?.[1]
-    if (!api) return
+    const api = calls.find((c) => c[0] === 'api')?.[1] ?? (globalThis as any).api
+    expect(api).toBeDefined()
     const on = ipcRenderer.on as ReturnType<typeof vi.fn>
     const off = ipcRenderer.removeListener as ReturnType<typeof vi.fn>
     on.mockClear()
@@ -246,8 +244,8 @@ describe('IPC Contract', () => {
   it('event subscriptions pass the payload only and unsubscribe with the wrapper they registered', async () => {
     const { contextBridge, ipcRenderer } = await import('electron')
     const calls = (contextBridge.exposeInMainWorld as ReturnType<typeof vi.fn>).mock.calls
-    const api = calls.find((c) => c[0] === 'api')?.[1]
-    if (!api) return
+    const api = calls.find((c) => c[0] === 'api')?.[1] ?? (globalThis as any).api
+    expect(api).toBeDefined()
     const on = ipcRenderer.on as ReturnType<typeof vi.fn>
     const off = ipcRenderer.removeListener as ReturnType<typeof vi.fn>
     const channels: Record<string, string> = {
@@ -288,8 +286,8 @@ describe('IPC Contract', () => {
   it('openDroppedTrace keeps the path in preload and refuses a File with no path', async () => {
     const { contextBridge, ipcRenderer, webUtils } = await import('electron')
     const calls = (contextBridge.exposeInMainWorld as ReturnType<typeof vi.fn>).mock.calls
-    const api = calls.find((c) => c[0] === 'api')?.[1]
-    if (!api) return
+    const api = calls.find((c) => c[0] === 'api')?.[1] ?? (globalThis as any).api
+    expect(api).toBeDefined()
     const invoke = ipcRenderer.invoke as ReturnType<typeof vi.fn>
     const getPath = webUtils.getPathForFile as ReturnType<typeof vi.fn>
     invoke.mockClear()

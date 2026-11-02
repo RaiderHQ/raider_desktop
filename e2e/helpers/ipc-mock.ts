@@ -44,7 +44,7 @@ export async function mockIPCError(
 }
 
 /**
- * Mock a window.api method with a synchronous return (for non-async methods like event listeners).
+ * Mock a window.api method with a synchronous return (for non-async methods like setRecordingState; it returns undefined, so it is not for on* subscriptions, which must return an unsubscribe).
  */
 export async function mockIPCSync(page: Page, method: string): Promise<void> {
   await page.evaluate((m) => {
