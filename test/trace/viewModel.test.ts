@@ -131,15 +131,22 @@ describe('fromRaiderTrace', () => {
     expect(await view(fixtureIndex(), read2).byId.get('step-2')!.loadSnapshot!()).toBeNull()
   })
 
-  it('keeps a secret value out of every field but raw', () => {
+  it('keeps the error message of a secret step in raw only, but names the field', () => {
     const index = fixtureIndex()
     const s = step(index, 2)
+    expect(s.secret).toBe(true)
+    s.status = 'failed'
     s.element = { tag: 'input', label: 'Password', role: 'textbox' }
     s.error = { className: 'Boom', message: 'hunter2 was rejected' }
     const v = view(index).byId.get('step-2')!
     const { raw, ...shown } = v
     expect(JSON.stringify(shown)).not.toContain('hunter2')
     expect(raw!.error!.message).toContain('hunter2')
+    expect(raw!.value).toBeNull()
+    expect(v.title).toMatchObject({
+      key: 'traceViewer.step.typeSecret',
+      element: { values: { label: 'Password' } }
+    })
   })
 })
 

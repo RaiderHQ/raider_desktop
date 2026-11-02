@@ -28,8 +28,9 @@ export interface TraceElement {
   role?: string
 }
 
-// A secret step has value null, but element.label and error.message may still
-// echo the secret: show them under Technical details only, never in the main view.
+// A secret step has value null, and its value is never shown anywhere. Its
+// element.label names the field, not the value, so it may appear in the step's
+// title. Its error.message may echo the secret: Technical details only.
 export interface RaiderTraceStep {
   index: number
   parentIndex: number | null
