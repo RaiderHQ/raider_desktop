@@ -20,10 +20,6 @@ vi.mock('electron', () => ({
   webUtils: { getPathForFile: vi.fn() }
 }))
 
-vi.mock('@electron-toolkit/preload', () => ({
-  electronAPI: {}
-}))
-
 describe('IPC Contract', () => {
   let preloadApiKeys: string[]
 
