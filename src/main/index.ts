@@ -46,6 +46,7 @@ import {
   recordOverExampleHandler
 } from './handlers/tests/projectTestIpc'
 import { prepareSuiteRun, prepareTestRun } from './handlers/testing/prepareRuns'
+import { mapFailedStepHandler } from './handlers/tests/mapFailedStep'
 import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTests'
 import { isListed } from './handlers/tests/suiteStore'
 import { registerRunIpc } from './handlers/run/runIpc'
@@ -60,6 +61,12 @@ import importSuite from './handlers/io/importSuite'
 import importTest from './handlers/io/importTest'
 import deleteTest from './handlers/deleteTest'
 import recorderEvent, { RecorderEventData } from './handlers/recording/recorderEvent'
+import {
+  handleRecorderPickCancelled,
+  handleRecorderPicked,
+  handleSetPickMode
+} from './handlers/recording/pickMode'
+import registerRecorderWebContents from './handlers/recording/registerRecorderWebContents'
 import loadUrlRequest from './handlers/loadUrlRequest'
 import startRecordingMain from './handlers/recording/startRecordingMain'
 import replayStepsAndRecord from './handlers/recording/replayStepsAndRecord'
@@ -259,6 +266,7 @@ app.whenReady().then(() => {
   ipcMain.handle('list-project-tests', listProjectTestsHandler)
   ipcMain.handle('open-code-test', (_event, file: string) => openCodeTestHandler(file))
   ipcMain.handle('get-project-layout', getProjectLayoutHandler)
+  ipcMain.handle('map-failed-step', (_e, p, id, f) => mapFailedStepHandler(p, id, f))
   registerRunIpc(ipcMain)
   registerTraceIpc(ipcMain)
   ipcMain.handle(
@@ -348,15 +356,20 @@ app.whenReady().then(() => {
   )
   ipcMain.handle('stop-recording-main', stopRecordingMain)
   ipcMain.on('recorder-event', (_event, data: RecorderEventData) => recorderEvent(data))
-  ipcMain.handle('register-recorder-webcontents', (_event, webContentsId: number) => {
-    appState.recorderWebContentsId = webContentsId
-  })
+  ipcMain.handle('set-pick-mode', (event, on: unknown) => handleSetPickMode(event.sender.id, on))
+  ipcMain.on('recorder-picked', (event, data: unknown) =>
+    handleRecorderPicked(event.sender.id, data)
+  )
+  ipcMain.on('recorder-pick-cancelled', (event) => handleRecorderPickCancelled(event.sender.id))
+  ipcMain.handle('register-recorder-webcontents', (_event, webContentsId: number) =>
+    registerRecorderWebContents(webContentsId)
+  )
 
   ipcMain.handle('save-recording', (_event, suiteId: string, test: Test) =>
     saveRecording(appState.mainWindow, suiteId, test)
   )
-  ipcMain.handle('save-trace', (_event, testId: string, trace: TraceStep[]) =>
-    saveTrace(testId, trace)
+  ipcMain.handle('save-trace', (_event, testId: string, trace: TraceStep[], stepIds?: string[]) =>
+    saveTrace(testId, trace, stepIds)
   )
   ipcMain.handle('load-trace', (_event, testId: string) => loadTrace(testId))
   ipcMain.handle('delete-trace', (_event, testId: string) => deleteTrace(testId))

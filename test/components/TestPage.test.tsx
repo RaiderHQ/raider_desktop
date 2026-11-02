@@ -32,7 +32,10 @@ vi.mock('react-hot-toast', () => ({
 // The real hook (autosave, suite sync), with the recording entry points observed
 const spies = vi.hoisted(() => ({
   start: vi.fn().mockResolvedValue(undefined),
-  continueRecording: vi.fn().mockResolvedValue(undefined)
+  continueRecording: vi.fn().mockResolvedValue(undefined),
+  recordFromHere: vi.fn().mockResolvedValue(undefined),
+  run: vi.fn().mockResolvedValue(undefined),
+  rePick: vi.fn()
 }))
 vi.mock('../../src/renderer/src/hooks/useTestRecording', async (importOriginal) => {
   const actual =
@@ -42,7 +45,10 @@ vi.mock('../../src/renderer/src/hooks/useTestRecording', async (importOriginal) 
     useTestRecording: (): ReturnType<typeof actual.useTestRecording> => ({
       ...actual.useTestRecording(),
       start: spies.start,
-      continueRecording: spies.continueRecording
+      continueRecording: spies.continueRecording,
+      recordFromHere: spies.recordFromHere,
+      run: spies.run,
+      rePick: spies.rePick
     })
   }
 })
@@ -93,7 +99,11 @@ const api = {
   onFlushRecording: vi.fn(() => (): void => {}),
   flushRecordingDone: vi.fn(),
   setActiveProject: vi.fn().mockResolvedValue({ success: true }),
-  readDirectory: vi.fn().mockResolvedValue([])
+  readDirectory: vi.fn().mockResolvedValue([]),
+  readFile: vi.fn().mockResolvedValue({ success: false }),
+  readImage: vi.fn().mockResolvedValue({ success: false }),
+  mapFailedStep: vi.fn().mockResolvedValue({ none: 'noMap' }),
+  loadTrace: vi.fn().mockResolvedValue({ success: true, trace: [] })
 }
 
 const page = (test: Test): ReactElement => (
@@ -135,6 +145,11 @@ beforeEach(() => {
   api.exportTest.mockResolvedValue({ success: true, path: '/out' })
   api.renderStep.mockImplementation(async (s: { url?: string }) => `goto ${s.url ?? ''}`)
   api.saveTrace.mockResolvedValue({ success: true })
+  api.readDirectory.mockResolvedValue([])
+  api.readFile.mockResolvedValue({ success: false })
+  api.readImage.mockResolvedValue({ success: false })
+  api.mapFailedStep.mockResolvedValue({ none: 'noMap' })
+  api.loadTrace.mockResolvedValue({ success: true, trace: [] })
   listeners.clear()
   // @ts-expect-error - Mocking window.api
   window.api = api
@@ -268,7 +283,9 @@ describe('TestPage', () => {
     })
     renderPage()
     await opened()
-    expect(screen.getByRole('button', { name: 'run.mobile.openDeviceSettings' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'run.mobile.openDeviceSettings' })
+    ).toBeInTheDocument()
   })
 
   it('shows a breadcrumb back to the Tests list, then the test name', async () => {
@@ -597,13 +614,10 @@ describe('TestPage', () => {
 
     expect(api.stopRecordingMain).toHaveBeenCalled()
     await waitFor(() => expect(api.saveRecording).toHaveBeenCalledTimes(1))
-    // Nothing listens for main's 'recording-stopped' any more: the leave saved the trace
-    expect(api.saveTrace).toHaveBeenCalledTimes(1)
-    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep])
-    expect(api.saveRecording).toHaveBeenCalledWith(
-      's1',
-      expect.objectContaining({ id: 't1', hasTrace: true })
-    )
+    // Nothing listens for main's 'recording-stopped' any more: the leave saved the trace,
+    // once the test itself was saved
+    await waitFor(() => expect(api.saveTrace).toHaveBeenCalledTimes(1))
+    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], expect.any(Array))
     expect(api.saveRecording).toHaveBeenCalledWith(
       's1',
       expect.objectContaining({ id: 't1', steps: [step('a'), step('b'), step('n')] })
@@ -627,7 +641,7 @@ describe('TestPage', () => {
     expect(api.stopRecordingMain).toHaveBeenCalled()
     await waitFor(() => expect(api.saveRecording).toHaveBeenCalledTimes(1))
     expect(api.saveTrace).toHaveBeenCalledTimes(1)
-    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep])
+    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], expect.any(Array))
     expect(api.saveRecording).toHaveBeenCalledWith(
       's1',
       expect.objectContaining({ id: 't1', steps: [step('a'), step('b'), step('n')] })
@@ -684,5 +698,481 @@ describe('TestsWorkspace pane', () => {
     expect(api.openCodeTest).toHaveBeenCalledWith('spec/api_spec.rb')
     expect(screen.getByRole('button', { name: 'testPage.editCode' })).toBeInTheDocument()
     expect(screen.queryByDisplayValue('API health')).not.toBeInTheDocument()
+  })
+})
+
+describe('TestPage after a failed run', () => {
+  const withFile: Test = { ...recorded, file: 'spec/login_works_spec.rb' }
+  const runJson = (status: string): string =>
+    JSON.stringify({
+      run: { finished_at: '2026-11-02T10:00:00Z' },
+      results: [
+        {
+          full_name: 'Login works',
+          file_path: './spec/login_works_spec.rb',
+          status,
+          failure: {
+            message: 'Unable to locate element',
+            exception_class: 'Selenium::WebDriver::Error::NoSuchElementError',
+            backtrace: ['spec/login_works_spec.rb:8:in `block`'],
+            app_frame: 'spec/login_works_spec.rb:8:in `block`'
+          }
+        }
+      ]
+    })
+  let status = 'failed'
+
+  beforeEach(() => {
+    status = 'failed'
+    useProjectStore.setState({ projectPath: '/p' })
+    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [withFile, empty] }])
+    api.readDirectory.mockImplementation(async (dir: string) =>
+      dir === '/p/raider-results'
+        ? [{ name: 'run.json', type: 'file', path: '/p/raider-results/run.json' }]
+        : []
+    )
+    api.readFile.mockImplementation(async (path: string) =>
+      path === '/p/raider-results/run.json'
+        ? { success: true, data: runJson(status) }
+        : { success: false }
+    )
+    api.mapFailedStep.mockResolvedValue({ stepId: 'b', index: 1 })
+  })
+  afterEach(() => useProjectStore.setState({ projectPath: null }))
+
+  it('shows the failed step above the steps and marks it in the list', async () => {
+    renderPage(withFile)
+    await opened()
+    expect(await screen.findByTestId('failed-step-panel')).toBeInTheDocument()
+    expect(screen.getByText('failedStep.title')).toBeInTheDocument()
+    const failed = screen.getAllByTestId('step-failed')
+    expect(failed).toHaveLength(1)
+    expect(failed[0]).toHaveTextContent('recorder.commandParser.visit')
+    expect(api.mapFailedStep).toHaveBeenCalledWith('/p', 't1', {
+      file: 'spec/login_works_spec.rb',
+      backtrace: ['spec/login_works_spec.rb:8:in `block`'],
+      appFrame: 'spec/login_works_spec.rb:8:in `block`',
+      finishedAt: '2026-11-02T10:00:00Z'
+    })
+  })
+
+  it('opening the failed test never saves it, so its last run still maps', async () => {
+    renderPage(withFile)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    // Past the 500 ms autosave
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 700))
+    })
+    expect(api.saveRecording).not.toHaveBeenCalled()
+    expect(screen.getByTestId('failed-step-panel')).toBeInTheDocument()
+  })
+
+  it('hides the panel while recording and looks again when it stops', async () => {
+    renderPage(withFile)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    api.mapFailedStep.mockClear()
+    act(() => useRecorderStore.getState().setRecordingTarget({ kind: 'test' }))
+    expect(screen.queryByTestId('failed-step-panel')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('step-failed')).not.toBeInTheDocument()
+    expect(api.mapFailedStep).not.toHaveBeenCalled()
+    act(() => useRecorderStore.getState().setRecordingTarget(null))
+    expect(await screen.findByTestId('failed-step-panel')).toBeInTheDocument()
+    expect(api.mapFailedStep).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows no panel when the last run passed', async () => {
+    status = 'passed'
+    renderPage(withFile)
+    await opened()
+    await waitFor(() => expect(api.readFile).toHaveBeenCalled())
+    expect(screen.queryByTestId('failed-step-panel')).not.toBeInTheDocument()
+    expect(api.mapFailedStep).not.toHaveBeenCalled()
+  })
+
+  it('looks again when a run of this project finishes', async () => {
+    renderPage(withFile)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    status = 'passed'
+    act(() =>
+      useRunStore.setState({
+        run: {
+          projectPath: '/p',
+          scope: { kind: 'files', files: ['spec/login_works_spec.rb'] },
+          order: [],
+          tests: {},
+          finished: { finishedAt: '2026-11-02T11:00:00Z' }
+        } as unknown as RunView
+      })
+    )
+    await waitFor(() => expect(screen.queryByTestId('failed-step-panel')).not.toBeInTheDocument())
+    expect(screen.queryByTestId('step-failed')).not.toBeInTheDocument()
+  })
+})
+
+describe('TestPage fixing a failed value', () => {
+  const typed: Test = {
+    ...recorded,
+    file: 'spec/login_works_spec.rb',
+    steps: [
+      step('a'),
+      { id: 'b', kind: 'type', element: { strategy: 'css', value: '#q' }, text: 'old' }
+    ]
+  }
+  const runJson = JSON.stringify({
+    run: { finished_at: '2026-11-02T10:00:00Z' },
+    results: [
+      {
+        full_name: 'Login works',
+        file_path: './spec/login_works_spec.rb',
+        status: 'failed',
+        failure: {
+          message: 'boom',
+          exception_class: 'RuntimeError',
+          backtrace: ['spec/login_works_spec.rb:8:in `block`'],
+          app_frame: 'spec/login_works_spec.rb:8:in `block`'
+        }
+      }
+    ]
+  })
+
+  beforeEach(() => {
+    useProjectStore.setState({ projectPath: '/p' })
+    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [typed, empty] }])
+    api.readDirectory.mockImplementation(async (dir: string) =>
+      dir === '/p/raider-results'
+        ? [{ name: 'run.json', type: 'file', path: '/p/raider-results/run.json' }]
+        : []
+    )
+    api.readFile.mockImplementation(async (path: string) =>
+      path === '/p/raider-results/run.json' ? { success: true, data: runJson } : { success: false }
+    )
+    api.mapFailedStep.mockResolvedValue({ stepId: 'b', index: 1 })
+  })
+  afterEach(() => useProjectStore.setState({ projectPath: null }))
+
+  it('saves the new value, then says it is fixed', async () => {
+    renderPage(typed)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.editValue' }))
+    api.saveRecording.mockClear()
+    fireEvent.change(screen.getByRole('textbox', { name: 'failedStep.value' }), {
+      target: { value: 'new' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'failedStep.save' }))
+    expect(await screen.findByText('failedStep.fixed')).toBeInTheDocument()
+    expect(api.saveRecording).toHaveBeenCalledWith(
+      's1',
+      expect.objectContaining({
+        id: 't1',
+        steps: [step('a'), { ...typed.steps[1], text: 'new' }]
+      })
+    )
+    expect(screen.queryByRole('button', { name: 'failedStep.save' })).not.toBeInTheDocument()
+  })
+
+  it('saves the new value once: the autosave leaves it alone', async () => {
+    renderPage(typed)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.editValue' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'failedStep.value' }), {
+      target: { value: 'new' }
+    })
+    api.saveRecording.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'failedStep.save' }))
+    expect(await screen.findByText('failedStep.fixed')).toBeInTheDocument()
+    // Past the autosave's 500 ms
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 700))
+    })
+    expect(api.saveRecording).toHaveBeenCalledTimes(1)
+  })
+
+  it('stays unfixed when the save fails', async () => {
+    renderPage(typed)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.editValue' }))
+    api.saveRecording.mockResolvedValue({ success: false, error: 'nope' })
+    fireEvent.change(screen.getByRole('textbox', { name: 'failedStep.value' }), {
+      target: { value: 'new' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'failedStep.save' }))
+    await waitFor(() => expect(api.saveRecording).toHaveBeenCalled())
+    expect(screen.queryByText('failedStep.fixed')).not.toBeInTheDocument()
+  })
+
+  it('shows Fixed in place of the failure, and Run again runs the test', async () => {
+    renderPage(typed)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.editValue' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'failedStep.value' }), {
+      target: { value: 'new' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'failedStep.save' }))
+    expect(await screen.findByRole('heading', { name: 'failedStep.fixed' })).toBeInTheDocument()
+    expect(screen.queryByText('failedStep.changedSinceRun')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'failedStep.runAgain' }))
+    expect(spies.run).toHaveBeenCalledTimes(1)
+  })
+
+  it('saves the latest steps, not the ones this render started with', async () => {
+    renderPage(typed)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.editValue' }))
+    act(() =>
+      useRecorderStore
+        .getState()
+        .updateActiveTest((p) => (p ? { ...p, steps: [...p.steps, step('z')] } : null))
+    )
+    api.saveRecording.mockClear()
+    fireEvent.change(screen.getByRole('textbox', { name: 'failedStep.value' }), {
+      target: { value: 'new' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'failedStep.save' }))
+    await waitFor(() => expect(api.saveRecording).toHaveBeenCalled())
+    expect(api.saveRecording.mock.calls[0][1].steps).toEqual([
+      step('a'),
+      { ...typed.steps[1], text: 'new' },
+      step('z')
+    ])
+  })
+
+  it('closes the form without saving when the value is unchanged', async () => {
+    renderPage(typed)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.editValue' }))
+    api.saveRecording.mockClear()
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'failedStep.value' }), { key: 'Enter' })
+    expect(screen.queryByRole('textbox', { name: 'failedStep.value' })).not.toBeInTheDocument()
+    expect(screen.queryByText('failedStep.fixed')).not.toBeInTheDocument()
+    expect(api.saveRecording).not.toHaveBeenCalled()
+  })
+
+  it('offers no Edit value for a secret step', async () => {
+    const secretTest: Test = {
+      ...typed,
+      steps: [step('a'), { ...typed.steps[1], text: '', secret: true } as Test['steps'][number]]
+    }
+    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [secretTest, empty] }])
+    renderPage(secretTest)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    expect(screen.queryByRole('button', { name: 'failedStep.editValue' })).not.toBeInTheDocument()
+  })
+})
+
+describe('TestPage re-record from the failed step', () => {
+  const five: Test = {
+    ...recorded,
+    file: 'spec/login_works_spec.rb',
+    steps: ['a', 'b', 'c', 'd', 'e'].map(step)
+  }
+  const runJson = JSON.stringify({
+    run: { finished_at: '2026-11-02T10:00:00Z' },
+    results: [
+      {
+        full_name: 'Login works',
+        file_path: './spec/login_works_spec.rb',
+        status: 'failed',
+        failure: {
+          message: 'boom',
+          exception_class: 'RuntimeError',
+          backtrace: ['spec/login_works_spec.rb:8:in `block`'],
+          app_frame: 'spec/login_works_spec.rb:8:in `block`'
+        }
+      }
+    ]
+  })
+
+  beforeEach(() => {
+    spies.start.mockClear()
+    spies.recordFromHere.mockClear()
+    useProjectStore.setState({ projectPath: '/p' })
+    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [five, empty] }])
+    api.readDirectory.mockImplementation(async (dir: string) =>
+      dir === '/p/raider-results'
+        ? [{ name: 'run.json', type: 'file', path: '/p/raider-results/run.json' }]
+        : []
+    )
+    api.readFile.mockImplementation(async (path: string) =>
+      path === '/p/raider-results/run.json' ? { success: true, data: runJson } : { success: false }
+    )
+    api.mapFailedStep.mockResolvedValue({ stepId: 'c', index: 2 })
+  })
+  afterEach(() => useProjectStore.setState({ projectPath: null }))
+
+  it('asks first, then keeps the steps before the failed one and records on', async () => {
+    renderPage(five)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.reRecord' }))
+    expect(screen.getByText('failedStep.reRecordConfirmTitle')).toBeInTheDocument()
+    expect(screen.getByText('failedStep.reRecordConfirmBody')).toBeInTheDocument()
+    expect(spies.recordFromHere).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(spies.recordFromHere).toHaveBeenCalledWith(1, { kind: 'test' })
+    expect(spies.start).not.toHaveBeenCalled()
+  })
+
+  it('starts over when the failed step is the first', async () => {
+    api.mapFailedStep.mockResolvedValue({ stepId: 'a', index: 0 })
+    renderPage(five)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.reRecord' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(spies.start).toHaveBeenCalledWith({ kind: 'test' })
+    expect(spies.recordFromHere).not.toHaveBeenCalled()
+  })
+
+  it('starts over when the step could not be told', async () => {
+    api.mapFailedStep.mockResolvedValue({ none: 'noMap' })
+    renderPage(five)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.reRecord' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(spies.start).toHaveBeenCalledWith({ kind: 'test' })
+  })
+
+  it('does nothing when cancelled', async () => {
+    renderPage(five)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.reRecord' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByText('failedStep.reRecordConfirmTitle')).not.toBeInTheDocument()
+    expect(spies.start).not.toHaveBeenCalled()
+    expect(spies.recordFromHere).not.toHaveBeenCalled()
+  })
+})
+
+describe('TestPage re-picking the failed element', () => {
+  const clicks: Test = {
+    ...recorded,
+    file: 'spec/login_works_spec.rb',
+    steps: [
+      step('a'),
+      { id: 'b', kind: 'click', element: { strategy: 'css', value: '#next' } },
+      { id: 'c', kind: 'click', element: { strategy: 'css', value: '#save' } }
+    ]
+  }
+  const runJson = JSON.stringify({
+    run: { finished_at: '2026-11-02T10:00:00Z' },
+    results: [
+      {
+        full_name: 'Login works',
+        file_path: './spec/login_works_spec.rb',
+        status: 'failed',
+        failure: {
+          message: 'boom',
+          exception_class: 'RuntimeError',
+          backtrace: ['spec/login_works_spec.rb:8:in `block`'],
+          app_frame: 'spec/login_works_spec.rb:8:in `block`'
+        }
+      }
+    ]
+  })
+
+  beforeEach(() => {
+    spies.rePick.mockReset()
+    spies.recordFromHere.mockClear()
+    useProjectStore.setState({ projectPath: '/p' })
+    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [clicks, empty] }])
+    api.readDirectory.mockImplementation(async (dir: string) =>
+      dir === '/p/raider-results'
+        ? [{ name: 'run.json', type: 'file', path: '/p/raider-results/run.json' }]
+        : []
+    )
+    api.readFile.mockImplementation(async (path: string) =>
+      path === '/p/raider-results/run.json' ? { success: true, data: runJson } : { success: false }
+    )
+    api.mapFailedStep.mockResolvedValue({ stepId: 'c', index: 2 })
+  })
+  afterEach(() => useProjectStore.setState({ projectPath: null }))
+
+  it('shows the banner while picking, in place of the panel', async () => {
+    renderPage(clicks)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    act(() => {
+      useRecorderStore.getState().setRecordingTarget({ kind: 'pick', stepId: 'c' })
+      useRecorderStore.getState().setPickingStep(3)
+    })
+    expect(screen.getByText('failedStep.pickBanner')).toBeInTheDocument()
+    expect(screen.queryByTestId('failed-step-panel')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'testPage.record' })).toBeDisabled()
+  })
+
+  it('says it is getting to the step while the recorder opens, with Cancel', async () => {
+    renderPage(clicks)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    act(() => useRecorderStore.getState().setRecordingTarget({ kind: 'pick', stepId: 'c' }))
+    expect(screen.getByText('failedStep.pickLoading')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }))
+    expect(api.stopRecordingMain).toHaveBeenCalled()
+    expect(api.cancelReplay).toHaveBeenCalled()
+    expect(useRecorderStore.getState().recordingTarget).toBeNull()
+    expect(screen.queryByText('failedStep.pickLoading')).not.toBeInTheDocument()
+    expect(await screen.findByTestId('failed-step-panel')).toBeInTheDocument()
+  })
+
+  it('Cancel beside the banner ends the pick', async () => {
+    renderPage(clicks)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    act(() => {
+      useRecorderStore.getState().setRecordingTarget({ kind: 'pick', stepId: 'c' })
+      useRecorderStore.getState().setPickingStep(3)
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }))
+    expect(api.stopRecordingMain).toHaveBeenCalled()
+    expect(useRecorderStore.getState().recordingTarget).toBeNull()
+  })
+
+  it('Esc in the app window ends the pick', async () => {
+    renderPage(clicks)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(api.stopRecordingMain).not.toHaveBeenCalled()
+    act(() => {
+      useRecorderStore.getState().setRecordingTarget({ kind: 'pick', stepId: 'c' })
+      useRecorderStore.getState().setPickingStep(3)
+    })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(api.stopRecordingMain).toHaveBeenCalled()
+    expect(useRecorderStore.getState().recordingTarget).toBeNull()
+  })
+
+  it('says it is fixed once the element was picked', async () => {
+    let finish: (outcome: { kind: 'picked' }) => void = () => {}
+    spies.rePick.mockImplementation(() => new Promise((resolve) => (finish = resolve)))
+    renderPage(clicks)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.rePick' }))
+    expect(spies.rePick).toHaveBeenCalledWith(2)
+    // The recorder opens and closes, as rePick does
+    act(() => useRecorderStore.getState().setRecordingTarget({ kind: 'pick', stepId: 'c' }))
+    await act(async () => {})
+    act(() => useRecorderStore.getState().setRecordingTarget(null))
+    await act(async () => finish({ kind: 'picked' }))
+    expect(await screen.findByText('failedStep.fixed')).toBeInTheDocument()
+    // And stays so once the page has looked at the last run again
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+    expect(screen.getByText('failedStep.fixed')).toBeInTheDocument()
+  })
+
+  it('offers to re-record from the step the replay could not get past', async () => {
+    spies.rePick.mockResolvedValue({ kind: 'replayFailed', stepNumber: 2 })
+    renderPage(clicks)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.rePick' }))
+    expect(await screen.findByText('failedStep.replayFailed')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'failedStep.reRecordFrom' }))
+    expect(screen.getByText('failedStep.reRecordConfirmTitle')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(spies.recordFromHere).toHaveBeenCalledWith(0, { kind: 'test' })
   })
 })

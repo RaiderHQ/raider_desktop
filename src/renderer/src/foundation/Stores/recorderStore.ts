@@ -9,6 +9,8 @@ export type RecordingTarget =
   | { kind: 'test' }
   | { kind: 'draft'; suiteId: string }
   | { kind: 'example'; file: string; exampleName: string }
+  /** Picking a new element for one step: nothing is recorded, and the steps stay as they are */
+  | { kind: 'pick'; stepId: string }
 
 /** Why a recording over a code example wasn't written, and which recording it was */
 export interface UnsavedExample {
@@ -43,6 +45,8 @@ interface RecorderStore {
   draftTest: Test | null
   /** A recording over a code example that couldn't be written into its file; its steps are in `activeTest` */
   unsavedExample: UnsavedExample | null
+  /** The step (1-based) whose element is being picked on the page; null otherwise */
+  pickingStep: number | null
 
   setSuites: (suites: Suite[]) => void
   setActiveSuiteId: (id: string | null) => void
@@ -63,6 +67,7 @@ interface RecorderStore {
   startDraft: (name: string, url: string) => void
   setDraftTest: (test: Test | null) => void
   setUnsavedExample: (unsaved: UnsavedExample | null) => void
+  setPickingStep: (step: number | null) => void
   /** Make the list row's recorded test the active one (throws when no suite lists it) */
   openTest: (row: TestRow) => Promise<void>
   /** Forget everything that belongs to the project that was open */
@@ -90,6 +95,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   preloadPath: null,
   draftTest: null,
   unsavedExample: null,
+  pickingStep: null,
 
   setSuites: (suites) => set({ suites }),
   setActiveSuiteId: (id) => set({ activeSuiteId: id }),
@@ -122,6 +128,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   },
   setDraftTest: (test): void => set({ draftTest: test }),
   setUnsavedExample: (unsaved): void => set({ unsavedExample: unsaved }),
+  setPickingStep: (step): void => set({ pickingStep: step }),
   openTest: async (row): Promise<void> => {
     const suites = await window.api.getSuites()
     const suite = row.testId
@@ -151,6 +158,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
       preloadPath: null,
       draftTest: null,
       unsavedExample: null,
+      pickingStep: null,
       breakpointIndex: null,
       failedStepId: null,
       isReplayingToBreakpoint: false,

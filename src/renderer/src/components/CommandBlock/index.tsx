@@ -23,6 +23,8 @@ interface CommandBlockProps {
   readOnly?: boolean
   /** The step recorded last */
   latest?: boolean
+  /** The step the last run failed at */
+  failed?: boolean
 }
 
 /** Lets the user change the environment variable a secret step reads, e.g. per test. */
@@ -97,7 +99,8 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   onClearBreakpoint,
   onRecordFromHere,
   readOnly = false,
-  latest = false
+  latest = false,
+  failed = false
 }) => {
   const { t } = useTranslation()
   // Ruby for the code view, rendered by the main process for the project's automation
@@ -108,6 +111,12 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   const editValueRef = useRef('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isCancellingRef = useRef(false)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  // The failure usually arrives after the steps render, so this runs when it does
+  useEffect(() => {
+    if (failed) wrapperRef.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [failed])
 
   useEffect((): (() => void) | undefined => {
     if (!showCode) return undefined
@@ -246,8 +255,13 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
 
   return (
     <div
-      className={`relative w-full mb-3 group/block ${latest ? 'rounded-lg ring-2 ring-ruby/40' : ''}`}
+      ref={wrapperRef}
+      // The failed highlight wins over the latest one
+      className={`relative w-full mb-3 group/block ${
+        failed ? 'rounded-lg ring-2 ring-red-400' : latest ? 'rounded-lg ring-2 ring-ruby/40' : ''
+      }`}
       data-latest={latest ? 'true' : undefined}
+      data-testid={failed ? 'step-failed' : undefined}
     >
       {/* Breakpoint gutter */}
       {!readOnly && (

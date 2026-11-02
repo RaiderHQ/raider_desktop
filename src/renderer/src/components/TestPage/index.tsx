@@ -10,6 +10,8 @@ import DeleteModal from '@components/DeleteModal'
 import ConfirmationModal from '@components/ConfirmationModal'
 import AssertionTextModal from '@components/AssertionTextModal'
 import RunPanel from '@components/RunPanel'
+import FailedStepPanel from '@components/FailedStepPanel'
+import EditValueForm from '@components/FailedStepPanel/EditValueForm'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import type { RecordingTarget } from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
@@ -19,9 +21,11 @@ import { buildAssertionStep, assertionModalType } from '@foundation/assertionSte
 import { handleSaveResult } from '@foundation/saveResult'
 import { testKeyOf } from '@foundation/testKey'
 import type { TestRow } from '@foundation/testKey'
+import type { TestResult } from '@foundation/Types/testResult'
 import type { Step } from '@shared/types/step'
 import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import { dropEmptyDraft, useTestRecording } from '../../hooks/useTestRecording'
+import { useFailedStep } from '../../hooks/useFailedStep'
 import NewTestForm from './NewTestForm'
 import RecordingLayout from './RecordingLayout'
 
@@ -58,6 +62,12 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const isOutputVisible = useRecorderStore((s) => s.isOutputVisible)
   const breakpointIndex = useRecorderStore((s) => s.breakpointIndex)
   const isReplaying = useRecorderStore((s) => s.isReplayingToBreakpoint)
+  // Re-picking a step's element: the recorder is open, but nothing is recorded
+  const pickTarget = useRecorderStore((s) =>
+    s.recordingTarget?.kind === 'pick' ? s.recordingTarget : null
+  )
+  const picking = pickTarget !== null
+  const pickingStep = useRecorderStore((s) => s.pickingStep)
   const recordingDisabled = useProjectStore((s) => s.layout?.recordable === false)
   // Only a mobile project says why Record is off, for now
   const mobileProject = useProjectStore((s) => s.layout?.unsupportedReason === 'mobile')
@@ -120,7 +130,8 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       : null
   const target: RecordingTarget = isDraft ? draftTarget : { kind: 'test' }
   const readOnly = !!test?.ownership && test.ownership !== 'recorded'
-  const busy = recording.isRecording || isReplaying
+  const busy = recording.isRecording || isReplaying || picking
+  const failedStep = useFailedStep(projectPath, test)
 
   // The name is kept here while typing and saved on blur or Enter: main renames the
   // test's file on a real rename, so a half-typed name must never reach it
@@ -143,6 +154,68 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
         .then((result) => handleSaveResult(result, renamed.id, t))
         .catch((error: unknown) => console.error('Saving the new name failed:', error))
     }
+  }
+
+  // The failed step's value being corrected; and the result it was corrected for
+  const [editingValue, setEditingValue] = useState(false)
+  const [fixedFor, setFixedFor] = useState<TestResult | null>(null)
+  // The step (1-based) a replay for Re-pick couldn't get past
+  const [replayFailedStep, setReplayFailedStep] = useState<number | null>(null)
+  const failedIndex = failedStep.status === 'mapped' ? failedStep.index : null
+  useEffect(() => {
+    setEditingValue(false)
+    setReplayFailedStep(null)
+  }, [test?.id, failedIndex])
+  const fixed = failedStep.status !== 'none' && failedStep.result === fixedFor
+
+  const saveFixedStep = (updated: Step, result: TestResult): void => {
+    if (!test || !activeSuiteId) return
+    updateActiveTest((p) =>
+      p ? { ...p, steps: p.steps.map((s) => (s.id === updated.id ? updated : s)) } : null
+    )
+    setEditingValue(false)
+    // The latest steps, which may have changed since this render
+    const fixedTest = useRecorderStore.getState().activeTest
+    if (!fixedTest || fixedTest.id !== test.id) return
+    // Saved once, right away, as a re-pick is: the next run reads the file
+    recording
+      .saveFixedTest(activeSuiteId, fixedTest)
+      .then((saved) => {
+        if (saved) setFixedFor(result)
+      })
+      .catch((error: unknown) => console.error('Saving the fix failed:', error))
+  }
+
+  const rePick = (index: number, result: TestResult): void => {
+    setReplayFailedStep(null)
+    recording
+      .rePick(index)
+      .then((outcome) => {
+        if (outcome.kind === 'picked') setFixedFor(result)
+        if (outcome.kind === 'replayFailed') setReplayFailedStep(outcome.stepNumber)
+      })
+      .catch((error: unknown) => console.error('Picking the element failed:', error))
+  }
+
+  // Esc cancels a pick from the app window too, not only from the page being picked on
+  useEffect((): (() => void) | void => {
+    if (!picking) return
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') void recording.cancelPick()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [picking])
+
+  // The step (0-based) to re-record from, while the confirmation is open
+  const [reRecordingFrom, setReRecordingFrom] = useState<number | null>(null)
+  const reRecordFrom = (index: number): void => {
+    setReRecordingFrom(null)
+    setReplayFailedStep(null)
+    // Steps before it are kept and replayed; the first step has nothing before it
+    const started =
+      index === 0 ? recording.start(target) : recording.recordFromHere(index - 1, target)
+    started.catch((error: unknown) => console.error('Recording failed:', error))
   }
 
   const [confirmingStartOver, setConfirmingStartOver] = useState(false)
@@ -250,6 +323,17 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       }
       readOnly={readOnly}
       markLatest={recording.isRecording}
+      failedIndex={failedIndex}
+      belowStep={(index) =>
+        editingValue && failedStep.status === 'mapped' && index === failedStep.index ? (
+          <EditValueForm
+            step={failedStep.step}
+            actualValue={failedStep.reason.actualValue}
+            onSave={(updated) => saveFixedStep(updated, failedStep.result)}
+            onCancel={() => setEditingValue(false)}
+          />
+        ) : null
+      }
     />
   ) : null
 
@@ -372,8 +456,55 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             )}
           </div>
 
+          {failedStep.status !== 'none' && projectPath && !picking && (
+            <FailedStepPanel
+              state={failedStep}
+              test={test}
+              projectPath={projectPath}
+              readOnly={readOnly}
+              actions={null}
+              onRePick={
+                recordingDisabled || failedStep.status !== 'mapped'
+                  ? undefined
+                  : () => rePick(failedStep.index, failedStep.result)
+              }
+              replayFailedStep={replayFailedStep}
+              onEditValue={() => setEditingValue(true)}
+              onReRecord={recordingDisabled ? undefined : setReRecordingFrom}
+              fixed={fixed}
+              onRunAgain={() => void recording.run()}
+            />
+          )}
+
+          {pickTarget && (
+            <div
+              role="status"
+              className="flex items-center gap-3 text-sm font-medium px-3 py-2 rounded border border-neutral-bdr bg-neutral-50 text-neutral-dark"
+            >
+              <span className="flex-1">
+                {pickingStep !== null
+                  ? t('failedStep.pickBanner', { n: pickingStep })
+                  : t('failedStep.pickLoading', {
+                      n: test.steps.findIndex((s) => s.id === pickTarget.stepId) + 1
+                    })}
+              </span>
+              <button
+                type="button"
+                onClick={() => void recording.cancelPick()}
+                className={`${toolbarButton} text-neutral-dark hover:bg-neutral-100`}
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
+          )}
+
           {browserOpen ? (
-            <RecordingLayout steps={steps} recording={recording} isReplaying={isReplaying} />
+            <RecordingLayout
+              steps={steps}
+              recording={recording}
+              isReplaying={isReplaying}
+              focusBrowser={pickingStep !== null}
+            />
           ) : (
             <div className="flex-1 min-h-[12rem]">
               <StyledPanel>{steps ?? <></>}</StyledPanel>
@@ -408,6 +539,17 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
           message={t('testPage.startOverConfirm')}
           onConfirm={startOver}
           onCancel={() => setConfirmingStartOver(false)}
+        />
+      )}
+      {reRecordingFrom !== null && test && (
+        <ConfirmationModal
+          title={t('failedStep.reRecordConfirmTitle', { n: reRecordingFrom + 1 })}
+          message={t('failedStep.reRecordConfirmBody', {
+            n: reRecordingFrom + 1,
+            last: test.steps.length
+          })}
+          onConfirm={() => reRecordFrom(reRecordingFrom)}
+          onCancel={() => setReRecordingFrom(null)}
         />
       )}
       {confirmingDelete && test && (

@@ -1,5 +1,18 @@
 import type { Step } from './step'
 
+/** Where one step's code sits in its spec file: 1-based, inclusive lines. */
+export interface StepRange {
+  stepId: string
+  start: number
+  end: number
+}
+
+export interface StepLines {
+  /** sha256 of the file's exact bytes, so the line numbers are only trusted for that file */
+  fileSha256: string
+  ranges: StepRange[]
+}
+
 /** Raider's record of a recorded test, stored at `.raider/tests/<file>.json`. */
 export interface Sidecar {
   version: 1
@@ -12,6 +25,8 @@ export interface Sidecar {
   automation: 'selenium' | 'watir'
   /** hashRuby(generated file) */
   hash: string
+  /** Absent for sidecars written before maps were stored */
+  stepLines?: StepLines
   codeOwned?: true
   /** ISO */
   createdAt: string

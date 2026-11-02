@@ -110,4 +110,57 @@ describe('CommandList', () => {
     fireEvent.keyDown(textarea, { key: 'Enter' })
     expect(onEditStep).toHaveBeenCalledWith(1, { id: 'b', kind: 'custom', code: 'puts 2' })
   })
+
+  it('marks the failed step, scrolls it into view once, and renders below a step', () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+    const { rerender } = render(
+      <CommandList
+        steps={steps}
+        setSteps={vi.fn()}
+        onDeleteStep={vi.fn()}
+        showCode={false}
+        failedIndex={1}
+        belowStep={(i) => (i === 1 ? <p>under b</p> : null)}
+      />
+    )
+    const failed = screen.getAllByTestId('step-failed')
+    expect(failed).toHaveLength(1)
+    expect(failed[0]).toHaveTextContent('recorder.commandParser.visit {"url":"b"}')
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' })
+    expect(screen.getByText('under b')).toBeInTheDocument()
+    rerender(
+      <CommandList
+        steps={steps}
+        setSteps={vi.fn()}
+        onDeleteStep={vi.fn()}
+        showCode={false}
+        failedIndex={1}
+      />
+    )
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+  })
+
+  it('marks no step without a failed index', () => {
+    render(<CommandList steps={steps} setSteps={vi.fn()} onDeleteStep={vi.fn()} showCode={false} />)
+    expect(screen.queryByTestId('step-failed')).toBeNull()
+  })
+
+  it('shows only the failed highlight on a step that is also the latest', () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    render(
+      <CommandList
+        steps={steps}
+        setSteps={vi.fn()}
+        onDeleteStep={vi.fn()}
+        showCode={false}
+        markLatest
+        failedIndex={1}
+      />
+    )
+    const block = screen.getByTestId('step-failed')
+    expect(block).toHaveClass('ring-red-400')
+    expect(block).not.toHaveClass('ring-ruby/40')
+  })
 })

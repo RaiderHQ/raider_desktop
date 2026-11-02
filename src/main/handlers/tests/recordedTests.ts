@@ -1,8 +1,13 @@
 import fs from 'fs/promises'
 import { realpathSync } from 'fs'
 import { dirname, posix, resolve } from 'path'
-import { generateProjectSpecFile, RECORDED_MARKER, toAutomation } from '../../codegen/testFile'
+import {
+  generateProjectSpecFileWithMap,
+  RECORDED_MARKER,
+  toAutomation
+} from '../../codegen/testFile'
 import { hashRuby } from './codeHash'
+import { deriveStepLines, usableStepLines } from './stepLines'
 import { usesWaitHelper } from '../project/waitHelperDetection'
 import { withSecretNames } from '../../../shared/secretSteps'
 import {
@@ -19,7 +24,7 @@ import {
 } from './sidecar'
 import { safeError } from '../../utils/safeLog'
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
-import type { Sidecar } from '../../../shared/types/projectTest'
+import type { Sidecar, StepLines } from '../../../shared/types/projectTest'
 import type { Test } from '../../../shared/types/test'
 
 /** The spec file was edited outside Raider, so Raider must not rewrite or delete it. */
@@ -116,6 +121,7 @@ const buildSidecar = (
   layout: ProjectLayout,
   file: string,
   content: string,
+  stepLines: StepLines,
   createdAt: string,
   now: string
 ): Sidecar => ({
@@ -128,6 +134,7 @@ const buildSidecar = (
   file,
   automation: toAutomation(layout.automation),
   hash: hashRuby(content),
+  stepLines,
   createdAt,
   updatedAt: now
 })
@@ -135,8 +142,12 @@ const buildSidecar = (
 const requireLine = (content: string): string | undefined =>
   content.split(/\r?\n/).find((line) => line.startsWith('require_relative '))
 
-const generate = (test: Test, layout: ProjectLayout, file: string): string =>
-  generateProjectSpecFile(test, toAutomation(layout.automation), {
+const generate = (
+  test: Test,
+  layout: ProjectLayout,
+  file: string
+): { content: string; stepLines: StepLines } =>
+  generateProjectSpecFileWithMap(test, toAutomation(layout.automation), {
     fileRelPath: file,
     helperPath: layout.helperPath,
     waitHelper: layout.waitHelper
@@ -159,7 +170,7 @@ async function createNewSpec(
   layout: ProjectLayout,
   test: Test,
   root = specRoot(layout)
-): Promise<{ file: string; content: string; target: string }> {
+): Promise<{ file: string; content: string; stepLines: StepLines; target: string }> {
   const slug = slugify(test.name)
   for (let n = 1; n <= MAX_SUFFIX; n++) {
     const name = n === 1 ? `${slug}_spec.rb` : `${slug}_${n}_spec.rb`
@@ -169,7 +180,7 @@ async function createNewSpec(
     // Check the folder, not the name: a racing save may create the name meanwhile,
     // and the exclusive create below never follows a link at the name itself
     await assertRealInside(projectPath, dirname(target))
-    const content = generate(test, layout, file)
+    const { content, stepLines } = generate(test, layout, file)
     await fs.mkdir(dirname(target), { recursive: true })
     try {
       await writeFileAtomic(target, content, { exclusive: true })
@@ -178,7 +189,7 @@ async function createNewSpec(
       if ((error as NodeJS.ErrnoException).code === 'EEXIST') continue
       throw error
     }
-    return { file, content, target }
+    return { file, content, stepLines, target }
   }
   throw new Error(`No free spec file name for ${slug}`)
 }
@@ -214,13 +225,13 @@ async function moveToRealName(
   oldExists: boolean,
   now: string
 ): Promise<Sidecar> {
-  const { file, content, target } = await createNewSpec(
+  const { file, content, stepLines, target } = await createNewSpec(
     projectPath,
     layout,
     test,
     posix.dirname(existing.file)
   )
-  const sidecar = buildSidecar(test, layout, file, content, existing.createdAt, now)
+  const sidecar = buildSidecar(test, layout, file, content, stepLines, existing.createdAt, now)
   try {
     await writeSidecar(projectPath, sidecar)
   } catch (error) {
@@ -286,8 +297,8 @@ export function saveRecordedTest(
         : await findSidecarById(projectPath, test.id)
 
     if (!existing) {
-      const { file, content, target } = await createNewSpec(projectPath, current, test)
-      const sidecar = buildSidecar(test, current, file, content, now, now)
+      const { file, content, stepLines, target } = await createNewSpec(projectPath, current, test)
+      const sidecar = buildSidecar(test, current, file, content, stepLines, now, now)
       try {
         await writeSidecar(projectPath, sidecar)
       } catch (error) {
@@ -309,7 +320,7 @@ export function saveRecordedTest(
       return moveToRealName(projectPath, current, test, existing, target, onDisk !== null, now)
     }
 
-    const content = generate(test, current, existing.file)
+    const { content, stepLines } = generate(test, current, existing.file)
     // Nothing changed: keep the files and their timestamps as they are, even when
     // Raider would now write the same test differently (e.g. with the wait helper).
     // The file is already known to match its recorded hash (isRaiderFile above). The
@@ -318,8 +329,15 @@ export function saveRecordedTest(
       onDisk !== null &&
       sameRecord(existing, test, current) &&
       requireLine(onDisk) === requireLine(content)
-    )
-      return existing
+    ) {
+      if (existing.stepLines) return existing
+      // Recorded before maps were stored: map the kept file, without touching it
+      const derived = deriveStepLines(existing, onDisk, current.helperPath)
+      if (!derived) return existing
+      const mapped = { ...existing, stepLines: derived }
+      await writeSidecar(projectPath, mapped)
+      return mapped
+    }
     if (onDisk === null) {
       // Sidecar without its file: restore it, but never over a file that appeared meanwhile
       await fs.mkdir(dirname(target), { recursive: true })
@@ -327,9 +345,45 @@ export function saveRecordedTest(
     } else {
       await writeFileAtomic(target, content)
     }
-    const sidecar = buildSidecar(test, current, existing.file, content, existing.createdAt, now)
+    const sidecar = buildSidecar(
+      test,
+      current,
+      existing.file,
+      content,
+      stepLines,
+      existing.createdAt,
+      now
+    )
     await writeSidecar(projectPath, sidecar)
     return sidecar
+  })
+}
+
+/**
+ * The lines each step of `testId` occupies in its spec file, for mapping a
+ * failure to a step. Runs in the test's queue, so it never reads a half-done
+ * save. A map derived for an older sidecar is stored, keeping its timestamps.
+ */
+export function stepLinesFor(
+  projectPath: string,
+  layout: ProjectLayout,
+  testId: string
+): Promise<{ sidecar: Sidecar; stepLines: StepLines | null } | { none: 'notRecorded' | 'edited' }> {
+  return serialize(testQueues, testKey(projectPath, testId), async () => {
+    const existing = await findSidecarById(projectPath, testId)
+    if (!existing) return { none: 'notRecorded' as const }
+    if (existing.codeOwned) return { none: 'edited' as const }
+    const onDisk = await readIfExists(await recordedFilePath(projectPath, existing.file))
+    if (onDisk === null) return { none: 'notRecorded' as const }
+    if (!isRaiderFile(onDisk, existing)) return { none: 'edited' as const }
+
+    const stored = usableStepLines(existing, onDisk)
+    if (stored) return { sidecar: existing, stepLines: stored }
+    const derived = deriveStepLines(existing, onDisk, layout.helperPath)
+    if (!derived) return { sidecar: existing, stepLines: null }
+    const sidecar = { ...existing, stepLines: derived }
+    await writeSidecar(projectPath, sidecar)
+    return { sidecar, stepLines: derived }
   })
 }
 

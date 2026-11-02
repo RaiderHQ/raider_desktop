@@ -184,7 +184,7 @@ describe('TestsWorkspace recording mode', () => {
 
     await waitFor(() => expect(api.saveRecording).toHaveBeenCalledTimes(1))
     expect(api.saveTrace).toHaveBeenCalledTimes(1)
-    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep])
+    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], expect.any(Array))
     expect(api.stopRecordingMain).toHaveBeenCalled()
     expect(api.saveRecording).toHaveBeenCalledWith(
       's1',

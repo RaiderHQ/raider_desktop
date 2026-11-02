@@ -7,6 +7,7 @@ import type { Step } from '@shared/types/step'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
+import type { PickResult } from '@shared/types/pick'
 import type {
   LegacyRunResult,
   PrepareSuiteRunResult,
@@ -16,6 +17,7 @@ import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { IpcRendererEvent } from 'electron'
 import type { RunApi } from '@shared/types/runEvents'
+import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type {
   TraceEntryResult,
@@ -152,6 +154,12 @@ export interface WindowApi extends RunApi {
   listProjectTests: () => Promise<ProjectTestEntry[]>
   /** Read-only view of a listed spec file; rejects for any other path */
   openCodeTest: (file: string) => Promise<CodeTestView>
+  /** The recorded step a failed row's frames point into, or why there is none; never rejects */
+  mapFailedStep: (
+    projectPath: string,
+    testId: string,
+    failure: FailedStepQuery
+  ) => Promise<FailedStepMap>
   getProjectLayout: () => Promise<ProjectLayout | null>
   /** Replaces the one example named `exampleName` in a listed spec file with `steps` */
   recordOverExample: (
@@ -223,6 +231,10 @@ export interface WindowApi extends RunApi {
   /** Main asks the page to save its recording before the window closes; returns an unsubscribe */
   onFlushRecording: (callback: () => void) => () => void
   flushRecordingDone: () => void
+  /** Turns picking one element in the recorder on or off; fails when no recorder is open */
+  setPickMode: (on: boolean) => Promise<{ success: boolean }>
+  /** Called once when picking ends, with the element or a cancel; returns an unsubscribe */
+  onRecorderPicked: (callback: (result: PickResult) => void) => () => void
   loadUrlRequest: (url: string) => Promise<CommandType>
   updateRecordingSettings: (
     settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
@@ -236,7 +248,11 @@ export interface WindowApi extends RunApi {
   getRecorderSettings: () => Promise<RecorderSettings>
 
   // --- Trace Management ---
-  saveTrace: (testId: string, trace: TraceStep[]) => Promise<{ success: boolean; error?: string }>
+  saveTrace: (
+    testId: string,
+    trace: TraceStep[],
+    stepIds?: string[]
+  ) => Promise<{ success: boolean; error?: string }>
   loadTrace: (testId: string) => Promise<{ success: boolean; trace?: TraceStep[] }>
   deleteTrace: (testId: string) => Promise<void>
 

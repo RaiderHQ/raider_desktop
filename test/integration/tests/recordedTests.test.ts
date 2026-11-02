@@ -9,10 +9,12 @@ import {
   saveRecordedTest,
   deleteRecordedTest,
   findSidecarById,
+  stepLinesFor,
   CodeOwnedError
 } from '../../../src/main/handlers/tests/recordedTests'
 import { readSidecar, writeSidecar } from '../../../src/main/handlers/tests/sidecar'
 import { hashRuby } from '../../../src/main/handlers/tests/codeHash'
+import { sha256Bytes } from '../../../src/main/handlers/tests/stepLines'
 import type { ProjectLayout } from '../../../src/shared/types/projectLayout'
 import type { Test } from '../../../src/shared/types/test'
 import type { Step } from '../../../src/shared/types/step'
@@ -483,7 +485,11 @@ describe('projects with the wait helper', () => {
       join(project, 'support', 'spec_helper.rb'),
       'RSpec.configure do |config|\n  config.include WaitHelper\nend\n'
     )
-    const moved = await saveRecordedTest(project, { ...withHelper, helperPath: 'support' }, clickTest())
+    const moved = await saveRecordedTest(
+      project,
+      { ...withHelper, helperPath: 'support' },
+      clickTest()
+    )
     const content = await readFile(spec, 'utf-8')
     expect(content).toContain("require_relative '../support/spec_helper'")
     expect(content).not.toContain('../helpers/spec_helper')
@@ -498,7 +504,11 @@ describe('projects with the wait helper', () => {
     const sidecarB = join(project, '.raider', 'tests', 'spec', 'payment_spec.rb.json')
     const before = [await readFile(fileB, 'utf-8'), await readFile(sidecarB, 'utf-8')]
 
-    await saveRecordedTest(project, withHelper, clickTest({ id: 'a', name: 'Checkout', steps: [click, click] }))
+    await saveRecordedTest(
+      project,
+      withHelper,
+      clickTest({ id: 'a', name: 'Checkout', steps: [click, click] })
+    )
 
     expect(a.file).not.toBe(b.file)
     expect([await readFile(fileB, 'utf-8'), await readFile(sidecarB, 'utf-8')]).toEqual(before)
@@ -510,5 +520,160 @@ describe('projects with the wait helper', () => {
     const saved = await saveRecordedTest(project, withHelper, clickTest())
     expect(saved.file).toBe('spec/checkout_spec.rb')
     expect(await readFile(join(project, saved.file), 'utf-8')).toContain("click({ css: '#go' })")
+  })
+})
+
+describe('step lines', () => {
+  const click: Step = { id: 'c1', kind: 'click', element: { strategy: 'css', value: '#go' } }
+
+  it('a new save stores the map of the bytes on disk', async () => {
+    const saved = await saveRecordedTest(project, layout, test())
+    const content = await readFile(join(project, saved.file), 'utf-8')
+    expect(saved.stepLines?.fileSha256).toBe(sha256Bytes(content))
+    expect(saved.stepLines?.ranges.map((r) => r.stepId)).toEqual(['s0'])
+    expect((await readSidecar(project, saved.file))?.stepLines).toEqual(saved.stepLines)
+  })
+
+  it('an edit-and-save rewrites the file and its map', async () => {
+    const first = await saveRecordedTest(project, layout, test())
+    const edited = await saveRecordedTest(project, layout, test({ steps: [...steps(1), click] }))
+    const content = await readFile(join(project, edited.file), 'utf-8')
+    expect(edited.stepLines?.fileSha256).toBe(sha256Bytes(content))
+    expect(edited.stepLines?.fileSha256).not.toBe(first.stepLines?.fileSha256)
+    expect(edited.stepLines?.ranges.map((r) => r.stepId)).toEqual(['s0', 'c1'])
+    expect((await readSidecar(project, edited.file))?.stepLines).toEqual(edited.stepLines)
+  })
+
+  it('an unchanged save fills in a missing map and leaves the file alone', async () => {
+    const first = await saveRecordedTest(project, layout, test())
+    const { stepLines, ...older } = first
+    await writeSidecar(project, older)
+    const spec = join(project, first.file)
+    const bytes = await readFile(spec, 'utf-8')
+    const mtime = (await fs.stat(spec)).mtimeMs
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    const again = await saveRecordedTest(project, layout, test())
+
+    expect(again.stepLines).toEqual(stepLines)
+    expect(again.updatedAt).toBe(first.updatedAt)
+    expect(again.hash).toBe(first.hash)
+    expect(await readSidecar(project, first.file)).toEqual(again)
+    expect(await readFile(spec, 'utf-8')).toBe(bytes)
+    expect((await fs.stat(spec)).mtimeMs).toBe(mtime)
+  })
+
+  it('stepLinesFor waits for a save in flight and maps the final file', async () => {
+    await saveRecordedTest(project, layout, test())
+    const changed = test({ steps: [...steps(2), click] })
+
+    const [, found] = await Promise.all([
+      saveRecordedTest(project, layout, changed),
+      stepLinesFor(project, layout, 't1')
+    ])
+
+    const final = await readSidecar(project, 'spec/checkout_spec.rb')
+    const content = await readFile(join(project, 'spec', 'checkout_spec.rb'), 'utf-8')
+    expect(final?.steps.map((s) => s.id)).toEqual(['s0', 's1', 'c1'])
+    expect(final?.stepLines?.fileSha256).toBe(sha256Bytes(content))
+    expect(found).toEqual({ sidecar: final, stepLines: final?.stepLines })
+  })
+
+  it('a derive in flight never clobbers the save queued after it', async () => {
+    const first = await saveRecordedTest(project, layout, test())
+    const { stepLines, ...older } = first
+    await writeSidecar(project, older)
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    const changed = test({ steps: [...steps(2), click] })
+
+    // stepLinesFor is queued first, so it derives and writes before the save runs
+    const [found, saved] = await Promise.all([
+      stepLinesFor(project, layout, 't1'),
+      saveRecordedTest(project, layout, changed)
+    ])
+
+    expect(found).toEqual({ sidecar: { ...older, stepLines }, stepLines })
+    expect('sidecar' in found && found.sidecar.updatedAt).toBe(first.updatedAt)
+    const final = await readSidecar(project, 'spec/checkout_spec.rb')
+    const content = await readFile(join(project, 'spec', 'checkout_spec.rb'), 'utf-8')
+    expect(final).toEqual(saved)
+    expect(final?.steps.map((s) => s.id)).toEqual(['s0', 's1', 'c1'])
+    expect(final?.stepLines?.fileSha256).toBe(sha256Bytes(content))
+    expect(final?.updatedAt).not.toBe(first.updatedAt)
+  })
+
+  it('stepLinesFor has no map for a CRLF file and leaves the sidecar alone', async () => {
+    const first = await saveRecordedTest(project, layout, test())
+    const { stepLines: _, ...older } = first
+    await writeSidecar(project, older)
+    const spec = join(project, first.file)
+    await writeFile(spec, (await readFile(spec, 'utf-8')).replace(/\n/g, '\r\n'))
+    const sidecarFile = join(project, '.raider', 'tests', 'spec', 'checkout_spec.rb.json')
+    const before = await readFile(sidecarFile, 'utf-8')
+
+    expect(await stepLinesFor(project, layout, 't1')).toEqual({ sidecar: older, stepLines: null })
+    expect(await readFile(sidecarFile, 'utf-8')).toBe(before)
+  })
+
+  it('an unchanged old-style save in a project that now has the helper gets the old-style map', async () => {
+    await mkdir(join(project, 'helpers'), { recursive: true })
+    const clickTest = test({ steps: [click] })
+    const first = await saveRecordedTest(project, layout, clickTest)
+    const { stepLines, ...older } = first
+    await writeSidecar(project, older)
+    const spec = join(project, first.file)
+    const bytes = await readFile(spec, 'utf-8')
+    expect(bytes).toContain('let(:wait)')
+    await writeFile(join(project, 'helpers', 'wait_helper.rb'), 'module WaitHelper; end\n')
+    await writeFile(
+      join(project, 'helpers', 'spec_helper.rb'),
+      "require_relative 'wait_helper'\n\nRSpec.configure do |config|\n  config.include WaitHelper\nend\n"
+    )
+
+    const again = await saveRecordedTest(project, { ...layout, waitHelper: true }, clickTest)
+
+    expect(await readFile(spec, 'utf-8')).toBe(bytes)
+    expect(again.stepLines).toEqual(stepLines)
+    expect(again.stepLines?.fileSha256).toBe(sha256Bytes(bytes))
+    expect(again.updatedAt).toBe(first.updatedAt)
+  })
+
+  it('stepLinesFor derives and stores a missing map', async () => {
+    const first = await saveRecordedTest(project, layout, test())
+    const { stepLines, ...older } = first
+    await writeSidecar(project, older)
+
+    const found = await stepLinesFor(project, layout, 't1')
+
+    expect(found).toEqual({ sidecar: first, stepLines })
+    expect(await readSidecar(project, first.file)).toEqual(first)
+  })
+
+  it('stepLinesFor has no map for a file that only differs in comments', async () => {
+    const first = await saveRecordedTest(project, layout, test())
+    const spec = join(project, first.file)
+    await writeFile(spec, (await readFile(spec, 'utf-8')).replace('  it ', '  # note\n  it '))
+
+    expect(await stepLinesFor(project, layout, 't1')).toEqual({
+      sidecar: await readSidecar(project, first.file),
+      stepLines: null
+    })
+  })
+
+  it('stepLinesFor says edited for code-owned or hand-edited tests', async () => {
+    const first = await saveRecordedTest(project, layout, test())
+    const spec = join(project, first.file)
+    await writeFile(spec, (await readFile(spec, 'utf-8')) + "puts 'hand edit'\n")
+    expect(await stepLinesFor(project, layout, 't1')).toEqual({ none: 'edited' })
+
+    await writeSidecar(project, { ...first, codeOwned: true })
+    expect(await stepLinesFor(project, layout, 't1')).toEqual({ none: 'edited' })
+  })
+
+  it('stepLinesFor says not recorded without a sidecar or its file', async () => {
+    expect(await stepLinesFor(project, layout, 't1')).toEqual({ none: 'notRecorded' })
+    const first = await saveRecordedTest(project, layout, test())
+    await rm(join(project, first.file))
+    expect(await stepLinesFor(project, layout, 't1')).toEqual({ none: 'notRecorded' })
   })
 })

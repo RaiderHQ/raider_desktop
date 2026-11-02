@@ -10,12 +10,14 @@ import type { QuickProject } from '@shared/types/quickProject'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
+import type { PickResult } from '@shared/types/pick'
 import type {
   LegacyRunResult,
   PrepareSuiteRunResult,
   PrepareTestRunResult
 } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
+import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type {
   TraceEntryResult,
@@ -171,6 +173,11 @@ const api = {
   getSuites: async (): Promise<Suite[]> => ipcRenderer.invoke('get-suites'),
   listProjectTests: (): Promise<ProjectTestEntry[]> => ipcRenderer.invoke('list-project-tests'),
   openCodeTest: (file: string): Promise<CodeTestView> => ipcRenderer.invoke('open-code-test', file),
+  mapFailedStep: (
+    projectPath: string,
+    testId: string,
+    failure: FailedStepQuery
+  ): Promise<FailedStepMap> => ipcRenderer.invoke('map-failed-step', projectPath, testId, failure),
   getProjectLayout: (): Promise<ProjectLayout | null> => ipcRenderer.invoke('get-project-layout'),
   recordOverExample: (
     file: string,
@@ -217,8 +224,12 @@ const api = {
     ipcRenderer.invoke('save-recording', suiteId, testData),
   deleteTest: (suiteId: string, testId: string): Promise<void> =>
     ipcRenderer.invoke('delete-test', { suiteId, testId }),
-  saveTrace: (testId: string, trace: TraceStep[]): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke('save-trace', testId, trace),
+  saveTrace: (
+    testId: string,
+    trace: TraceStep[],
+    stepIds?: string[]
+  ): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('save-trace', testId, trace, stepIds),
   loadTrace: (testId: string): Promise<{ success: boolean; trace?: TraceStep[] }> =>
     ipcRenderer.invoke('load-trace', testId),
   deleteTrace: (testId: string): Promise<void> => ipcRenderer.invoke('delete-trace', testId),
@@ -285,6 +296,17 @@ const api = {
     }
   },
   flushRecordingDone: (): void => ipcRenderer.send('flush-recording-done'),
+  /** Turns picking one element in the recorder on or off; fails when no recorder is open */
+  setPickMode: async (on: boolean): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('set-pick-mode', on),
+  /** Called once when picking ends, with the element or a cancel; returns an unsubscribe */
+  onRecorderPicked: (callback: (result: PickResult) => void): (() => void) => {
+    const listener = (_event: IpcRendererEvent, result: PickResult): void => callback(result)
+    ipcRenderer.on('recorder-picked', listener)
+    return (): void => {
+      ipcRenderer.removeListener('recorder-picked', listener)
+    }
+  },
   // --- Live test runs (RunApi) ---
   startRun: async (request: RunRequest): Promise<StartRunResult> =>
     ipcRenderer.invoke('start-run', request),

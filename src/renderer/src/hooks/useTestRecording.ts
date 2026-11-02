@@ -14,6 +14,9 @@ import { testKeyOf, toRouteParam } from '@foundation/testKey'
 import type { TestKey } from '@foundation/testKey'
 import type { Test } from '@foundation/Types/test'
 import type { PendingAssertion } from '@shared/types/pendingAssertion'
+import type { PickResult } from '@shared/types/pick'
+import type { ElementTarget } from '@shared/types/step'
+import { canRePick } from '@shared/stepFixes'
 import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import { MOBILE_NO_LEGACY } from '@shared/types/prepareRun'
 import { useSuiteSync } from './useSuiteSync'
@@ -32,6 +35,15 @@ export interface TestRecording {
   leave(): Promise<void>
   /** Saves a recording over a code example that its file couldn't take as a new recorded test */
   saveAsNewTest(): Promise<void>
+  /** Replay up to step `index`, then let the user pick that step's element on the page */
+  rePick(index: number): Promise<RePickOutcome>
+  /** Ends picking an element (or getting to it) without changing anything */
+  cancelPick(): Promise<void>
+  /**
+   * Saves the open test, as it is in the store, once and right away after a fix (e.g. an
+   * edited value): the autosave leaves that version alone. True when it saved
+   */
+  saveFixedTest(suiteId: string, test: Test): Promise<boolean>
   run(): Promise<void>
   cancelReplay(): Promise<void>
   recordingUrl: string | null
@@ -41,6 +53,13 @@ export interface TestRecording {
   assertionInfo: PendingAssertion | null
   setAssertionInfo(info: PendingAssertion | null): void
 }
+
+/** How picking a step's element again ended */
+export type RePickOutcome =
+  | { kind: 'picked' }
+  | { kind: 'cancelled' }
+  | { kind: 'replayFailed'; stepNumber: number }
+  | { kind: 'notStarted' }
 
 const store = useRecorderStore.getState
 
@@ -56,7 +75,11 @@ const isBusy = (): boolean => {
 async function saveTraceOf(test: Test): Promise<Test> {
   if (!test.trace?.length) return test
   try {
-    const result = await window.api.saveTrace(test.id, test.trace)
+    const result = await window.api.saveTrace(
+      test.id,
+      test.trace,
+      test.steps.map((s) => s.id)
+    )
     if (!result.success) return test
   } catch (error) {
     console.error('Saving the trace failed:', error)
@@ -79,6 +102,107 @@ const startFailedKey = (result: { reason?: 'unsupportedUrl' }): string =>
 /** Stops a recording main started after the user left it, unless another one took its place */
 function stopAbandonedRecording(): void {
   if (store().recordingTarget === null) window.api.stopRecordingMain()
+}
+
+/** Ends the pick waiting for the user's click; set only while one waits */
+let endPick: ((result: PickResult) => void) | null = null
+
+/** The next pick result from main, or a cancel through `endPick`, whichever comes first */
+function waitForPick(): Promise<PickResult> {
+  return new Promise((resolve) => {
+    let unsubscribe = (): void => {}
+    const finish = (result: PickResult): void => {
+      // Once: leaving cancels it, and main then sends its own cancel too
+      if (endPick !== finish) return
+      endPick = null
+      unsubscribe()
+      resolve(result)
+    }
+    endPick = finish
+    unsubscribe = window.api.onRecorderPicked(finish)
+  })
+}
+
+/** Closes the recorder opened to pick an element; one the user left was already stopped */
+function closePick(target: RecordingTarget): void {
+  Promise.resolve(window.api.setPickMode(false)).catch((error: unknown) =>
+    console.error('Ending the pick failed:', error)
+  )
+  store().setPickingStep(null)
+  if (leftDuringStart(target)) return
+  // Nothing was recorded, so main's 'recording-stopped' has no trace to save
+  traceSavedOnStop()
+  store().setRecordingBrowser(null)
+  window.api.stopRecordingMain()
+  store().setRecordingTarget(null)
+}
+
+/**
+ * Opens the recorder on the test, replays the steps before `index`, and waits for the
+ * user to pick that step's element. Returns the element, or how it ended without one.
+ * The caller closes the recorder, however this ends.
+ */
+async function openAndPick(
+  t: Translate,
+  test: Test,
+  index: number,
+  target: RecordingTarget
+): Promise<ElementTarget | RePickOutcome> {
+  await window.api.loadUrlRequest(test.url ?? '')
+  if (leftDuringStart(target)) return { kind: 'notStarted' }
+  const started = await window.api.startRecordingMain()
+  if (leftDuringStart(target)) {
+    if (started.success) stopAbandonedRecording()
+    return { kind: 'notStarted' }
+  }
+  if (!started.success) {
+    store().setRecordingTarget(null)
+    toast.error(t(startFailedKey(started)))
+    return { kind: 'notStarted' }
+  }
+  store().setRecordingBrowser({ url: started.url, preloadPath: started.preloadPath })
+
+  // Wait briefly for the webview to mount and register its webContentsId
+  await new Promise((resolve) => setTimeout(resolve, 1500))
+  if (leftDuringStart(target)) return { kind: 'notStarted' }
+
+  if (index > 0) {
+    const replay = await window.api.replayInWebview(test.steps.slice(0, index))
+    if (leftDuringStart(target)) return { kind: 'notStarted' }
+    if (replay.cancelled) return { kind: 'cancelled' }
+    if (!replay.success) {
+      const failedAt = test.steps.findIndex((s) => s.id === replay.failedStepId)
+      // Not told which: the page didn't get as far as the step before
+      return { kind: 'replayFailed', stepNumber: failedAt === -1 ? index : failedAt + 1 }
+    }
+  }
+
+  const pick = waitForPick()
+  // Main starts picking once the page has settled: a step that navigates lands first
+  const on = await window.api.setPickMode(true)
+  if (!on.success && !leftDuringStart(target)) return { kind: 'notStarted' }
+  if (!leftDuringStart(target)) store().setPickingStep(index + 1)
+  const result = await pick
+  if ('element' in result) return result.element
+  // Main ends picking when the page changes: never silently, the user tries again
+  if (result.reason === 'navigated') toast.error(t('failedStep.pageChangedWhilePicking'))
+  return { kind: 'cancelled' }
+}
+
+/** The test as a fix (a picked element, an edited value) saved it; the autosave leaves it alone */
+let savedByFix: Test | null = null
+
+/** Saves a fixed test once, right away; a failed save isn't retried behind the user's back */
+async function saveFix(t: Translate, suiteId: string, test: Test): Promise<boolean> {
+  savedByFix = test
+  try {
+    const saved = await window.api.saveRecording(suiteId, test)
+    return handleSaveResult(saved, test.id, t)
+  } catch (error) {
+    console.error('Saving the fix failed:', error)
+    toast.error(t('recorder.saveFailed'), { id: 'save-failed' })
+    return false
+  }
 }
 
 /** Only the start page was recorded: there is nothing worth keeping */
@@ -129,10 +253,9 @@ async function saveStopped(
   // The trace is saved here, from the same snapshot: after a leave, nothing is left
   // listening for main's 'recording-stopped'
   traceSavedOnStop()
-  const withTrace = await saveTraceOf(test)
   let result: Awaited<ReturnType<typeof window.api.saveRecording>>
   try {
-    result = await window.api.saveRecording(suiteId, withTrace)
+    result = await window.api.saveRecording(suiteId, test)
   } catch (error) {
     console.error('Saving the test failed:', error)
     toast.error(t('recorder.saveFailed'), { id: 'save-failed' })
@@ -145,6 +268,8 @@ async function saveStopped(
     }
     return false
   }
+  // Only once the test is saved: the trace save deletes the pictures of steps it no longer has
+  await saveTraceOf(test)
   const name = result?.test?.name ?? test.name
   const file = result?.test?.file
   toast.success(file ? t('tests.saved', { name, file }) : t('tests.savedNoFile', { name }))
@@ -278,6 +403,14 @@ async function stopAndSave(t: Translate, options: StopOptions = {}): Promise<voi
     case 'example':
       await saveOverExample(t, target, test, options)
       return
+    case 'pick':
+      // Nothing was recorded: a replay or a pick still waiting ends, and nothing is saved
+      traceSavedOnStop()
+      Promise.resolve(window.api.cancelReplay()).catch((error: unknown) =>
+        console.error('Cancelling the replay failed:', error)
+      )
+      endPick?.({ cancelled: true })
+      return
     default: {
       const unknownTarget: never = target
       throw new Error(`Unknown recording target ${JSON.stringify(unknownTarget)}`)
@@ -357,7 +490,7 @@ export function useTestRecording(): TestRecording {
   useEffect((): (() => void) | void => {
     const opened = (activeTest?.id ?? null) !== autosavedTestId.current
     autosavedTestId.current = activeTest?.id ?? null
-    if (opened || isBusy()) return
+    if (opened || isBusy() || activeTest === savedByFix) return
     const handler = setTimeout(() => {
       const { activeSuiteId: suiteId, activeTest: test, readOnlyView: view, draftTest } = store()
       if (isBusy()) return
@@ -474,6 +607,50 @@ export function useTestRecording(): TestRecording {
     [recordFromHere]
   )
 
+  const rePick = useCallback(
+    async (index: number): Promise<RePickOutcome> => {
+      const test = store().activeTest
+      // Only a step found by an element outside a frame, and never over another recording
+      if (!test || !canRePick(test.steps, index) || isBusy()) return { kind: 'notStarted' }
+      if (useProjectStore.getState().layout?.recordable === false) return { kind: 'notStarted' }
+      const step = test.steps[index]
+      const target: RecordingTarget = { kind: 'pick', stepId: step.id }
+      store().setRecordingTarget(target)
+      let picked: ElementTarget | RePickOutcome
+      try {
+        picked = await openAndPick(t, test, index, target)
+      } finally {
+        // Whatever happened, the page is never left picking. Closed before the test
+        // changes: nothing saves it while the recorder is open
+        endPick?.({ cancelled: true })
+        closePick(target)
+      }
+      if ('kind' in picked) return picked
+      const element = picked
+
+      // Only what the step is found by changes: its id and kind stay
+      store().updateActiveTest((prev) =>
+        prev && prev.id === test.id
+          ? {
+              ...prev,
+              steps: prev.steps.map((s) => (s.id === step.id ? ({ ...s, element } as typeof s) : s))
+            }
+          : prev
+      )
+      const { activeSuiteId: suiteId, activeTest: fixedTest } = store()
+      if (!suiteId || !fixedTest || fixedTest.id !== test.id) return { kind: 'cancelled' }
+      return (await saveFix(t, suiteId, fixedTest)) ? { kind: 'picked' } : { kind: 'cancelled' }
+    },
+    [t]
+  )
+
+  const saveFixedTest = useCallback(
+    (suiteId: string, test: Test): Promise<boolean> => saveFix(t, suiteId, test),
+    [t]
+  )
+
+  const cancelPick = useCallback((): Promise<void> => stopAndSave(t), [t])
+
   const run = useCallback(async (): Promise<void> => {
     const { activeSuiteId: suiteId, activeTest: test, readOnlyView: view, setIsRunning } = store()
     const startLive = (file: string, label: string): void => {
@@ -544,6 +721,9 @@ export function useTestRecording(): TestRecording {
     stop,
     leave,
     saveAsNewTest,
+    rePick,
+    cancelPick,
+    saveFixedTest,
     run,
     cancelReplay,
     recordingUrl,

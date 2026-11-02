@@ -94,6 +94,7 @@ describe('IPC Contract', () => {
     // Suite Management
     'getSuites',
     'listProjectTests',
+    'mapFailedStep',
     'openCodeTest',
     'getProjectLayout',
     'createSuite',
@@ -123,6 +124,8 @@ describe('IPC Contract', () => {
     'updateRecordingSettings',
     'setActiveProject',
     'getRecorderSettings',
+    'setPickMode',
+    'onRecorderPicked',
 
     // Trace Management
     'saveTrace',

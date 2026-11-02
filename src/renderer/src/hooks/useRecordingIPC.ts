@@ -28,6 +28,8 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
     // The test the recording started on. Steps that arrive late, after another test was
     // opened, belong to the recorded test, never to the one open now
     let recordedTestId: string | null = null
+    // Picking an element records nothing: what the page sends while picking is dropped
+    const picking = (): boolean => useRecorderStore.getState().recordingTarget?.kind === 'pick'
     const forRecordedTest = (update: (test: Test) => Test): void =>
       useRecorderStore
         .getState()
@@ -35,11 +37,13 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
           prev && (recordedTestId === null || prev.id === recordedTestId) ? update(prev) : prev
         )
     // A secret step is named here, once: later moves, inserts and deletes never renumber it
-    const appendStep = (step: Step): void =>
+    const appendStep = (step: Step): void => {
+      if (picking()) return
       forRecordedTest((prev) => ({
         ...prev,
         steps: [...prev.steps, nameSecretStep(step, prev.steps)]
       }))
+    }
 
     const handleRecordingStarted = (_event: Electron.IpcRendererEvent, loadedUrl: string): void => {
       const {
@@ -54,6 +58,8 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
       // A recording the user left while it started: it is being stopped, and must not
       // replace the steps of the test open now
       if (!recordingTarget) return
+      // Picking keeps the test as it is: its steps and pictures stay, and it isn't recording
+      if (recordingTarget.kind === 'pick') return
       setIsRecording(true)
       recordedTestId = activeTest?.id ?? null
       traceSaved = false
@@ -80,11 +86,16 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
     }
 
     const handleRecordingStopped = async (): Promise<void> => {
+      if (picking()) return
       const { activeTest, updateActiveTest } = useRecorderStore.getState()
       useRecorderStore.getState().setIsRecording(false)
       if (traceSaved) return
       if (activeTest?.trace?.length) {
-        const result = await window.api.saveTrace(activeTest.id, activeTest.trace)
+        const result = await window.api.saveTrace(
+          activeTest.id,
+          activeTest.trace,
+          activeTest.steps.map((s) => s.id)
+        )
         if (result.success) {
           // Mark the test as it is now: steps can still arrive while the trace is saved
           updateActiveTest((live) =>
@@ -99,6 +110,7 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
     }
 
     const handleNewTraceStep = (_event: Electron.IpcRendererEvent, traceStep: TraceStep): void => {
+      if (picking()) return
       forRecordedTest((prev) => ({ ...prev, trace: [...(prev.trace || []), traceStep] }))
     }
 
@@ -107,6 +119,7 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
       _event: Electron.IpcRendererEvent,
       message: AssertionMessage
     ): void => {
+      if (picking()) return
       if (isPendingAssertion(message)) {
         setAssertionInfo(message)
       } else {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router'
 import {
   FaCheckCircle,
   FaTimesCircle,
@@ -19,9 +20,13 @@ import OpenTraceButtons from '@components/OpenTraceButtons'
 import { MessageContent } from './MessageContent'
 import Tooltip from '@components/Tooltip'
 import { toMediaUrl } from '@foundation/mediaUrl'
+import { imageDataUrl } from '@foundation/imageDataUrl'
 import type { TraceStep } from '@foundation/Types/traceStep'
-import type { FailureInfo } from '@foundation/Types/testResult'
+import type { FailureInfo, TestResult } from '@foundation/Types/testResult'
 import type { TraceRef } from '@foundation/Types/testResult'
+import type { Test } from '@foundation/Types/test'
+import { failedStepLine, useFailedStepFor } from '../../hooks/useFailedStep'
+import { fixInTestRoute } from '@foundation/recordedTestForFile'
 
 interface TestResultCardProps {
   name: string
@@ -35,6 +40,8 @@ interface TestResultCardProps {
   durationMs?: number
   browser?: string
   projectPath?: string
+  result?: TestResult
+  recordedTest?: Test
   traces?: TraceRef[]
 }
 
@@ -50,9 +57,12 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
   durationMs,
   browser,
   projectPath,
+  result,
+  recordedTest,
   traces
 }) => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [imageData, setImageData] = useState<string>('')
@@ -86,15 +96,24 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
   const isFailing = status === 'failed' || status === 'broken' || status === 'quarantined'
   const showFailureDetails = isFailing && !!failure
 
+  const failedStep = useFailedStepFor(projectPath ?? null, recordedTest ?? null, result ?? null)
+  // A recorded test never opens on the raw error: not while the step is looked up, not if it isn't found
+  const plainFailure = showFailureDetails && !!recordedTest
+  const stepLine = !plainFailure
+    ? null
+    : failedStep.pending
+      ? t('failedStep.finding')
+      : (failedStepLine(t, failedStep) ?? t('failedStep.unmapped'))
+
   const chevronIcon = open ? <FaChevronDown /> : <FaChevronRight />
 
   useEffect(() => {
     if (showModal && screenshot) {
       window.api
         .readImage(screenshot)
-        .then((res: { success: boolean; data?: string; error?: string }) => {
-          if (res.success && res.data) {
-            const dataUrl = `data:image/png;base64,${res.data}`
+        .then((res: { success: boolean; data?: string; fileExt?: string; error?: string }) => {
+          const dataUrl = res.success ? imageDataUrl(res) : null
+          if (dataUrl) {
             setImageData(dataUrl)
           } else {
             toast.error(`${t('testResults.error.imageRead')}: ${res.error}`)
@@ -147,8 +166,26 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
           <p className="text-xs text-neutral-mid mb-1">
             {t('testResults.status')}: <span className="font-medium text-neutral-dk">{t(`testResults.${status}`)}</span>
           </p>
+          {stepLine && recordedTest && (
+            <div className="mt-2 flex items-center gap-3">
+              <p data-testid="failed-step-line" className="text-sm text-neutral-dark">
+                {stepLine}
+              </p>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  navigate(fixInTestRoute(recordedTest.id))
+                }}
+                className="text-xs text-ruby hover:underline shrink-0"
+              >
+                {t('failedStep.fixInTest')}
+              </button>
+            </div>
+          )}
           {showFailureDetails && failure ? (
             <FailureDetails
+              collapsed={!!stepLine}
               failure={failure}
               screenshot={screenshot}
               durationMs={durationMs}

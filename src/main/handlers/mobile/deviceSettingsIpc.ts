@@ -20,7 +20,7 @@ const EDITABLE: Array<keyof DeviceEdit> = ['deviceName', 'platformVersion', 'app
 const isMissing = (error: unknown): boolean => (error as NodeJS.ErrnoException)?.code === 'ENOENT'
 
 /** Waits for activation, then accepts only the active project's own path */
-async function activeProject(projectPath: unknown): Promise<string | null> {
+export async function activeProject(projectPath: unknown): Promise<string | null> {
   await activationSettled()
   if (typeof projectPath !== 'string' || !appState.projectPath) return null
   return resolve(projectPath) === resolve(appState.projectPath) ? appState.projectPath : null
