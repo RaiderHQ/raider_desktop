@@ -860,5 +860,117 @@
   "common": {
     "close": "Close",
     "cancel": "Cancel"
+  },
+  "traceViewer": {
+    "open": "Open trace",
+    "openAttempt": "Open trace (attempt {{attempt}})",
+    "openNumbered": "Open trace {{n}}",
+    "opening": "Opening trace…",
+    "close": "Close trace",
+    "attempt": "Attempt {{attempt}}",
+    "status": {
+      "passed": "Passed",
+      "failed": "Failed"
+    },
+    "tabs": {
+      "step": "Step",
+      "network": "Network",
+      "console": "Console"
+    },
+    "view": {
+      "screenshot": "Screenshot",
+      "snapshot": "Page HTML"
+    },
+    "notCaptured": "Not captured",
+    "selectStep": "Select a step to see what happened",
+    "waited": "Waited {{seconds}} s",
+    "retries": "Tried again {{count}} times",
+    "failedStep": "This step failed",
+    "rectLabel": "Element before the action",
+    "expandGroup": "Show steps inside",
+    "collapseGroup": "Hide steps inside",
+    "technical": {
+      "show": "Technical details",
+      "action": "Method",
+      "locator": "Locator",
+      "within": "Inside",
+      "value": "Value",
+      "hidden": "Hidden",
+      "source": "Source",
+      "error": "Error"
+    },
+    "showAll": "Show all steps",
+    "unavailable": "Not available in this browser",
+    "network": {
+      "empty": "No network requests during this step",
+      "emptyAll": "No network requests",
+      "failed": "Failed: {{error}}"
+    },
+    "console": {
+      "empty": "No console messages during this step",
+      "emptyAll": "No console messages"
+    },
+    "truncated": {
+      "steps": "Older steps removed to keep the trace small",
+      "screenshots": "Older screenshots removed to keep the trace small",
+      "snapshots": "Older page snapshots removed to keep the trace small",
+      "network": "Older network requests removed to keep the trace small",
+      "console": "Older console messages removed to keep the trace small"
+    },
+    "error": {
+      "notFound": "Couldn't find this trace file.",
+      "tooLarge": "This trace is too large to open safely.",
+      "unsafe": "This trace has unexpected contents, so Raider didn't open it.",
+      "notTrace": "This file isn't a Raider trace.",
+      "newerVersion": "This trace was made by a newer version of Raider. Update Raider Desktop to open it.",
+      "damaged": "This trace is damaged and can't be opened.",
+      "closed": "This trace was closed. Open it again."
+    },
+    "menu": {
+      "file": "File",
+      "openTrace": "Open trace…"
+    },
+    "dialogTitle": "Open a trace",
+    "element": {
+      "withRole": "the \"{{label}}\" {{role}}",
+      "named": "\"{{label}}\"",
+      "unnamed": "this element"
+    },
+    "step": {
+      "navigate": "Opened {{url}}",
+      "click": "Clicked {{element}}",
+      "typeSecret": "Typed a secret into {{element}}",
+      "typeText": "Typed \"{{text}}\" into {{element}}",
+      "typeEmpty": "Typed into {{element}}",
+      "clear": "Cleared {{element}}",
+      "submit": "Submitted {{element}}",
+      "selectOption": "Chose \"{{text}}\" in {{element}}",
+      "selectSecret": "Chose an option in {{element}}",
+      "hover": "Hovered over {{element}}",
+      "dragAndDrop": "Dragged {{element}}",
+      "scrollIntoView": "Scrolled to {{element}}",
+      "readText": "Read the text of {{element}}",
+      "readAttribute": "Read an attribute of {{element}}",
+      "checkVisible": "Checked that {{element}} is visible",
+      "checkEnabled": "Checked that {{element}} is enabled",
+      "checkSelected": "Checked that {{element}} is selected",
+      "findElement": "Found {{element}}",
+      "findElements": "Looked for matching elements",
+      "eventually": "Waited until the check passed",
+      "cucumber": "{{name}}",
+      "failure": "The test failed here",
+      "other": "Ran a step"
+    },
+    "foundBy": {
+      "id": "Found by id",
+      "css": "Found by CSS",
+      "xpath": "Found by XPath",
+      "name": "Found by name",
+      "link_text": "Found by link text",
+      "partial_link_text": "Found by partial link text",
+      "class_name": "Found by class",
+      "tag_name": "Found by tag",
+      "other": "Found by locator"
+    }
   }
 }
