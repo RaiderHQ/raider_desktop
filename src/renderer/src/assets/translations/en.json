@@ -957,7 +957,10 @@
       "emptyAll": "No network requests",
       "failed": "Failed",
       "size": "Size as the browser reports it, which may include headers",
-      "details": "Request details"
+      "details": "Request details",
+      "mocked": "Mocked",
+      "blockedByTest": "Blocked by test",
+      "mockedHint": "Mocked and blocked responses came from the test, not the server"
     },
     "console": {
       "empty": "No console messages during this step",

@@ -64,7 +64,12 @@ export interface RaiderTraceNetwork {
   durationMs: number | null
   bytes: number | null
   error: string | null
+  // Set when a network mock in the test answered the request ('fulfilled') or
+  // failed it ('failed'); null when the request reached the server.
+  mocked: RaiderTraceMocked | null
 }
+
+export type RaiderTraceMocked = 'fulfilled' | 'failed'
 
 export interface RaiderTraceConsole {
   stepIndex: number | null // null: belongs to no step
