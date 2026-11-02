@@ -59,48 +59,45 @@ export function useSuiteSync(): void {
       }
     })
 
-    const suiteUpdatedCleanup = window.electron.ipcRenderer.on(
-      'suite-updated',
-      (_event, updatedSuites: Suite[]) => {
-        const {
-          suites: previousSuites,
-          activeSuiteId: currentSuiteId,
-          activeTest: currentTest
-        } = useRecorderStore.getState()
-        const currentTestId = currentTest?.id
+    const suiteUpdatedCleanup = window.api.onSuiteUpdated((updatedSuites: Suite[]) => {
+      const {
+        suites: previousSuites,
+        activeSuiteId: currentSuiteId,
+        activeTest: currentTest
+      } = useRecorderStore.getState()
+      const currentTestId = currentTest?.id
 
-        setSuites(updatedSuites)
+      setSuites(updatedSuites)
 
-        if (updatedSuites.length > previousSuites.length) {
-          const newSuite = updatedSuites.find((s) => !previousSuites.some((ps) => ps.id === s.id))
-          if (newSuite) {
-            setActiveSuiteId(newSuite.id)
-            setActiveTest(newSuite.tests[0] ?? null)
-            return
-          }
-        }
-
-        const activeSuiteNow = updatedSuites.find((s) => s.id === currentSuiteId)
-
-        if (activeSuiteNow) {
-          const activeTestNow = activeSuiteNow.tests.find((t) => t.id === currentTestId)
-          if (activeTestNow) {
-            // The echo of a save is older than what is on screen: steps recorded while
-            // it was in flight, and the trace main never sees, must survive it
-            const { updateActiveTest } = useRecorderStore.getState()
-            updateActiveTest((live) =>
-              live && live.id === activeTestNow.id ? withServerFields(live, activeTestNow) : live
-            )
-          } else {
-            setActiveTest(activeSuiteNow.tests[0] ?? null)
-          }
-        } else if (currentSuiteId) {
-          const firstSuite = updatedSuites[0] ?? null
-          setActiveSuiteId(firstSuite?.id ?? null)
-          setActiveTest(firstSuite?.tests[0] ?? null)
+      if (updatedSuites.length > previousSuites.length) {
+        const newSuite = updatedSuites.find((s) => !previousSuites.some((ps) => ps.id === s.id))
+        if (newSuite) {
+          setActiveSuiteId(newSuite.id)
+          setActiveTest(newSuite.tests[0] ?? null)
+          return
         }
       }
-    )
+
+      const activeSuiteNow = updatedSuites.find((s) => s.id === currentSuiteId)
+
+      if (activeSuiteNow) {
+        const activeTestNow = activeSuiteNow.tests.find((t) => t.id === currentTestId)
+        if (activeTestNow) {
+          // The echo of a save is older than what is on screen: steps recorded while
+          // it was in flight, and the trace main never sees, must survive it
+          const { updateActiveTest } = useRecorderStore.getState()
+          updateActiveTest((live) =>
+            live && live.id === activeTestNow.id ? withServerFields(live, activeTestNow) : live
+          )
+        } else {
+          setActiveTest(activeSuiteNow.tests[0] ?? null)
+        }
+      } else if (currentSuiteId) {
+        const firstSuite = updatedSuites[0] ?? null
+        setActiveSuiteId(firstSuite?.id ?? null)
+        setActiveTest(firstSuite?.tests[0] ?? null)
+      }
+    })
 
     return (): void => {
       suiteUpdatedCleanup?.()

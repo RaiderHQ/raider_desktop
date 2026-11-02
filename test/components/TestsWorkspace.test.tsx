@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
-import type { IpcRendererEvent } from 'electron'
+import { ipcSubscriptions } from '../helpers/ipcSubscriptions'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import TestsWorkspace from '@components/TestsWorkspace'
 import { toRouteParam } from '@foundation/testKey'
@@ -54,10 +54,10 @@ const checkout: Test = {
 }
 const suites = [{ id: 's1', name: 'Smoke', tests: [search, checkout] }]
 
-const listeners = new Map<string, (event: IpcRendererEvent, ...args: unknown[]) => unknown>()
+const listeners = new Map<string, (...args: unknown[]) => unknown>()
 const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
   await act(async () => {
-    await listeners.get(channel)?.({} as IpcRendererEvent, ...args)
+    await listeners.get(channel)?.(...args)
   })
 }
 
@@ -119,14 +119,7 @@ beforeEach(() => {
   api.renderStep.mockImplementation(async (s: { url?: string }) => `goto ${s.url ?? ''}`)
   // @ts-expect-error - Mocking window.api
   window.api = api
-  window.electron = {
-    ipcRenderer: {
-      on: (channel: string, cb: (event: IpcRendererEvent, ...args: unknown[]) => unknown) => {
-        listeners.set(channel, cb)
-        return (): boolean => listeners.delete(channel)
-      }
-    }
-  } as unknown as typeof window.electron
+  Object.assign(window.api, ipcSubscriptions(listeners))
   useRecorderStore.getState().resetForProject()
   useRecorderStore.setState({ showCode: false, isOutputVisible: false })
   useTestsListStore.setState({ rows: null })

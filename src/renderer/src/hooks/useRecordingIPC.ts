@@ -45,7 +45,7 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
       }))
     }
 
-    const handleRecordingStarted = (_event: Electron.IpcRendererEvent, loadedUrl: string): void => {
+    const handleRecordingStarted = (loadedUrl: string): void => {
       const {
         recordingTarget,
         setIsRecording,
@@ -78,7 +78,7 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
       setRunOutput('')
     }
 
-    const handleReplayFailed = (_event: Electron.IpcRendererEvent, errorMsg: string): void => {
+    const handleReplayFailed = (errorMsg: string): void => {
       useRecorderStore.getState().setIsReplayingToBreakpoint(false)
       useRecorderStore.getState().setBreakpointIndex(null)
       // Error toast is shown by the caller in Recorder/index.tsx
@@ -105,20 +105,17 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
       }
     }
 
-    const handleNewStep = (_event: Electron.IpcRendererEvent, step: Step): void => {
+    const handleNewStep = (step: Step): void => {
       appendStep(step)
     }
 
-    const handleNewTraceStep = (_event: Electron.IpcRendererEvent, traceStep: TraceStep): void => {
+    const handleNewTraceStep = (traceStep: TraceStep): void => {
       if (picking()) return
       forRecordedTest((prev) => ({ ...prev, trace: [...(prev.trace || []), traceStep] }))
     }
 
     // Complete steps are added directly; text checks first ask the user for the expected text
-    const handleAddAssertion = (
-      _event: Electron.IpcRendererEvent,
-      message: AssertionMessage
-    ): void => {
+    const handleAddAssertion = (message: AssertionMessage): void => {
       if (picking()) return
       if (isPendingAssertion(message)) {
         setAssertionInfo(message)
@@ -127,23 +124,20 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
       }
     }
 
-    const startCleanup = window.electron.ipcRenderer.on('recording-started', handleRecordingStarted)
-    const stopCleanup = window.electron.ipcRenderer.on('recording-stopped', handleRecordingStopped)
-    const stepCleanup = window.electron.ipcRenderer.on('new-recorded-step', handleNewStep)
-    const assertionCleanup = window.electron.ipcRenderer.on(
-      'add-assertion-step',
-      handleAddAssertion
-    )
-    const traceCleanup = window.electron.ipcRenderer.on('new-trace-step', handleNewTraceStep)
-    const replayFailedCleanup = window.electron.ipcRenderer.on('replay-failed', handleReplayFailed)
+    const startCleanup = window.api.onRecordingStarted(handleRecordingStarted)
+    const stopCleanup = window.api.onRecordingStopped(handleRecordingStopped)
+    const stepCleanup = window.api.onNewRecordedStep(handleNewStep)
+    const assertionCleanup = window.api.onAddAssertionStep(handleAddAssertion)
+    const traceCleanup = window.api.onNewTraceStep(handleNewTraceStep)
+    const replayFailedCleanup = window.api.onReplayFailed(handleReplayFailed)
 
     return (): void => {
-      startCleanup?.()
-      stopCleanup?.()
-      stepCleanup?.()
-      assertionCleanup?.()
-      traceCleanup?.()
-      replayFailedCleanup?.()
+      startCleanup()
+      stopCleanup()
+      stepCleanup()
+      assertionCleanup()
+      traceCleanup()
+      replayFailedCleanup()
     }
   }, [])
 }

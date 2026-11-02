@@ -52,14 +52,11 @@ const MainTemplate: React.FC = (): JSX.Element => {
   }, [])
 
   useEffect(() => {
-    const cleanup = window.electron.ipcRenderer.on(
-      'suites-recovered',
-      (_event, info?: { backupSaved?: boolean }) => {
-        const key = info?.backupSaved === false ? 'backupFailed' : 'backupSaved'
-        toast.error(t(`suites.recovered.${key}`), { duration: 10000 })
-      }
-    )
-    return (): void => cleanup?.()
+    const cleanup = window.api.onSuitesRecovered((info?: { backupSaved?: boolean }) => {
+      const key = info?.backupSaved === false ? 'backupFailed' : 'backupSaved'
+      toast.error(t(`suites.recovered.${key}`), { duration: 10000 })
+    })
+    return (): void => cleanup()
   }, [])
 
   useEffect(() => {
@@ -112,13 +109,14 @@ const MainTemplate: React.FC = (): JSX.Element => {
             </span>
           </button>
           {projectPath ? (
-            <Link to="/overview" className="text-lg font-bold text-neutral-dark tracking-tight hover:text-ruby transition-colors">
+            <Link
+              to="/overview"
+              className="text-lg font-bold text-neutral-dark tracking-tight hover:text-ruby transition-colors"
+            >
               Ruby Raider
             </Link>
           ) : (
-            <span className="text-lg font-bold text-neutral-dark tracking-tight">
-              Ruby Raider
-            </span>
+            <span className="text-lg font-bold text-neutral-dark tracking-tight">Ruby Raider</span>
           )}
         </div>
         <RunIndicator />
@@ -132,9 +130,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
         <p className="text-neutral-mid text-sm">{t('version', { version: raiderVersion })}</p>
       </footer>
 
-      {isConceptsModalOpen && (
-        <ConceptsModal onClose={() => setIsConceptsModalOpen(false)} />
-      )}
+      {isConceptsModalOpen && <ConceptsModal onClose={() => setIsConceptsModalOpen(false)} />}
 
       {isRubyInstallModalOpen && (
         <RubyInstallModal

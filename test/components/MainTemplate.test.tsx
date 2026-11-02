@@ -56,10 +56,9 @@ beforeAll(() => {
     removeTestsMigratedListener: vi.fn(),
     onSuitesTooNew: vi.fn(),
     removeSuitesTooNewListener: vi.fn(),
-    onTraceOpened: vi.fn(() => vi.fn())
-  }
-  ;(window as unknown as Record<string, unknown>).electron = {
-    ipcRenderer: { on: vi.fn().mockReturnValue(() => {}) }
+    onTraceOpened: vi.fn(() => vi.fn()),
+    onSuitesRecovered: vi.fn(() => vi.fn()),
+    onSuiteUpdated: vi.fn(() => vi.fn())
   }
 })
 
@@ -96,12 +95,11 @@ describe('MainTemplate Navigation', () => {
 })
 
 describe('MainTemplate suites recovered toast', () => {
-  const recoveredListener = (): ((event: unknown, info?: { backupSaved?: boolean }) => void) => {
-    const on = (
-      window as unknown as { electron: { ipcRenderer: { on: ReturnType<typeof vi.fn> } } }
-    ).electron.ipcRenderer.on
-    const call = on.mock.calls.find(([channel]) => channel === 'suites-recovered')
-    return call![1]
+  const recoveredListener = (): ((info?: { backupSaved?: boolean }) => void) => {
+    const subscribe = (
+      window as unknown as { api: { onSuitesRecovered: ReturnType<typeof vi.fn> } }
+    ).api.onSuitesRecovered
+    return subscribe.mock.calls[subscribe.mock.calls.length - 1][0]
   }
 
   it('says a copy was kept when the backup was saved', async () => {
@@ -114,7 +112,7 @@ describe('MainTemplate suites recovered toast', () => {
         <MainTemplate />
       </MemoryRouter>
     )
-    recoveredListener()({}, { backupSaved: true })
+    recoveredListener()({ backupSaved: true })
     expect(toast.error).toHaveBeenCalledWith('suites.recovered.backupSaved', expect.anything())
   })
 
@@ -128,7 +126,7 @@ describe('MainTemplate suites recovered toast', () => {
         <MainTemplate />
       </MemoryRouter>
     )
-    recoveredListener()({}, { backupSaved: false })
+    recoveredListener()({ backupSaved: false })
     expect(toast.error).toHaveBeenCalledWith('suites.recovered.backupFailed', expect.anything())
   })
 })

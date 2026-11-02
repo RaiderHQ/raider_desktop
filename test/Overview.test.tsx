@@ -128,7 +128,8 @@ const mockApi = {
   getRunDefaults: vi.fn().mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 }),
   prepareSuiteRun: vi.fn().mockResolvedValue({ mode: 'legacy' }),
   checkMobileReady: vi.fn().mockResolvedValue({ ok: true }),
-  getDeviceSettings: vi.fn()
+  getDeviceSettings: vi.fn(),
+  onSuiteUpdated: vi.fn(() => vi.fn())
 }
 
 // Web controls only show once the layout says the project isn't mobile

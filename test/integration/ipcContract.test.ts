@@ -139,6 +139,16 @@ describe('IPC Contract', () => {
     'onTraceOpened',
     'openDroppedTrace',
 
+    // Main-to-renderer events (payload only, return an unsubscribe)
+    'onSuiteUpdated',
+    'onSuitesRecovered',
+    'onRecordingStarted',
+    'onRecordingStopped',
+    'onNewRecordedStep',
+    'onAddAssertionStep',
+    'onNewTraceStep',
+    'onReplayFailed',
+
     // Event Listeners
     'onTestsMigrated',
     'removeTestsMigratedListener',
@@ -239,6 +249,44 @@ describe('IPC Contract', () => {
     unsubscribeFirst()
     expect(off).toHaveBeenCalledTimes(1)
     expect(off).toHaveBeenCalledWith('run-event', listenerA)
+  })
+
+  it('event subscriptions pass the payload only and unsubscribe with the wrapper they registered', async () => {
+    const { contextBridge, ipcRenderer } = await import('electron')
+    const calls = (contextBridge.exposeInMainWorld as ReturnType<typeof vi.fn>).mock.calls
+    const api = calls.find((c) => c[0] === 'api')?.[1]
+    if (!api) return
+    const on = ipcRenderer.on as ReturnType<typeof vi.fn>
+    const off = ipcRenderer.removeListener as ReturnType<typeof vi.fn>
+    const channels: Record<string, string> = {
+      onSuiteUpdated: 'suite-updated',
+      onSuitesRecovered: 'suites-recovered',
+      onRecordingStarted: 'recording-started',
+      onRecordingStopped: 'recording-stopped',
+      onNewRecordedStep: 'new-recorded-step',
+      onAddAssertionStep: 'add-assertion-step',
+      onNewTraceStep: 'new-trace-step',
+      onReplayFailed: 'replay-failed'
+    }
+
+    for (const [method, channel] of Object.entries(channels)) {
+      on.mockClear()
+      off.mockClear()
+      const callback = vi.fn()
+      const unsubscribe = api[method](callback)
+      const [[onChannel, wrapper]] = on.mock.calls
+      expect(onChannel).toBe(channel)
+      expect(wrapper).not.toBe(callback)
+
+      const event = { sender: 'raw ipcRenderer' }
+      wrapper(event, { payload: method })
+      expect(callback).toHaveBeenCalledWith({ payload: method })
+      expect(callback.mock.calls[0]).not.toContain(event)
+
+      unsubscribe()
+      expect(off).toHaveBeenCalledTimes(1)
+      expect(off).toHaveBeenCalledWith(channel, wrapper)
+    }
   })
 
   it('openDroppedTrace keeps the path in preload and refuses a File with no path', async () => {
