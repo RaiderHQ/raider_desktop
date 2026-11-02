@@ -1,11 +1,11 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent, webUtils } from 'electron'
-import { electronAPI } from '@electron-toolkit/preload'
 import type { FileNode } from '@foundation/Types/fileNode'
 import type { CommandType } from '@foundation/Types/commandType'
 import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import type { TraceStep } from '@foundation/Types/traceStep'
 import type { Step } from '@shared/types/step'
+import type { AssertionMessage } from '@shared/types/pendingAssertion'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
@@ -39,8 +39,20 @@ import type {
 
 declare global {
   interface Window {
-    electron: typeof electronAPI
     api: typeof api
+  }
+}
+
+/** Wraps the listener so it gets the payload only, and returns a function removing just this one */
+const subscribe = <Args extends unknown[]>(
+  channel: string,
+  callback: (...args: Args) => void
+): (() => void) => {
+  const listener = (_event: IpcRendererEvent, ...args: unknown[]): void =>
+    callback(...(args as Args))
+  ipcRenderer.on(channel, listener)
+  return (): void => {
+    ipcRenderer.removeListener(channel, listener)
   }
 }
 
@@ -199,8 +211,7 @@ const api = {
     suiteId: string,
     projectPath: string,
     rubyCommand: string
-  ): Promise<LegacyRunResult> =>
-    ipcRenderer.invoke('run-suite', suiteId, projectPath, rubyCommand),
+  ): Promise<LegacyRunResult> => ipcRenderer.invoke('run-suite', suiteId, projectPath, rubyCommand),
   prepareTestRun: (suiteId: string, testId: string, test?: Test): Promise<PrepareTestRunResult> =>
     ipcRenderer.invoke('prepare-test-run', suiteId, testId, test),
   prepareSuiteRun: (suiteId: string): Promise<PrepareSuiteRunResult> =>
@@ -259,8 +270,7 @@ const api = {
     url: string
     preloadPath: string
     reason?: 'unsupportedUrl'
-  }> =>
-    ipcRenderer.invoke('start-recording-main'),
+  }> => ipcRenderer.invoke('start-recording-main'),
   replayStepsAndRecord: async (
     testName: string,
     stepsToReplay: Step[],
@@ -364,6 +374,23 @@ const api = {
     ipcRenderer.on('suites-too-new', callback),
   removeSuitesTooNewListener: (callback: (event: IpcRendererEvent) => void): Electron.IpcRenderer =>
     ipcRenderer.removeListener('suites-too-new', callback),
+  // --- Main-to-renderer events: payload only, never the IpcRendererEvent; each returns an unsubscribe ---
+  onSuiteUpdated: (callback: (suites: Suite[]) => void): (() => void) =>
+    subscribe('suite-updated', callback),
+  onSuitesRecovered: (callback: (info?: { backupSaved?: boolean }) => void): (() => void) =>
+    subscribe('suites-recovered', callback),
+  onRecordingStarted: (callback: (loadedUrl: string) => void): (() => void) =>
+    subscribe('recording-started', callback),
+  onRecordingStopped: (callback: () => void): (() => void) =>
+    subscribe('recording-stopped', callback),
+  onNewRecordedStep: (callback: (step: Step) => void): (() => void) =>
+    subscribe('new-recorded-step', callback),
+  onAddAssertionStep: (callback: (message: AssertionMessage) => void): (() => void) =>
+    subscribe('add-assertion-step', callback),
+  onNewTraceStep: (callback: (traceStep: TraceStep) => void): (() => void) =>
+    subscribe('new-trace-step', callback),
+  onReplayFailed: (callback: (errorMsg: string) => void): (() => void) =>
+    subscribe('replay-failed', callback),
   closeApp: (): Promise<void> => ipcRenderer.invoke('close-app'),
 
   // --- Scaffolding APIs ---
@@ -381,12 +408,8 @@ const api = {
     projectPath: string,
     width: number,
     height: number
-  ): Promise<CommandType> =>
-    ipcRenderer.invoke('update-viewport', projectPath, width, height),
-  updateBrowserOptions: async (
-    projectPath: string,
-    options: string[]
-  ): Promise<CommandType> =>
+  ): Promise<CommandType> => ipcRenderer.invoke('update-viewport', projectPath, width, height),
+  updateBrowserOptions: async (projectPath: string, options: string[]): Promise<CommandType> =>
     ipcRenderer.invoke('update-browser-options', projectPath, options),
   updateHeadlessMode: async (
     projectPath: string,
@@ -451,14 +474,11 @@ const api = {
 // just add to the DOM global.
 if (process.contextIsolated) {
   try {
-    contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
   } catch (error) {
     // Deliberately empty
   }
 } else {
-  // @ts-ignore (define in dts)
-  window.electron = electronAPI
   // @ts-ignore (define in dts)
   window.api = api
 }

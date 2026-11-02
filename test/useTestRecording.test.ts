@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { renderHook, act } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
-import type { IpcRendererEvent } from 'electron'
+import { ipcSubscriptions } from './helpers/ipcSubscriptions'
 import { useTestRecording } from '../src/renderer/src/hooks/useTestRecording'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
@@ -43,10 +43,10 @@ const test1: Test = {
 }
 const suites = [{ id: 's1', name: 'Smoke', tests: [test1] }]
 
-const listeners = new Map<string, (event: IpcRendererEvent, ...args: unknown[]) => unknown>()
+const listeners = new Map<string, (...args: unknown[]) => unknown>()
 const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
   await act(async () => {
-    await listeners.get(channel)?.({} as IpcRendererEvent, ...args)
+    await listeners.get(channel)?.(...args)
   })
 }
 
@@ -152,15 +152,7 @@ beforeEach(() => {
   })
   // @ts-expect-error - Mocking window.api
   window.api = api
-  // @ts-expect-error - Mocking window.electron
-  window.electron = {
-    ipcRenderer: {
-      on: (channel: string, cb: (event: IpcRendererEvent, ...args: unknown[]) => unknown) => {
-        listeners.set(channel, cb)
-        return (): boolean => listeners.delete(channel)
-      }
-    }
-  }
+  Object.assign(window.api, ipcSubscriptions(listeners))
   useRecorderStore.getState().resetForProject()
   useRecorderStore.setState({ activeSuiteId: 's1', activeTest: test1 })
   useTestsListStore.setState({ rows: null })

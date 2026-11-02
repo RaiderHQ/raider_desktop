@@ -39,10 +39,8 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
       .getSuites()
       .then(setSuites)
       .catch((error: unknown) => console.error('Loading the suites failed:', error))
-    const off = window.electron?.ipcRenderer?.on('suite-updated', (_event, updated: Suite[]) =>
-      setSuites(updated)
-    )
-    return (): void => off?.()
+    const off = window.api.onSuiteUpdated((updated: Suite[]) => setSuites(updated))
+    return (): void => off()
   }, [])
 
   const selectedKey: TestKey | null = param ? fromRouteParam(param) || null : null

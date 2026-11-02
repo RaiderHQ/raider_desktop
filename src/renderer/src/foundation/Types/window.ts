@@ -17,6 +17,7 @@ import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { IpcRendererEvent } from 'electron'
 import type { RunApi } from '@shared/types/runEvents'
+import type { AssertionMessage } from '@shared/types/pendingAssertion'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type {
@@ -134,11 +135,7 @@ export interface WindowApi extends RunApi {
     rubyCommand: string,
     test?: Test
   ) => Promise<LegacyRunResult>
-  runSuite: (
-    suiteId: string,
-    projectPath: string,
-    rubyCommand: string
-  ) => Promise<LegacyRunResult>
+  runSuite: (suiteId: string, projectPath: string, rubyCommand: string) => Promise<LegacyRunResult>
   /** Saves `test` when needed and returns the spec file to run live; runs nothing */
   prepareTestRun: (suiteId: string, testId: string, test?: Test) => Promise<PrepareTestRunResult>
   /** Restores missing recorded files and returns the suite's spec files; runs nothing */
@@ -266,6 +263,16 @@ export interface WindowApi extends RunApi {
   closeTrace: (traceId: string) => Promise<void>
   /** Traces opened from File → Open trace; returns an unsubscribe function */
   onTraceOpened: (callback: (result: TraceOpenResult) => void) => () => void
+
+  // --- Main-to-renderer events (each returns an unsubscribe function) ---
+  onSuiteUpdated: (callback: (suites: Suite[]) => void) => () => void
+  onSuitesRecovered: (callback: (info?: { backupSaved?: boolean }) => void) => () => void
+  onRecordingStarted: (callback: (loadedUrl: string) => void) => () => void
+  onRecordingStopped: (callback: () => void) => () => void
+  onNewRecordedStep: (callback: (step: Step) => void) => () => void
+  onAddAssertionStep: (callback: (message: AssertionMessage) => void) => () => void
+  onNewTraceStep: (callback: (traceStep: TraceStep) => void) => () => void
+  onReplayFailed: (callback: (errorMsg: string) => void) => () => void
 
   // --- Event Listeners ---
   /** Sent once when opening a project moved (or could not yet move) its recorded tests into project files */

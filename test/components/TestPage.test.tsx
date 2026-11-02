@@ -2,7 +2,7 @@ import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import type { ReactElement } from 'react'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
-import type { IpcRendererEvent } from 'electron'
+import { ipcSubscriptions } from '../helpers/ipcSubscriptions'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import TestPage from '@components/TestPage'
 import TestsWorkspace from '@components/TestsWorkspace'
@@ -77,10 +77,10 @@ const row = (test: Test): TestRow => ({
   suiteIds: ['s1']
 })
 
-const listeners = new Map<string, (event: IpcRendererEvent, ...args: unknown[]) => unknown>()
+const listeners = new Map<string, (...args: unknown[]) => unknown>()
 const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
   await act(async () => {
-    await listeners.get(channel)?.({} as IpcRendererEvent, ...args)
+    await listeners.get(channel)?.(...args)
   })
 }
 
@@ -153,14 +153,7 @@ beforeEach(() => {
   listeners.clear()
   // @ts-expect-error - Mocking window.api
   window.api = api
-  window.electron = {
-    ipcRenderer: {
-      on: (channel: string, cb: (event: IpcRendererEvent, ...args: unknown[]) => unknown) => {
-        listeners.set(channel, cb)
-        return (): boolean => listeners.delete(channel)
-      }
-    }
-  } as unknown as typeof window.electron
+  Object.assign(window.api, ipcSubscriptions(listeners))
   useRecorderStore.getState().resetForProject()
   useRecorderStore.setState({ showCode: false, isOutputVisible: false })
   useRunOutputStore.setState({ runOutput: '' })

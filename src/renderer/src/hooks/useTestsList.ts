@@ -8,10 +8,10 @@ export const useTestsList = (): TestRow[] | null => {
   useEffect(() => {
     const reload = useTestsListStore.getState().reload
     reload()
-    const off = window.electron?.ipcRenderer?.on('suite-updated', () => {
+    const off = window.api.onSuiteUpdated(() => {
       reload()
     })
-    return (): void => off?.()
+    return (): void => off()
   }, [])
   return rows
 }

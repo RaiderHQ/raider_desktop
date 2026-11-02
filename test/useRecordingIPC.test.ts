@@ -1,14 +1,14 @@
 import { renderHook, act } from '@testing-library/react'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
-import type { IpcRendererEvent } from 'electron'
+import { ipcSubscriptions } from './helpers/ipcSubscriptions'
 import { useRecordingIPC } from '../src/renderer/src/hooks/useRecordingIPC'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import type { Test } from '@foundation/Types/test'
 
-const listeners = new Map<string, (event: IpcRendererEvent, ...args: unknown[]) => unknown>()
+const listeners = new Map<string, (...args: unknown[]) => unknown>()
 const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
   await act(async () => {
-    await listeners.get(channel)?.({} as IpcRendererEvent, ...args)
+    await listeners.get(channel)?.(...args)
   })
 }
 
@@ -30,15 +30,7 @@ beforeEach(() => {
   saveTrace.mockReset().mockResolvedValue({ success: true })
   // @ts-expect-error - Mocking window.api
   window.api = { saveTrace }
-  // @ts-expect-error - Mocking window.electron
-  window.electron = {
-    ipcRenderer: {
-      on: (channel: string, cb: (event: IpcRendererEvent, ...args: unknown[]) => unknown) => {
-        listeners.set(channel, cb)
-        return (): boolean => listeners.delete(channel)
-      }
-    }
-  }
+  Object.assign(window.api, ipcSubscriptions(listeners))
   useRecorderStore.getState().resetForProject()
   useRecorderStore.setState({
     activeSuiteId: 's1',
