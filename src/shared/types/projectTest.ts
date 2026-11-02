@@ -5,6 +5,8 @@ export interface StepRange {
   stepId: string
   start: number
   end: number
+  /** English description of the step, snapshotted when the map was written; absent in older sidecars */
+  title?: string
 }
 
 export interface StepLines {

@@ -107,6 +107,28 @@ describe('sidecar store', () => {
     expect(await readSidecar(project, 'spec/a_spec.rb')).toEqual(s)
   })
 
+  it('reads ranges with and without a title; drops a non-string title only', async () => {
+    await mkdir(join(testsDir(), 'spec'), { recursive: true })
+    const stepLines = {
+      fileSha256: 'f',
+      ranges: [
+        { stepId: 's1', start: 1, end: 2, title: 'Open x' },
+        { stepId: 's2', start: 3, end: 4 },
+        { stepId: 's3', start: 5, end: 6, title: 7 }
+      ]
+    }
+    await writeFile(
+      sidecarPath(project, 'spec/a_spec.rb'),
+      JSON.stringify({ ...sidecar('spec/a_spec.rb'), stepLines })
+    )
+    const read = await readSidecar(project, 'spec/a_spec.rb')
+    expect(read?.stepLines?.ranges).toEqual([
+      { stepId: 's1', start: 1, end: 2, title: 'Open x' },
+      { stepId: 's2', start: 3, end: 4 },
+      { stepId: 's3', start: 5, end: 6 }
+    ])
+  })
+
   it('drops a malformed step map and still reads the sidecar', async () => {
     const bad = [
       { fileSha256: 1, ranges: 'x' },
