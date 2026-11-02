@@ -54,6 +54,17 @@ const tmpFiles = (dir: string): string[] => {
   return found
 }
 
+// Every file except `allowed` has the same hash as before (allowed may be new).
+const expectOnlyChanged = (before: Record<string, string>, allowed: string[]): void => {
+  const after = hashAll(root)
+  for (const key of Object.keys(before)) {
+    if (!allowed.includes(key)) expect(after[key]).toBe(before[key])
+  }
+  for (const key of Object.keys(after)) {
+    if (!allowed.includes(key)) expect(before[key]).toBe(after[key])
+  }
+}
+
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'accept-baseline-'))
   fs.mkdirSync(path.join(root, 'raider-results', 'attachments'), { recursive: true })
@@ -76,10 +87,13 @@ afterEach(() => {
 
 describe('acceptBaseline success', () => {
   it('writes a byte-identical copy into a new baselines folder', async () => {
+    const before = hashAll(root)
     const result = await acceptBaseline(actual, OK_BASELINE, confirm)
     expect(result).toEqual({ ok: true, path: OK_BASELINE, unchanged: false })
     expect(fs.readFileSync(path.join(root, OK_BASELINE)).equals(PNG_A)).toBe(true)
-    expect(confirm).toHaveBeenCalledWith(OK_BASELINE)
+    expect(confirm).toHaveBeenCalledWith(OK_BASELINE, '0-actual.png')
+    expectOnlyChanged(before, [OK_BASELINE])
+    expect(tmpFiles(root)).toEqual([])
   })
 
   it('overwrites an existing baseline and leaves siblings and other files alone', async () => {
@@ -91,17 +105,19 @@ describe('acceptBaseline success', () => {
     const result = await acceptBaseline(actual, OK_BASELINE, confirm)
     expect(result).toEqual({ ok: true, path: OK_BASELINE, unchanged: false })
     const after = hashAll(root)
-    const changed = Object.keys(after).filter((k) => before[k] !== after[k])
-    expect(changed).toEqual([OK_BASELINE])
     expect(Object.keys(after).sort()).toEqual(Object.keys(before).sort())
+    expectOnlyChanged(before, [OK_BASELINE])
     expect(tmpFiles(root)).toEqual([])
   })
 
   it('accepts a sub-folder name', async () => {
     const rel = 'screenshots/baselines/chrome/checkout/cart.png'
+    const before = hashAll(root)
     const result = await acceptBaseline(actual, rel, confirm)
     expect(result).toEqual({ ok: true, path: rel, unchanged: false })
     expect(fs.readFileSync(path.join(root, rel)).equals(PNG_A)).toBe(true)
+    expectOnlyChanged(before, [rel])
+    expect(tmpFiles(root)).toEqual([])
   })
 
   it('reports unchanged without confirming or writing when the bytes match', async () => {
@@ -148,15 +164,59 @@ describe('acceptBaseline cancel and failure', () => {
     })
   })
 
-  it('writeFailed when the target folder is read-only, with no temp file left', async () => {
+  it.skipIf(process.getuid?.() === 0)(
+    'writeFailed when the existing baseline cannot be read',
+    async () => {
+      const dir = path.join(root, 'screenshots/baselines/chrome')
+      fs.mkdirSync(dir, { recursive: true })
+      const file = path.join(dir, 'home.png')
+      fs.writeFileSync(file, PNG_B)
+      fs.chmodSync(file, 0o000)
+      try {
+        expect(await acceptBaseline(actual, OK_BASELINE, confirm)).toEqual({
+          ok: false,
+          error: 'writeFailed'
+        })
+        expect(confirm).not.toHaveBeenCalled()
+      } finally {
+        fs.chmodSync(file, 0o644)
+      }
+    }
+  )
+
+  it('notFound when the actual is over the size cap', async () => {
+    fs.truncateSync(actual, 50 * 1024 * 1024 + 1)
+    expect(await acceptBaseline(actual, OK_BASELINE, confirm)).toEqual({
+      ok: false,
+      error: 'notFound'
+    })
+    expect(confirm).not.toHaveBeenCalled()
+  })
+
+  it('denied when the existing baseline is over the size cap', async () => {
     const dir = path.join(root, 'screenshots/baselines/chrome')
     fs.mkdirSync(dir, { recursive: true })
-    fs.chmodSync(dir, 0o555)
-    const result = await acceptBaseline(actual, OK_BASELINE, confirm)
-    expect(result).toEqual({ ok: false, error: 'writeFailed' })
-    fs.chmodSync(dir, 0o755)
-    expect(fs.readdirSync(dir)).toEqual([])
+    fs.writeFileSync(path.join(dir, 'home.png'), PNG_B)
+    fs.truncateSync(path.join(dir, 'home.png'), 50 * 1024 * 1024 + 1)
+    expect(await acceptBaseline(actual, OK_BASELINE, confirm)).toEqual({
+      ok: false,
+      error: 'denied'
+    })
+    expect(confirm).not.toHaveBeenCalled()
   })
+
+  it.skipIf(process.getuid?.() === 0)(
+    'writeFailed when the target folder is read-only, with no temp file left',
+    async () => {
+      const dir = path.join(root, 'screenshots/baselines/chrome')
+      fs.mkdirSync(dir, { recursive: true })
+      fs.chmodSync(dir, 0o555)
+      const result = await acceptBaseline(actual, OK_BASELINE, confirm)
+      expect(result).toEqual({ ok: false, error: 'writeFailed' })
+      fs.chmodSync(dir, 0o755)
+      expect(fs.readdirSync(dir)).toEqual([])
+    }
+  )
 })
 
 describe('acceptBaseline actualPath', () => {
@@ -308,5 +368,46 @@ describe('acceptBaseline symlinks in the project', () => {
       ok: false,
       error: 'denied'
     })
+  })
+})
+
+describe('acceptBaseline symlink swapped in during the confirm', () => {
+  let outside: string
+
+  beforeEach(() => {
+    outside = fs.mkdtempSync(path.join(os.tmpdir(), 'accept-outside-'))
+    fs.writeFileSync(path.join(outside, 'keep.png'), PNG_B)
+  })
+  afterEach(() => fs.rmSync(outside, { recursive: true, force: true }))
+
+  const expectDeniedOutsideUntouched = async (): Promise<void> => {
+    const before = hashAll(outside)
+    expect(await acceptBaseline(actual, OK_BASELINE, confirm)).toEqual({
+      ok: false,
+      error: 'denied'
+    })
+    expect(confirm).toHaveBeenCalledTimes(1)
+    expect(hashAll(outside)).toEqual(before)
+    expect(tmpFiles(outside)).toEqual([])
+    expect(tmpFiles(root)).toEqual([])
+  }
+
+  it('denied when screenshots becomes a symlink, nothing created outside', async () => {
+    confirm.mockImplementation(async () => {
+      fs.symlinkSync(outside, path.join(root, 'screenshots'))
+      return true
+    })
+    await expectDeniedOutsideUntouched()
+  })
+
+  it('denied when the browser folder becomes a symlink, nothing created outside', async () => {
+    const chrome = path.join(root, 'screenshots/baselines/chrome')
+    fs.mkdirSync(chrome, { recursive: true })
+    confirm.mockImplementation(async () => {
+      fs.rmSync(chrome, { recursive: true })
+      fs.symlinkSync(outside, chrome)
+      return true
+    })
+    await expectDeniedOutsideUntouched()
   })
 })

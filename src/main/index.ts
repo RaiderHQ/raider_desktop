@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, session } from 'electron'
+import { app, BrowserWindow, ipcMain, session } from 'electron'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -51,6 +51,7 @@ import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTe
 import { isListed } from './handlers/tests/suiteStore'
 import { registerRunIpc } from './handlers/run/runIpc'
 import { openTraceFromDialog, registerTraceIpc } from './handlers/trace/traceIpc'
+import { makeBaselineConfirm } from './handlers/results/baselineConfirm'
 import { acceptBaseline } from './handlers/results/acceptBaseline'
 import { installAppMenu, withLiveWindow } from './appMenu'
 import { killActiveRun } from './handlers/run/runner'
@@ -271,20 +272,7 @@ app.whenReady().then(() => {
   registerRunIpc(ipcMain)
   registerTraceIpc(ipcMain)
   ipcMain.handle('accept-baseline', (event, actualPath: unknown, baselinePath: unknown) =>
-    acceptBaseline(actualPath, baselinePath, async (baseline) => {
-      const win = BrowserWindow.fromWebContents(event.sender)
-      if (!win) return false
-      const name = baseline.split('/').slice(3).join('/').replace(/\.png$/, '')
-      const { response } = await dialog.showMessageBox(win, {
-        type: 'question',
-        buttons: ['Accept as baseline', 'Cancel'],
-        defaultId: 1,
-        cancelId: 1,
-        message: `Accept this screenshot as the baseline for "${name}"?`,
-        detail: baseline
-      })
-      return response === 0
-    })
+    acceptBaseline(actualPath, baselinePath, makeBaselineConfirm(event.sender))
   )
   ipcMain.handle(
     'record-over-example',
