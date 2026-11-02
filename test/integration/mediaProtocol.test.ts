@@ -10,6 +10,7 @@ vi.mock('electron', () => ({
 
 import {
   resolveMediaPath,
+  resolveAttachmentFile,
   parseRange,
   handleMediaRequest,
   registerMediaScheme,
@@ -33,6 +34,7 @@ beforeAll(() => {
   fs.writeFileSync(path.join(dir, 'clip.mov'), bytes)
   fs.writeFileSync(path.join(dir, 'page.html'), 'x')
   fs.writeFileSync(path.join(dir, 'shot.png'), 'x')
+  fs.writeFileSync(path.join(dir, '0-trace.zip'), 'x')
   const shard = path.join(root, 'raider-results', 'attachments-2')
   fs.mkdirSync(shard, { recursive: true })
   fs.writeFileSync(path.join(shard, 'clip.webm'), bytes)
@@ -196,6 +198,26 @@ describe('resolveMediaPath escape vectors', () => {
     const realpath = vi.spyOn(fs.promises, 'realpath')
     expect(await resolveMediaPath(url('\\raider-results\\attachments\\a.webm'), 'win32')).toBeNull()
     expect(realpath).not.toHaveBeenCalled()
+  })
+})
+
+describe('resolveAttachmentFile', () => {
+  it('accepts a .zip when no allowExt is given', async () => {
+    const zip = path.join(path.dirname(clip), '0-trace.zip')
+    expect(await resolveAttachmentFile(zip)).toBe(zip)
+  })
+
+  it('applies allowExt when given', async () => {
+    const zip = path.join(path.dirname(clip), '0-trace.zip')
+    expect(await resolveAttachmentFile(zip, process.platform, (ext) => ext === '.webm')).toBeNull()
+    expect(await resolveAttachmentFile(clip, process.platform, (ext) => ext === '.webm')).toBe(clip)
+  })
+
+  it('resolveMediaPath still refuses page.html, shot.png and a .zip', async () => {
+    const dir = path.dirname(clip)
+    expect(await resolveMediaPath(url(path.join(dir, 'page.html')))).toBeNull()
+    expect(await resolveMediaPath(url(path.join(dir, 'shot.png')))).toBeNull()
+    expect(await resolveMediaPath(url(path.join(dir, '0-trace.zip')))).toBeNull()
   })
 })
 

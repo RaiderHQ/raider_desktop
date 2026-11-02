@@ -16,7 +16,8 @@ vi.mock('electron', () => ({
     invoke: vi.fn(),
     on: vi.fn(),
     removeListener: vi.fn()
-  }
+  },
+  webUtils: { getPathForFile: vi.fn() }
 }))
 
 vi.mock('@electron-toolkit/preload', () => ({
@@ -128,6 +129,13 @@ describe('IPC Contract', () => {
     'loadTrace',
     'deleteTrace',
 
+    // Trace viewer (raider-trace zips)
+    'openTrace',
+    'readTraceEntry',
+    'closeTrace',
+    'onTraceOpened',
+    'openDroppedTrace',
+
     // Event Listeners
     'onTestsMigrated',
     'removeTestsMigratedListener',
@@ -228,5 +236,24 @@ describe('IPC Contract', () => {
     unsubscribeFirst()
     expect(off).toHaveBeenCalledTimes(1)
     expect(off).toHaveBeenCalledWith('run-event', listenerA)
+  })
+
+  it('openDroppedTrace keeps the path in preload and refuses a File with no path', async () => {
+    const { contextBridge, ipcRenderer, webUtils } = await import('electron')
+    const calls = (contextBridge.exposeInMainWorld as ReturnType<typeof vi.fn>).mock.calls
+    const api = calls.find((c) => c[0] === 'api')?.[1]
+    if (!api) return
+    const invoke = ipcRenderer.invoke as ReturnType<typeof vi.fn>
+    const getPath = webUtils.getPathForFile as ReturnType<typeof vi.fn>
+    invoke.mockClear()
+
+    getPath.mockReturnValueOnce('')
+    expect(await api.openDroppedTrace({})).toEqual({ ok: false, error: 'notFound' })
+    expect(invoke).not.toHaveBeenCalled()
+
+    getPath.mockReturnValueOnce('/Users/qa/Downloads/trace.zip')
+    invoke.mockResolvedValueOnce({ ok: false, error: 'notTrace' })
+    expect(await api.openDroppedTrace({})).toEqual({ ok: false, error: 'notTrace' })
+    expect(invoke).toHaveBeenCalledWith('trace-open-drop', '/Users/qa/Downloads/trace.zip')
   })
 })

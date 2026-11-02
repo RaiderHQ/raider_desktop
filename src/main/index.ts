@@ -49,6 +49,8 @@ import { prepareSuiteRun, prepareTestRun } from './handlers/testing/prepareRuns'
 import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTests'
 import { isListed } from './handlers/tests/suiteStore'
 import { registerRunIpc } from './handlers/run/runIpc'
+import { openTraceFromDialog, registerTraceIpc } from './handlers/trace/traceIpc'
+import { installAppMenu, withLiveWindow } from './appMenu'
 import { killActiveRun } from './handlers/run/runner'
 import exportTest from './handlers/io/exportTest'
 import exportSuite from './handlers/io/exportSuite'
@@ -179,6 +181,12 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+  installAppMenu(
+    withLiveWindow(
+      () => appState.mainWindow,
+      (win) => void openTraceFromDialog(win)
+    )
+  )
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -252,6 +260,7 @@ app.whenReady().then(() => {
   ipcMain.handle('open-code-test', (_event, file: string) => openCodeTestHandler(file))
   ipcMain.handle('get-project-layout', getProjectLayoutHandler)
   registerRunIpc(ipcMain)
+  registerTraceIpc(ipcMain)
   ipcMain.handle(
     'record-over-example',
     (_event, file: string, exampleName: string, steps: Step[], rubyCommand: string) =>

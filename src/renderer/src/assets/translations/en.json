@@ -860,5 +860,142 @@
   "common": {
     "close": "Close",
     "cancel": "Cancel"
+  },
+  "traceViewer": {
+    "open": "Open trace",
+    "openAttempt": "Open trace (attempt {{attempt}})",
+    "openNumbered": "Open trace {{n}}",
+    "opening": "Opening trace…",
+    "close": "Close trace",
+    "dialog": "Trace of {{name}}",
+    "attempt": "Attempt {{attempt}}",
+    "status": {
+      "passed": "Passed",
+      "failed": "Failed"
+    },
+    "tabs": {
+      "step": "Step",
+      "network": "Network",
+      "console": "Console"
+    },
+    "view": {
+      "screenshot": "Screenshot",
+      "snapshot": "Page HTML",
+      "label": "What to show for this step"
+    },
+    "notCaptured": "Not captured",
+    "snapshotUnsafe": "This page couldn't be shown safely.",
+    "selectStep": "Select a step to see what happened",
+    "waited": "Waited {{seconds}} s",
+    "stepList": "Steps",
+    "stepImage": "Screenshot of step {{n}}",
+    "loadingImage": "Loading…",
+    "retries_one": "Tried again once",
+    "retries_other": "Tried again {{count}} times",
+    "failedStep": "This step failed",
+    "rectLabel": "Element before the action",
+    "expandGroup": "Show steps inside",
+    "collapseGroup": "Hide steps inside",
+    "technical": {
+      "show": "Technical details",
+      "action": "Method",
+      "locator": "Locator",
+      "within": "Inside",
+      "value": "Value",
+      "hidden": "Hidden",
+      "source": "Source",
+      "error": "Error",
+      "url": "Full address",
+      "type": "Type"
+    },
+    "showAll": "Show all steps",
+    "unavailable": "Not available in this browser",
+    "network": {
+      "empty": "No network requests during this step",
+      "emptyAll": "No network requests",
+      "failed": "Failed",
+      "size": "Size as the browser reports it, which may include headers",
+      "details": "Request details"
+    },
+    "console": {
+      "empty": "No console messages during this step",
+      "emptyAll": "No console messages",
+      "details": "Message details",
+      "text": "Full message",
+      "level": {
+        "log": "Log",
+        "info": "Info",
+        "warning": "Warning",
+        "error": "Error",
+        "debug": "Debug",
+        "other": "Other"
+      }
+    },
+    "truncated": {
+      "steps": "Some steps not shown to keep the trace small",
+      "screenshots": "Older screenshots removed to keep the trace small",
+      "snapshots": "Older page snapshots removed to keep the trace small",
+      "network": "Some network requests not shown to keep the trace small",
+      "console": "Some console messages not shown to keep the trace small"
+    },
+    "error": {
+      "notFound": "Couldn't find this trace file.",
+      "tooLarge": "This trace is too large to open safely.",
+      "unsafe": "This trace was changed after it was saved. Open the original file from the test results.",
+      "notTrace": "This file isn't a Raider trace.",
+      "newerVersion": "This trace was made by a newer version of Raider. Update Raider Desktop to open it.",
+      "damaged": "This trace is damaged and can't be opened.",
+      "closed": "This trace was replaced by a newer copy of the same file. Open it again.",
+      "dropOne": "Drop one trace file at a time."
+    },
+    "menu": {
+      "file": "File",
+      "openTrace": "Open trace…"
+    },
+    "dialogTitle": "Open a trace",
+    "dialogFilter": "Traces",
+    "element": {
+      "withRole": "the \"{{label}}\" {{role}}",
+      "named": "\"{{label}}\"",
+      "unnamed": "this element"
+    },
+    "step": {
+      "navigate": "Opened {{url}}",
+      "click": "Clicked {{element}}",
+      "typeSecret": "Typed a secret into {{element}}",
+      "typeText": "Typed \"{{text}}\" into {{element}}",
+      "typeEmpty": "Typed into {{element}}",
+      "clear": "Cleared {{element}}",
+      "submit": "Submitted {{element}}",
+      "selectOption": "Chose \"{{text}}\" in {{element}}",
+      "selectSecret": "Chose an option in {{element}}",
+      "hover": "Hovered over {{element}}",
+      "dragAndDrop": "Dragged {{element}}",
+      "scrollIntoView": "Scrolled to {{element}}",
+      "readText": "Read the text of {{element}}",
+      "readAttribute": "Read an attribute of {{element}}",
+      "checkVisible": "Checked that {{element}} is visible",
+      "checkEnabled": "Checked that {{element}} is enabled",
+      "checkSelected": "Checked that {{element}} is selected",
+      "findElement": "Found {{element}}",
+      "findElements": "Looked for matching elements",
+      "eventually": "Waited until the check passed",
+      "eventuallyFailed": "Waited for a check that didn't pass",
+      "cucumber": "{{name}}",
+      "cucumberSecret": "Ran a step with a hidden value",
+      "failure": "The test failed here",
+      "other": "Ran a step"
+    },
+    "foundBy": {
+      "id": "Found by id",
+      "css": "Found by CSS",
+      "xpath": "Found by XPath",
+      "name": "Found by name",
+      "link_text": "Found by link text",
+      "partial_link_text": "Found by partial link text",
+      "class_name": "Found by class",
+      "tag_name": "Found by tag",
+      "other": "Found by locator"
+    }
   }
 }

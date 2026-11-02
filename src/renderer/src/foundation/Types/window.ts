@@ -18,6 +18,11 @@ import type { IpcRendererEvent } from 'electron'
 import type { RunApi } from '@shared/types/runEvents'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type {
+  TraceEntryResult,
+  TraceOpenResult,
+  ResultTraceSource
+} from '@shared/types/raiderTrace'
+import type {
   DeviceSettings,
   DeviceSettingsChange,
   MobileReady
@@ -234,6 +239,17 @@ export interface WindowApi extends RunApi {
   saveTrace: (testId: string, trace: TraceStep[]) => Promise<{ success: boolean; error?: string }>
   loadTrace: (testId: string) => Promise<{ success: boolean; trace?: TraceStep[] }>
   deleteTrace: (testId: string) => Promise<void>
+
+  // --- Trace viewer (raider-trace zips, held in main) ---
+  /** A trace listed in run.json; it must sit in the active project's raider-results */
+  openTrace: (source: ResultTraceSource) => Promise<TraceOpenResult>
+  /** A trace file the user dropped on the window */
+  openDroppedTrace: (file: File) => Promise<TraceOpenResult>
+  /** One screenshot or snapshot, fetched lazily by the name the index gives */
+  readTraceEntry: (traceId: string, name: string) => Promise<TraceEntryResult>
+  closeTrace: (traceId: string) => Promise<void>
+  /** Traces opened from File → Open trace; returns an unsubscribe function */
+  onTraceOpened: (callback: (result: TraceOpenResult) => void) => () => void
 
   // --- Event Listeners ---
   /** Sent once when opening a project moved (or could not yet move) its recorded tests into project files */

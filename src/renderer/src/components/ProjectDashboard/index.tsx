@@ -97,6 +97,7 @@ const ResultSection: React.FC<ResultSectionProps> = ({
               durationMs={result.durationMs}
               browser={result.browser}
               projectPath={projectPath}
+              traces={result.traces}
             />
           )
         })}

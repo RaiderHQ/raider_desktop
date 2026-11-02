@@ -176,3 +176,23 @@ describe('TestResultCard with a mobile (Appium) result', () => {
     expect(screen.queryByText(/chrome|firefox|safari|browser/i)).not.toBeInTheDocument()
   })
 })
+
+describe('TestResultCard saved traces', () => {
+  it('offers Open trace on any card with traces', () => {
+    render(
+      <TestResultCard
+        name="t"
+        status="passed"
+        traces={[{ path: '/p/raider-results/attachments/0-trace.zip', attempt: 1 }]}
+      />
+    )
+    fireEvent.click(screen.getByText('t'))
+    expect(screen.getByText('traceViewer.open')).toBeInTheDocument()
+  })
+
+  it('offers no Open trace without traces', () => {
+    render(<TestResultCard name="t" status="passed" />)
+    fireEvent.click(screen.getByText('t'))
+    expect(screen.queryByText('traceViewer.open')).not.toBeInTheDocument()
+  })
+})
