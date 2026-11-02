@@ -602,7 +602,7 @@ test.describe('Trace snapshots in the sandboxed frame', () => {
     fs.copyFileSync(FIXTURE_ZIP, tmpCopy)
     const invoke = (p: string) =>
       page.evaluate(
-        (file) => (window as any).electron.ipcRenderer.invoke('trace-open-drop', file),
+        (file) => (window as any).__e2eInvoke('trace-open-drop', file),
         p
       )
     expect(await invoke(tmpCopy)).toEqual({ ok: false, error: 'notFound' })
