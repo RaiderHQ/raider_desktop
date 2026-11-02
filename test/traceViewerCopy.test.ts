@@ -30,6 +30,16 @@ describe('trace viewer copy', () => {
     expect(tr('traceViewer.step.cucumberSecret')).toBe('Ran a step with a hidden value')
   })
 
+  it('words the match_screenshot step', async () => {
+    const tr = await t()
+    expect(tr('traceViewer.step.matchScreenshot', { name: 'home' })).toBe(
+      'Compared screenshot "home"'
+    )
+    expect(tr('traceViewer.step.matchScreenshotFailed', { name: 'home' })).toBe(
+      'Screenshot "home" did not match'
+    )
+  })
+
   it('says when a page could not be shown safely', async () => {
     const tr = await t()
     expect(tr('traceViewer.snapshotUnsafe')).toBe("This page couldn't be shown safely.")
