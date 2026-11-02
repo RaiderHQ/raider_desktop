@@ -388,6 +388,8 @@ describe('acceptBaseline symlink swapped in during the confirm', () => {
     })
     expect(confirm).toHaveBeenCalledTimes(1)
     expect(hashAll(outside)).toEqual(before)
+    // hashAll lists files only: an empty folder made outside would slip past it.
+    expect(fs.readdirSync(outside, { recursive: true })).toEqual(['keep.png'])
     expect(tmpFiles(outside)).toEqual([])
     expect(tmpFiles(root)).toEqual([])
   }
@@ -395,6 +397,16 @@ describe('acceptBaseline symlink swapped in during the confirm', () => {
   it('denied when screenshots becomes a symlink, nothing created outside', async () => {
     confirm.mockImplementation(async () => {
       fs.symlinkSync(outside, path.join(root, 'screenshots'))
+      return true
+    })
+    await expectDeniedOutsideUntouched()
+  })
+
+  it('denied when baselines becomes a symlink before the browser folder exists', async () => {
+    fs.mkdirSync(path.join(root, 'screenshots/baselines'), { recursive: true })
+    confirm.mockImplementation(async () => {
+      fs.rmSync(path.join(root, 'screenshots/baselines'), { recursive: true })
+      fs.symlinkSync(outside, path.join(root, 'screenshots/baselines'))
       return true
     })
     await expectDeniedOutsideUntouched()
