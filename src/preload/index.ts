@@ -19,6 +19,7 @@ import type {
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
+import type { AcceptBaselineResult } from '@shared/types/acceptBaseline'
 import type {
   TraceEntryResult,
   TraceOpenResult,
@@ -244,6 +245,9 @@ const api = {
   loadTrace: (testId: string): Promise<{ success: boolean; trace?: TraceStep[] }> =>
     ipcRenderer.invoke('load-trace', testId),
   deleteTrace: (testId: string): Promise<void> => ipcRenderer.invoke('delete-trace', testId),
+  /** Copies a result screenshot over the project baseline after a native confirmation */
+  acceptBaseline: (actualPath: string, baselinePath: string): Promise<AcceptBaselineResult> =>
+    ipcRenderer.invoke('accept-baseline', actualPath, baselinePath),
   // --- Trace viewer (raider-trace zips, held in main) ---
   openTrace: (source: ResultTraceSource): Promise<TraceOpenResult> =>
     ipcRenderer.invoke('trace-open', source),

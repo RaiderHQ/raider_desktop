@@ -135,6 +135,9 @@ describe('IPC Contract', () => {
     'onTraceOpened',
     'openDroppedTrace',
 
+    // Results
+    'acceptBaseline',
+
     // Main-to-renderer events (payload only, return an unsubscribe)
     'onSuiteUpdated',
     'onSuitesRecovered',

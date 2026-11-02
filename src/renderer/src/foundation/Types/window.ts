@@ -19,6 +19,7 @@ import type { RunApi } from '@shared/types/runEvents'
 import type { AssertionMessage } from '@shared/types/pendingAssertion'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
+import type { AcceptBaselineResult } from '@shared/types/acceptBaseline'
 import type {
   TraceEntryResult,
   TraceOpenResult,
@@ -252,6 +253,8 @@ export interface WindowApi extends RunApi {
   loadTrace: (testId: string) => Promise<{ success: boolean; trace?: TraceStep[] }>
   deleteTrace: (testId: string) => Promise<void>
 
+  /** Copies a result screenshot over the project baseline after a native confirmation */
+  acceptBaseline: (actualPath: string, baselinePath: string) => Promise<AcceptBaselineResult>
   // --- Trace viewer (raider-trace zips, held in main) ---
   /** A trace listed in run.json; it must sit in the active project's raider-results */
   openTrace: (source: ResultTraceSource) => Promise<TraceOpenResult>
