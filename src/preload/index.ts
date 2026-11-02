@@ -470,4 +470,12 @@ if (process.contextIsolated) {
 } else {
   // @ts-ignore (define in dts)
   window.api = api
+  // The e2e build runs without isolation (same gate as main's contextIsolation) and one spec
+  // calls a raw channel to prove main refuses it. Production builds drop this block.
+  if (import.meta.env.MODE === 'e2e' && process.env.NODE_ENV === 'test') {
+    ;(window as unknown as { __e2eInvoke: unknown }).__e2eInvoke = (
+      channel: string,
+      ...args: unknown[]
+    ): Promise<unknown> => ipcRenderer.invoke(channel, ...args)
+  }
 }
