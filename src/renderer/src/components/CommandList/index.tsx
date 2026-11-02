@@ -16,6 +16,10 @@ interface CommandListProps {
   readOnly?: boolean
   /** Marks the last step as the latest one (while recording) */
   markLatest?: boolean
+  /** The step the last run failed at */
+  failedIndex?: number | null
+  /** Anything shown under a step, such as a fix for the failed one */
+  belowStep?: (index: number) => React.ReactNode
 }
 
 const CommandList: React.FC<CommandListProps> = ({
@@ -29,7 +33,9 @@ const CommandList: React.FC<CommandListProps> = ({
   onClearBreakpoint,
   onRecordFromHere,
   readOnly = false,
-  markLatest = false
+  markLatest = false,
+  failedIndex = null,
+  belowStep
 }) => {
   const { t } = useTranslation()
   const dragItemIndex = useRef<number | null>(null)
@@ -58,23 +64,26 @@ const CommandList: React.FC<CommandListProps> = ({
       <div className="w-full flex-grow h-full max-h-[60vh] overflow-y-auto p-1">
         {steps.length > 0 ? (
           steps.map((step, index) => (
-            <CommandBlock
-              key={step.id}
-              step={step}
-              index={index}
-              showCode={showCode}
-              onDragStart={handleDragStart}
-              onDragEnter={handleDragEnter}
-              onDragEnd={handleDragEnd}
-              onDelete={onDeleteStep}
-              onEdit={onEditStep}
-              isBreakpoint={breakpointIndex === index}
-              onSetBreakpoint={onSetBreakpoint}
-              onClearBreakpoint={onClearBreakpoint}
-              onRecordFromHere={onRecordFromHere}
-              readOnly={readOnly}
-              latest={markLatest && index === steps.length - 1}
-            />
+            <React.Fragment key={step.id}>
+              <CommandBlock
+                step={step}
+                index={index}
+                showCode={showCode}
+                onDragStart={handleDragStart}
+                onDragEnter={handleDragEnter}
+                onDragEnd={handleDragEnd}
+                onDelete={onDeleteStep}
+                onEdit={onEditStep}
+                isBreakpoint={breakpointIndex === index}
+                onSetBreakpoint={onSetBreakpoint}
+                onClearBreakpoint={onClearBreakpoint}
+                onRecordFromHere={onRecordFromHere}
+                readOnly={readOnly}
+                latest={markLatest && index === steps.length - 1}
+                failed={failedIndex === index}
+              />
+              {belowStep?.(index)}
+            </React.Fragment>
           ))
         ) : (
           <div className="flex items-center justify-center h-full">

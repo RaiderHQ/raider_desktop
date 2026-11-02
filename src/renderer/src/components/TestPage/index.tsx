@@ -10,6 +10,7 @@ import DeleteModal from '@components/DeleteModal'
 import ConfirmationModal from '@components/ConfirmationModal'
 import AssertionTextModal from '@components/AssertionTextModal'
 import RunPanel from '@components/RunPanel'
+import FailedStepPanel from '@components/FailedStepPanel'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import type { RecordingTarget } from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
@@ -22,6 +23,7 @@ import type { TestRow } from '@foundation/testKey'
 import type { Step } from '@shared/types/step'
 import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import { dropEmptyDraft, useTestRecording } from '../../hooks/useTestRecording'
+import { useFailedStep } from '../../hooks/useFailedStep'
 import NewTestForm from './NewTestForm'
 import RecordingLayout from './RecordingLayout'
 
@@ -121,6 +123,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const target: RecordingTarget = isDraft ? draftTarget : { kind: 'test' }
   const readOnly = !!test?.ownership && test.ownership !== 'recorded'
   const busy = recording.isRecording || isReplaying
+  const failedStep = useFailedStep(projectPath, test)
 
   // The name is kept here while typing and saved on blur or Enter: main renames the
   // test's file on a real rename, so a half-typed name must never reach it
@@ -250,6 +253,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       }
       readOnly={readOnly}
       markLatest={recording.isRecording}
+      failedIndex={failedStep.status === 'mapped' ? failedStep.index : null}
     />
   ) : null
 
@@ -371,6 +375,16 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
               />
             )}
           </div>
+
+          {failedStep.status !== 'none' && projectPath && (
+            <FailedStepPanel
+              state={failedStep}
+              test={test}
+              projectPath={projectPath}
+              readOnly={readOnly}
+              actions={null}
+            />
+          )}
 
           {browserOpen ? (
             <RecordingLayout steps={steps} recording={recording} isReplaying={isReplaying} />

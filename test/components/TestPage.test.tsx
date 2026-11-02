@@ -93,7 +93,11 @@ const api = {
   onFlushRecording: vi.fn(() => (): void => {}),
   flushRecordingDone: vi.fn(),
   setActiveProject: vi.fn().mockResolvedValue({ success: true }),
-  readDirectory: vi.fn().mockResolvedValue([])
+  readDirectory: vi.fn().mockResolvedValue([]),
+  readFile: vi.fn().mockResolvedValue({ success: false }),
+  readImage: vi.fn().mockResolvedValue({ success: false }),
+  mapFailedStep: vi.fn().mockResolvedValue({ none: 'noMap' }),
+  loadTrace: vi.fn().mockResolvedValue({ success: true, trace: [] })
 }
 
 const page = (test: Test): ReactElement => (
@@ -135,6 +139,11 @@ beforeEach(() => {
   api.exportTest.mockResolvedValue({ success: true, path: '/out' })
   api.renderStep.mockImplementation(async (s: { url?: string }) => `goto ${s.url ?? ''}`)
   api.saveTrace.mockResolvedValue({ success: true })
+  api.readDirectory.mockResolvedValue([])
+  api.readFile.mockResolvedValue({ success: false })
+  api.readImage.mockResolvedValue({ success: false })
+  api.mapFailedStep.mockResolvedValue({ none: 'noMap' })
+  api.loadTrace.mockResolvedValue({ success: true, trace: [] })
   listeners.clear()
   // @ts-expect-error - Mocking window.api
   window.api = api
@@ -684,5 +693,87 @@ describe('TestsWorkspace pane', () => {
     expect(api.openCodeTest).toHaveBeenCalledWith('spec/api_spec.rb')
     expect(screen.getByRole('button', { name: 'testPage.editCode' })).toBeInTheDocument()
     expect(screen.queryByDisplayValue('API health')).not.toBeInTheDocument()
+  })
+})
+
+describe('TestPage after a failed run', () => {
+  const withFile: Test = { ...recorded, file: 'spec/login_works_spec.rb' }
+  const runJson = (status: string): string =>
+    JSON.stringify({
+      run: { finished_at: '2026-11-02T10:00:00Z' },
+      results: [
+        {
+          full_name: 'Login works',
+          file_path: './spec/login_works_spec.rb',
+          status,
+          failure: {
+            message: 'Unable to locate element',
+            exception_class: 'Selenium::WebDriver::Error::NoSuchElementError',
+            backtrace: ['spec/login_works_spec.rb:8:in `block`'],
+            app_frame: 'spec/login_works_spec.rb:8:in `block`'
+          }
+        }
+      ]
+    })
+  let status = 'failed'
+
+  beforeEach(() => {
+    status = 'failed'
+    useProjectStore.setState({ projectPath: '/p' })
+    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [withFile, empty] }])
+    api.readDirectory.mockImplementation(async (dir: string) =>
+      dir === '/p/raider-results'
+        ? [{ name: 'run.json', type: 'file', path: '/p/raider-results/run.json' }]
+        : []
+    )
+    api.readFile.mockImplementation(async (path: string) =>
+      path === '/p/raider-results/run.json'
+        ? { success: true, data: runJson(status) }
+        : { success: false }
+    )
+    api.mapFailedStep.mockResolvedValue({ stepId: 'b', index: 1 })
+  })
+  afterEach(() => useProjectStore.setState({ projectPath: null }))
+
+  it('shows the failed step above the steps and marks it in the list', async () => {
+    renderPage(withFile)
+    await opened()
+    expect(await screen.findByTestId('failed-step-panel')).toBeInTheDocument()
+    expect(screen.getByText('failedStep.title')).toBeInTheDocument()
+    const failed = screen.getAllByTestId('step-failed')
+    expect(failed).toHaveLength(1)
+    expect(failed[0]).toHaveTextContent('recorder.commandParser.visit')
+    expect(api.mapFailedStep).toHaveBeenCalledWith('/p', 't1', {
+      file: 'spec/login_works_spec.rb',
+      backtrace: ['spec/login_works_spec.rb:8:in `block`'],
+      appFrame: 'spec/login_works_spec.rb:8:in `block`',
+      finishedAt: '2026-11-02T10:00:00Z'
+    })
+  })
+
+  it('shows no panel when the last run passed', async () => {
+    status = 'passed'
+    renderPage(withFile)
+    await opened()
+    await waitFor(() => expect(api.readFile).toHaveBeenCalled())
+    expect(screen.queryByTestId('failed-step-panel')).not.toBeInTheDocument()
+    expect(api.mapFailedStep).not.toHaveBeenCalled()
+  })
+
+  it('looks again when a run of this project finishes', async () => {
+    renderPage(withFile)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    status = 'passed'
+    act(() =>
+      useRunStore.setState({
+        run: {
+          projectPath: '/p',
+          finished: { finishedAt: '2026-11-02T11:00:00Z' }
+        } as unknown as RunView
+      })
+    )
+    await waitFor(() => expect(screen.queryByTestId('failed-step-panel')).not.toBeInTheDocument())
+    expect(screen.queryByTestId('step-failed')).not.toBeInTheDocument()
   })
 })

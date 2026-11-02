@@ -124,4 +124,29 @@ describe('FailureDetails', () => {
     fireEvent.click(btn)
     expect(btn).toHaveAttribute('aria-expanded', 'true')
   })
+
+  it('folds everything but the screenshot into closed technical details when collapsed', async () => {
+    render(<FailureDetails failure={failure} projectPath="/p" screenshot="/p/s.png" collapsed />)
+    const details = screen.getByTestId('technical-details')
+    expect(details.tagName).toBe('DETAILS')
+    expect(details).not.toHaveAttribute('open')
+    expect(details.querySelector('summary')).toHaveTextContent('failedStep.technicalDetails')
+    const img = await screen.findByRole('img')
+    expect(img).toBeVisible()
+    expect(details).not.toContainElement(img)
+    const cls = screen.getByText(failure.exceptionClass)
+    expect(details).toContainElement(cls)
+    expect(cls).not.toBeVisible()
+    expect(details).toContainElement(screen.getByTestId('failure-location-row'))
+    expect(details).toContainElement(screen.getByTestId('stack-trace-toggle'))
+  })
+
+  it('types the thumbnail from the picture file', async () => {
+    window.api = {
+      readFile: vi.fn().mockResolvedValue({ success: true }),
+      readImage: vi.fn().mockResolvedValue({ success: true, data: 'AAAA', fileExt: '.jpg' })
+    } as unknown as typeof window.api
+    render(<FailureDetails failure={failure} screenshot="/p/s.jpg" />)
+    expect((await screen.findByRole('img')).getAttribute('src')).toBe('data:image/jpeg;base64,AAAA')
+  })
 })

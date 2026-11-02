@@ -18,6 +18,7 @@ import FailureDetails from '@components/FailureDetails'
 import { MessageContent } from './MessageContent'
 import Tooltip from '@components/Tooltip'
 import { toMediaUrl } from '@foundation/mediaUrl'
+import { imageDataUrl } from '@foundation/imageDataUrl'
 import type { TraceStep } from '@foundation/Types/traceStep'
 import type { FailureInfo } from '@foundation/Types/testResult'
 
@@ -88,9 +89,9 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
     if (showModal && screenshot) {
       window.api
         .readImage(screenshot)
-        .then((res: { success: boolean; data?: string; error?: string }) => {
-          if (res.success && res.data) {
-            const dataUrl = `data:image/png;base64,${res.data}`
+        .then((res: { success: boolean; data?: string; fileExt?: string; error?: string }) => {
+          const dataUrl = res.success ? imageDataUrl(res) : null
+          if (dataUrl) {
             setImageData(dataUrl)
           } else {
             toast.error(`${t('testResults.error.imageRead')}: ${res.error}`)
