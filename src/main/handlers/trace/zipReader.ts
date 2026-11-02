@@ -1,4 +1,5 @@
 import zlib from 'zlib'
+import { TRACE_ENTRY_NAME } from '../../../shared/types/raiderTrace'
 
 // Reads a raider-trace zip in memory. The zip may come from anywhere, so every
 // offset is bounds-checked and every limit is checked before anything inflates.
@@ -45,8 +46,6 @@ export const TRACE_ZIP_LIMITS: ZipLimits = {
   maxRatio: 100,
   ratioFloorBytes: 1 * MiB
 }
-
-export const TRACE_ENTRY_NAME = /^trace\.json$|^steps\/\d{4}\.(jpg|png|html|xml)$/
 
 const EOCD_SIGNATURE = 0x06054b50
 const ZIP64_LOCATOR_SIGNATURE = 0x07064b50
