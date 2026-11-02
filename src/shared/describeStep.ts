@@ -41,7 +41,7 @@ export const elementName = (el: ElementTarget | undefined): string => {
   return THIS_ELEMENT
 }
 
-const ROLE_WORDS: Record<string, string> = {
+export const ROLE_WORDS: Record<string, string> = {
   button: 'button',
   link: 'link',
   textbox: 'text box',

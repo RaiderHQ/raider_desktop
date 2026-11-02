@@ -50,6 +50,8 @@ import { mapFailedStepHandler } from './handlers/tests/mapFailedStep'
 import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTests'
 import { isListed } from './handlers/tests/suiteStore'
 import { registerRunIpc } from './handlers/run/runIpc'
+import { openTraceFromDialog, registerTraceIpc } from './handlers/trace/traceIpc'
+import { installAppMenu, withLiveWindow } from './appMenu'
 import { killActiveRun } from './handlers/run/runner'
 import exportTest from './handlers/io/exportTest'
 import exportSuite from './handlers/io/exportSuite'
@@ -186,6 +188,12 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+  installAppMenu(
+    withLiveWindow(
+      () => appState.mainWindow,
+      (win) => void openTraceFromDialog(win)
+    )
+  )
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -260,6 +268,7 @@ app.whenReady().then(() => {
   ipcMain.handle('get-project-layout', getProjectLayoutHandler)
   ipcMain.handle('map-failed-step', (_e, p, id, f) => mapFailedStepHandler(p, id, f))
   registerRunIpc(ipcMain)
+  registerTraceIpc(ipcMain)
   ipcMain.handle(
     'record-over-example',
     (_event, file: string, exampleName: string, steps: Step[], rubyCommand: string) =>

@@ -295,6 +295,81 @@ describe('loadRaiderResults', () => {
     expect(rows![0].video).toBeUndefined()
   })
 
+  describe('traces', () => {
+    const TRACE = 'application/vnd.raider.trace+zip'
+    const trace = (path: string, attempt?: unknown): object => ({
+      name: 'trace',
+      content_type: TRACE,
+      path,
+      ...(attempt === undefined ? {} : { attempt })
+    })
+    const load = async (status: string, attachments: object[]) =>
+      loadRaiderResults('/proj', makeApi({ 'run.json': run([r('F: t', status, { attachments })]) }))
+
+    it('adds a trace with its attempt', async () => {
+      const rows = await load('failed', [trace('attachments/3-trace.zip', 2)])
+      expect(rows![0].traces).toEqual([
+        { path: '/proj/raider-results/attachments/3-trace.zip', attempt: 2 }
+      ])
+    })
+
+    it('orders attempts newest first, attempt-less entries last in file order', async () => {
+      const rows = await load('failed', [
+        trace('attachments/a.zip', 1),
+        trace('attachments/n1.zip'),
+        trace('attachments/b.zip', 3),
+        trace('attachments/n2.zip'),
+        trace('attachments/c.zip', 2)
+      ])
+      expect(rows![0].traces!.map((t) => t.path.split('/').pop())).toEqual([
+        'b.zip',
+        'c.zip',
+        'a.zip',
+        'n1.zip',
+        'n2.zip'
+      ])
+    })
+
+    it('keeps traces on passing results', async () => {
+      const rows = await load('passed', [trace('attachments/p.zip', 1)])
+      expect(rows![0].traces).toHaveLength(1)
+    })
+
+    it('ignores a .zip with another content type', async () => {
+      const rows = await load('failed', [
+        { name: 'z', content_type: 'application/zip', path: 'attachments/x.zip' }
+      ])
+      expect(rows![0].traces).toBeUndefined()
+    })
+
+    it('ignores an unsafe trace path', async () => {
+      const rows = await load('failed', [
+        trace('../x.zip'),
+        trace('/abs/x.zip'),
+        trace('attachments/a/b.zip')
+      ])
+      expect(rows![0].traces).toBeUndefined()
+    })
+
+    it('drops a non-integer or non-positive attempt but keeps the trace', async () => {
+      const rows = await load('failed', [
+        trace('attachments/a.zip', '2'),
+        trace('attachments/b.zip', 0),
+        trace('attachments/c.zip', 1.5)
+      ])
+      expect(rows![0].traces).toEqual([
+        { path: '/proj/raider-results/attachments/a.zip' },
+        { path: '/proj/raider-results/attachments/b.zip' },
+        { path: '/proj/raider-results/attachments/c.zip' }
+      ])
+    })
+
+    it('has no traces key without traces', async () => {
+      const rows = await load('failed', [])
+      expect('traces' in rows![0]).toBe(false)
+    })
+  })
+
   it('accepts only flat attachments(-N)/<file> paths for screenshots and videos alike', async () => {
     const both = (p: string): object => ({
       attachments: [

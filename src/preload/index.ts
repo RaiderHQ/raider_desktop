@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, IpcRendererEvent, webUtils } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { FileNode } from '@foundation/Types/fileNode'
 import type { CommandType } from '@foundation/Types/commandType'
@@ -19,6 +19,11 @@ import type {
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
+import type {
+  TraceEntryResult,
+  TraceOpenResult,
+  ResultTraceSource
+} from '@shared/types/raiderTrace'
 import type {
   DeviceSettings,
   DeviceSettingsChange,
@@ -228,6 +233,26 @@ const api = {
   loadTrace: (testId: string): Promise<{ success: boolean; trace?: TraceStep[] }> =>
     ipcRenderer.invoke('load-trace', testId),
   deleteTrace: (testId: string): Promise<void> => ipcRenderer.invoke('delete-trace', testId),
+  // --- Trace viewer (raider-trace zips, held in main) ---
+  openTrace: (source: ResultTraceSource): Promise<TraceOpenResult> =>
+    ipcRenderer.invoke('trace-open', source),
+  /** Opens a file the user dropped. Its path stays in preload; a script-built File has none */
+  openDroppedTrace: async (file: File): Promise<TraceOpenResult> => {
+    const filePath = webUtils.getPathForFile(file)
+    if (!filePath) return { ok: false, error: 'notFound' }
+    return ipcRenderer.invoke('trace-open-drop', filePath)
+  },
+  readTraceEntry: (traceId: string, name: string): Promise<TraceEntryResult> =>
+    ipcRenderer.invoke('trace-entry', traceId, name),
+  closeTrace: (traceId: string): Promise<void> => ipcRenderer.invoke('trace-close', traceId),
+  /** Subscribes to traces opened from the menu; the returned function removes only this one */
+  onTraceOpened: (callback: (result: TraceOpenResult) => void): (() => void) => {
+    const listener = (_event: IpcRendererEvent, result: TraceOpenResult): void => callback(result)
+    ipcRenderer.on('trace-opened', listener)
+    return (): void => {
+      ipcRenderer.removeListener('trace-opened', listener)
+    }
+  },
   // Recording Session Control
   startRecordingMain: async (): Promise<{
     success: boolean

@@ -55,7 +55,8 @@ beforeAll(() => {
     getActiveRun: vi.fn().mockResolvedValue(null),
     removeTestsMigratedListener: vi.fn(),
     onSuitesTooNew: vi.fn(),
-    removeSuitesTooNewListener: vi.fn()
+    removeSuitesTooNewListener: vi.fn(),
+    onTraceOpened: vi.fn(() => vi.fn())
   }
   ;(window as unknown as Record<string, unknown>).electron = {
     ipcRenderer: { on: vi.fn().mockReturnValue(() => {}) }

@@ -7,6 +7,7 @@ import RunIndicator from '@components/RunIndicator'
 import ConceptsModal from '@components/ConceptsModal'
 import RubyInstallModal from '@components/RubyInstallModal'
 import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
+import TraceViewerOverlay from '@components/TraceViewerOverlay'
 import useVersionStore from '@foundation/Stores/versionStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useProjectStore from '@foundation/Stores/projectStore'
@@ -148,6 +149,8 @@ const MainTemplate: React.FC = (): JSX.Element => {
           missingGems={missingGems}
         />
       )}
+
+      <TraceViewerOverlay />
 
       <Toaster />
     </div>

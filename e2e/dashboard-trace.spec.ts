@@ -105,7 +105,7 @@ test.describe('Dashboard trace viewer', () => {
 
     expect(await getIPCCalls(page, 'loadTrace')).toEqual([['t1']])
     // The timeline lists each step; picking one shows what it did
-    await page.getByRole('button', { name: /^2\s/ }).click()
+    await page.getByRole('option', { name: /^2\s/ }).click()
     await expect(page.getByText('@driver.find_element(:id, "login").click')).toBeVisible()
     await expect(page.getByText('https://example.com/login')).toBeVisible()
   })

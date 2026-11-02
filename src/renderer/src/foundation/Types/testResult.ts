@@ -16,12 +16,18 @@ export interface FailureInfo {
   appFrame?: string
 }
 
+export interface TraceRef {
+  path: string
+  attempt?: number
+}
+
 export interface TestResult {
   name: string
   status: string
   attachments?: Attachment[]
   screenshot?: string
   video?: string
+  traces?: TraceRef[]
   statusDetails?: StatusDetails
   failure?: FailureInfo
   durationMs?: number

@@ -103,6 +103,7 @@ const ResultSection: React.FC<ResultSectionProps> = ({
               projectPath={projectPath}
               result={result}
               recordedTest={recordedTestForFile(suites, result.file)}
+              traces={result.traces}
             />
           )
         })}

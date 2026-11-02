@@ -8,7 +8,8 @@ import {
   installPermissionHandlers,
   installWindowGuards,
   isAppUrl,
-  isExternalUrl
+  isExternalUrl,
+  isSnapshotFrameUrl
 } from '../../src/main/windowGuards'
 import { RECORDER_PARTITION } from '../../src/shared/recorderSession'
 
@@ -52,6 +53,30 @@ describe('isAppUrl', () => {
   })
 })
 
+describe('isSnapshotFrameUrl', () => {
+  it.each(['about:srcdoc', 'about:blank', `${APP_FILE}#/x`])('allows %s', (url) =>
+    expect(isSnapshotFrameUrl(url, APP_FILE)).toBe(true)
+  )
+
+  it('allows the dev server origin', () => {
+    expect(isSnapshotFrameUrl('http://localhost:5173/#/x', 'http://localhost:5173')).toBe(true)
+  })
+
+  it.each([
+    'https://example.com/',
+    'http://127.0.0.1:55539/',
+    'file:///etc/passwd',
+    'javascript:alert(1)',
+    'data:text/html,x',
+    'raider-media://file/x',
+    'about:srcdoc#x',
+    'about:blank?x'
+  ])('refuses %s', (url) => {
+    expect(isSnapshotFrameUrl(url, APP_FILE)).toBe(false)
+    expect(isSnapshotFrameUrl(url, 'http://localhost:5173')).toBe(false)
+  })
+})
+
 describe('installWindowGuards', () => {
   let contents: EventEmitter & { setWindowOpenHandler: ReturnType<typeof vi.fn> }
   let openHandler: (details: { url: string }) => { action: string }
@@ -79,6 +104,41 @@ describe('installWindowGuards', () => {
     const own = { preventDefault: vi.fn() }
     contents.emit('will-navigate', own, `${APP_FILE}#/settings`)
     expect(own.preventDefault).not.toHaveBeenCalled()
+  })
+
+  it('blocks subframe navigation away from the app', () => {
+    const frameNavigation = (url: string, isMainFrame = false): ReturnType<typeof vi.fn> => {
+      const preventDefault = vi.fn()
+      contents.emit('will-frame-navigate', { url, isMainFrame, preventDefault })
+      return preventDefault
+    }
+    // A link clicked inside a snapshot frame must not navigate it
+    expect(frameNavigation('https://example.com/')).toHaveBeenCalled()
+    expect(frameNavigation('file:///etc/passwd')).toHaveBeenCalled()
+    expect(frameNavigation('about:srcdoc')).not.toHaveBeenCalled()
+    expect(frameNavigation('about:blank')).not.toHaveBeenCalled()
+    // will-navigate owns the main frame
+    expect(frameNavigation('https://example.com/', true)).not.toHaveBeenCalled()
+  })
+
+  it("leaves the recorder webview's own navigation alone", () => {
+    const guest = Object.assign(new EventEmitter(), { setWindowOpenHandler: vi.fn() })
+    contents.emit('did-attach-webview', {}, guest)
+    expect(guest.listenerCount('will-frame-navigate')).toBe(0)
+    expect(guest.listenerCount('will-navigate')).toBe(0)
+
+    const preventDefault = vi.fn()
+    guest.emit('will-frame-navigate', {
+      url: 'https://example.com/next',
+      isMainFrame: false,
+      preventDefault
+    })
+    expect(preventDefault).not.toHaveBeenCalled()
+
+    // and the webview still attaches with the frame guard installed
+    const attach = { preventDefault: vi.fn() }
+    contents.emit('will-attach-webview', attach, {}, { src: 'https://example.com/' })
+    expect(attach.preventDefault).not.toHaveBeenCalled()
   })
 
   it('pins the webview to the recorder preload, isolation and partition', () => {

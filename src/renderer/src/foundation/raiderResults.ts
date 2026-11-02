@@ -1,7 +1,9 @@
 // Reads raider_reporter's local output (raider-results/) into the shape the
 // project dashboard already renders. Local only: no network access.
 
+import { TRACE_CONTENT_TYPE } from '@shared/types/raiderTrace'
 import type { TestResult } from './Types/testResult'
+import type { TraceRef } from './Types/testResult'
 
 interface DirNode {
   name: string
@@ -27,7 +29,7 @@ interface RaiderResult {
     backtrace?: string[]
     app_frame?: string
   }
-  attachments?: { name?: string; content_type?: string; path?: string }[]
+  attachments?: { name?: string; content_type?: string; path?: string; attempt?: number }[]
 }
 
 const MAX_MESSAGE = 20000
@@ -106,6 +108,17 @@ const toRow = (
   const video = attachments.find((a) => a.content_type?.startsWith('video/') && a.path)
   const safeVideo = video?.path ? safeAttachmentPath(video.path) : null
   if (safeVideo) row.video = `${resultsDir}/${safeVideo}`
+  const traces = attachments
+    .filter((a) => a.content_type === TRACE_CONTENT_TYPE && a.path)
+    .flatMap((a) => {
+      const safeTrace = safeAttachmentPath(a.path as string)
+      if (!safeTrace) return []
+      const ref: TraceRef = { path: `${resultsDir}/${safeTrace}` }
+      if (Number.isInteger(a.attempt) && (a.attempt as number) > 0) ref.attempt = a.attempt
+      return [ref]
+    })
+    .sort((a, b) => (b.attempt ?? 0) - (a.attempt ?? 0))
+  if (traces.length > 0) row.traces = traces
   return row
 }
 
