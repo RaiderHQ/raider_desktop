@@ -15,11 +15,12 @@ import toast from 'react-hot-toast'
 import TraceTimeline from '@components/TraceTimeline'
 import TraceDetailPanel from '@components/TraceDetailPanel'
 import FailureDetails from '@components/FailureDetails'
+import OpenTraceButtons from '@components/OpenTraceButtons'
 import { MessageContent } from './MessageContent'
 import Tooltip from '@components/Tooltip'
 import { toMediaUrl } from '@foundation/mediaUrl'
 import type { TraceStep } from '@foundation/Types/traceStep'
-import type { FailureInfo } from '@foundation/Types/testResult'
+import type { FailureInfo, TraceRef } from '@foundation/Types/testResult'
 
 interface TestResultCardProps {
   name: string
@@ -33,6 +34,7 @@ interface TestResultCardProps {
   durationMs?: number
   browser?: string
   projectPath?: string
+  traces?: TraceRef[]
 }
 
 const TestResultCard: React.FC<TestResultCardProps> = ({
@@ -46,7 +48,8 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
   failure,
   durationMs,
   browser,
-  projectPath
+  projectPath,
+  traces
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -209,6 +212,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
                 </button>
               </Tooltip>
             )}
+            {traces && traces.length > 0 && <OpenTraceButtons traces={traces} />}
           </div>
 
           {/* Inline trace panel */}

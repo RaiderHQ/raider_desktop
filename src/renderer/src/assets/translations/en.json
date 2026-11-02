@@ -867,6 +867,7 @@
     "openNumbered": "Open trace {{n}}",
     "opening": "Opening trace…",
     "close": "Close trace",
+    "dialog": "Trace of {{name}}",
     "attempt": "Attempt {{attempt}}",
     "status": {
       "passed": "Passed",
@@ -938,11 +939,12 @@
     "error": {
       "notFound": "Couldn't find this trace file.",
       "tooLarge": "This trace is too large to open safely.",
-      "unsafe": "This trace has unexpected contents, so Raider didn't open it.",
+      "unsafe": "This trace was changed after it was saved. Open the original file from the test results.",
       "notTrace": "This file isn't a Raider trace.",
       "newerVersion": "This trace was made by a newer version of Raider. Update Raider Desktop to open it.",
       "damaged": "This trace is damaged and can't be opened.",
-      "closed": "This trace was closed. Open it again."
+      "closed": "This trace was replaced by a newer copy of the same file. Open it again.",
+      "dropOne": "Drop one trace file at a time."
     },
     "menu": {
       "file": "File",
