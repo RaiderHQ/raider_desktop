@@ -1088,6 +1088,48 @@ describe('TestPage re-picking the failed element', () => {
     expect(screen.getByRole('button', { name: 'testPage.record' })).toBeDisabled()
   })
 
+  it('says it is getting to the step while the recorder opens, with Cancel', async () => {
+    renderPage(clicks)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    act(() => useRecorderStore.getState().setRecordingTarget({ kind: 'pick', stepId: 'c' }))
+    expect(screen.getByText('failedStep.pickLoading')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }))
+    expect(api.stopRecordingMain).toHaveBeenCalled()
+    expect(api.cancelReplay).toHaveBeenCalled()
+    expect(useRecorderStore.getState().recordingTarget).toBeNull()
+    expect(screen.queryByText('failedStep.pickLoading')).not.toBeInTheDocument()
+    expect(await screen.findByTestId('failed-step-panel')).toBeInTheDocument()
+  })
+
+  it('Cancel beside the banner ends the pick', async () => {
+    renderPage(clicks)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    act(() => {
+      useRecorderStore.getState().setRecordingTarget({ kind: 'pick', stepId: 'c' })
+      useRecorderStore.getState().setPickingStep(3)
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }))
+    expect(api.stopRecordingMain).toHaveBeenCalled()
+    expect(useRecorderStore.getState().recordingTarget).toBeNull()
+  })
+
+  it('Esc in the app window ends the pick', async () => {
+    renderPage(clicks)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(api.stopRecordingMain).not.toHaveBeenCalled()
+    act(() => {
+      useRecorderStore.getState().setRecordingTarget({ kind: 'pick', stepId: 'c' })
+      useRecorderStore.getState().setPickingStep(3)
+    })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(api.stopRecordingMain).toHaveBeenCalled()
+    expect(useRecorderStore.getState().recordingTarget).toBeNull()
+  })
+
   it('says it is fixed once the element was picked', async () => {
     let finish: (outcome: { kind: 'picked' }) => void = () => {}
     spies.rePick.mockImplementation(() => new Promise((resolve) => (finish = resolve)))

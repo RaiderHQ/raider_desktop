@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import StyledPanel from '@components/StyledPanel'
 import { RECORDER_PARTITION } from '@shared/recorderSession'
@@ -9,10 +9,17 @@ interface RecordingLayoutProps {
   steps: React.ReactNode
   recording: Pick<TestRecording, 'recordingUrl' | 'preloadPath' | 'cancelReplay'>
   isReplaying: boolean
+  /** Gives the embedded website the keyboard, e.g. so Esc reaches it while picking */
+  focusBrowser?: boolean
 }
 
 /** While recording: the steps on the left, the embedded website being recorded on the right. */
-const RecordingLayout: React.FC<RecordingLayoutProps> = ({ steps, recording, isReplaying }) => {
+const RecordingLayout: React.FC<RecordingLayoutProps> = ({
+  steps,
+  recording,
+  isReplaying,
+  focusBrowser = false
+}) => {
   const { t } = useTranslation()
   return (
     <div className="flex-1 flex flex-row gap-4 min-h-[24rem]">
@@ -20,7 +27,11 @@ const RecordingLayout: React.FC<RecordingLayoutProps> = ({ steps, recording, isR
         <StyledPanel>{steps ?? <></>}</StyledPanel>
       </div>
       <div className="w-[60%] border border-neutral-bdr rounded-lg overflow-hidden bg-white relative">
-        <RecordingBrowser url={recording.recordingUrl} preloadPath={recording.preloadPath} />
+        <RecordingBrowser
+          url={recording.recordingUrl}
+          preloadPath={recording.preloadPath}
+          focus={focusBrowser}
+        />
         {isReplaying && (
           <div className="absolute inset-0 bg-amber-50/60 flex flex-col items-center justify-center gap-3 z-10">
             <p className="text-sm font-medium text-amber-700">
@@ -40,11 +51,15 @@ const RecordingLayout: React.FC<RecordingLayoutProps> = ({ steps, recording, isR
 }
 
 /** The embedded website being recorded; registers itself with main once loaded. */
-const RecordingBrowser: React.FC<{ url: string | null; preloadPath: string | null }> = ({
-  url,
-  preloadPath
-}) => {
+const RecordingBrowser: React.FC<{
+  url: string | null
+  preloadPath: string | null
+  focus: boolean
+}> = ({ url, preloadPath, focus }) => {
   const webviewRef = useRef<Electron.WebviewTag | null>(null)
+  useEffect(() => {
+    if (focus) webviewRef.current?.focus()
+  }, [focus])
   if (!url || !preloadPath) return null
   return (
     <webview

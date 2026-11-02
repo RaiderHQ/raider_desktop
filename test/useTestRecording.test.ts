@@ -864,6 +864,8 @@ describe('useTestRecording', () => {
       act(() => {
         outcome = rec.rePick(index)
       })
+      // A failure is checked by the test, not reported as unhandled while timers run
+      outcome.catch(() => {})
       await act(async () => {
         await vi.advanceTimersByTimeAsync(1600)
       })
@@ -944,14 +946,117 @@ describe('useTestRecording', () => {
     })
 
     it('replays nothing for the first step', async () => {
+      const first: Test = { ...picks, steps: picks.steps.slice(1) }
+      useRecorderStore.setState({ activeTest: first })
+      api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [first] }])
       const rec = await mount()
       const { outcome } = await pickUpTo(rec, 0)
       expect(api.replayInWebview).not.toHaveBeenCalled()
       expect(api.setPickMode).toHaveBeenCalledWith(true)
+      expect(useRecorderStore.getState().pickingStep).toBe(1)
       await act(async () => {
         picked?.({ cancelled: true })
         await outcome
       })
+      await expect(outcome).resolves.toEqual({ kind: 'cancelled' })
+      const s = useRecorderStore.getState()
+      expect(s.recordingTarget).toBeNull()
+      expect(s.pickingStep).toBeNull()
+      expect(api.stopRecordingMain).toHaveBeenCalled()
+    })
+
+    it('Cancel while the steps before it replay stops the replay, and never picks', async () => {
+      let finishReplay: (r: { success: boolean; cancelled?: boolean }) => void = () => {}
+      api.replayInWebview.mockImplementation(
+        () => new Promise((resolve) => (finishReplay = resolve))
+      )
+      const rec = await mount()
+      const { outcome } = await pickUpTo(rec, 2)
+      expect(api.replayInWebview).toHaveBeenCalled()
+      await act(() => rec.cancelPick())
+      expect(api.cancelReplay).toHaveBeenCalled()
+      expect(api.stopRecordingMain).toHaveBeenCalled()
+      expect(useRecorderStore.getState().recordingTarget).toBeNull()
+      await act(async () => {
+        finishReplay({ success: false, cancelled: true })
+        await outcome
+      })
+      await expect(outcome).resolves.toEqual({ kind: 'notStarted' })
+      expect(api.setPickMode).not.toHaveBeenCalledWith(true)
+      expect(useRecorderStore.getState().pickingStep).toBeNull()
+    })
+
+    it('Cancel while picking ends it without a change', async () => {
+      const rec = await mount()
+      api.saveRecording.mockClear()
+      const { outcome } = await pickUpTo(rec, 2)
+      await act(async () => {
+        await rec.cancelPick()
+        await outcome
+      })
+      await expect(outcome).resolves.toEqual({ kind: 'cancelled' })
+      expect(api.setPickMode).toHaveBeenLastCalledWith(false)
+      expect(useRecorderStore.getState().activeTest?.steps).toEqual(picks.steps)
+      expect(api.saveRecording).not.toHaveBeenCalled()
+    })
+
+    it('refuses a step it cannot pick for, and never starts over another recording', async () => {
+      const rec = await mount()
+      // The first step is a visit: nothing to pick
+      await expect(rec.rePick(0)).resolves.toEqual({ kind: 'notStarted' })
+      act(() => useRecorderStore.getState().setRecordingTarget({ kind: 'test' }))
+      await expect(rec.rePick(2)).resolves.toEqual({ kind: 'notStarted' })
+      expect(api.loadUrlRequest).not.toHaveBeenCalled()
+      expect(useRecorderStore.getState().recordingTarget).toEqual({ kind: 'test' })
+      act(() => useRecorderStore.getState().setRecordingTarget(null))
+    })
+
+    it.each([
+      ['the replay', (): void => void api.replayInWebview.mockRejectedValue(new Error('gone'))],
+      ['turning picking on', (): void => void api.setPickMode.mockRejectedValue(new Error('gone'))]
+    ])('closes the recorder when %s fails', async (_name, fail) => {
+      fail()
+      const rec = await mount()
+      const { outcome } = await pickUpTo(rec, 2)
+      await act(async () => {
+        await outcome.catch(() => {})
+      })
+      await expect(outcome).rejects.toThrow('gone')
+      const s = useRecorderStore.getState()
+      expect(s.recordingTarget).toBeNull()
+      expect(s.recordingUrl).toBeNull()
+      expect(s.pickingStep).toBeNull()
+      expect(api.stopRecordingMain).toHaveBeenCalled()
+    })
+
+    it('saves the picked element once: the autosave leaves it alone', async () => {
+      const rec = await mount()
+      api.saveRecording.mockClear()
+      const { outcome } = await pickUpTo(rec, 2)
+      await act(async () => {
+        picked?.({ element: E })
+        await outcome
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(api.saveRecording).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not retry a failed save behind the user\'s back', async () => {
+      const rec = await mount()
+      api.saveRecording.mockClear()
+      api.saveRecording.mockResolvedValue({ success: false, error: 'boom' })
+      const { outcome } = await pickUpTo(rec, 2)
+      await act(async () => {
+        picked?.({ element: E })
+        await outcome
+      })
+      await expect(outcome).resolves.toEqual({ kind: 'cancelled' })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(api.saveRecording).toHaveBeenCalledTimes(1)
     })
   })
 })

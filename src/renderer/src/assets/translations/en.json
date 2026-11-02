@@ -876,6 +876,7 @@
     "useThis": "Use this",
     "value": "Value",
     "pickBanner": "Click the element step {{n}} should use. Press Esc to cancel.",
+    "pickLoading": "Getting to step {{n}}…",
     "replayFailed": "Couldn't get to step {{n}}: step {{m}} didn't work.",
     "reRecordFrom": "Re-record from step {{m}}",
     "reRecordConfirmTitle": "Re-record from step {{n}}?",

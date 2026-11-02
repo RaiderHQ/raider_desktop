@@ -62,7 +62,7 @@ describe('useRecordingIPC while picking an element', () => {
     const setAssertionInfo = vi.fn()
     renderHook(() => useRecordingIPC({ setAssertionInfo }))
     await emit('recording-started', 'https://x.test/login')
-    await emit('new-recorded-step', { id: 'n', kind: 'click', element: test1.steps[1] })
+    await emit('new-recorded-step', { id: 'n', kind: 'click', element: { strategy: 'css', value: '#x' } })
     await emit('add-assertion-step', { id: 'm', kind: 'assert', check: 'visible' })
     await emit('new-trace-step', { id: 'tr2', stepId: 'n', command: '', timestamp: 2, url: '' })
     expect(useRecorderStore.getState().activeTest).toEqual(test1)

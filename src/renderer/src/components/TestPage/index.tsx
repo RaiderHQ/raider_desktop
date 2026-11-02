@@ -63,7 +63,10 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const breakpointIndex = useRecorderStore((s) => s.breakpointIndex)
   const isReplaying = useRecorderStore((s) => s.isReplayingToBreakpoint)
   // Re-picking a step's element: the recorder is open, but nothing is recorded
-  const picking = useRecorderStore((s) => s.recordingTarget?.kind === 'pick')
+  const pickTarget = useRecorderStore((s) =>
+    s.recordingTarget?.kind === 'pick' ? s.recordingTarget : null
+  )
+  const picking = pickTarget !== null
   const pickingStep = useRecorderStore((s) => s.pickingStep)
   const recordingDisabled = useProjectStore((s) => s.layout?.recordable === false)
   // Only a mobile project says why Record is off, for now
@@ -192,6 +195,16 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       })
       .catch((error: unknown) => console.error('Picking the element failed:', error))
   }
+
+  // Esc cancels a pick from the app window too, not only from the page being picked on
+  useEffect((): (() => void) | void => {
+    if (!picking) return
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') void recording.cancelPick()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [picking])
 
   // The step (0-based) to re-record from, while the confirmation is open
   const [reRecordingFrom, setReRecordingFrom] = useState<number | null>(null)
@@ -462,17 +475,35 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             />
           )}
 
-          {pickingStep !== null && (
-            <p
+          {pickTarget && (
+            <div
               role="status"
-              className="text-sm font-medium px-3 py-2 rounded border border-neutral-bdr bg-neutral-50 text-neutral-dark"
+              className="flex items-center gap-3 text-sm font-medium px-3 py-2 rounded border border-neutral-bdr bg-neutral-50 text-neutral-dark"
             >
-              {t('failedStep.pickBanner', { n: pickingStep })}
-            </p>
+              <span className="flex-1">
+                {pickingStep !== null
+                  ? t('failedStep.pickBanner', { n: pickingStep })
+                  : t('failedStep.pickLoading', {
+                      n: test.steps.findIndex((s) => s.id === pickTarget.stepId) + 1
+                    })}
+              </span>
+              <button
+                type="button"
+                onClick={() => void recording.cancelPick()}
+                className={`${toolbarButton} text-neutral-dark hover:bg-neutral-100`}
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
           )}
 
           {browserOpen ? (
-            <RecordingLayout steps={steps} recording={recording} isReplaying={isReplaying} />
+            <RecordingLayout
+              steps={steps}
+              recording={recording}
+              isReplaying={isReplaying}
+              focusBrowser={pickingStep !== null}
+            />
           ) : (
             <div className="flex-1 min-h-[12rem]">
               <StyledPanel>{steps ?? <></>}</StyledPanel>
