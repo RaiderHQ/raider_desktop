@@ -238,7 +238,11 @@ export interface WindowApi extends RunApi {
   getRecorderSettings: () => Promise<RecorderSettings>
 
   // --- Trace Management ---
-  saveTrace: (testId: string, trace: TraceStep[]) => Promise<{ success: boolean; error?: string }>
+  saveTrace: (
+    testId: string,
+    trace: TraceStep[],
+    stepIds?: string[]
+  ) => Promise<{ success: boolean; error?: string }>
   loadTrace: (testId: string) => Promise<{ success: boolean; trace?: TraceStep[] }>
   deleteTrace: (testId: string) => Promise<void>
 

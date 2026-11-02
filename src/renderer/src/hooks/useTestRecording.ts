@@ -56,7 +56,11 @@ const isBusy = (): boolean => {
 async function saveTraceOf(test: Test): Promise<Test> {
   if (!test.trace?.length) return test
   try {
-    const result = await window.api.saveTrace(test.id, test.trace)
+    const result = await window.api.saveTrace(
+      test.id,
+      test.trace,
+      test.steps.map((s) => s.id)
+    )
     if (!result.success) return test
   } catch (error) {
     console.error('Saving the trace failed:', error)

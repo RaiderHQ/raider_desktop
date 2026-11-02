@@ -84,7 +84,11 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
       useRecorderStore.getState().setIsRecording(false)
       if (traceSaved) return
       if (activeTest?.trace?.length) {
-        const result = await window.api.saveTrace(activeTest.id, activeTest.trace)
+        const result = await window.api.saveTrace(
+          activeTest.id,
+          activeTest.trace,
+          activeTest.steps.map((s) => s.id)
+        )
         if (result.success) {
           // Mark the test as it is now: steps can still arrive while the trace is saved
           updateActiveTest((live) =>

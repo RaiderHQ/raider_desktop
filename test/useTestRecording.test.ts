@@ -621,10 +621,12 @@ describe('useTestRecording', () => {
     const rec = await mount()
     await recordingTest(rec)
     await emit('new-trace-step', traceStep)
+    const stepIds = useRecorderStore.getState().activeTest!.steps.map((s) => s.id)
+    expect(stepIds.length).toBeGreaterThan(0)
     await act(() => rec.stop())
     await emit('recording-stopped')
     expect(api.saveTrace).toHaveBeenCalledTimes(1)
-    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep])
+    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], stepIds)
     expect(api.saveRecording).toHaveBeenCalledWith(
       's1',
       expect.objectContaining({ id: 't1', hasTrace: true })

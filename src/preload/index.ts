@@ -218,8 +218,12 @@ const api = {
     ipcRenderer.invoke('save-recording', suiteId, testData),
   deleteTest: (suiteId: string, testId: string): Promise<void> =>
     ipcRenderer.invoke('delete-test', { suiteId, testId }),
-  saveTrace: (testId: string, trace: TraceStep[]): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke('save-trace', testId, trace),
+  saveTrace: (
+    testId: string,
+    trace: TraceStep[],
+    stepIds?: string[]
+  ): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('save-trace', testId, trace, stepIds),
   loadTrace: (testId: string): Promise<{ success: boolean; trace?: TraceStep[] }> =>
     ipcRenderer.invoke('load-trace', testId),
   deleteTrace: (testId: string): Promise<void> => ipcRenderer.invoke('delete-trace', testId),

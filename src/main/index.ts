@@ -348,8 +348,8 @@ app.whenReady().then(() => {
   ipcMain.handle('save-recording', (_event, suiteId: string, test: Test) =>
     saveRecording(appState.mainWindow, suiteId, test)
   )
-  ipcMain.handle('save-trace', (_event, testId: string, trace: TraceStep[]) =>
-    saveTrace(testId, trace)
+  ipcMain.handle('save-trace', (_event, testId: string, trace: TraceStep[], stepIds?: string[]) =>
+    saveTrace(testId, trace, stepIds)
   )
   ipcMain.handle('load-trace', (_event, testId: string) => loadTrace(testId))
   ipcMain.handle('delete-trace', (_event, testId: string) => deleteTrace(testId))

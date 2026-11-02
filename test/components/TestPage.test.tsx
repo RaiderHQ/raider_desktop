@@ -599,7 +599,7 @@ describe('TestPage', () => {
     await waitFor(() => expect(api.saveRecording).toHaveBeenCalledTimes(1))
     // Nothing listens for main's 'recording-stopped' any more: the leave saved the trace
     expect(api.saveTrace).toHaveBeenCalledTimes(1)
-    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep])
+    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], expect.any(Array))
     expect(api.saveRecording).toHaveBeenCalledWith(
       's1',
       expect.objectContaining({ id: 't1', hasTrace: true })
@@ -627,7 +627,7 @@ describe('TestPage', () => {
     expect(api.stopRecordingMain).toHaveBeenCalled()
     await waitFor(() => expect(api.saveRecording).toHaveBeenCalledTimes(1))
     expect(api.saveTrace).toHaveBeenCalledTimes(1)
-    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep])
+    expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], expect.any(Array))
     expect(api.saveRecording).toHaveBeenCalledWith(
       's1',
       expect.objectContaining({ id: 't1', steps: [step('a'), step('b'), step('n')] })
