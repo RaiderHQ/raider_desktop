@@ -95,9 +95,11 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
   const failedStep = useFailedStepFor(projectPath ?? null, recordedTest ?? null, result ?? null)
   // A recorded test never opens on the raw error: not while the step is looked up, not if it isn't found
   const plainFailure = showFailureDetails && !!recordedTest
-  const stepLine = plainFailure
-    ? (failedStepLine(t, failedStep) ?? t('failedStep.unmapped'))
-    : null
+  const stepLine = !plainFailure
+    ? null
+    : failedStep.pending
+      ? t('failedStep.finding')
+      : (failedStepLine(t, failedStep) ?? t('failedStep.unmapped'))
 
   const chevronIcon = open ? <FaChevronDown /> : <FaChevronRight />
 

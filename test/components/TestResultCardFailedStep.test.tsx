@@ -90,13 +90,39 @@ describe('TestResultCard for a recorded test', () => {
     expect(navigate).toHaveBeenCalledWith(`/overview/tests/${toRouteParam(key)}`)
   })
 
-  it('stays collapsed with a plain line while the step is looked up and when it is not found', async () => {
-    window.api.mapFailedStep = vi.fn().mockReturnValue(new Promise(() => {}))
+  it('stays collapsed with a neutral line while the step is looked up, then says it is not found', async () => {
+    let answer: (map: unknown) => void = () => {}
+    window.api.mapFailedStep = vi.fn().mockReturnValue(new Promise((r) => (answer = r)))
     renderCard()
     expect(screen.getByTestId('technical-details')).not.toHaveAttribute('open')
-    expect(screen.getByTestId('failed-step-line')).toHaveTextContent(
-      "Couldn't tell which step failed"
+    expect(screen.getByTestId('failed-step-line')).toHaveTextContent('Finding the failed step…')
+    expect(screen.queryByText("Couldn't tell which step failed")).not.toBeInTheDocument()
+
+    answer({ none: 'noMap' })
+    await waitFor(() =>
+      expect(screen.getByTestId('failed-step-line')).toHaveTextContent(
+        "Couldn't tell which step failed"
+      )
     )
+    expect(screen.getByTestId('technical-details')).not.toHaveAttribute('open')
+  })
+
+  it('says which step failed for a quarantined result too', async () => {
+    const quarantined = { ...result, status: 'quarantined' }
+    render(
+      <TestResultCard
+        name="Checkout"
+        status="quarantined"
+        failure={quarantined.failure}
+        projectPath="/p"
+        result={quarantined}
+        recordedTest={test1}
+      />
+    )
+    fireEvent.click(screen.getByText('Checkout'))
+    const line = await screen.findByTestId('failed-step-line')
+    await waitFor(() => expect(line).toHaveTextContent('Failed at step 4: Click "Save".'))
+    expect(window.api.mapFailedStep).toHaveBeenCalledTimes(1)
   })
 
   it('says the element could not be found when it has no label', async () => {

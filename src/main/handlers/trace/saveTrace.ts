@@ -51,12 +51,16 @@ async function removeUnreferencedPictures(
   }
 }
 
+const isStepIds = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((id) => typeof id === 'string')
+
 export default (
   testId: string,
   trace: TraceStep[],
-  stepIds?: string[]
+  stepIds?: unknown
 ): Promise<{ success: boolean; error?: string }> =>
-  serialize(saveQueues, testId, () => save(testId, trace, stepIds))
+  // Anything but a list of step ids is saved as without one: it never decides what is deleted
+  serialize(saveQueues, testId, () => save(testId, trace, isStepIds(stepIds) ? stepIds : undefined))
 
 async function save(
   testId: string,

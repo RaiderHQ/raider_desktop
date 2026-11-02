@@ -93,6 +93,16 @@ describe('resolveFailedStep', () => {
     expect(await resolveFailedStep('/p', test, failed)).toEqual({ status: 'none' })
   })
 
+  it('maps a quarantined result like a failed one: it carries a real failure', async () => {
+    mapFailedStep.mockResolvedValue({ stepId: 'c', index: 2 })
+    const quarantined = { ...failed, status: 'quarantined' }
+    expect(await resolveFailedStep('/p', test, quarantined)).toMatchObject({
+      status: 'mapped',
+      index: 2,
+      result: quarantined
+    })
+  })
+
   it('gives none for a passed result, without asking main', async () => {
     const passed = { ...failed, status: 'passed' }
     expect(await resolveFailedStep('/p', test, passed)).toEqual({ status: 'none' })
@@ -288,6 +298,54 @@ describe('useFailedStep', () => {
 })
 
 describe('useFailedStepFor', () => {
+  beforeEach(() => {
+    useRecorderStore.setState({ suites: [] })
+  })
+
+  it('is pending until main answers, and not once it answered none', async () => {
+    let answer: (map: unknown) => void = () => {}
+    mapFailedStep.mockReturnValue(new Promise((r) => (answer = r)))
+    const { result } = renderHook(() => useFailedStepFor('/p', test, failed))
+    expect(result.current).toEqual({ status: 'none', pending: true })
+    await act(async () => answer({ none: 'notRecorded' }))
+    expect(result.current).toEqual({ status: 'none', pending: false })
+  })
+
+  it('is not pending with nothing to look up', () => {
+    const { result } = renderHook(() => useFailedStepFor('/p', test, null))
+    expect(result.current.pending).toBe(false)
+  })
+
+  it('asks again only when the saved test or its steps change, not on each edit', async () => {
+    mapFailedStep.mockResolvedValue({ stepId: 'c', index: 2 })
+    const suites = (tt: Test) => [{ id: 's1', name: 'Smoke', tests: [tt] }]
+    useRecorderStore.setState({ suites: suites(test) })
+    const { result, rerender } = renderHook(({ tt }) => useFailedStepFor('/p', tt, failed), {
+      initialProps: { tt: test }
+    })
+    await waitFor(() => expect(result.current.status).toBe('mapped'))
+    expect(mapFailedStep).toHaveBeenCalledTimes(1)
+
+    // An edit not saved yet: same steps, a new value
+    const edited: Test = {
+      ...test,
+      steps: test.steps.map((s) => (s.id === 'b' ? { ...s, url: 'https://x.test/basket' } : s))
+    }
+    rerender({ tt: edited })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20))
+    })
+    expect(mapFailedStep).toHaveBeenCalledTimes(1)
+
+    // Saved: main's copy of the test changed
+    act(() => useRecorderStore.setState({ suites: suites(edited) }))
+    await waitFor(() => expect(mapFailedStep).toHaveBeenCalledTimes(2))
+
+    // A step added or removed
+    rerender({ tt: { ...edited, steps: edited.steps.slice(0, 2) } })
+    await waitFor(() => expect(mapFailedStep).toHaveBeenCalledTimes(3))
+  })
+
   it("never shows one project's answer for the same test id in another", async () => {
     mapFailedStep.mockResolvedValue({ stepId: 'c', index: 2 })
     const { result, rerender } = renderHook(({ p }) => useFailedStepFor(p, test, failed), {

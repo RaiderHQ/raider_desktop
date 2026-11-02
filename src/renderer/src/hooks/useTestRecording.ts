@@ -39,6 +39,11 @@ export interface TestRecording {
   rePick(index: number): Promise<RePickOutcome>
   /** Ends picking an element (or getting to it) without changing anything */
   cancelPick(): Promise<void>
+  /**
+   * Saves the open test, as it is in the store, once and right away after a fix (e.g. an
+   * edited value): the autosave leaves that version alone. True when it saved
+   */
+  saveFixedTest(suiteId: string, test: Test): Promise<boolean>
   run(): Promise<void>
   cancelReplay(): Promise<void>
   recordingUrl: string | null
@@ -173,15 +178,32 @@ async function openAndPick(
   }
 
   const pick = waitForPick()
+  // Main starts picking once the page has settled: a step that navigates lands first
   const on = await window.api.setPickMode(true)
   if (!on.success && !leftDuringStart(target)) return { kind: 'notStarted' }
   if (!leftDuringStart(target)) store().setPickingStep(index + 1)
   const result = await pick
-  return 'element' in result ? result.element : { kind: 'cancelled' }
+  if ('element' in result) return result.element
+  // Main ends picking when the page changes: never silently, the user tries again
+  if (result.reason === 'navigated') toast.error(t('failedStep.pageChangedWhilePicking'))
+  return { kind: 'cancelled' }
 }
 
-/** The test as a pick saved it; the autosave leaves it alone, so it is saved only once */
-let savedByPick: Test | null = null
+/** The test as a fix (a picked element, an edited value) saved it; the autosave leaves it alone */
+let savedByFix: Test | null = null
+
+/** Saves a fixed test once, right away; a failed save isn't retried behind the user's back */
+async function saveFix(t: Translate, suiteId: string, test: Test): Promise<boolean> {
+  savedByFix = test
+  try {
+    const saved = await window.api.saveRecording(suiteId, test)
+    return handleSaveResult(saved, test.id, t)
+  } catch (error) {
+    console.error('Saving the fix failed:', error)
+    toast.error(t('recorder.saveFailed'), { id: 'save-failed' })
+    return false
+  }
+}
 
 /** Only the start page was recorded: there is nothing worth keeping */
 export const isEmptyRecording = (test: Test): boolean =>
@@ -231,10 +253,9 @@ async function saveStopped(
   // The trace is saved here, from the same snapshot: after a leave, nothing is left
   // listening for main's 'recording-stopped'
   traceSavedOnStop()
-  const withTrace = await saveTraceOf(test)
   let result: Awaited<ReturnType<typeof window.api.saveRecording>>
   try {
-    result = await window.api.saveRecording(suiteId, withTrace)
+    result = await window.api.saveRecording(suiteId, test)
   } catch (error) {
     console.error('Saving the test failed:', error)
     toast.error(t('recorder.saveFailed'), { id: 'save-failed' })
@@ -247,6 +268,8 @@ async function saveStopped(
     }
     return false
   }
+  // Only once the test is saved: the trace save deletes the pictures of steps it no longer has
+  await saveTraceOf(test)
   const name = result?.test?.name ?? test.name
   const file = result?.test?.file
   toast.success(file ? t('tests.saved', { name, file }) : t('tests.savedNoFile', { name }))
@@ -467,7 +490,7 @@ export function useTestRecording(): TestRecording {
   useEffect((): (() => void) | void => {
     const opened = (activeTest?.id ?? null) !== autosavedTestId.current
     autosavedTestId.current = activeTest?.id ?? null
-    if (opened || isBusy() || activeTest === savedByPick) return
+    if (opened || isBusy() || activeTest === savedByFix) return
     const handler = setTimeout(() => {
       const { activeSuiteId: suiteId, activeTest: test, readOnlyView: view, draftTest } = store()
       if (isBusy()) return
@@ -616,19 +639,13 @@ export function useTestRecording(): TestRecording {
       )
       const { activeSuiteId: suiteId, activeTest: fixedTest } = store()
       if (!suiteId || !fixedTest || fixedTest.id !== test.id) return { kind: 'cancelled' }
-      // Saved once, right away: the autosave leaves this change to the save below, and a
-      // failed save isn't retried behind the user's back
-      savedByPick = fixedTest
-      try {
-        const saved = await window.api.saveRecording(suiteId, fixedTest)
-        if (!handleSaveResult(saved, fixedTest.id, t)) return { kind: 'cancelled' }
-      } catch (error) {
-        console.error('Saving the picked element failed:', error)
-        toast.error(t('recorder.saveFailed'), { id: 'save-failed' })
-        return { kind: 'cancelled' }
-      }
-      return { kind: 'picked' }
+      return (await saveFix(t, suiteId, fixedTest)) ? { kind: 'picked' } : { kind: 'cancelled' }
     },
+    [t]
+  )
+
+  const saveFixedTest = useCallback(
+    (suiteId: string, test: Test): Promise<boolean> => saveFix(t, suiteId, test),
     [t]
   )
 
@@ -706,6 +723,7 @@ export function useTestRecording(): TestRecording {
     saveAsNewTest,
     rePick,
     cancelPick,
+    saveFixedTest,
     run,
     cancelReplay,
     recordingUrl,

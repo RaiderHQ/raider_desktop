@@ -640,11 +640,30 @@ describe('useTestRecording', () => {
     await emit('recording-stopped')
     expect(api.saveTrace).toHaveBeenCalledTimes(1)
     expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], stepIds)
-    expect(api.saveRecording).toHaveBeenCalledWith(
-      's1',
-      expect.objectContaining({ id: 't1', hasTrace: true })
+    expect(api.saveRecording).toHaveBeenCalledWith('s1', expect.objectContaining({ id: 't1' }))
+    // The test first: the trace save may delete pictures of steps the file no longer has
+    expect(api.saveRecording.mock.invocationCallOrder[0]).toBeLessThan(
+      api.saveTrace.mock.invocationCallOrder[0]
     )
     expect(useRecorderStore.getState().activeTest?.hasTrace).toBe(true)
+  })
+
+  it.each([
+    [
+      'refused',
+      (): void => void api.saveRecording.mockResolvedValue({ success: false, error: 'codeOwned' })
+    ],
+    ['failing', (): void => void api.saveRecording.mockRejectedValue(new Error('disk'))]
+  ])('a %s save of the test leaves its trace and pictures alone', async (_name, failSave) => {
+    const traceStep = { id: 'tr1', command: 'click', timestamp: 1, url: 'https://x.test' }
+    const rec = await mount()
+    await recordingTest(rec)
+    await emit('new-trace-step', traceStep)
+    failSave()
+    await act(() => rec.stop())
+    await emit('recording-stopped')
+    expect(api.saveRecording).toHaveBeenCalled()
+    expect(api.saveTrace).not.toHaveBeenCalled()
   })
 
   it("a stop that saves nothing leaves the trace to main's recording-stopped", async () => {
@@ -926,6 +945,33 @@ describe('useTestRecording', () => {
       expect(useRecorderStore.getState().activeTest?.steps).toEqual(picks.steps)
       expect(api.saveRecording).not.toHaveBeenCalled()
       expect(useRecorderStore.getState().recordingTarget).toBeNull()
+    })
+
+    it('says the page changed when it navigated while picking, and saves nothing', async () => {
+      const rec = await mount()
+      api.saveRecording.mockClear()
+      const { outcome } = await pickUpTo(rec, 2)
+      await act(async () => {
+        picked?.({ cancelled: true, reason: 'navigated' })
+        await outcome
+      })
+      await expect(outcome).resolves.toEqual({ kind: 'cancelled' })
+      expect(mockToast.error).toHaveBeenCalledWith('failedStep.pageChangedWhilePicking')
+      expect(api.saveRecording).not.toHaveBeenCalled()
+      const s = useRecorderStore.getState()
+      expect(s.recordingTarget).toBeNull()
+      expect(s.pickingStep).toBeNull()
+      expect(api.stopRecordingMain).toHaveBeenCalled()
+    })
+
+    it('says nothing for a cancel the user made', async () => {
+      const rec = await mount()
+      const { outcome } = await pickUpTo(rec, 2)
+      await act(async () => {
+        picked?.({ cancelled: true })
+        await outcome
+      })
+      expect(mockToast.error).not.toHaveBeenCalled()
     })
 
     it('leaving while picking cancels it and stops the recorder', async () => {

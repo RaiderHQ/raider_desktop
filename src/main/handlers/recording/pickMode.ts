@@ -5,6 +5,13 @@ import type { PickResult } from '../../../shared/types/pick'
 
 // Stops watching the guest for navigation; set while pick mode is on
 let unwatchGuest: (() => void) | null = null
+// Bumped whenever pick mode ends: a pick still waiting for the page to settle never starts
+let pickGeneration = 0
+
+/** How long the page must have stopped loading before picking starts */
+export const PICK_SETTLE_MS = 300
+/** Picking starts after this long even if the page is still loading */
+const PICK_SETTLE_TIMEOUT_MS = 10_000
 
 function guest(): WebContents | null {
   if (appState.recorderWebContentsId === null) return null
@@ -18,6 +25,7 @@ function sendResult(result: PickResult): void {
 
 /** Ends pick mode in main and in the guest; with a result, tells the app why it ended */
 function endPickMode(result?: PickResult): void {
+  pickGeneration++
   if (!appState.pickMode) return
   appState.pickMode = false
   appState.pickModeEndedAt = Date.now()
@@ -27,10 +35,50 @@ function endPickMode(result?: PickResult): void {
   if (result) sendResult(result)
 }
 
-// A new page loads the preload with picking off, so a navigation ends pick mode as a cancel
+type NavigationDetails = { isMainFrame?: boolean; isSameDocument?: boolean }
+
+const leavesPage = (details: NavigationDetails): boolean =>
+  !!details?.isMainFrame && !details.isSameDocument
+
+/**
+ * Resolves once the guest has stopped loading for PICK_SETTLE_MS, so a navigation the last
+ * replayed click started lands before picking does; after PICK_SETTLE_TIMEOUT_MS regardless.
+ */
+function settled(wc: WebContents): Promise<void> {
+  return new Promise((resolve) => {
+    let quiet: ReturnType<typeof setTimeout> | undefined
+    const done = (): void => {
+      clearTimeout(quiet)
+      clearTimeout(deadline)
+      wc.removeListener('did-start-navigation', onNavigate)
+      wc.removeListener('did-start-loading', onStart)
+      wc.removeListener('did-stop-loading', check)
+      wc.removeListener('destroyed', done)
+      resolve()
+    }
+    const check = (): void => {
+      clearTimeout(quiet)
+      if (wc.isDestroyed() || !wc.isLoading()) quiet = setTimeout(done, PICK_SETTLE_MS)
+    }
+    const onStart = (): void => clearTimeout(quiet)
+    const onNavigate = (details: NavigationDetails): void => {
+      if (leavesPage(details)) clearTimeout(quiet)
+    }
+    const deadline = setTimeout(done, PICK_SETTLE_TIMEOUT_MS)
+    wc.on('did-start-navigation', onNavigate)
+    wc.on('did-start-loading', onStart)
+    wc.on('did-stop-loading', check)
+    wc.on('destroyed', done)
+    check()
+  })
+}
+
+// Main is the one source of truth for picking. A new page loads the preload with picking
+// off, so a navigation while picking ends it here too, as a cancel that says the page changed;
+// the app tells the user to try again. Pick mode is never carried over to the new page.
 function watchGuest(wc: WebContents): () => void {
-  const onNavigate = (details: { isMainFrame?: boolean; isSameDocument?: boolean }): void => {
-    if (details?.isMainFrame && !details.isSameDocument) endPickMode({ cancelled: true })
+  const onNavigate = (details: NavigationDetails): void => {
+    if (leavesPage(details)) endPickMode({ cancelled: true, reason: 'navigated' })
   }
   const onDestroyed = (): void => endPickMode({ cancelled: true })
   wc.on('did-start-navigation', onNavigate)
@@ -41,7 +89,11 @@ function watchGuest(wc: WebContents): () => void {
   }
 }
 
-export function setPickMode(on: boolean): { success: boolean } {
+/**
+ * Turns pick mode off at once, or on once the page has settled (see `settled`). Fails when
+ * there is no recorder page, or when picking was ended or the page went away meanwhile.
+ */
+export async function setPickMode(on: boolean): Promise<{ success: boolean }> {
   if (!on) {
     endPickMode()
     return { success: true }
@@ -51,15 +103,23 @@ export function setPickMode(on: boolean): { success: boolean } {
   const wc = guest()
   if (!wc) return { success: false }
   if (!appState.pickMode) {
-    appState.pickMode = true
-    unwatchGuest = watchGuest(wc)
+    const generation = pickGeneration
+    await settled(wc)
+    if (generation !== pickGeneration || guest()?.id !== wc.id) return { success: false }
+    if (!appState.pickMode) {
+      appState.pickMode = true
+      unwatchGuest = watchGuest(wc)
+    }
   }
   wc.send('recorder-pick-mode', true)
   return { success: true }
 }
 
 /** Only the app window may switch pick mode; the guest page never can */
-export function handleSetPickMode(senderId: number, on: unknown): { success: boolean } {
+export async function handleSetPickMode(
+  senderId: number,
+  on: unknown
+): Promise<{ success: boolean }> {
   if (senderId !== appState.mainWindow?.webContents.id) return { success: false }
   return setPickMode(on === true)
 }

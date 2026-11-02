@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, realpath } from 'fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, realpath, utimes } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -119,9 +119,35 @@ describe('mapFailedStepHandler', () => {
     })
   })
 
-  it('still maps without a finishedAt', async () => {
-    const failure = query({ backtrace: [frame(rangeOf(2).start)], finishedAt: undefined })
-    expect(await map(failure)).toEqual({ stepId: 's3', index: 2 })
+  describe('without a finishedAt', () => {
+    const runFile = (): string => join(project, 'raider-results', 'run.json')
+    const writeRunAt = async (ms: number): Promise<void> => {
+      await mkdir(join(project, 'raider-results'), { recursive: true })
+      await writeFile(runFile(), '{}')
+      await utimes(runFile(), ms / 1000, ms / 1000)
+    }
+    const failure = (): FailedStepQuery =>
+      query({ backtrace: [frame(rangeOf(2).start)], finishedAt: undefined })
+
+    it('maps when the results file was written after the last save', async () => {
+      await writeRunAt(Date.parse(saved.updatedAt) + 60_000)
+      expect(await map(failure())).toEqual({ stepId: 's3', index: 2 })
+    })
+
+    it('refuses when the results file is older than the last save', async () => {
+      await writeRunAt(Date.parse(saved.updatedAt) - 60_000)
+      expect(await map(failure())).toEqual({ none: 'changedSinceRun' })
+    })
+
+    it('refuses when there is no results file to tell when it ran', async () => {
+      expect(await map(failure())).toEqual({ none: 'changedSinceRun' })
+    })
+
+    it('treats an unreadable finishedAt like a missing one', async () => {
+      expect(
+        await map(query({ backtrace: [frame(rangeOf(2).start)], finishedAt: 'soon' }))
+      ).toEqual({ none: 'changedSinceRun' })
+    })
   })
 
   it('refuses a run that finished before the last save', async () => {

@@ -1,9 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { EventEmitter } from 'events'
 
 const mainSend = vi.fn()
 const guestSend = vi.fn()
-let guest: (EventEmitter & { send: typeof guestSend; isDestroyed: () => boolean }) | null = null
+type Guest = EventEmitter & {
+  id: number
+  send: typeof guestSend
+  isDestroyed: () => boolean
+  isLoading: () => boolean
+}
+let guest: Guest | null = null
+let loading = false
 
 vi.mock('electron', () => ({
   webContents: {
@@ -21,6 +28,7 @@ vi.mock('../../src/main/handlers/appState', () => ({
 }))
 
 import {
+  PICK_SETTLE_MS,
   setPickMode,
   handleSetPickMode,
   handleRecorderPicked,
@@ -37,44 +45,62 @@ const state = appState as unknown as {
 }
 const picked = (): unknown[] => mainSend.mock.calls.filter((c) => c[0] === 'recorder-picked')
 
+/** Turns pick mode on, past the wait for the page to settle */
+async function pickOn(handle = (): Promise<{ success: boolean }> => setPickMode(true)) {
+  const on = handle()
+  await vi.advanceTimersByTimeAsync(PICK_SETTLE_MS)
+  return on
+}
+
 describe('pick mode in main', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     vi.clearAllMocks()
     setPickMode(false)
     vi.clearAllMocks()
-    guest = Object.assign(new EventEmitter(), { send: guestSend, isDestroyed: () => false })
+    loading = false
+    guest = Object.assign(new EventEmitter(), {
+      id: 7,
+      send: guestSend,
+      isDestroyed: () => false,
+      isLoading: () => loading
+    })
     state.recorderWebContentsId = 7
   })
 
-  it('turns pick mode on in state and in the guest', () => {
-    expect(setPickMode(true)).toEqual({ success: true })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('turns pick mode on in state and in the guest', async () => {
+    expect(await pickOn()).toEqual({ success: true })
     expect(state.pickMode).toBe(true)
     expect(guestSend).toHaveBeenCalledWith('recorder-pick-mode', true)
   })
 
-  it('fails and stays off with no guest', () => {
+  it('fails and stays off with no guest', async () => {
     state.recorderWebContentsId = null
-    expect(setPickMode(true)).toEqual({ success: false })
+    expect(await setPickMode(true)).toEqual({ success: false })
     expect(state.pickMode).toBe(false)
   })
 
-  it('fails and stays off when the guest is gone', () => {
+  it('fails and stays off when the guest is gone', async () => {
     state.recorderWebContentsId = 9
-    expect(setPickMode(true)).toEqual({ success: false })
+    expect(await setPickMode(true)).toEqual({ success: false })
     expect(state.pickMode).toBe(false)
   })
 
-  it('only lets the app window switch pick mode', () => {
-    expect(handleSetPickMode(7, true)).toEqual({ success: false })
+  it('only lets the app window switch pick mode', async () => {
+    expect(await pickOn(() => handleSetPickMode(7, true))).toEqual({ success: false })
     expect(state.pickMode).toBe(false)
-    expect(handleSetPickMode(1, true)).toEqual({ success: true })
+    expect(await pickOn(() => handleSetPickMode(1, true))).toEqual({ success: true })
     expect(state.pickMode).toBe(true)
-    expect(handleSetPickMode(7, false)).toEqual({ success: false })
+    expect(await handleSetPickMode(7, false)).toEqual({ success: false })
     expect(state.pickMode).toBe(true)
   })
 
-  it('ignores a pick from another sender', () => {
-    setPickMode(true)
+  it('ignores a pick from another sender', async () => {
+    await pickOn()
     handleRecorderPicked(8, { strategy: 'css', selector: '#new', innerText: 'Save' })
     expect(picked()).toEqual([])
     expect(state.pickMode).toBe(true)
@@ -86,8 +112,8 @@ describe('pick mode in main', () => {
     expect(picked()).toEqual([])
   })
 
-  it('sends the picked element to the app and ends pick mode', () => {
-    setPickMode(true)
+  it('sends the picked element to the app and ends pick mode', async () => {
+    await pickOn()
     guestSend.mockClear()
     handleRecorderPicked(7, { strategy: 'css', selector: '#new', innerText: 'Save' })
     expect(picked()).toEqual([
@@ -97,8 +123,8 @@ describe('pick mode in main', () => {
     expect(guestSend).toHaveBeenCalledWith('recorder-pick-mode', false)
   })
 
-  it('keeps a well-formed locator and drops hints that are not text', () => {
-    setPickMode(true)
+  it('keeps a well-formed locator and drops hints that are not text', async () => {
+    await pickOn()
     handleRecorderPicked(7, {
       strategy: 'id',
       selector: 'save',
@@ -123,16 +149,16 @@ describe('pick mode in main', () => {
 
   it.each([null, 'x', {}, { strategy: 'name', selector: 'q' }, { strategy: 'css', selector: '' }])(
     'ignores an unusable pick %j and keeps picking',
-    (data) => {
-      setPickMode(true)
+    async (data) => {
+      await pickOn()
       handleRecorderPicked(7, data)
       expect(picked()).toEqual([])
       expect(state.pickMode).toBe(true)
     }
   )
 
-  it('sends a cancel to the app and ends pick mode', () => {
-    setPickMode(true)
+  it('sends a cancel to the app and ends pick mode', async () => {
+    await pickOn()
     handleRecorderPickCancelled(8)
     expect(picked()).toEqual([])
     handleRecorderPickCancelled(7)
@@ -140,36 +166,124 @@ describe('pick mode in main', () => {
     expect(state.pickMode).toBe(false)
   })
 
-  it('ends pick mode as a cancel when the guest navigates', () => {
-    setPickMode(true)
+  it('ends pick mode as a cancel that says the page changed when the guest navigates', async () => {
+    await pickOn()
+    guestSend.mockClear()
     guest!.emit('did-start-navigation', { isMainFrame: true, isSameDocument: false })
     expect(state.pickMode).toBe(false)
-    expect(picked()).toEqual([['recorder-picked', { cancelled: true }]])
+    expect(guestSend).toHaveBeenCalledWith('recorder-pick-mode', false)
+    expect(picked()).toEqual([['recorder-picked', { cancelled: true, reason: 'navigated' }]])
   })
 
-  it('keeps picking through same-document and subframe navigations', () => {
-    setPickMode(true)
+  describe('waits for the page to settle before picking', () => {
+    const armed = (): boolean =>
+      state.pickMode || guestSend.mock.calls.some((c) => c[0] === 'recorder-pick-mode' && c[1])
+
+    it('until a page that is loading has loaded', async () => {
+      loading = true
+      const on = setPickMode(true)
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(armed()).toBe(false)
+
+      loading = false
+      guest!.emit('did-stop-loading')
+      await vi.advanceTimersByTimeAsync(PICK_SETTLE_MS)
+      expect(await on).toEqual({ success: true })
+      expect(state.pickMode).toBe(true)
+      expect(guestSend).toHaveBeenCalledWith('recorder-pick-mode', true)
+    })
+
+    it('picks on the new page when the last replayed click starts a navigation', async () => {
+      const on = setPickMode(true)
+      // The click resolved before its navigation began
+      await vi.advanceTimersByTimeAsync(PICK_SETTLE_MS / 2)
+      loading = true
+      guest!.emit('did-start-navigation', { isMainFrame: true, isSameDocument: false })
+      guest!.emit('did-start-loading')
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(armed()).toBe(false)
+
+      loading = false
+      guest!.emit('did-stop-loading')
+      await vi.advanceTimersByTimeAsync(PICK_SETTLE_MS)
+      expect(await on).toEqual({ success: true })
+      expect(state.pickMode).toBe(true)
+      // The navigation came before picking: nothing was cancelled
+      expect(picked()).toEqual([])
+    })
+
+    it('picks anyway after 10 s of a page that never finishes loading', async () => {
+      loading = true
+      const on = setPickMode(true)
+      await vi.advanceTimersByTimeAsync(9_000)
+      expect(armed()).toBe(false)
+      await vi.advanceTimersByTimeAsync(1_000)
+      expect(await on).toEqual({ success: true })
+      expect(state.pickMode).toBe(true)
+    })
+
+    it('never picks when picking is turned off meanwhile', async () => {
+      loading = true
+      const on = setPickMode(true)
+      setPickMode(false)
+      loading = false
+      guest!.emit('did-stop-loading')
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(await on).toEqual({ success: false })
+      expect(armed()).toBe(false)
+      expect(guest!.listenerCount('did-stop-loading')).toBe(0)
+    })
+
+    it('never picks when the recorder stops meanwhile', async () => {
+      const on = setPickMode(true)
+      stopRecordingMain()
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(await on).toEqual({ success: false })
+      expect(armed()).toBe(false)
+    })
+
+    it('fails when another recorder took its place meanwhile', async () => {
+      const on = setPickMode(true)
+      state.recorderWebContentsId = 9
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(await on).toEqual({ success: false })
+      expect(armed()).toBe(false)
+    })
+
+    it('fails when the guest goes away meanwhile', async () => {
+      loading = true
+      const on = setPickMode(true)
+      guest!.isDestroyed = (): boolean => true
+      guest!.emit('destroyed')
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(await on).toEqual({ success: false })
+      expect(armed()).toBe(false)
+    })
+  })
+
+  it('keeps picking through same-document and subframe navigations', async () => {
+    await pickOn()
     guest!.emit('did-start-navigation', { isMainFrame: true, isSameDocument: true })
     guest!.emit('did-start-navigation', { isMainFrame: false, isSameDocument: false })
     expect(state.pickMode).toBe(true)
   })
 
-  it('ends pick mode when the guest is destroyed', () => {
-    setPickMode(true)
+  it('ends pick mode when the guest is destroyed', async () => {
+    await pickOn()
     guest!.emit('destroyed')
     expect(state.pickMode).toBe(false)
     expect(picked()).toEqual([['recorder-picked', { cancelled: true }]])
   })
 
-  it('stops watching the guest once pick mode ends', () => {
-    setPickMode(true)
+  it('stops watching the guest once pick mode ends', async () => {
+    await pickOn()
     setPickMode(false)
     expect(guest!.listenerCount('did-start-navigation')).toBe(0)
     expect(guest!.listenerCount('destroyed')).toBe(0)
   })
 
-  it('ends pick mode when recording stops, before forgetting the guest', () => {
-    setPickMode(true)
+  it('ends pick mode when recording stops, before forgetting the guest', async () => {
+    await pickOn()
     guestSend.mockClear()
     stopRecordingMain()
     expect(state.pickMode).toBe(false)
@@ -178,17 +292,15 @@ describe('pick mode in main', () => {
     expect(state.recorderWebContentsId).toBeNull()
   })
 
-  it('notes when pick mode ended, so main can ignore the rest of a double-click', () => {
-    vi.useFakeTimers()
+  it('notes when pick mode ended, so main can ignore the rest of a double-click', async () => {
+    await pickOn()
     vi.setSystemTime(1_000_000)
-    setPickMode(true)
     handleRecorderPicked(7, { strategy: 'css', selector: '#new' })
     expect(state.pickModeEndedAt).toBe(1_000_000)
-    vi.useRealTimers()
   })
 
-  it('ends pick mode in the old guest when another recorder registers', () => {
-    setPickMode(true)
+  it('ends pick mode in the old guest when another recorder registers', async () => {
+    await pickOn()
     guestSend.mockClear()
     registerRecorderWebContents(7)
     expect(state.pickMode).toBe(true)

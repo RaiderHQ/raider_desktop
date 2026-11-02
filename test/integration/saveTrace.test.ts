@@ -404,6 +404,23 @@ describe('saveTrace handler', () => {
       expect(existsSync(join(picDir(), 'eb.jpg'))).toBe(true)
     })
 
+    it.each([
+      { stepIds: 's1' },
+      { stepIds: [1, 2] },
+      { stepIds: [null] },
+      { stepIds: { length: 1 } }
+    ])(
+      'deletes nothing for step ids that are not a list of text: $stepIds',
+      async ({ stepIds }) => {
+        seed()
+        // A string would otherwise be read character by character
+        const result = await saveTrace(testId, [], stepIds as unknown as string[])
+        expect(result.success).toBe(true)
+        expect(existsSync(join(picDir(), 'e1.jpg'))).toBe(true)
+        expect(existsSync(join(picDir(), 'e2.jpg'))).toBe(true)
+      }
+    )
+
     it("keeps today's behaviour without stepIds", async () => {
       seed()
       await saveTrace(testId, [{ id: 'e9', command: 'z', timestamp: 9, url: 'u' }])

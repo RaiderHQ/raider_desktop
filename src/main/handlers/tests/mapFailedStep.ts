@@ -1,5 +1,5 @@
-import { realpath } from 'fs/promises'
-import { isAbsolute, relative, resolve } from 'path'
+import { realpath, stat } from 'fs/promises'
+import { isAbsolute, join, relative, resolve } from 'path'
 import { safeError } from '../../utils/safeLog'
 import { appState } from '../appState'
 import { activeProject } from '../mobile/deviceSettingsIpc'
@@ -52,6 +52,21 @@ async function lineOfFirstFrameIn(
   return null
 }
 
+/**
+ * When the failed row's run finished: its `finished_at`, else when the results file was
+ * written (never earlier than the run's end). Null when neither tells: the steps may have
+ * changed since, so no step is named.
+ */
+async function whenRan(
+  finishedAt: string | undefined,
+  projectPath: string
+): Promise<number | null> {
+  const ran = finishedAt === undefined ? NaN : Date.parse(finishedAt)
+  if (!Number.isNaN(ran)) return ran
+  const written = await stat(join(projectPath, 'raider-results', 'run.json')).catch(() => null)
+  return written ? written.mtimeMs : null
+}
+
 /** 'map-failed-step': the recorded step a failed row's frames point into, or why none. */
 export async function mapFailedStepHandler(
   projectPath: unknown,
@@ -70,10 +85,8 @@ export async function mapFailedStepHandler(
     if ('none' in found) return found
     const { sidecar, stepLines } = found
 
-    const ran = failure.finishedAt === undefined ? NaN : Date.parse(failure.finishedAt)
-    if (!Number.isNaN(ran) && ran <= Date.parse(sidecar.updatedAt)) {
-      return { none: 'changedSinceRun' }
-    }
+    const ran = await whenRan(failure.finishedAt, project)
+    if (ran === null || ran <= Date.parse(sidecar.updatedAt)) return { none: 'changedSinceRun' }
     if (!stepLines) return { none: 'noMap' }
 
     const frames = failure.appFrame ? [...failure.backtrace, failure.appFrame] : failure.backtrace

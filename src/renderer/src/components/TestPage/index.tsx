@@ -177,10 +177,11 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
     // The latest steps, which may have changed since this render
     const fixedTest = useRecorderStore.getState().activeTest
     if (!fixedTest || fixedTest.id !== test.id) return
-    // Saved right away, as a rename is: the next run reads the file
-    Promise.resolve(window.api.saveRecording(activeSuiteId, fixedTest))
+    // Saved once, right away, as a re-pick is: the next run reads the file
+    recording
+      .saveFixedTest(activeSuiteId, fixedTest)
       .then((saved) => {
-        if (handleSaveResult(saved, fixedTest.id, t)) setFixedFor(result)
+        if (saved) setFixedFor(result)
       })
       .catch((error: unknown) => console.error('Saving the fix failed:', error))
   }

@@ -9,6 +9,7 @@ import { describeStep, elementName } from '@shared/describeStep'
 import { failureReason, type FailureReason } from '@shared/failureReason'
 import type { Step } from '@shared/types/step'
 import type { Test } from '@shared/types/test'
+import type { Suite } from '@foundation/Types/suite'
 
 export type FailedStepState =
   | { status: 'none' }
@@ -17,7 +18,10 @@ export type FailedStepState =
   | { status: 'changedSinceRun'; result: TestResult }
 
 const NONE: FailedStepState = { status: 'none' }
+// The rows the test page shows a failed step for
 const FAILED = new Set(['failed', 'broken'])
+// A quarantined test still failed for real: its card names the step too
+const MAPPED = new Set([...FAILED, 'quarantined'])
 
 /** Which recorded step a failed result points at, asked of main. */
 export async function resolveFailedStep(
@@ -26,7 +30,7 @@ export async function resolveFailedStep(
   result: TestResult
 ): Promise<FailedStepState> {
   const { failure } = result
-  if (!FAILED.has(result.status) || !failure || test.ownership !== 'recorded') return NONE
+  if (!MAPPED.has(result.status) || !failure || test.ownership !== 'recorded') return NONE
   const map = await window.api.mapFailedStep(projectPath, test.id, {
     file: result.file ?? test.file ?? '',
     backtrace: failure.backtrace,
@@ -46,14 +50,24 @@ export async function resolveFailedStep(
   return { status: 'mapped', index, step, reason: failureReason(failure, step, element), result }
 }
 
-/** The failed step for one known result; none until main has answered. */
+/** The test as main last saved it: it only changes when a save is broadcast */
+const savedCopyOf = (suites: Suite[], testId: string | null): Test | null =>
+  testId === null ? null : (suites.flatMap((s) => s.tests).find((tt) => tt.id === testId) ?? null)
+
+/**
+ * The failed step for one known result; none until main has answered, `pending` meanwhile.
+ * Asked again when the test is saved or its steps come and go, not on every edit: main
+ * maps against the saved file anyway.
+ */
 export function useFailedStepFor(
   projectPath: string | null,
   test: Test | null,
   result: TestResult | null
-): FailedStepState {
+): FailedStepState & { pending: boolean } {
   const testId = test?.id ?? null
   const key = projectPath && testId ? `${projectPath}\n${testId}` : null
+  const saved = useRecorderStore((s) => savedCopyOf(s.suites, testId))
+  const stepIds = test?.steps.map((s) => s.id).join('\n')
   // Kept with the test it was for: another test or project never paints this answer,
   // the same one keeps it while re-asking
   const [shown, setShown] = useState<{ key: string | null; state: FailedStepState }>({
@@ -77,9 +91,10 @@ export function useFailedStepFor(
     return (): void => {
       active = false
     }
-  }, [key, test?.ownership, test?.steps, test?.file, result])
+  }, [key, test?.ownership, stepIds, saved, test?.file, result])
 
-  return shown.key === key ? shown.state : NONE
+  if (shown.key === key) return { ...shown.state, pending: false }
+  return { ...NONE, pending: !!(projectPath && test && result) }
 }
 
 const stripDot = (file: string): string => file.replace(/^\.\//, '')

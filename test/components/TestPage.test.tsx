@@ -614,13 +614,10 @@ describe('TestPage', () => {
 
     expect(api.stopRecordingMain).toHaveBeenCalled()
     await waitFor(() => expect(api.saveRecording).toHaveBeenCalledTimes(1))
-    // Nothing listens for main's 'recording-stopped' any more: the leave saved the trace
-    expect(api.saveTrace).toHaveBeenCalledTimes(1)
+    // Nothing listens for main's 'recording-stopped' any more: the leave saved the trace,
+    // once the test itself was saved
+    await waitFor(() => expect(api.saveTrace).toHaveBeenCalledTimes(1))
     expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], expect.any(Array))
-    expect(api.saveRecording).toHaveBeenCalledWith(
-      's1',
-      expect.objectContaining({ id: 't1', hasTrace: true })
-    )
     expect(api.saveRecording).toHaveBeenCalledWith(
       's1',
       expect.objectContaining({ id: 't1', steps: [step('a'), step('b'), step('n')] })
@@ -874,6 +871,23 @@ describe('TestPage fixing a failed value', () => {
       })
     )
     expect(screen.queryByRole('button', { name: 'failedStep.save' })).not.toBeInTheDocument()
+  })
+
+  it('saves the new value once: the autosave leaves it alone', async () => {
+    renderPage(typed)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.editValue' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'failedStep.value' }), {
+      target: { value: 'new' }
+    })
+    api.saveRecording.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'failedStep.save' }))
+    expect(await screen.findByText('failedStep.fixed')).toBeInTheDocument()
+    // Past the autosave's 500 ms
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 700))
+    })
+    expect(api.saveRecording).toHaveBeenCalledTimes(1)
   })
 
   it('stays unfixed when the save fails', async () => {
