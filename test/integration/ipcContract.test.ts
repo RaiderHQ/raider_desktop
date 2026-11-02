@@ -151,9 +151,7 @@ describe('IPC Contract', () => {
 
     // Event Listeners
     'onTestsMigrated',
-    'removeTestsMigratedListener',
     'onSuitesTooNew',
-    'removeSuitesTooNewListener',
 
     // Scaffolding
     'scaffoldGenerate',
@@ -174,9 +172,7 @@ describe('IPC Contract', () => {
     'terminalResize',
     'terminalKill',
     'onTerminalData',
-    'removeTerminalDataListener',
     'onTerminalExit',
-    'removeTerminalExitListener',
 
     // Longship
     'getLongshipConfig',
@@ -266,7 +262,11 @@ describe('IPC Contract', () => {
       onNewRecordedStep: 'new-recorded-step',
       onAddAssertionStep: 'add-assertion-step',
       onNewTraceStep: 'new-trace-step',
-      onReplayFailed: 'replay-failed'
+      onReplayFailed: 'replay-failed',
+      onTestsMigrated: 'tests-migrated',
+      onSuitesTooNew: 'suites-too-new',
+      onTerminalData: 'terminal-data',
+      onTerminalExit: 'terminal-exit'
     }
 
     for (const [method, channel] of Object.entries(channels)) {

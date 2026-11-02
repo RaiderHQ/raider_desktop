@@ -15,7 +15,6 @@ import type {
 } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { QuickProject } from '@shared/types/quickProject'
-import type { IpcRendererEvent } from 'electron'
 import type { RunApi } from '@shared/types/runEvents'
 import type { AssertionMessage } from '@shared/types/pendingAssertion'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
@@ -277,14 +276,10 @@ export interface WindowApi extends RunApi {
   // --- Event Listeners ---
   /** Sent once when opening a project moved (or could not yet move) its recorded tests into project files */
   onTestsMigrated: (
-    callback: (event: IpcRendererEvent, info: { migrated: number; postponed: boolean }) => void
-  ) => Electron.IpcRenderer
-  removeTestsMigratedListener: (
-    callback: (event: IpcRendererEvent, info: { migrated: number; postponed: boolean }) => void
-  ) => Electron.IpcRenderer
+    callback: (info: { migrated: number; postponed: boolean }) => void
+  ) => () => void
   /** Sent when the project's suites were saved by a newer Raider and are left untouched */
-  onSuitesTooNew: (callback: (event: IpcRendererEvent) => void) => Electron.IpcRenderer
-  removeSuitesTooNewListener: (callback: (event: IpcRendererEvent) => void) => Electron.IpcRenderer
+  onSuitesTooNew: (callback: () => void) => () => void
 
   // --- Scaffolding ---
   scaffoldGenerate: (
@@ -333,14 +328,8 @@ export interface WindowApi extends RunApi {
   terminalWrite: (data: string) => Promise<void>
   terminalResize: (cols: number, rows: number) => Promise<void>
   terminalKill: () => Promise<void>
-  onTerminalData: (
-    callback: (event: IpcRendererEvent, data: string) => void
-  ) => Electron.IpcRenderer
-  removeTerminalDataListener: (
-    callback: (event: IpcRendererEvent, data: string) => void
-  ) => Electron.IpcRenderer
-  onTerminalExit: (callback: (event: IpcRendererEvent) => void) => Electron.IpcRenderer
-  removeTerminalExitListener: (callback: (event: IpcRendererEvent) => void) => Electron.IpcRenderer
+  onTerminalData: (callback: (data: string) => void) => () => void
+  onTerminalExit: (callback: () => void) => () => void
 
   // --- App Lifecycle ---
   closeApp: () => Promise<void>

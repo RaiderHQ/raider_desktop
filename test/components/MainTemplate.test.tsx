@@ -50,12 +50,10 @@ beforeAll(() => {
       .fn()
       .mockResolvedValue({ success: true, rubyCommand: 'ruby', rubyVersion: '3.2.0' }),
     closeApp: vi.fn(),
-    onTestsMigrated: vi.fn(),
+    onTestsMigrated: vi.fn(() => vi.fn()),
     onRunEvent: vi.fn(() => vi.fn()),
     getActiveRun: vi.fn().mockResolvedValue(null),
-    removeTestsMigratedListener: vi.fn(),
-    onSuitesTooNew: vi.fn(),
-    removeSuitesTooNewListener: vi.fn(),
+    onSuitesTooNew: vi.fn(() => vi.fn()),
     onTraceOpened: vi.fn(() => vi.fn()),
     onSuitesRecovered: vi.fn(() => vi.fn()),
     onSuiteUpdated: vi.fn(() => vi.fn())
@@ -155,7 +153,7 @@ describe('MainTemplate project files toasts', () => {
     const toast = await toastMock()
     toast.success.mockClear()
     renderMain()
-    listener('onTestsMigrated')({}, { migrated: 2, postponed: false })
+    listener('onTestsMigrated')({ migrated: 2, postponed: false })
     expect(toast.success).toHaveBeenCalledWith(
       'suites.migrated.done {"count":2}',
       expect.anything()
@@ -166,7 +164,7 @@ describe('MainTemplate project files toasts', () => {
     const toast = await toastMock()
     toast.mockClear()
     renderMain()
-    listener('onTestsMigrated')({}, { migrated: 0, postponed: true })
+    listener('onTestsMigrated')({ migrated: 0, postponed: true })
     expect(toast).toHaveBeenCalledWith('suites.migrated.postponed', expect.anything())
   })
 
@@ -174,7 +172,7 @@ describe('MainTemplate project files toasts', () => {
     const toast = await toastMock()
     toast.error.mockClear()
     renderMain()
-    listener('onSuitesTooNew')({})
+    listener('onSuitesTooNew')()
     expect(toast.error).toHaveBeenCalledWith('suites.tooNew', expect.anything())
   })
 })
