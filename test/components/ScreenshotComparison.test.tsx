@@ -190,6 +190,84 @@ describe('ScreenshotComparison', () => {
     errors.mockRestore()
   })
 
+  describe('a new run', () => {
+    it('reloads the pictures when only the run id changes', async () => {
+      readImage.mockResolvedValueOnce({ success: true, data: 'OLD1', fileExt: '.png' })
+      const { rerender } = render(<ScreenshotComparison comparisons={[failed]} runId="r1" />)
+      expect(
+        (await screen.findByAltText('Diff screenshot for home')).getAttribute('src')
+      ).toContain('OLD1')
+      readImage.mockResolvedValueOnce({ success: true, data: 'NEW2', fileExt: '.png' })
+      rerender(<ScreenshotComparison comparisons={[failed]} runId="r2" />)
+      await waitFor(() =>
+        expect(screen.getByAltText('Diff screenshot for home').getAttribute('src')).toContain(
+          'NEW2'
+        )
+      )
+      expect(readImage).toHaveBeenCalledTimes(2)
+    })
+
+    it('brings the accept button back and resets the tab', async () => {
+      const { rerender } = render(<ScreenshotComparison comparisons={[failed]} runId="r1" />)
+      fireEvent.click(screen.getByRole('tab', { name: 'Expected' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Accept as baseline' }))
+      await screen.findByText('Baseline updated, commit it with your tests')
+      rerender(<ScreenshotComparison comparisons={[failed]} runId="r2" />)
+      expect(screen.getByRole('button', { name: 'Accept as baseline' })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: 'Diff' })).toHaveAttribute('aria-selected', 'true')
+    })
+  })
+
+  describe('tabs keyboard and naming', () => {
+    it('moves focus with arrows, Home and End, and names the tablist', () => {
+      render(<ScreenshotComparison comparisons={[failed]} />)
+      const diff = screen.getByRole('tab', { name: 'Diff' })
+      diff.focus()
+      fireEvent.keyDown(diff, { key: 'ArrowRight' })
+      expect(screen.getByRole('tab', { name: 'Expected' })).toHaveFocus()
+      fireEvent.keyDown(screen.getByRole('tab', { name: 'Expected' }), { key: 'End' })
+      expect(screen.getByRole('tab', { name: 'Diff' })).toHaveFocus()
+      fireEvent.keyDown(screen.getByRole('tab', { name: 'Diff' }), { key: 'Home' })
+      expect(screen.getByRole('tab', { name: 'Expected' })).toHaveFocus()
+      fireEvent.keyDown(screen.getByRole('tab', { name: 'Expected' }), { key: 'ArrowLeft' })
+      expect(screen.getByRole('tab', { name: 'Diff' })).toHaveFocus()
+      expect(screen.getByRole('tablist', { name: 'home' })).toBeInTheDocument()
+    })
+
+    it('defaults to Actual when there is no diff', () => {
+      render(
+        <ScreenshotComparison
+          comparisons={[{ ...failed, images: { expected: '/r/e.png', actual: '/r/a.png' } }]}
+        />
+      )
+      expect(screen.getByRole('tab', { name: 'Actual' })).toHaveAttribute('aria-selected', 'true')
+    })
+  })
+
+  describe('allowance and percent', () => {
+    it('shows pixels or percent when both limits are set', () => {
+      render(
+        <ScreenshotComparison
+          comparisons={[{ ...failed, maxDiffPixels: 50, maxDiffRatio: 0.01 }]}
+        />
+      )
+      expect(screen.getByText(/allowed: 50 pixels or 1.00%/)).toBeInTheDocument()
+    })
+
+    it('shows only the percent when pixels are 0 or null', () => {
+      render(
+        <ScreenshotComparison comparisons={[{ ...failed, maxDiffPixels: 0, maxDiffRatio: 0.02 }]} />
+      )
+      expect(screen.getByText(/allowed: 2.00%/)).toBeInTheDocument()
+      expect(screen.queryByText(/pixels or/)).not.toBeInTheDocument()
+    })
+
+    it('omits the percent when the ratio is unknown', () => {
+      render(<ScreenshotComparison comparisons={[{ ...failed, diffRatio: null }]} />)
+      expect(screen.getByText('1,797,705 pixels differ')).toBeInTheDocument()
+    })
+  })
+
   describe('Accept as baseline', () => {
     const btn = (): HTMLElement => screen.getByRole('button', { name: 'Accept as baseline' })
 
