@@ -211,7 +211,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
           )}
 
           {!!result?.comparisons?.length && (
-            <ScreenshotComparison comparisons={result.comparisons} />
+            <ScreenshotComparison comparisons={result.comparisons} runId={result.finishedAt} />
           )}
 
           {video && (

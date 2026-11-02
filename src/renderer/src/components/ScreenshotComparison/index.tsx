@@ -6,6 +6,8 @@ import type { ScreenshotComparison as Comparison } from '@foundation/Types/testR
 
 interface ScreenshotComparisonProps {
   comparisons: Comparison[]
+  /** Identifies the run these came from; a new one reloads the pictures and resets accept state. */
+  runId?: string
 }
 
 type Tab = 'expected' | 'actual' | 'diff'
@@ -48,7 +50,13 @@ const ComparisonEntry: React.FC<{ comparison: Comparison }> = ({ comparison: c }
   const tabs = TAB_ORDER.filter((tab) => !!c.images[tab])
   const [chosen, setChosen] = useState<Tab | null>(null)
   const selected: Tab | null =
-    chosen && tabs.includes(chosen) ? chosen : c.images.diff ? 'diff' : (tabs[0] ?? null)
+    chosen && tabs.includes(chosen)
+      ? chosen
+      : c.images.diff
+        ? 'diff'
+        : c.images.actual
+          ? 'actual'
+          : (tabs[0] ?? null)
 
   const [accept, setAccept] = useState<AcceptState>('idle')
   const inFlight = useRef(false)
@@ -80,8 +88,14 @@ const ComparisonEntry: React.FC<{ comparison: Comparison }> = ({ comparison: c }
     !!c.actualSize &&
     (c.expectedSize[0] !== c.actualSize[0] || c.expectedSize[1] !== c.actualSize[1])
 
+  // Pixel and ratio limits are either-or: the larger allowance wins.
   let allowed: string | null = null
-  if (c.maxDiffRatio !== null) allowed = percent(c.maxDiffRatio)
+  if (c.maxDiffRatio !== null && c.maxDiffPixels !== null && c.maxDiffPixels > 0) {
+    allowed = t('screenshotComparison.allowedEither', {
+      n: c.maxDiffPixels.toLocaleString(),
+      percent: percent(c.maxDiffRatio)
+    })
+  } else if (c.maxDiffRatio !== null) allowed = percent(c.maxDiffRatio)
   else if (c.maxDiffPixels !== null) {
     allowed = t('screenshotComparison.allowedPixels', { n: c.maxDiffPixels.toLocaleString() })
   }
@@ -90,17 +104,28 @@ const ComparisonEntry: React.FC<{ comparison: Comparison }> = ({ comparison: c }
     c.threshold !== null ? t('screenshotComparison.threshold', { threshold: c.threshold }) : null
   ].filter(Boolean)
 
+  const tabRefs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({})
   const onKeyDown = (e: React.KeyboardEvent): void => {
-    if (!selected || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return
-    const step = e.key === 'ArrowRight' ? 1 : -1
-    setChosen(tabs[(tabs.indexOf(selected) + step + tabs.length) % tabs.length])
+    if (!selected) return
+    const at = tabs.indexOf(selected)
+    let next: number
+    if (e.key === 'ArrowRight') next = (at + 1) % tabs.length
+    else if (e.key === 'ArrowLeft') next = (at - 1 + tabs.length) % tabs.length
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = tabs.length - 1
+    else return
+    e.preventDefault()
+    setChosen(tabs[next])
+    tabRefs.current[tabs[next]]?.focus()
   }
 
   return (
     <li data-testid={`comparison-${c.name}`} className="space-y-2">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-baseline gap-2 min-w-0">
-          <span className="text-sm font-medium text-neutral-dark truncate">{c.name}</span>
+          <span id={`${baseId}-name`} className="text-sm font-medium text-neutral-dark truncate">
+            {c.name}
+          </span>
           <span className="text-xs text-neutral-mid">
             {t(`screenshotComparison.status.${c.status}`)}
           </span>
@@ -122,10 +147,12 @@ const ComparisonEntry: React.FC<{ comparison: Comparison }> = ({ comparison: c }
       </div>
       {c.diffPixels !== null && (
         <p className="text-xs text-neutral-dk">
-          {t('screenshotComparison.differ', {
-            pixels: c.diffPixels.toLocaleString(),
-            percent: percent(c.diffRatio ?? 0)
-          })}
+          {c.diffRatio !== null
+            ? t('screenshotComparison.differ', {
+                pixels: c.diffPixels.toLocaleString(),
+                percent: percent(c.diffRatio)
+              })
+            : t('screenshotComparison.differPixels', { pixels: c.diffPixels.toLocaleString() })}
         </p>
       )}
       {c.diffPixels !== null && allowanceParts.length > 0 && (
@@ -143,13 +170,21 @@ const ComparisonEntry: React.FC<{ comparison: Comparison }> = ({ comparison: c }
       )}
       {selected && (
         <div>
-          <div role="tablist" className="flex gap-1 mb-2" onKeyDown={onKeyDown}>
+          <div
+            role="tablist"
+            aria-labelledby={`${baseId}-name`}
+            className="flex gap-1 mb-2"
+            onKeyDown={onKeyDown}
+          >
             {tabs.map((tab) => (
               <button
                 key={tab}
                 type="button"
                 role="tab"
                 id={`${baseId}-tab-${tab}`}
+                ref={(el) => {
+                  tabRefs.current[tab] = el
+                }}
                 aria-selected={tab === selected}
                 aria-controls={`${baseId}-panel`}
                 tabIndex={tab === selected ? 0 : -1}
@@ -181,7 +216,7 @@ const ComparisonEntry: React.FC<{ comparison: Comparison }> = ({ comparison: c }
 }
 
 /** What a run's screenshot comparisons found: the pictures and numbers of each that changed, one line for those that matched. */
-const ScreenshotComparison: React.FC<ScreenshotComparisonProps> = ({ comparisons }) => {
+const ScreenshotComparison: React.FC<ScreenshotComparisonProps> = ({ comparisons, runId }) => {
   const { t } = useTranslation()
   const matched = comparisons.filter((c) => c.status === 'passed')
   const shown = comparisons.filter((c) => c.status !== 'passed')
@@ -195,7 +230,7 @@ const ScreenshotComparison: React.FC<ScreenshotComparisonProps> = ({ comparisons
       {shown.length > 0 && (
         <ul className="space-y-4">
           {shown.map((c, i) => (
-            <ComparisonEntry key={`${c.name}-${i}`} comparison={c} />
+            <ComparisonEntry key={`${runId ?? ''}-${c.name}-${i}`} comparison={c} />
           ))}
         </ul>
       )}

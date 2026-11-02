@@ -168,7 +168,9 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
       {result.failure && (
         <FailureDetails collapsed failure={result.failure} projectPath={projectPath} />
       )}
-      {!!result.comparisons?.length && <ScreenshotComparison comparisons={result.comparisons} />}
+      {!!result.comparisons?.length && (
+        <ScreenshotComparison comparisons={result.comparisons} runId={result.finishedAt} />
+      )}
     </section>
   )
 }
