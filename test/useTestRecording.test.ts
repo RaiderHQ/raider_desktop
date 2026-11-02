@@ -14,6 +14,8 @@ import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { toRouteParam } from '@foundation/testKey'
 import type { Test } from '@foundation/Types/test'
 import { UNLISTED_SUITE_ID } from '@shared/types/suite'
+import type { ElementTarget } from '@shared/types/step'
+import type { PickResult } from '@shared/types/pick'
 
 vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string, options?: object) => string } => ({
@@ -68,10 +70,13 @@ const api = {
   listProjectTests: vi.fn(),
   setRecordingState: vi.fn(),
   onFlushRecording: vi.fn(),
-  flushRecordingDone: vi.fn()
+  flushRecordingDone: vi.fn(),
+  setPickMode: vi.fn(),
+  onRecorderPicked: vi.fn()
 }
 
 let flushRecording: (() => void) | null = null
+let picked: ((result: PickResult) => void) | null = null
 let location = ''
 
 const wrapper = ({ children }: { children: ReactNode }): ReactNode =>
@@ -130,6 +135,14 @@ beforeEach(() => {
   api.readDirectory.mockResolvedValue([])
   api.saveTrace.mockResolvedValue({ success: true })
   api.listProjectTests.mockResolvedValue([])
+  api.setPickMode.mockResolvedValue({ success: true })
+  picked = null
+  api.onRecorderPicked.mockImplementation((cb: (result: PickResult) => void) => {
+    picked = cb
+    return (): void => {
+      picked = null
+    }
+  })
   flushRecording = null
   api.onFlushRecording.mockImplementation((cb: () => void) => {
     flushRecording = cb
@@ -818,6 +831,127 @@ describe('useTestRecording', () => {
       await act(async () => {})
       expect(api.saveRecording).toHaveBeenCalledTimes(1)
       expect(useRecorderStore.getState().unsavedExample).toBeNull()
+    })
+  })
+
+  describe('re-picking a step\'s element', () => {
+    const button = (id: string, value: string): Test['steps'][number] => ({
+      id,
+      kind: 'click',
+      element: { strategy: 'css', value, label: value }
+    })
+    const picks: Test = {
+      ...test1,
+      steps: [step('a'), button('b', '#next'), button('c', '#save'), button('d', '#done')]
+    }
+    const E: ElementTarget = { strategy: 'testid', value: 'save-button', label: 'Save' }
+
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      useRecorderStore.setState({
+        activeTest: picks,
+        suites: [{ id: 's1', name: 'Smoke', tests: [picks] }]
+      })
+      api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [picks] }])
+    })
+
+    /** Starts re-picking step `index`, up to the point the user is asked to click */
+    const pickUpTo = async (
+      rec: ReturnType<typeof useTestRecording>,
+      index: number
+    ): Promise<{ outcome: Promise<unknown> }> => {
+      let outcome: Promise<unknown> = Promise.resolve()
+      act(() => {
+        outcome = rec.rePick(index)
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1600)
+      })
+      // Wrapped: an async function would wait for the promise it returns
+      return { outcome }
+    }
+
+    it('replays the steps before it, then picks; only the element changes, and it saves', async () => {
+      const rec = await mount()
+      api.saveRecording.mockClear()
+      const { outcome } = await pickUpTo(rec, 2)
+      expect(api.loadUrlRequest).toHaveBeenCalledWith('https://x.test/login')
+      expect(api.replayInWebview).toHaveBeenCalledWith(picks.steps.slice(0, 2))
+      expect(api.setPickMode).toHaveBeenCalledWith(true)
+      expect(useRecorderStore.getState().recordingTarget).toEqual({ kind: 'pick', stepId: 'c' })
+      expect(useRecorderStore.getState().pickingStep).toBe(3)
+      await act(async () => {
+        picked?.({ element: E })
+        await outcome
+      })
+      await expect(outcome).resolves.toEqual({ kind: 'picked' })
+      const saved = api.saveRecording.mock.calls[0][1] as Test
+      expect(api.saveRecording).toHaveBeenCalledWith('s1', saved)
+      expect(saved.steps[2].element).toBe(E)
+      expect(saved.steps).toEqual(
+        picks.steps.map((s, i) => (i === 2 ? { ...s, element: E } : s))
+      )
+      const s = useRecorderStore.getState()
+      expect(s.recordingTarget).toBeNull()
+      expect(s.pickingStep).toBeNull()
+      expect(s.recordingUrl).toBeNull()
+      expect(api.setPickMode).toHaveBeenLastCalledWith(false)
+      expect(api.stopRecordingMain).toHaveBeenCalled()
+    })
+
+    it('says which step the replay could not get past, and never picks', async () => {
+      api.replayInWebview.mockResolvedValue({ success: false, failedStepId: 'b', error: 'x' })
+      const rec = await mount()
+      const { outcome } = await pickUpTo(rec, 2)
+      await expect(outcome).resolves.toEqual({ kind: 'replayFailed', stepNumber: 2 })
+      expect(api.setPickMode).not.toHaveBeenCalledWith(true)
+      expect(api.stopRecordingMain).toHaveBeenCalled()
+      expect(useRecorderStore.getState().recordingTarget).toBeNull()
+    })
+
+    it('a cancel leaves the steps as they were and saves nothing', async () => {
+      const rec = await mount()
+      api.saveRecording.mockClear()
+      const { outcome } = await pickUpTo(rec, 2)
+      await act(async () => {
+        picked?.({ cancelled: true })
+        await outcome
+      })
+      await expect(outcome).resolves.toEqual({ kind: 'cancelled' })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(useRecorderStore.getState().activeTest?.steps).toEqual(picks.steps)
+      expect(api.saveRecording).not.toHaveBeenCalled()
+      expect(useRecorderStore.getState().recordingTarget).toBeNull()
+    })
+
+    it('leaving while picking cancels it and stops the recorder', async () => {
+      const rec = await mount()
+      api.saveRecording.mockClear()
+      const { outcome } = await pickUpTo(rec, 2)
+      await act(async () => {
+        await rec.leave()
+        await outcome
+      })
+      await expect(outcome).resolves.toEqual({ kind: 'cancelled' })
+      expect(api.stopRecordingMain).toHaveBeenCalled()
+      expect(api.saveRecording).not.toHaveBeenCalled()
+      const s = useRecorderStore.getState()
+      expect(s.recordingTarget).toBeNull()
+      expect(s.pickingStep).toBeNull()
+      expect(api.setPickMode).toHaveBeenLastCalledWith(false)
+    })
+
+    it('replays nothing for the first step', async () => {
+      const rec = await mount()
+      const { outcome } = await pickUpTo(rec, 0)
+      expect(api.replayInWebview).not.toHaveBeenCalled()
+      expect(api.setPickMode).toHaveBeenCalledWith(true)
+      await act(async () => {
+        picked?.({ cancelled: true })
+        await outcome
+      })
     })
   })
 })

@@ -1,0 +1,77 @@
+import { renderHook, act } from '@testing-library/react'
+import { vi, describe, it, expect, beforeEach } from 'vitest'
+import type { IpcRendererEvent } from 'electron'
+import { useRecordingIPC } from '../src/renderer/src/hooks/useRecordingIPC'
+import useRecorderStore from '@foundation/Stores/recorderStore'
+import type { Test } from '@foundation/Types/test'
+
+const listeners = new Map<string, (event: IpcRendererEvent, ...args: unknown[]) => unknown>()
+const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
+  await act(async () => {
+    await listeners.get(channel)?.({} as IpcRendererEvent, ...args)
+  })
+}
+
+const test1: Test = {
+  id: 't1',
+  name: 'Login works',
+  url: 'https://x.test/login',
+  steps: [
+    { id: 'a', kind: 'navigate', url: 'https://x.test' },
+    { id: 'b', kind: 'click', element: { strategy: 'css', value: '#go' } }
+  ],
+  trace: [{ id: 'tr1', stepId: 'b', command: '', timestamp: 1, url: '' }]
+}
+
+const saveTrace = vi.fn()
+
+beforeEach(() => {
+  listeners.clear()
+  saveTrace.mockReset().mockResolvedValue({ success: true })
+  // @ts-expect-error - Mocking window.api
+  window.api = { saveTrace }
+  // @ts-expect-error - Mocking window.electron
+  window.electron = {
+    ipcRenderer: {
+      on: (channel: string, cb: (event: IpcRendererEvent, ...args: unknown[]) => unknown) => {
+        listeners.set(channel, cb)
+        return (): boolean => listeners.delete(channel)
+      }
+    }
+  }
+  useRecorderStore.getState().resetForProject()
+  useRecorderStore.setState({
+    activeSuiteId: 's1',
+    activeTest: test1,
+    recordingTarget: { kind: 'pick', stepId: 'b' },
+    breakpointIndex: 0
+  })
+})
+
+describe('useRecordingIPC while picking an element', () => {
+  it('keeps the steps and the trace when the recorder starts, and is not recording', async () => {
+    renderHook(() => useRecordingIPC({ setAssertionInfo: vi.fn() }))
+    await emit('recording-started', 'https://x.test/login')
+    const s = useRecorderStore.getState()
+    expect(s.activeTest).toEqual(test1)
+    expect(s.isRecording).toBe(false)
+    expect(s.breakpointIndex).toBe(0)
+  })
+
+  it('adds no step, check or picture', async () => {
+    const setAssertionInfo = vi.fn()
+    renderHook(() => useRecordingIPC({ setAssertionInfo }))
+    await emit('recording-started', 'https://x.test/login')
+    await emit('new-recorded-step', { id: 'n', kind: 'click', element: test1.steps[1] })
+    await emit('add-assertion-step', { id: 'm', kind: 'assert', check: 'visible' })
+    await emit('new-trace-step', { id: 'tr2', stepId: 'n', command: '', timestamp: 2, url: '' })
+    expect(useRecorderStore.getState().activeTest).toEqual(test1)
+    expect(setAssertionInfo).not.toHaveBeenCalled()
+  })
+
+  it('saves no trace when it stops', async () => {
+    renderHook(() => useRecordingIPC({ setAssertionInfo: vi.fn() }))
+    await emit('recording-stopped')
+    expect(saveTrace).not.toHaveBeenCalled()
+  })
+})

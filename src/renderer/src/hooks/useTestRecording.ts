@@ -14,6 +14,7 @@ import { testKeyOf, toRouteParam } from '@foundation/testKey'
 import type { TestKey } from '@foundation/testKey'
 import type { Test } from '@foundation/Types/test'
 import type { PendingAssertion } from '@shared/types/pendingAssertion'
+import type { PickResult } from '@shared/types/pick'
 import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import { MOBILE_NO_LEGACY } from '@shared/types/prepareRun'
 import { useSuiteSync } from './useSuiteSync'
@@ -32,6 +33,8 @@ export interface TestRecording {
   leave(): Promise<void>
   /** Saves a recording over a code example that its file couldn't take as a new recorded test */
   saveAsNewTest(): Promise<void>
+  /** Replay up to step `index`, then let the user pick that step's element on the page */
+  rePick(index: number): Promise<RePickOutcome>
   run(): Promise<void>
   cancelReplay(): Promise<void>
   recordingUrl: string | null
@@ -41,6 +44,13 @@ export interface TestRecording {
   assertionInfo: PendingAssertion | null
   setAssertionInfo(info: PendingAssertion | null): void
 }
+
+/** How picking a step's element again ended */
+export type RePickOutcome =
+  | { kind: 'picked' }
+  | { kind: 'cancelled' }
+  | { kind: 'replayFailed'; stepNumber: number }
+  | { kind: 'notStarted' }
 
 const store = useRecorderStore.getState
 
@@ -83,6 +93,39 @@ const startFailedKey = (result: { reason?: 'unsupportedUrl' }): string =>
 /** Stops a recording main started after the user left it, unless another one took its place */
 function stopAbandonedRecording(): void {
   if (store().recordingTarget === null) window.api.stopRecordingMain()
+}
+
+/** Ends the pick waiting for the user's click; set only while one waits */
+let endPick: ((result: PickResult) => void) | null = null
+
+/** The next pick result from main, or a cancel through `endPick`, whichever comes first */
+function waitForPick(): Promise<PickResult> {
+  return new Promise((resolve) => {
+    let unsubscribe = (): void => {}
+    const finish = (result: PickResult): void => {
+      // Once: leaving cancels it, and main then sends its own cancel too
+      if (endPick !== finish) return
+      endPick = null
+      unsubscribe()
+      resolve(result)
+    }
+    endPick = finish
+    unsubscribe = window.api.onRecorderPicked(finish)
+  })
+}
+
+/** Closes the recorder opened to pick an element; one the user left was already stopped */
+function closePick(target: RecordingTarget): void {
+  Promise.resolve(window.api.setPickMode(false)).catch((error: unknown) =>
+    console.error('Ending the pick failed:', error)
+  )
+  store().setPickingStep(null)
+  if (leftDuringStart(target)) return
+  // Nothing was recorded, so main's 'recording-stopped' has no trace to save
+  traceSavedOnStop()
+  store().setRecordingBrowser(null)
+  window.api.stopRecordingMain()
+  store().setRecordingTarget(null)
 }
 
 /** Only the start page was recorded: there is nothing worth keeping */
@@ -282,6 +325,14 @@ async function stopAndSave(t: Translate, options: StopOptions = {}): Promise<voi
     case 'example':
       await saveOverExample(t, target, test, options)
       return
+    case 'pick':
+      // Nothing was recorded: a replay or a pick still waiting ends, and nothing is saved
+      traceSavedOnStop()
+      Promise.resolve(window.api.cancelReplay()).catch((error: unknown) =>
+        console.error('Cancelling the replay failed:', error)
+      )
+      endPick?.({ cancelled: true })
+      return
     default: {
       const unknownTarget: never = target
       throw new Error(`Unknown recording target ${JSON.stringify(unknownTarget)}`)
@@ -478,6 +529,85 @@ export function useTestRecording(): TestRecording {
     [recordFromHere]
   )
 
+  const rePick = useCallback(
+    async (index: number): Promise<RePickOutcome> => {
+      const test = store().activeTest
+      const step = test?.steps[index]
+      if (!test || !step || useProjectStore.getState().layout?.recordable === false) {
+        return { kind: 'notStarted' }
+      }
+      const target: RecordingTarget = { kind: 'pick', stepId: step.id }
+      store().setRecordingTarget(target)
+      await window.api.loadUrlRequest(test.url ?? '')
+      if (leftDuringStart(target)) return { kind: 'notStarted' }
+      const started = await window.api.startRecordingMain()
+      if (leftDuringStart(target)) {
+        if (started.success) stopAbandonedRecording()
+        return { kind: 'notStarted' }
+      }
+      if (!started.success) {
+        store().setRecordingTarget(null)
+        toast.error(t(startFailedKey(started)))
+        return { kind: 'notStarted' }
+      }
+      store().setRecordingBrowser({ url: started.url, preloadPath: started.preloadPath })
+
+      // Wait briefly for the webview to mount and register its webContentsId
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      if (leftDuringStart(target)) return { kind: 'notStarted' }
+
+      if (index > 0) {
+        const replay = await window.api.replayInWebview(test.steps.slice(0, index))
+        if (leftDuringStart(target)) return { kind: 'notStarted' }
+        if (replay.cancelled || !replay.success) closePick(target)
+        if (replay.cancelled) return { kind: 'cancelled' }
+        if (!replay.success) {
+          const failedAt = test.steps.findIndex((s) => s.id === replay.failedStepId)
+          // Not told which: the page didn't get as far as the step before
+          return { kind: 'replayFailed', stepNumber: failedAt === -1 ? index : failedAt + 1 }
+        }
+      }
+
+      const pick = waitForPick()
+      const on = await window.api.setPickMode(true)
+      if (!on.success && !leftDuringStart(target)) {
+        endPick?.({ cancelled: true })
+        closePick(target)
+        return { kind: 'notStarted' }
+      }
+      if (!leftDuringStart(target)) store().setPickingStep(index + 1)
+      const result = await pick
+      // Closed before the test changes: nothing saves it while the recorder is open
+      closePick(target)
+      if (!('element' in result)) return { kind: 'cancelled' }
+
+      // Only what the step is found by changes: its id and kind stay
+      store().updateActiveTest((prev) =>
+        prev && prev.id === test.id
+          ? {
+              ...prev,
+              steps: prev.steps.map((s) =>
+                s.id === step.id ? ({ ...s, element: result.element } as typeof s) : s
+              )
+            }
+          : prev
+      )
+      const { activeSuiteId: suiteId, activeTest: updated } = store()
+      if (!suiteId || !updated || updated.id !== test.id) return { kind: 'cancelled' }
+      try {
+        // Saved right away, as a fixed value is: the next run reads the file
+        const saved = await window.api.saveRecording(suiteId, updated)
+        if (!handleSaveResult(saved, updated.id, t)) return { kind: 'cancelled' }
+      } catch (error) {
+        console.error('Saving the picked element failed:', error)
+        toast.error(t('recorder.saveFailed'), { id: 'save-failed' })
+        return { kind: 'cancelled' }
+      }
+      return { kind: 'picked' }
+    },
+    [t]
+  )
+
   const run = useCallback(async (): Promise<void> => {
     const { activeSuiteId: suiteId, activeTest: test, readOnlyView: view, setIsRunning } = store()
     const startLive = (file: string, label: string): void => {
@@ -548,6 +678,7 @@ export function useTestRecording(): TestRecording {
     stop,
     leave,
     saveAsNewTest,
+    rePick,
     run,
     cancelReplay,
     recordingUrl,

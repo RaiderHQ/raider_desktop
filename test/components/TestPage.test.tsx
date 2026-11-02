@@ -34,7 +34,8 @@ const spies = vi.hoisted(() => ({
   start: vi.fn().mockResolvedValue(undefined),
   continueRecording: vi.fn().mockResolvedValue(undefined),
   recordFromHere: vi.fn().mockResolvedValue(undefined),
-  run: vi.fn().mockResolvedValue(undefined)
+  run: vi.fn().mockResolvedValue(undefined),
+  rePick: vi.fn()
 }))
 vi.mock('../../src/renderer/src/hooks/useTestRecording', async (importOriginal) => {
   const actual =
@@ -46,7 +47,8 @@ vi.mock('../../src/renderer/src/hooks/useTestRecording', async (importOriginal) 
       start: spies.start,
       continueRecording: spies.continueRecording,
       recordFromHere: spies.recordFromHere,
-      run: spies.run
+      run: spies.run,
+      rePick: spies.rePick
     })
   }
 })
@@ -1026,5 +1028,95 @@ describe('TestPage re-record from the failed step', () => {
     expect(screen.queryByText('failedStep.reRecordConfirmTitle')).not.toBeInTheDocument()
     expect(spies.start).not.toHaveBeenCalled()
     expect(spies.recordFromHere).not.toHaveBeenCalled()
+  })
+})
+
+describe('TestPage re-picking the failed element', () => {
+  const clicks: Test = {
+    ...recorded,
+    file: 'spec/login_works_spec.rb',
+    steps: [
+      step('a'),
+      { id: 'b', kind: 'click', element: { strategy: 'css', value: '#next' } },
+      { id: 'c', kind: 'click', element: { strategy: 'css', value: '#save' } }
+    ]
+  }
+  const runJson = JSON.stringify({
+    run: { finished_at: '2026-11-02T10:00:00Z' },
+    results: [
+      {
+        full_name: 'Login works',
+        file_path: './spec/login_works_spec.rb',
+        status: 'failed',
+        failure: {
+          message: 'boom',
+          exception_class: 'RuntimeError',
+          backtrace: ['spec/login_works_spec.rb:8:in `block`'],
+          app_frame: 'spec/login_works_spec.rb:8:in `block`'
+        }
+      }
+    ]
+  })
+
+  beforeEach(() => {
+    spies.rePick.mockReset()
+    spies.recordFromHere.mockClear()
+    useProjectStore.setState({ projectPath: '/p' })
+    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [clicks, empty] }])
+    api.readDirectory.mockImplementation(async (dir: string) =>
+      dir === '/p/raider-results'
+        ? [{ name: 'run.json', type: 'file', path: '/p/raider-results/run.json' }]
+        : []
+    )
+    api.readFile.mockImplementation(async (path: string) =>
+      path === '/p/raider-results/run.json' ? { success: true, data: runJson } : { success: false }
+    )
+    api.mapFailedStep.mockResolvedValue({ stepId: 'c', index: 2 })
+  })
+  afterEach(() => useProjectStore.setState({ projectPath: null }))
+
+  it('shows the banner while picking, in place of the panel', async () => {
+    renderPage(clicks)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    act(() => {
+      useRecorderStore.getState().setRecordingTarget({ kind: 'pick', stepId: 'c' })
+      useRecorderStore.getState().setPickingStep(3)
+    })
+    expect(screen.getByText('failedStep.pickBanner')).toBeInTheDocument()
+    expect(screen.queryByTestId('failed-step-panel')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'testPage.record' })).toBeDisabled()
+  })
+
+  it('says it is fixed once the element was picked', async () => {
+    let finish: (outcome: { kind: 'picked' }) => void = () => {}
+    spies.rePick.mockImplementation(() => new Promise((resolve) => (finish = resolve)))
+    renderPage(clicks)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.rePick' }))
+    expect(spies.rePick).toHaveBeenCalledWith(2)
+    // The recorder opens and closes, as rePick does
+    act(() => useRecorderStore.getState().setRecordingTarget({ kind: 'pick', stepId: 'c' }))
+    await act(async () => {})
+    act(() => useRecorderStore.getState().setRecordingTarget(null))
+    await act(async () => finish({ kind: 'picked' }))
+    expect(await screen.findByText('failedStep.fixed')).toBeInTheDocument()
+    // And stays so once the page has looked at the last run again
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+    expect(screen.getByText('failedStep.fixed')).toBeInTheDocument()
+  })
+
+  it('offers to re-record from the step the replay could not get past', async () => {
+    spies.rePick.mockResolvedValue({ kind: 'replayFailed', stepNumber: 2 })
+    renderPage(clicks)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.rePick' }))
+    expect(await screen.findByText('failedStep.replayFailed')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'failedStep.reRecordFrom' }))
+    expect(screen.getByText('failedStep.reRecordConfirmTitle')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(spies.recordFromHere).toHaveBeenCalledWith(0, { kind: 'test' })
   })
 })

@@ -105,7 +105,10 @@ export function useFailedStep(
   test: Test | null
 ): FailedStepState & { reload(): void } {
   const file = test?.file
-  const recording = useRecorderStore((s) => s.recordingTarget !== null)
+  // Picking an element records nothing: the result stays, so the fix it makes can show as fixed
+  const recording = useRecorderStore(
+    (s) => s.recordingTarget !== null && s.recordingTarget.kind !== 'pick'
+  )
   const touchedAt = useRunStore((s) => {
     const run = s.run
     if (!run?.finished || run.projectPath !== projectPath || !file) return null

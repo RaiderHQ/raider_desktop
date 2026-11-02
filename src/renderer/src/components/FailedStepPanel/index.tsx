@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FailureDetails from '@components/FailureDetails'
 import { describeStep } from '@shared/describeStep'
-import { editableValue } from '@shared/stepFixes'
+import { canRePick, editableValue } from '@shared/stepFixes'
 import type { Test } from '@shared/types/test'
 import type { FailedStepState } from '../../hooks/useFailedStep'
 import StepPicture from './StepPicture'
@@ -14,6 +14,10 @@ interface FailedStepPanelProps {
   readOnly: boolean
   /** The fixes offered for this failure */
   actions: React.ReactNode
+  /** Picks the failed step's element again on the page */
+  onRePick?: () => void
+  /** The step (1-based) a replay for Re-pick couldn't get past, before the failed one */
+  replayFailedStep?: number | null
   /** Opens the form that corrects the failed step's value */
   onEditValue?: () => void
   /** Re-records the test from the given step (0-based): the failed step, or the first when unknown */
@@ -56,6 +60,8 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
   projectPath,
   readOnly,
   actions,
+  onRePick,
+  replayFailedStep = null,
   onEditValue,
   onReRecord,
   fixed = false,
@@ -68,6 +74,8 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
 
   const { result } = state
   const canEditValue = !!mapped && !!onEditValue && editableValue(mapped.step) !== null
+  const offerRePick = !!mapped && !!onRePick && canRePick(test.steps, mapped.index)
+  const replayFailed = mapped && replayFailedStep !== null ? replayFailedStep : null
   const failurePicture = (
     <StepPicture
       testId="picture-failed"
@@ -88,6 +96,11 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
           {t('failedStep.title', { n: mapped.index + 1, step: t(desc.key, desc.values) })}
         </h2>
         <p className="text-sm text-neutral-dark">{t(mapped.reason.key, mapped.reason.params)}</p>
+        {replayFailed !== null && (
+          <p className="text-sm text-neutral-dark">
+            {t('failedStep.replayFailed', { n: mapped.index + 1, m: replayFailed })}
+          </p>
+        )}
       </>
     )
   } else {
@@ -126,8 +139,13 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
           </button>
         </div>
       )}
-      {!readOnly && !fixed && (actions || canEditValue || onReRecord) && (
+      {!readOnly && !fixed && (actions || offerRePick || canEditValue || onReRecord) && (
         <div className="flex flex-wrap gap-2">
+          {offerRePick && (
+            <button type="button" className={ACTION} onClick={onRePick}>
+              {t('failedStep.rePick')}
+            </button>
+          )}
           {canEditValue && (
             <button type="button" className={ACTION} onClick={onEditValue}>
               {t('failedStep.editValue')}
@@ -136,6 +154,11 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
           {onReRecord && (
             <button type="button" className={ACTION} onClick={() => onReRecord(mapped?.index ?? 0)}>
               {t('failedStep.reRecord')}
+            </button>
+          )}
+          {replayFailed !== null && onReRecord && (
+            <button type="button" className={ACTION} onClick={() => onReRecord(replayFailed - 1)}>
+              {t('failedStep.reRecordFrom', { m: replayFailed })}
             </button>
           )}
           {actions}

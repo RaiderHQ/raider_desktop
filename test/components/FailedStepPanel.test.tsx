@@ -236,4 +236,63 @@ describe('FailedStepPanel', () => {
       expect(screen.queryByRole('button', { name: en.failedStep.reRecord })).not.toBeInTheDocument()
     })
   })
+
+  describe('Re-pick element', () => {
+    it('offers Re-pick for a step with an element', () => {
+      const onRePick = vi.fn()
+      renderPanel(mapped(), null, { onRePick })
+      fireEvent.click(screen.getByRole('button', { name: en.failedStep.rePick }))
+      expect(onRePick).toHaveBeenCalled()
+    })
+
+    it('has no Re-pick for a step inside a frame', () => {
+      const inFrame: Test = {
+        ...test,
+        steps: [
+          test.steps[0],
+          { id: 'f', kind: 'switchFrame', element: { strategy: 'css', value: 'iframe' } },
+          save
+        ]
+      }
+      render(
+        <FailedStepPanel
+          state={mapped()}
+          test={inFrame}
+          projectPath="/p"
+          readOnly={false}
+          actions={null}
+          onRePick={vi.fn()}
+        />
+      )
+      expect(screen.queryByRole('button', { name: en.failedStep.rePick })).not.toBeInTheDocument()
+    })
+
+    it('has no Re-pick for a step without an element', () => {
+      const navStep: Step = { id: 'c', kind: 'navigate', url: 'https://x.test/cart' }
+      render(
+        <FailedStepPanel
+          state={{ ...mapped(), step: navStep } as FailedStepState}
+          test={{ ...test, steps: [...test.steps.slice(0, 2), navStep] }}
+          projectPath="/p"
+          readOnly={false}
+          actions={null}
+          onRePick={vi.fn()}
+        />
+      )
+      expect(screen.queryByRole('button', { name: en.failedStep.rePick })).not.toBeInTheDocument()
+    })
+
+    it('is not offered in a read-only test', () => {
+      renderPanel(mapped(), null, { onRePick: vi.fn(), readOnly: true })
+      expect(screen.queryByRole('button', { name: en.failedStep.rePick })).not.toBeInTheDocument()
+    })
+
+    it('says which earlier step the replay could not get past, and re-records from it', () => {
+      const onReRecord = vi.fn()
+      renderPanel(mapped(), null, { onRePick: vi.fn(), onReRecord, replayFailedStep: 2 })
+      expect(screen.getByText("Couldn't get to step 3: step 2 didn't work.")).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Re-record from step 2' }))
+      expect(onReRecord).toHaveBeenCalledWith(1)
+    })
+  })
 })
