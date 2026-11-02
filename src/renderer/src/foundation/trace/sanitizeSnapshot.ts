@@ -81,6 +81,20 @@ const URL_ATTRIBUTES = new Set([
   'usemap'
 ])
 
+// SVG presentation attributes that take a CSS value with url().
+const SVG_CSS_ATTRIBUTES = new Set([
+  'fill',
+  'stroke',
+  'filter',
+  'clip-path',
+  'mask',
+  'marker',
+  'marker-start',
+  'marker-mid',
+  'marker-end',
+  'cursor'
+])
+
 const LINK_ELEMENTS = new Set(['a', 'area'])
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
@@ -114,13 +128,19 @@ export function sanitizeSnapshot(html: string, limits: SnapshotLimits = SNAPSHOT
 function sanitizePass(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html')
 
-  removeComments(doc)
-  for (const el of Array.from(doc.getElementsByTagName('*'))) {
+  for (const node of collect(
+    doc,
+    NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_PROCESSING_INSTRUCTION
+  )) {
+    node.parentNode?.removeChild(node)
+  }
+  for (const el of collect(doc, NodeFilter.SHOW_ELEMENT) as Element[]) {
     if (REMOVED_ELEMENTS.has(el.localName.toLowerCase())) el.remove()
   }
-  for (const el of Array.from(doc.getElementsByTagName('*'))) {
+  for (const el of collect(doc, NodeFilter.SHOW_ELEMENT) as Element[]) {
     cleanAttributes(el)
-    if (el.localName.toLowerCase() === 'style') el.textContent = sanitizeCss(el.textContent ?? '')
+    if (el.localName.toLowerCase() === 'style')
+      el.textContent = sanitizeStyleText(el.textContent ?? '')
   }
 
   const csp = doc.createElement('meta')
@@ -131,14 +151,13 @@ function sanitizePass(html: string): string {
   return DOCTYPE + doc.documentElement.outerHTML
 }
 
-function removeComments(doc: Document): void {
-  const walker = doc.createTreeWalker(
-    doc,
-    NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_PROCESSING_INSTRUCTION
-  )
+// A static list of the nodes, in document order. (A TreeWalker, because
+// Array.from over a live getElementsByTagName collection is quadratic in jsdom.)
+function collect(doc: Document, what: number): Node[] {
+  const walker = doc.createTreeWalker(doc, what)
   const found: Node[] = []
   while (walker.nextNode()) found.push(walker.currentNode)
-  for (const node of found) node.parentNode?.removeChild(node)
+  return found
 }
 
 function cleanAttributes(el: Element): void {
@@ -158,7 +177,7 @@ function cleanAttributes(el: Element): void {
       el.removeAttribute(attr.name)
       continue
     }
-    const isCss = local === 'style' || (el.namespaceURI === SVG_NS && attr.value.includes('('))
+    const isCss = local === 'style' || (el.namespaceURI === SVG_NS && SVG_CSS_ATTRIBUTES.has(local))
     if (isCss) {
       const css = sanitizeCss(attr.value)
       if (css === '') el.removeAttribute(attr.name)
@@ -194,12 +213,14 @@ const RESOURCE_FUNCTIONS = new Set([
 const isHex = (c: string): boolean => /^[0-9a-f]$/i.test(c)
 const isWhitespace = (c: string): boolean =>
   c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '\f'
+const isNewline = (c: string): boolean => c === '\n' || c === '\r' || c === '\f'
 const isNameChar = (c: string): boolean => /^[a-z0-9_-]$/i.test(c) || c.charCodeAt(0) > 0x7f
 
+// "</" is the only way out of a <style> element. In a CSS string "<\/" still
+// reads as "</", and anywhere else the rule was invalid already.
+const sanitizeStyleText = (css: string): string => sanitizeCss(css).replace(/<\//g, '<\\/')
+
 export function sanitizeCss(css: string): string {
-  // No legitimate sheet needs "<", and without it nothing can close the
-  // <style> element early or turn into markup when parsed again.
-  if (css.includes('<')) return ''
   return new CssScanner(css).run()
 }
 
@@ -226,7 +247,7 @@ class CssScanner {
         const name = this.readName()
         if (name.toLowerCase() === 'import') this.skipStatement()
         else this.out += '@' + css.slice(start, this.i)
-      } else if (isNameChar(c) || c === '\\') {
+      } else if (isNameChar(c) || this.isEscape(this.i)) {
         this.readNameOrFunction()
       } else {
         this.out += c
@@ -267,13 +288,21 @@ class CssScanner {
     let name = ''
     while (this.i < css.length) {
       const c = css[this.i]
-      if (c === '\\') name += this.readEscape()
-      else if (isNameChar(c)) {
+      if (c === '\\') {
+        if (!this.isEscape(this.i)) break
+        name += this.readEscape()
+      } else if (isNameChar(c)) {
         name += c
         this.i++
       } else break
     }
     return name
+  }
+
+  // A backslash before a newline (or at the end) does not start an escape.
+  private isEscape(at: number): boolean {
+    const next = this.css[at + 1]
+    return this.css[at] === '\\' && next !== undefined && !isNewline(next)
   }
 
   private readEscape(): string {
@@ -302,8 +331,11 @@ class CssScanner {
         this.i++
         break
       }
-      if (c === '\n') break
-      if (c === '\\') value += this.readEscape()
+      if (isNewline(c)) break
+      if (c === '\\' && !this.isEscape(this.i)) {
+        // A line continuation: the backslash and the newline mean nothing.
+        this.i += css[this.i + 1] === '\r' && css[this.i + 2] === '\n' ? 3 : 2
+      } else if (c === '\\') value += this.readEscape()
       else {
         value += c
         this.i++
@@ -317,18 +349,20 @@ class CssScanner {
     const { css } = this
     while (this.i < css.length && isWhitespace(css[this.i])) this.i++
     let value = ''
+    let bad = false
     if (css[this.i] === '"' || css[this.i] === "'") {
       value = this.readString()
       while (this.i < css.length && css[this.i] !== ')') this.i++
     } else {
       while (this.i < css.length && css[this.i] !== ')') {
-        if (css[this.i] === '\\') value += this.readEscape()
+        if (css[this.i] === '\\' && !this.isEscape(this.i)) bad = true
+        if (css[this.i] === '\\' && !bad) value += this.readEscape()
         else value += css[this.i++]
       }
     }
     if (css[this.i] !== ')') return null
     this.i++
-    return value
+    return bad ? null : value
   }
 
   private skipComment(): void {

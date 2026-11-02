@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import {
   SNAPSHOT_CSP,
   sanitizeSnapshot
@@ -27,8 +27,10 @@ const FORBIDDEN_TAGS = [
 const ALWAYS_DROPPED = ['srcdoc', 'action', 'formaction', 'srcset', 'target', 'ping']
 const URL_ATTRS = ['href', 'src', 'poster', 'background', 'data', 'cite', 'longdesc', 'lowsrc']
 
+const RealDOMParser = DOMParser
+
 function parse(html: string): Document {
-  return new DOMParser().parseFromString(html, 'text/html')
+  return new RealDOMParser().parseFromString(html, 'text/html')
 }
 
 const normalise = (value: string): string => value.replace(/[\s\x00-\x1f\x7f]/g, '').toLowerCase()
@@ -59,14 +61,15 @@ function expectClean(out: string): Document {
     }
   }
 
-  const css = Array.from(doc.getElementsByTagName('style'))
-    .map((s) => s.textContent ?? '')
+  const styleText = Array.from(doc.getElementsByTagName('style')).map((s) => s.textContent ?? '')
+  // Nothing in a <style> can close it; attributes are quoted, so "<" is inert there.
+  for (const text of styleText) expect(text).not.toContain('</')
+  const css = styleText
     .concat(elements.map((el) => el.getAttribute('style') ?? ''))
     .join('\n')
     .toLowerCase()
   expect(css).not.toContain('@import')
   expect(css).not.toContain('expression(')
-  expect(css).not.toContain('<')
   for (const m of css.matchAll(/url\(\s*['"]?([^'")]*)/g)) {
     expect(m[1].startsWith('data:image/') || m[1].startsWith('#'), m[0]).toBe(true)
   }
@@ -225,6 +228,17 @@ describe('sanitizeSnapshot', () => {
       ['font-face', '@font-face { font-family: x; src: url(https://evil.example/f.woff) }'],
       ['image-set', '.a { background: image-set("https://evil.example/a.png" 1x) }'],
       ['expression', '.a { width: expression(alert(1)) }'],
+      ['backslash newline', '.a { background:\\\nurl(https://evil.example/a.png) }'],
+      ['backslash CRLF', '.a { background:\\\r\nurl(https://evil.example/a.png) }'],
+      ['backslash form feed', '.a { background:\\\furl(https://evil.example/a.png) }'],
+      [
+        'string continuation',
+        '.a { content: "a\\\nb" } .b { background: url(https://evil.example/a.png) }'
+      ],
+      [
+        'bad url escape',
+        '.a { background: url(data:image/png\\\n) url(https://evil.example/a.png) }'
+      ],
       ['style breakout', '.a { color: red } </style><img src=x onerror=alert(1)>']
     ])('neutralises %s in <style> and style=""', (_name, css) => {
       const out = sanitizeSnapshot(`<style>${css}</style><svg><style>${css}</style></svg>`)
@@ -236,6 +250,27 @@ describe('sanitizeSnapshot', () => {
       expect(attr).not.toContain('evil.example')
     })
 
+    it('keeps CSS that uses "<"', () => {
+      const css =
+        '@media (width < 40rem) { .a { color: red } } @container (inline-size < 300px) { .c { color: green } } .q::before { content: "<" } .b { color: blue }'
+      const doc = expectClean(sanitizeSnapshot(`<style>${css}</style>`))
+      expect(doc.querySelector('style')?.textContent).toBe(css)
+      const attr = expectClean(sanitizeSnapshot(`<p style='content: "<"'>x</p>`))
+      expect(attr.querySelector('p')?.getAttribute('style')).toBe('content: "<"')
+    })
+
+    it('stops a style block from being closed from inside', () => {
+      // An SVG <style> can hold "</style>" as text; it must not end the
+      // element once serialised and parsed as HTML.
+      const out = sanitizeSnapshot(
+        '<svg><style>.a{color:red} &lt;/style&gt;&lt;img src=x onerror=alert(1)&gt;</style></svg>'
+      )
+      const doc = expectClean(out)
+      expect(doc.querySelectorAll('img')).toHaveLength(0)
+      expect(doc.querySelector('style')?.textContent).toContain('<\\/style>')
+      expect(sanitizeSnapshot(out)).toBe(out)
+    })
+
     it('neutralises remote urls in SVG presentation attributes, keeps fragments', () => {
       const doc = expectClean(
         sanitizeSnapshot(
@@ -244,6 +279,14 @@ describe('sanitizeSnapshot', () => {
       )
       expect(doc.getElementById('r')?.getAttribute('fill')).not.toContain('evil')
       expect(doc.getElementById('r')?.getAttribute('stroke')).toBe('url(#g)')
+    })
+
+    it('leaves non-CSS SVG attributes alone', () => {
+      const doc = expectClean(
+        sanitizeSnapshot('<svg aria-label="a < b (c)"><text id="t" data-x="f(1)">x</text></svg>')
+      )
+      expect(doc.querySelector('svg')?.getAttribute('aria-label')).toBe('a < b (c)')
+      expect(doc.getElementById('t')?.getAttribute('data-x')).toBe('f(1)')
     })
   })
 
@@ -321,11 +364,83 @@ describe('sanitizeSnapshot', () => {
       // expectClean checks the parsed result: what is left of the payload may
       // survive only as inert text, e.g. inside a title attribute.
       const doc = expectClean(out)
-      // Sanitising the output again changes nothing: the round trip is stable.
+      expect(
+        doc.querySelectorAll(
+          'script, noscript, template, iframe, frame, frameset, object, embed, base, link, xmp, plaintext'
+        )
+      ).toHaveLength(0)
+      expect(doc.getElementsByTagName('foreignObject')).toHaveLength(0)
+      const attributes = Array.from(doc.getElementsByTagName('*')).flatMap((el) =>
+        Array.from(el.attributes).map((a) => `${el.localName}[${a.name}]`)
+      )
+      expect(attributes.filter((a) => /\[(?:[^\]]*:)?on/i.test(a))).toEqual([])
+      expect(attributes.filter((a) => /^(?:a|area)\[(?:[^\]]*:)?href\]$/i.test(a))).toEqual([])
+      for (const img of Array.from(doc.querySelectorAll('img[src]'))) {
+        expect(img.getAttribute('src')).toMatch(/^data:image\//)
+      }
+      // Secondary: sanitising the output again changes nothing.
       expect(sanitizeSnapshot(out)).toBe(out)
-      expect(doc.documentElement).toBeTruthy()
     })
   })
+
+  describe('fallbacks', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('gives the empty page when parsing throws', () => {
+      vi.stubGlobal(
+        'DOMParser',
+        class {
+          parseFromString(): Document {
+            throw new Error('boom')
+          }
+        }
+      )
+      const doc = expectClean(sanitizeSnapshot('<p>hello</p>'))
+      expect(doc.body.textContent).toBe('')
+    })
+
+    it('gives the empty page when the result never settles', () => {
+      // Every parse yields a different page, as a mutating mXSS shape would.
+      const RealParser = DOMParser
+      let calls = 0
+      vi.stubGlobal(
+        'DOMParser',
+        class {
+          parseFromString(html: string, type: DOMParserSupportedType): Document {
+            const doc = new RealParser().parseFromString(html, type)
+            doc.body.setAttribute('data-pass', String(++calls))
+            return doc
+          }
+        }
+      )
+      const doc = expectClean(sanitizeSnapshot('<p>hello</p>'))
+      expect(calls).toBeGreaterThan(1)
+      expect(doc.body.textContent).toBe('')
+    })
+  })
+
+  // Not a perf gate: jsdom parses about 1 s per 5 MB, and the stability check
+  // parses twice, so absolute times depend on the machine and on suite load.
+  // Linear growth is what matters; a quadratic slip makes 10x the page take ~100x.
+  it('sanitises a 5 MB page in linear time', () => {
+    const row =
+      '<div class="row" onclick="x()"><a href="https://example.com/">link</a><img src="https://x/a.png"><span style="color: red; background: url(https://x/b.png)">text &amp; more</span></div>\n'
+    const page = (bytes: number): string => {
+      const css = '.row { color: rgb(1, 2, 3); } '.repeat(Math.ceil(bytes / 300))
+      const rows = row.repeat(Math.ceil((bytes - css.length) / row.length))
+      return `<html><head><style>${css}</style></head><body>${rows}</body></html>`
+    }
+    const time = (html: string): number => {
+      const started = performance.now()
+      expect(sanitizeSnapshot(html)).not.toContain('onclick')
+      return performance.now() - started
+    }
+    const small = time(page(512 * 1024))
+    const large = time(page(5 * 1024 * 1024))
+    expect(large / small).toBeLessThan(30)
+  }, 30000)
 
   describe('size caps', () => {
     it('refuses input over the cap', () => {
