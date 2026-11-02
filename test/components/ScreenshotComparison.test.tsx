@@ -50,6 +50,11 @@ const passed = (name: string): Comparison => ({
 })
 
 const readImage = vi.fn()
+const acceptBaseline = vi.fn()
+const toastError = vi.fn()
+vi.mock('react-hot-toast', () => ({
+  default: { error: (m: string): void => toastError(m) }
+}))
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -58,7 +63,8 @@ beforeEach(() => {
     data: 'AAAA',
     fileExt: path.slice(path.lastIndexOf('.'))
   }))
-  window.api = { readImage } as unknown as typeof window.api
+  acceptBaseline.mockResolvedValue({ ok: true, path: 'x', unchanged: false })
+  window.api = { readImage, acceptBaseline } as unknown as typeof window.api
 })
 
 describe('ScreenshotComparison', () => {
@@ -182,5 +188,90 @@ describe('ScreenshotComparison', () => {
     resolve({ success: true, data: 'AAAA', fileExt: '.png' })
     await waitFor(() => expect(errors).not.toHaveBeenCalled())
     errors.mockRestore()
+  })
+
+  describe('Accept as baseline', () => {
+    const btn = (): HTMLElement => screen.getByRole('button', { name: 'Accept as baseline' })
+
+    it('shows on failed and created, not on passed, updated or without actual or baseline', () => {
+      const { rerender } = render(<ScreenshotComparison comparisons={[failed, created]} />)
+      expect(screen.getAllByRole('button', { name: 'Accept as baseline' })).toHaveLength(2)
+      rerender(
+        <ScreenshotComparison
+          comparisons={[
+            { ...created, status: 'updated' },
+            { ...failed, name: 'noactual', images: { expected: '/r/e.png' } },
+            { ...failed, name: 'nobase', baseline: null }
+          ]}
+        />
+      )
+      expect(screen.queryByRole('button', { name: 'Accept as baseline' })).not.toBeInTheDocument()
+    })
+
+    it('calls acceptBaseline with the actual image and baseline, then shows the success text', async () => {
+      render(<ScreenshotComparison comparisons={[failed]} />)
+      fireEvent.click(btn())
+      expect(
+        await screen.findByText('Baseline updated, commit it with your tests')
+      ).toBeInTheDocument()
+      expect(acceptBaseline).toHaveBeenCalledWith(
+        '/r/a.png',
+        'screenshots/baselines/chrome/home.png'
+      )
+      expect(screen.queryByRole('button', { name: 'Accept as baseline' })).not.toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('Baseline updated')
+    })
+
+    it('says Already the baseline when nothing changed', async () => {
+      acceptBaseline.mockResolvedValue({ ok: true, path: 'x', unchanged: true })
+      render(<ScreenshotComparison comparisons={[created]} />)
+      fireEvent.click(btn())
+      expect(await screen.findByText('Already the baseline')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Accept as baseline' })).not.toBeInTheDocument()
+    })
+
+    it('returns to the button without a toast when cancelled', async () => {
+      acceptBaseline.mockResolvedValue({ ok: false, error: 'cancelled' })
+      render(<ScreenshotComparison comparisons={[failed]} />)
+      fireEvent.click(btn())
+      await waitFor(() => expect(btn()).not.toBeDisabled())
+      expect(toastError).not.toHaveBeenCalled()
+    })
+
+    it.each(['denied', 'notFound', 'writeFailed'])(
+      'toasts and restores the button on %s',
+      async (error) => {
+        acceptBaseline.mockResolvedValue({ ok: false, error })
+        render(<ScreenshotComparison comparisons={[failed]} />)
+        fireEvent.click(btn())
+        await waitFor(() => expect(toastError).toHaveBeenCalledWith("Couldn't update the baseline"))
+        await waitFor(() => expect(btn()).not.toBeDisabled())
+      }
+    )
+
+    it('toasts when the call rejects', async () => {
+      acceptBaseline.mockRejectedValue(new Error('boom'))
+      render(<ScreenshotComparison comparisons={[failed]} />)
+      fireEvent.click(btn())
+      await waitFor(() => expect(toastError).toHaveBeenCalledWith("Couldn't update the baseline"))
+      await waitFor(() => expect(btn()).not.toBeDisabled())
+    })
+
+    it('calls once on a double click while pending, and state is per entry', async () => {
+      let resolve: (v: unknown) => void = () => {}
+      acceptBaseline.mockReturnValue(new Promise((r) => (resolve = r)))
+      render(<ScreenshotComparison comparisons={[failed, created]} />)
+      const [first] = screen.getAllByRole('button', { name: 'Accept as baseline' })
+      fireEvent.click(first)
+      fireEvent.click(first)
+      expect(acceptBaseline).toHaveBeenCalledTimes(1)
+      expect(first).toBeDisabled()
+      expect(screen.getAllByRole('button', { name: 'Accept as baseline' })[1]).not.toBeDisabled()
+      resolve({ ok: true, path: 'x', unchanged: false })
+      expect(
+        await screen.findByText('Baseline updated, commit it with your tests')
+      ).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: 'Accept as baseline' })).toHaveLength(1)
+    })
   })
 })
