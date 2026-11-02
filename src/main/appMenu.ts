@@ -31,6 +31,20 @@ export function buildAppMenuTemplate(
   ]
 }
 
+/**
+ * A menu action for the main window that does nothing while there is no live
+ * window (on macOS the app stays open after its window closes).
+ */
+export function withLiveWindow(
+  getWindow: () => Electron.BrowserWindow | null | undefined,
+  action: (win: Electron.BrowserWindow) => void
+): () => void {
+  return () => {
+    const win = getWindow()
+    if (win && !win.isDestroyed()) action(win)
+  }
+}
+
 export function installAppMenu(onOpenTrace: () => void): void {
   Menu.setApplicationMenu(
     Menu.buildFromTemplate(buildAppMenuTemplate(process.platform, onOpenTrace))

@@ -6,7 +6,7 @@ const mockMenu = vi.hoisted(() => ({
 }))
 vi.mock('electron', () => ({ Menu: mockMenu }))
 
-import { buildAppMenuTemplate, installAppMenu } from '../../src/main/appMenu'
+import { buildAppMenuTemplate, installAppMenu, withLiveWindow } from '../../src/main/appMenu'
 
 type Item = Electron.MenuItemConstructorOptions
 const fileMenu = (template: Item[]): Item => template.find((item) => item.label === 'File')!
@@ -66,5 +66,26 @@ describe('installAppMenu', () => {
     expect(mockMenu.buildFromTemplate.mock.calls[0][0]).toContainEqual(
       expect.objectContaining({ label: 'File' })
     )
+  })
+})
+
+describe('withLiveWindow', () => {
+  const windowWith = (destroyed: boolean): Electron.BrowserWindow =>
+    ({ isDestroyed: () => destroyed }) as never
+
+  it('runs the action on the live window', () => {
+    const action = vi.fn()
+    const win = windowWith(false)
+    withLiveWindow(() => win, action)()
+    expect(action).toHaveBeenCalledWith(win)
+  })
+
+  it.each([
+    ['no window', null],
+    ['a closed window', windowWith(true)]
+  ])('does nothing with %s', (_label, win) => {
+    const action = vi.fn()
+    expect(() => withLiveWindow(() => win, action)()).not.toThrow()
+    expect(action).not.toHaveBeenCalled()
   })
 })

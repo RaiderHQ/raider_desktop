@@ -121,6 +121,26 @@ describe('installWindowGuards', () => {
     expect(frameNavigation('https://example.com/', true)).not.toHaveBeenCalled()
   })
 
+  it("leaves the recorder webview's own navigation alone", () => {
+    const guest = Object.assign(new EventEmitter(), { setWindowOpenHandler: vi.fn() })
+    contents.emit('did-attach-webview', {}, guest)
+    expect(guest.listenerCount('will-frame-navigate')).toBe(0)
+    expect(guest.listenerCount('will-navigate')).toBe(0)
+
+    const preventDefault = vi.fn()
+    guest.emit('will-frame-navigate', {
+      url: 'https://example.com/next',
+      isMainFrame: false,
+      preventDefault
+    })
+    expect(preventDefault).not.toHaveBeenCalled()
+
+    // and the webview still attaches with the frame guard installed
+    const attach = { preventDefault: vi.fn() }
+    contents.emit('will-attach-webview', attach, {}, { src: 'https://example.com/' })
+    expect(attach.preventDefault).not.toHaveBeenCalled()
+  })
+
   it('pins the webview to the recorder preload, isolation and partition', () => {
     const event = { preventDefault: vi.fn() }
     const webPreferences: Record<string, unknown> = {
