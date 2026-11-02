@@ -16,6 +16,8 @@ interface FailedStepPanelProps {
   actions: React.ReactNode
   /** Opens the form that corrects the failed step's value */
   onEditValue?: () => void
+  /** Re-records the test from the given step (0-based): the failed step, or the first when unknown */
+  onReRecord?: (index: number) => void
   /** The failed step was corrected since this result: nothing more to fix until a new run */
   fixed?: boolean
   onRunAgain?: () => void
@@ -55,6 +57,7 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
   readOnly,
   actions,
   onEditValue,
+  onReRecord,
   fixed = false,
   onRunAgain
 }) => {
@@ -123,11 +126,16 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
           </button>
         </div>
       )}
-      {!readOnly && !fixed && (actions || canEditValue) && (
+      {!readOnly && !fixed && (actions || canEditValue || onReRecord) && (
         <div className="flex flex-wrap gap-2">
           {canEditValue && (
             <button type="button" className={ACTION} onClick={onEditValue}>
               {t('failedStep.editValue')}
+            </button>
+          )}
+          {onReRecord && (
+            <button type="button" className={ACTION} onClick={() => onReRecord(mapped?.index ?? 0)}>
+              {t('failedStep.reRecord')}
             </button>
           )}
           {actions}

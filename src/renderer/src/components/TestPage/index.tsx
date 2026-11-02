@@ -174,6 +174,16 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       .catch((error: unknown) => console.error('Saving the fix failed:', error))
   }
 
+  // The step (0-based) to re-record from, while the confirmation is open
+  const [reRecordingFrom, setReRecordingFrom] = useState<number | null>(null)
+  const reRecordFrom = (index: number): void => {
+    setReRecordingFrom(null)
+    // Steps before it are kept and replayed; the first step has nothing before it
+    const started =
+      index === 0 ? recording.start(target) : recording.recordFromHere(index - 1, target)
+    started.catch((error: unknown) => console.error('Recording failed:', error))
+  }
+
   const [confirmingStartOver, setConfirmingStartOver] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
@@ -420,6 +430,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
               readOnly={readOnly}
               actions={null}
               onEditValue={() => setEditingValue(true)}
+              onReRecord={recordingDisabled ? undefined : setReRecordingFrom}
               fixed={fixed}
               onRunAgain={() => void recording.run()}
             />
@@ -461,6 +472,17 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
           message={t('testPage.startOverConfirm')}
           onConfirm={startOver}
           onCancel={() => setConfirmingStartOver(false)}
+        />
+      )}
+      {reRecordingFrom !== null && test && (
+        <ConfirmationModal
+          title={t('failedStep.reRecordConfirmTitle', { n: reRecordingFrom + 1 })}
+          message={t('failedStep.reRecordConfirmBody', {
+            n: reRecordingFrom + 1,
+            last: test.steps.length
+          })}
+          onConfirm={() => reRecordFrom(reRecordingFrom)}
+          onCancel={() => setReRecordingFrom(null)}
         />
       )}
       {confirmingDelete && test && (

@@ -33,6 +33,7 @@ vi.mock('react-hot-toast', () => ({
 const spies = vi.hoisted(() => ({
   start: vi.fn().mockResolvedValue(undefined),
   continueRecording: vi.fn().mockResolvedValue(undefined),
+  recordFromHere: vi.fn().mockResolvedValue(undefined),
   run: vi.fn().mockResolvedValue(undefined)
 }))
 vi.mock('../../src/renderer/src/hooks/useTestRecording', async (importOriginal) => {
@@ -44,6 +45,7 @@ vi.mock('../../src/renderer/src/hooks/useTestRecording', async (importOriginal) 
       ...actual.useTestRecording(),
       start: spies.start,
       continueRecording: spies.continueRecording,
+      recordFromHere: spies.recordFromHere,
       run: spies.run
     })
   }
@@ -942,5 +944,87 @@ describe('TestPage fixing a failed value', () => {
     await opened()
     await screen.findByTestId('failed-step-panel')
     expect(screen.queryByRole('button', { name: 'failedStep.editValue' })).not.toBeInTheDocument()
+  })
+})
+
+describe('TestPage re-record from the failed step', () => {
+  const five: Test = {
+    ...recorded,
+    file: 'spec/login_works_spec.rb',
+    steps: ['a', 'b', 'c', 'd', 'e'].map(step)
+  }
+  const runJson = JSON.stringify({
+    run: { finished_at: '2026-11-02T10:00:00Z' },
+    results: [
+      {
+        full_name: 'Login works',
+        file_path: './spec/login_works_spec.rb',
+        status: 'failed',
+        failure: {
+          message: 'boom',
+          exception_class: 'RuntimeError',
+          backtrace: ['spec/login_works_spec.rb:8:in `block`'],
+          app_frame: 'spec/login_works_spec.rb:8:in `block`'
+        }
+      }
+    ]
+  })
+
+  beforeEach(() => {
+    spies.start.mockClear()
+    spies.recordFromHere.mockClear()
+    useProjectStore.setState({ projectPath: '/p' })
+    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [five, empty] }])
+    api.readDirectory.mockImplementation(async (dir: string) =>
+      dir === '/p/raider-results'
+        ? [{ name: 'run.json', type: 'file', path: '/p/raider-results/run.json' }]
+        : []
+    )
+    api.readFile.mockImplementation(async (path: string) =>
+      path === '/p/raider-results/run.json' ? { success: true, data: runJson } : { success: false }
+    )
+    api.mapFailedStep.mockResolvedValue({ stepId: 'c', index: 2 })
+  })
+  afterEach(() => useProjectStore.setState({ projectPath: null }))
+
+  it('asks first, then keeps the steps before the failed one and records on', async () => {
+    renderPage(five)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.reRecord' }))
+    expect(screen.getByText('failedStep.reRecordConfirmTitle')).toBeInTheDocument()
+    expect(screen.getByText('failedStep.reRecordConfirmBody')).toBeInTheDocument()
+    expect(spies.recordFromHere).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(spies.recordFromHere).toHaveBeenCalledWith(1, { kind: 'test' })
+    expect(spies.start).not.toHaveBeenCalled()
+  })
+
+  it('starts over when the failed step is the first', async () => {
+    api.mapFailedStep.mockResolvedValue({ stepId: 'a', index: 0 })
+    renderPage(five)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.reRecord' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(spies.start).toHaveBeenCalledWith({ kind: 'test' })
+    expect(spies.recordFromHere).not.toHaveBeenCalled()
+  })
+
+  it('starts over when the step could not be told', async () => {
+    api.mapFailedStep.mockResolvedValue({ none: 'noMap' })
+    renderPage(five)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.reRecord' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(spies.start).toHaveBeenCalledWith({ kind: 'test' })
+  })
+
+  it('does nothing when cancelled', async () => {
+    renderPage(five)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.reRecord' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByText('failedStep.reRecordConfirmTitle')).not.toBeInTheDocument()
+    expect(spies.start).not.toHaveBeenCalled()
+    expect(spies.recordFromHere).not.toHaveBeenCalled()
   })
 })

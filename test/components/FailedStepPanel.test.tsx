@@ -215,4 +215,25 @@ describe('FailedStepPanel', () => {
       expect(onRunAgain).toHaveBeenCalled()
     })
   })
+
+  describe('Re-record from here', () => {
+    it('asks to re-record from the failed step', () => {
+      const onReRecord = vi.fn()
+      renderPanel(mapped(), null, { onReRecord })
+      fireEvent.click(screen.getByRole('button', { name: en.failedStep.reRecord }))
+      expect(onReRecord).toHaveBeenCalledWith(2)
+    })
+
+    it('starts from the first step when the failed step is not known', () => {
+      const onReRecord = vi.fn()
+      renderPanel({ status: 'unmapped', result }, null, { onReRecord })
+      fireEvent.click(screen.getByRole('button', { name: en.failedStep.reRecord }))
+      expect(onReRecord).toHaveBeenCalledWith(0)
+    })
+
+    it('is not offered in a read-only test', () => {
+      renderPanel(mapped(), null, { onReRecord: vi.fn(), readOnly: true })
+      expect(screen.queryByRole('button', { name: en.failedStep.reRecord })).not.toBeInTheDocument()
+    })
+  })
 })
