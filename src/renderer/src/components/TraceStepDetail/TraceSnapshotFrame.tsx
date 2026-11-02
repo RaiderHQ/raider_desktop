@@ -22,7 +22,8 @@ const sanitized = (snapshot: SnapshotData): string => {
 
 // The page HTML is untrusted, so it is sanitised here (only when shown) and
 // rendered with an empty sandbox: no scripts, no same origin, no forms, no
-// popups, no navigation. Mobile XML is shown as text.
+// popups, no navigation. Mobile XML is shown as text. Never a Tab stop: keys
+// pressed inside an opaque frame don't reach the app, so Escape would stop working.
 const TraceSnapshotFrame: React.FC<TraceSnapshotFrameProps> = ({ snapshot }) => {
   const { t } = useTranslation()
   const { kind, text } = snapshot
@@ -40,6 +41,7 @@ const TraceSnapshotFrame: React.FC<TraceSnapshotFrameProps> = ({ snapshot }) => 
       data-testid="trace-snapshot"
       title={t('traceViewer.view.snapshot')}
       sandbox=""
+      tabIndex={-1}
       srcDoc={srcDoc}
       referrerPolicy="no-referrer"
       className="w-full h-[60vh] rounded-lg border border-neutral-bdr bg-white"

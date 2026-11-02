@@ -273,6 +273,19 @@ describe('registerTraceIpc', () => {
       })
     })
 
+    it('says a dropped folder is not a trace, and a missing file is not found', async () => {
+      const drop = handlers.get('trace-open-drop')!
+      fs.mkdirSync(path.join(home, 'Downloads', 'folder.zip'), { recursive: true })
+      expect(await drop({}, path.join(home, 'Downloads', 'folder.zip'))).toEqual({
+        ok: false,
+        error: 'notTrace'
+      })
+      expect(await drop({}, path.join(home, 'Downloads', 'missing.zip'))).toEqual({
+        ok: false,
+        error: 'notFound'
+      })
+    })
+
     it('refuses a non-.zip file and invalid arguments', async () => {
       const drop = handlers.get('trace-open-drop')!
       const bad = [

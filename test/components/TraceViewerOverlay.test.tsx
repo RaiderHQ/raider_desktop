@@ -26,7 +26,7 @@ beforeEach(() => {
   vi.mocked(toast.error).mockClear()
   unsubscribe.mockClear()
   index = fixtureIndex()
-  useTraceStore.setState({ current: null, opener: null })
+  useTraceStore.setState({ current: null, opener: null, opening: false })
   window.api = {
     openTrace: vi.fn(),
     openDroppedTrace: vi.fn(),
@@ -230,5 +230,66 @@ describe('TraceViewerOverlay', () => {
 
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
     expect(opener).toHaveFocus()
+  })
+
+  it('moves focus to the new Close trace when the shown trace is replaced', () => {
+    render(<TraceViewerOverlay />)
+    act(() => menuOpened(ok('t1')))
+    expect(screen.getByRole('button', { name: 'traceViewer.close' })).toHaveFocus()
+    act(() => menuOpened(ok('t2')))
+    expect(screen.getByRole('button', { name: 'traceViewer.close' })).toHaveFocus()
+  })
+
+  describe('with a page snapshot shown', () => {
+    const showSnapshot = async (): Promise<HTMLIFrameElement> => {
+      vi.mocked(window.api.readTraceEntry).mockImplementation(async (_id, name) =>
+        name.endsWith('.html')
+          ? { ok: true, kind: 'html', text: '<html><head></head><body><a href="#">x</a></body></html>' }
+          : { ok: false, error: 'notCaptured' }
+      )
+      const { container } = render(<TraceViewerOverlay />)
+      act(() => menuOpened(ok('t1')))
+      fireEvent.click(container.ownerDocument.querySelector('[data-step-id="step-6"]')!)
+      fireEvent.click(screen.getByRole('button', { name: 'traceViewer.view.snapshot' }))
+      return (await screen.findByTestId('trace-snapshot')) as HTMLIFrameElement
+    }
+
+    it('never makes the snapshot frame a Tab stop', async () => {
+      const frame = await showSnapshot()
+      expect(frame).toHaveAttribute('tabindex', '-1')
+      const close = screen.getByRole('button', { name: 'traceViewer.close' })
+      close.focus()
+      fireEvent.keyDown(close, { key: 'Tab', shiftKey: true })
+      expect(document.activeElement).not.toBe(frame)
+      expect(viewer()).toContainElement(document.activeElement as HTMLElement)
+    })
+
+    it('takes focus back from the frame after a click into it, so Escape still works', async () => {
+      const frame = await showSnapshot()
+      vi.useFakeTimers()
+      try {
+        frame.focus()
+        expect(frame).toHaveFocus()
+        window.dispatchEvent(new Event('blur'))
+        act(() => vi.runAllTimers())
+        expect(viewer()).toHaveFocus()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('leaves focus alone on a blur from anywhere else', async () => {
+      await showSnapshot()
+      vi.useFakeTimers()
+      try {
+        const close = screen.getByRole('button', { name: 'traceViewer.close' })
+        close.focus()
+        window.dispatchEvent(new Event('blur'))
+        act(() => vi.runAllTimers())
+        expect(close).toHaveFocus()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 })

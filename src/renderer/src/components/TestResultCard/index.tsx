@@ -20,7 +20,8 @@ import { MessageContent } from './MessageContent'
 import Tooltip from '@components/Tooltip'
 import { toMediaUrl } from '@foundation/mediaUrl'
 import type { TraceStep } from '@foundation/Types/traceStep'
-import type { FailureInfo, TraceRef } from '@foundation/Types/testResult'
+import type { FailureInfo } from '@foundation/Types/testResult'
+import type { TraceRef } from '@foundation/Types/testResult'
 
 interface TestResultCardProps {
   name: string

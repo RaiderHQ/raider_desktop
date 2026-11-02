@@ -6,7 +6,11 @@ import { useTraceStore } from '@foundation/Stores/traceStore'
 import { useTraceOpener } from '@foundation/trace/useTraceOpener'
 
 const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), iframe, [tabindex]:not([tabindex="-1"])'
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+const firstStop = (root: HTMLElement): HTMLElement =>
+  Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).find((el) => !el.closest('[inert]')) ??
+  root
 
 const hasFiles = (event: DragEvent): boolean =>
   Array.from(event.dataTransfer?.types ?? []).includes('Files')
@@ -23,6 +27,7 @@ const TraceViewerOverlay: React.FC = () => {
   const { handleResult, openDroppedTrace } = useTraceOpener()
   const rootRef = useRef<HTMLDivElement>(null)
   const isOpen = current !== null
+  const traceId = current?.traceId ?? null
 
   // File → Open trace sends its result here.
   useEffect(() => window.api.onTraceOpened((result) => handleResult(result)), [handleResult])
@@ -71,7 +76,6 @@ const TraceViewerOverlay: React.FC = () => {
       Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
         (el) => !el.closest('[inert]')
       )
-    ;(stops()[0] ?? root).focus()
 
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
@@ -94,18 +98,34 @@ const TraceViewerOverlay: React.FC = () => {
       }
     }
     const onFocusIn = (event: FocusEvent): void => {
-      if (event.target instanceof Node && !root.contains(event.target)) {
-        ;(stops()[0] ?? root).focus()
+      if (event.target instanceof Node && !root.contains(event.target)) firstStop(root).focus()
+    }
+    // A click into the snapshot frame moves focus into it, where keys never reach
+    // the app (the window blurs); take focus back so Escape keeps working.
+    let refocus: ReturnType<typeof setTimeout> | undefined
+    const onBlur = (): void => {
+      const active = document.activeElement
+      if (active instanceof HTMLIFrameElement && root.contains(active)) {
+        clearTimeout(refocus)
+        refocus = setTimeout(() => root.focus(), 0)
       }
     }
     document.addEventListener('keydown', onKeyDown)
     document.addEventListener('focusin', onFocusIn)
+    window.addEventListener('blur', onBlur)
     return () => {
+      clearTimeout(refocus)
       document.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('focusin', onFocusIn)
+      window.removeEventListener('blur', onBlur)
       if (opener?.isConnected) opener.focus()
     }
   }, [isOpen])
+
+  // On open, and when another trace replaces the shown one, start at Close trace.
+  useEffect(() => {
+    if (traceId && rootRef.current) firstStop(rootRef.current).focus()
+  }, [traceId])
 
   if (!current) return null
 

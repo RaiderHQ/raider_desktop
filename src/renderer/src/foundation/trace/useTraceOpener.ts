@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import type {
@@ -22,8 +22,7 @@ export function useTraceOpener(): {
 } {
   const { t } = useTranslation()
   const show = useTraceStore((state) => state.show)
-  const [opening, setOpening] = useState(false)
-  const busy = useRef(false)
+  const opening = useTraceStore((state) => state.opening)
 
   const handleResult = useCallback(
     (result: TraceOpenResult, opener?: HTMLElement | null): void => {
@@ -39,8 +38,8 @@ export function useTraceOpener(): {
 
   const run = useCallback(
     async (open: () => Promise<TraceOpenResult>): Promise<void> => {
-      if (busy.current) return
-      busy.current = true
+      const { opening: busy, setOpening } = useTraceStore.getState()
+      if (busy) return
       // Taken now: the button is disabled while opening, which may drop its focus.
       const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
       setOpening(true)
@@ -50,7 +49,6 @@ export function useTraceOpener(): {
       } catch {
         result = { ok: false, error: 'damaged' }
       } finally {
-        busy.current = false
         setOpening(false)
       }
       handleResult(result, opener)

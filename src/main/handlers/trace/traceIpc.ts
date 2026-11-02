@@ -72,12 +72,20 @@ const isDropPath = (filePath: unknown): filePath is string =>
   path.extname(filePath).toLowerCase() === '.zip' &&
   validateFilePath(filePath).valid
 
+// A folder (say one named x.zip) is there but isn't a trace. A link is not
+// followed here: where it leads may be outside the allowed roots.
+const isNotAFile = async (filePath: string): Promise<boolean> => {
+  const stat = await fs.promises.lstat(filePath).catch(() => null)
+  return stat !== null && !stat.isFile() && !stat.isSymbolicLink()
+}
+
 // Outside the allowed roots is notFound, like a missing file, so it leaks nothing.
 export const openDroppedTrace = async (filePath: unknown): Promise<TraceOpenResult> => {
   try {
     if (!isDropPath(filePath)) return { ok: false, error: 'notFound' }
     const real = await resolveTracePath({ kind: 'file', path: filePath })
-    if (!real || !isDropPath(real)) return { ok: false, error: 'notFound' }
+    if (!real) return { ok: false, error: (await isNotAFile(filePath)) ? 'notTrace' : 'notFound' }
+    if (!isDropPath(real)) return { ok: false, error: 'notFound' }
     return await openTraceFile(real)
   } catch {
     return { ok: false, error: 'damaged' }

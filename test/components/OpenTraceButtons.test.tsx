@@ -16,7 +16,7 @@ vi.mock('react-hot-toast', () => ({ default: { error: vi.fn() } }))
 const PATH = '/p/raider-results/attachments/0-trace.zip'
 
 beforeEach(() => {
-  useTraceStore.setState({ current: null, opener: null })
+  useTraceStore.setState({ current: null, opener: null, opening: false })
   window.api = {
     openTrace: vi.fn(),
     closeTrace: vi.fn().mockResolvedValue(undefined)
@@ -85,5 +85,28 @@ describe('OpenTraceButtons', () => {
     )
     fireEvent.click(screen.getByRole('button'))
     expect(onCard).not.toHaveBeenCalled()
+  })
+
+  it("disables every card's Open trace while one open runs", async () => {
+    let resolve!: (value: unknown) => void
+    vi.mocked(window.api.openTrace).mockReturnValue(
+      new Promise((r) => {
+        resolve = r
+      }) as never
+    )
+    render(
+      <>
+        <OpenTraceButtons traces={[{ path: '/p/a.zip' }]} />
+        <OpenTraceButtons traces={[{ path: '/p/b.zip' }]} />
+      </>
+    )
+    const [first, second] = screen.getAllByRole('button')
+    fireEvent.click(first)
+    expect(second).toBeDisabled()
+    expect(second).toHaveTextContent('traceViewer.open')
+    fireEvent.click(second)
+    expect(window.api.openTrace).toHaveBeenCalledTimes(1)
+    await act(async () => resolve({ ok: false, error: 'notFound' }))
+    expect(second).not.toBeDisabled()
   })
 })

@@ -6,6 +6,8 @@ import type { RaiderTraceIndex } from '@shared/types/raiderTrace'
 export interface TraceStore {
   current: { traceId: string; index: RaiderTraceIndex } | null
   opener: HTMLElement | null // gets focus back when the viewer closes
+  opening: boolean // one open at a time, across every card
+  setOpening: (opening: boolean) => void
   show: (traceId: string, index: RaiderTraceIndex, opener?: HTMLElement | null) => void
   close: () => void
 }
@@ -17,6 +19,8 @@ const release = (traceId: string): void => {
 export const useTraceStore = create<TraceStore>((set, get) => ({
   current: null,
   opener: null,
+  opening: false,
+  setOpening: (opening): void => set({ opening }),
   show: (traceId, index, opener): void => {
     const { current } = get()
     if (current && current.traceId !== traceId) release(current.traceId)

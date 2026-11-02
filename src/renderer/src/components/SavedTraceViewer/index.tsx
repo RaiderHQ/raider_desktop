@@ -1,4 +1,4 @@
-import React, { useId, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { FaTimes } from 'react-icons/fa'
@@ -44,18 +44,21 @@ const SavedTraceViewer: React.FC<SavedTraceViewerProps> = ({ traceId, index, onC
   const idPrefix = useId()
   // Main drops a trace when the same file is opened again; say so once.
   const toldClosed = useRef(false)
+  // The view is built once per trace, so its reader reads the current t.
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
   const view = useMemo(
     () =>
       fromRaiderTrace(index, async (name) => {
         const result = await window.api.readTraceEntry(traceId, name)
         if (!result.ok && result.error === 'closed' && !toldClosed.current) {
           toldClosed.current = true
-          toast.error(t('traceViewer.error.closed'))
+          toast.error(tRef.current('traceViewer.error.closed'))
         }
         return result
       }),
-    // t is stable for the viewer's life; the view must not rebuild on it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [traceId, index]
   )
   const [selectedId, setSelectedId] = useState<string | null>(view.defaultSelectedId)
