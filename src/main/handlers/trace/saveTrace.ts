@@ -1,28 +1,36 @@
 import { app } from 'electron'
-import { join, basename, resolve, sep } from 'path'
+import { join, basename, resolve } from 'path'
 import { mkdir, copyFile, writeFile, readFile, readdir, realpath, unlink } from 'fs/promises'
 import { existsSync } from 'fs'
 import { appState } from '../appState'
 import { persistActiveSuites } from '../suitePersistence'
+import { serialize } from '../tests/sidecar'
+import { safeError } from '../../utils/safeLog'
 import type { TraceStep } from '@foundation/Types/traceStep'
 
-type ExistingTrace = { entries: TraceStep[]; readable: boolean }
+// Per test id: overlapping saves would otherwise clean up each other's fresh pictures
+const saveQueues = new Map<string, Promise<unknown>>()
+// Test ids are UUIDs; anything else could point outside the traces folder
+const SAFE_TEST_ID = /^[A-Za-z0-9_-]+$/
 
-/** The trace on disk; a missing file is empty, a file that can't be read or parsed is not readable */
+// `existed`: the old file was there and held a list, so it says which pictures are wanted
+type ExistingTrace = { entries: TraceStep[]; existed: boolean }
+
+/** The trace on disk; a missing, unreadable or unparsable file gives no entries and `existed: false` */
 async function readExisting(jsonPath: string): Promise<ExistingTrace> {
   let raw: string
   try {
     raw = await readFile(jsonPath, 'utf-8')
-  } catch (error) {
-    return { entries: [], readable: (error as NodeJS.ErrnoException).code === 'ENOENT' }
+  } catch {
+    return { entries: [], existed: false }
   }
   try {
     const parsed = JSON.parse(raw)
     return Array.isArray(parsed)
-      ? { entries: parsed, readable: true }
-      : { entries: [], readable: false }
+      ? { entries: parsed, existed: true }
+      : { entries: [], existed: false }
   } catch {
-    return { entries: [], readable: false }
+    return { entries: [], existed: false }
   }
 }
 
@@ -30,22 +38,32 @@ async function readExisting(jsonPath: string): Promise<ExistingTrace> {
 async function removeUnreferencedPictures(
   tracesDir: string,
   testTraceDir: string,
+  testId: string,
   kept: Set<string>
 ): Promise<void> {
   const root = await realpath(tracesDir)
   const dir = await realpath(testTraceDir)
-  if (!dir.startsWith(root + sep)) return
+  // A test folder that is itself a link (or elsewhere) is never cleaned
+  if (dir !== join(root, testId)) return
   for (const dirent of await readdir(dir, { withFileTypes: true })) {
     if (!dirent.isFile() || kept.has(dirent.name)) continue
     await unlink(join(dir, dirent.name))
   }
 }
 
-export default async (
+export default (
   testId: string,
   trace: TraceStep[],
   stepIds?: string[]
-): Promise<{ success: boolean; error?: string }> => {
+): Promise<{ success: boolean; error?: string }> =>
+  serialize(saveQueues, testId, () => save(testId, trace, stepIds))
+
+async function save(
+  testId: string,
+  trace: TraceStep[],
+  stepIds?: string[]
+): Promise<{ success: boolean; error?: string }> {
+  if (!SAFE_TEST_ID.test(testId)) return { success: false, error: 'Invalid test id' }
   try {
     const tracesDir = join(app.getPath('userData'), 'traces')
     const testTraceDir = join(tracesDir, testId)
@@ -54,7 +72,7 @@ export default async (
 
     const jsonPath = join(tracesDir, `${testId}.trace.json`)
     const updatedTrace: TraceStep[] = []
-    let existing: ExistingTrace = { entries: [], readable: false }
+    let existing: ExistingTrace = { entries: [], existed: false }
 
     // Record from here: the earlier entries of the steps that remain keep their pictures
     if (stepIds) {
@@ -62,7 +80,8 @@ export default async (
       const incoming = new Set(trace.map((step) => step.id))
       const remaining = new Set(stepIds)
       for (const entry of existing.entries) {
-        if (!entry.stepId || !remaining.has(entry.stepId) || incoming.has(entry.id)) continue
+        // Older entries without a step can't be matched: they stay, with their pictures
+        if ((entry.stepId && !remaining.has(entry.stepId)) || incoming.has(entry.id)) continue
         const kept = { ...entry }
         if (kept.screenshotPath && !existsSync(kept.screenshotPath)) delete kept.screenshotPath
         updatedTrace.push(kept)
@@ -87,11 +106,15 @@ export default async (
     await writeFile(jsonPath, JSON.stringify(updatedTrace, null, 2), 'utf-8')
 
     // Only when the old trace was read: otherwise nothing says which pictures are still wanted
-    if (stepIds && existing.readable) {
+    if (stepIds && existing.existed) {
       const wanted = new Set(
         updatedTrace.flatMap((step) => (step.screenshotPath ? [basename(step.screenshotPath)] : []))
       )
-      await removeUnreferencedPictures(tracesDir, testTraceDir, wanted)
+      try {
+        await removeUnreferencedPictures(tracesDir, testTraceDir, testId, wanted)
+      } catch (error) {
+        safeError(`Could not clean up the pictures of ${testId}:`, error)
+      }
     }
 
     // Update in-memory suite: find the test and set hasTrace = true
