@@ -277,7 +277,9 @@ describe('TestPage', () => {
     })
     renderPage()
     await opened()
-    expect(screen.getByRole('button', { name: 'run.mobile.openDeviceSettings' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'run.mobile.openDeviceSettings' })
+    ).toBeInTheDocument()
   })
 
   it('shows a breadcrumb back to the Tests list, then the test name', async () => {
@@ -804,5 +806,80 @@ describe('TestPage after a failed run', () => {
     )
     await waitFor(() => expect(screen.queryByTestId('failed-step-panel')).not.toBeInTheDocument())
     expect(screen.queryByTestId('step-failed')).not.toBeInTheDocument()
+  })
+})
+
+describe('TestPage fixing a failed value', () => {
+  const typed: Test = {
+    ...recorded,
+    file: 'spec/login_works_spec.rb',
+    steps: [
+      step('a'),
+      { id: 'b', kind: 'type', element: { strategy: 'css', value: '#q' }, text: 'old' }
+    ]
+  }
+  const runJson = JSON.stringify({
+    run: { finished_at: '2026-11-02T10:00:00Z' },
+    results: [
+      {
+        full_name: 'Login works',
+        file_path: './spec/login_works_spec.rb',
+        status: 'failed',
+        failure: {
+          message: 'boom',
+          exception_class: 'RuntimeError',
+          backtrace: ['spec/login_works_spec.rb:8:in `block`'],
+          app_frame: 'spec/login_works_spec.rb:8:in `block`'
+        }
+      }
+    ]
+  })
+
+  beforeEach(() => {
+    useProjectStore.setState({ projectPath: '/p' })
+    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [typed, empty] }])
+    api.readDirectory.mockImplementation(async (dir: string) =>
+      dir === '/p/raider-results'
+        ? [{ name: 'run.json', type: 'file', path: '/p/raider-results/run.json' }]
+        : []
+    )
+    api.readFile.mockImplementation(async (path: string) =>
+      path === '/p/raider-results/run.json' ? { success: true, data: runJson } : { success: false }
+    )
+    api.mapFailedStep.mockResolvedValue({ stepId: 'b', index: 1 })
+  })
+  afterEach(() => useProjectStore.setState({ projectPath: null }))
+
+  it('saves the new value, then says it is fixed', async () => {
+    renderPage(typed)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.editValue' }))
+    api.saveRecording.mockClear()
+    fireEvent.change(screen.getByRole('textbox', { name: 'failedStep.value' }), {
+      target: { value: 'new' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'failedStep.save' }))
+    expect(await screen.findByText('failedStep.fixed')).toBeInTheDocument()
+    expect(api.saveRecording).toHaveBeenCalledWith(
+      's1',
+      expect.objectContaining({
+        id: 't1',
+        steps: [step('a'), { ...typed.steps[1], text: 'new' }]
+      })
+    )
+    expect(screen.queryByRole('button', { name: 'failedStep.save' })).not.toBeInTheDocument()
+  })
+
+  it('stays unfixed when the save fails', async () => {
+    renderPage(typed)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.editValue' }))
+    api.saveRecording.mockResolvedValue({ success: false, error: 'nope' })
+    fireEvent.change(screen.getByRole('textbox', { name: 'failedStep.value' }), {
+      target: { value: 'new' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'failedStep.save' }))
+    await waitFor(() => expect(api.saveRecording).toHaveBeenCalled())
+    expect(screen.queryByText('failedStep.fixed')).not.toBeInTheDocument()
   })
 })

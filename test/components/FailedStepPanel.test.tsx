@@ -85,7 +85,11 @@ beforeEach(() => {
   } as unknown as typeof window.api
 })
 
-const renderPanel = (state: FailedStepState, actions: React.ReactNode = null): void => {
+const renderPanel = (
+  state: FailedStepState,
+  actions: React.ReactNode = null,
+  extra: Partial<React.ComponentProps<typeof FailedStepPanel>> = {}
+): void => {
   render(
     <FailedStepPanel
       state={state}
@@ -93,6 +97,7 @@ const renderPanel = (state: FailedStepState, actions: React.ReactNode = null): v
       projectPath="/p"
       readOnly={false}
       actions={actions}
+      {...extra}
     />
   )
 }
@@ -160,5 +165,68 @@ describe('FailedStepPanel', () => {
     expect(
       screen.getByText('This test changed after its last run. Run it again to see where it fails.')
     ).toBeInTheDocument()
+  })
+
+  describe('editing a value', () => {
+    const typed: Step = {
+      id: 'c',
+      kind: 'type',
+      element: { strategy: 'css', value: '#q' },
+      text: 'a'
+    }
+    const secret: Step = { ...typed, text: '', secret: true }
+    const navStep: Step = { id: 'c', kind: 'navigate', url: 'https://x.test/cart' }
+    const stateFor = (step: Step): FailedStepState => ({ ...mapped(), step }) as FailedStepState
+
+    it('offers Edit value for a typed value or a visit, never for a secret', () => {
+      const onEditValue = vi.fn()
+      const { unmount } = render(
+        <FailedStepPanel
+          state={stateFor(typed)}
+          test={test}
+          projectPath="/p"
+          readOnly={false}
+          actions={null}
+          onEditValue={onEditValue}
+        />
+      )
+      fireEvent.click(screen.getByRole('button', { name: en.failedStep.editValue }))
+      expect(onEditValue).toHaveBeenCalled()
+      unmount()
+      const again = render(
+        <FailedStepPanel
+          state={stateFor(navStep)}
+          test={test}
+          projectPath="/p"
+          readOnly={false}
+          actions={null}
+          onEditValue={onEditValue}
+        />
+      )
+      expect(screen.getByRole('button', { name: en.failedStep.editValue })).toBeInTheDocument()
+      again.unmount()
+      renderPanel(stateFor(secret), null, { onEditValue })
+      expect(
+        screen.queryByRole('button', { name: en.failedStep.editValue })
+      ).not.toBeInTheDocument()
+    })
+
+    it('has no Edit value for a click, or in a read-only test', () => {
+      renderPanel(mapped(), null, { onEditValue: vi.fn() })
+      expect(
+        screen.queryByRole('button', { name: en.failedStep.editValue })
+      ).not.toBeInTheDocument()
+    })
+
+    it('says it is fixed and runs again from there', () => {
+      const onRunAgain = vi.fn()
+      renderPanel(stateFor(typed), null, { fixed: true, onEditValue: vi.fn(), onRunAgain })
+      expect(screen.getByText(en.failedStep.fixed)).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: en.failedStep.editValue })
+      ).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: en.failedStep.runAgain }))
+      expect(onRunAgain).toHaveBeenCalled()
+    })
   })
 })

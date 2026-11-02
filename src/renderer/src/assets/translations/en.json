@@ -874,6 +874,7 @@
     "fixed": "Fixed. Run again to check.",
     "pageShowed": "The page showed: {{actual}}",
     "useThis": "Use this",
+    "value": "Value",
     "pickBanner": "Click the element step {{n}} should use. Press Esc to cancel.",
     "replayFailed": "Couldn't get to step {{n}}: step {{m}} didn't work.",
     "reRecordFrom": "Re-record from step {{m}}",

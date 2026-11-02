@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FailureDetails from '@components/FailureDetails'
 import { describeStep } from '@shared/describeStep'
+import { editableValue } from '@shared/stepFixes'
 import type { Test } from '@shared/types/test'
 import type { FailedStepState } from '../../hooks/useFailedStep'
 import StepPicture from './StepPicture'
@@ -13,7 +14,15 @@ interface FailedStepPanelProps {
   readOnly: boolean
   /** The fixes offered for this failure */
   actions: React.ReactNode
+  /** Opens the form that corrects the failed step's value */
+  onEditValue?: () => void
+  /** The failed step was corrected since this result: nothing more to fix until a new run */
+  fixed?: boolean
+  onRunAgain?: () => void
 }
+
+const ACTION =
+  'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium bg-white hover:bg-neutral-50'
 
 /** The recording's picture of one step; undefined while the trace loads. */
 const useRecordedPicture = (testId: string, stepId: string | null): string | null | undefined => {
@@ -44,7 +53,10 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
   test,
   projectPath,
   readOnly,
-  actions
+  actions,
+  onEditValue,
+  fixed = false,
+  onRunAgain
 }) => {
   const { t } = useTranslation()
   const mapped = state.status === 'mapped' ? state : null
@@ -52,6 +64,7 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
   if (state.status === 'none') return null
 
   const { result } = state
+  const canEditValue = !!mapped && !!onEditValue && editableValue(mapped.step) !== null
   const failurePicture = (
     <StepPicture
       testId="picture-failed"
@@ -99,7 +112,26 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
         {/* A lone picture keeps the size it has beside another */}
         {!mapped && <div className="flex-1" />}
       </div>
-      {!readOnly && actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {!readOnly && fixed && (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm font-medium text-status-ok">{t('failedStep.fixed')}</p>
+          {onRunAgain && (
+            <button type="button" className={ACTION} onClick={onRunAgain}>
+              {t('failedStep.runAgain')}
+            </button>
+          )}
+        </div>
+      )}
+      {!readOnly && !fixed && (actions || canEditValue) && (
+        <div className="flex flex-wrap gap-2">
+          {canEditValue && (
+            <button type="button" className={ACTION} onClick={onEditValue}>
+              {t('failedStep.editValue')}
+            </button>
+          )}
+          {actions}
+        </div>
+      )}
       {result.failure && (
         <FailureDetails collapsed failure={result.failure} projectPath={projectPath} />
       )}

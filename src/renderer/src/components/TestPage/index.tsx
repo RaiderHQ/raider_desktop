@@ -11,6 +11,7 @@ import ConfirmationModal from '@components/ConfirmationModal'
 import AssertionTextModal from '@components/AssertionTextModal'
 import RunPanel from '@components/RunPanel'
 import FailedStepPanel from '@components/FailedStepPanel'
+import EditValueForm from '@components/FailedStepPanel/EditValueForm'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import type { RecordingTarget } from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
@@ -20,6 +21,7 @@ import { buildAssertionStep, assertionModalType } from '@foundation/assertionSte
 import { handleSaveResult } from '@foundation/saveResult'
 import { testKeyOf } from '@foundation/testKey'
 import type { TestRow } from '@foundation/testKey'
+import type { TestResult } from '@foundation/Types/testResult'
 import type { Step } from '@shared/types/step'
 import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import { dropEmptyDraft, useTestRecording } from '../../hooks/useTestRecording'
@@ -148,6 +150,28 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
     }
   }
 
+  // The failed step's value being corrected; and the result it was corrected for
+  const [editingValue, setEditingValue] = useState(false)
+  const [fixedFor, setFixedFor] = useState<TestResult | null>(null)
+  const failedIndex = failedStep.status === 'mapped' ? failedStep.index : null
+  useEffect(() => setEditingValue(false), [test?.id, failedIndex])
+  const fixed = failedStep.status !== 'none' && failedStep.result === fixedFor
+
+  const saveFixedStep = (updated: Step, result: TestResult): void => {
+    if (!test || !activeSuiteId) return
+    updateActiveTest((p) =>
+      p ? { ...p, steps: p.steps.map((s) => (s.id === updated.id ? updated : s)) } : null
+    )
+    setEditingValue(false)
+    const fixedTest = { ...test, steps: test.steps.map((s) => (s.id === updated.id ? updated : s)) }
+    // Saved right away, as a rename is: the next run reads the file
+    Promise.resolve(window.api.saveRecording(activeSuiteId, fixedTest))
+      .then((saved) => {
+        if (handleSaveResult(saved, fixedTest.id, t)) setFixedFor(result)
+      })
+      .catch((error: unknown) => console.error('Saving the fix failed:', error))
+  }
+
   const [confirmingStartOver, setConfirmingStartOver] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
@@ -253,7 +277,17 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       }
       readOnly={readOnly}
       markLatest={recording.isRecording}
-      failedIndex={failedStep.status === 'mapped' ? failedStep.index : null}
+      failedIndex={failedIndex}
+      belowStep={(index) =>
+        editingValue && failedStep.status === 'mapped' && index === failedStep.index ? (
+          <EditValueForm
+            step={failedStep.step}
+            actualValue={failedStep.reason.actualValue}
+            onSave={(updated) => saveFixedStep(updated, failedStep.result)}
+            onCancel={() => setEditingValue(false)}
+          />
+        ) : null
+      }
     />
   ) : null
 
@@ -383,6 +417,9 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
               projectPath={projectPath}
               readOnly={readOnly}
               actions={null}
+              onEditValue={() => setEditingValue(true)}
+              fixed={fixed}
+              onRunAgain={() => void recording.run()}
             />
           )}
 
