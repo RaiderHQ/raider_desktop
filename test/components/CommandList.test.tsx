@@ -146,4 +146,21 @@ describe('CommandList', () => {
     render(<CommandList steps={steps} setSteps={vi.fn()} onDeleteStep={vi.fn()} showCode={false} />)
     expect(screen.queryByTestId('step-failed')).toBeNull()
   })
+
+  it('shows only the failed highlight on a step that is also the latest', () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    render(
+      <CommandList
+        steps={steps}
+        setSteps={vi.fn()}
+        onDeleteStep={vi.fn()}
+        showCode={false}
+        markLatest
+        failedIndex={1}
+      />
+    )
+    const block = screen.getByTestId('step-failed')
+    expect(block).toHaveClass('ring-red-400')
+    expect(block).not.toHaveClass('ring-ruby/40')
+  })
 })

@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { TFunction } from 'i18next'
 import { useRunStore } from '@foundation/Stores/runStore'
+import useRecorderStore from '@foundation/Stores/recorderStore'
+import type { RunView } from '@foundation/run/runModel'
 import { loadRaiderResults } from '@foundation/raiderResults'
 import type { TestResult } from '@foundation/Types/testResult'
 import { describeStep, elementName } from '@shared/describeStep'
@@ -50,67 +52,97 @@ export function useFailedStepFor(
   test: Test | null,
   result: TestResult | null
 ): FailedStepState {
-  const [state, setState] = useState<FailedStepState>(NONE)
-  const shownFor = useRef<string | null>(null)
   const testId = test?.id ?? null
+  const key = projectPath && testId ? `${projectPath}\n${testId}` : null
+  // Kept with the test it was for: another test or project never paints this answer,
+  // the same one keeps it while re-asking
+  const [shown, setShown] = useState<{ key: string | null; state: FailedStepState }>({
+    key: null,
+    state: NONE
+  })
 
   useEffect(() => {
-    // Another test forgets the last one's answer; the same test keeps it while re-asking
-    if (shownFor.current !== testId) setState(NONE)
-    shownFor.current = testId
     if (!projectPath || !test || !result) {
-      setState(NONE)
+      setShown({ key, state: NONE })
       return
     }
     let active = true
     resolveFailedStep(projectPath, test, result)
-      .then((next) => {
-        if (active) setState(next)
+      .then((state) => {
+        if (active) setShown({ key, state })
       })
       .catch(() => {
-        if (active) setState(NONE)
+        if (active) setShown({ key, state: NONE })
       })
     return (): void => {
       active = false
     }
-  }, [projectPath, testId, test?.ownership, test?.steps, test?.file, result])
+  }, [key, test?.ownership, test?.steps, test?.file, result])
 
-  return state
+  return shown.key === key ? shown.state : NONE
 }
 
-/** The failed step of a test's newest run, reloaded after each run of this project. */
+const stripDot = (file: string): string => file.replace(/^\.\//, '')
+
+/** Whether a run may have rewritten this file's results: unknown counts as yes. */
+const runTouches = (run: RunView, file: string): boolean => {
+  const { scope } = run
+  if (scope.kind === 'all') return true
+  if (run.order.some((id) => stripDot(run.tests[id].file) === file)) return true
+  if (scope.kind === 'files') return scope.files.some((f) => stripDot(f) === file)
+  if (scope.kind === 'locations')
+    return scope.locations.some((l) => stripDot(l.replace(/(:\d+)+$/, '')) === file)
+  // A tag run that reported no examples could have run any file
+  return run.order.length === 0
+}
+
+/**
+ * The failed step of a test's newest run. Reloaded after each finished run that may
+ * have included the test's file; nothing while it's being recorded.
+ */
 export function useFailedStep(
   projectPath: string | null,
   test: Test | null
 ): FailedStepState & { reload(): void } {
-  // The Dashboard's selector: a finished run of this project rewrites raider-results
-  const lastRunFinishedAt = useRunStore((s) =>
-    s.run && s.run.projectPath === projectPath ? (s.run.finished?.finishedAt ?? null) : null
-  )
-  const [result, setResult] = useState<TestResult | null>(null)
-  const [reloads, setReloads] = useState(0)
   const file = test?.file
-  const loadedFor = useRef<string | null>(null)
+  const recording = useRecorderStore((s) => s.recordingTarget !== null)
+  const touchedAt = useRunStore((s) => {
+    const run = s.run
+    if (!run?.finished || run.projectPath !== projectPath || !file) return null
+    return runTouches(run, file) ? run.finished.finishedAt : null
+  })
+  // The last run that touched the file: an unrelated run since leaves it as it is
+  const [lastTouch, setLastTouch] = useState(touchedAt)
+  useEffect(() => {
+    if (touchedAt) setLastTouch(touchedAt)
+  }, [touchedAt])
+
+  const key = projectPath && test && file ? `${projectPath}\n${test.id}\n${file}` : null
+  const [loaded, setLoaded] = useState<{ key: string | null; result: TestResult | null }>({
+    key: null,
+    result: null
+  })
+  const [reloads, setReloads] = useState(0)
 
   useEffect(() => {
-    // A reload keeps the shown result until the new one arrives; another test drops it
-    const key = projectPath && file ? `${projectPath}\n${file}` : null
-    if (loadedFor.current !== key) setResult(null)
-    loadedFor.current = key
-    if (!projectPath || !file) return
+    // A recording changes the steps: its result is looked up again once it stops
+    if (recording) setLoaded({ key: null, result: null })
+    if (!projectPath || !file || recording) return
     let active = true
     loadRaiderResults(projectPath, window.api)
       .then((rows) => {
         const row = rows?.find((r) => FAILED.has(r.status) && r.file === file)
-        if (active) setResult(row ?? null)
+        if (active) setLoaded({ key, result: row ?? null })
       })
-      .catch(() => {})
+      .catch((error: unknown) => console.error('Loading the last run failed:', error))
     return (): void => {
       active = false
     }
-  }, [projectPath, file, lastRunFinishedAt, reloads])
+  }, [key, recording, lastTouch, reloads])
 
-  const state = useFailedStepFor(projectPath, test, result)
+  // A reload keeps the shown result until the new one arrives; another test or project drops it
+  const result = loaded.key === key ? loaded.result : null
+  const state = useFailedStepFor(projectPath, recording ? null : test, result)
   const reload = useCallback(() => setReloads((n) => n + 1), [])
   return { ...state, reload }
 }

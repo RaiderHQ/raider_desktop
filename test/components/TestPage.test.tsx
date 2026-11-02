@@ -751,6 +751,32 @@ describe('TestPage after a failed run', () => {
     })
   })
 
+  it('opening the failed test never saves it, so its last run still maps', async () => {
+    renderPage(withFile)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    // Past the 500 ms autosave
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 700))
+    })
+    expect(api.saveRecording).not.toHaveBeenCalled()
+    expect(screen.getByTestId('failed-step-panel')).toBeInTheDocument()
+  })
+
+  it('hides the panel while recording and looks again when it stops', async () => {
+    renderPage(withFile)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    api.mapFailedStep.mockClear()
+    act(() => useRecorderStore.getState().setRecordingTarget({ kind: 'test' }))
+    expect(screen.queryByTestId('failed-step-panel')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('step-failed')).not.toBeInTheDocument()
+    expect(api.mapFailedStep).not.toHaveBeenCalled()
+    act(() => useRecorderStore.getState().setRecordingTarget(null))
+    expect(await screen.findByTestId('failed-step-panel')).toBeInTheDocument()
+    expect(api.mapFailedStep).toHaveBeenCalledTimes(1)
+  })
+
   it('shows no panel when the last run passed', async () => {
     status = 'passed'
     renderPage(withFile)
@@ -769,6 +795,9 @@ describe('TestPage after a failed run', () => {
       useRunStore.setState({
         run: {
           projectPath: '/p',
+          scope: { kind: 'files', files: ['spec/login_works_spec.rb'] },
+          order: [],
+          tests: {},
           finished: { finishedAt: '2026-11-02T11:00:00Z' }
         } as unknown as RunView
       })

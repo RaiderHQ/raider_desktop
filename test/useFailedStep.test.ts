@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { resolveFailedStep, failedStepLine } from '../src/renderer/src/hooks/useFailedStep'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import {
+  resolveFailedStep,
+  failedStepLine,
+  useFailedStep,
+  useFailedStepFor
+} from '../src/renderer/src/hooks/useFailedStep'
+import { useRunStore } from '@foundation/Stores/runStore'
+import useRecorderStore from '@foundation/Stores/recorderStore'
+import type { RunView } from '@foundation/run/runModel'
 import type { Test } from '@shared/types/test'
 import type { TestResult } from '@foundation/Types/testResult'
 
@@ -61,6 +70,14 @@ describe('resolveFailedStep', () => {
     expect((await resolveFailedStep('/p', test, failed)).status).toBe('unmapped')
   })
 
+  it('gives changedSinceRun when the mapped step is no longer in the test', async () => {
+    mapFailedStep.mockResolvedValue({ stepId: 'gone', index: 2 })
+    expect(await resolveFailedStep('/p', test, failed)).toEqual({
+      status: 'changedSinceRun',
+      result: failed
+    })
+  })
+
   it('gives changedSinceRun', async () => {
     mapFailedStep.mockResolvedValue({ none: 'changedSinceRun' })
     expect(await resolveFailedStep('/p', test, failed)).toEqual({
@@ -115,5 +132,170 @@ describe('failedStepLine', () => {
       'failedStep.changedSinceRun'
     )
     expect(failedStepLine(t, { status: 'none' })).toBeNull()
+  })
+})
+
+const runJson = (file: string, status = 'failed'): string =>
+  JSON.stringify({
+    run: { finished_at: '2026-11-02T10:00:00Z' },
+    results: [
+      {
+        full_name: 'Checkout',
+        file_path: `./${file}`,
+        status,
+        failure: { message: 'Unable to locate element', backtrace: [`${file}:9`] }
+      }
+    ]
+  })
+
+const finishedRun = (
+  projectPath: string,
+  scope: RunView['scope'],
+  files: string[],
+  finishedAt: string
+): RunView =>
+  ({
+    projectPath,
+    scope,
+    order: files.map((_, i) => `e${i}`),
+    tests: Object.fromEntries(files.map((f, i) => [`e${i}`, { id: `e${i}`, file: `./${f}` }])),
+    finished: { finishedAt }
+  }) as unknown as RunView
+
+describe('useFailedStep', () => {
+  // Each project's raider-results/run.json, as the test sets it
+  let runs: Record<string, string>
+  const readDirectory = vi.fn(async (dir: string) => {
+    const project = dir.replace(/\/raider-results$/, '')
+    return project in runs
+      ? [{ name: 'run.json', type: 'file', path: `${project}/raider-results/run.json` }]
+      : []
+  })
+  const readFile = vi.fn(async (path: string) => {
+    const project = path.replace(/\/raider-results\/run\.json$/, '')
+    return project in runs ? { success: true, data: runs[project] } : { success: false }
+  })
+
+  beforeEach(() => {
+    runs = { '/p': runJson('spec/checkout_spec.rb') }
+    readDirectory.mockClear()
+    readFile.mockClear()
+    mapFailedStep.mockResolvedValue({ stepId: 'c', index: 2 })
+    window.api = { mapFailedStep, readDirectory, readFile } as unknown as typeof window.api
+    useRunStore.setState({ run: null })
+    useRecorderStore.setState({ recordingTarget: null })
+  })
+
+  const mount = (projectPath: string | null = '/p', t: Test | null = test) =>
+    renderHook(({ p, tt }) => useFailedStep(p, tt), { initialProps: { p: projectPath, tt: t } })
+
+  it('shows the mapped step of the newest failed run of the test file', async () => {
+    const { result } = mount()
+    await waitFor(() => expect(result.current.status).toBe('mapped'))
+    expect(readDirectory).toHaveBeenCalledWith('/p/raider-results')
+  })
+
+  it('reloads after a run that included the test file, or the whole project', async () => {
+    const { result } = mount()
+    await waitFor(() => expect(result.current.status).toBe('mapped'))
+    readDirectory.mockClear()
+    runs['/p'] = runJson('spec/checkout_spec.rb', 'passed')
+    act(() =>
+      useRunStore.setState({
+        run: finishedRun(
+          '/p',
+          { kind: 'files', files: ['spec/checkout_spec.rb'] },
+          ['spec/checkout_spec.rb'],
+          'T1'
+        )
+      })
+    )
+    await waitFor(() => expect(result.current.status).toBe('none'))
+    expect(readDirectory).toHaveBeenCalledTimes(1)
+    act(() => useRunStore.setState({ run: finishedRun('/p', { kind: 'all' }, [], 'T2') }))
+    await waitFor(() => expect(readDirectory).toHaveBeenCalledTimes(2))
+  })
+
+  it('does not reload after a run of another file or another project', async () => {
+    const { result } = mount()
+    await waitFor(() => expect(result.current.status).toBe('mapped'))
+    readDirectory.mockClear()
+    act(() =>
+      useRunStore.setState({
+        run: finishedRun(
+          '/p',
+          { kind: 'files', files: ['spec/other_spec.rb'] },
+          ['spec/other_spec.rb'],
+          'T1'
+        )
+      })
+    )
+    act(() =>
+      useRunStore.setState({
+        run: finishedRun(
+          '/q',
+          { kind: 'files', files: ['spec/checkout_spec.rb'] },
+          ['spec/checkout_spec.rb'],
+          'T2'
+        )
+      })
+    )
+    act(() =>
+      useRunStore.setState({
+        run: finishedRun('/p', { kind: 'tags', tags: ['smoke'] }, ['spec/other_spec.rb'], 'T3')
+      })
+    )
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20))
+    })
+    expect(readDirectory).not.toHaveBeenCalled()
+    expect(result.current.status).toBe('mapped')
+  })
+
+  it('drops the shown result at once when the project or the test changes', async () => {
+    runs['/q'] = runJson('spec/checkout_spec.rb')
+    const { result, rerender } = mount()
+    await waitFor(() => expect(result.current.status).toBe('mapped'))
+    // The other project's results never arrive: nothing from /p may show meanwhile
+    readDirectory.mockImplementationOnce(() => new Promise(() => {}))
+    rerender({ p: '/q', tt: test })
+    expect(result.current.status).toBe('none')
+
+    rerender({ p: '/p', tt: test })
+    await waitFor(() => expect(result.current.status).toBe('mapped'))
+    readDirectory.mockImplementationOnce(() => new Promise(() => {}))
+    rerender({ p: '/p', tt: { ...test, id: 't2' } })
+    expect(result.current.status).toBe('none')
+  })
+
+  it('shows nothing and asks nothing while recording, then looks again', async () => {
+    const { result } = mount()
+    await waitFor(() => expect(result.current.status).toBe('mapped'))
+    mapFailedStep.mockClear()
+    readDirectory.mockClear()
+    act(() => useRecorderStore.setState({ recordingTarget: { kind: 'test' } }))
+    expect(result.current.status).toBe('none')
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20))
+    })
+    expect(mapFailedStep).not.toHaveBeenCalled()
+    expect(readDirectory).not.toHaveBeenCalled()
+    act(() => useRecorderStore.setState({ recordingTarget: null }))
+    await waitFor(() => expect(result.current.status).toBe('mapped'))
+    expect(readDirectory).toHaveBeenCalledTimes(1)
+    expect(mapFailedStep).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('useFailedStepFor', () => {
+  it("never shows one project's answer for the same test id in another", async () => {
+    mapFailedStep.mockResolvedValue({ stepId: 'c', index: 2 })
+    const { result, rerender } = renderHook(({ p }) => useFailedStepFor(p, test, failed), {
+      initialProps: { p: '/p' }
+    })
+    await waitFor(() => expect(result.current.status).toBe('mapped'))
+    mapFailedStep.mockImplementation(() => new Promise(() => {}))
+    rerender({ p: '/q' })
+    expect(result.current.status).toBe('none')
   })
 })

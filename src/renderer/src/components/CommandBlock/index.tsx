@@ -256,8 +256,9 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   return (
     <div
       ref={wrapperRef}
-      className={`relative w-full mb-3 group/block ${latest ? 'rounded-lg ring-2 ring-ruby/40' : ''} ${
-        failed ? 'rounded-lg ring-2 ring-red-400' : ''
+      // The failed highlight wins over the latest one
+      className={`relative w-full mb-3 group/block ${
+        failed ? 'rounded-lg ring-2 ring-red-400' : latest ? 'rounded-lg ring-2 ring-ruby/40' : ''
       }`}
       data-latest={latest ? 'true' : undefined}
       data-testid={failed ? 'step-failed' : undefined}
