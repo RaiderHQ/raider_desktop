@@ -2,7 +2,7 @@
 // project dashboard already renders. Local only: no network access.
 
 import { TRACE_CONTENT_TYPE } from '@shared/types/raiderTrace'
-import type { TestResult } from './Types/testResult'
+import type { ComparisonStatus, ScreenshotComparison, TestResult } from './Types/testResult'
 import type { TraceRef } from './Types/testResult'
 
 interface DirNode {
@@ -14,6 +14,13 @@ interface DirNode {
 export interface RaiderResultsApi {
   readDirectory: (folderPath: string) => Promise<DirNode[]>
   readFile: (filePath: string) => Promise<{ success: boolean; data?: string; error?: string }>
+}
+
+export interface RaiderAttachment {
+  name?: string
+  content_type?: string
+  path?: string
+  attempt?: number
 }
 
 interface RaiderResult {
@@ -29,7 +36,8 @@ interface RaiderResult {
     backtrace?: string[]
     app_frame?: string
   }
-  attachments?: { name?: string; content_type?: string; path?: string; attempt?: number }[]
+  attachments?: RaiderAttachment[]
+  comparisons?: unknown
 }
 
 const MAX_MESSAGE = 20000
@@ -68,6 +76,70 @@ const safeAttachmentPath = (raw: string): string | null => {
 const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
 
+const MAX_COMPARISONS = 50
+const COMPARISON_STATUSES = new Set(['passed', 'failed', 'created', 'updated'])
+const COMPARISON_NAME = /^[A-Za-z0-9_/-]+$/
+const COMPARISON_PREFIX = 'comparison:'
+
+const nonNegative = (v: unknown): number | null =>
+  typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null
+
+const toSize = (v: unknown): [number, number] | null =>
+  Array.isArray(v) &&
+  v.length === 2 &&
+  v.every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0)
+    ? [v[0], v[1]]
+    : null
+
+// run.json is untrusted: malformed entries are dropped, bad fields become null.
+export const parseComparisons = (
+  raw: unknown,
+  attachments: RaiderAttachment[],
+  resultsDir: string
+): ScreenshotComparison[] => {
+  if (!Array.isArray(raw)) return []
+  const imagePath = (name: string, kind: string): string | undefined => {
+    const wanted = `${COMPARISON_PREFIX}${name}:${kind}`
+    // Later attachments win (rspec-retry repeats names).
+    for (let i = attachments.length - 1; i >= 0; i--) {
+      const a = attachments[i]
+      if (a.name !== wanted) continue
+      if (!a.content_type?.startsWith('image/') || typeof a.path !== 'string') return undefined
+      const safe = safeAttachmentPath(a.path)
+      return safe ? `${resultsDir}/${safe}` : undefined
+    }
+    return undefined
+  }
+  const out: ScreenshotComparison[] = []
+  for (const entry of raw) {
+    if (out.length >= MAX_COMPARISONS) break
+    if (!isObject(entry)) continue
+    const { name, status } = entry
+    if (typeof name !== 'string' || name.length > 100 || !COMPARISON_NAME.test(name)) continue
+    if (typeof status !== 'string' || !COMPARISON_STATUSES.has(status)) continue
+    const images: ScreenshotComparison['images'] = {}
+    for (const kind of ['expected', 'actual', 'diff'] as const) {
+      const p = imagePath(name, kind)
+      if (p) images[kind] = p
+    }
+    out.push({
+      name,
+      status: status as ComparisonStatus,
+      baseline:
+        typeof entry.baseline === 'string' && entry.baseline.length <= 300 ? entry.baseline : null,
+      diffPixels: nonNegative(entry.diff_pixels),
+      diffRatio: nonNegative(entry.diff_ratio),
+      threshold: nonNegative(entry.threshold),
+      maxDiffPixels: nonNegative(entry.max_diff_pixels),
+      maxDiffRatio: nonNegative(entry.max_diff_ratio),
+      expectedSize: toSize(entry.expected_size),
+      actualSize: toSize(entry.actual_size),
+      images
+    })
+  }
+  return out
+}
+
 const toRow = (
   result: RaiderResult,
   resultsDir: string,
@@ -101,7 +173,9 @@ const toRow = (
   const attachments = (Array.isArray(result.attachments) ? result.attachments : []).filter(
     (a) => isObject(a) && typeof a.content_type === 'string' && typeof a.path === 'string'
   )
-  const images = attachments.filter((a) => a.content_type?.startsWith('image/') && a.path)
+  const images = attachments.filter(
+    (a) => a.content_type?.startsWith('image/') && a.path && !a.name?.startsWith(COMPARISON_PREFIX)
+  )
   const image = images.find((a) => a.name === 'screenshot') ?? images[0]
   const safe = image?.path ? safeAttachmentPath(image.path) : null
   if (safe) row.screenshot = `${resultsDir}/${safe}`
@@ -119,6 +193,8 @@ const toRow = (
     })
     .sort((a, b) => (b.attempt ?? 0) - (a.attempt ?? 0))
   if (traces.length > 0) row.traces = traces
+  const comparisons = parseComparisons(result.comparisons, attachments, resultsDir)
+  if (comparisons.length > 0) row.comparisons = comparisons
   return row
 }
 

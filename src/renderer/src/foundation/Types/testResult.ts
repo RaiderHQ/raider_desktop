@@ -21,6 +21,22 @@ export interface TraceRef {
   attempt?: number
 }
 
+export type ComparisonStatus = 'passed' | 'failed' | 'created' | 'updated'
+
+export interface ScreenshotComparison {
+  name: string
+  status: ComparisonStatus
+  baseline: string | null // raw relative path from run.json
+  diffPixels: number | null
+  diffRatio: number | null
+  threshold: number | null
+  maxDiffPixels: number | null
+  maxDiffRatio: number | null
+  expectedSize: [number, number] | null
+  actualSize: [number, number] | null
+  images: { expected?: string; actual?: string; diff?: string } // absolute paths, resultsDir-joined
+}
+
 export interface TestResult {
   name: string
   status: string
@@ -28,6 +44,7 @@ export interface TestResult {
   screenshot?: string
   video?: string
   traces?: TraceRef[]
+  comparisons?: ScreenshotComparison[]
   statusDetails?: StatusDetails
   failure?: FailureInfo
   durationMs?: number
