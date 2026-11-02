@@ -189,6 +189,12 @@ export async function readSidecar(projectPath: string, fileRel: string): Promise
   if (!isSidecar(parsed)) throw new SidecarUnreadableError(`Sidecar has a bad shape: ${fileRel}`)
   // A bad map only costs the map: the test itself is still readable
   if ('stepLines' in parsed && !isStepLines(parsed.stepLines)) delete parsed.stepLines
+  // A title that isn't a string is dropped on its own; the range and the map stay
+  else if (parsed.stepLines) {
+    for (const range of parsed.stepLines.ranges) {
+      if ('title' in range && typeof range.title !== 'string') delete range.title
+    }
+  }
   // Secret steps saved before names were stored are named once here; the next save keeps them
   return { ...parsed, steps: withSecretNames(parsed.steps) }
 }

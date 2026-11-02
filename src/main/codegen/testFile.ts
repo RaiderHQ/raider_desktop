@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto'
 import { posix } from 'node:path'
 import { rubyString, STRING_LITERAL } from './ruby'
 import { renderStep } from './steps'
+import { describeStepEnglish } from '../../shared/describeStepEnglish'
 import { withSecretNames } from '../../shared/secretSteps'
 import type { Automation } from './steps'
 import type { StepLines } from '../../shared/types/projectTest'
@@ -13,6 +14,14 @@ export type { Automation }
 type FileSettings = Pick<RecorderSettings, 'browser' | 'headless' | 'implicitWait' | 'explicitWait'>
 
 const BROWSERS = ['chrome', 'firefox', 'safari', 'edge']
+
+const MAX_TITLE = 500
+
+/** English description of a step for the sidecar map; capped so a long label can't bloat it. */
+function stepTitle(step: Step): string {
+  const text = describeStepEnglish(step)
+  return text.length > MAX_TITLE ? `${text.slice(0, MAX_TITLE - 1)}…` : text
+}
 
 export function toAutomation(projectAutomation: string | null): Automation {
   return projectAutomation && /watir/i.test(projectAutomation) ? 'watir' : 'selenium'
@@ -211,7 +220,12 @@ export function generateProjectSpecFileWithMap(
     const start = lines.length + 1
     const chunkLines = chunk.split('\n')
     lines.push(...chunkLines)
-    return { stepId: named[i].id, start, end: start + chunkLines.length - 1 }
+    return {
+      stepId: named[i].id,
+      start,
+      end: start + chunkLines.length - 1,
+      title: stepTitle(named[i])
+    }
   })
   lines.push('  end', 'end', ...(cops ? [`# rubocop:enable ${cops}`] : []), '')
   const content = lines.join('\n')
