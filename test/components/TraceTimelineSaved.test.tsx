@@ -12,6 +12,7 @@ vi.mock('react-i18next', () => ({
 }))
 
 type IOCallback = (entries: Partial<IntersectionObserverEntry>[]) => void
+const disconnectSpy = vi.fn()
 let observers: { callback: IOCallback; targets: Element[] }[] = []
 
 class FakeIntersectionObserver {
@@ -24,7 +25,7 @@ class FakeIntersectionObserver {
     this.entry.targets.push(target)
   }
   unobserve(): void {}
-  disconnect(): void {}
+  disconnect = disconnectSpy
 }
 
 const intersect = (target: Element): void => {
@@ -44,6 +45,7 @@ const setup = (onSelectStep = vi.fn(), selectedStepId: string | null = null) => 
     onSelectStep,
     ...render(
       <TraceTimeline
+        traceKey="a"
         viewSteps={view.steps}
         selectedStepId={selectedStepId}
         onSelectStep={onSelectStep}
@@ -54,6 +56,7 @@ const setup = (onSelectStep = vi.fn(), selectedStepId: string | null = null) => 
 
 beforeEach(() => {
   observers = []
+  disconnectSpy.mockClear()
   read.mockReset()
   read.mockResolvedValue({ ok: true, kind: 'image', dataUrl: 'data:image/jpeg;base64,AAAA' })
   vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver)
@@ -157,5 +160,95 @@ describe('TraceTimeline with a saved trace', () => {
     expect(rowOf(6)).toHaveFocus()
     fireEvent.keyDown(rowOf(6), { key: 'ArrowUp' })
     expect(onSelectStep).toHaveBeenLastCalledWith('step-5')
+  })
+
+  it('uses listbox semantics with one tab stop', () => {
+    setup(vi.fn(), 'step-5')
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    expect(rowOf(5)).toHaveAttribute('role', 'option')
+    expect(rowOf(5)).toHaveAttribute('aria-selected', 'true')
+    expect(rowOf(4)).toHaveAttribute('aria-selected', 'false')
+    expect(rowOf(5)).toHaveAttribute('tabindex', '0')
+    expect(rowOf(4)).toHaveAttribute('tabindex', '-1')
+  })
+
+  it('makes the first row the tab stop when nothing is selected', () => {
+    setup()
+    expect(rowOf(1)).toHaveAttribute('tabindex', '0')
+    expect(rowOf(2)).toHaveAttribute('tabindex', '-1')
+  })
+
+  it('jumps with Home and End', () => {
+    const { onSelectStep } = setup(vi.fn(), 'step-5')
+    fireEvent.keyDown(rowOf(5), { key: 'End' })
+    expect(onSelectStep).toHaveBeenLastCalledWith('step-10')
+    fireEvent.keyDown(rowOf(5), { key: 'Home' })
+    expect(onSelectStep).toHaveBeenLastCalledWith('step-1')
+  })
+
+  it('selects the group when collapsing it hides the selected step', () => {
+    const { onSelectStep } = setup(vi.fn(), 'step-10')
+    fireEvent.click(screen.getAllByRole('button', { name: 'traceViewer.collapseGroup' })[1])
+    expect(onSelectStep).toHaveBeenCalledWith('step-9')
+  })
+
+  it('does not reselect when collapsing a group that does not hold the selection', () => {
+    const { onSelectStep } = setup(vi.fn(), 'step-5')
+    fireEvent.click(screen.getAllByRole('button', { name: 'traceViewer.collapseGroup' })[1])
+    expect(onSelectStep).not.toHaveBeenCalled()
+  })
+
+  it('disconnects its observers on unmount', () => {
+    const { unmount } = setup()
+    unmount()
+    expect(disconnectSpy).toHaveBeenCalled()
+  })
+
+  it.each([
+    ['returns null', () => Promise.resolve({ ok: false, error: 'missing' })],
+    ['rejects', () => Promise.reject(new Error('boom'))]
+  ])('keeps the placeholder when the loader %s', async (_name, impl) => {
+    read.mockImplementation(impl)
+    setup()
+    intersect(rowOf(2))
+    await act(async () => {})
+    expect(within(rowOf(2)).queryByRole('img')).toBeNull()
+    expect(rowOf(2).textContent).toContain('traceViewer.loadingImage')
+  })
+
+  it('starts afresh when a different trace is shown', async () => {
+    let resolveOld: (v: unknown) => void = () => {}
+    read.mockImplementation(() => new Promise((r) => (resolveOld = r)))
+    const view = render(
+      <TraceTimeline
+        traceKey="a"
+        viewSteps={fromRaiderTrace(fixtureIndex(), read).steps}
+        selectedStepId={null}
+        onSelectStep={vi.fn()}
+      />
+    )
+    intersect(rowOf(2))
+    await act(async () => {})
+    expect(read).toHaveBeenCalledTimes(1)
+
+    const readNew = vi
+      .fn()
+      .mockResolvedValue({ ok: true, kind: 'image', dataUrl: 'data:image/jpeg;base64,NEW' })
+    view.rerender(
+      <TraceTimeline
+        traceKey="b"
+        viewSteps={fromRaiderTrace(fixtureIndex(), readNew).steps}
+        selectedStepId={null}
+        onSelectStep={vi.fn()}
+      />
+    )
+    expect(within(rowOf(2)).queryByRole('img')).toBeNull()
+    await act(async () => resolveOld({ ok: true, kind: 'image', dataUrl: 'data:image/jpeg;base64,OLD' }))
+    expect(within(rowOf(2)).queryByRole('img')).toBeNull()
+
+    intersect(rowOf(2))
+    await act(async () => {})
+    expect(readNew).toHaveBeenCalledWith('steps/0002.jpg')
+    expect(within(rowOf(2)).getByRole('img')).toHaveAttribute('src', 'data:image/jpeg;base64,NEW')
   })
 })

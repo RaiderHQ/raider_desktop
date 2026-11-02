@@ -7,9 +7,13 @@ import { useTranslation } from 'react-i18next'
 interface TraceTimelineProps {
   steps?: TraceStep[] // the recorder's trace; scrolls to the latest step
   viewSteps?: TraceViewStep[] // a saved trace
+  traceKey?: string // identifies the open trace; rows start afresh when it changes
   selectedStepId: string | null
   onSelectStep: (stepId: string) => void
 }
+
+const descendantIds = (step: TraceViewStep): string[] =>
+  step.children.flatMap((child) => [child.id, ...descendantIds(child)])
 
 const statusClass = (step: TraceViewStep, isSelected: boolean): string => {
   if (isSelected) return 'border-ruby bg-ruby-sub'
@@ -22,7 +26,8 @@ interface StepRowProps {
   isSelected: boolean
   depth: number
   expanded: boolean
-  onToggle: (id: string) => void
+  tabbable: boolean
+  onToggle: (step: TraceViewStep) => void
   onSelect: (id: string) => void
 }
 
@@ -31,6 +36,7 @@ const StepRow: React.FC<StepRowProps> = ({
   isSelected,
   depth,
   expanded,
+  tabbable,
   onToggle,
   onSelect
 }) => {
@@ -53,6 +59,7 @@ const StepRow: React.FC<StepRowProps> = ({
       live = false
     }
     // Not keyed on loadScreenshot: a recorder re-map makes a new loader per step.
+    // A different trace remounts the rows (see traceKey), so nothing carries over.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inView, hasScreenshot, id])
 
@@ -72,7 +79,10 @@ const StepRow: React.FC<StepRowProps> = ({
         type="button"
         data-step-id={id}
         data-status={step.status}
+        role="option"
+        aria-selected={isSelected}
         aria-current={isSelected ? 'true' : undefined}
+        tabIndex={tabbable ? 0 : -1}
         onClick={() => onSelect(id)}
         className={`flex flex-col flex-1 min-w-0 p-2 rounded-lg border text-left transition-colors ${statusClass(step, isSelected)}`}
       >
@@ -89,13 +99,13 @@ const StepRow: React.FC<StepRowProps> = ({
         {thumbnail ? (
           <img
             src={thumbnail}
-            alt={`Step ${step.number}`}
+            alt={title ? t('traceViewer.stepImage', { n: step.number }) : `Step ${step.number}`}
             className="w-full h-20 object-cover rounded border border-neutral-lt"
           />
         ) : (
           (hasScreenshot || !title) && (
             <div className="w-full h-20 bg-neutral-lt rounded flex items-center justify-center text-xs text-neutral-mid">
-              ...
+              {title ? t('traceViewer.loadingImage') : '...'}
             </div>
           )
         )}
@@ -105,7 +115,7 @@ const StepRow: React.FC<StepRowProps> = ({
           type="button"
           aria-expanded={expanded}
           aria-label={expanded ? t('traceViewer.collapseGroup') : t('traceViewer.expandGroup')}
-          onClick={() => onToggle(id)}
+          onClick={() => onToggle(step)}
           className="p-2 text-xs text-neutral-mid rounded hover:bg-neutral-lt"
         >
           {expanded ? '▾' : '▸'}
@@ -115,7 +125,7 @@ const StepRow: React.FC<StepRowProps> = ({
   )
 }
 
-const TraceTimeline: React.FC<TraceTimelineProps> = ({
+const Timeline: React.FC<Omit<TraceTimelineProps, 'traceKey'>> = ({
   steps,
   viewSteps,
   selectedStepId,
@@ -138,22 +148,47 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({
     if (autoScroll) bottomRef.current?.scrollIntoView?.({ behavior: 'smooth' })
   }, [autoScroll, rows.length])
 
-  const toggle = (id: string): void =>
+  const toggle = (step: TraceViewStep): void => {
+    const collapsing = !collapsed.has(step.id)
     setCollapsed((prev) => {
       const next = new Set(prev)
-      if (!next.delete(id)) next.add(id)
+      if (!next.delete(step.id)) next.add(step.id)
       return next
     })
+    // Don't leave the selection on a row that just disappeared.
+    if (collapsing && selectedStepId && descendantIds(step).includes(selectedStepId)) {
+      onSelectStep(step.id)
+    }
+  }
+
+  const visibleIds: string[] = []
+  const collect = (list: TraceViewStep[]): void => {
+    for (const step of list) {
+      visibleIds.push(step.id)
+      if (step.isGroup && !collapsed.has(step.id)) collect(step.children)
+    }
+  }
+  collect(rows)
+  // Only one row is a tab stop: the selected one, else the first.
+  const tabStopId =
+    selectedStepId && visibleIds.includes(selectedStepId) ? selectedStepId : visibleIds[0]
 
   // Arrow keys move through the visible rows and select as they go.
   const onKeyDown = (event: React.KeyboardEvent): void => {
-    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
     const buttons = Array.from(
       listRef.current?.querySelectorAll<HTMLButtonElement>('button[data-step-id]') ?? []
     )
     const at = buttons.findIndex((b) => b === event.target)
-    const next = buttons[at + (event.key === 'ArrowDown' ? 1 : -1)]
-    if (at < 0 || !next) return
+    if (at < 0) return
+    const target = {
+      ArrowDown: at + 1,
+      ArrowUp: at - 1,
+      Home: 0,
+      End: buttons.length - 1
+    }[event.key] as number
+    const next = buttons[target]
+    if (!next) return
     event.preventDefault()
     next.focus()
     onSelectStep(next.dataset.stepId as string)
@@ -177,6 +212,7 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({
             isSelected={step.id === selectedStepId}
             depth={depth}
             expanded={expanded}
+            tabbable={step.id === tabStopId}
             onToggle={toggle}
             onSelect={onSelectStep}
           />
@@ -192,12 +228,16 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({
           {t('recorder.traceTimeline.title')}
         </h4>
       )}
-      <div ref={listRef} role="list" className="flex flex-col space-y-2" onKeyDown={onKeyDown}>
+      <div ref={listRef} role="listbox" aria-label={t('traceViewer.stepList')} className="flex flex-col space-y-2" onKeyDown={onKeyDown}>
         {renderRows(rows, 0)}
       </div>
       <div ref={bottomRef} />
     </div>
   )
 }
+
+const TraceTimeline: React.FC<TraceTimelineProps> = ({ traceKey, ...props }) => (
+  <Timeline key={traceKey ?? 'recorder'} {...props} />
+)
 
 export default TraceTimeline
