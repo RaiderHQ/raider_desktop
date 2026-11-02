@@ -193,7 +193,8 @@ const api = {
     suiteId: string,
     projectPath: string,
     rubyCommand: string
-  ): Promise<LegacyRunResult> => ipcRenderer.invoke('run-suite', suiteId, projectPath, rubyCommand),
+  ): Promise<LegacyRunResult> =>
+    ipcRenderer.invoke('run-suite', suiteId, projectPath, rubyCommand),
   prepareTestRun: (suiteId: string, testId: string, test?: Test): Promise<PrepareTestRunResult> =>
     ipcRenderer.invoke('prepare-test-run', suiteId, testId, test),
   prepareSuiteRun: (suiteId: string): Promise<PrepareSuiteRunResult> =>
@@ -228,7 +229,8 @@ const api = {
     url: string
     preloadPath: string
     reason?: 'unsupportedUrl'
-  }> => ipcRenderer.invoke('start-recording-main'),
+  }> =>
+    ipcRenderer.invoke('start-recording-main'),
   replayStepsAndRecord: async (
     testName: string,
     stepsToReplay: Step[],
@@ -338,8 +340,12 @@ const api = {
     projectPath: string,
     width: number,
     height: number
-  ): Promise<CommandType> => ipcRenderer.invoke('update-viewport', projectPath, width, height),
-  updateBrowserOptions: async (projectPath: string, options: string[]): Promise<CommandType> =>
+  ): Promise<CommandType> =>
+    ipcRenderer.invoke('update-viewport', projectPath, width, height),
+  updateBrowserOptions: async (
+    projectPath: string,
+    options: string[]
+  ): Promise<CommandType> =>
     ipcRenderer.invoke('update-browser-options', projectPath, options),
   updateHeadlessMode: async (
     projectPath: string,

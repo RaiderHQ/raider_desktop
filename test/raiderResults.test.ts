@@ -121,6 +121,15 @@ describe('loadRaiderResults', () => {
     })
   const sh = (index: number, total: number): unknown => ({ index, total, label: `l#${index}` })
 
+  it('keeps each shard its own finished_at on its rows', async () => {
+    const api = makeApi({
+      'run-1.json': timed('2026-10-10T12:00:00Z', sh(1, 2), [r('F: s1', 'failed')]),
+      'run-2.json': timed('2026-10-10T12:00:01Z', sh(2, 2), [r('F: s2', 'failed')])
+    })
+    const rows = await loadRaiderResults('/proj', api)
+    expect(rows!.map((x) => x.finishedAt)).toEqual(['2026-10-10T12:00:00Z', '2026-10-10T12:00:01Z'])
+  })
+
   it('prefers fresh shards over a stale run.json', async () => {
     const api = makeApi({
       'run.json': timed('2026-10-10T10:00:00Z', null, [r('F: stale', 'passed')]),

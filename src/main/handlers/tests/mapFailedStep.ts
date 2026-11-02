@@ -3,7 +3,7 @@ import { isAbsolute, relative, resolve } from 'path'
 import { safeError } from '../../utils/safeLog'
 import { appState } from '../appState'
 import { activeProject } from '../mobile/deviceSettingsIpc'
-import { stepLinesFor } from './recordedTests'
+import { findSidecarById, stepLinesFor } from './recordedTests'
 import { parseFrame } from '@shared/stackFrames'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 
@@ -63,10 +63,12 @@ export async function mapFailedStepHandler(
     const { layout } = appState
     if (!project || !layout || typeof testId !== 'string' || !isQuery(failure)) return NOT_RECORDED
 
+    const recorded = await findSidecarById(project, testId)
+    if (!recorded || stripDot(failure.file) !== recorded.file) return NOT_RECORDED
+
     const found = await stepLinesFor(project, layout, testId)
     if ('none' in found) return found
     const { sidecar, stepLines } = found
-    if (stripDot(failure.file) !== sidecar.file) return NOT_RECORDED
 
     const ran = failure.finishedAt === undefined ? NaN : Date.parse(failure.finishedAt)
     if (!Number.isNaN(ran) && ran <= Date.parse(sidecar.updatedAt)) {
@@ -79,7 +81,8 @@ export async function mapFailedStepHandler(
     const range =
       line === null ? undefined : stepLines.ranges.find((r) => line >= r.start && line <= r.end)
     if (!range) return { none: 'outsideSteps' }
-    return { stepId: range.stepId, index: sidecar.steps.findIndex((s) => s.id === range.stepId) }
+    const index = sidecar.steps.findIndex((s) => s.id === range.stepId)
+    return index === -1 ? { none: 'noMap' } : { stepId: range.stepId, index }
   } catch (error) {
     safeError('Could not map the failure to a step:', error)
     return { none: 'noMap' }

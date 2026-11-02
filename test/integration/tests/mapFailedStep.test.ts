@@ -4,10 +4,25 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 vi.mock('electron', () => ({ BrowserWindow: class {}, app: { getPath: (): string => '/' } }))
+vi.mock('../../../src/main/utils/safeLog', () => ({ safeError: vi.fn(), safeLog: vi.fn() }))
+vi.mock('../../../src/main/handlers/tests/recordedTests', async (importOriginal) => {
+  const orig =
+    await importOriginal<typeof import('../../../src/main/handlers/tests/recordedTests')>()
+  return {
+    ...orig,
+    findSidecarById: vi.fn(orig.findSidecarById),
+    stepLinesFor: vi.fn(orig.stepLinesFor)
+  }
+})
 
+import { safeError } from '../../../src/main/utils/safeLog'
 import { appState } from '../../../src/main/handlers/appState'
 import { mapFailedStepHandler } from '../../../src/main/handlers/tests/mapFailedStep'
-import { saveRecordedTest } from '../../../src/main/handlers/tests/recordedTests'
+import {
+  findSidecarById,
+  saveRecordedTest,
+  stepLinesFor
+} from '../../../src/main/handlers/tests/recordedTests'
 import { readSidecar, writeSidecar } from '../../../src/main/handlers/tests/sidecar'
 import type { ProjectLayout } from '../../../src/shared/types/projectLayout'
 import type { Sidecar } from '../../../src/shared/types/projectTest'
@@ -136,10 +151,50 @@ describe('mapFailedStepHandler', () => {
     })
   })
 
-  it('reports a different project as not recorded', async () => {
+  it('reports a different project as not recorded without reading anything', async () => {
+    vi.mocked(findSidecarById).mockClear()
+    vi.mocked(stepLinesFor).mockClear()
     expect(await map(query({ backtrace: [frame(5)] }), join(root, 'other'))).toEqual({
       none: 'notRecorded'
     })
+    expect(findSidecarById).not.toHaveBeenCalled()
+    expect(stepLinesFor).not.toHaveBeenCalled()
+  })
+
+  it('checks the failing file before reporting an edited test', async () => {
+    const file = join(project, saved.file)
+    await writeFile(file, (await readFile(file, 'utf-8')).replace('https://x.test/3', 'https://y'))
+    const failure = query({ file: 'spec/other_spec.rb', backtrace: [frame(rangeOf(2).start)] })
+    expect(await map(failure)).toEqual({ none: 'notRecorded' })
+  })
+
+  it('reports a stale run before a missing map', async () => {
+    const file = join(project, saved.file)
+    await writeFile(file, (await readFile(file, 'utf-8')) + '# note\n')
+    const { stepLines, ...bare } = (await readSidecar(project, saved.file))!
+    void stepLines
+    await writeSidecar(project, bare)
+    const before = new Date(Date.parse(saved.updatedAt) - 60_000).toISOString()
+    expect(await map(query({ finishedAt: before }))).toEqual({ none: 'changedSinceRun' })
+  })
+
+  it('reports an edited file before a stale run', async () => {
+    const file = join(project, saved.file)
+    await writeFile(file, (await readFile(file, 'utf-8')).replace('https://x.test/3', 'https://y'))
+    const before = new Date(Date.parse(saved.updatedAt) - 60_000).toISOString()
+    expect(await map(query({ finishedAt: before }))).toEqual({ none: 'edited' })
+  })
+
+  it('has no map when a range names a step the test lacks', async () => {
+    const side = (await readSidecar(project, saved.file))!
+    await writeSidecar(project, { ...side, steps: side.steps.filter((s) => s.id !== 's3') })
+    expect(await map(query({ backtrace: [frame(rangeOf(2).start)] }))).toEqual({ none: 'noMap' })
+  })
+
+  it('never rejects when reading fails, and logs it', async () => {
+    vi.mocked(stepLinesFor).mockRejectedValueOnce(new Error('boom'))
+    expect(await map(query({ backtrace: [frame(rangeOf(2).start)] }))).toEqual({ none: 'noMap' })
+    expect(safeError).toHaveBeenCalled()
   })
 
   it('reports a failure in another file as not recorded', async () => {
