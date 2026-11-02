@@ -1,6 +1,8 @@
 import { render, screen, fireEvent, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import RunPanel from '@components/RunPanel'
+import useRecorderStore from '@foundation/Stores/recorderStore'
+import { MemoryRouter } from 'react-router'
 import { useRunStore } from '@foundation/Stores/runStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import type { RunView, RunTestView } from '@foundation/run/runModel'
@@ -295,5 +297,79 @@ describe('RunPanel', () => {
     render(<RunPanel routeKey="/overview" />)
     expect(screen.getByTestId('run-panel')).toBeInTheDocument()
     expect(screen.getByTestId('run-cancel')).toBeInTheDocument()
+  })
+
+  describe('failed recorded tests', () => {
+    const recordedTest = {
+      id: 'spec/a_spec.rb[1:1]',
+      name: 'Checkout',
+      ownership: 'recorded',
+      file: 'spec/a_spec.rb',
+      steps: [{ id: 'a', kind: 'click', element: { label: 'Save', selectors: [] } }]
+    }
+    const resultsJson = JSON.stringify({
+      run: { finished_at: '2026-10-31T10:00:05.000Z' },
+      results: [
+        {
+          identifier: 'spec/a_spec.rb[1:1]',
+          file_path: './spec/a_spec.rb',
+          full_name: 'Checkout',
+          status: 'failed',
+          failure: {
+            message: '{"selector":"#btn-x"}',
+            exception_class: 'Selenium::WebDriver::Error::NoSuchElementError',
+            backtrace: ['spec/a_spec.rb:3']
+          }
+        }
+      ]
+    })
+    const api = {
+      readDirectory: vi.fn(),
+      readFile: vi.fn(),
+      mapFailedStep: vi.fn()
+    }
+    const renderFinished = (file: string): void => {
+      setRun(
+        makeRun({ finished: finished('failed') }, [
+          test1('a1', 'failed', { id: 'spec/a_spec.rb[1:1]', file })
+        ])
+      )
+      render(
+        <MemoryRouter>
+          <RunPanel routeKey="/tests" />
+        </MemoryRouter>
+      )
+    }
+
+    beforeEach(() => {
+      Object.values(api).forEach((f) => f.mockReset())
+      api.readDirectory.mockResolvedValue([
+        { name: 'run.json', type: 'file', path: '/work/shop/raider-results/run.json' }
+      ])
+      api.readFile.mockResolvedValue({ success: true, data: resultsJson })
+      api.mapFailedStep.mockResolvedValue({ stepId: 'a', index: 0 })
+      window.api = { ...api, setActiveProject: vi.fn() } as unknown as typeof window.api
+      useRecorderStore.setState({
+        suites: [{ id: 's1', name: 'S', tests: [recordedTest] }] as never
+      })
+    })
+    afterEach(() => useRecorderStore.setState({ suites: [] }))
+
+    it('adds a plain line and Fix in test to a failed recorded test row', async () => {
+      renderFinished('spec/a_spec.rb')
+      const line = await screen.findByTestId('run-failed-step-line')
+      expect(line).toHaveTextContent('failedStep.title')
+      expect(screen.getByText('failedStep.fixInTest')).toBeInTheDocument()
+      expect(screen.queryByText(/#btn-x/)).toBeNull()
+      expect(api.readDirectory).toHaveBeenCalledTimes(1)
+    })
+
+    it('loads no results for a failed code test', async () => {
+      useRecorderStore.setState({ suites: [] })
+      renderFinished('spec/a_spec.rb')
+      await Promise.resolve()
+      expect(api.readDirectory).not.toHaveBeenCalled()
+      expect(screen.queryByTestId('run-failed-step-line')).toBeNull()
+    })
   })
 })

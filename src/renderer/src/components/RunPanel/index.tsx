@@ -1,9 +1,21 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { useRunStore } from '@foundation/Stores/runStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import useRecorderStore from '@foundation/Stores/recorderStore'
+import { loadRaiderResults } from '@foundation/raiderResults'
+import { recordedTestForFile } from '@foundation/recordedTestForFile'
+import { testKeyOf, toRouteParam } from '@foundation/testKey'
+import { failedStepLine, resolveFailedStep } from '../../hooks/useFailedStep'
 import MobileNotReady from '@components/MobileNotReady'
-import { errorReason, progress, type RunTestView, type TestState } from '@foundation/run/runModel'
+import {
+  errorReason,
+  progress,
+  type RunTestView,
+  type RunView,
+  type TestState
+} from '@foundation/run/runModel'
 
 interface RunPanelProps {
   routeKey: string
@@ -43,6 +55,51 @@ const formatElapsed = (ms: number): string => {
 const formatDuration = (ms: number): string =>
   ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`
 
+/** The plain failed-step line for each failed recorded test of a finished run, by run test id. */
+function useFailedStepLines(run: RunView | null, projectPath: string | null): Map<string, string> {
+  const { t } = useTranslation()
+  const suites = useRecorderStore((s) => s.suites)
+  const finishedAt = run?.finished?.finishedAt
+  const [lines, setLines] = useState<Map<string, string>>(new Map())
+
+  // Only the failed rows of recorded tests are worth reading the results for
+  const failed =
+    run && finishedAt
+      ? run.order
+          .map((id) => run.tests[id])
+          .filter((x) => x.state === 'failed')
+          .flatMap((x) => {
+            const recorded = recordedTestForFile(suites, x.file)
+            return recorded ? [{ id: x.id, recorded }] : []
+          })
+      : []
+  const hasFailed = failed.length > 0
+
+  useEffect(() => {
+    setLines(new Map())
+    if (!projectPath || !finishedAt || !hasFailed) return
+    let active = true
+    loadRaiderResults(projectPath, window.api)
+      .then(async (rows) => {
+        const next = new Map<string, string>()
+        for (const { id, recorded } of failed) {
+          const row = rows?.find((r) => r.identifier === id)
+          if (!row) continue
+          const line = failedStepLine(t, await resolveFailedStep(projectPath, recorded, row))
+          if (line) next.set(id, line)
+        }
+        if (active) setLines(next)
+      })
+      .catch(() => {})
+    return (): void => {
+      active = false
+    }
+    // Once per finished run: a suite edit in between doesn't read the results again
+  }, [finishedAt, projectPath, hasFailed])
+
+  return lines
+}
+
 const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed }) => {
   const { t } = useTranslation()
   const run = useRunStore((s) => s.run)
@@ -52,6 +109,8 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
   const [filter, setFilter] = useState<Filter>('all')
   const [now, setNow] = useState(() => Date.now())
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const stepLines = useFailedStepLines(run, projectPath)
+  const suites = useRecorderStore((s) => s.suites)
 
   const active = run !== null && run.finished === null
   useEffect(() => {
@@ -95,31 +154,55 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
   const hasFailures =
     Object.values(run.tests).some((x) => x.state === 'failed') || (finished?.counts.failed ?? 0) > 0
 
-  const row = (test: RunTestView): React.ReactElement => (
-    <li
-      key={test.id}
-      data-testid="run-test-row"
-      className="flex items-center gap-2 py-1.5 px-3 text-sm"
-    >
-      <span
-        className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${stateClass[test.state]}`}
+  const row = (test: RunTestView): React.ReactElement => {
+    const stepLine = stepLines.get(test.id)
+    const recorded = stepLine ? recordedTestForFile(suites, test.file) : undefined
+    return (
+      <li
+        key={test.id}
+        data-testid="run-test-row"
+        className="flex items-center gap-2 py-1.5 px-3 text-sm"
       >
-        {t(`run.state.${test.state}`)}
-      </span>
-      <span className="flex-1 min-w-0 truncate text-neutral-dark">{test.description}</span>
-      {run.workers > 1 && test.worker !== undefined && (
-        <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-lt text-neutral-dk">
-          {`w${test.worker}`}
+        <span
+          className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${stateClass[test.state]}`}
+        >
+          {t(`run.state.${test.state}`)}
         </span>
-      )}
-      {test.attempt !== undefined && test.attempt > 1 && (
-        <span className="text-xs text-neutral-mid">{`#${test.attempt}`}</span>
-      )}
-      {test.durationMs !== undefined && (
-        <span className="text-xs text-neutral-mid">{formatDuration(test.durationMs)}</span>
-      )}
-    </li>
-  )
+        <span className="flex-1 min-w-0 truncate text-neutral-dark">{test.description}</span>
+        {run.workers > 1 && test.worker !== undefined && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-lt text-neutral-dk">
+            {`w${test.worker}`}
+          </span>
+        )}
+        {test.attempt !== undefined && test.attempt > 1 && (
+          <span className="text-xs text-neutral-mid">{`#${test.attempt}`}</span>
+        )}
+        {test.durationMs !== undefined && (
+          <span className="text-xs text-neutral-mid">{formatDuration(test.durationMs)}</span>
+        )}
+        {stepLine && recorded && (
+          <>
+            <span data-testid="run-failed-step-line" className="text-xs text-neutral-dk">
+              {stepLine}
+            </span>
+            <Link
+              to={`/overview/tests/${toRouteParam(
+                testKeyOf({
+                  name: test.description,
+                  testId: recorded.id,
+                  ownership: 'recorded',
+                  suiteIds: []
+                })
+              )}`}
+              className="text-xs text-ruby hover:underline whitespace-nowrap"
+            >
+              {t('failedStep.fixInTest')}
+            </Link>
+          </>
+        )}
+      </li>
+    )
+  }
 
   return (
     <div

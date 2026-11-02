@@ -175,4 +175,20 @@ describe('TestResultCard with a mobile (Appium) result', () => {
     expect(screen.getByText(/6100 ms/)).toBeInTheDocument()
     expect(screen.queryByText(/chrome|firefox|safari|browser/i)).not.toBeInTheDocument()
   })
+
+  it('renders a code test as before: no failed-step line, details open', () => {
+    render(
+      <TestResultCard
+        name="code test"
+        status="failed"
+        failure={{ message: 'boom', exceptionClass: 'RuntimeError', backtrace: ['a.rb:1'] }}
+        result={{ name: 'code test', status: 'failed' }}
+      />
+    )
+    fireEvent.click(screen.getByText('code test'))
+    expect(screen.queryByTestId('failed-step-line')).toBeNull()
+    expect(screen.queryByTestId('technical-details')).toBeNull()
+    expect(screen.getByText('RuntimeError')).toBeInTheDocument()
+    expect(screen.getByText('boom')).toBeInTheDocument()
+  })
 })

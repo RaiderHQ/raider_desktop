@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router'
 import {
   FaCheckCircle,
   FaTimesCircle,
@@ -20,7 +21,10 @@ import Tooltip from '@components/Tooltip'
 import { toMediaUrl } from '@foundation/mediaUrl'
 import { imageDataUrl } from '@foundation/imageDataUrl'
 import type { TraceStep } from '@foundation/Types/traceStep'
-import type { FailureInfo } from '@foundation/Types/testResult'
+import type { FailureInfo, TestResult } from '@foundation/Types/testResult'
+import type { Test } from '@foundation/Types/test'
+import { failedStepLine, useFailedStepFor } from '../../hooks/useFailedStep'
+import { testKeyOf, toRouteParam } from '@foundation/testKey'
 
 interface TestResultCardProps {
   name: string
@@ -34,6 +38,8 @@ interface TestResultCardProps {
   durationMs?: number
   browser?: string
   projectPath?: string
+  result?: TestResult
+  recordedTest?: Test
 }
 
 const TestResultCard: React.FC<TestResultCardProps> = ({
@@ -47,9 +53,12 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
   failure,
   durationMs,
   browser,
-  projectPath
+  projectPath,
+  result,
+  recordedTest
 }) => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [imageData, setImageData] = useState<string>('')
@@ -82,6 +91,9 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
 
   const isFailing = status === 'failed' || status === 'broken' || status === 'quarantined'
   const showFailureDetails = isFailing && !!failure
+
+  const failedStep = useFailedStepFor(projectPath ?? null, recordedTest ?? null, result ?? null)
+  const stepLine = isFailing ? failedStepLine(t, failedStep) : null
 
   const chevronIcon = open ? <FaChevronDown /> : <FaChevronRight />
 
@@ -144,8 +156,32 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
           <p className="text-xs text-neutral-mid mb-1">
             {t('testResults.status')}: <span className="font-medium text-neutral-dk">{t(`testResults.${status}`)}</span>
           </p>
+          {stepLine && recordedTest && (
+            <div className="mt-2 flex items-center gap-3">
+              <p data-testid="failed-step-line" className="text-sm text-neutral-dark">
+                {stepLine}
+              </p>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  const key = testKeyOf({
+                    name,
+                    testId: recordedTest.id,
+                    ownership: 'recorded',
+                    suiteIds: []
+                  })
+                  navigate(`/overview/tests/${toRouteParam(key)}`)
+                }}
+                className="text-xs text-ruby hover:underline shrink-0"
+              >
+                {t('failedStep.fixInTest')}
+              </button>
+            </div>
+          )}
           {showFailureDetails && failure ? (
             <FailureDetails
+              collapsed={!!stepLine}
               failure={failure}
               screenshot={screenshot}
               durationMs={durationMs}

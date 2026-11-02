@@ -9,6 +9,8 @@ import TestResultCard from '@components/TestResultCard'
 import SavedLogins from '@components/SavedLogins'
 import NoProjectLoadedMessage from '@components/NoProjectLoadedMessage'
 import { loadRaiderResults } from '@foundation/raiderResults'
+import { recordedTestForFile } from '@foundation/recordedTestForFile'
+import type { Suite } from '@foundation/Types/suite'
 import type { TestResult } from '@foundation/Types/testResult'
 
 const EmptyState: React.FC = () => {
@@ -65,6 +67,7 @@ interface ResultSectionProps {
   keyPrefix: string
   testByName: Map<string, { id: string; hasTrace?: boolean }>
   projectPath?: string
+  suites: Suite[]
 }
 
 const ResultSection: React.FC<ResultSectionProps> = ({
@@ -72,7 +75,8 @@ const ResultSection: React.FC<ResultSectionProps> = ({
   results,
   keyPrefix,
   testByName,
-  projectPath
+  projectPath,
+  suites
 }) => {
   const { t } = useTranslation()
   if (results.length === 0) return null
@@ -97,6 +101,8 @@ const ResultSection: React.FC<ResultSectionProps> = ({
               durationMs={result.durationMs}
               browser={result.browser}
               projectPath={projectPath}
+              result={result}
+              recordedTest={recordedTestForFile(suites, result.file)}
             />
           )
         })}
@@ -247,6 +253,7 @@ const Index: React.FC = (): JSX.Element => {
                 keyPrefix="passed"
                 testByName={testByName}
                 projectPath={projectPath}
+                suites={suites}
               />
               <ResultSection
                 titleKey="dashboard.failed"
@@ -254,6 +261,7 @@ const Index: React.FC = (): JSX.Element => {
                 keyPrefix="failed"
                 testByName={testByName}
                 projectPath={projectPath}
+                suites={suites}
               />
               <ResultSection
                 titleKey="dashboard.quarantined"
@@ -261,6 +269,7 @@ const Index: React.FC = (): JSX.Element => {
                 keyPrefix="quarantined"
                 testByName={testByName}
                 projectPath={projectPath}
+                suites={suites}
               />
               <ResultSection
                 titleKey="dashboard.skipped"
@@ -268,6 +277,7 @@ const Index: React.FC = (): JSX.Element => {
                 keyPrefix="skipped"
                 testByName={testByName}
                 projectPath={projectPath}
+                suites={suites}
               />
             </div>
           </div>
