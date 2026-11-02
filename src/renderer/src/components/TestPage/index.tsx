@@ -163,7 +163,9 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       p ? { ...p, steps: p.steps.map((s) => (s.id === updated.id ? updated : s)) } : null
     )
     setEditingValue(false)
-    const fixedTest = { ...test, steps: test.steps.map((s) => (s.id === updated.id ? updated : s)) }
+    // The latest steps, which may have changed since this render
+    const fixedTest = useRecorderStore.getState().activeTest
+    if (!fixedTest || fixedTest.id !== test.id) return
     // Saved right away, as a rename is: the next run reads the file
     Promise.resolve(window.api.saveRecording(activeSuiteId, fixedTest))
       .then((saved) => {

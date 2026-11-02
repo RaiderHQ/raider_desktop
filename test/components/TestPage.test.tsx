@@ -32,7 +32,8 @@ vi.mock('react-hot-toast', () => ({
 // The real hook (autosave, suite sync), with the recording entry points observed
 const spies = vi.hoisted(() => ({
   start: vi.fn().mockResolvedValue(undefined),
-  continueRecording: vi.fn().mockResolvedValue(undefined)
+  continueRecording: vi.fn().mockResolvedValue(undefined),
+  run: vi.fn().mockResolvedValue(undefined)
 }))
 vi.mock('../../src/renderer/src/hooks/useTestRecording', async (importOriginal) => {
   const actual =
@@ -42,7 +43,8 @@ vi.mock('../../src/renderer/src/hooks/useTestRecording', async (importOriginal) 
     useTestRecording: (): ReturnType<typeof actual.useTestRecording> => ({
       ...actual.useTestRecording(),
       start: spies.start,
-      continueRecording: spies.continueRecording
+      continueRecording: spies.continueRecording,
+      run: spies.run
     })
   }
 })
@@ -881,5 +883,64 @@ describe('TestPage fixing a failed value', () => {
     fireEvent.click(screen.getByRole('button', { name: 'failedStep.save' }))
     await waitFor(() => expect(api.saveRecording).toHaveBeenCalled())
     expect(screen.queryByText('failedStep.fixed')).not.toBeInTheDocument()
+  })
+
+  it('shows Fixed in place of the failure, and Run again runs the test', async () => {
+    renderPage(typed)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.editValue' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'failedStep.value' }), {
+      target: { value: 'new' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'failedStep.save' }))
+    expect(await screen.findByRole('heading', { name: 'failedStep.fixed' })).toBeInTheDocument()
+    expect(screen.queryByText('failedStep.changedSinceRun')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'failedStep.runAgain' }))
+    expect(spies.run).toHaveBeenCalledTimes(1)
+  })
+
+  it('saves the latest steps, not the ones this render started with', async () => {
+    renderPage(typed)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.editValue' }))
+    act(() =>
+      useRecorderStore
+        .getState()
+        .updateActiveTest((p) => (p ? { ...p, steps: [...p.steps, step('z')] } : null))
+    )
+    api.saveRecording.mockClear()
+    fireEvent.change(screen.getByRole('textbox', { name: 'failedStep.value' }), {
+      target: { value: 'new' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'failedStep.save' }))
+    await waitFor(() => expect(api.saveRecording).toHaveBeenCalled())
+    expect(api.saveRecording.mock.calls[0][1].steps).toEqual([
+      step('a'),
+      { ...typed.steps[1], text: 'new' },
+      step('z')
+    ])
+  })
+
+  it('closes the form without saving when the value is unchanged', async () => {
+    renderPage(typed)
+    await opened()
+    fireEvent.click(await screen.findByRole('button', { name: 'failedStep.editValue' }))
+    api.saveRecording.mockClear()
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'failedStep.value' }), { key: 'Enter' })
+    expect(screen.queryByRole('textbox', { name: 'failedStep.value' })).not.toBeInTheDocument()
+    expect(screen.queryByText('failedStep.fixed')).not.toBeInTheDocument()
+    expect(api.saveRecording).not.toHaveBeenCalled()
+  })
+
+  it('offers no Edit value for a secret step', async () => {
+    const secretTest: Test = {
+      ...typed,
+      steps: [step('a'), { ...typed.steps[1], text: '', secret: true } as Test['steps'][number]]
+    }
+    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [secretTest, empty] }])
+    renderPage(secretTest)
+    await opened()
+    await screen.findByTestId('failed-step-panel')
+    expect(screen.queryByRole('button', { name: 'failedStep.editValue' })).not.toBeInTheDocument()
   })
 })

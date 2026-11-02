@@ -56,4 +56,13 @@ describe('EditValueForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }))
     expect(onCancel).toHaveBeenCalled()
   })
+
+  it('just closes when nothing changed', () => {
+    const onSave = vi.fn()
+    const onCancel = vi.fn()
+    render(<EditValueForm step={assertText} onSave={onSave} onCancel={onCancel} />)
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' })
+    expect(onCancel).toHaveBeenCalled()
+    expect(onSave).not.toHaveBeenCalled()
+  })
 })

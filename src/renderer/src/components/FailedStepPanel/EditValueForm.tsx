@@ -15,7 +15,10 @@ interface EditValueFormProps {
 /** Corrects the value a failed step typed, expected or visited. */
 const EditValueForm: React.FC<EditValueFormProps> = ({ step, actualValue, onSave, onCancel }) => {
   const { t } = useTranslation()
-  const [value, setValue] = useState(editableValue(step) ?? '')
+  const original = editableValue(step) ?? ''
+  const [value, setValue] = useState(original)
+  // Nothing changed: there is nothing to save
+  const submit = (): void => (value === original ? onCancel() : onSave(withValue(step, value)))
 
   return (
     <div
@@ -41,16 +44,12 @@ const EditValueForm: React.FC<EditValueFormProps> = ({ step, actualValue, onSave
         autoFocus
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') onSave(withValue(step, value))
+          if (e.key === 'Enter') submit()
           if (e.key === 'Escape') onCancel()
         }}
       />
       <div className="flex gap-2">
-        <Button
-          type="primary"
-          className="min-w-0 !px-3 !py-1"
-          onClick={() => onSave(withValue(step, value))}
-        >
+        <Button type="primary" className="min-w-0 !px-3 !py-1" onClick={submit}>
           {t('failedStep.save')}
         </Button>
         <Button type="secondary" className="min-w-0 !px-3 !py-1" onClick={onCancel}>

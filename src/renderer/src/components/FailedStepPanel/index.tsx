@@ -75,7 +75,9 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
   )
 
   let heading: React.ReactNode
-  if (mapped) {
+  if (fixed && !readOnly) {
+    heading = <h2 className="text-sm font-semibold text-status-ok">{t('failedStep.fixed')}</h2>
+  } else if (mapped) {
     const desc = describeStep(mapped.step)
     heading = (
       <>
@@ -96,7 +98,9 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
   return (
     <section
       data-testid="failed-step-panel"
-      className="rounded-lg border border-red-200 bg-red-50/40 p-3 space-y-3"
+      className={`rounded-lg border p-3 space-y-3 ${
+        fixed && !readOnly ? 'border-neutral-bdr bg-neutral-50' : 'border-red-200 bg-red-50/40'
+      }`}
     >
       <div className="space-y-0.5">{heading}</div>
       <div className="flex gap-4 items-start">
@@ -112,14 +116,11 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
         {/* A lone picture keeps the size it has beside another */}
         {!mapped && <div className="flex-1" />}
       </div>
-      {!readOnly && fixed && (
-        <div className="flex flex-wrap items-center gap-3">
-          <p className="text-sm font-medium text-status-ok">{t('failedStep.fixed')}</p>
-          {onRunAgain && (
-            <button type="button" className={ACTION} onClick={onRunAgain}>
-              {t('failedStep.runAgain')}
-            </button>
-          )}
+      {!readOnly && fixed && onRunAgain && (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={ACTION} onClick={onRunAgain}>
+            {t('failedStep.runAgain')}
+          </button>
         </div>
       )}
       {!readOnly && !fixed && (actions || canEditValue) && (

@@ -178,34 +178,18 @@ describe('FailedStepPanel', () => {
     const navStep: Step = { id: 'c', kind: 'navigate', url: 'https://x.test/cart' }
     const stateFor = (step: Step): FailedStepState => ({ ...mapped(), step }) as FailedStepState
 
-    it('offers Edit value for a typed value or a visit, never for a secret', () => {
+    it.each([
+      ['typed text', typed],
+      ['a visit', navStep]
+    ])('offers Edit value for %s', (_name, step) => {
       const onEditValue = vi.fn()
-      const { unmount } = render(
-        <FailedStepPanel
-          state={stateFor(typed)}
-          test={test}
-          projectPath="/p"
-          readOnly={false}
-          actions={null}
-          onEditValue={onEditValue}
-        />
-      )
+      renderPanel(stateFor(step), null, { onEditValue })
       fireEvent.click(screen.getByRole('button', { name: en.failedStep.editValue }))
       expect(onEditValue).toHaveBeenCalled()
-      unmount()
-      const again = render(
-        <FailedStepPanel
-          state={stateFor(navStep)}
-          test={test}
-          projectPath="/p"
-          readOnly={false}
-          actions={null}
-          onEditValue={onEditValue}
-        />
-      )
-      expect(screen.getByRole('button', { name: en.failedStep.editValue })).toBeInTheDocument()
-      again.unmount()
-      renderPanel(stateFor(secret), null, { onEditValue })
+    })
+
+    it('never offers Edit value for a secret', () => {
+      renderPanel(stateFor(secret), null, { onEditValue: vi.fn() })
       expect(
         screen.queryByRole('button', { name: en.failedStep.editValue })
       ).not.toBeInTheDocument()
@@ -218,10 +202,12 @@ describe('FailedStepPanel', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('says it is fixed and runs again from there', () => {
+    it('says it is fixed in place of the failure, and runs again from there', () => {
       const onRunAgain = vi.fn()
       renderPanel(stateFor(typed), null, { fixed: true, onEditValue: vi.fn(), onRunAgain })
-      expect(screen.getByText(en.failedStep.fixed)).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: en.failedStep.fixed })).toBeInTheDocument()
+      expect(screen.queryByText(/^Failed at step/)).not.toBeInTheDocument()
+      expect(screen.getByTestId('failed-step-panel').className).not.toContain('red')
       expect(
         screen.queryByRole('button', { name: en.failedStep.editValue })
       ).not.toBeInTheDocument()
