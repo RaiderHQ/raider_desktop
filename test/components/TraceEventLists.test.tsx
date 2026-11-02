@@ -169,3 +169,46 @@ describe('formatBytes', () => {
     expect(formatBytes(n)).toBe(expected)
   })
 })
+
+describe('TraceNetworkList mocked badges', () => {
+  it('shows Mocked for a fulfilled mock and Blocked by test for a failed one', () => {
+    render(
+      <TraceNetworkList
+        items={[
+          request({ mocked: 'fulfilled' }),
+          request({ mocked: 'failed', status: null, error: 'net::ERR_FAILED' })
+        ]}
+        available
+        all={false}
+      />
+    )
+    expect(screen.getByText('traceViewer.network.mocked')).toBeInTheDocument()
+    expect(screen.getByText('traceViewer.network.blockedByTest')).toBeInTheDocument()
+    expect(screen.getByText('traceViewer.network.failed')).toBeInTheDocument()
+  })
+
+  it('describes each badge with a visible hint and a tooltip', () => {
+    render(
+      <TraceNetworkList
+        items={[request({ mocked: 'fulfilled' }), request({ mocked: 'failed' })]}
+        available
+        all={false}
+      />
+    )
+    const hint = screen.getByText('traceViewer.network.mockedHint')
+    expect(hint.id).not.toBe('')
+    for (const key of ['traceViewer.network.mocked', 'traceViewer.network.blockedByTest']) {
+      const badge = screen.getByText(key)
+      expect(badge).toHaveAttribute('aria-describedby', hint.id)
+      expect(badge).toHaveAttribute('title', 'traceViewer.network.mockedHint')
+    }
+  })
+
+  it('shows no badge and no hint when no request was mocked', () => {
+    const { container } = render(
+      <TraceNetworkList items={[request({ mocked: null })]} available all={false} />
+    )
+    expect(container.textContent).not.toContain('traceViewer.network.mocked')
+    expect(container.textContent).not.toContain('traceViewer.network.blockedByTest')
+  })
+})

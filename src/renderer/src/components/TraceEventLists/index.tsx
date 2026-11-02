@@ -86,12 +86,14 @@ export const TraceNetworkList: React.FC<ListProps<RaiderTraceNetwork>> = ({
 }) => {
   const { t } = useTranslation()
   const hintId = useId()
+  const mockedHintId = useId()
   if (!available) return <Message>{t('traceViewer.unavailable')}</Message>
   if (items.length === 0) {
     return (
       <Message>{t(all ? 'traceViewer.network.emptyAll' : 'traceViewer.network.empty')}</Message>
     )
   }
+  const anyMocked = items.some((item) => item.mocked !== null)
   return (
     <div>
       <ul className="divide-y divide-neutral-lt">
@@ -116,6 +118,19 @@ export const TraceNetworkList: React.FC<ListProps<RaiderTraceNetwork>> = ({
                 >
                   {failed ? t('traceViewer.network.failed') : (item.status ?? '')}
                 </span>
+                {item.mocked !== null && (
+                  <span
+                    className="shrink-0 rounded-full border border-neutral-lt px-2 text-xs text-neutral-dk"
+                    title={t('traceViewer.network.mockedHint')}
+                    aria-describedby={mockedHintId}
+                  >
+                    {t(
+                      item.mocked === 'fulfilled'
+                        ? 'traceViewer.network.mocked'
+                        : 'traceViewer.network.blockedByTest'
+                    )}
+                  </span>
+                )}
                 {item.durationMs !== null && (
                   <span className="text-neutral-mid">{`${Math.round(item.durationMs)} ms`}</span>
                 )}
@@ -133,6 +148,11 @@ export const TraceNetworkList: React.FC<ListProps<RaiderTraceNetwork>> = ({
       <p id={hintId} className="pt-2 text-xs text-neutral-mid">
         {t('traceViewer.network.size')}
       </p>
+      {anyMocked && (
+        <p id={mockedHintId} className="pt-1 text-xs text-neutral-mid">
+          {t('traceViewer.network.mockedHint')}
+        </p>
+      )}
     </div>
   )
 }

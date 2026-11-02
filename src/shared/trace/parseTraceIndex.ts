@@ -2,6 +2,7 @@ import {
   TRACE_ENTRY_NAME,
   type RaiderTraceConsole,
   type RaiderTraceIndex,
+  type RaiderTraceMocked,
   type RaiderTraceNetwork,
   type RaiderTraceStep,
   type TraceElement,
@@ -191,6 +192,11 @@ function owner(v: unknown, known: ReadonlySet<number>, first: number | null): nu
   return known.has(n) ? n : null
 }
 
+// Only the two outcomes the gem writes; anything else shows no badge.
+function mocked(v: unknown): RaiderTraceMocked | null {
+  return v === 'fulfilled' || v === 'failed' ? v : null
+}
+
 function parseNetwork(
   v: unknown,
   known: ReadonlySet<number>,
@@ -209,7 +215,8 @@ function parseNetwork(
       mimeType: strOrNull(o.mime_type),
       durationMs: num(o.duration_ms),
       bytes: num(o.bytes),
-      error: strOrNull(o.error)
+      error: strOrNull(o.error),
+      mocked: mocked(o.mocked)
     })
   }
   return { entries: out, dropped: Math.max(0, all.length - MAX_NETWORK) }

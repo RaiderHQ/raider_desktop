@@ -345,3 +345,19 @@ describe('parseTraceIndex', () => {
     }
   })
 })
+
+describe('parseTraceIndex network mocked field', () => {
+  it('keeps fulfilled and failed, and drops absent, unknown or non-string values to null', () => {
+    const json = fixtureJson() as Json
+    const values: unknown[] = ['fulfilled', 'failed', undefined, 'continued', 'Fulfilled']
+    values.push(1, {}, null, true)
+    json.network = values.map((mocked) => ({ step_index: 1, method: 'GET', url: 'u', mocked }))
+    const index = parseOk(json)
+    const expected = ['fulfilled', 'failed', null, null, null, null, null, null, null]
+    expect(index.network.map((n) => n.mocked)).toEqual(expected)
+  })
+
+  it('gives fixture entries without the field no mock', () => {
+    expect(fixtureIndex().network.every((n) => n.mocked === null)).toBe(true)
+  })
+})

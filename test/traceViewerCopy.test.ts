@@ -34,4 +34,13 @@ describe('trace viewer copy', () => {
     const tr = await t()
     expect(tr('traceViewer.snapshotUnsafe')).toBe("This page couldn't be shown safely.")
   })
+
+  it('labels mocked and blocked requests and says where their response came from', async () => {
+    const tr = await t()
+    expect(tr('traceViewer.network.mocked')).toBe('Mocked')
+    expect(tr('traceViewer.network.blockedByTest')).toBe('Blocked by test')
+    expect(tr('traceViewer.network.mockedHint')).toBe(
+      'Mocked and blocked responses came from the test, not the server'
+    )
+  })
 })
