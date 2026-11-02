@@ -17,7 +17,7 @@ export function useInView(ref: RefObject<Element>): boolean {
       }
     })
     observer.observe(element)
-    return () => observer.disconnect()
+    return (): void => observer.disconnect()
   }, [ref, inView])
 
   return inView

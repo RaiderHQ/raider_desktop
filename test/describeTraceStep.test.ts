@@ -32,7 +32,16 @@ describe('describeTraceStep', () => {
     })
     expect(describeTraceStep(stepAt(8)).key).toBe('traceViewer.step.readText')
     expect(describeTraceStep(stepAt(7)).key).toBe('traceViewer.step.eventually')
-    expect(describeTraceStep(stepAt(9)).key).toBe('traceViewer.step.eventually')
+    expect(describeTraceStep(stepAt(9)).key).toBe('traceViewer.step.eventuallyFailed')
+  })
+
+  it('never says a failed wait passed', () => {
+    const failed = englishText(describeTraceStep(stepAt(9)).key)
+    expect(failed).not.toMatch(/passed/i)
+    expect(englishText(describeTraceStep(stepAt(7)).key)).toBe('Waited until the check passed')
+    expect(describeTraceStep(make({ action: 'eventually', status: 'failed' })).key).toBe(
+      'traceViewer.step.eventuallyFailed'
+    )
   })
 
   it('never reveals a secret step', () => {

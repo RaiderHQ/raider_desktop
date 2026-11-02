@@ -18,6 +18,7 @@ import {
   TRACE_ZIP_LIMITS,
   type ZipEntry
 } from '../../../src/main/handlers/trace/zipReader'
+import { MAX_STEPS } from '../../../src/shared/trace/parseTraceIndex'
 
 const fixture = readFileSync(join(__dirname, '../../fixtures/trace-v1/trace.zip'))
 
@@ -53,11 +54,24 @@ describe('readZipDirectory and readZipEntry', () => {
     )
   })
 
-  it('refuses more entries than maxEntries', () => {
-    const entries = Array.from({ length: 402 }, (_, i) => ({
-      name: `steps/${String(i + 1).padStart(4, '0')}.html`,
+  // A screenshot and a snapshot per step, as the producer writes them.
+  const stepEntries = (count: number): { name: string; data: string }[] =>
+    Array.from({ length: count }, (_, i) => ({
+      name: `steps/${String(Math.floor(i / 2) + 1).padStart(4, '0')}.${i % 2 ? 'html' : 'jpg'}`,
       data: 'x'
     }))
+
+  it('allows one screenshot and one snapshot per kept step, plus the index', () => {
+    expect(TRACE_ZIP_LIMITS.maxEntries).toBe(2 * MAX_STEPS + 1)
+  })
+
+  it('opens a zip with more entries than the default max_steps gives', () => {
+    const zip = makeZip([{ name: 'trace.json', data: '{}' }, ...stepEntries(449)])
+    expect(readZipDirectory(zip).size).toBe(450)
+  })
+
+  it('refuses more entries than maxEntries', () => {
+    const entries = stepEntries(TRACE_ZIP_LIMITS.maxEntries + 1)
     expect(() => readZipDirectory(makeZip(entries))).toThrowError(refusedWith('tooLarge'))
   })
 

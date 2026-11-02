@@ -55,12 +55,11 @@ const StepRow: React.FC<StepRowProps> = ({
         if (live && loaded && loaded.stepId === id) setThumbnail(loaded.dataUrl)
       })
       .catch(() => undefined)
-    return () => {
+    return (): void => {
       live = false
     }
     // Not keyed on loadScreenshot: a recorder re-map makes a new loader per step.
     // A different trace remounts the rows (see traceKey), so nothing carries over.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inView, hasScreenshot, id])
 
   const title = step.title

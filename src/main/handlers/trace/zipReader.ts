@@ -1,4 +1,5 @@
 import zlib from 'zlib'
+import { MAX_STEPS } from '../../../shared/trace/parseTraceIndex'
 import { TRACE_ENTRY_NAME } from '../../../shared/types/raiderTrace'
 
 // Reads a raider-trace zip in memory. The zip may come from anywhere, so every
@@ -40,7 +41,9 @@ const MiB = 1024 * 1024
 
 export const TRACE_ZIP_LIMITS: ZipLimits = {
   maxZipBytes: 32 * MiB,
-  maxEntries: 401,
+  // One screenshot and one snapshot per step the index can hold, plus trace.json;
+  // the byte caps below bound the cost, whatever max_steps the project uses.
+  maxEntries: 2 * MAX_STEPS + 1,
   maxTotalBytes: 150 * MiB,
   maxEntryBytes: 32 * MiB,
   maxRatio: 100,

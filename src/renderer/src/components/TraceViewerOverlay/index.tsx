@@ -15,6 +15,24 @@ const firstStop = (root: HTMLElement): HTMLElement =>
 const hasFiles = (event: DragEvent): boolean =>
   Array.from(event.dataTransfer?.types ?? []).includes('Files')
 
+// The app behind the overlay: the siblings before it. The toasts come after,
+// so an error is still announced while the viewer is open.
+const hideBehind = (root: HTMLElement): (() => void) => {
+  const hidden: { el: Element; ariaHidden: string | null; inert: boolean }[] = []
+  for (let el = root.previousElementSibling; el; el = el.previousElementSibling) {
+    hidden.push({ el, ariaHidden: el.getAttribute('aria-hidden'), inert: el.hasAttribute('inert') })
+    el.setAttribute('inert', '')
+    el.setAttribute('aria-hidden', 'true')
+  }
+  return (): void => {
+    for (const { el, ariaHidden, inert } of hidden) {
+      if (!inert) el.removeAttribute('inert')
+      if (ariaHidden === null) el.removeAttribute('aria-hidden')
+      else el.setAttribute('aria-hidden', ariaHidden)
+    }
+  }
+}
+
 /**
  * The saved trace viewer, over the whole window. Mounted once, so traces open
  * from a result card, File → Open trace or a file dropped on the window, with
@@ -32,7 +50,8 @@ const TraceViewerOverlay: React.FC = () => {
   // File → Open trace sends its result here.
   useEffect(() => window.api.onTraceOpened((result) => handleResult(result)), [handleResult])
 
-  // A dropped file opens through preload only; anything but one .zip is refused here.
+  // A dropped file opens through preload only; anything but one .zip is refused
+  // here, and said so only while the viewer is open (a stray drop stays silent).
   useEffect(() => {
     const onDragOver = (event: DragEvent): void => {
       if (hasFiles(event)) event.preventDefault()
@@ -41,34 +60,37 @@ const TraceViewerOverlay: React.FC = () => {
       if (!hasFiles(event)) return
       // Never let the window navigate to a dropped file.
       event.preventDefault()
+      const viewing = useTraceStore.getState().current !== null
       const files = event.dataTransfer?.files
       if (!files || files.length !== 1) {
-        if (files && files.length > 1) toast.error(t('traceViewer.error.dropOne'))
+        if (viewing && files && files.length > 1) toast.error(t('traceViewer.error.dropOne'))
         return
       }
       const file = files[0]
       if (!file.name.toLowerCase().endsWith('.zip')) {
-        toast.error(t('traceViewer.error.notTrace'))
+        if (viewing) toast.error(t('traceViewer.error.notTrace'))
         return
       }
       void openDroppedTrace(file)
     }
     window.addEventListener('dragover', onDragOver)
     window.addEventListener('drop', onDrop)
-    return () => {
+    return (): void => {
       window.removeEventListener('dragover', onDragOver)
       window.removeEventListener('drop', onDrop)
     }
   }, [openDroppedTrace, t])
 
   // Main holds an open trace until it is closed, so leaving closes it.
-  useEffect(() => () => useTraceStore.getState().close(), [])
+  useEffect(() => (): void => useTraceStore.getState().close(), [])
 
-  // While open: Escape closes, Tab stays inside, and focus goes back to the opener after.
+  // While open: the app behind is inert, Escape closes, Tab stays inside, and
+  // focus goes back to the opener after.
   useEffect(() => {
     if (!isOpen) return
     const root = rootRef.current
     if (!root) return
+    const showBehind = hideBehind(root)
     const opener =
       useTraceStore.getState().opener ??
       (document.activeElement instanceof HTMLElement ? document.activeElement : null)
@@ -113,11 +135,13 @@ const TraceViewerOverlay: React.FC = () => {
     document.addEventListener('keydown', onKeyDown)
     document.addEventListener('focusin', onFocusIn)
     window.addEventListener('blur', onBlur)
-    return () => {
+    return (): void => {
       clearTimeout(refocus)
       document.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('focusin', onFocusIn)
       window.removeEventListener('blur', onBlur)
+      // Before focusing: an inert opener can't take focus.
+      showBehind()
       if (opener?.isConnected) opener.focus()
     }
   }, [isOpen])

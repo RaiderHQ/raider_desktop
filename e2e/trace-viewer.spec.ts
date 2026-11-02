@@ -219,11 +219,13 @@ test.describe('Trace viewer on the real fixture', () => {
       overlay.getByRole('option', { name: /Typed "plain-trace-name" into the "Name" text box/ })
     ).toBeVisible()
 
-    // The failed eventually group is marked as failed; the passed one is not.
-    const groups = overlay.getByRole('option', { name: /Waited until the check passed/ })
-    await expect(groups).toHaveCount(2)
-    await expect(groups.nth(0)).toHaveAttribute('data-status', 'passed')
-    await expect(groups.nth(1)).toHaveAttribute('data-status', 'failed')
+    // The failed eventually group is marked as failed and never says it passed.
+    const passed = overlay.getByRole('option', { name: /Waited until the check passed/ })
+    const failed = overlay.getByRole('option', { name: /Waited for a check that didn't pass/ })
+    await expect(passed).toHaveCount(1)
+    await expect(failed).toHaveCount(1)
+    await expect(passed).toHaveAttribute('data-status', 'passed')
+    await expect(failed).toHaveAttribute('data-status', 'failed')
 
     // Plain words only until Technical details is opened.
     const text = await overlay.innerText()
@@ -581,16 +583,17 @@ test.describe('Trace snapshots in the sandboxed frame', () => {
         window.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }))
       }, files)
 
+    // With no trace open, a stray drop is ignored without a message.
     await drop([
       ['a.zip', 'x'],
       ['b.zip', 'y']
     ])
-    await expect(page.getByText('Drop one trace file at a time.')).toBeVisible()
     await drop([['notes.txt', 'x']])
-    await expect(page.getByText("This file isn't a Raider trace.")).toBeVisible()
     // A File with no path on disk (as a page could make) is refused by preload.
     await drop([['made-up.zip', 'x']])
     await expect(page.getByText("Couldn't find this trace file.")).toBeVisible()
+    await expect(page.getByText('Drop one trace file at a time.')).toHaveCount(0)
+    await expect(page.getByText("This file isn't a Raider trace.")).toHaveCount(0)
     await expect(viewer(page)).toHaveCount(0)
 
     // The production drop channel, called directly (the e2e build has no isolation):

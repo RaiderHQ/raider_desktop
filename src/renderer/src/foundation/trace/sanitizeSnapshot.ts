@@ -13,14 +13,13 @@ export interface SnapshotLimits {
 const MiB = 1024 * 1024
 
 // Below the zip reader's 32 MiB entry cap. Serialising escapes text, so the
-// output may grow; past either cap the page is replaced by an empty one.
+// output may grow; past either cap the page is not shown.
 export const SNAPSHOT_LIMITS: SnapshotLimits = {
   maxInputChars: 16 * MiB,
   maxOutputChars: 32 * MiB
 }
 
 const DOCTYPE = '<!DOCTYPE html>'
-const EMPTY_PAGE = `${DOCTYPE}<html><head><meta http-equiv="Content-Security-Policy" content="${SNAPSHOT_CSP}"></head><body></body></html>`
 const MAX_PASSES = 4
 
 const REMOVED_ELEMENTS = new Set([
@@ -101,6 +100,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg'
 // Entities are already decoded by the parser; whitespace and control
 // characters are ignored by URL parsing, so "jav\tascript:" is still a scheme.
 const normaliseUrl = (value: string): string =>
+  // eslint-disable-next-line no-control-regex -- matching control characters is the point
   value.replace(/[\s\x00-\x1f\x7f]/g, '').toLowerCase()
 
 const isAllowedUrl = (value: string): boolean => {
@@ -108,20 +108,27 @@ const isAllowedUrl = (value: string): boolean => {
   return url.startsWith('data:image/') || url.startsWith('#')
 }
 
-export function sanitizeSnapshot(html: string, limits: SnapshotLimits = SNAPSHOT_LIMITS): string {
-  if (typeof html !== 'string' || html.length > limits.maxInputChars) return EMPTY_PAGE
+/**
+ * The cleaned page, or null when it can't be shown safely: over a cap, never
+ * stable, or unparseable.
+ */
+export function sanitizeSnapshot(
+  html: string,
+  limits: SnapshotLimits = SNAPSHOT_LIMITS
+): string | null {
+  if (typeof html !== 'string' || html.length > limits.maxInputChars) return null
   try {
     // A page that changes when parsed again (mXSS) is cleaned again, until stable.
     let out = sanitizePass(html)
     for (let pass = 1; pass < MAX_PASSES; pass++) {
-      if (out.length > limits.maxOutputChars) return EMPTY_PAGE
+      if (out.length > limits.maxOutputChars) return null
       const again = sanitizePass(out)
       if (again === out) return out
       out = again
     }
-    return EMPTY_PAGE
+    return null
   } catch {
-    return EMPTY_PAGE
+    return null
   }
 }
 

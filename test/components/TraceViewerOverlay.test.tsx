@@ -102,14 +102,27 @@ describe('TraceViewerOverlay', () => {
 
   it('ignores a drop of two files or none, but keeps the window where it is', async () => {
     render(<TraceViewerOverlay />)
+    act(() => menuOpened(ok('t1')))
     expect((await drop([zip('a.zip'), zip('b.zip')])).defaultPrevented).toBe(true)
     expect((await drop([])).defaultPrevented).toBe(true)
     expect(window.api.openDroppedTrace).not.toHaveBeenCalled()
     expect(toast.error).toHaveBeenCalledWith('traceViewer.error.dropOne')
   })
 
+  it('says nothing about a stray drop while no trace is open', async () => {
+    render(<TraceViewerOverlay />)
+    const pdf = await drop([new File(['%PDF'], 'report.pdf', { type: 'application/pdf' })])
+    const two = await drop([zip('a.zip'), zip('b.zip')])
+    expect(pdf.defaultPrevented).toBe(true)
+    expect(two.defaultPrevented).toBe(true)
+    expect(window.api.openDroppedTrace).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(viewer()).not.toBeInTheDocument()
+  })
+
   it('says a dropped PDF or folder is not a trace, without opening it', async () => {
     render(<TraceViewerOverlay />)
+    act(() => menuOpened(ok('t1')))
     await drop([new File(['%PDF'], 'report.pdf', { type: 'application/pdf' })])
     await drop([new File([], 'screenshots')])
     expect(window.api.openDroppedTrace).not.toHaveBeenCalled()
@@ -156,6 +169,27 @@ describe('TraceViewerOverlay', () => {
     act(() => menuOpened(ok('t2')))
     expect(window.api.closeTrace).toHaveBeenCalledWith('t1')
     expect(window.api.closeTrace).toHaveBeenCalledTimes(1)
+  })
+
+  it('hides the app behind it while open, and gives it back on close', () => {
+    render(
+      <>
+        <div data-testid="app" aria-hidden="false" />
+        <TraceViewerOverlay />
+        <div data-testid="toasts" />
+      </>
+    )
+    const app = screen.getByTestId('app')
+    const toasts = screen.getByTestId('toasts')
+    act(() => menuOpened(ok('t1')))
+    expect(app).toHaveAttribute('inert')
+    expect(app).toHaveAttribute('aria-hidden', 'true')
+    // Toasts come after the overlay, so a failed open is still announced.
+    expect(toasts).not.toHaveAttribute('inert')
+    expect(toasts).not.toHaveAttribute('aria-hidden')
+    fireEvent.click(screen.getByRole('button', { name: 'traceViewer.close' }))
+    expect(app).not.toHaveAttribute('inert')
+    expect(app).toHaveAttribute('aria-hidden', 'false')
   })
 
   it('closes the trace with Close trace', () => {

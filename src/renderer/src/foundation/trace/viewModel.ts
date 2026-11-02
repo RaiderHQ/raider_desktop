@@ -178,14 +178,14 @@ export function fromRaiderTrace(
       hasSnapshot: snapshot !== null,
       loadScreenshot:
         screenshot !== null
-          ? async () => {
+          ? async (): Promise<LoadedScreenshot | null> => {
               const dataUrl = await loadImage(screenshot)
               return dataUrl === null ? null : { stepId: id, dataUrl }
             }
           : undefined,
       loadSnapshot:
         snapshot !== null
-          ? async () => {
+          ? async (): Promise<LoadedSnapshot | null> => {
               const data = await loadText(snapshot)
               return data === null ? null : { stepId: id, snapshot: data }
             }
@@ -237,7 +237,7 @@ export function fromRecorderTrace(
       hasScreenshot: Boolean(screenshotPath),
       hasSnapshot: false,
       loadScreenshot: screenshotPath
-        ? async () => {
+        ? async (): Promise<LoadedScreenshot | null> => {
             const dataUrl = await loadImage(screenshotPath)
             return dataUrl === null ? null : { stepId: step.id, dataUrl }
           }

@@ -2,7 +2,8 @@
 // project dashboard already renders. Local only: no network access.
 
 import { TRACE_CONTENT_TYPE } from '@shared/types/raiderTrace'
-import type { TestResult, TraceRef } from './Types/testResult'
+import type { TestResult } from './Types/testResult'
+import type { TraceRef } from './Types/testResult'
 
 interface DirNode {
   name: string

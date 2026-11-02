@@ -36,7 +36,9 @@ function parse(html: string): Document {
 const normalise = (value: string): string => value.replace(/[\s\x00-\x1f\x7f]/g, '').toLowerCase()
 
 // The invariants every output must hold, whatever went in.
-function expectClean(out: string): Document {
+function expectClean(result: string | null): Document {
+  expect(result).not.toBeNull()
+  const out = result as string
   expect(out.startsWith('<!DOCTYPE html>')).toBe(true)
   const doc = parse(out)
   const first = doc.head.firstElementChild
@@ -388,7 +390,7 @@ describe('sanitizeSnapshot', () => {
       vi.unstubAllGlobals()
     })
 
-    it('gives the empty page when parsing throws', () => {
+    it('gives no page when parsing throws', () => {
       vi.stubGlobal(
         'DOMParser',
         class {
@@ -397,11 +399,10 @@ describe('sanitizeSnapshot', () => {
           }
         }
       )
-      const doc = expectClean(sanitizeSnapshot('<p>hello</p>'))
-      expect(doc.body.textContent).toBe('')
+      expect(sanitizeSnapshot('<p>hello</p>')).toBeNull()
     })
 
-    it('gives the empty page when the result never settles', () => {
+    it('gives no page when the result never settles', () => {
       // Every parse yields a different page, as a mutating mXSS shape would.
       const RealParser = DOMParser
       let calls = 0
@@ -415,9 +416,8 @@ describe('sanitizeSnapshot', () => {
           }
         }
       )
-      const doc = expectClean(sanitizeSnapshot('<p>hello</p>'))
+      expect(sanitizeSnapshot('<p>hello</p>')).toBeNull()
       expect(calls).toBeGreaterThan(1)
-      expect(doc.body.textContent).toBe('')
     })
   })
 
@@ -448,14 +448,12 @@ describe('sanitizeSnapshot', () => {
         maxInputChars: 100,
         maxOutputChars: 1000
       })
-      const doc = expectClean(out)
-      expect(doc.body.textContent).toBe('')
+      expect(out).toBeNull()
     })
 
     it('refuses output over the cap', () => {
       const out = sanitizeSnapshot('&'.repeat(90), { maxInputChars: 100, maxOutputChars: 300 })
-      const doc = expectClean(out)
-      expect(doc.body.textContent).toBe('')
+      expect(out).toBeNull()
     })
 
     it('keeps a page within both caps', () => {

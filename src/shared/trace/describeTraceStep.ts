@@ -71,6 +71,10 @@ export function describeTraceStep(step: RaiderTraceStep): TraceText & { element?
   }
   if (action === 'navigate') return { key: `${S}.navigate`, values: { url: plainUrl(step.url) } }
 
+  // A failed wait must not read as one that passed.
+  if (action === 'eventually' && step.status === 'failed') {
+    return { key: `${S}.eventuallyFailed`, values: {} }
+  }
   const plain = Object.hasOwn(PLAIN_ACTIONS, action) ? PLAIN_ACTIONS[action] : undefined
   if (plain) return { key: `${S}.${plain}`, values: {} }
 

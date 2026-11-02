@@ -15,7 +15,7 @@ import {
 
 const MAX_TEXT = 16 * 1024
 const MAX_WITHIN = 32
-const MAX_STEPS = 5000
+export const MAX_STEPS = 5000
 const MAX_NETWORK = 10000
 const MAX_CONSOLE = 10000
 

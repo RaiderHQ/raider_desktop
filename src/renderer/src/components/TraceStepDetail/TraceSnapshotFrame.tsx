@@ -10,8 +10,8 @@ interface TraceSnapshotFrameProps {
 // Sanitising is slow, so each loaded snapshot is sanitised once. The view
 // model hands back the same object for the same trace entry, and a new trace
 // gives new objects, so this can't serve one trace's page for another.
-const cache = new WeakMap<SnapshotData, string>()
-const sanitized = (snapshot: SnapshotData): string => {
+const cache = new WeakMap<SnapshotData, string | null>()
+const sanitized = (snapshot: SnapshotData): string | null => {
   let html = cache.get(snapshot)
   if (html === undefined) {
     html = sanitizeSnapshot(snapshot.text)
@@ -34,6 +34,13 @@ const TraceSnapshotFrame: React.FC<TraceSnapshotFrameProps> = ({ snapshot }) => 
       <pre className="text-xs bg-neutral-lt p-2 rounded border border-neutral-bdr overflow-auto max-h-[60vh] whitespace-pre-wrap break-all">
         {text}
       </pre>
+    )
+  }
+  if (srcDoc === null) {
+    return (
+      <div className="w-full h-48 bg-neutral-lt rounded-lg flex items-center justify-center text-sm text-neutral-mid">
+        {t('traceViewer.snapshotUnsafe')}
+      </div>
     )
   }
   return (

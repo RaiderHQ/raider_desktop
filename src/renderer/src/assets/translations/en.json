@@ -884,12 +884,14 @@
       "label": "What to show for this step"
     },
     "notCaptured": "Not captured",
+    "snapshotUnsafe": "This page couldn't be shown safely.",
     "selectStep": "Select a step to see what happened",
     "waited": "Waited {{seconds}} s",
     "stepList": "Steps",
     "stepImage": "Screenshot of step {{n}}",
     "loadingImage": "Loading…",
-    "retries": "Tried again {{count}} times",
+    "retries_one": "Tried again once",
+    "retries_other": "Tried again {{count}} times",
     "failedStep": "This step failed",
     "rectLabel": "Element before the action",
     "expandGroup": "Show steps inside",
@@ -930,11 +932,11 @@
       }
     },
     "truncated": {
-      "steps": "Older steps removed to keep the trace small",
+      "steps": "Some steps not shown to keep the trace small",
       "screenshots": "Older screenshots removed to keep the trace small",
       "snapshots": "Older page snapshots removed to keep the trace small",
-      "network": "Older network requests removed to keep the trace small",
-      "console": "Older console messages removed to keep the trace small"
+      "network": "Some network requests not shown to keep the trace small",
+      "console": "Some console messages not shown to keep the trace small"
     },
     "error": {
       "notFound": "Couldn't find this trace file.",
@@ -978,7 +980,9 @@
       "findElement": "Found {{element}}",
       "findElements": "Looked for matching elements",
       "eventually": "Waited until the check passed",
-      "cucumber": "{{name}}", "cucumberSecret": "Run a step with a hidden value",
+      "eventuallyFailed": "Waited for a check that didn't pass",
+      "cucumber": "{{name}}",
+      "cucumberSecret": "Ran a step with a hidden value",
       "failure": "The test failed here",
       "other": "Ran a step"
     },

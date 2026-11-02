@@ -58,11 +58,10 @@ const Detail: React.FC<Omit<TraceStepDetailProps, 'traceKey'>> = ({
         if (!active || (loaded && loaded.stepId !== id)) return
         setShot({ stepId: id, value: loaded?.dataUrl ?? null })
       })
-    return () => {
+    return (): void => {
       active = false
     }
     // Not keyed on the loader: a recorder re-map makes a new one per step.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, hasScreenshot])
 
   // The page HTML loads only once its view is chosen, and once per step.
@@ -77,10 +76,10 @@ const Detail: React.FC<Omit<TraceStepDetailProps, 'traceKey'>> = ({
         if (!active || (loaded && loaded.stepId !== id)) return
         setPage({ stepId: id, value: loaded?.snapshot ?? null })
       })
-    return () => {
+    return (): void => {
       active = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Keyed on the step, not the loader, for the same reason as above.
   }, [id, wantSnapshot])
 
   if (!step) {

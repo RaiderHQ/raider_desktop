@@ -230,6 +230,16 @@ describe('TraceStepDetail', () => {
     expect(container.querySelector('iframe[data-testid="trace-snapshot"]')).not.toBeNull()
   })
 
+  it('says the page could not be shown safely instead of a blank frame', async () => {
+    vi.mocked(sanitizeSnapshot).mockReturnValueOnce(null)
+    const { container } = show(2)
+    await act(async () => {})
+    fireEvent.click(screen.getByRole('button', { name: k('traceViewer.view.snapshot') }))
+    await act(async () => {})
+    expect(screen.getByText(k('traceViewer.snapshotUnsafe'))).toBeInTheDocument()
+    expect(container.querySelector('iframe[data-testid="trace-snapshot"]')).toBeNull()
+  })
+
   it('takes its heading level and labels the view switch', async () => {
     render(<TraceStepDetail traceKey="a" step={stepOf(2)} devicePixelRatio={1} headingLevel={2} />)
     await act(async () => {})
