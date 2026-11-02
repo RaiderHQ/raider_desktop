@@ -857,6 +857,28 @@
       "osVersion": "For example 17.0 or 14."
     }
   },
+  "screenshotComparison": {
+    "title": "Screenshot comparison",
+    "matched": "{{count}} matched",
+    "status": {
+      "passed": "Matched",
+      "failed": "Did not match",
+      "created": "New baseline",
+      "updated": "Baseline updated"
+    },
+    "tabs": {
+      "expected": "Expected",
+      "actual": "Actual",
+      "diff": "Diff"
+    },
+    "imageAlt": "{{tab}} screenshot for {{name}}",
+    "differ": "{{pixels}} pixels ({{percent}}) differ",
+    "allowed": "allowed: {{allowed}}",
+    "allowedPixels": "{{n}} pixels",
+    "threshold": "threshold {{threshold}}",
+    "sizeChanged": "Size changed: {{ew}}×{{eh}} → {{aw}}×{{ah}}",
+    "imageUnavailable": "Image not available"
+  },
   "failedStep": {
     "title": "Failed at step {{n}}: {{step}}",
     "whenRecorded": "When recorded",

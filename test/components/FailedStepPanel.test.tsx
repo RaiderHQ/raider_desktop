@@ -295,4 +295,35 @@ describe('FailedStepPanel', () => {
       expect(onReRecord).toHaveBeenCalledWith(1)
     })
   })
+
+  it('shows the screenshot comparisons of the run', async () => {
+    renderPanel(
+      mapped({
+        ...result,
+        comparisons: [
+          {
+            name: 'home',
+            status: 'failed',
+            baseline: 'screenshots/baselines/chrome/home.png',
+            diffPixels: 10,
+            diffRatio: 0.01,
+            threshold: 0.1,
+            maxDiffPixels: 0,
+            maxDiffRatio: null,
+            expectedSize: null,
+            actualSize: null,
+            images: { diff: '/p/raider-results/attachments/d.png' }
+          }
+        ]
+      })
+    )
+    expect(screen.getByText(en.screenshotComparison.title)).toBeInTheDocument()
+    expect(await screen.findByAltText('Diff screenshot for home')).toBeInTheDocument()
+  })
+
+  it('shows no comparison section when the run had none', async () => {
+    renderPanel(mapped())
+    expect(screen.queryByText(en.screenshotComparison.title)).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getAllByRole('img')).toHaveLength(2))
+  })
 })

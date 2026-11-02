@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FailureDetails from '@components/FailureDetails'
+import ScreenshotComparison from '@components/ScreenshotComparison'
 import { describeStep } from '@shared/describeStep'
 import { canRePick, editableValue } from '@shared/stepFixes'
 import type { Test } from '@shared/types/test'
@@ -167,6 +168,7 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
       {result.failure && (
         <FailureDetails collapsed failure={result.failure} projectPath={projectPath} />
       )}
+      {!!result.comparisons?.length && <ScreenshotComparison comparisons={result.comparisons} />}
     </section>
   )
 }
