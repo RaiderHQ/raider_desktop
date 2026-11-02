@@ -1,4 +1,5 @@
-import React, { useEffect, useId, useState } from 'react'
+import React, { useEffect, useId, useRef, useState } from 'react'
+import toast from 'react-hot-toast'
 import { useTranslation } from 'react-i18next'
 import { imageDataUrl } from '@foundation/imageDataUrl'
 import type { ScreenshotComparison as Comparison } from '@foundation/Types/testResult'
@@ -39,6 +40,8 @@ const ComparisonImage: React.FC<{ path: string; alt: string }> = ({ path, alt })
 
 const percent = (ratio: number): string => `${(ratio * 100).toFixed(2)}%`
 
+type AcceptState = 'idle' | 'pending' | 'updated' | 'unchanged'
+
 const ComparisonEntry: React.FC<{ comparison: Comparison }> = ({ comparison: c }) => {
   const { t } = useTranslation()
   const baseId = useId()
@@ -46,6 +49,31 @@ const ComparisonEntry: React.FC<{ comparison: Comparison }> = ({ comparison: c }
   const [chosen, setChosen] = useState<Tab | null>(null)
   const selected: Tab | null =
     chosen && tabs.includes(chosen) ? chosen : c.images.diff ? 'diff' : (tabs[0] ?? null)
+
+  const [accept, setAccept] = useState<AcceptState>('idle')
+  const inFlight = useRef(false)
+  const actualPath = c.images.actual
+  const canAccept =
+    (c.status === 'failed' || c.status === 'created') && !!actualPath && c.baseline !== null
+
+  const onAccept = async (): Promise<void> => {
+    if (inFlight.current || !actualPath || c.baseline === null) return
+    inFlight.current = true
+    setAccept('pending')
+    try {
+      const res = await window.api.acceptBaseline(actualPath, c.baseline)
+      if (res.ok) {
+        setAccept(res.unchanged ? 'unchanged' : 'updated')
+        return
+      }
+      if (res.error !== 'cancelled') toast.error(t('screenshotComparison.acceptFailed'))
+    } catch {
+      toast.error(t('screenshotComparison.acceptFailed'))
+    } finally {
+      inFlight.current = false
+    }
+    setAccept('idle')
+  }
 
   const sizeChanged =
     !!c.expectedSize &&
@@ -70,7 +98,6 @@ const ComparisonEntry: React.FC<{ comparison: Comparison }> = ({ comparison: c }
 
   return (
     <li data-testid={`comparison-${c.name}`} className="space-y-2">
-      {/* Task 5: a per-entry action (Accept as baseline) goes in this row */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-baseline gap-2 min-w-0">
           <span className="text-sm font-medium text-neutral-dark truncate">{c.name}</span>
@@ -78,6 +105,20 @@ const ComparisonEntry: React.FC<{ comparison: Comparison }> = ({ comparison: c }
             {t(`screenshotComparison.status.${c.status}`)}
           </span>
         </div>
+        {canAccept && (accept === 'idle' || accept === 'pending') && (
+          <button
+            type="button"
+            disabled={accept === 'pending'}
+            onClick={() => void onAccept()}
+            className="shrink-0 text-xs px-2.5 py-1 rounded border border-neutral-bdr bg-white font-medium hover:bg-neutral-50 disabled:opacity-50"
+          >
+            {t('screenshotComparison.accept')}
+          </button>
+        )}
+        <span role="status" className="text-xs text-neutral-mid">
+          {accept === 'updated' && t('screenshotComparison.acceptDone')}
+          {accept === 'unchanged' && t('screenshotComparison.acceptUnchanged')}
+        </span>
       </div>
       {c.diffPixels !== null && (
         <p className="text-xs text-neutral-dk">

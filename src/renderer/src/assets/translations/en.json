@@ -877,7 +877,11 @@
     "allowedPixels": "{{n}} pixels",
     "threshold": "threshold {{threshold}}",
     "sizeChanged": "Size changed: {{ew}}×{{eh}} → {{aw}}×{{ah}}",
-    "imageUnavailable": "Image not available"
+    "imageUnavailable": "Image not available",
+    "accept": "Accept as baseline",
+    "acceptDone": "Baseline updated, commit it with your tests",
+    "acceptUnchanged": "Already the baseline",
+    "acceptFailed": "Couldn't update the baseline"
   },
   "failedStep": {
     "title": "Failed at step {{n}}: {{step}}",
