@@ -16,6 +16,7 @@ import toast from 'react-hot-toast'
 import TraceTimeline from '@components/TraceTimeline'
 import TraceDetailPanel from '@components/TraceDetailPanel'
 import FailureDetails from '@components/FailureDetails'
+import ScreenshotComparison from '@components/ScreenshotComparison'
 import OpenTraceButtons from '@components/OpenTraceButtons'
 import { MessageContent } from './MessageContent'
 import Tooltip from '@components/Tooltip'
@@ -207,6 +208,10 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
                 </div>
               )}
             </>
+          )}
+
+          {!!result?.comparisons?.length && (
+            <ScreenshotComparison comparisons={result.comparisons} />
           )}
 
           {video && (

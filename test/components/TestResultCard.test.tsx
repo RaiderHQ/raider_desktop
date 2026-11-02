@@ -212,3 +212,38 @@ describe('TestResultCard saved traces', () => {
     expect(screen.queryByText('traceViewer.open')).not.toBeInTheDocument()
   })
 })
+
+describe('TestResultCard screenshot comparisons', () => {
+  const comparison = {
+    name: 'home',
+    status: 'failed' as const,
+    baseline: 'screenshots/baselines/chrome/home.png',
+    diffPixels: 10,
+    diffRatio: 0.01,
+    threshold: 0.1,
+    maxDiffPixels: 0,
+    maxDiffRatio: null,
+    expectedSize: null,
+    actualSize: null,
+    images: { diff: '/p/raider-results/attachments/d.png' }
+  }
+
+  it('shows the comparison section when the result has comparisons', async () => {
+    render(
+      <TestResultCard
+        name="cmp"
+        status="failed"
+        result={{ name: 'cmp', status: 'failed', comparisons: [comparison] }}
+      />
+    )
+    fireEvent.click(screen.getByText('cmp'))
+    expect(screen.getByText('screenshotComparison.title')).toBeInTheDocument()
+    expect(await screen.findByAltText('screenshotComparison.imageAlt')).toBeInTheDocument()
+  })
+
+  it('shows no comparison section without comparisons', () => {
+    render(<TestResultCard name="cmp" status="passed" result={{ name: 'cmp', status: 'passed' }} />)
+    fireEvent.click(screen.getByText('cmp'))
+    expect(screen.queryByText('screenshotComparison.title')).not.toBeInTheDocument()
+  })
+})
