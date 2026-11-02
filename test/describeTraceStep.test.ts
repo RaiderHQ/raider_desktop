@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { describeTraceStep, traceFoundBy } from '../src/shared/trace/describeTraceStep'
+import { describeTraceStep, plainUrl, traceFoundBy } from '../src/shared/trace/describeTraceStep'
 import { THIS_ELEMENT } from '../src/shared/describeStep'
 import { englishText } from '@shared/describeStepEnglish'
 import type { RaiderTraceStep } from '../src/shared/types/raiderTrace'
@@ -151,6 +151,15 @@ describe('describeTraceStep hardening', () => {
     expect(
       describeTraceStep(make({ action: 'navigate', url: 'not a url?token=abc' })).values.url
     ).toBe('not a url')
+  })
+
+  it.each([
+    ['http://user:pa ss@[bad/path?token=abc', 'http://[bad/path'],
+    ['http://u:p@exa mple.com/a?x=1', 'http://exa mple.com/a'],
+    ['//u:p@host/a#frag', '//host/a'],
+    ['http://[bad/a@b', 'http://[bad/a@b']
+  ])('drops credentials from an address it cannot parse: %s', (url, expected) => {
+    expect(plainUrl(url)).toBe(expected)
   })
 
   it('keeps unnamed in step with the shared English text', () => {

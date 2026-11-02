@@ -4,13 +4,26 @@ import '@testing-library/jest-dom'
 import { fromRaiderTrace, type TraceView, type TraceViewStep } from '@foundation/trace/viewModel'
 import type { TraceEntryResult } from '@shared/types/raiderTrace'
 import { fixtureIndex } from '../helpers/traceFixture'
+import { sanitizeSnapshot } from '@foundation/trace/sanitizeSnapshot'
 
+vi.mock('@foundation/trace/sanitizeSnapshot', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@foundation/trace/sanitizeSnapshot')>()
+  return { ...actual, sanitizeSnapshot: vi.fn(actual.sanitizeSnapshot) }
+})
+
+// Keys come out as ⟦key⟧, which no trace data contains, followed by the
+// interpolated values as plain text; so the leak checks can drop exactly the
+// keys and still see any raw data next to them.
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, values?: Record<string, unknown>) =>
-      values ? `${key}${JSON.stringify(values)}` : key
+    t: (key: string, values?: Record<string, unknown>) => {
+      const plain = values ? Object.values(values).map(String).join(' ') : ''
+      return plain ? `⟦${key}⟧ ${plain}` : `⟦${key}⟧`
+    }
   })
 }))
+
+const k = (key: string): string => `⟦${key}⟧`
 
 const IMAGE = (n: string): string => `data:image/jpeg;base64,${n}`
 
@@ -22,10 +35,10 @@ const stepOf = (n: number, from: TraceView = view): TraceViewStep => from.byId.g
 const show = (n: number) =>
   render(<TraceStepDetail traceKey="a" step={stepOf(n)} devicePixelRatio={view.devicePixelRatio} />)
 
-// The t mock prints keys, so a key such as traceViewer.step.eventually would
-// trip the leak checks; drop keys and keep the interpolated values.
+// Drops the keys (traceViewer.step.eventually would trip the checks) and
+// keeps the interpolated values and everything else.
 const plainText = (container: HTMLElement): string =>
-  (container.textContent ?? '').replace(/traceViewer\.[\w.]+/g, '')
+  (container.textContent ?? '').replace(/⟦[^⟧]*⟧/g, '')
 
 const loadImage = async (img: HTMLElement, width = 1920, height = 937): Promise<void> => {
   Object.defineProperty(img, 'naturalWidth', { value: width, configurable: true })
@@ -34,6 +47,7 @@ const loadImage = async (img: HTMLElement, width = 1920, height = 937): Promise<
 }
 
 beforeEach(() => {
+  vi.mocked(sanitizeSnapshot).mockClear()
   read.mockReset()
   read.mockImplementation(async (name: string) =>
     name.endsWith('.html')
@@ -50,37 +64,59 @@ beforeEach(() => {
 describe('TraceStepDetail', () => {
   it('asks for a step when none is selected', () => {
     render(<TraceStepDetail step={null} devicePixelRatio={1} />)
-    expect(screen.getByText('traceViewer.selectStep')).toBeInTheDocument()
+    expect(screen.getByText(k('traceViewer.selectStep'))).toBeInTheDocument()
   })
 
   it('shows the plain sentence and found-by line', async () => {
     const { container } = show(2)
     await act(async () => {})
-    expect(container.textContent).toContain('traceViewer.step.typeSecret')
-    expect(screen.getByText('traceViewer.foundBy.id')).toBeInTheDocument()
+    expect(container.textContent).toContain(k('traceViewer.step.typeSecret'))
+    expect(screen.getByText(k('traceViewer.foundBy.id'))).toBeInTheDocument()
   })
 
   it.each([2, 9])('keeps raw data out of the default view of step %i', async (n) => {
     const { container } = show(n)
     await act(async () => {})
     const text = plainText(container)
-    for (const raw of ['send_keys', '"pw"', 'id: pw', 'RSpec::', 'spec/trace_replay_spec.rb', 'eventually']) {
+    for (const raw of [
+      'send_keys',
+      '"pw"',
+      'id: pw',
+      'RSpec::',
+      'spec/trace_replay_spec.rb',
+      'eventually'
+    ]) {
       expect(text).not.toContain(raw)
     }
     expect(text).not.toMatch(/\bpw\b/)
+  })
+
+  it('the leak check sees raw data right next to a key', () => {
+    const { container } = render(
+      <div>
+        <span>{k('traceViewer.foundBy.id')}</span>
+        <span>send_keys</span>
+        <span>{k('traceViewer.failedStep')}</span>
+        <span>RSpec::Expectations</span>
+      </div>
+    )
+    const text = plainText(container)
+    expect(text).toContain('send_keys')
+    expect(text).toContain('RSpec::')
+    expect(text).not.toContain('traceViewer')
   })
 
   it('technical details render only when open', async () => {
     show(2)
     await act(async () => {})
     expect(screen.queryByText('send_keys')).toBeNull()
-    const toggle = screen.getByRole('button', { name: 'traceViewer.technical.show' })
+    const toggle = screen.getByRole('button', { name: k('traceViewer.technical.show') })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     fireEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('send_keys')).toBeInTheDocument()
     expect(screen.getByText('id: pw')).toBeInTheDocument()
-    expect(screen.getByText('traceViewer.technical.hidden')).toBeInTheDocument()
+    expect(screen.getByText(k('traceViewer.technical.hidden'))).toBeInTheDocument()
     expect(screen.getByText('spec/trace_replay_spec.rb:9')).toBeInTheDocument()
   })
 
@@ -88,21 +124,25 @@ describe('TraceStepDetail', () => {
     const step = stepOf(2)
     const raw = {
       ...step.raw!,
-      locator: { strategy: 'id', selector: 'pw', within: [{ strategy: 'css', selector: 'form.login' }] }
+      locator: {
+        strategy: 'id',
+        selector: 'pw',
+        within: [{ strategy: 'css', selector: 'form.login' }]
+      }
     }
     render(<TraceStepDetail step={{ ...step, raw }} devicePixelRatio={1} />)
-    fireEvent.click(screen.getByRole('button', { name: 'traceViewer.technical.show' }))
-    expect(screen.getByText('traceViewer.technical.within')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: k('traceViewer.technical.show') }))
+    expect(screen.getByText(k('traceViewer.technical.within'))).toBeInTheDocument()
     expect(screen.getByText('css: form.login')).toBeInTheDocument()
   })
 
   it('shows the error class and message only in technical details', async () => {
     const { container } = show(9)
     await act(async () => {})
-    expect(screen.getByText('traceViewer.failedStep')).toBeInTheDocument()
+    expect(screen.getByText(k('traceViewer.failedStep'))).toBeInTheDocument()
     expect(container.textContent).not.toContain('RSpec::Expectations::ExpectationNotMetError')
     expect(container.textContent).not.toContain('deliberate trace failure')
-    fireEvent.click(screen.getByRole('button', { name: 'traceViewer.technical.show' }))
+    fireEvent.click(screen.getByRole('button', { name: k('traceViewer.technical.show') }))
     expect(screen.getByText('RSpec::Expectations::ExpectationNotMetError')).toBeInTheDocument()
     expect(container.textContent).toContain('deliberate trace failure')
   })
@@ -120,47 +160,49 @@ describe('TraceStepDetail', () => {
     }
     const { container } = render(<TraceStepDetail step={secret} devicePixelRatio={1} />)
     await act(async () => {})
-    fireEvent.click(screen.getByRole('button', { name: 'traceViewer.technical.show' }))
+    // The error may echo the secret: Technical details only.
+    expect(container.textContent).not.toContain('boom')
+    fireEvent.click(screen.getByRole('button', { name: k('traceViewer.technical.show') }))
     const text = container.textContent ?? ''
     expect(text).not.toContain('hunter2')
     expect(text).not.toContain('•')
     expect(text).not.toContain('*')
-    expect(screen.getByText('traceViewer.technical.hidden')).toBeInTheDocument()
+    expect(screen.getByText(k('traceViewer.technical.hidden'))).toBeInTheDocument()
   })
 
   it('shows the value of a step that is not secret, in technical details', async () => {
     show(5)
     await act(async () => {})
-    fireEvent.click(screen.getByRole('button', { name: 'traceViewer.technical.show' }))
+    fireEvent.click(screen.getByRole('button', { name: k('traceViewer.technical.show') }))
     expect(screen.getByText('plain-trace-name')).toBeInTheDocument()
   })
 
   it('draws the rect labelled "element before the action"', async () => {
     show(2)
     await act(async () => {})
-    const img = screen.getByRole('img', { name: 'traceViewer.stepImage{"n":2}' })
+    const img = screen.getByRole('img', { name: `${k('traceViewer.stepImage')} 2` })
     expect(img.getAttribute('src')).toMatch(/^data:image\/jpeg/)
     expect(screen.queryByTestId('trace-rect')).toBeNull()
     await loadImage(img)
     const rect = screen.getByTestId('trace-rect')
     expect(parseFloat(rect.style.left)).toBeCloseTo(0.4167, 3)
-    expect(rect).toHaveAttribute('aria-label', 'traceViewer.rectLabel')
+    expect(rect).toHaveAttribute('aria-label', k('traceViewer.rectLabel'))
   })
 
   it('draws no rect when step.rect is null', async () => {
     show(1)
     await act(async () => {})
-    await loadImage(screen.getByRole('img', { name: 'traceViewer.stepImage{"n":1}' }))
+    await loadImage(screen.getByRole('img', { name: `${k('traceViewer.stepImage')} 1` }))
     expect(screen.queryByTestId('trace-rect')).toBeNull()
   })
 
   it('says Not captured for both views of step 4', async () => {
     show(4)
     await act(async () => {})
-    expect(screen.getByText('traceViewer.notCaptured')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'traceViewer.view.snapshot' }))
+    expect(screen.getByText(k('traceViewer.notCaptured'))).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: k('traceViewer.view.snapshot') }))
     await act(async () => {})
-    expect(screen.getByText('traceViewer.notCaptured')).toBeInTheDocument()
+    expect(screen.getByText(k('traceViewer.notCaptured'))).toBeInTheDocument()
     expect(read).not.toHaveBeenCalled()
   })
 
@@ -168,15 +210,52 @@ describe('TraceStepDetail', () => {
     show(2)
     await act(async () => {})
     expect(read).not.toHaveBeenCalledWith('steps/0002.html')
-    fireEvent.click(screen.getByRole('button', { name: 'traceViewer.view.snapshot' }))
+    fireEvent.click(screen.getByRole('button', { name: k('traceViewer.view.snapshot') }))
     await act(async () => {})
     expect(read).toHaveBeenCalledWith('steps/0002.html')
+  })
+
+  it('does not reload or re-sanitise the page HTML when its view is chosen again', async () => {
+    const { container } = show(2)
+    await act(async () => {})
+    const snapshotButton = screen.getByRole('button', { name: k('traceViewer.view.snapshot') })
+    const screenshotButton = screen.getByRole('button', { name: k('traceViewer.view.screenshot') })
+    fireEvent.click(snapshotButton)
+    await act(async () => {})
+    fireEvent.click(screenshotButton)
+    fireEvent.click(snapshotButton)
+    await act(async () => {})
+    expect(read.mock.calls.filter(([name]) => name === 'steps/0002.html')).toHaveLength(1)
+    expect(sanitizeSnapshot).toHaveBeenCalledTimes(1)
+    expect(container.querySelector('iframe[data-testid="trace-snapshot"]')).not.toBeNull()
+  })
+
+  it('takes its heading level and labels the view switch', async () => {
+    render(<TraceStepDetail traceKey="a" step={stepOf(2)} devicePixelRatio={1} headingLevel={2} />)
+    await act(async () => {})
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toContain(
+      k('traceViewer.step.typeSecret')
+    )
+    expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent(
+      k('traceViewer.view.screenshot')
+    )
+    const group = screen.getByRole('group', { name: k('traceViewer.view.label') })
+    expect(group.querySelectorAll('button[aria-pressed]')).toHaveLength(2)
+  })
+
+  it('uses h3 for the title by default', async () => {
+    show(2)
+    await act(async () => {})
+    expect(screen.getByRole('heading', { level: 3 }).textContent).toContain(
+      k('traceViewer.step.typeSecret')
+    )
+    expect(screen.getByRole('heading', { level: 4 })).toBeInTheDocument()
   })
 
   it('shows the snapshot in a frame with an empty sandbox', async () => {
     const { container } = show(2)
     await act(async () => {})
-    fireEvent.click(screen.getByRole('button', { name: 'traceViewer.view.snapshot' }))
+    fireEvent.click(screen.getByRole('button', { name: k('traceViewer.view.snapshot') }))
     await act(async () => {})
     const frame = container.querySelector('iframe[data-testid="trace-snapshot"]')!
     expect(frame.getAttribute('sandbox')).toBe('')
@@ -189,10 +268,14 @@ describe('TraceStepDetail', () => {
   })
 
   it('shows an xml snapshot as text, not in a frame', async () => {
-    read.mockImplementation(async () => ({ ok: true, kind: 'xml', text: '<hierarchy><node/></hierarchy>' }))
+    read.mockImplementation(async () => ({
+      ok: true,
+      kind: 'xml',
+      text: '<hierarchy><node/></hierarchy>'
+    }))
     const { container } = show(2)
     await act(async () => {})
-    fireEvent.click(screen.getByRole('button', { name: 'traceViewer.view.snapshot' }))
+    fireEvent.click(screen.getByRole('button', { name: k('traceViewer.view.snapshot') }))
     await act(async () => {})
     expect(container.querySelector('iframe')).toBeNull()
     expect(container.querySelector('pre')?.textContent).toBe('<hierarchy><node/></hierarchy>')
@@ -217,7 +300,10 @@ describe('TraceStepDetail', () => {
     await loadImage(imgs[0])
     // Step 5's own rect (x 322), never step 2's (x 8).
     expect(screen.getAllByTestId('trace-rect')).toHaveLength(1)
-    expect(parseFloat(screen.getByTestId('trace-rect').style.left)).toBeCloseTo((322 / 1920) * 100, 3)
+    expect(parseFloat(screen.getByTestId('trace-rect').style.left)).toBeCloseTo(
+      (322 / 1920) * 100,
+      3
+    )
   })
 
   it('does not carry an image or its size over to the next step', async () => {
@@ -253,7 +339,7 @@ describe('TraceStepDetail', () => {
   it('shows waited time and retries', async () => {
     const { container } = show(6)
     await act(async () => {})
-    expect(container.textContent).toContain('traceViewer.waited{"seconds":"0.1"}')
-    expect(container.textContent).toContain('traceViewer.retries{"count":1}')
+    expect(container.textContent).toContain(`${k('traceViewer.waited')} 0.1`)
+    expect(container.textContent).toContain(`${k('traceViewer.retries')} 1`)
   })
 })

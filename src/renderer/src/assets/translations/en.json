@@ -879,7 +879,8 @@
     },
     "view": {
       "screenshot": "Screenshot",
-      "snapshot": "Page HTML"
+      "snapshot": "Page HTML",
+      "label": "What to show for this step"
     },
     "notCaptured": "Not captured",
     "selectStep": "Select a step to see what happened",
@@ -916,7 +917,16 @@
     "console": {
       "empty": "No console messages during this step",
       "emptyAll": "No console messages",
-      "details": "Message details"
+      "details": "Message details",
+      "text": "Full message",
+      "level": {
+        "log": "Log",
+        "info": "Info",
+        "warning": "Warning",
+        "error": "Error",
+        "debug": "Debug",
+        "other": "Other"
+      }
     },
     "truncated": {
       "steps": "Older steps removed to keep the trace small",

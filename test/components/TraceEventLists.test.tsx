@@ -15,7 +15,10 @@ vi.mock('react-i18next', () => ({
 const index = fixtureIndex()
 const api = index.network[2]
 
-const request = (over: Partial<RaiderTraceNetwork> = {}): RaiderTraceNetwork => ({ ...api, ...over })
+const request = (over: Partial<RaiderTraceNetwork> = {}): RaiderTraceNetwork => ({
+  ...api,
+  ...over
+})
 
 describe('TraceNetworkList', () => {
   it('shows the request line, status, timing and size', () => {
@@ -26,14 +29,20 @@ describe('TraceNetworkList', () => {
     }
   })
 
-  it('says the size is what the browser reports', () => {
+  it('says, visibly, that the size is what the browser reports', () => {
     render(<TraceNetworkList items={[api]} available all={false} />)
-    expect(screen.getByText('144 B')).toHaveAttribute('title', 'traceViewer.network.size')
+    const hint = screen.getByText('traceViewer.network.size')
+    expect(hint.id).not.toBe('')
+    expect(screen.getByText('144 B')).toHaveAttribute('aria-describedby', hint.id)
   })
 
   it('shows a failed request plainly and keeps the raw error in its details', () => {
     const { container } = render(
-      <TraceNetworkList items={[request({ status: null, error: 'net::ERR_FAILED' })]} available all={false} />
+      <TraceNetworkList
+        items={[request({ status: null, error: 'net::ERR_FAILED' })]}
+        available
+        all={false}
+      />
     )
     expect(screen.getByText('traceViewer.network.failed')).toBeInTheDocument()
     expect(container.textContent).not.toContain('net::ERR_FAILED')
@@ -43,7 +52,9 @@ describe('TraceNetworkList', () => {
 
   it('keeps the query string and credentials out of the plain view', () => {
     const url = 'http://user:secret@127.0.0.1:55539/api?token=abc#frag'
-    const { container } = render(<TraceNetworkList items={[request({ url })]} available all={false} />)
+    const { container } = render(
+      <TraceNetworkList items={[request({ url })]} available all={false} />
+    )
     const text = container.textContent ?? ''
     expect(text).toContain('http://127.0.0.1:55539/api')
     for (const raw of ['token=abc', 'secret', 'frag']) expect(text).not.toContain(raw)
@@ -88,11 +99,48 @@ describe('TraceConsoleList', () => {
 
   it('shows the level and text', () => {
     const { container } = render(<TraceConsoleList items={[message]} available all={false} />)
-    expect(screen.getByText('error')).toBeInTheDocument()
+    expect(screen.getByText('traceViewer.console.level.error')).toBeInTheDocument()
     expect(screen.getByText('trace e2e error')).toBeInTheDocument()
     expect(container.textContent).not.toContain('55539')
     fireEvent.click(screen.getByRole('button', { name: 'traceViewer.console.details' }))
     expect(screen.getByText('http://127.0.0.1:55539/:18:17')).toBeInTheDocument()
+  })
+
+  it.each([
+    ['log', 'log'],
+    ['info', 'info'],
+    ['warn', 'warning'],
+    ['warning', 'warning'],
+    ['debug', 'debug'],
+    ['trace', 'other'],
+    ['__proto__', 'other']
+  ])('names the %s level through the copy', (level, key) => {
+    render(<TraceConsoleList items={[{ ...message, level }]} available all={false} />)
+    expect(screen.getByText(`traceViewer.console.level.${key}`)).toBeInTheDocument()
+  })
+
+  it('strips addresses in the text and keeps the raw text in its details', () => {
+    const text =
+      'Uncaught TypeError at https://u:p@example.com/app.js?token=abc#x and ' +
+      'http://127.0.0.1:55539/api?key=s3cret'
+    const { container } = render(
+      <TraceConsoleList items={[{ ...message, text }]} available all={false} />
+    )
+    const plain = container.textContent ?? ''
+    expect(plain).toContain(
+      'Uncaught TypeError at https://example.com/app.js and http://127.0.0.1:55539/api'
+    )
+    for (const raw of ['token=abc', 'u:p@', 's3cret', '#x']) expect(plain).not.toContain(raw)
+    fireEvent.click(screen.getByRole('button', { name: 'traceViewer.console.details' }))
+    expect(screen.getByText(text)).toBeInTheDocument()
+  })
+
+  it('cuts long text to 300 characters in the plain view', () => {
+    const text = 'a'.repeat(400)
+    render(<TraceConsoleList items={[{ ...message, text, source: null }]} available all={false} />)
+    expect(screen.getByText(`${'a'.repeat(300)}…`)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'traceViewer.console.details' }))
+    expect(screen.getByText(text)).toBeInTheDocument()
   })
 
   it('says when there are no messages', () => {

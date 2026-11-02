@@ -53,7 +53,8 @@ export function plainUrl(url: string | null): string {
     u.password = ''
     return u.href
   } catch {
-    return url.split(/[?#]/)[0]
+    // Unparseable: still drop the query, fragment and any user:pass@ part.
+    return url.split(/[?#]/)[0].replace(/^((?:[a-z][\w+.-]*:)?\/\/)?[^/]*@/i, '$1')
   }
 }
 

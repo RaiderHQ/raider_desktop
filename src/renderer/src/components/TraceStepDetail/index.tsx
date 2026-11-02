@@ -12,7 +12,10 @@ interface TraceStepDetailProps {
   step: TraceViewStep | null
   devicePixelRatio: number
   traceKey?: string // identifies the open trace; the detail starts afresh when it changes
+  headingLevel?: HeadingLevel // of the step's title; the view's heading is one below
 }
+
+type HeadingLevel = 2 | 3 | 4 | 5
 
 type View = 'screenshot' | 'snapshot'
 
@@ -25,7 +28,11 @@ const Placeholder: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </div>
 )
 
-const Detail: React.FC<Omit<TraceStepDetailProps, 'traceKey'>> = ({ step, devicePixelRatio }) => {
+const Detail: React.FC<Omit<TraceStepDetailProps, 'traceKey'>> = ({
+  step,
+  devicePixelRatio,
+  headingLevel = 3
+}) => {
   const { t } = useTranslation()
   const [view, setView] = useState<View>('screenshot')
   const [shot, setShot] = useState<Loaded<string> | null>(null)
@@ -58,9 +65,10 @@ const Detail: React.FC<Omit<TraceStepDetailProps, 'traceKey'>> = ({ step, device
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, hasScreenshot])
 
-  // The page HTML loads only once its view is chosen.
+  // The page HTML loads only once its view is chosen, and once per step.
+  const pageLoaded = page?.stepId === id && page.value !== null
   useEffect(() => {
-    if (!id || !wantSnapshot || !step?.loadSnapshot) return
+    if (!id || !wantSnapshot || pageLoaded || !step?.loadSnapshot) return
     let active = true
     step
       .loadSnapshot()
@@ -134,6 +142,9 @@ const Detail: React.FC<Omit<TraceStepDetailProps, 'traceKey'>> = ({ step, device
     return <TraceSnapshotFrame snapshot={snapshot.value} />
   }
 
+  const Title = `h${headingLevel}` as const
+  const ViewHeading = `h${headingLevel + 1}` as 'h3' | 'h4' | 'h5' | 'h6'
+
   const viewButton = (value: View): React.ReactNode => (
     <button
       type="button"
@@ -152,10 +163,10 @@ const Detail: React.FC<Omit<TraceStepDetailProps, 'traceKey'>> = ({ step, device
   return (
     <div className="flex flex-col h-full overflow-y-auto p-4 space-y-4">
       <div className="space-y-1">
-        {titleText && <h3 className="text-base text-neutral-dark break-words">{titleText}</h3>}
-        {step.foundBy && (
-          <p className="text-xs text-neutral-mid">{t(step.foundBy.key)}</p>
+        {titleText && (
+          <Title className="text-base text-neutral-dark break-words">{titleText}</Title>
         )}
+        {step.foundBy && <p className="text-xs text-neutral-mid">{t(step.foundBy.key)}</p>}
         {step.status === 'failed' && (
           <p className="text-sm font-semibold text-status-err">{t('traceViewer.failedStep')}</p>
         )}
@@ -167,11 +178,16 @@ const Detail: React.FC<Omit<TraceStepDetailProps, 'traceKey'>> = ({ step, device
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div role="group" aria-label={t('traceViewer.view.label')} className="flex gap-2">
         {viewButton('screenshot')}
         {viewButton('snapshot')}
       </div>
-      {view === 'screenshot' ? renderScreenshot() : renderSnapshot()}
+      <section className="space-y-2">
+        <ViewHeading className="text-xs font-semibold text-neutral-mid">
+          {t(`traceViewer.view.${view}`)}
+        </ViewHeading>
+        {view === 'screenshot' ? renderScreenshot() : renderSnapshot()}
+      </section>
 
       {step.raw && <TechnicalDetails step={step.raw} />}
     </div>
