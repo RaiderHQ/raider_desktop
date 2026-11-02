@@ -4,7 +4,8 @@ import path from 'path'
 
 vi.mock('electron', () => ({
   protocol: { registerSchemesAsPrivileged: vi.fn(), handle: vi.fn() },
-  dialog: { showOpenDialog: vi.fn() }
+  dialog: { showOpenDialog: vi.fn() },
+  app: { getPath: vi.fn(() => '') }
 }))
 
 // An archive that fails in ways its own error mapping never should.
@@ -32,6 +33,8 @@ describe('trace IPC when the archive throws', () => {
   } as unknown as IpcMain)
 
   it('open gives damaged', async () => {
+    const savedHome = process.env.HOME
+    process.env.HOME = path.dirname(FIXTURE)
     expect(await openTrace({ kind: 'file', path: FIXTURE })).toEqual({
       ok: false,
       error: 'damaged'
@@ -40,6 +43,7 @@ describe('trace IPC when the archive throws', () => {
       ok: false,
       error: 'damaged'
     })
+    process.env.HOME = savedHome
   })
 
   it('entry gives damaged and close does not throw', async () => {

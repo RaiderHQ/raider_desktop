@@ -8,6 +8,7 @@ import type {
   TraceSource
 } from '../../../shared/types/raiderTrace'
 import { appState } from '../appState'
+import { validateFilePath } from '../../utils/validatePath'
 import { resolveAttachmentFile } from '../media/mediaProtocol'
 import { closeTrace, openTraceFile, readTraceEntry } from './traceArchive'
 
@@ -63,6 +64,26 @@ export const openTrace = async (source: unknown): Promise<TraceOpenResult> => {
   }
 }
 
+// A dropped path arrives over IPC, which any renderer script can also reach, so it
+// gets the allowed-roots check read-file uses, on both the given and the real path.
+const isDropPath = (filePath: unknown): filePath is string =>
+  typeof filePath === 'string' &&
+  filePath !== '' &&
+  path.extname(filePath).toLowerCase() === '.zip' &&
+  validateFilePath(filePath).valid
+
+// Outside the allowed roots is notFound, like a missing file, so it leaks nothing.
+export const openDroppedTrace = async (filePath: unknown): Promise<TraceOpenResult> => {
+  try {
+    if (!isDropPath(filePath)) return { ok: false, error: 'notFound' }
+    const real = await resolveTracePath({ kind: 'file', path: filePath })
+    if (!real || !isDropPath(real)) return { ok: false, error: 'notFound' }
+    return await openTraceFile(real)
+  } catch {
+    return { ok: false, error: 'damaged' }
+  }
+}
+
 // File → Open trace. Calls dialog.showOpenDialog at call time so a test stub takes effect.
 export const openTraceFromDialog = async (win: BrowserWindow): Promise<void> => {
   let result: TraceOpenResult
@@ -101,11 +122,7 @@ export function registerTraceIpc(ipcMain: IpcMain): void {
       ? openTrace(source)
       : { ok: false, error: 'notFound' }
   )
-  ipcMain.handle('trace-open-drop', (_event, filePath: unknown) =>
-    typeof filePath === 'string' && filePath !== ''
-      ? openTrace({ kind: 'file', path: filePath })
-      : { ok: false, error: 'notFound' }
-  )
+  ipcMain.handle('trace-open-drop', (_event, filePath: unknown) => openDroppedTrace(filePath))
   ipcMain.handle('trace-entry', (_event, traceId: unknown, name: unknown) => entry(traceId, name))
   ipcMain.handle('trace-close', (_event, traceId: unknown) => {
     try {

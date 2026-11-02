@@ -6,7 +6,8 @@ import path from 'path'
 
 vi.mock('electron', () => ({
   protocol: { registerSchemesAsPrivileged: vi.fn(), handle: vi.fn() },
-  dialog: { showOpenDialog: vi.fn() }
+  dialog: { showOpenDialog: vi.fn() },
+  app: { getPath: vi.fn(() => '') }
 }))
 
 import { dialog, type BrowserWindow, type IpcMain } from 'electron'
@@ -228,12 +229,62 @@ describe('registerTraceIpc', () => {
     expect(await open({}, null)).toEqual({ ok: false, error: 'notFound' })
   })
 
-  it('trace-open-drop opens a dropped file and validates its argument', async () => {
-    const drop = handlers.get('trace-open-drop')!
-    expect(await drop({}, path.join(root, 'outside.zip'))).toMatchObject({ ok: true })
-    for (const bad of ['', 3, null, { kind: 'file', path: zip }, 'relative.zip']) {
-      expect(await drop({}, bad)).toEqual({ ok: false, error: 'notFound' })
-    }
+  describe('trace-open-drop', () => {
+    let home: string
+    const savedHome = process.env.HOME
+    beforeAll(() => {
+      home = path.join(root, 'home')
+      fs.mkdirSync(path.join(home, 'Downloads'), { recursive: true })
+      fs.copyFileSync(FIXTURE, path.join(home, 'Downloads', 'trace.ZIP'))
+      fs.copyFileSync(FIXTURE, path.join(home, 'Downloads', 'trace.bin'))
+      fs.symlinkSync(path.join(root, 'outside.zip'), path.join(home, 'Downloads', 'link.zip'))
+    })
+    beforeEach(() => {
+      // Only HOME is allowed: no temp or userData root to fall back on.
+      process.env.HOME = home
+      vi.spyOn(os, 'tmpdir').mockReturnValue('/nonexistent-tmp')
+    })
+    afterEach(() => {
+      process.env.HOME = savedHome
+    })
+
+    it('opens a real drop inside home (.zip in any case)', async () => {
+      const drop = handlers.get('trace-open-drop')!
+      expect(await drop({}, path.join(home, 'Downloads', 'trace.ZIP'))).toMatchObject({ ok: true })
+    })
+
+    it('refuses a forged path outside the allowed roots without touching it', async () => {
+      const drop = handlers.get('trace-open-drop')!
+      const realpath = vi.spyOn(fs.promises, 'realpath')
+      expect(await drop({}, path.join(root, 'outside.zip'))).toEqual({
+        ok: false,
+        error: 'notFound'
+      })
+      expect(await drop({}, '/etc/x.zip')).toEqual({ ok: false, error: 'notFound' })
+      expect(await drop({}, `${home}/../outside.zip`)).toEqual({ ok: false, error: 'notFound' })
+      expect(realpath).not.toHaveBeenCalled()
+    })
+
+    it('refuses a link in home whose real path leaves the allowed roots', async () => {
+      const drop = handlers.get('trace-open-drop')!
+      expect(await drop({}, path.join(home, 'Downloads', 'link.zip'))).toEqual({
+        ok: false,
+        error: 'notFound'
+      })
+    })
+
+    it('refuses a non-.zip file and invalid arguments', async () => {
+      const drop = handlers.get('trace-open-drop')!
+      const bad = [
+        path.join(home, 'Downloads', 'trace.bin'),
+        '',
+        3,
+        null,
+        { kind: 'file', path: zip },
+        'relative.zip'
+      ]
+      for (const arg of bad) expect(await drop({}, arg)).toEqual({ ok: false, error: 'notFound' })
+    })
   })
 
   it('validates trace-entry and trace-close arguments', async () => {
