@@ -205,14 +205,38 @@ describe('parseTraceIndex', () => {
     expect(index.steps[0].action).toBe('first')
   })
 
-  it('makes network and console entries with a missing, invalid or unknown step_index orphans', () => {
+  it('step 1 owns events before the first step', () => {
     const json = fixtureJson() as Json
-    const bad = [undefined, 0, -1, 1.5, '1', null, 999]
-    json.network = [...bad.map((s) => ({ step_index: s, method: 'GET', url: 'u' })), { step_index: 2, url: 'u' }]
-    json.console = [...bad.map((s) => ({ step_index: s, level: 'log', text: 't' })), { step_index: 2, text: 't' }]
+    const bad = [undefined, 0, -1, 1.5, '1', null]
+    json.network = bad.map((s) => ({ step_index: s, method: 'GET', url: 'u' }))
+    json.console = bad.map((s) => ({ step_index: s, level: 'log', text: 't' }))
     const index = parseOk(json)
-    expect(index.network.map((n) => n.stepIndex)).toEqual([...bad.map(() => null), 2])
-    expect(index.console.map((n) => n.stepIndex)).toEqual([...bad.map(() => null), 2])
+    expect(index.network.map((n) => n.stepIndex)).toEqual(bad.map(() => 1))
+    expect(index.console.map((n) => n.stepIndex)).toEqual(bad.map(() => 1))
+  })
+
+  it('makes entries naming no real step orphans, and everything an orphan with zero steps', () => {
+    const json = fixtureJson() as Json
+    json.network = [{ step_index: 999, url: 'u' }, { step_index: 2, url: 'u' }]
+    json.console = [{ step_index: 999, text: 't' }]
+    const index = parseOk(json)
+    expect(index.network.map((n) => n.stepIndex)).toEqual([null, 2])
+    expect(index.console[0].stepIndex).toBeNull()
+
+    json.steps = []
+    json.network = [{ url: 'u' }, { step_index: 1, url: 'u' }]
+    const empty = parseOk(json)
+    expect(empty.network.map((n) => n.stepIndex)).toEqual([null, null])
+  })
+
+  it('makes an entry pointing at a step dropped by the cap an orphan', () => {
+    const json = fixtureJson() as Json
+    json.steps = Array.from({ length: 5003 }, (_, i) => step(i + 1))
+    json.network = [{ step_index: 5001, url: 'u' }, { step_index: 5000, url: 'u' }]
+    json.console = [{ step_index: 5003, text: 't' }]
+    const index = parseOk(json)
+    expect(index.network.map((n) => n.stepIndex)).toEqual([null, 5000])
+    expect(index.console[0].stepIndex).toBeNull()
   })
 
   it('treats step indices below 1 as invalid', () => {

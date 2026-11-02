@@ -183,15 +183,18 @@ function parseSteps(
   return { steps, dropped: Math.max(0, all.length - MAX_STEPS) }
 }
 
-// An entry whose step_index is missing or names no real step is an orphan (null).
-function owner(v: unknown, known: ReadonlySet<number>): number | null {
+// A missing, invalid or < 1 step_index means the entry came before the first
+// step, so it belongs to step 1. An index naming no real step is an orphan (null).
+function owner(v: unknown, known: ReadonlySet<number>, first: number | null): number | null {
   const n = stepIndex(v)
-  return n !== null && known.has(n) ? n : null
+  if (n === null) return first
+  return known.has(n) ? n : null
 }
 
 function parseNetwork(
   v: unknown,
-  known: ReadonlySet<number>
+  known: ReadonlySet<number>,
+  first: number | null
 ): { entries: RaiderTraceNetwork[]; dropped: number } {
   const out: RaiderTraceNetwork[] = []
   const all = arr(v)
@@ -199,7 +202,7 @@ function parseNetwork(
     const o = obj(raw)
     if (!o) continue
     out.push({
-      stepIndex: owner(o.step_index, known),
+      stepIndex: owner(o.step_index, known, first),
       method: str(o.method) ?? '',
       url: str(o.url) ?? '',
       status: num(o.status),
@@ -214,7 +217,8 @@ function parseNetwork(
 
 function parseConsole(
   v: unknown,
-  known: ReadonlySet<number>
+  known: ReadonlySet<number>,
+  first: number | null
 ): { entries: RaiderTraceConsole[]; dropped: number } {
   const out: RaiderTraceConsole[] = []
   const all = arr(v)
@@ -222,7 +226,7 @@ function parseConsole(
     const o = obj(raw)
     if (!o) continue
     out.push({
-      stepIndex: owner(o.step_index, known),
+      stepIndex: owner(o.step_index, known, first),
       level: str(o.level) ?? '',
       text: str(o.text) ?? '',
       source: strOrNull(o.source)
@@ -251,8 +255,9 @@ export function parseTraceIndex(
     const dpr = num(root.device_pixel_ratio)
     const parsedSteps = parseSteps(root.steps, entryNames)
     const known = new Set(parsedSteps.steps.map((st) => st.index))
-    const network = parseNetwork(root.network, known)
-    const consoleLog = parseConsole(root.console, known)
+    const first = known.has(1) ? 1 : (parsedSteps.steps[0]?.index ?? null)
+    const network = parseNetwork(root.network, known, first)
+    const consoleLog = parseConsole(root.console, known, first)
 
     const index: RaiderTraceIndex = {
       version: 1,
