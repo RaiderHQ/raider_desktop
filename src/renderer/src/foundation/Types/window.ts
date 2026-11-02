@@ -16,6 +16,7 @@ import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { IpcRendererEvent } from 'electron'
 import type { RunApi } from '@shared/types/runEvents'
+import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type {
   DeviceSettings,
@@ -147,6 +148,12 @@ export interface WindowApi extends RunApi {
   listProjectTests: () => Promise<ProjectTestEntry[]>
   /** Read-only view of a listed spec file; rejects for any other path */
   openCodeTest: (file: string) => Promise<CodeTestView>
+  /** The recorded step a failed row's frames point into, or why there is none; never rejects */
+  mapFailedStep: (
+    projectPath: string,
+    testId: string,
+    failure: FailedStepQuery
+  ) => Promise<FailedStepMap>
   getProjectLayout: () => Promise<ProjectLayout | null>
   /** Replaces the one example named `exampleName` in a listed spec file with `steps` */
   recordOverExample: (

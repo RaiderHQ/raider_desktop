@@ -46,6 +46,7 @@ import {
   recordOverExampleHandler
 } from './handlers/tests/projectTestIpc'
 import { prepareSuiteRun, prepareTestRun } from './handlers/testing/prepareRuns'
+import { mapFailedStepHandler } from './handlers/tests/mapFailedStep'
 import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTests'
 import { isListed } from './handlers/tests/suiteStore'
 import { registerRunIpc } from './handlers/run/runIpc'
@@ -251,6 +252,7 @@ app.whenReady().then(() => {
   ipcMain.handle('list-project-tests', listProjectTestsHandler)
   ipcMain.handle('open-code-test', (_event, file: string) => openCodeTestHandler(file))
   ipcMain.handle('get-project-layout', getProjectLayoutHandler)
+  ipcMain.handle('map-failed-step', (_e, p, id, f) => mapFailedStepHandler(p, id, f))
   registerRunIpc(ipcMain)
   ipcMain.handle(
     'record-over-example',

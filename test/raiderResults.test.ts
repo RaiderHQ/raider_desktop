@@ -424,6 +424,16 @@ describe('loadRaiderResults with schema 2', () => {
       return (await loadRaiderResults('/proj', api))![0]
     }
 
+    it('carries the file run.finished_at as finishedAt', async () => {
+      const row = await one(r('F: bad', 'failed'), { finished_at: '2026-11-02T10:00:00Z' })
+      expect(row.finishedAt).toBe('2026-11-02T10:00:00Z')
+    })
+
+    it('has no finishedAt without a run time', async () => {
+      const row = await one(r('F: bad', 'failed'))
+      expect(row).not.toHaveProperty('finishedAt')
+    })
+
     it('passes failure, appFrame, backtrace and durationMs through', async () => {
       const row = await one(
         r('F: bad', 'failed', {

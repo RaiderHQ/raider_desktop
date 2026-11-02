@@ -66,7 +66,12 @@ const safeAttachmentPath = (raw: string): string | null => {
 const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
 
-const toRow = (result: RaiderResult, resultsDir: string, browser?: string): TestResult => {
+const toRow = (
+  result: RaiderResult,
+  resultsDir: string,
+  browser?: string,
+  finishedAt?: string
+): TestResult => {
   const row: TestResult = {
     name: typeof result.full_name === 'string' ? result.full_name : '',
     status: mapStatus(typeof result.status === 'string' ? result.status : undefined)
@@ -90,6 +95,7 @@ const toRow = (result: RaiderResult, resultsDir: string, browser?: string): Test
   if (typeof result.line_number === 'number') row.line = result.line_number
   if (typeof result.duration_ms === 'number') row.durationMs = result.duration_ms
   if (browser) row.browser = browser
+  if (finishedAt) row.finishedAt = finishedAt
   const attachments = (Array.isArray(result.attachments) ? result.attachments : []).filter(
     (a) => isObject(a) && typeof a.content_type === 'string' && typeof a.path === 'string'
   )
@@ -108,6 +114,7 @@ interface Candidate {
   index: number | null // shard number from the file name; null for run.json
   results: RaiderResult[]
   finished: number // epoch ms, NaN when missing
+  finishedAt?: string // raw run.finished_at
   total: number | null
   browser?: string
 }
@@ -173,6 +180,7 @@ export const loadRaiderResults = async (
         index: fileIndex(node.name) as number | null,
         results: Array.isArray(data.results) ? data.results.filter(isObject) : [],
         finished: data.run?.finished_at ? Date.parse(data.run.finished_at) : NaN,
+        finishedAt: typeof data.run?.finished_at === 'string' ? data.run.finished_at : undefined,
         total: typeof data.run?.shard?.total === 'number' ? data.run.shard.total : null,
         browser:
           typeof data.run?.environment?.browser === 'string' && data.run.environment.browser
@@ -186,6 +194,6 @@ export const loadRaiderResults = async (
   if (parsed.length === 0) return null
 
   return selectCandidates(parsed).flatMap((c) =>
-    c.results.map((r) => toRow(r, resultsDir, c.browser))
+    c.results.map((r) => toRow(r, resultsDir, c.browser, c.finishedAt))
   )
 }

@@ -16,6 +16,7 @@ import type {
   PrepareTestRunResult
 } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
+import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type {
   DeviceSettings,
@@ -166,6 +167,11 @@ const api = {
   getSuites: async (): Promise<Suite[]> => ipcRenderer.invoke('get-suites'),
   listProjectTests: (): Promise<ProjectTestEntry[]> => ipcRenderer.invoke('list-project-tests'),
   openCodeTest: (file: string): Promise<CodeTestView> => ipcRenderer.invoke('open-code-test', file),
+  mapFailedStep: (
+    projectPath: string,
+    testId: string,
+    failure: FailedStepQuery
+  ): Promise<FailedStepMap> => ipcRenderer.invoke('map-failed-step', projectPath, testId, failure),
   getProjectLayout: (): Promise<ProjectLayout | null> => ipcRenderer.invoke('get-project-layout'),
   recordOverExample: (
     file: string,
@@ -187,8 +193,7 @@ const api = {
     suiteId: string,
     projectPath: string,
     rubyCommand: string
-  ): Promise<LegacyRunResult> =>
-    ipcRenderer.invoke('run-suite', suiteId, projectPath, rubyCommand),
+  ): Promise<LegacyRunResult> => ipcRenderer.invoke('run-suite', suiteId, projectPath, rubyCommand),
   prepareTestRun: (suiteId: string, testId: string, test?: Test): Promise<PrepareTestRunResult> =>
     ipcRenderer.invoke('prepare-test-run', suiteId, testId, test),
   prepareSuiteRun: (suiteId: string): Promise<PrepareSuiteRunResult> =>
@@ -223,8 +228,7 @@ const api = {
     url: string
     preloadPath: string
     reason?: 'unsupportedUrl'
-  }> =>
-    ipcRenderer.invoke('start-recording-main'),
+  }> => ipcRenderer.invoke('start-recording-main'),
   replayStepsAndRecord: async (
     testName: string,
     stepsToReplay: Step[],
@@ -334,12 +338,8 @@ const api = {
     projectPath: string,
     width: number,
     height: number
-  ): Promise<CommandType> =>
-    ipcRenderer.invoke('update-viewport', projectPath, width, height),
-  updateBrowserOptions: async (
-    projectPath: string,
-    options: string[]
-  ): Promise<CommandType> =>
+  ): Promise<CommandType> => ipcRenderer.invoke('update-viewport', projectPath, width, height),
+  updateBrowserOptions: async (projectPath: string, options: string[]): Promise<CommandType> =>
     ipcRenderer.invoke('update-browser-options', projectPath, options),
   updateHeadlessMode: async (
     projectPath: string,

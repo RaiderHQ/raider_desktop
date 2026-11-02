@@ -29,4 +29,6 @@ export interface TestResult {
   identifier?: string
   file?: string
   line?: number
+  /** Raw `run.finished_at` of the results file this row came from */
+  finishedAt?: string
 }
