@@ -68,6 +68,26 @@ describe('failureReason', () => {
     it('no state is unusable', () => {
       expect(wait(null)).toBe(`${R}unusable`)
     })
+    it.each([
+      ['stale element', 'stale'],
+      ['still moving', 'stale'],
+      ['drop target not found', 'notFound'],
+      ['not found after 3 scrolls', 'notFound']
+    ])('last seen %s', (state, key) => {
+      expect(wait(state)).toBe(`${R}${key}`)
+    })
+    it('stale from the wait helper opens with a capital', () => {
+      expect(
+        reason('WaitHelper::TimeoutError', 'Waited 1s for x; last seen: stale element', bare)
+      ).toMatchObject({ key: `${R}stale`, params: { element: 'This element' } })
+    })
+    it('handles the gem message format, with and without the eventually prefix', () => {
+      const msg = 'Waited 10s for {id: "x"} to be visible and enabled; last seen: not found'
+      expect(reason('WaitHelper::TimeoutError', msg, click).key).toBe(`${R}notFound`)
+      expect(
+        reason('WaitHelper::TimeoutError', `(still failing after 3s)\n${msg}`, click).key
+      ).toBe(`${R}notFound`)
+    })
     it('recognises the message when the class is generic', () => {
       expect(reason('RuntimeError', 'Waited 2.5s for x; last seen: not found', click).key).toBe(
         `${R}notFound`
@@ -125,10 +145,26 @@ describe('failureReason', () => {
       const r = reason(cls, 'expected: "a"\n got: "say \\"hi\\" \\\\ now"', assertText)
       expect(r.actualValue).toBe('say "hi" \\ now')
     })
-    it('leaves actualValue unset when the actual is not a string', () => {
-      const r = reason(cls, 'expected: 3\n got: 4', assertText)
-      expect(r.params).toEqual({ expected: '3', actual: '4' })
+    it('uses the check fallback when the expected side is not a quoted string', () => {
+      expect(reason(cls, 'expected: 3\n got: 4', assertText).key).toBe(`${R}checkFailed`)
+      expect(reason(cls, 'expected: truthy value\n got: false', assertText).key).toBe(
+        `${R}checkFailed`
+      )
+    })
+    it('leaves actualValue unset for other escapes', () => {
+      const r = reason(cls, 'expected: "a"\n got: "line\\nbreak"', assertText)
+      expect(r.params.actual).toBe('"line\\nbreak"')
       expect(r).not.toHaveProperty('actualValue')
+    })
+    it('truncates long printed values to 80 characters', () => {
+      const long = `"${'x'.repeat(200)}"`
+      const r = reason(cls, `expected: "a"\n got: ${long}`, assertText)
+      expect(r.params.actual).toHaveLength(80)
+      expect(r.params.actual.endsWith('…')).toBe(true)
+    })
+    it('does not call an assert with "Unable to locate" in its text notFound', () => {
+      const r = reason(cls, 'expected: "ok"\n got: "Unable to locate your order"', assertText)
+      expect(r.key).toBe(`${R}expected`)
     })
     it('falls back to checkFailed when nothing parses', () => {
       expect(reason(cls, 'expected true, got false', assertText)).toEqual({
