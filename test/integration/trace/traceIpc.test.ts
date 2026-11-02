@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterAll, afterEach } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -16,12 +16,16 @@ import {
   openTraceFromDialog,
   registerTraceIpc
 } from '../../../src/main/handlers/trace/traceIpc'
+import { appState } from '../../../src/main/handlers/appState'
+
+import en from '../../../src/renderer/src/assets/translations/en.json'
 
 const FIXTURE = path.join(__dirname, '../../fixtures/trace-v1/trace.zip')
 
 let root: string
 let attachments: string
 let zip: string
+let otherProject: string
 
 beforeAll(() => {
   root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'trace-ipc-')))
@@ -44,6 +48,14 @@ beforeAll(() => {
   fs.copyFileSync(FIXTURE, path.join(root, 'elsewhere', 'x.zip'))
   fs.symlinkSync(path.join(root, 'elsewhere'), path.join(root, 'raider-results', 'attachments-3'))
   fs.symlinkSync(path.join(root, 'outside.zip'), path.join(root, 'outside-link.zip'))
+  // Another project with a well-formed results folder.
+  otherProject = path.join(root, 'other-project')
+  fs.mkdirSync(path.join(otherProject, 'raider-results', 'attachments'), { recursive: true })
+  fs.copyFileSync(FIXTURE, path.join(otherProject, 'raider-results', 'attachments', '0-trace.zip'))
+})
+
+beforeEach(() => {
+  appState.projectPath = root
 })
 
 afterAll(() => fs.rmSync(root, { recursive: true, force: true }))
@@ -70,6 +82,16 @@ describe('resolveTracePath result', () => {
       'raider-results/attachments/0-trace.zip'
     ]
     for (const p of refused) expect(await resolveTracePath(result(p)), p).toBeNull()
+  })
+
+  it("refuses another project's trace, and any trace with no active project", async () => {
+    const elsewhere = path.join(otherProject, 'raider-results', 'attachments', '0-trace.zip')
+    expect(await resolveTracePath(result(elsewhere))).toBeNull()
+    appState.projectPath = otherProject
+    expect(await resolveTracePath(result(elsewhere))).toBe(elsewhere)
+    expect(await resolveTracePath(result(zip))).toBeNull()
+    appState.projectPath = null
+    expect(await resolveTracePath(result(elsewhere))).toBeNull()
   })
 
   it('refuses a UNC path on win32 before any fs call', async () => {
@@ -151,6 +173,21 @@ describe('openTraceFromDialog', () => {
     })
   })
 
+  it('uses the English copy for the title and filter', async () => {
+    vi.mocked(dialog.showOpenDialog).mockResolvedValue({ canceled: true, filePaths: [] })
+    await openTraceFromDialog(makeWin().win)
+    const options = vi.mocked(dialog.showOpenDialog).mock.calls[0][1]
+    expect(options.title).toBe(en.traceViewer.dialogTitle)
+    expect(options.filters).toEqual([{ name: en.traceViewer.dialogFilter, extensions: ['zip'] }])
+  })
+
+  it('sends damaged when the dialog fails', async () => {
+    vi.mocked(dialog.showOpenDialog).mockRejectedValue(new Error('no dialog'))
+    const { win, send } = makeWin()
+    await expect(openTraceFromDialog(win)).resolves.toBeUndefined()
+    expect(send).toHaveBeenCalledWith('trace-opened', { ok: false, error: 'damaged' })
+  })
+
   it('sends nothing when cancelled', async () => {
     vi.mocked(dialog.showOpenDialog).mockResolvedValue({ canceled: true, filePaths: [] })
     const { win, send } = makeWin()
@@ -169,7 +206,34 @@ describe('registerTraceIpc', () => {
   })
 
   it('registers trace-open, trace-entry and trace-close', () => {
-    expect([...handlers.keys()].sort()).toEqual(['trace-close', 'trace-entry', 'trace-open'])
+    expect([...handlers.keys()].sort()).toEqual([
+      'trace-close',
+      'trace-entry',
+      'trace-open',
+      'trace-open-drop'
+    ])
+  })
+
+  it('trace-open takes only run.json traces; a file path is refused', async () => {
+    const open = handlers.get('trace-open')!
+    const outside = path.join(root, 'outside.zip')
+    expect(await open({}, { kind: 'file', path: outside })).toEqual({
+      ok: false,
+      error: 'notFound'
+    })
+    expect(await open({}, { kind: 'result', path: outside })).toEqual({
+      ok: false,
+      error: 'notFound'
+    })
+    expect(await open({}, null)).toEqual({ ok: false, error: 'notFound' })
+  })
+
+  it('trace-open-drop opens a dropped file and validates its argument', async () => {
+    const drop = handlers.get('trace-open-drop')!
+    expect(await drop({}, path.join(root, 'outside.zip'))).toMatchObject({ ok: true })
+    for (const bad of ['', 3, null, { kind: 'file', path: zip }, 'relative.zip']) {
+      expect(await drop({}, bad)).toEqual({ ok: false, error: 'notFound' })
+    }
   })
 
   it('validates trace-entry and trace-close arguments', async () => {

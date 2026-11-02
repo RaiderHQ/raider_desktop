@@ -20,7 +20,7 @@ import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type {
   TraceEntryResult,
   TraceOpenResult,
-  TraceSource
+  ResultTraceSource
 } from '@shared/types/raiderTrace'
 import type {
   DeviceSettings,
@@ -223,8 +223,14 @@ const api = {
     ipcRenderer.invoke('load-trace', testId),
   deleteTrace: (testId: string): Promise<void> => ipcRenderer.invoke('delete-trace', testId),
   // --- Trace viewer (raider-trace zips, held in main) ---
-  openTrace: (source: TraceSource): Promise<TraceOpenResult> =>
+  openTrace: (source: ResultTraceSource): Promise<TraceOpenResult> =>
     ipcRenderer.invoke('trace-open', source),
+  /** Opens a file the user dropped. Its path stays in preload; a script-built File has none */
+  openDroppedTrace: async (file: File): Promise<TraceOpenResult> => {
+    const filePath = webUtils.getPathForFile(file)
+    if (!filePath) return { ok: false, error: 'notFound' }
+    return ipcRenderer.invoke('trace-open-drop', filePath)
+  },
   readTraceEntry: (traceId: string, name: string): Promise<TraceEntryResult> =>
     ipcRenderer.invoke('trace-entry', traceId, name),
   closeTrace: (traceId: string): Promise<void> => ipcRenderer.invoke('trace-close', traceId),
@@ -236,8 +242,6 @@ const api = {
       ipcRenderer.removeListener('trace-opened', listener)
     }
   },
-  /** The path of a dropped file, for openTrace({ kind: 'file' }) */
-  pathForFile: (file: File): string => webUtils.getPathForFile(file),
   // Recording Session Control
   startRecordingMain: async (): Promise<{
     success: boolean

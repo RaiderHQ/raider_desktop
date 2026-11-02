@@ -931,6 +931,7 @@
       "openTrace": "Open trace…"
     },
     "dialogTitle": "Open a trace",
+    "dialogFilter": "Traces",
     "element": {
       "withRole": "the \"{{label}}\" {{role}}",
       "named": "\"{{label}}\"",

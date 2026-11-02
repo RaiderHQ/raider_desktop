@@ -43,6 +43,26 @@ afterAll(() => fs.rmSync(root, { recursive: true, force: true }))
 afterEach(() => vi.restoreAllMocks())
 
 describe('openTraceFile and readTraceEntry', () => {
+  it('opens one trace at a time; a second open waits for the first', async () => {
+    const realOpen = fs.promises.open.bind(fs.promises)
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const open = vi.spyOn(fs.promises, 'open')
+    open.mockImplementationOnce(async (...args: Parameters<typeof realOpen>) => {
+      await gate
+      return realOpen(...args)
+    })
+    const second = writeZip('queued.zip', [{ name: 'trace.json', data: traceJson() }])
+    const a = openTraceFile(fixture)
+    const b = openTraceFile(second)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(open).toHaveBeenCalledTimes(1)
+    release()
+    expect(await a).toMatchObject({ ok: true })
+    expect(await b).toMatchObject({ ok: true })
+    expect(open).toHaveBeenCalledTimes(2)
+  })
+
   it('opens the fixture', async () => {
     const result = await openTraceFile(fixture)
     expect(result.ok).toBe(true)
@@ -139,6 +159,35 @@ describe('openTraceFile and readTraceEntry', () => {
 })
 
 describe('openTraceFile refusals', () => {
+  it('notFound when the opened file is not the one checked before the open', async () => {
+    const realLstat = fs.promises.lstat.bind(fs.promises)
+    vi.spyOn(fs.promises, 'lstat').mockImplementationOnce(async (p) => {
+      const stat = await realLstat(p)
+      return Object.assign(Object.create(Object.getPrototypeOf(stat)), stat, { ino: stat.ino + 1 })
+    })
+    expect(await openTraceFile(fixture)).toEqual({ ok: false, error: 'notFound' })
+  })
+
+  it('notFound when a folder on the path became a link after the checks', async () => {
+    const realRealpath = fs.promises.realpath.bind(fs.promises)
+    vi.spyOn(fs.promises, 'realpath').mockImplementationOnce(async (p) => {
+      const real = await realRealpath(p as string)
+      return path.join('/elsewhere', real)
+    })
+    expect(await openTraceFile(fixture)).toEqual({ ok: false, error: 'notFound' })
+  })
+
+  it('notFound when the file at the path changed after the open', async () => {
+    const realLstat = fs.promises.lstat.bind(fs.promises)
+    const lstat = vi.spyOn(fs.promises, 'lstat')
+    lstat.mockImplementationOnce((p) => realLstat(p))
+    lstat.mockImplementationOnce(async (p) => {
+      const stat = await realLstat(p)
+      return Object.assign(Object.create(Object.getPrototypeOf(stat)), stat, { ino: stat.ino + 1 })
+    })
+    expect(await openTraceFile(fixture)).toEqual({ ok: false, error: 'notFound' })
+  })
+
   it('maps refusals', async () => {
     const cases: [string, Parameters<typeof makeZip>[0], string][] = [
       ['no-index.zip', [{ name: 'steps/0001.html', data: 'x' }], 'notTrace'],

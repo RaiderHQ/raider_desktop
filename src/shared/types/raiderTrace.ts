@@ -99,7 +99,10 @@ export type TraceOpenError =
   | 'newerVersion'
   | 'damaged'
 
-export type TraceSource = { kind: 'result'; path: string } | { kind: 'file'; path: string }
+export type ResultTraceSource = { kind: 'result'; path: string }
+
+// 'file' (picked or dropped) is opened in main only; the renderer can't name one.
+export type TraceSource = ResultTraceSource | { kind: 'file'; path: string }
 
 export type TraceOpenResult =
   | { ok: true; traceId: string; index: RaiderTraceIndex }

@@ -20,7 +20,7 @@ import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type {
   TraceEntryResult,
   TraceOpenResult,
-  TraceSource
+  ResultTraceSource
 } from '@shared/types/raiderTrace'
 import type {
   DeviceSettings,
@@ -241,14 +241,15 @@ export interface WindowApi extends RunApi {
   deleteTrace: (testId: string) => Promise<void>
 
   // --- Trace viewer (raider-trace zips, held in main) ---
-  openTrace: (source: TraceSource) => Promise<TraceOpenResult>
+  /** A trace listed in run.json; it must sit in the active project's raider-results */
+  openTrace: (source: ResultTraceSource) => Promise<TraceOpenResult>
+  /** A trace file the user dropped on the window */
+  openDroppedTrace: (file: File) => Promise<TraceOpenResult>
   /** One screenshot or snapshot, fetched lazily by the name the index gives */
   readTraceEntry: (traceId: string, name: string) => Promise<TraceEntryResult>
   closeTrace: (traceId: string) => Promise<void>
   /** Traces opened from File → Open trace; returns an unsubscribe function */
   onTraceOpened: (callback: (result: TraceOpenResult) => void) => () => void
-  /** The path of a dropped file, for openTrace({ kind: 'file' }) */
-  pathForFile: (file: File) => string
 
   // --- Event Listeners ---
   /** Sent once when opening a project moved (or could not yet move) its recorded tests into project files */

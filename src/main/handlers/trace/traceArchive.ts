@@ -46,9 +46,21 @@ async function readExactly(handle: fs.promises.FileHandle, size: number): Promis
   return buf.subarray(0, filled)
 }
 
+const sameFile = (a: fs.Stats, b: fs.Stats): boolean => a.dev === b.dev && a.ino === b.ino
+
+// The opened file must be the one at realPath before and after the open, and realPath
+// must still have no links in it: a parent folder swapped for a link meanwhile is refused.
+async function isStillAt(realPath: string, before: fs.Stats, opened: fs.Stats): Promise<boolean> {
+  if (!sameFile(before, opened)) return false
+  if ((await fs.promises.realpath(realPath)) !== realPath) return false
+  return sameFile(await fs.promises.lstat(realPath), opened)
+}
+
 async function readTraceFile(realPath: string): Promise<Buffer | TraceOpenError> {
+  let before: fs.Stats
   let handle: fs.promises.FileHandle
   try {
+    before = await fs.promises.lstat(realPath)
     handle = await fs.promises.open(
       realPath,
       // O_NONBLOCK: a FIFO swapped in after the path checks must not block a libuv thread.
@@ -60,6 +72,7 @@ async function readTraceFile(realPath: string): Promise<Buffer | TraceOpenError>
   try {
     const stat = await handle.stat()
     if (!stat.isFile()) return 'notFound'
+    if (!(await isStillAt(realPath, before, stat).catch(() => false))) return 'notFound'
     if (stat.size > TRACE_ZIP_LIMITS.maxZipBytes) return 'tooLarge'
     return await readExactly(handle, stat.size)
   } finally {
@@ -80,7 +93,16 @@ function remember(trace: OpenTrace): string {
   return traceId
 }
 
-export async function openTraceFile(realPath: string): Promise<TraceOpenResult> {
+// One open at a time, so a burst of opens holds at most one zip being read.
+let openQueue: Promise<unknown> = Promise.resolve()
+
+export function openTraceFile(realPath: string): Promise<TraceOpenResult> {
+  const next = openQueue.then(() => openOne(realPath))
+  openQueue = next.catch(() => undefined)
+  return next
+}
+
+async function openOne(realPath: string): Promise<TraceOpenResult> {
   try {
     const buf = await readTraceFile(realPath)
     if (typeof buf === 'string') return fail(buf)
