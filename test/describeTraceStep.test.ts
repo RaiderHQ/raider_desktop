@@ -85,6 +85,22 @@ describe('describeTraceStep', () => {
     ).toEqual({ key: 'traceViewer.step.cucumber', values: { name: 'When I log in as admin' } })
   })
 
+  it('names the compared screenshot, and says when it did not match', () => {
+    const base = { action: 'match_screenshot', name: 'home', locator: null }
+    expect(describeTraceStep(make({ ...base, status: 'passed' }))).toEqual({
+      key: 'traceViewer.step.matchScreenshot',
+      values: { name: 'home' }
+    })
+    expect(describeTraceStep(make({ ...base, status: 'failed' }))).toEqual({
+      key: 'traceViewer.step.matchScreenshotFailed',
+      values: { name: 'home' }
+    })
+    expect(describeTraceStep(make({ ...base, name: undefined }))).toEqual({
+      key: 'traceViewer.step.matchScreenshot',
+      values: { name: '' }
+    })
+  })
+
   it('lets a failure win over the action, and falls back for unknown actions', () => {
     expect(describeTraceStep(make({ kind: 'failure' })).key).toBe('traceViewer.step.failure')
     expect(describeTraceStep(make({ action: 'tap' })).key).toBe('traceViewer.step.other')

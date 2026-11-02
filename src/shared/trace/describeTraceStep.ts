@@ -69,6 +69,10 @@ export function describeTraceStep(step: RaiderTraceStep): TraceText & { element?
     if (step.secret) return { key: `${S}.cucumberSecret`, values: {} }
     return { key: `${S}.cucumber`, values: { name: step.name ?? '' } }
   }
+  if (action === 'match_screenshot') {
+    const key = step.status === 'failed' ? 'matchScreenshotFailed' : 'matchScreenshot'
+    return { key: `${S}.${key}`, values: { name: step.name ?? '' } }
+  }
   if (action === 'navigate') return { key: `${S}.navigate`, values: { url: plainUrl(step.url) } }
 
   // A failed wait must not read as one that passed.

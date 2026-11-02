@@ -1028,6 +1028,8 @@
       "eventuallyFailed": "Waited for a check that didn't pass",
       "cucumber": "{{name}}",
       "cucumberSecret": "Ran a step with a hidden value",
+      "matchScreenshot": "Compared screenshot \"{{name}}\"",
+      "matchScreenshotFailed": "Screenshot \"{{name}}\" did not match",
       "failure": "The test failed here",
       "other": "Ran a step"
     },

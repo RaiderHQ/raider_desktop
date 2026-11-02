@@ -160,7 +160,9 @@ function parseStep(
     snapshot: entry(o.snapshot, /\.(html|xml)$/, names)
   }
   const name = str(o.name)
-  if (action === 'cucumber_step' && name !== undefined) step.name = name
+  if ((action === 'cucumber_step' || action === 'match_screenshot') && name !== undefined) {
+    step.name = name
+  }
   return step
 }
 
