@@ -60,7 +60,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
   }, [])
 
   useEffect(() => {
-    const onMigrated = (_event: unknown, info: { migrated: number; postponed: boolean }): void => {
+    const onMigrated = (info: { migrated: number; postponed: boolean }): void => {
       if (info.postponed) {
         toast(t('suites.migrated.postponed'), { icon: '\u26A0\uFE0F', duration: 10000 })
       } else {
@@ -70,11 +70,11 @@ const MainTemplate: React.FC = (): JSX.Element => {
     const onTooNew = (): void => {
       toast.error(t('suites.tooNew'), { duration: 10000 })
     }
-    window.api.onTestsMigrated(onMigrated)
-    window.api.onSuitesTooNew(onTooNew)
+    const offMigrated = window.api.onTestsMigrated(onMigrated)
+    const offTooNew = window.api.onSuitesTooNew(onTooNew)
     return (): void => {
-      window.api.removeTestsMigratedListener(onMigrated)
-      window.api.removeSuitesTooNewListener(onTooNew)
+      offMigrated()
+      offTooNew()
     }
   }, [])
 

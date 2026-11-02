@@ -364,16 +364,12 @@ const api = {
     error?: string
   }> => ipcRenderer.invoke('set-active-project', projectPath),
   getRecorderSettings: (): Promise<RecorderSettings> => ipcRenderer.invoke('get-recorder-settings'),
+  /** Sent once when opening a project moved (or could not yet move) its recorded tests into project files */
   onTestsMigrated: (
-    callback: (event: IpcRendererEvent, info: { migrated: number; postponed: boolean }) => void
-  ): Electron.IpcRenderer => ipcRenderer.on('tests-migrated', callback),
-  removeTestsMigratedListener: (
-    callback: (event: IpcRendererEvent, info: { migrated: number; postponed: boolean }) => void
-  ): Electron.IpcRenderer => ipcRenderer.removeListener('tests-migrated', callback),
-  onSuitesTooNew: (callback: (event: IpcRendererEvent) => void): Electron.IpcRenderer =>
-    ipcRenderer.on('suites-too-new', callback),
-  removeSuitesTooNewListener: (callback: (event: IpcRendererEvent) => void): Electron.IpcRenderer =>
-    ipcRenderer.removeListener('suites-too-new', callback),
+    callback: (info: { migrated: number; postponed: boolean }) => void
+  ): (() => void) => subscribe('tests-migrated', callback),
+  /** Sent when the project's suites were saved by a newer Raider and are left untouched */
+  onSuitesTooNew: (callback: () => void): (() => void) => subscribe('suites-too-new', callback),
   // --- Main-to-renderer events: payload only, never the IpcRendererEvent; each returns an unsubscribe ---
   onSuiteUpdated: (callback: (suites: Suite[]) => void): (() => void) =>
     subscribe('suite-updated', callback),
@@ -457,16 +453,9 @@ const api = {
   terminalResize: async (cols: number, rows: number): Promise<void> =>
     ipcRenderer.invoke('terminal-resize', cols, rows),
   terminalKill: async (): Promise<void> => ipcRenderer.invoke('terminal-kill'),
-  onTerminalData: (
-    callback: (event: IpcRendererEvent, data: string) => void
-  ): Electron.IpcRenderer => ipcRenderer.on('terminal-data', callback),
-  removeTerminalDataListener: (
-    callback: (event: IpcRendererEvent, data: string) => void
-  ): Electron.IpcRenderer => ipcRenderer.removeListener('terminal-data', callback),
-  onTerminalExit: (callback: (event: IpcRendererEvent) => void): Electron.IpcRenderer =>
-    ipcRenderer.on('terminal-exit', callback),
-  removeTerminalExitListener: (callback: (event: IpcRendererEvent) => void): Electron.IpcRenderer =>
-    ipcRenderer.removeListener('terminal-exit', callback)
+  onTerminalData: (callback: (data: string) => void): (() => void) =>
+    subscribe('terminal-data', callback),
+  onTerminalExit: (callback: () => void): (() => void) => subscribe('terminal-exit', callback)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

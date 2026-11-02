@@ -56,7 +56,7 @@ const Terminal: React.FC<TerminalProps> = ({ cwd, onClose }) => {
     })
 
     // Receive output from the main process
-    const handleData = (_event: Electron.IpcRendererEvent, data: string): void => {
+    const handleData = (data: string): void => {
       xterm.write(data)
     }
 
@@ -64,8 +64,8 @@ const Terminal: React.FC<TerminalProps> = ({ cwd, onClose }) => {
       xterm.write('\r\n[Process exited]\r\n')
     }
 
-    window.api.onTerminalData(handleData)
-    window.api.onTerminalExit(handleExit)
+    const offData = window.api.onTerminalData(handleData)
+    const offExit = window.api.onTerminalExit(handleExit)
 
     // Handle resize
     const resizeObserver = new ResizeObserver(() => {
@@ -80,8 +80,8 @@ const Terminal: React.FC<TerminalProps> = ({ cwd, onClose }) => {
 
     return (): void => {
       inputDisposable.dispose()
-      window.api.removeTerminalDataListener(handleData)
-      window.api.removeTerminalExitListener(handleExit)
+      offData()
+      offExit()
       resizeObserver.disconnect()
       xterm.dispose()
       window.api.terminalKill()
@@ -100,11 +100,7 @@ const Terminal: React.FC<TerminalProps> = ({ cwd, onClose }) => {
           <FaTimes size={12} />
         </button>
       </div>
-      <div
-        ref={terminalRef}
-        className="flex-1 p-1"
-        onClick={() => xtermRef.current?.focus()}
-      />
+      <div ref={terminalRef} className="flex-1 p-1" onClick={() => xtermRef.current?.focus()} />
     </div>
   )
 }
