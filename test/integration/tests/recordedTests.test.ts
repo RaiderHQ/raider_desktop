@@ -485,7 +485,11 @@ describe('projects with the wait helper', () => {
       join(project, 'support', 'spec_helper.rb'),
       'RSpec.configure do |config|\n  config.include WaitHelper\nend\n'
     )
-    const moved = await saveRecordedTest(project, { ...withHelper, helperPath: 'support' }, clickTest())
+    const moved = await saveRecordedTest(
+      project,
+      { ...withHelper, helperPath: 'support' },
+      clickTest()
+    )
     const content = await readFile(spec, 'utf-8')
     expect(content).toContain("require_relative '../support/spec_helper'")
     expect(content).not.toContain('../helpers/spec_helper')
@@ -500,7 +504,11 @@ describe('projects with the wait helper', () => {
     const sidecarB = join(project, '.raider', 'tests', 'spec', 'payment_spec.rb.json')
     const before = [await readFile(fileB, 'utf-8'), await readFile(sidecarB, 'utf-8')]
 
-    await saveRecordedTest(project, withHelper, clickTest({ id: 'a', name: 'Checkout', steps: [click, click] }))
+    await saveRecordedTest(
+      project,
+      withHelper,
+      clickTest({ id: 'a', name: 'Checkout', steps: [click, click] })
+    )
 
     expect(a.file).not.toBe(b.file)
     expect([await readFile(fileB, 'utf-8'), await readFile(sidecarB, 'utf-8')]).toEqual(before)
@@ -569,6 +577,65 @@ describe('step lines', () => {
     expect(final?.steps.map((s) => s.id)).toEqual(['s0', 's1', 'c1'])
     expect(final?.stepLines?.fileSha256).toBe(sha256Bytes(content))
     expect(found).toEqual({ sidecar: final, stepLines: final?.stepLines })
+  })
+
+  it('a derive in flight never clobbers the save queued after it', async () => {
+    const first = await saveRecordedTest(project, layout, test())
+    const { stepLines, ...older } = first
+    await writeSidecar(project, older)
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    const changed = test({ steps: [...steps(2), click] })
+
+    // stepLinesFor is queued first, so it derives and writes before the save runs
+    const [found, saved] = await Promise.all([
+      stepLinesFor(project, layout, 't1'),
+      saveRecordedTest(project, layout, changed)
+    ])
+
+    expect(found).toEqual({ sidecar: { ...older, stepLines }, stepLines })
+    expect('sidecar' in found && found.sidecar.updatedAt).toBe(first.updatedAt)
+    const final = await readSidecar(project, 'spec/checkout_spec.rb')
+    const content = await readFile(join(project, 'spec', 'checkout_spec.rb'), 'utf-8')
+    expect(final).toEqual(saved)
+    expect(final?.steps.map((s) => s.id)).toEqual(['s0', 's1', 'c1'])
+    expect(final?.stepLines?.fileSha256).toBe(sha256Bytes(content))
+    expect(final?.updatedAt).not.toBe(first.updatedAt)
+  })
+
+  it('stepLinesFor has no map for a CRLF file and leaves the sidecar alone', async () => {
+    const first = await saveRecordedTest(project, layout, test())
+    const { stepLines: _, ...older } = first
+    await writeSidecar(project, older)
+    const spec = join(project, first.file)
+    await writeFile(spec, (await readFile(spec, 'utf-8')).replace(/\n/g, '\r\n'))
+    const sidecarFile = join(project, '.raider', 'tests', 'spec', 'checkout_spec.rb.json')
+    const before = await readFile(sidecarFile, 'utf-8')
+
+    expect(await stepLinesFor(project, layout, 't1')).toEqual({ sidecar: older, stepLines: null })
+    expect(await readFile(sidecarFile, 'utf-8')).toBe(before)
+  })
+
+  it('an unchanged old-style save in a project that now has the helper gets the old-style map', async () => {
+    await mkdir(join(project, 'helpers'), { recursive: true })
+    const clickTest = test({ steps: [click] })
+    const first = await saveRecordedTest(project, layout, clickTest)
+    const { stepLines, ...older } = first
+    await writeSidecar(project, older)
+    const spec = join(project, first.file)
+    const bytes = await readFile(spec, 'utf-8')
+    expect(bytes).toContain('let(:wait)')
+    await writeFile(join(project, 'helpers', 'wait_helper.rb'), 'module WaitHelper; end\n')
+    await writeFile(
+      join(project, 'helpers', 'spec_helper.rb'),
+      "require_relative 'wait_helper'\n\nRSpec.configure do |config|\n  config.include WaitHelper\nend\n"
+    )
+
+    const again = await saveRecordedTest(project, { ...layout, waitHelper: true }, clickTest)
+
+    expect(await readFile(spec, 'utf-8')).toBe(bytes)
+    expect(again.stepLines).toEqual(stepLines)
+    expect(again.stepLines?.fileSha256).toBe(sha256Bytes(bytes))
+    expect(again.updatedAt).toBe(first.updatedAt)
   })
 
   it('stepLinesFor derives and stores a missing map', async () => {

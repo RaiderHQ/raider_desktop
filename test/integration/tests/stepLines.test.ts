@@ -56,6 +56,12 @@ describe('deriveStepLines', () => {
     expect(deriveStepLines(sidecar(), helper.content, 'helpers')).toEqual(helper.stepLines)
   })
 
+  it('a file with CRLF line endings has no map', () => {
+    const crlf = generated(false).content.replace(/\n/g, '\r\n')
+    expect(deriveStepLines(sidecar(), crlf, 'helpers')).toBeNull()
+    expect(usableStepLines(sidecar({ stepLines: generated(false).stepLines }), crlf)).toBeNull()
+  })
+
   it('a file with an extra comment line has no map', () => {
     const edited = generated(false).content.replace('  it ', '  # note\n  it ')
     expect(deriveStepLines(sidecar(), edited, 'helpers')).toBeNull()

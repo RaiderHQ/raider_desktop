@@ -129,11 +129,6 @@ function copsToDisable(name: string, body: string[]): string[] {
   return cops
 }
 
-/**
- * Builds a recorded spec that lives inside a Ruby Raider project and uses the
- * project's spec_helper (driver / browser) instead of creating its own session.
- * `fileRelPath` and `helperPath` are relative to the project root.
- */
 /** Header line that marks a spec file as written by Raider (hashRuby ignores comments). */
 export const RECORDED_MARKER = '# Recorded with Raider.'
 
@@ -143,6 +138,11 @@ export const sha256Bytes = (content: string): string =>
 
 type ProjectSpecOptions = { fileRelPath: string; helperPath: string; waitHelper?: boolean }
 
+/**
+ * Builds a recorded spec that lives inside a Ruby Raider project and uses the
+ * project's spec_helper (driver / browser) instead of creating its own session.
+ * `fileRelPath` and `helperPath` are relative to the project root.
+ */
 export function generateProjectSpecFile(
   test: { name: string; steps: Step[] },
   automation: Automation,
