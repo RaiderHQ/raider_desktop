@@ -957,7 +957,7 @@
       "findElement": "Found {{element}}",
       "findElements": "Looked for matching elements",
       "eventually": "Waited until the check passed",
-      "cucumber": "{{name}}",
+      "cucumber": "{{name}}", "cucumberSecret": "Run a step with a hidden value",
       "failure": "The test failed here",
       "other": "Ran a step"
     },

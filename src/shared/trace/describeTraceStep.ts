@@ -42,6 +42,21 @@ function elementText(step: RaiderTraceStep): TraceText {
     : { key: `${E}.named`, values: { label } }
 }
 
+// Origin and path only: a query string, fragment or credentials may carry secrets.
+function plainUrl(url: string | null): string {
+  if (!url) return ''
+  try {
+    const u = new URL(url)
+    u.search = ''
+    u.hash = ''
+    u.username = ''
+    u.password = ''
+    return u.href
+  } catch {
+    return url.split(/[?#]/)[0]
+  }
+}
+
 /**
  * A step in plain words. Never includes a selector, a locator, an error, or the
  * value of a secret step.
@@ -49,8 +64,11 @@ function elementText(step: RaiderTraceStep): TraceText {
 export function describeTraceStep(step: RaiderTraceStep): TraceText & { element?: TraceText } {
   if (step.kind === 'failure') return { key: `${S}.failure`, values: {} }
   const { action } = step
-  if (action === 'cucumber_step') return { key: `${S}.cucumber`, values: { name: step.name ?? '' } }
-  if (action === 'navigate') return { key: `${S}.navigate`, values: { url: step.url ?? '' } }
+  if (action === 'cucumber_step') {
+    if (step.secret) return { key: `${S}.cucumberSecret`, values: {} }
+    return { key: `${S}.cucumber`, values: { name: step.name ?? '' } }
+  }
+  if (action === 'navigate') return { key: `${S}.navigate`, values: { url: plainUrl(step.url) } }
 
   const plain = Object.hasOwn(PLAIN_ACTIONS, action) ? PLAIN_ACTIONS[action] : undefined
   if (plain) return { key: `${S}.${plain}`, values: {} }

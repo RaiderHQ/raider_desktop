@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { describeTraceStep, traceFoundBy } from '../src/shared/trace/describeTraceStep'
+import { THIS_ELEMENT } from '../src/shared/describeStep'
 import { englishText } from '@shared/describeStepEnglish'
 import type { RaiderTraceStep } from '../src/shared/types/raiderTrace'
 import { fixtureIndex } from './helpers/traceFixture'
@@ -129,6 +130,52 @@ describe('describeTraceStep', () => {
       const { key, element } = describeTraceStep(step)
       expect(englishText(key)).not.toBe(key)
       if (element) expect(englishText(element.key)).not.toBe(element.key)
+    }
+  })
+})
+
+describe('describeTraceStep hardening', () => {
+  it('hides the name of a secret cucumber step', () => {
+    const result = describeTraceStep(
+      make({ action: 'cucumber_step', name: 'When I type "hunter2"', secret: true })
+    )
+    expect(result).toEqual({ key: 'traceViewer.step.cucumberSecret', values: {} })
+    expect(JSON.stringify(result)).not.toContain('hunter2')
+  })
+
+  it('drops the query, fragment and credentials from the navigate url', () => {
+    const result = describeTraceStep(
+      make({ action: 'navigate', url: 'http://u:p@127.0.0.1:55539/a/b?token=abc#x' })
+    )
+    expect(result.values.url).toBe('http://127.0.0.1:55539/a/b')
+    expect(
+      describeTraceStep(make({ action: 'navigate', url: 'not a url?token=abc' })).values.url
+    ).toBe('not a url')
+  })
+
+  it('keeps unnamed in step with the shared English text', () => {
+    expect(englishText('traceViewer.element.unnamed')).toBe(THIS_ELEMENT)
+  })
+
+  it('never leaks a locator, whatever the strategy', () => {
+    const locators = [
+      { strategy: 'xpath', selector: '//div[@id="leak-x"]', within: [] },
+      { strategy: 'id', selector: 'leak-id', within: [] },
+      { strategy: 'css', selector: '[data-testid="leak-tid"]', within: [] },
+      {
+        strategy: 'css',
+        selector: 'leak-inner',
+        within: [
+          { strategy: 'xpath', selector: '//leak-outer' },
+          { strategy: 'id', selector: 'leak-mid' }
+        ]
+      }
+    ]
+    for (const locator of locators) {
+      for (const action of ['click', 'send_keys', 'find_element', 'text']) {
+        const text = JSON.stringify(describeTraceStep(make({ action, locator, value: 'v' })))
+        expect(text).not.toContain('leak')
+      }
     }
   })
 })
