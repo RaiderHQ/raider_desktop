@@ -24,7 +24,7 @@ import type { TraceStep } from '@foundation/Types/traceStep'
 import type { FailureInfo, TestResult } from '@foundation/Types/testResult'
 import type { Test } from '@foundation/Types/test'
 import { failedStepLine, useFailedStepFor } from '../../hooks/useFailedStep'
-import { testKeyOf, toRouteParam } from '@foundation/testKey'
+import { fixInTestRoute } from '@foundation/recordedTestForFile'
 
 interface TestResultCardProps {
   name: string
@@ -93,7 +93,11 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
   const showFailureDetails = isFailing && !!failure
 
   const failedStep = useFailedStepFor(projectPath ?? null, recordedTest ?? null, result ?? null)
-  const stepLine = isFailing ? failedStepLine(t, failedStep) : null
+  // A recorded test never opens on the raw error: not while the step is looked up, not if it isn't found
+  const plainFailure = showFailureDetails && !!recordedTest
+  const stepLine = plainFailure
+    ? (failedStepLine(t, failedStep) ?? t('failedStep.unmapped'))
+    : null
 
   const chevronIcon = open ? <FaChevronDown /> : <FaChevronRight />
 
@@ -165,13 +169,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
-                  const key = testKeyOf({
-                    name,
-                    testId: recordedTest.id,
-                    ownership: 'recorded',
-                    suiteIds: []
-                  })
-                  navigate(`/overview/tests/${toRouteParam(key)}`)
+                  navigate(fixInTestRoute(recordedTest.id))
                 }}
                 className="text-xs text-ruby hover:underline shrink-0"
               >

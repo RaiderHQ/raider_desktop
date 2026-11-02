@@ -77,7 +77,9 @@ describe('TestResultCard for a recorded test', () => {
     expect(line).toHaveTextContent('Failed at step 4: Click "Save". Couldn\'t find "Save".')
     expect(screen.getByTestId('technical-details')).not.toHaveAttribute('open')
     // Only inside the closed Technical details, where nobody sees it
-    screen.queryAllByText(/#btn-x/).forEach((el) => expect(el).not.toBeVisible())
+    const raw = screen.getAllByText(/#btn-x/)
+    expect(raw.length).toBeGreaterThan(0)
+    raw.forEach((el) => expect(el).not.toBeVisible())
     await waitFor(() => expect(screen.getByAltText('Failure screenshot')).toBeInTheDocument())
   })
 
@@ -86,5 +88,34 @@ describe('TestResultCard for a recorded test', () => {
     fireEvent.click(await screen.findByText('Fix in test'))
     const key = testKeyOf({ name: 'Checkout', testId: 't1', ownership: 'recorded', suiteIds: [] })
     expect(navigate).toHaveBeenCalledWith(`/overview/tests/${toRouteParam(key)}`)
+  })
+
+  it('stays collapsed with a plain line while the step is looked up and when it is not found', async () => {
+    window.api.mapFailedStep = vi.fn().mockReturnValue(new Promise(() => {}))
+    renderCard()
+    expect(screen.getByTestId('technical-details')).not.toHaveAttribute('open')
+    expect(screen.getByTestId('failed-step-line')).toHaveTextContent(
+      "Couldn't tell which step failed"
+    )
+  })
+
+  it('says the element could not be found when it has no label', async () => {
+    const unlabelled = {
+      ...test1,
+      steps: [{ id: 'd', kind: 'click', element: { label: '', selectors: [] } }]
+    } as unknown as Test
+    render(
+      <TestResultCard
+        name="Checkout"
+        status="failed"
+        failure={result.failure}
+        projectPath="/p"
+        result={result}
+        recordedTest={unlabelled}
+      />
+    )
+    fireEvent.click(screen.getByText('Checkout'))
+    expect(await screen.findByText(/Couldn't find this element\./)).toBeInTheDocument()
+    screen.getAllByText(/#btn-x/).forEach((el) => expect(el).not.toBeVisible())
   })
 })

@@ -1,12 +1,11 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useRunStore } from '@foundation/Stores/runStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { loadRaiderResults } from '@foundation/raiderResults'
-import { recordedTestForFile } from '@foundation/recordedTestForFile'
-import { testKeyOf, toRouteParam } from '@foundation/testKey'
+import { fixInTestRoute, recordedTestForFile } from '@foundation/recordedTestForFile'
 import { failedStepLine, resolveFailedStep } from '../../hooks/useFailedStep'
 import MobileNotReady from '@components/MobileNotReady'
 import {
@@ -60,7 +59,14 @@ function useFailedStepLines(run: RunView | null, projectPath: string | null): Ma
   const { t } = useTranslation()
   const suites = useRecorderStore((s) => s.suites)
   const finishedAt = run?.finished?.finishedAt
-  const [lines, setLines] = useState<Map<string, string>>(new Map())
+  const startedAt = run?.startedAt
+  // Kept with the run it was read for: the next run never paints this one's lines
+  const key =
+    run && finishedAt && projectPath ? `${run.runId}\n${projectPath}\n${finishedAt}` : null
+  const [shown, setShown] = useState<{ key: string | null; lines: Map<string, string> }>({
+    key: null,
+    lines: new Map()
+  })
 
   // Only the failed rows of recorded tests are worth reading the results for
   const failed =
@@ -73,31 +79,42 @@ function useFailedStepLines(run: RunView | null, projectPath: string | null): Ma
             return recorded ? [{ id: x.id, recorded }] : []
           })
       : []
-  const hasFailed = failed.length > 0
+  const failedKey = failed.map((f) => `${f.id}=${f.recorded.id}`).join('\n')
+  const latest = useRef({ failed, t })
+  latest.current = { failed, t }
 
   useEffect(() => {
-    setLines(new Map())
-    if (!projectPath || !finishedAt || !hasFailed) return
+    if (!key || !projectPath || !failedKey || !startedAt) return
     let active = true
     loadRaiderResults(projectPath, window.api)
       .then(async (rows) => {
         const next = new Map<string, string>()
-        for (const { id, recorded } of failed) {
-          const row = rows?.find((r) => r.identifier === id)
+        const { failed: wanted, t: translate } = latest.current
+        for (const { id, recorded } of wanted) {
+          // A run that wrote no results leaves the last run's file: it isn't this run's failure
+          const row = rows?.find(
+            (r) =>
+              r.identifier === id &&
+              !!r.finishedAt &&
+              Date.parse(r.finishedAt) >= Date.parse(startedAt)
+          )
           if (!row) continue
-          const line = failedStepLine(t, await resolveFailedStep(projectPath, recorded, row))
+          const line = failedStepLine(
+            translate,
+            await resolveFailedStep(projectPath, recorded, row)
+          )
           if (line) next.set(id, line)
         }
-        if (active) setLines(next)
+        if (active) setShown({ key, lines: next })
       })
       .catch(() => {})
     return (): void => {
       active = false
     }
     // Once per finished run: a suite edit in between doesn't read the results again
-  }, [finishedAt, projectPath, hasFailed])
+  }, [key, failedKey, startedAt])
 
-  return lines
+  return shown.key === key ? shown.lines : new Map()
 }
 
 const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed }) => {
@@ -186,14 +203,7 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
               {stepLine}
             </span>
             <Link
-              to={`/overview/tests/${toRouteParam(
-                testKeyOf({
-                  name: test.description,
-                  testId: recorded.id,
-                  ownership: 'recorded',
-                  suiteIds: []
-                })
-              )}`}
+              to={fixInTestRoute(recorded.id)}
               className="text-xs text-ruby hover:underline whitespace-nowrap"
             >
               {t('failedStep.fixInTest')}
