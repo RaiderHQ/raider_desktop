@@ -26,10 +26,46 @@ const hasAttachmentsShape = (rawPath: string): boolean => {
   )
 }
 
-const isServable = (p: path.PlatformPath, filePath: string): boolean =>
+const isAttachment = (
+  p: path.PlatformPath,
+  filePath: string,
+  allowExt: (ext: string) => boolean
+): boolean =>
   p.isAbsolute(filePath) &&
   hasAttachmentsShape(filePath) &&
-  p.extname(filePath).toLowerCase() in CONTENT_TYPES
+  allowExt(p.extname(filePath).toLowerCase())
+
+const anyExt = (): boolean => true
+
+// Resolves a file under raider-results/attachments(-N)/ to its real path, or null.
+export const resolveAttachmentFile = async (
+  rawPath: string,
+  platform: NodeJS.Platform = process.platform,
+  allowExt: (ext: string) => boolean = anyExt
+): Promise<string | null> => {
+  try {
+    // Everything below runs before ANY fs call: a UNC path would make realpath
+    // open an SMB connection to the attacker's host and leak NTLM credentials.
+    if (rawPath.includes('\0')) return null
+    if (rawPath.startsWith('\\\\') || rawPath.startsWith('//')) return null
+    const win = platform === 'win32'
+    const p = win ? path.win32 : path.posix
+    if (win && !/^[A-Za-z]:[\\/]/.test(rawPath)) return null
+    if (!isAttachment(p, rawPath, allowExt)) return null
+    const requested = p.normalize(rawPath)
+    // The file itself must not be a link; its ancestors may be (macOS /var -> /private/var).
+    if ((await fs.promises.lstat(requested)).isSymbolicLink()) return null
+    // The checks that matter run on the real path, which is also what gets opened.
+    const real = await fs.promises.realpath(requested)
+    if (!isAttachment(p, real, allowExt)) return null
+    if (!(await fs.promises.lstat(real)).isFile()) return null
+    return real
+  } catch {
+    return null
+  }
+}
+
+const isVideo = (ext: string): boolean => ext in CONTENT_TYPES
 
 export const resolveMediaPath = async (
   requestUrl: string,
@@ -38,23 +74,7 @@ export const resolveMediaPath = async (
   try {
     const url = new URL(requestUrl)
     if (url.protocol !== `${SCHEME}:` || url.host !== 'file') return null
-    const decoded = decodeURIComponent(url.pathname.slice(1))
-    // Everything below runs before ANY fs call: a UNC path would make realpath
-    // open an SMB connection to the attacker's host and leak NTLM credentials.
-    if (decoded.includes('\0')) return null
-    if (decoded.startsWith('\\\\') || decoded.startsWith('//')) return null
-    const win = platform === 'win32'
-    const p = win ? path.win32 : path.posix
-    if (win && !/^[A-Za-z]:[\\/]/.test(decoded)) return null
-    if (!isServable(p, decoded)) return null
-    const requested = p.normalize(decoded)
-    // The file itself must not be a link; its ancestors may be (macOS /var -> /private/var).
-    if ((await fs.promises.lstat(requested)).isSymbolicLink()) return null
-    // The checks that matter run on the real path, which is also what gets opened.
-    const real = await fs.promises.realpath(requested)
-    if (!isServable(p, real)) return null
-    if (!(await fs.promises.lstat(real)).isFile()) return null
-    return real
+    return await resolveAttachmentFile(decodeURIComponent(url.pathname.slice(1)), platform, isVideo)
   } catch {
     return null
   }

@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, IpcRendererEvent, webUtils } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { FileNode } from '@foundation/Types/fileNode'
 import type { CommandType } from '@foundation/Types/commandType'
@@ -17,6 +17,11 @@ import type {
 } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
+import type {
+  TraceEntryResult,
+  TraceOpenResult,
+  TraceSource
+} from '@shared/types/raiderTrace'
 import type {
   DeviceSettings,
   DeviceSettingsChange,
@@ -217,6 +222,22 @@ const api = {
   loadTrace: (testId: string): Promise<{ success: boolean; trace?: TraceStep[] }> =>
     ipcRenderer.invoke('load-trace', testId),
   deleteTrace: (testId: string): Promise<void> => ipcRenderer.invoke('delete-trace', testId),
+  // --- Trace viewer (raider-trace zips, held in main) ---
+  openTrace: (source: TraceSource): Promise<TraceOpenResult> =>
+    ipcRenderer.invoke('trace-open', source),
+  readTraceEntry: (traceId: string, name: string): Promise<TraceEntryResult> =>
+    ipcRenderer.invoke('trace-entry', traceId, name),
+  closeTrace: (traceId: string): Promise<void> => ipcRenderer.invoke('trace-close', traceId),
+  /** Subscribes to traces opened from the menu; the returned function removes only this one */
+  onTraceOpened: (callback: (result: TraceOpenResult) => void): (() => void) => {
+    const listener = (_event: IpcRendererEvent, result: TraceOpenResult): void => callback(result)
+    ipcRenderer.on('trace-opened', listener)
+    return (): void => {
+      ipcRenderer.removeListener('trace-opened', listener)
+    }
+  },
+  /** The path of a dropped file, for openTrace({ kind: 'file' }) */
+  pathForFile: (file: File): string => webUtils.getPathForFile(file),
   // Recording Session Control
   startRecordingMain: async (): Promise<{
     success: boolean

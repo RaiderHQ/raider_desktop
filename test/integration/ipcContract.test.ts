@@ -16,7 +16,8 @@ vi.mock('electron', () => ({
     invoke: vi.fn(),
     on: vi.fn(),
     removeListener: vi.fn()
-  }
+  },
+  webUtils: { getPathForFile: vi.fn() }
 }))
 
 vi.mock('@electron-toolkit/preload', () => ({
@@ -127,6 +128,13 @@ describe('IPC Contract', () => {
     'saveTrace',
     'loadTrace',
     'deleteTrace',
+
+    // Trace viewer (raider-trace zips)
+    'openTrace',
+    'readTraceEntry',
+    'closeTrace',
+    'onTraceOpened',
+    'pathForFile',
 
     // Event Listeners
     'onTestsMigrated',

@@ -49,6 +49,7 @@ import { prepareSuiteRun, prepareTestRun } from './handlers/testing/prepareRuns'
 import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTests'
 import { isListed } from './handlers/tests/suiteStore'
 import { registerRunIpc } from './handlers/run/runIpc'
+import { registerTraceIpc } from './handlers/trace/traceIpc'
 import { killActiveRun } from './handlers/run/runner'
 import exportTest from './handlers/io/exportTest'
 import exportSuite from './handlers/io/exportSuite'
@@ -252,6 +253,7 @@ app.whenReady().then(() => {
   ipcMain.handle('open-code-test', (_event, file: string) => openCodeTestHandler(file))
   ipcMain.handle('get-project-layout', getProjectLayoutHandler)
   registerRunIpc(ipcMain)
+  registerTraceIpc(ipcMain)
   ipcMain.handle(
     'record-over-example',
     (_event, file: string, exampleName: string, steps: Step[], rubyCommand: string) =>
