@@ -99,6 +99,8 @@ export function recorderEventToStep(data: RecorderEventData): Step | null {
 function recorderEvent(data: RecorderEventData): void {
   // Ignore events triggered by the webview replay — only record real user actions
   if (appState.isReplayingInWebview) return
+  // Picking an element records nothing; Esc there is a cancel, not a key step
+  if (appState.pickMode) return
 
   const step = recorderEventToStep(data)
   if (!step) return

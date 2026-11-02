@@ -10,6 +10,7 @@ import type { QuickProject } from '@shared/types/quickProject'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
+import type { PickResult } from '@shared/types/pick'
 import type {
   LegacyRunResult,
   PrepareSuiteRunResult,
@@ -270,6 +271,17 @@ const api = {
     }
   },
   flushRecordingDone: (): void => ipcRenderer.send('flush-recording-done'),
+  /** Turns picking one element in the recorder on or off; fails when no recorder is open */
+  setPickMode: async (on: boolean): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('set-pick-mode', on),
+  /** Called once when picking ends, with the element or a cancel; returns an unsubscribe */
+  onRecorderPicked: (callback: (result: PickResult) => void): (() => void) => {
+    const listener = (_event: IpcRendererEvent, result: PickResult): void => callback(result)
+    ipcRenderer.on('recorder-picked', listener)
+    return (): void => {
+      ipcRenderer.removeListener('recorder-picked', listener)
+    }
+  },
   // --- Live test runs (RunApi) ---
   startRun: async (request: RunRequest): Promise<StartRunResult> =>
     ipcRenderer.invoke('start-run', request),

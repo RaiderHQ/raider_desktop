@@ -7,6 +7,7 @@ import type { Step } from '@shared/types/step'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
+import type { PickResult } from '@shared/types/pick'
 import type {
   LegacyRunResult,
   PrepareSuiteRunResult,
@@ -225,6 +226,10 @@ export interface WindowApi extends RunApi {
   /** Main asks the page to save its recording before the window closes; returns an unsubscribe */
   onFlushRecording: (callback: () => void) => () => void
   flushRecordingDone: () => void
+  /** Turns picking one element in the recorder on or off; fails when no recorder is open */
+  setPickMode: (on: boolean) => Promise<{ success: boolean }>
+  /** Called once when picking ends, with the element or a cancel; returns an unsubscribe */
+  onRecorderPicked: (callback: (result: PickResult) => void) => () => void
   loadUrlRequest: (url: string) => Promise<CommandType>
   updateRecordingSettings: (
     settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>

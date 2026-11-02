@@ -123,6 +123,8 @@ describe('IPC Contract', () => {
     'updateRecordingSettings',
     'setActiveProject',
     'getRecorderSettings',
+    'setPickMode',
+    'onRecorderPicked',
 
     // Trace Management
     'saveTrace',

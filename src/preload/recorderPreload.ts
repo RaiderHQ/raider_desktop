@@ -6,6 +6,7 @@ import {
   getPrioritizedSelector as buildSelector
 } from './selectorStrategy'
 import { fieldValue, isSecretField } from './secretField'
+import { installPickMode } from './pickMode'
 
 // Events fired before the IPC call resolves use the defaults.
 let selectorPriorities: string[] = DEFAULT_PRIORITIES
@@ -36,6 +37,14 @@ function labelHints(el: Element): { ariaLabel?: string; placeholder?: string } {
     placeholder: el.getAttribute('placeholder') ?? undefined
   }
 }
+
+// Installed before the recorder's listeners; while picking, they never see the page's events
+const pickMode = installPickMode(window, ipcRenderer.send.bind(ipcRenderer), (el) => ({
+  ...getPrioritizedSelector(el),
+  innerText: ((el as HTMLElement).innerText || '').slice(0, 200),
+  ...labelHints(el)
+}))
+ipcRenderer.on('recorder-pick-mode', (_event, on: unknown) => pickMode.setPicking(on === true))
 
 document.addEventListener(
   'click',
