@@ -1,10 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import {
   loadRaiderResults,
   mapStatus,
   sanitizeMessage,
   type RaiderResultsApi
 } from '@foundation/raiderResults'
+import type { TestResult } from '@foundation/Types/testResult'
 
 type Files = Record<string, string>
 
@@ -563,5 +566,148 @@ describe('loadRaiderResults with schema 2', () => {
       )
       expect(row.screenshot).toBe('/proj/raider-results/attachments/shot.png')
     })
+  })
+})
+
+describe('comparisons', () => {
+  const att = (
+    name: string,
+    path: string,
+    content_type = 'image/png'
+  ): Record<string, unknown> => ({
+    name,
+    content_type,
+    path
+  })
+  const cmp = (extra: Record<string, unknown> = {}): Record<string, unknown> => ({
+    name: 'home',
+    status: 'failed',
+    baseline: 'screenshots/baselines/chrome/home.png',
+    diff_pixels: 10,
+    diff_ratio: 0.5,
+    threshold: 0.2,
+    max_diff_pixels: 0,
+    max_diff_ratio: null,
+    expected_size: [10, 20],
+    actual_size: [10, 20],
+    ...extra
+  })
+  const load = async (result: Record<string, unknown>): Promise<TestResult> => {
+    const rows = await loadRaiderResults('/proj', makeApi({ 'run.json': run([result]) }))
+    return rows![0]
+  }
+  const trio = [
+    att('comparison:home:expected', 'attachments/0-e.png'),
+    att('comparison:home:actual', 'attachments/1-a.png'),
+    att('comparison:home:diff', 'attachments/2-d.png')
+  ]
+
+  it('reads the gem 3.15 fixture', async () => {
+    const json = readFileSync(
+      resolve(__dirname, 'fixtures/results/run-v1-comparisons.json'),
+      'utf8'
+    )
+    const rows = await loadRaiderResults('/proj', makeApi({ 'run.json': json }))
+    expect(rows).toHaveLength(1)
+    expect(rows![0].comparisons![0]).toMatchObject({
+      name: 'home',
+      status: 'failed',
+      baseline: 'screenshots/baselines/chrome/home.png',
+      diffPixels: 1797705,
+      maxDiffPixels: 0,
+      maxDiffRatio: null,
+      expectedSize: [1920, 937],
+      actualSize: [1920, 937],
+      images: {
+        expected: '/proj/raider-results/attachments/0-expected.png',
+        actual: '/proj/raider-results/attachments/1-actual.png',
+        diff: '/proj/raider-results/attachments/2-diff.png'
+      }
+    })
+    expect(rows![0].screenshot).toMatch(/attachments\/3-matches home\.png$/)
+  })
+
+  it('never picks a comparison image as the main screenshot', async () => {
+    const only = await load(r('a', 'failed', { comparisons: [cmp()], attachments: trio }))
+    expect(only.screenshot).toBeUndefined()
+    const withOther = await load(
+      r('a', 'failed', {
+        comparisons: [cmp()],
+        attachments: [...trio, att('other', 'attachments/3-other.png')]
+      })
+    )
+    expect(withOther.screenshot).toBe('/proj/raider-results/attachments/3-other.png')
+  })
+
+  it('takes the last attachment of a name', async () => {
+    const row = await load(
+      r('a', 'failed', {
+        comparisons: [cmp()],
+        attachments: [
+          att('comparison:home:actual', 'attachments/1-a.png'),
+          att('comparison:home:actual', 'attachments-2/1-a.png')
+        ]
+      })
+    )
+    expect(row.comparisons![0].images.actual).toBe('/proj/raider-results/attachments-2/1-a.png')
+  })
+
+  it('drops malformed entries and nulls bad fields', async () => {
+    const row = await load(
+      r('a', 'failed', {
+        comparisons: [
+          cmp({ name: 'bad-status', status: 'weird' }),
+          cmp({ name: 5 }),
+          cmp({ name: '../x' }),
+          cmp({ name: 'has space' }),
+          cmp({ name: 'a'.repeat(101) }),
+          'nope',
+          null,
+          cmp({
+            name: 'ok',
+            max_diff_ratio: -1,
+            expected_size: [1, 'x'],
+            baseline: 'b'.repeat(301),
+            diff_pixels: Infinity,
+            threshold: 'x'
+          })
+        ]
+      })
+    )
+    expect(row.comparisons).toHaveLength(1)
+    expect(row.comparisons![0]).toMatchObject({
+      name: 'ok',
+      maxDiffRatio: null,
+      expectedSize: null,
+      baseline: null,
+      diffPixels: null,
+      threshold: null,
+      actualSize: [10, 20]
+    })
+  })
+
+  it('caps at 50', async () => {
+    const many = Array.from({ length: 60 }, (_, i) => cmp({ name: `n${i}` }))
+    const row = await load(r('a', 'failed', { comparisons: many }))
+    expect(row.comparisons).toHaveLength(50)
+  })
+
+  it('ignores unsafe image paths', async () => {
+    const row = await load(
+      r('a', 'failed', {
+        comparisons: [cmp()],
+        attachments: [
+          att('comparison:home:diff', '../x.png'),
+          att('comparison:home:actual', 'attachments/1-a.png')
+        ]
+      })
+    )
+    expect(row.comparisons![0].images.diff).toBeUndefined()
+    expect(row.comparisons![0].images.actual).toBe('/proj/raider-results/attachments/1-a.png')
+  })
+
+  it('has no comparisons without the field', async () => {
+    const row = await load(r('a', 'passed'))
+    expect(row.comparisons).toBeUndefined()
   })
 })
