@@ -21,6 +21,9 @@ export interface ZipEntry {
   compressedSize: number
   size: number
   localHeaderOffset: number
+  flags: number
+  // Where the central directory starts; an entry's data must end before it.
+  centralOffset: number
 }
 
 export interface ZipLimits {
@@ -58,6 +61,9 @@ const FLAG_ENCRYPTED = 0x0001
 const FLAG_DATA_DESCRIPTOR = 0x0008
 const FLAG_STRONG_ENCRYPTION = 0x0040
 const FLAG_MASKED_HEADER = 0x2000
+
+// The flags whose local and central values must agree.
+const CHECKED_FLAGS = FLAG_ENCRYPTED | FLAG_DATA_DESCRIPTOR | FLAG_STRONG_ENCRYPTION | FLAG_MASKED_HEADER
 
 const S_IFMT = 0o170000
 const S_IFLNK = 0o120000
@@ -148,7 +154,15 @@ export function readZipDirectory(buf: Buffer, limits: ZipLimits = TRACE_ZIP_LIMI
     // The entry's header and data must sit before the central directory.
     if (localHeaderOffset + LOCAL_SIZE + nameLength + compressedSize > centralOffset) refuse('damaged')
 
-    entries.set(name, { name, method: method as 0 | 8, compressedSize, size, localHeaderOffset })
+    entries.set(name, {
+      name,
+      method: method as 0 | 8,
+      compressedSize,
+      size,
+      localHeaderOffset,
+      flags,
+      centralOffset
+    })
     at = recordEnd
   }
 
@@ -166,8 +180,8 @@ export function readZipEntry(buf: Buffer, entry: ZipEntry): Buffer {
   const nameLength = u16(buf, at + 26)
   const extraLength = u16(buf, at + 28)
 
-  if (flags & FLAG_ENCRYPTED || method !== entry.method) refuse('damaged')
-  // With a data descriptor the local sizes may legitimately be zero.
+  if ((flags & CHECKED_FLAGS) !== (entry.flags & CHECKED_FLAGS) || method !== entry.method) refuse('damaged')
+  // With a data descriptor (set in both headers) the local sizes may legitimately be zero.
   const deferredSizes = (flags & FLAG_DATA_DESCRIPTOR) !== 0 && compressedSize === 0 && size === 0
   if (!deferredSizes && (compressedSize !== entry.compressedSize || size !== entry.size)) refuse('damaged')
 
@@ -176,7 +190,9 @@ export function readZipEntry(buf: Buffer, entry: ZipEntry): Buffer {
   if (buf.toString('latin1', nameStart, nameStart + nameLength) !== entry.name) refuse('damaged')
 
   const dataStart = nameStart + nameLength + extraLength
-  if (!inBounds(buf, dataStart, entry.compressedSize)) refuse('damaged')
+  if (!inBounds(buf, dataStart, entry.compressedSize) || dataStart + entry.compressedSize > entry.centralOffset) {
+    refuse('damaged')
+  }
   const data = buf.subarray(dataStart, dataStart + entry.compressedSize)
 
   if (entry.size === 0) return Buffer.alloc(0)

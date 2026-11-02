@@ -7,6 +7,9 @@ export interface MakeZipEntry {
   unixMode?: number
   declaredSize?: number
   flags?: number
+  // Local-header overrides, for headers that disagree with the central directory.
+  localFlags?: number
+  zeroLocalSizes?: boolean
 }
 
 let crcTable: Uint32Array | undefined
@@ -44,11 +47,11 @@ export function makeZip(entries: MakeZipEntry[]): Buffer {
     const local = Buffer.alloc(30)
     local.writeUInt32LE(0x04034b50, 0)
     local.writeUInt16LE(20, 4)
-    local.writeUInt16LE(flags, 6)
+    local.writeUInt16LE(entry.localFlags ?? flags, 6)
     local.writeUInt16LE(method, 8)
     local.writeUInt32LE(crc, 14)
-    local.writeUInt32LE(stored.length, 18)
-    local.writeUInt32LE(size, 22)
+    local.writeUInt32LE(entry.zeroLocalSizes ? 0 : stored.length, 18)
+    local.writeUInt32LE(entry.zeroLocalSizes ? 0 : size, 22)
     local.writeUInt16LE(name.length, 26)
 
     const central = Buffer.alloc(46)

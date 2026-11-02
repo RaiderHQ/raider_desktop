@@ -15,7 +15,8 @@ import {
   readZipDirectory,
   readZipEntry,
   ZipRefused,
-  TRACE_ZIP_LIMITS
+  TRACE_ZIP_LIMITS,
+  type ZipEntry
 } from '../../../src/main/handlers/trace/zipReader'
 
 const fixture = readFileSync(join(__dirname, '../../fixtures/trace-v1/trace.zip'))
@@ -35,6 +36,7 @@ describe('readZipDirectory and readZipEntry', () => {
     expect(entries.size).toBe(11)
 
     const json = readZipEntry(fixture, entries.get('trace.json')!)
+    expect(zlib.inflateRawSync).toHaveBeenCalledTimes(1)
     expect(json.length).toBe(6231)
     expect(JSON.parse(json.toString('utf8')).format).toBe('raider-trace')
 
@@ -130,7 +132,17 @@ describe('readZipDirectory and readZipEntry', () => {
 
   it('refuses zip64 markers', () => {
     const zip = makeZip([{ name: 'trace.json', data: '{}' }])
+    zip.writeUInt16LE(0xffff, zip.length - 14)
     zip.writeUInt16LE(0xffff, zip.length - 12)
+    expect(() => readZipDirectory(zip)).toThrowError(refusedWith('unsafe'))
+  })
+
+  it.each([
+    ['size', 10],
+    ['offset', 6]
+  ])('refuses a zip64 central directory %s in the EOCD', (_field, fromEnd) => {
+    const zip = makeZip([{ name: 'trace.json', data: '{}' }])
+    zip.writeUInt32LE(0xffffffff, zip.length - fromEnd)
     expect(() => readZipDirectory(zip)).toThrowError(refusedWith('unsafe'))
   })
 
@@ -176,6 +188,38 @@ describe('readZipDirectory and readZipEntry', () => {
     expect(() => readZipEntry(zip, entry)).toThrowError(refusedWith('damaged'))
   })
 
+  it('reads an entry whose sizes are deferred to a data descriptor', () => {
+    const zip = makeZip([{ name: 'trace.json', data: '{"a":1}', method: 8, flags: 8, zeroLocalSizes: true }])
+    const entry = readZipDirectory(zip).get('trace.json')!
+    expect(readZipEntry(zip, entry).toString()).toBe('{"a":1}')
+  })
+
+  it('says damaged when local sizes are zero without a data descriptor', () => {
+    const zip = makeZip([{ name: 'trace.json', data: '{"a":1}', method: 8, zeroLocalSizes: true }])
+    const entry = readZipDirectory(zip).get('trace.json')!
+    expect(() => readZipEntry(zip, entry)).toThrowError(refusedWith('damaged'))
+  })
+
+  it.each([
+    ['a data descriptor only locally', 8, 0],
+    ['a data descriptor only centrally', 0, 8],
+    ['strong encryption locally', 0x40, 0],
+    ['a masked header locally', 0x2000, 0]
+  ])('says damaged when the local header has %s', (_case, localFlags, flags) => {
+    const zip = makeZip([
+      { name: 'trace.json', data: '{"a":1}', method: 8, flags, localFlags, zeroLocalSizes: localFlags === 8 }
+    ])
+    const entry = readZipDirectory(zip).get('trace.json')!
+    expect(() => readZipEntry(zip, entry)).toThrowError(refusedWith('damaged'))
+  })
+
+  it('says damaged when a local extra field pushes the data into the central directory', () => {
+    const zip = makeZip([{ name: 'trace.json', data: '{"a":1}' }])
+    zip.writeUInt16LE(4, 28)
+    const entry = readZipDirectory(zip).get('trace.json')!
+    expect(() => readZipEntry(zip, entry)).toThrowError(refusedWith('damaged'))
+  })
+
   it('says damaged when an entry runs into the central directory', () => {
     const zip = makeZip([{ name: 'trace.json', data: '{"a":1}' }])
     zip.writeUInt32LE(4000, centralOffset(zip) + 20)
@@ -201,33 +245,84 @@ describe('readZipDirectory and readZipEntry', () => {
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296
     }
     const pick = (n: number): number => Math.floor(random() * n)
-    const tail = centralOffset(fixture)
+    const cd = centralOffset(fixture)
+    const eocd = fixture.length - 22
+    const body = fixture.subarray(0, cd)
+    const tail = fixture.subarray(cd)
+    const localHeaders = [...readZipDirectory(fixture).values()].map((e) => e.localHeaderOffset)
 
-    for (let i = 0; i < 600; i++) {
-      let mutant = Buffer.from(fixture)
-      const kind = i % 3
-      if (kind !== 1) mutant = mutant.subarray(0, pick(mutant.length + 1))
-      if (kind !== 0 && mutant.length > 0) {
-        const flips = 1 + pick(8)
-        for (let f = 0; f < flips; f++) {
-          // Half the flips land in the central directory and EOCD, where they matter most.
-          const at = random() < 0.5 ? pick(mutant.length) : tail + pick(mutant.length - tail)
-          if (at < mutant.length) mutant[at] ^= 1 + pick(255)
-        }
+    const flip = (mutant: Buffer, from: number, to: number): Buffer => {
+      const flips = 1 + pick(8)
+      for (let f = 0; f < flips; f++) mutant[from + pick(to - from)] ^= 1 + pick(255)
+      return mutant
+    }
+    // Each kind keeps a valid EOCD at the end, so mutants get past the EOCD scan.
+    const mutants: Array<() => Buffer> = [
+      // Flipped entry headers and data.
+      () => flip(Buffer.from(fixture), 0, cd),
+      // Flipped local header fields, which only readZipEntry checks.
+      () => {
+        const at = localHeaders[pick(localHeaders.length)]
+        return flip(Buffer.from(fixture), at, at + 30)
+      },
+      // Flipped central directory fields.
+      () => flip(Buffer.from(fixture), cd, eocd),
+      // Flipped EOCD fields.
+      () => flip(Buffer.from(fixture), eocd, fixture.length),
+      // A body cut short, with the directory re-appended and its offset patched.
+      () => {
+        const cut = pick(cd)
+        const mutant = Buffer.concat([body.subarray(0, cut), tail])
+        mutant.writeUInt32LE(cut, mutant.length - 6)
+        return mutant
+      },
+      // A body cut at the front, with the directory re-appended and its offset patched.
+      () => {
+        const cut = pick(cd)
+        const mutant = Buffer.concat([body.subarray(cut), tail])
+        mutant.writeUInt32LE(cd - cut, mutant.length - 6)
+        return mutant
+      },
+      // A cut body and flipped directory fields together.
+      () => {
+        const cut = pick(cd)
+        const mutant = Buffer.concat([body.subarray(0, cut), tail])
+        mutant.writeUInt32LE(cut, mutant.length - 6)
+        return flip(mutant, cut, mutant.length)
       }
+    ]
 
+    let directoriesRead = 0
+    let entriesRead = 0
+    let entriesRefused = 0
+    for (let i = 0; i < 900; i++) {
+      const mutant = mutants[i % mutants.length]()
+      let entries: Map<string, ZipEntry>
       try {
-        const entries = readZipDirectory(mutant)
-        for (const entry of entries.values()) {
-          try {
-            readZipEntry(mutant, entry)
-          } catch (error) {
-            expect(error).toBeInstanceOf(ZipRefused)
-          }
-        }
+        entries = readZipDirectory(mutant)
       } catch (error) {
         expect(error).toBeInstanceOf(ZipRefused)
+        continue
+      }
+      directoriesRead++
+      for (const entry of entries.values()) {
+        let data: Buffer | undefined
+        try {
+          data = readZipEntry(mutant, entry)
+        } catch (error) {
+          expect(error).toBeInstanceOf(ZipRefused)
+          entriesRefused++
+        }
+        if (data) {
+          expect(data.length).toBe(entry.size)
+          entriesRead++
+        }
       }
     }
+
+    // Floors, so the test can't silently stop reaching the reader (seeded: 275, 2876, 149).
+    expect(directoriesRead).toBeGreaterThanOrEqual(200)
+    expect(entriesRead).toBeGreaterThanOrEqual(1500)
+    expect(entriesRefused).toBeGreaterThanOrEqual(100)
   }, 10_000)
 })
