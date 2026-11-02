@@ -28,6 +28,8 @@ export interface TraceElement {
   role?: string
 }
 
+// A secret step has value null, but element.label and error.message may still
+// echo the secret: show them under Technical details only, never in the main view.
 export interface RaiderTraceStep {
   index: number
   parentIndex: number | null
@@ -53,7 +55,7 @@ export interface RaiderTraceStep {
 }
 
 export interface RaiderTraceNetwork {
-  stepIndex: number
+  stepIndex: number | null // null: belongs to no step
   method: string
   url: string
   status: number | null
@@ -64,7 +66,7 @@ export interface RaiderTraceNetwork {
 }
 
 export interface RaiderTraceConsole {
-  stepIndex: number
+  stepIndex: number | null // null: belongs to no step
   level: string
   text: string
   source: string | null

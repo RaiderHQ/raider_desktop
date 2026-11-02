@@ -15,6 +15,9 @@ import {
 
 const MAX_TEXT = 16 * 1024
 const MAX_WITHIN = 32
+const MAX_STEPS = 5000
+const MAX_NETWORK = 10000
+const MAX_CONSOLE = 10000
 
 type Obj = Record<string, unknown>
 
@@ -45,6 +48,12 @@ function count(v: unknown): number {
 
 function int(v: unknown): number | null {
   return typeof v === 'number' && Number.isSafeInteger(v) ? v : null
+}
+
+// Step indices start at 1; anything else counts as missing.
+function stepIndex(v: unknown): number | null {
+  const n = int(v)
+  return n !== null && n >= 1 ? n : null
 }
 
 function bool(v: unknown, fallback: boolean): boolean {
@@ -122,9 +131,10 @@ function parseStep(
   groupsSeen: ReadonlySet<number>,
   names: ReadonlySet<string>
 ): RaiderTraceStep {
-  const parent = int(o.parent_index)
+  const parent = stepIndex(o.parent_index)
   const action = str(o.action) ?? ''
-  const secret = o.secret === true
+  // Fails closed: anything but an explicit false (or absent) is secret.
+  const secret = !(o.secret === undefined || o.secret === false)
   const value = secret ? null : strOrNull(o.value)
   const step: RaiderTraceStep = {
     index,
@@ -153,29 +163,43 @@ function parseStep(
   return step
 }
 
-function parseSteps(v: unknown, names: ReadonlySet<string>): RaiderTraceStep[] {
+function parseSteps(
+  v: unknown,
+  names: ReadonlySet<string>
+): { steps: RaiderTraceStep[]; dropped: number } {
   const steps: RaiderTraceStep[] = []
   const seen = new Set<number>()
   const groups = new Set<number>()
-  for (const raw of arr(v)) {
+  const all = arr(v)
+  for (const raw of all.slice(0, MAX_STEPS)) {
     const o = obj(raw)
-    const index = o ? int(o.index) : null
+    const index = o ? stepIndex(o.index) : null
     if (!o || index === null || seen.has(index)) continue
     const step = parseStep(o, index, groups, names)
     seen.add(index)
     if (step.kind === 'group') groups.add(index)
     steps.push(step)
   }
-  return steps
+  return { steps, dropped: Math.max(0, all.length - MAX_STEPS) }
 }
 
-function parseNetwork(v: unknown): RaiderTraceNetwork[] {
+// An entry whose step_index is missing or names no real step is an orphan (null).
+function owner(v: unknown, known: ReadonlySet<number>): number | null {
+  const n = stepIndex(v)
+  return n !== null && known.has(n) ? n : null
+}
+
+function parseNetwork(
+  v: unknown,
+  known: ReadonlySet<number>
+): { entries: RaiderTraceNetwork[]; dropped: number } {
   const out: RaiderTraceNetwork[] = []
-  for (const raw of arr(v)) {
+  const all = arr(v)
+  for (const raw of all.slice(0, MAX_NETWORK)) {
     const o = obj(raw)
     if (!o) continue
     out.push({
-      stepIndex: int(o.step_index) ?? 1,
+      stepIndex: owner(o.step_index, known),
       method: str(o.method) ?? '',
       url: str(o.url) ?? '',
       status: num(o.status),
@@ -185,22 +209,26 @@ function parseNetwork(v: unknown): RaiderTraceNetwork[] {
       error: strOrNull(o.error)
     })
   }
-  return out
+  return { entries: out, dropped: Math.max(0, all.length - MAX_NETWORK) }
 }
 
-function parseConsole(v: unknown): RaiderTraceConsole[] {
+function parseConsole(
+  v: unknown,
+  known: ReadonlySet<number>
+): { entries: RaiderTraceConsole[]; dropped: number } {
   const out: RaiderTraceConsole[] = []
-  for (const raw of arr(v)) {
+  const all = arr(v)
+  for (const raw of all.slice(0, MAX_CONSOLE)) {
     const o = obj(raw)
     if (!o) continue
     out.push({
-      stepIndex: int(o.step_index) ?? 1,
+      stepIndex: owner(o.step_index, known),
       level: str(o.level) ?? '',
       text: str(o.text) ?? '',
       source: strOrNull(o.source)
     })
   }
-  return out
+  return { entries: out, dropped: Math.max(0, all.length - MAX_CONSOLE) }
 }
 
 export function parseTraceIndex(
@@ -221,6 +249,10 @@ export function parseTraceIndex(
     const caps = obj(root.capabilities) ?? {}
     const trunc = obj(root.truncated) ?? {}
     const dpr = num(root.device_pixel_ratio)
+    const parsedSteps = parseSteps(root.steps, entryNames)
+    const known = new Set(parsedSteps.steps.map((st) => st.index))
+    const network = parseNetwork(root.network, known)
+    const consoleLog = parseConsole(root.console, known)
 
     const index: RaiderTraceIndex = {
       version: 1,
@@ -239,15 +271,15 @@ export function parseTraceIndex(
         snapshots: bool(caps.snapshots, true)
       },
       truncated: {
-        steps: count(trunc.steps),
+        steps: count(trunc.steps) + parsedSteps.dropped,
         screenshots: count(trunc.screenshots),
         snapshots: count(trunc.snapshots),
-        network: count(trunc.network),
-        console: count(trunc.console)
+        network: count(trunc.network) + network.dropped,
+        console: count(trunc.console) + consoleLog.dropped
       },
-      steps: parseSteps(root.steps, entryNames),
-      network: parseNetwork(root.network),
-      console: parseConsole(root.console)
+      steps: parsedSteps.steps,
+      network: network.entries,
+      console: consoleLog.entries
     }
     const identifier = str(test.identifier)
     if (identifier !== undefined) index.test.identifier = identifier

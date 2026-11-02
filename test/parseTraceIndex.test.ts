@@ -205,13 +205,54 @@ describe('parseTraceIndex', () => {
     expect(index.steps[0].action).toBe('first')
   })
 
-  it('step 1 owns events before the first step', () => {
+  it('makes network and console entries with a missing, invalid or unknown step_index orphans', () => {
     const json = fixtureJson() as Json
-    json.network = [{ method: 'GET', url: 'http://x/' }]
-    json.console = [{ level: 'log', text: 'early' }]
+    const bad = [undefined, 0, -1, 1.5, '1', null, 999]
+    json.network = [...bad.map((s) => ({ step_index: s, method: 'GET', url: 'u' })), { step_index: 2, url: 'u' }]
+    json.console = [...bad.map((s) => ({ step_index: s, level: 'log', text: 't' })), { step_index: 2, text: 't' }]
     const index = parseOk(json)
-    expect(index.network[0].stepIndex).toBe(1)
-    expect(index.console[0].stepIndex).toBe(1)
+    expect(index.network.map((n) => n.stepIndex)).toEqual([...bad.map(() => null), 2])
+    expect(index.console.map((n) => n.stepIndex)).toEqual([...bad.map(() => null), 2])
+  })
+
+  it('treats step indices below 1 as invalid', () => {
+    const index = parseOk(withSteps([step(0), step(-2), step(1), step(2, { kind: 'group' }), step(3, { parent_index: 0 })]))
+    expect(index.steps.map((s) => s.index)).toEqual([1, 2, 3])
+    expect(index.steps[2].parentIndex).toBeNull()
+  })
+
+  it('caps the lists, keeps the first entries and records dropped counts', () => {
+    const json = fixtureJson() as Json
+    json.truncated = { steps: 2, network: 1, console: 0 }
+    json.steps = Array.from({ length: 5003 }, (_, i) => step(i + 1))
+    json.network = Array.from({ length: 10004 }, () => ({ step_index: 1, url: 'u' }))
+    json.console = Array.from({ length: 10001 }, () => ({ step_index: 1, text: 't' }))
+    const index = parseOk(json)
+    expect(index.steps).toHaveLength(5000)
+    expect(index.steps[4999].index).toBe(5000)
+    expect(index.network).toHaveLength(10000)
+    expect(index.console).toHaveLength(10000)
+    expect(index.truncated.steps).toBe(5)
+    expect(index.truncated.network).toBe(5)
+    expect(index.truncated.console).toBe(1)
+  })
+
+  it('fails closed on a non-boolean secret', () => {
+    for (const secret of ['true', 1, {}, 'false', 0, null, []]) {
+      const s = parseOk(withSteps([step(1, { secret, value: 'hunter2' })])).steps[0]
+      expect(s.secret, JSON.stringify(secret)).toBe(true)
+      expect(s.value).toBeNull()
+    }
+    const open = parseOk(withSteps([step(1, { value: 'v' }), step(2, { secret: false, value: 'v' })]))
+    expect(open.steps.map((s) => [s.secret, s.value])).toEqual([[false, 'v'], [false, 'v']])
+  })
+
+  it('keeps element.label and error.message on a secret step', () => {
+    const s = parseOk(
+      withSteps([step(1, { secret: true, element: { label: 'Password' }, error: { class: 'E', message: 'm' } })])
+    ).steps[0]
+    expect(s.element?.label).toBe('Password')
+    expect(s.error?.message).toBe('m')
   })
 
   it('drops malformed error objects and keeps well-formed ones', () => {
