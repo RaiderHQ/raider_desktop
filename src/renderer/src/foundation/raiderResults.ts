@@ -173,8 +173,12 @@ const toRow = (
   const attachments = (Array.isArray(result.attachments) ? result.attachments : []).filter(
     (a) => isObject(a) && typeof a.content_type === 'string' && typeof a.path === 'string'
   )
+  // A non-string name (untrusted run.json) must not throw: it is simply not a comparison image.
   const images = attachments.filter(
-    (a) => a.content_type?.startsWith('image/') && a.path && !a.name?.startsWith(COMPARISON_PREFIX)
+    (a) =>
+      a.content_type?.startsWith('image/') &&
+      a.path &&
+      !(typeof a.name === 'string' && a.name.startsWith(COMPARISON_PREFIX))
   )
   const image = images.find((a) => a.name === 'screenshot') ?? images[0]
   const safe = image?.path ? safeAttachmentPath(image.path) : null
