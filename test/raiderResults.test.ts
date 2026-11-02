@@ -627,6 +627,30 @@ describe('comparisons', () => {
     expect(rows![0].screenshot).toMatch(/attachments\/3-matches home\.png$/)
   })
 
+  it('does not throw on malformed attachment names or a non-array comparisons field', async () => {
+    for (const name of [5, {}, [], null]) {
+      const row = await load(
+        r('a', 'failed', {
+          comparisons: [cmp()],
+          attachments: [{ name, content_type: 'image/png', path: 'attachments/x.png' }, ...trio]
+        })
+      )
+      expect(row.screenshot).toBe('/proj/raider-results/attachments/x.png')
+      expect(row.comparisons![0].images.actual).toBe('/proj/raider-results/attachments/1-a.png')
+    }
+    const missing = await load(
+      r('a', 'failed', {
+        comparisons: [cmp()],
+        attachments: [{ name: 'comparison:home:actual', content_type: 'image/png' }]
+      })
+    )
+    expect(missing.comparisons![0].images.actual).toBeUndefined()
+    for (const comparisons of [{}, 'x', 3, null]) {
+      const row = await load(r('a', 'failed', { comparisons }))
+      expect(row.comparisons).toBeUndefined()
+    }
+  })
+
   it('never picks a comparison image as the main screenshot', async () => {
     const only = await load(r('a', 'failed', { comparisons: [cmp()], attachments: trio }))
     expect(only.screenshot).toBeUndefined()
