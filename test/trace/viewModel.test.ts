@@ -1,3 +1,5 @@
+import fs from 'fs'
+import path from 'path'
 import { describe, it, expect, vi } from 'vitest'
 import {
   eventsForStep,
@@ -28,6 +30,19 @@ const view = (index: RaiderTraceIndex = fixtureIndex(), read = readOk()) =>
   fromRaiderTrace(index, read)
 
 const step = (index: RaiderTraceIndex, n: number) => index.steps.find((s) => s.index === n)!
+
+// Width and height from a JPEG's SOF0/SOF2 header.
+function jpegSize(buf: Buffer): { width: number; height: number } {
+  let i = 2
+  while (i < buf.length) {
+    const marker = buf[i + 1]
+    if (marker === 0xc0 || marker === 0xc2) {
+      return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) }
+    }
+    i += 2 + buf.readUInt16BE(i + 2)
+  }
+  throw new Error('no JPEG size')
+}
 
 describe('fromRaiderTrace', () => {
   it('builds the tree', () => {
@@ -60,6 +75,53 @@ describe('fromRaiderTrace', () => {
     const index = fixtureIndex()
     index.startedAtMs = null
     expect(view(index).byId.get('step-2')!.offsetMs).toBe(0)
+  })
+
+  it('never gives a negative offset', () => {
+    const index = fixtureIndex()
+    step(index, 2).startedAtMs = index.startedAtMs! - 500
+    expect(view(index).byId.get('step-2')!.offsetMs).toBe(0)
+    const recorder = fromRecorderTrace(
+      [
+        { id: 'a', command: 'x', timestamp: 1000, url: 'u' },
+        { id: 'b', command: 'y', timestamp: 900, url: 'u' }
+      ],
+      async () => ({ success: false })
+    )
+    expect(recorder.map((s) => s.offsetMs)).toEqual([0, 0])
+  })
+
+  it('builds a safe tree from a bad index on its own', () => {
+    const base = step(fixtureIndex(), 7)
+    const make = (index: number, parentIndex: number | null, kind = 'group') => ({
+      ...base,
+      index,
+      parentIndex,
+      kind
+    })
+    const index = {
+      ...fixtureIndex(),
+      network: [],
+      console: [],
+      steps: [
+        make(1, 1), // its own parent
+        make(2, 3), // a 2-cycle: 2 -> 3 -> 2
+        make(3, 2),
+        make(4, 99), // missing parent
+        make(5, 6), // later parent
+        make(6, null),
+        make(7, null, 'action'),
+        make(8, 7, 'action'), // parent is not a group
+        make(3, null) // duplicate index
+      ]
+    }
+    const v = view(index)
+    expect(v.steps.map((s) => s.number)).toEqual([1, 2, 4, 5, 6, 7, 8])
+    expect(v.byId.get('step-2')!.children.map((s) => s.number)).toEqual([3])
+    expect(v.byId.get('step-2')!.stepIndices).toEqual([2, 3])
+    expect(v.byId.get('step-1')!.stepIndices).toEqual([1])
+    expect(v.byId.get('step-3')!.children).toEqual([])
+    expect(v.byId.size).toBe(8)
   })
 
   it('status', () => {
@@ -96,13 +158,17 @@ describe('fromRaiderTrace', () => {
 
     const s2 = v.byId.get('step-2')!
     expect(s2.hasScreenshot).toBe(true)
-    expect(await s2.loadScreenshot!()).toBe('data:image/jpeg;base64,steps/0002.jpg')
-    expect(await s2.loadScreenshot!()).toBe('data:image/jpeg;base64,steps/0002.jpg')
+    const shot = { stepId: 'step-2', dataUrl: 'data:image/jpeg;base64,steps/0002.jpg' }
+    expect(await s2.loadScreenshot!()).toEqual(shot)
+    expect(await s2.loadScreenshot!()).toEqual(shot)
     expect(read).toHaveBeenCalledTimes(1)
     expect(read).toHaveBeenCalledWith('steps/0002.jpg')
 
     expect(s2.hasSnapshot).toBe(true)
-    expect(await s2.loadSnapshot!()).toEqual({ kind: 'html', text: '<p>steps/0002.html</p>' })
+    expect(await s2.loadSnapshot!()).toEqual({
+      stepId: 'step-2',
+      snapshot: { kind: 'html', text: '<p>steps/0002.html</p>' }
+    })
 
     const s4 = v.byId.get('step-4')!
     expect(s4.hasScreenshot).toBe(false)
@@ -118,8 +184,34 @@ describe('fromRaiderTrace', () => {
       .mockResolvedValueOnce(image('again'))
     const s2 = view(fixtureIndex(), read).byId.get('step-2')!
     expect(await s2.loadScreenshot!()).toBeNull()
-    expect(await s2.loadScreenshot!()).toBe('data:image/jpeg;base64,again')
+    expect(await s2.loadScreenshot!()).toMatchObject({ dataUrl: 'data:image/jpeg;base64,again' })
     expect(read).toHaveBeenCalledTimes(2)
+  })
+
+  it('gives null for a read that throws, and retries it later', async () => {
+    const read = vi
+      .fn<(name: string) => Promise<TraceEntryResult>>()
+      .mockRejectedValueOnce(new Error('ipc gone'))
+      .mockResolvedValueOnce(image('again'))
+    const s2 = view(fixtureIndex(), read).byId.get('step-2')!
+    expect(await s2.loadScreenshot!()).toBeNull()
+    expect(await s2.loadScreenshot!()).toMatchObject({ dataUrl: 'data:image/jpeg;base64,again' })
+    expect(read).toHaveBeenCalledTimes(2)
+  })
+
+  it('tags each loaded entry with the step it was for', async () => {
+    const index = fixtureIndex()
+    step(index, 3).screenshot = step(index, 2).screenshot
+    const read = readOk()
+    const v = view(index, read)
+    expect(await v.byId.get('step-2')!.loadScreenshot!()).toMatchObject({ stepId: 'step-2' })
+    expect(await v.byId.get('step-3')!.loadScreenshot!()).toMatchObject({ stepId: 'step-3' })
+    expect(read).toHaveBeenCalledTimes(1)
+    const recorder = fromRecorderTrace(
+      [{ id: 'r1', command: 'visit', timestamp: 1, url: 'u', screenshotPath: '/a.png' }],
+      async () => ({ success: true, data: 'QUJD' })
+    )
+    expect(await recorder[0].loadScreenshot!()).toMatchObject({ stepId: 'r1' })
   })
 
   it('gives null for an entry of the wrong kind', async () => {
@@ -182,8 +274,40 @@ describe('rectOverlayStyle', () => {
   }
 
   it('scales by the image, not the viewport', () => {
-    expectStyle(rectOverlayStyle(rect, 1, { width: 1920, height: 937 }))
-    expectStyle(rectOverlayStyle(rect, 2, { width: 3840, height: 1874 }))
+    expectStyle(rectOverlayStyle(rect, 1, { width: 1920, height: 937 })!)
+    expectStyle(rectOverlayStyle(rect, 2, { width: 3840, height: 1874 })!)
+  })
+
+  it('places the fixture rect on the fixture screenshot', () => {
+    const file = path.join(__dirname, '..', 'fixtures', 'trace-v1', 'unzipped', 'steps', '0002.jpg')
+    const natural = jpegSize(fs.readFileSync(file))
+    expect(natural).toEqual({ width: 1920, height: 937 }) // the viewport was 1920x1080
+    const index = fixtureIndex()
+    const s2 = view(index).byId.get('step-2')!
+    const style = rectOverlayStyle(s2.rect!, index.devicePixelRatio, natural)!
+    expect(parseFloat(style.top)).toBeCloseTo((79.875 / 937) * 100, 3)
+    expect(parseFloat(style.top)).not.toBeCloseTo((79.875 / 1080) * 100, 1)
+    expect(parseFloat(style.height)).not.toBeCloseTo((21 / 1080) * 100, 2)
+  })
+
+  it('gives no rect for an unusable size or ratio', () => {
+    for (const dpr of [0, -1, NaN, Infinity]) {
+      expect(rectOverlayStyle(rect, dpr, { width: 1920, height: 937 })).toBeNull()
+    }
+    expect(rectOverlayStyle(rect, 1, { width: 0, height: 937 })).toBeNull()
+    expect(rectOverlayStyle(rect, 1, { width: 1920, height: 0 })).toBeNull()
+    expect(rectOverlayStyle({ ...rect, x: NaN }, 1, { width: 1920, height: 937 })).toBeNull()
+  })
+
+  it('clamps the rect to the image', () => {
+    const style = rectOverlayStyle({ x: -10, y: 900, width: 2000, height: 100 }, 1, {
+      width: 1920,
+      height: 937
+    })!
+    expect(parseFloat(style.left)).toBe(0)
+    expect(parseFloat(style.width)).toBe(100)
+    expect(parseFloat(style.top)).toBeCloseTo((900 / 937) * 100, 3)
+    expect(parseFloat(style.top) + parseFloat(style.height)).toBeCloseTo(100, 6)
   })
 })
 
@@ -246,7 +370,10 @@ describe('fromRecorderTrace', () => {
     expect(readImage).not.toHaveBeenCalled()
 
     expect(steps[0].hasScreenshot).toBe(true)
-    expect(await steps[0].loadScreenshot!()).toBe('data:image/png;base64,QUJD')
+    expect(await steps[0].loadScreenshot!()).toEqual({
+      stepId: 'a',
+      dataUrl: 'data:image/png;base64,QUJD'
+    })
     await steps[0].loadScreenshot!()
     expect(readImage).toHaveBeenCalledTimes(1)
     expect(readImage).toHaveBeenCalledWith('/s/a.png')
@@ -257,7 +384,7 @@ describe('fromRecorderTrace', () => {
 
   it('defaults the extension to jpeg and gives null on failure', async () => {
     const ok = fromRecorderTrace(recorded, async () => ({ success: true, data: 'QUJD' }))
-    expect(await ok[0].loadScreenshot!()).toBe('data:image/jpeg;base64,QUJD')
+    expect(await ok[0].loadScreenshot!()).toMatchObject({ dataUrl: 'data:image/jpeg;base64,QUJD' })
     const bad = fromRecorderTrace(recorded, async () => ({ success: false, error: 'gone' }))
     expect(await bad[0].loadScreenshot!()).toBeNull()
   })
