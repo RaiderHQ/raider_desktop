@@ -208,7 +208,7 @@ const ConceptsModal: React.FC<ConceptsModalProps> = ({ onClose, onOpenShortcuts 
         {/* Footer hint */}
         <div className="px-6 py-3 border-t border-neutral-bdr shrink-0 flex items-center justify-between gap-3">
           <p className="text-xs text-neutral-md">{t('concepts.hint')}</p>
-          <DocsLink id="docs.home" topic={t('docs.topics.raider')} className="shrink-0 text-xs" />
+          <DocsLink id="docs.home" topic={t('docs.topics.raider')} size="xs" className="shrink-0" />
           <button
             onClick={onOpenShortcuts}
             className="shrink-0 inline-flex items-center gap-2 text-xs font-semibold text-neutral-dk hover:text-neutral-dark"

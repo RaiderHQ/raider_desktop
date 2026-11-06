@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import DocsLink from '@components/DocsLink'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import Logo from '@assets/images/logo.svg'
@@ -68,6 +69,9 @@ const InstallGuide: React.FC<InstallGuideProps> = ({ rubyMissing, rubyError }): 
                   {t('installGuide.websiteButton')}
                 </Button>
               </Tooltip>
+            </div>
+            <div className="mt-3">
+              <DocsLink id="docs.install" topic={t('docs.topics.install')} />
             </div>
           </div>
         </div>

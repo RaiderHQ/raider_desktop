@@ -35,4 +35,11 @@ describe('DocsLink', () => {
     fireEvent.click(screen.getByText('How runs work'))
     expect(window.api.openDocs).toHaveBeenCalledWith('docs.running')
   })
+
+  it('the xs size renders text-xs and not text-sm', () => {
+    render(<DocsLink id="docs.home" topic="x" size="xs" />)
+    const button = screen.getByRole('button')
+    expect(button).toHaveClass('text-xs')
+    expect(button).not.toHaveClass('text-sm')
+  })
 })

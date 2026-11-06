@@ -66,4 +66,19 @@ describe('InstallGuide Page', () => {
     expect(open).not.toHaveBeenCalled()
     open.mockRestore()
   })
+
+  it('links to the install docs page', async () => {
+    const openDocs = vi.fn().mockResolvedValue({ success: true })
+    // @ts-expect-error - Mocking window.api
+    window.api = { openDocs }
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <InstallGuide rubyMissing={false} />
+        </MemoryRouter>
+      )
+    })
+    fireEvent.click(screen.getByRole('button', { name: /docs\.learnMoreAbout/ }))
+    expect(openDocs).toHaveBeenCalledWith('docs.install')
+  })
 })

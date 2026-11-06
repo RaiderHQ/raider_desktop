@@ -22,7 +22,11 @@ export const DOCS_LINKS: Record<DocsLinkId, string> = {
   'docs.site': `${SITE}/`
 }
 
-export const ALLOWED_DOCS_HOSTS = ['ruby-raider.onrender.com', 'github.com', 'ruby-raider.com'] as const
+export const ALLOWED_DOCS_HOSTS = [
+  'ruby-raider.onrender.com',
+  'github.com',
+  'ruby-raider.com'
+] as const
 
 export function isAllowedDocsUrl(url: string): boolean {
   try {

@@ -8,16 +8,25 @@ interface DocsLinkProps {
   topic: string
   children?: React.ReactNode
   className?: string
+  size?: 'sm' | 'xs'
 }
 
 /** Opens a page of the documentation in the browser; the main process owns the URL. */
-const DocsLink: React.FC<DocsLinkProps> = ({ id, topic, children, className = '' }) => {
+const SIZE_CLASS = { sm: 'text-sm', xs: 'text-xs' } as const
+
+const DocsLink: React.FC<DocsLinkProps> = ({
+  id,
+  topic,
+  children,
+  className = '',
+  size = 'sm'
+}) => {
   const { t } = useTranslation()
   return (
     <button
       type="button"
       aria-label={t('docs.learnMoreAbout', { topic })}
-      className={`text-ruby hover:underline text-sm ${className}`.trim()}
+      className={`text-ruby hover:underline ${SIZE_CLASS[size]} ${className}`.trim()}
       onClick={() => {
         void window.api.openDocs(id)
       }}

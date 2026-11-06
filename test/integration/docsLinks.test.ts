@@ -67,7 +67,9 @@ describe('openDocs', () => {
   })
 
   it.each([
-    'https://user:pw@github.com:8443/',
+    'https://user:pw@github.com/',
+    'https://user@github.com/',
+    'https://github.com:8443/',
     'https://github.com@evil.example/',
     'https://docs.github.com/',
     'file:///etc/passwd',
