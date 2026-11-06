@@ -102,6 +102,7 @@ import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { Step } from '@shared/types/step'
 import { renderStep } from './codegen/steps'
 import { toAutomation } from './codegen/testFile'
+import { applyUtf8Locale } from './utils/locale'
 
 const iconPath = join(
   __dirname,
@@ -446,6 +447,9 @@ app.on('window-all-closed', () => {
 })
 
 app.on('ready', async () => {
+  // Synchronous, before the first await: IPC handlers registered in whenReady() must
+  // never spawn a child without a UTF-8 locale (D1).
+  applyUtf8Locale()
   const fixPath = await import('fix-path')
   fixPath.default()
 })

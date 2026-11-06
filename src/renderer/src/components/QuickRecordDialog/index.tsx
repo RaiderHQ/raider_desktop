@@ -2,11 +2,11 @@ import React, { useState } from 'react'
 import ReactDOM from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
-import toast from 'react-hot-toast'
 import Button from '@components/Button'
 import InputField from '@components/InputField'
 import RubyInstallModal from '@components/RubyInstallModal'
 import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
+import { showErrorToast } from '@foundation/errorToast'
 import { installMissingGems } from '@foundation/installGems'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
@@ -71,7 +71,7 @@ const QuickRecordDialog: React.FC<QuickRecordDialogProps> = ({ onClose }) => {
         // Without Raider's gems a project can't be made: show the same help as at startup
         const missing = await findMissingGems()
         if (missing.length > 0) setMissingGems(missing)
-        else toast.error(t('quickRecord.error', { error: result.error }))
+        else showErrorToast(t('quickRecord.error'), result.error)
         return
       }
       setProjectPath(result.projectPath)
@@ -80,7 +80,7 @@ const QuickRecordDialog: React.FC<QuickRecordDialogProps> = ({ onClose }) => {
       onClose()
       navigate('/overview/tests/new')
     } catch (error) {
-      toast.error(t('quickRecord.error', { error: String(error) }))
+      showErrorToast(t('quickRecord.error'), String(error))
     } finally {
       setCreating(false)
     }

@@ -324,4 +324,48 @@ describe('CreateProject Page', (): void => {
       )
     })
   })
+
+  describe('project name rule (D13)', () => {
+    const nameInput = (): HTMLElement => screen.getByPlaceholderText('newProject.input.placeholder')
+    const createButton = (): HTMLElement => screen.getByText('button.create.text').closest('button')!
+
+    it('states the rule under the field before anything is typed', async (): Promise<void> => {
+      await renderPage()
+      expect(nameInput()).toHaveAccessibleDescription('newProject.input.hint')
+      expect(nameInput()).not.toHaveAttribute('aria-invalid', 'true')
+      expect(createButton()).toBeDisabled()
+    })
+
+    it('flags a name with spaces inline and keeps Create off', async (): Promise<void> => {
+      await renderPage()
+      fireEvent.change(nameInput(), { target: { value: 'ux test project' } })
+      expect(nameInput()).toHaveAttribute('aria-invalid', 'true')
+      expect(screen.getByRole('alert')).toHaveTextContent('newProject.input.invalid')
+      expect(createButton()).toBeDisabled()
+    })
+
+    it('enables Create for a valid name', async (): Promise<void> => {
+      await renderPage()
+      fireEvent.change(nameInput(), { target: { value: 'ux_test_project' } })
+      expect(nameInput()).not.toHaveAttribute('aria-invalid', 'true')
+      expect(createButton()).toBeEnabled()
+    })
+  })
+
+  describe('creation failure (D5)', () => {
+    it('shows a one-line toast with the details kept behind an expander', async (): Promise<void> => {
+      const { default: toast, Toaster } = await import('react-hot-toast')
+      toast.remove()
+      window.matchMedia = (): MediaQueryList =>
+        ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }) as never
+      render(<Toaster />)
+      const trace = 'x.rb:3: invalid multibyte char (US-ASCII) (SyntaxError)\n  from a.rb:1\n  from b.rb:2'
+      const run = vi.fn().mockResolvedValue({ success: false, error: trace })
+      await renderPage()
+      await create(run)
+      expect(await screen.findByText('newProject.alerts.creationFailed')).toBeInTheDocument()
+      expect(screen.queryByText(/invalid multibyte/)).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'errorToast.showDetails' })).toBeInTheDocument()
+    })
+  })
 })

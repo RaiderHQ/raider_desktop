@@ -1,3 +1,6 @@
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 import { test, expect } from './electronApp'
 import { goToNewProject, mockRubyReady } from './helpers/navigation'
 
@@ -73,7 +76,9 @@ test.describe('New Project Page', () => {
       page.getByRole('heading', { name: 'Create a New Project', exact: true })
     ).toBeVisible()
     await expect(
-      page.getByText("Give your project a name, choose whether you're testing a website or a mobile app")
+      page.getByText(
+        "Give your project a name, choose whether you're testing a website or a mobile app"
+      )
     ).toBeVisible()
   })
 
@@ -141,5 +146,47 @@ test.describe('New Project Page', () => {
     )
     expect(args[5]).toBe('android')
     expect(args[6]).toEqual({ accessibility: false, ci: 'github', examples: true })
+  })
+
+  test('says the name rule inline and keeps Create off for a name with spaces (D13)', async ({
+    page
+  }) => {
+    const input = page.getByPlaceholder('Enter project name')
+    await expect(page.getByText(/Letters, numbers, underscores and hyphens/)).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Create', exact: true })).toBeDisabled()
+
+    await input.fill('ux test project')
+    await expect(page.getByRole('alert')).toContainText('no spaces')
+    await expect(input).toHaveAttribute('aria-invalid', 'true')
+    await expect(page.getByRole('button', { name: 'Create', exact: true })).toBeDisabled()
+
+    await input.fill('ux_test_project')
+    await expect(page.getByRole('button', { name: 'Create', exact: true })).toBeEnabled()
+  })
+
+  test('refuses to create over an existing folder instead of waiting on raider (D4)', async ({
+    electronApp,
+    page
+  }) => {
+    // The real run-ruby-raider handler, pointed at a temp folder that already holds the name
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'raider-e2e-'))
+    fs.mkdirSync(path.join(parent, 'taken'))
+    await electronApp.evaluate(async ({ ipcMain }, dir) => {
+      ipcMain.removeHandler('select-folder')
+      ipcMain.handle('select-folder', async () => dir)
+    }, parent)
+
+    await page.getByPlaceholder('Enter project name').fill('taken')
+    await page.getByRole('button', { name: 'Create', exact: true }).click()
+
+    await expect(page.getByText("Raider couldn't create the project.")).toBeVisible({
+      timeout: 10000
+    })
+    await expect(
+      page.getByText(`A folder named "taken" already exists in ${parent}.`)
+    ).toBeVisible()
+    await expect(page).not.toHaveURL(/#\/overview/)
+
+    fs.rmSync(parent, { recursive: true, force: true })
   })
 })

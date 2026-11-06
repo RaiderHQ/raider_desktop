@@ -24,9 +24,19 @@ export function quickProjectName(url: string): string {
   }
 }
 
+/** Anything at the path counts as taken, a dangling symlink included (as runRubyRaider sees it). */
+function taken(target: string): boolean {
+  try {
+    fs.lstatSync(target)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function freeName(dir: string, base: string): string {
   let name = base
-  for (let i = 2; fs.existsSync(path.join(dir, name)); i++) name = `${base}_${i}`
+  for (let i = 2; taken(path.join(dir, name)); i++) name = `${base}_${i}`
   return name
 }
 
