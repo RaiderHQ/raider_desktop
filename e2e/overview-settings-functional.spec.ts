@@ -26,15 +26,25 @@ test.describe('Overview settings toolbar - functional', () => {
     await page.getByRole('button', { name: 'Files', exact: true }).click()
   })
 
-  test('URL save triggers update-browser-url', async ({ electronApp, page }) => {
+  test('URL save triggers update-browser-url, once per change', async ({ electronApp, page }) => {
     const urlInput = page.locator('[data-testid="overview-url-input"]')
-    await urlInput.fill('https://example.com')
+    // A new address: the loaded one is left alone on blur (D6)
+    await urlInput.fill('https://example.org')
     await urlInput.blur()
     await expect
       .poll(async () => (await getMainIPCCalls(electronApp, 'update-browser-url')).length)
-      .toBeGreaterThanOrEqual(1)
-    const calls = await getMainIPCCalls(electronApp, 'update-browser-url')
-    expect(calls[0]).toEqual([PROJECT, 'https://example.com'])
+      .toBe(1)
+    expect((await getMainIPCCalls(electronApp, 'update-browser-url'))[0]).toEqual([
+      PROJECT,
+      'https://example.org'
+    ])
+    await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+
+    // Blurring again with nothing changed writes nothing
+    await urlInput.focus()
+    await urlInput.blur()
+    await page.waitForTimeout(500)
+    expect((await getMainIPCCalls(electronApp, 'update-browser-url')).length).toBe(1)
   })
 
   test('browser change triggers update-browser-type', async ({ electronApp, page }) => {
