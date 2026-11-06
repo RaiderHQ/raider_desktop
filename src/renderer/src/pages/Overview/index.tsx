@@ -1060,6 +1060,7 @@ const Overview: React.FC = () => {
                   path={projectPath || ''}
                   files={files}
                   defaultOpen={true}
+                  dirtyPath={fileDirty ? editingFile?.path : undefined}
                   onFileClick={handleOpenFile}
                   isRoot={true}
                   onRunTests={handleRunRaiderTests}

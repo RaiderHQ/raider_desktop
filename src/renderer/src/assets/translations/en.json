@@ -1109,5 +1109,14 @@
   "steps": {
     "removed": "Step removed",
     "undo": "Undo"
+  },
+  "files": {
+    "unsavedSuffix": "{{name}}, unsaved changes"
+  },
+  "closeGuard": {
+    "message": "Save changes to {{name}}?",
+    "save": "Save",
+    "discard": "Don't save",
+    "cancel": "Cancel"
   }
 }

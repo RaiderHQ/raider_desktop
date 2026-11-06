@@ -23,14 +23,16 @@ vi.mock('@components/Library/Folder', () => ({
     name,
     onRunTests,
     runDisabled,
-    onFileClick
+    onFileClick,
+    dirtyPath
   }: {
+    dirtyPath?: string
     name: string | undefined
     onRunTests?: () => void
     runDisabled?: boolean
     onFileClick?: (path: string) => void
   }): JSX.Element => (
-    <div data-testid="folder">
+    <div data-testid="folder" data-dirty-path={dirtyPath ?? ''}>
       {name}
       {onRunTests && <button data-testid="run-tests" onClick={onRunTests} disabled={runDisabled} />}
       {/* Two files to click, for the inline editor */}
@@ -1247,6 +1249,20 @@ describe('Overview live runs', (): void => {
       fireEvent.change(screen.getByTestId('editor'), { target: { value: text } })
     }
     const saveButton = (): HTMLElement => screen.getByRole('button', { name: 'editor.saveButton' })
+
+    it('the tree shows the dot once the open file is edited', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      const dirtyPath = (): string | null =>
+        screen.getByTestId('folder').getAttribute('data-dirty-path')
+      expect(dirtyPath()).toBe('')
+      type('changed')
+      expect(dirtyPath()).toBe('/fake/project/spec/a_spec.rb')
+      await act(async () => {
+        fireEvent.click(saveButton())
+      })
+      await waitFor(() => expect(dirtyPath()).toBe(''))
+    })
 
     it('has a Save button that wakes up once the file is edited', async () => {
       await renderFiles()

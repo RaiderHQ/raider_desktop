@@ -8,6 +8,8 @@ interface FolderProps {
   path?: string
   files?: FileNode[]
   defaultOpen?: boolean
+  /** The file with unsaved changes, if any */
+  dirtyPath?: string
   onFileClick: (filePath: string) => void
   isRoot?: boolean
   onRunTests?: () => void
@@ -21,6 +23,7 @@ const Folder: React.FC<FolderProps> = ({
   path: folderPath,
   files,
   defaultOpen = false,
+  dirtyPath,
   onFileClick,
   isRoot = false,
   onRunTests,
@@ -85,6 +88,7 @@ const Folder: React.FC<FolderProps> = ({
                     name={file.name}
                     path={file.path}
                     files={file.children}
+                    dirtyPath={dirtyPath}
                     onFileClick={onFileClick}
                     onFileContextMenu={onFileContextMenu}
                     onFolderContextMenu={onFolderContextMenu}
@@ -96,6 +100,7 @@ const Folder: React.FC<FolderProps> = ({
                   key={key}
                   name={file.name}
                   path={file.path}
+                  dirtyPath={dirtyPath}
                   onFileClick={onFileClick}
                   onContextMenu={onFileContextMenu}
                 />
