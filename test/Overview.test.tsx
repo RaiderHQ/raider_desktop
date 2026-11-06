@@ -1496,6 +1496,7 @@ describe('Overview live runs', (): void => {
           onRecordingStarted: vi.fn(() => vi.fn()),
           onRecordingStopped: vi.fn(() => vi.fn()),
           onReplayFailed: vi.fn(() => vi.fn()),
+          onRecorderPicked: vi.fn(() => vi.fn()),
           setRecordingState: vi.fn(),
           setMenuRecording: vi.fn(),
           onFlushRecording: vi.fn(() => vi.fn()),
