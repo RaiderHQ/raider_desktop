@@ -176,6 +176,28 @@ describe('toElementTarget', () => {
     expect(el!.label).toBe('x'.repeat(59) + '…')
   })
 
+  it('uses a space at the limit itself as the boundary', () => {
+    const text = 'a'.repeat(59) + ' ' + 'b'.repeat(20)
+    expect(toElementTarget('css', '.x', { innerText: text })!.label).toBe('a'.repeat(59) + '…')
+  })
+
+  it('does not leave punctuation before the ellipsis', () => {
+    const text = 'Terms and conditions, privacy policy, cookies and tracking, and more besides'
+    expect(toElementTarget('css', '.x', { innerText: text })!.label).toBe(
+      'Terms and conditions, privacy policy, cookies and tracking…'
+    )
+  })
+
+  it('shortens an aria-label and a placeholder the same way', () => {
+    const long = 'word '.repeat(20).trim()
+    expect(toElementTarget('css', '.x', { ariaLabel: long })!.label!.length).toBeLessThanOrEqual(60)
+    expect(toElementTarget('css', '.x', { placeholder: long })!.label).toMatch(/…$/)
+  })
+
+  it('names a region click by nothing when the preload sends no text', () => {
+    expect(toElementTarget('css', 'main > div', { innerText: '' })!.label).toBeUndefined()
+  })
+
   it('keeps a label of exactly 60 characters whole', () => {
     const el = toElementTarget('css', '.x', { innerText: 'y'.repeat(60) })
     expect(el!.label).toBe('y'.repeat(60))

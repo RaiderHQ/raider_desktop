@@ -3,7 +3,8 @@ import { ipcRenderer } from 'electron'
 import {
   DEFAULT_PRIORITIES,
   DEFAULT_TEST_ID_ATTRIBUTE,
-  getPrioritizedSelector as buildSelector
+  getPrioritizedSelector as buildSelector,
+  isRegion
 } from './selectorStrategy'
 import { fieldValue, isSecretField } from './secretField'
 import { installPickMode } from './pickMode'
@@ -39,9 +40,13 @@ function labelHints(el: Element): { ariaLabel?: string; placeholder?: string } {
 }
 
 // Installed before the recorder's listeners; while picking, they never see the page's events
+// A region of the page is not named by the text of the things inside it (D16)
+const textOf = (el: Element): string =>
+  isRegion(el) ? '' : ((el as HTMLElement).innerText || '').slice(0, 200)
+
 const pickMode = installPickMode(window, ipcRenderer.send.bind(ipcRenderer), (el) => ({
   ...getPrioritizedSelector(el),
-  innerText: ((el as HTMLElement).innerText || '').slice(0, 200),
+  innerText: textOf(el),
   ...labelHints(el)
 }))
 ipcRenderer.on('recorder-pick-mode', (_event, on: unknown) => pickMode.setPicking(on === true))
@@ -61,7 +66,7 @@ document.addEventListener(
       locator,
       tagName: target.tagName,
       pageUrl: window.location.href,
-      innerText: (target.innerText || '').slice(0, 200),
+      innerText: textOf(target),
       ...labelHints(target),
       boundingRect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
     })
