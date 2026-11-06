@@ -4,8 +4,8 @@ import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
 vi.mock('react-i18next', () => ({
-  useTranslation: (): { t: (key: string) => string } => ({
-    t: (key: string): string => key
+  useTranslation: (): { t: (key: string, opts?: object) => string } => ({
+    t: (key: string, opts?: object): string => (opts ? `${key}:${JSON.stringify(opts)}` : key)
   })
 }))
 
@@ -59,9 +59,9 @@ describe('ScaffoldPanel', () => {
     it('shows type dropdown and name input, each named by its label', () => {
       render(<ScaffoldPanel />)
 
-      expect(screen.getByLabelText('Type')).toBe(screen.getByRole('combobox'))
-      expect(screen.getByLabelText('Name')).toBe(screen.getByRole('textbox'))
-      expect(screen.getByText('Generate')).toBeInTheDocument()
+      expect(screen.getByLabelText('scaffold.type')).toBe(screen.getByRole('combobox'))
+      expect(screen.getByLabelText('scaffold.name')).toBe(screen.getByRole('textbox'))
+      expect(screen.getByText('scaffold.generate')).toBeInTheDocument()
     })
 
     it('shows all component type options in the dropdown', () => {
@@ -73,12 +73,12 @@ describe('ScaffoldPanel', () => {
       const options = screen.getAllByRole('option')
       const optionTexts = options.map((o) => o.textContent)
       expect(optionTexts).toEqual([
-        'Page Object',
-        'Spec',
-        'Feature',
-        'Steps',
-        'Helper',
-        'Component'
+        'scaffold.types.page',
+        'scaffold.types.spec',
+        'scaffold.types.feature',
+        'scaffold.types.steps',
+        'scaffold.types.helper',
+        'scaffold.types.component'
       ])
     })
 
@@ -86,10 +86,18 @@ describe('ScaffoldPanel', () => {
       render(<ScaffoldPanel />)
 
       expect(
-        screen.getByText(/Generate page objects, specs, features/)
+        screen.getByText('scaffold.intro')
       ).toBeInTheDocument()
     })
 
+  })
+
+  describe('Tooltips', () => {
+    it('Generate has a tooltip', () => {
+      render(<ScaffoldPanel />)
+      fireEvent.focus(screen.getByText('scaffold.generate'))
+      expect(screen.getByRole('tooltip')).toHaveTextContent('tooltips.scaffold.generate')
+    })
   })
 
   describe('Validation', () => {
@@ -97,9 +105,9 @@ describe('ScaffoldPanel', () => {
       const { toast } = await import('react-hot-toast')
       render(<ScaffoldPanel />)
 
-      fireEvent.click(screen.getByText('Generate'))
+      fireEvent.click(screen.getByText('scaffold.generate'))
 
-      expect(toast.error).toHaveBeenCalledWith('Please enter a name.')
+      expect(toast.error).toHaveBeenCalledWith('scaffold.toast.noName')
     })
   })
 
@@ -107,11 +115,11 @@ describe('ScaffoldPanel', () => {
     it('calls scaffoldGenerate with correct params for page generation', async () => {
       render(<ScaffoldPanel />)
 
-      const nameInput = screen.getByPlaceholderText('e.g. login')
+      const nameInput = screen.getByPlaceholderText('scaffold.namePlaceholder')
       fireEvent.change(nameInput, { target: { value: 'login' } })
 
       await act(async () => {
-        fireEvent.click(screen.getByText('Generate'))
+        fireEvent.click(screen.getByText('scaffold.generate'))
       })
 
       await waitFor(() => {
@@ -133,11 +141,11 @@ describe('ScaffoldPanel', () => {
       const select = screen.getByRole('combobox')
       fireEvent.change(select, { target: { value: 'spec' } })
 
-      const nameInput = screen.getByPlaceholderText('e.g. login')
+      const nameInput = screen.getByPlaceholderText('scaffold.namePlaceholder')
       fireEvent.change(nameInput, { target: { value: 'login' } })
 
       await act(async () => {
-        fireEvent.click(screen.getByText('Generate'))
+        fireEvent.click(screen.getByText('scaffold.generate'))
       })
 
       await waitFor(() => {
@@ -158,11 +166,11 @@ describe('ScaffoldPanel', () => {
     it('shows success result after generation', async () => {
       render(<ScaffoldPanel />)
 
-      const nameInput = screen.getByPlaceholderText('e.g. login')
+      const nameInput = screen.getByPlaceholderText('scaffold.namePlaceholder')
       fireEvent.change(nameInput, { target: { value: 'login' } })
 
       await act(async () => {
-        fireEvent.click(screen.getByText('Generate'))
+        fireEvent.click(screen.getByText('scaffold.generate'))
       })
 
       await waitFor(() => {
@@ -181,26 +189,26 @@ describe('ScaffoldPanel', () => {
 
       render(<ScaffoldPanel />)
 
-      const nameInput = screen.getByPlaceholderText('e.g. login')
+      const nameInput = screen.getByPlaceholderText('scaffold.namePlaceholder')
       fireEvent.change(nameInput, { target: { value: 'login' } })
 
       await act(async () => {
-        fireEvent.click(screen.getByText('Generate'))
+        fireEvent.click(screen.getByText('scaffold.generate'))
       })
 
       await waitFor(() => {
-        expect(screen.getByText(/Command not found/)).toBeInTheDocument()
+        expect(screen.getByText('Command not found')).toBeInTheDocument()
       })
     })
 
     it('refreshes file tree after successful generation', async () => {
       render(<ScaffoldPanel />)
 
-      const nameInput = screen.getByPlaceholderText('e.g. login')
+      const nameInput = screen.getByPlaceholderText('scaffold.namePlaceholder')
       fireEvent.change(nameInput, { target: { value: 'login' } })
 
       await act(async () => {
-        fireEvent.click(screen.getByText('Generate'))
+        fireEvent.click(screen.getByText('scaffold.generate'))
       })
 
       await waitFor(() => {
@@ -214,11 +222,11 @@ describe('ScaffoldPanel', () => {
       const { toast } = await import('react-hot-toast')
       render(<ScaffoldPanel />)
 
-      const nameInput = screen.getByPlaceholderText('e.g. login')
+      const nameInput = screen.getByPlaceholderText('scaffold.namePlaceholder')
       fireEvent.change(nameInput, { target: { value: 'login' } })
 
       await act(async () => {
-        fireEvent.click(screen.getByText('Generate'))
+        fireEvent.click(screen.getByText('scaffold.generate'))
       })
 
       await waitFor(() => {
@@ -235,15 +243,17 @@ describe('ScaffoldPanel', () => {
       const { toast } = await import('react-hot-toast')
       render(<ScaffoldPanel />)
 
-      const nameInput = screen.getByPlaceholderText('e.g. login')
+      const nameInput = screen.getByPlaceholderText('scaffold.namePlaceholder')
       fireEvent.change(nameInput, { target: { value: 'login' } })
 
       await act(async () => {
-        fireEvent.click(screen.getByText('Generate'))
+        fireEvent.click(screen.getByText('scaffold.generate'))
       })
 
       await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Command not found'))
+        expect(toast.error).toHaveBeenCalledWith(
+          'scaffold.toast.failed:{"error":"Command not found"}'
+        )
       })
     })
   })

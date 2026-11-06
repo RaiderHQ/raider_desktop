@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import ReactDOM from 'react-dom'
 import Logo from '@components/Logo'
+import Tooltip from '@components/Tooltip'
 import { useTranslation } from 'react-i18next'
 
 interface CollapsibleSection {
@@ -48,24 +49,26 @@ const InformationModal: React.FC<ModalProps> = ({
         <div className="flex items-center gap-3 border-b border-neutral-bdr px-6 py-4 shrink-0">
           <Logo size={28} />
           <h2 className="text-lg font-semibold text-neutral-dark">{title}</h2>
-          <button
-            className="ml-auto text-neutral-md hover:text-neutral-dark transition-colors"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
+          <Tooltip content={t('tooltips.modal.close')} position="bottom" className="ml-auto">
+            <button
+              className="text-neutral-md hover:text-neutral-dark transition-colors"
+              onClick={onClose}
+              aria-label="Close"
             >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </Tooltip>
         </div>
 
         {/* Body */}

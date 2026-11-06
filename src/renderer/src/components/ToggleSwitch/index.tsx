@@ -1,4 +1,5 @@
 import React, { useId } from 'react'
+import Tooltip from '@components/Tooltip'
 
 interface ToggleSwitchProps {
   label: string
@@ -7,6 +8,8 @@ interface ToggleSwitchProps {
   disabled?: boolean
   description?: string
   testId?: string
+  /** Plain-language help, shown on hover and focus of the switch */
+  tooltip?: string
 }
 
 const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
@@ -15,32 +18,43 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   onChange,
   disabled = false,
   description,
-  testId
+  testId,
+  tooltip
 }) => {
   const id = useId()
   const switchId = `${id}-switch`
   const descriptionId = `${id}-description`
+  const switchButton = (
+    <button
+      id={switchId}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-describedby={description ? descriptionId : undefined}
+      data-testid={testId}
+      onClick={() => onChange(!checked)}
+      disabled={disabled}
+      className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ruby focus:ring-offset-2 ${
+        checked ? 'bg-ruby' : 'bg-neutral-bdr'
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+    >
+      <span
+        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition-transform ${
+          checked ? 'translate-x-5' : 'translate-x-0'
+        }`}
+      />
+    </button>
+  )
+
   return (
     <div className="flex items-center gap-3">
-      <button
-        id={switchId}
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-describedby={description ? descriptionId : undefined}
-        data-testid={testId}
-        onClick={() => onChange(!checked)}
-        disabled={disabled}
-        className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ruby focus:ring-offset-2 ${
-          checked ? 'bg-ruby' : 'bg-neutral-bdr'
-        } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-      >
-        <span
-          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition-transform ${
-            checked ? 'translate-x-5' : 'translate-x-0'
-          }`}
-        />
-      </button>
+      {tooltip ? (
+        <Tooltip content={tooltip} position="bottom">
+          {switchButton}
+        </Tooltip>
+      ) : (
+        switchButton
+      )}
       <div className="flex flex-col">
         <label htmlFor={switchId} className="text-sm font-medium text-neutral-dk cursor-pointer">
           {label}

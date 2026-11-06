@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FailureDetails from '@components/FailureDetails'
+import Tooltip from '@components/Tooltip'
 import ScreenshotComparison from '@components/ScreenshotComparison'
 import { describeStep } from '@shared/describeStep'
 import { canRePick, editableValue } from '@shared/stepFixes'
@@ -135,32 +136,46 @@ const FailedStepPanel: React.FC<FailedStepPanelProps> = ({
       </div>
       {!readOnly && fixed && onRunAgain && (
         <div className="flex flex-wrap gap-2">
-          <button type="button" className={ACTION} onClick={onRunAgain}>
-            {t('failedStep.runAgain')}
-          </button>
+          <Tooltip content={t('tooltips.failedStep.runAgain')} position="bottom">
+            <button type="button" className={ACTION} onClick={onRunAgain}>
+              {t('failedStep.runAgain')}
+            </button>
+          </Tooltip>
         </div>
       )}
       {!readOnly && !fixed && (actions || offerRePick || canEditValue || onReRecord) && (
         <div className="flex flex-wrap gap-2">
           {offerRePick && (
-            <button type="button" className={ACTION} onClick={onRePick}>
-              {t('failedStep.rePick')}
-            </button>
+            <Tooltip content={t('tooltips.failedStep.rePick')} position="bottom">
+              <button type="button" className={ACTION} onClick={onRePick}>
+                {t('failedStep.rePick')}
+              </button>
+            </Tooltip>
           )}
           {canEditValue && (
-            <button type="button" className={ACTION} onClick={onEditValue}>
-              {t('failedStep.editValue')}
-            </button>
+            <Tooltip content={t('tooltips.failedStep.editValue')} position="bottom">
+              <button type="button" className={ACTION} onClick={onEditValue}>
+                {t('failedStep.editValue')}
+              </button>
+            </Tooltip>
           )}
           {onReRecord && (
-            <button type="button" className={ACTION} onClick={() => onReRecord(mapped?.index ?? 0)}>
-              {t('failedStep.reRecord')}
-            </button>
+            <Tooltip content={t('tooltips.failedStep.reRecord')} position="bottom">
+              <button
+                type="button"
+                className={ACTION}
+                onClick={() => onReRecord(mapped?.index ?? 0)}
+              >
+                {t('failedStep.reRecord')}
+              </button>
+            </Tooltip>
           )}
           {replayFailed !== null && onReRecord && (
-            <button type="button" className={ACTION} onClick={() => onReRecord(replayFailed - 1)}>
-              {t('failedStep.reRecordFrom', { m: replayFailed })}
-            </button>
+            <Tooltip content={t('tooltips.failedStep.reRecord')} position="bottom">
+              <button type="button" className={ACTION} onClick={() => onReRecord(replayFailed - 1)}>
+                {t('failedStep.reRecordFrom', { m: replayFailed })}
+              </button>
+            </Tooltip>
           )}
           {actions}
         </div>

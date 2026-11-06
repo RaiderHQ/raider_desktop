@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import { FaFolder, FaChevronDown, FaChevronRight } from 'react-icons/fa'
+import { useTranslation } from 'react-i18next'
+import Tooltip from '@components/Tooltip'
 import File from '@components/Library/File'
 import { FileNode } from '@foundation/Types/fileNode'
 
@@ -28,6 +30,7 @@ const Folder: React.FC<FolderProps> = ({
   onFileContextMenu,
   onFolderContextMenu
 }) => {
+  const { t } = useTranslation()
   // If root, force the folder to always be open.
   const [isOpen, setOpen] = useState(isRoot ? true : defaultOpen)
 
@@ -57,16 +60,23 @@ const Folder: React.FC<FolderProps> = ({
         <FaFolder className="mr-2" />
         <span className="font-semibold flex-grow">{name}</span>
         {isRoot && onRunTests && (
-          <button
-            onClick={onRunTests}
-            disabled={runDisabled}
-            title="Run tests"
-            className="ml-auto w-7 h-7 flex items-center justify-center rounded-full text-green-600 hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          <Tooltip
+            content={t('tooltips.files.runTests')}
+            disabledReason={runDisabled ? t('tooltips.files.runBusy') : undefined}
+            position="bottom"
+            className="ml-auto"
           >
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-              <polygon points="5,3 19,12 5,21" />
-            </svg>
-          </button>
+            <button
+              onClick={onRunTests}
+              disabled={runDisabled}
+              title="Run tests"
+              className="w-7 h-7 flex items-center justify-center rounded-full text-green-600 hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                <polygon points="5,3 19,12 5,21" />
+              </svg>
+            </button>
+          </Tooltip>
         )}
       </div>
 

@@ -101,6 +101,18 @@ describe('CreateProject Page', (): void => {
     expect(screen.getByText('button.create.text')).toBeInTheDocument()
   })
 
+  it('the project name field has a tooltip', async (): Promise<void> => {
+    await act(async (): Promise<void> => {
+      render(
+        <MemoryRouter>
+          <CreateProject />
+        </MemoryRouter>
+      )
+    })
+    fireEvent.focus(screen.getByPlaceholderText('newProject.input.placeholder'))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('tooltips.newProject.name')
+  })
+
   it('shows add-ons section', async (): Promise<void> => {
     await act(async (): Promise<void> => {
       render(
@@ -159,11 +171,19 @@ describe('CreateProject Page', (): void => {
     const run = vi.fn().mockResolvedValue({ success: false, error: 'stop' })
     await renderPage()
     await create(run)
-    expect(run).toHaveBeenCalledWith('/tmp/projects', 'proj', 'rspec', 'selenium', '/usr/bin/ruby', null, {
-      accessibility: false,
-      ci: 'github',
-      examples: true
-    })
+    expect(run).toHaveBeenCalledWith(
+      '/tmp/projects',
+      'proj',
+      'rspec',
+      'selenium',
+      '/usr/bin/ruby',
+      null,
+      {
+        accessibility: false,
+        ci: 'github',
+        examples: true
+      }
+    )
   })
 
   it.each([
@@ -180,11 +200,19 @@ describe('CreateProject Page', (): void => {
     fireEvent.click(screen.getByRole('radio', { name: 'newProject.target.mobile' }))
     fireEvent.click(screen.getByRole('radio', { name: label }))
     await create(run)
-    expect(run).toHaveBeenCalledWith('/tmp/projects', 'proj', 'rspec', 'selenium', '/usr/bin/ruby', value, {
-      accessibility: false,
-      ci: 'github',
-      examples: true
-    })
+    expect(run).toHaveBeenCalledWith(
+      '/tmp/projects',
+      'proj',
+      'rspec',
+      'selenium',
+      '/usr/bin/ruby',
+      value,
+      {
+        accessibility: false,
+        ci: 'github',
+        examples: true
+      }
+    )
   })
 
   it('hides web-only add-ons under Mobile app and restores them on Website', async (): Promise<void> => {
@@ -195,17 +223,27 @@ describe('CreateProject Page', (): void => {
       target: { value: 'newProject.ci.azure' }
     })
     fireEvent.click(screen.getByRole('radio', { name: 'newProject.target.mobile' }))
-    expect(screen.queryByRole('checkbox', { name: /newProject.addons.accessibility/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('checkbox', { name: /newProject.addons.accessibility/ })
+    ).not.toBeInTheDocument()
     expect(screen.getByText('newProject.ci.mobileAzure')).toBeInTheDocument()
     expect(screen.queryByText('newProject.ci.azure')).not.toBeInTheDocument()
     expect(screen.getByText('newProject.question.phones')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('radio', { name: 'newProject.target.web' }))
     await create(run)
-    expect(run).toHaveBeenCalledWith('/tmp/projects', 'proj', 'rspec', 'selenium', '/usr/bin/ruby', null, {
-      accessibility: true,
-      ci: 'azure',
-      examples: true
-    })
+    expect(run).toHaveBeenCalledWith(
+      '/tmp/projects',
+      'proj',
+      'rspec',
+      'selenium',
+      '/usr/bin/ruby',
+      null,
+      {
+        accessibility: true,
+        ci: 'azure',
+        examples: true
+      }
+    )
   })
 
   it('includes example tests by default and sends examples: false when unchecked', async (): Promise<void> => {
@@ -224,19 +262,24 @@ describe('CreateProject Page', (): void => {
     expect(screen.getByRole('checkbox', { name: /newProject.addons.examples/ })).toBeChecked()
   })
 
-  it.each(['3.11.0', '2.0.0'])('gates Mobile app and examples on gem %s', async (version): Promise<void> => {
-    useVersionStore.setState({ version })
-    const run = vi.fn().mockResolvedValue({ success: false, error: 'stop' })
-    await renderPage()
-    const mobile = screen.getByRole('radio', { name: 'newProject.target.mobile' })
-    expect(mobile).toHaveAttribute('aria-disabled', 'true')
-    expect(mobile).toHaveAccessibleDescription('newProject.target.mobileNeedsUpdate')
-    fireEvent.click(mobile)
-    expect(screen.queryByText('newProject.question.phones')).not.toBeInTheDocument()
-    expect(screen.queryByRole('checkbox', { name: /newProject.addons.examples/ })).not.toBeInTheDocument()
-    await create(run)
-    expect(run.mock.calls[0][6]).toEqual({ accessibility: false, ci: 'github' })
-  })
+  it.each(['3.11.0', '2.0.0'])(
+    'gates Mobile app and examples on gem %s',
+    async (version): Promise<void> => {
+      useVersionStore.setState({ version })
+      const run = vi.fn().mockResolvedValue({ success: false, error: 'stop' })
+      await renderPage()
+      const mobile = screen.getByRole('radio', { name: 'newProject.target.mobile' })
+      expect(mobile).toHaveAttribute('aria-disabled', 'true')
+      expect(mobile).toHaveAccessibleDescription('newProject.target.mobileNeedsUpdate')
+      fireEvent.click(mobile)
+      expect(screen.queryByText('newProject.question.phones')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('checkbox', { name: /newProject.addons.examples/ })
+      ).not.toBeInTheDocument()
+      await create(run)
+      expect(run.mock.calls[0][6]).toEqual({ accessibility: false, ci: 'github' })
+    }
+  )
 
   it('reads the gem version again each time the page opens', async (): Promise<void> => {
     const versions = ['3.11.0', '3.12.0']
@@ -244,7 +287,8 @@ describe('CreateProject Page', (): void => {
       useVersionStore.setState({ version: versions.shift() as string })
     })
     useVersionStore.setState({ version: '3.11.0', loadVersion })
-    const mobile = (): HTMLElement => screen.getByRole('radio', { name: 'newProject.target.mobile' })
+    const mobile = (): HTMLElement =>
+      screen.getByRole('radio', { name: 'newProject.target.mobile' })
 
     const first = render(
       <MemoryRouter>
@@ -320,14 +364,15 @@ describe('CreateProject Page', (): void => {
       expect(web()).toHaveAttribute('aria-checked', 'true')
       expect(mobile()).toHaveAttribute('tabindex', '-1')
       expect(screen.getByRole('radiogroup')).toHaveAccessibleDescription(
-        'newProject.target.mobileNeedsUpdate'
+        expect.stringContaining('newProject.target.mobileNeedsUpdate')
       )
     })
   })
 
   describe('project name rule (D13)', () => {
     const nameInput = (): HTMLElement => screen.getByPlaceholderText('newProject.input.placeholder')
-    const createButton = (): HTMLElement => screen.getByText('button.create.text').closest('button')!
+    const createButton = (): HTMLElement =>
+      screen.getByText('button.create.text').closest('button')!
 
     it('states the rule under the field before anything is typed', async (): Promise<void> => {
       await renderPage()
@@ -359,7 +404,8 @@ describe('CreateProject Page', (): void => {
       window.matchMedia = (): MediaQueryList =>
         ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }) as never
       render(<Toaster />)
-      const trace = 'x.rb:3: invalid multibyte char (US-ASCII) (SyntaxError)\n  from a.rb:1\n  from b.rb:2'
+      const trace =
+        'x.rb:3: invalid multibyte char (US-ASCII) (SyntaxError)\n  from a.rb:1\n  from b.rb:2'
       const run = vi.fn().mockResolvedValue({ success: false, error: trace })
       await renderPage()
       await create(run)

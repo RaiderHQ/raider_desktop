@@ -66,4 +66,14 @@ describe('InputField accessibility', () => {
     expect(screen.getByRole('textbox')).toHaveAccessibleDescription('No spaces')
     expect(screen.getByRole('alert')).toHaveTextContent('No spaces')
   })
+
+  it('shows a tooltip on focus only when one is given', () => {
+    const { unmount } = render(<InputField label="X" value="" onChange={vi.fn()} tooltip="Hello" />)
+    fireEvent.focus(screen.getByLabelText('X'))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Hello')
+    unmount()
+    render(<InputField label="X" value="" onChange={vi.fn()} />)
+    fireEvent.focus(screen.getByLabelText('X'))
+    expect(screen.queryByRole('tooltip')).toBeNull()
+  })
 })

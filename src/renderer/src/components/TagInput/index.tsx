@@ -1,17 +1,21 @@
 import React, { useState } from 'react'
+import Tooltip from '@components/Tooltip'
 
 interface TagInputProps {
   tags: string[]
   onChange: (tags: string[]) => void
   placeholder?: string
   disabled?: boolean
+  /** Plain-language help, shown on hover and focus of the field */
+  tooltip?: string
 }
 
 const TagInput: React.FC<TagInputProps> = ({
   tags,
   onChange,
   placeholder = 'Add option...',
-  disabled = false
+  disabled = false,
+  tooltip
 }) => {
   const [inputValue, setInputValue] = useState('')
 
@@ -29,17 +33,27 @@ const TagInput: React.FC<TagInputProps> = ({
     onChange(tags.filter((tag) => tag !== tagToRemove))
   }
 
+  const input = (
+    <input
+      type="text"
+      value={inputValue}
+      onChange={(e) => setInputValue(e.target.value)}
+      onKeyDown={handleKeyDown}
+      placeholder={placeholder}
+      disabled={disabled}
+      className="w-full px-3 py-2 border border-neutral-bdr rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent disabled:opacity-50"
+    />
+  )
+
   return (
     <div className="flex flex-col gap-2">
-      <input
-        type="text"
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        disabled={disabled}
-        className="w-full px-3 py-2 border border-neutral-bdr rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent disabled:opacity-50"
-      />
+      {tooltip ? (
+        <Tooltip content={tooltip} position="bottom" className="w-full">
+          {input}
+        </Tooltip>
+      ) : (
+        input
+      )}
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {tags.map((tag) => (

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import toast from 'react-hot-toast'
 import ProjectSelector from '@components/ProjectSelector'
 import Logo from '@components/Logo'
+import Tooltip from '@components/Tooltip'
 import InformationModal from '@components/InformationModal'
 import QuickRecordDialog from '@components/QuickRecordDialog'
 import OpenFolder from '@assets/icons/open-folder.svg'
@@ -70,15 +71,17 @@ const Landing: React.FC = (): JSX.Element => {
       <main className="flex flex-col items-center justify-center flex-grow">
         {/* Clickable logo with speech bubble */}
         <div className="relative mb-8 flex flex-col items-center">
-          <button
-            onClick={() => setHelpOpen(true)}
-            className="relative group focus:outline-none"
-            aria-label="Learn how Ruby Raider works"
-          >
-            <Logo size={120} />
-            {/* Pulse ring to draw attention */}
-            <span className="absolute inset-0 rounded-full animate-ping opacity-20 bg-ruby pointer-events-none" />
-          </button>
+          <Tooltip content={t('tooltips.landing.logo')} position="bottom">
+            <button
+              onClick={() => setHelpOpen(true)}
+              className="relative group focus:outline-none"
+              aria-label="Learn how Ruby Raider works"
+            >
+              <Logo size={120} />
+              {/* Pulse ring to draw attention */}
+              <span className="absolute inset-0 rounded-full animate-ping opacity-20 bg-ruby pointer-events-none" />
+            </button>
+          </Tooltip>
 
           {/* Speech bubble */}
           <div className="mt-3 relative bg-white border border-neutral-bdr rounded-lg px-3 py-1.5 shadow-sm text-xs text-neutral-dk font-medium whitespace-nowrap">
@@ -103,6 +106,7 @@ const Landing: React.FC = (): JSX.Element => {
             buttonValue={t('button.recorder.text')}
             modalTitleKey="information.quickRecord.title"
             modalMessageKey="information.quickRecord.message"
+            tooltip={t('tooltips.landing.quickRecord')}
           />
           <ProjectSelector
             icon={OpenFolder}
@@ -111,6 +115,7 @@ const Landing: React.FC = (): JSX.Element => {
             buttonValue={t('button.create.text')}
             modalTitleKey="information.createProject.title"
             modalMessageKey="information.createProject.message"
+            tooltip={t('tooltips.landing.create')}
           />
           <ProjectSelector
             icon={AddIcon}
@@ -118,6 +123,8 @@ const Landing: React.FC = (): JSX.Element => {
             buttonValue={t('button.open.text')}
             modalTitleKey="information.openProject.title"
             modalMessageKey="information.openProject.message"
+            tooltip={t('tooltips.landing.open')}
+            shortcut="open-project"
             onClick={handleOpenProject}
           />
         </div>
@@ -131,20 +138,26 @@ const Landing: React.FC = (): JSX.Element => {
             <ul className="border border-neutral-bdr rounded-lg bg-white shadow-card divide-y divide-neutral-bdr">
               {quickProjects.map((project) => (
                 <li key={project.path}>
-                  <button
-                    onClick={() => openQuickProject(project)}
-                    className="w-full flex items-center justify-between gap-4 px-4 py-2 text-left hover:bg-neutral-50 transition-colors"
+                  <Tooltip
+                    content={t('tooltips.landing.quickRecording')}
+                    position="top"
+                    className="w-full"
                   >
-                    <span className="font-medium text-neutral-dark truncate">{project.name}</span>
-                    <span className="text-xs text-neutral-md shrink-0">
-                      {t('landing.quickRecordings.changed', {
-                        date: new Date(project.modifiedAt).toLocaleString(undefined, {
-                          dateStyle: 'medium',
-                          timeStyle: 'short'
-                        })
-                      })}
-                    </span>
-                  </button>
+                    <button
+                      onClick={() => openQuickProject(project)}
+                      className="w-full flex items-center justify-between gap-4 px-4 py-2 text-left hover:bg-neutral-50 transition-colors"
+                    >
+                      <span className="font-medium text-neutral-dark truncate">{project.name}</span>
+                      <span className="text-xs text-neutral-md shrink-0">
+                        {t('landing.quickRecordings.changed', {
+                          date: new Date(project.modifiedAt).toLocaleString(undefined, {
+                            dateStyle: 'medium',
+                            timeStyle: 'short'
+                          })
+                        })}
+                      </span>
+                    </button>
+                  </Tooltip>
                 </li>
               ))}
             </ul>

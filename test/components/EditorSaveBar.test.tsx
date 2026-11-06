@@ -23,6 +23,14 @@ describe('EditorSaveBar', () => {
     expect(onSave).toHaveBeenCalled()
   })
 
+  it('the Save button names its shortcut', () => {
+    render(<EditorSaveBar fileName="a.rb" dirty saving={false} onSave={vi.fn()} />)
+    fireEvent.focus(screen.getByRole('button', { name: 'editor.saveButton' }))
+    const tip = screen.getByRole('tooltip')
+    expect(tip).toHaveTextContent('tooltips.editor.save')
+    expect(tip.querySelector('kbd')).not.toBeNull()
+  })
+
   it('keeps Save off while a save is in flight', () => {
     render(<EditorSaveBar fileName="a.rb" dirty saving onSave={vi.fn()} />)
     expect(screen.getByRole('button', { name: 'editor.saveButton' })).toBeDisabled()

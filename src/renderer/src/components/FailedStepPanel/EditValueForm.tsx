@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Tooltip from '@components/Tooltip'
 import Button from '@components/Button'
 import { editableValue, withValue } from '@shared/stepFixes'
 import type { Step } from '@shared/types/step'
@@ -28,30 +29,36 @@ const EditValueForm: React.FC<EditValueFormProps> = ({ step, actualValue, onSave
       {step.kind === 'assert' && actualValue !== undefined && (
         <div className="flex items-center gap-2 text-sm text-neutral-dark">
           <span>{t('failedStep.pageShowed', { actual: actualValue })}</span>
-          <button
-            type="button"
-            className="text-xs font-medium text-ruby hover:underline"
-            onClick={() => setValue(actualValue)}
-          >
-            {t('failedStep.useThis')}
-          </button>
+          <Tooltip content={t('tooltips.failedStep.useThis')} position="bottom">
+            <button
+              type="button"
+              className="text-xs font-medium text-ruby hover:underline"
+              onClick={() => setValue(actualValue)}
+            >
+              {t('failedStep.useThis')}
+            </button>
+          </Tooltip>
         </div>
       )}
-      <input
-        aria-label={t('failedStep.value')}
-        className="block w-full px-3 py-1 border border-neutral-bdr rounded text-sm focus:ring-ruby focus:border-ruby"
-        value={value}
-        autoFocus
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') submit()
-          if (e.key === 'Escape') onCancel()
-        }}
-      />
+      <Tooltip content={t('tooltips.failedStep.value')} position="bottom" className="flex w-full">
+        <input
+          aria-label={t('failedStep.value')}
+          className="block w-full px-3 py-1 border border-neutral-bdr rounded text-sm focus:ring-ruby focus:border-ruby"
+          value={value}
+          autoFocus
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') submit()
+            if (e.key === 'Escape') onCancel()
+          }}
+        />
+      </Tooltip>
       <div className="flex gap-2">
-        <Button type="primary" className="min-w-0 !px-3 !py-1" onClick={submit}>
-          {t('failedStep.save')}
-        </Button>
+        <Tooltip content={t('tooltips.failedStep.save')} position="bottom">
+          <Button type="primary" className="min-w-0 !px-3 !py-1" onClick={submit}>
+            {t('failedStep.save')}
+          </Button>
+        </Tooltip>
         <Button type="secondary" className="min-w-0 !px-3 !py-1" onClick={onCancel}>
           {t('common.cancel')}
         </Button>

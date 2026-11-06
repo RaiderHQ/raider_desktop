@@ -42,4 +42,16 @@ describe('ToggleSwitch', () => {
     render(<ToggleSwitch label="Headless" checked={false} onChange={vi.fn()} />)
     expect(screen.getByRole('switch')).toHaveAttribute('type', 'button')
   })
+
+  it('shows a tooltip on focus only when one is given', () => {
+    const { unmount } = render(
+      <ToggleSwitch label="X" checked={false} onChange={vi.fn()} tooltip="Hello" />
+    )
+    fireEvent.focus(screen.getByRole('switch'))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Hello')
+    unmount()
+    render(<ToggleSwitch label="X" checked={false} onChange={vi.fn()} />)
+    fireEvent.focus(screen.getByRole('switch'))
+    expect(screen.queryByRole('tooltip')).toBeNull()
+  })
 })

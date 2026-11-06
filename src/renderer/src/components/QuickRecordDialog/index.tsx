@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import Button from '@components/Button'
 import InputField from '@components/InputField'
+import Tooltip from '@components/Tooltip'
 import RubyInstallModal from '@components/RubyInstallModal'
 import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
 import { showErrorToast } from '@foundation/errorToast'
@@ -98,6 +99,7 @@ const QuickRecordDialog: React.FC<QuickRecordDialogProps> = ({ onClose }) => {
           label={t('quickRecord.urlLabel')}
           placeholder={t('quickRecord.urlPlaceholder')}
           value={url}
+          tooltip={t('tooltips.quickRecord.url')}
           onChange={(e) => setUrl(e.target.value)}
           disabled={creating}
           autoFocus
@@ -106,6 +108,7 @@ const QuickRecordDialog: React.FC<QuickRecordDialogProps> = ({ onClose }) => {
           label={t('quickRecord.nameLabel')}
           placeholder={t('quickRecord.namePlaceholder')}
           value={name}
+          tooltip={t('tooltips.quickRecord.name')}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && void start()}
           disabled={creating}
@@ -114,9 +117,11 @@ const QuickRecordDialog: React.FC<QuickRecordDialogProps> = ({ onClose }) => {
           <Button type="secondary" onClick={onClose} disabled={creating}>
             {t('quickRecord.cancel')}
           </Button>
-          <Button onClick={() => void start()} disabled={!canStart}>
-            {creating ? t('quickRecord.starting') : t('quickRecord.start')}
-          </Button>
+          <Tooltip content={t('tooltips.quickRecord.start')} position="top">
+            <Button onClick={() => void start()} disabled={!canStart}>
+              {creating ? t('quickRecord.starting') : t('quickRecord.start')}
+            </Button>
+          </Tooltip>
         </div>
       </div>
     </div>,

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import SegmentedControl from '@components/SegmentedControl'
+import Tooltip from '@components/Tooltip'
 import useProjectStore from '@foundation/Stores/projectStore'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import type {
@@ -199,7 +200,8 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ projectPath, layout, fo
     group: Group,
     field: 'deviceName' | 'platformVersion',
     label: string,
-    help: string
+    help: string,
+    tooltip: string
   ): React.ReactElement => {
     const inputId = `${id}-${group.platform}-${field}`
     return (
@@ -207,19 +209,21 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ projectPath, layout, fo
         <label htmlFor={inputId} className="text-sm font-medium text-neutral-dk whitespace-nowrap">
           {label}
         </label>
-        <input
-          type="text"
-          id={inputId}
-          value={drafts[group.platform]?.[field] ?? ''}
-          onChange={(e) => setDraft(group.platform, field, e.target.value)}
-          onBlur={(e) => void saveField(group, field, e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') void saveField(group, field, e.currentTarget.value)
-          }}
-          aria-describedby={`${inputId}-help`}
-          className="border border-neutral-bdr rounded px-2 py-1 text-sm w-48"
-          data-testid={`device-${group.platform}-${field}`}
-        />
+        <Tooltip content={tooltip} position="bottom">
+          <input
+            type="text"
+            id={inputId}
+            value={drafts[group.platform]?.[field] ?? ''}
+            onChange={(e) => setDraft(group.platform, field, e.target.value)}
+            onBlur={(e) => void saveField(group, field, e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void saveField(group, field, e.currentTarget.value)
+            }}
+            aria-describedby={`${inputId}-help`}
+            className="border border-neutral-bdr rounded px-2 py-1 text-sm w-48"
+            data-testid={`device-${group.platform}-${field}`}
+          />
+        </Tooltip>
         <span id={`${inputId}-help`} className="text-xs text-neutral-md max-w-[12rem]">
           {help}
         </span>
@@ -233,30 +237,44 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ projectPath, layout, fo
     const missing = isActive && appMissing && group.fields.app !== ''
     const fields = (
       <div className="flex items-start gap-4 flex-wrap">
-        {renderField(group, 'deviceName', t('device.deviceName'), t('device.help.deviceName'))}
-        {renderField(group, 'platformVersion', t('device.osVersion'), t('device.help.osVersion'))}
+        {renderField(
+          group,
+          'deviceName',
+          t('device.deviceName'),
+          t('device.help.deviceName'),
+          t('tooltips.files.deviceName')
+        )}
+        {renderField(
+          group,
+          'platformVersion',
+          t('device.osVersion'),
+          t('device.help.osVersion'),
+          t('tooltips.files.osVersion')
+        )}
         <div className="flex flex-col gap-1 flex-1 min-w-[16rem]">
           <label htmlFor={appId} className="text-sm font-medium text-neutral-dk whitespace-nowrap">
             {t('device.appFile')}
           </label>
           <div className="flex items-center gap-2">
-            <input
-              type="text"
-              id={appId}
-              ref={isActive ? (focusRef as React.Ref<HTMLInputElement>) : undefined}
-              value={drafts[group.platform]?.app ?? ''}
-              onChange={(e) => setDraft(group.platform, 'app', e.target.value)}
-              onBlur={(e) => void saveApp(group, e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void saveApp(group, e.currentTarget.value)
-              }}
-              aria-invalid={missing || undefined}
-              aria-describedby={missing ? `${appId}-missing` : undefined}
-              className={`flex-1 border rounded px-2 py-1 text-sm ${
-                missing ? 'border-ruby' : 'border-neutral-bdr'
-              }`}
-              data-testid={`device-${group.platform}-app`}
-            />
+            <Tooltip content={t('tooltips.files.appFile')} position="bottom" className="flex-1">
+              <input
+                type="text"
+                id={appId}
+                ref={isActive ? (focusRef as React.Ref<HTMLInputElement>) : undefined}
+                value={drafts[group.platform]?.app ?? ''}
+                onChange={(e) => setDraft(group.platform, 'app', e.target.value)}
+                onBlur={(e) => void saveApp(group, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void saveApp(group, e.currentTarget.value)
+                }}
+                aria-invalid={missing || undefined}
+                aria-describedby={missing ? `${appId}-missing` : undefined}
+                className={`flex-1 border rounded px-2 py-1 text-sm ${
+                  missing ? 'border-ruby' : 'border-neutral-bdr'
+                }`}
+                data-testid={`device-${group.platform}-app`}
+              />
+            </Tooltip>
             <button
               type="button"
               onClick={() => void handleChoose(group)}

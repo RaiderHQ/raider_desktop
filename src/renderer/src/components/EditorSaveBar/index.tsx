@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import Tooltip from '@components/Tooltip'
 
 interface EditorSaveBarProps {
   fileName: string
@@ -34,14 +35,22 @@ const EditorSaveBar: React.FC<EditorSaveBarProps> = ({
         )}
         {dirty ? t('editor.status.unsaved') : t('editor.status.saved')}
       </span>
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={!dirty || saving}
-        className="ml-auto text-xs px-3 py-1 rounded border font-semibold transition-colors bg-ruby text-white border-ruby hover:shadow-card-hover disabled:bg-white disabled:text-neutral-mid disabled:border-neutral-bdr disabled:cursor-not-allowed"
+      <Tooltip
+        content={t('tooltips.editor.save')}
+        disabledReason={dirty ? undefined : t('editor.status.saved')}
+        shortcut="save"
+        position="bottom"
+        className="ml-auto"
       >
-        {t('editor.saveButton')}
-      </button>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={!dirty || saving}
+          className="text-xs px-3 py-1 rounded border font-semibold transition-colors bg-ruby text-white border-ruby hover:shadow-card-hover disabled:bg-white disabled:text-neutral-mid disabled:border-neutral-bdr disabled:cursor-not-allowed"
+        >
+          {t('editor.saveButton')}
+        </button>
+      </Tooltip>
     </div>
   )
 }

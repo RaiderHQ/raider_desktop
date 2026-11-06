@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { sample } from 'lodash'
 import Editor from '@components/Editor'
 import EditorSaveBar from '@components/EditorSaveBar'
+import Tooltip from '@components/Tooltip'
 import UnsavedChangesModal from '@components/UnsavedChangesModal'
 import { getFileLanguage } from '@foundation/helpers'
 import { onMenuCommand } from '@foundation/menuCommands'
@@ -139,13 +140,15 @@ const FileEditor: React.FC = (): JSX.Element => {
                 saving={isSaving}
                 onSave={() => void handleSave()}
               >
-                <button
-                  onClick={leave}
-                  aria-label={t('editor.back')}
-                  className="focus:outline-none text-neutral-dk hover:text-ruby transition-colors"
-                >
-                  <FaArrowLeft />
-                </button>
+                <Tooltip content={t('tooltips.fileEditor.back')} position="bottom">
+                  <button
+                    onClick={leave}
+                    aria-label={t('editor.back')}
+                    className="focus:outline-none text-neutral-dk hover:text-ruby transition-colors"
+                  >
+                    <FaArrowLeft />
+                  </button>
+                </Tooltip>
               </EditorSaveBar>
               <div className="flex-1 min-h-0">
                 <Editor

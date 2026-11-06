@@ -3,6 +3,7 @@ import { Link, Outlet, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import toast, { Toaster } from 'react-hot-toast'
 import Logo from '@components/Logo'
+import Tooltip from '@components/Tooltip'
 import RunIndicator from '@components/RunIndicator'
 import ConceptsModal from '@components/ConceptsModal'
 import RubyInstallModal from '@components/RubyInstallModal'
@@ -146,19 +147,21 @@ const MainTemplate: React.FC = (): JSX.Element => {
       <header className="flex items-center justify-between bg-white px-8 py-3 border-b border-neutral-bdr shadow-nav">
         <div className="flex items-center gap-3">
           {/* Logo: clickable, opens concepts modal */}
-          <button
-            onClick={() => setIsConceptsModalOpen(true)}
-            aria-label="How Ruby Raider works"
-            className="relative group focus:outline-none"
-          >
-            <Logo size={36} />
-            {/* Hover ring */}
-            <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 ring-2 ring-ruby/40 transition-opacity duration-200 pointer-events-none" />
-            {/* Small "?" badge */}
-            <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-ruby text-white text-[9px] font-bold flex items-center justify-center leading-none shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              ?
-            </span>
-          </button>
+          <Tooltip content={t('tooltips.header.logo')} position="bottom">
+            <button
+              onClick={() => setIsConceptsModalOpen(true)}
+              aria-label="How Ruby Raider works"
+              className="relative group focus:outline-none"
+            >
+              <Logo size={36} />
+              {/* Hover ring */}
+              <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 ring-2 ring-ruby/40 transition-opacity duration-200 pointer-events-none" />
+              {/* Small "?" badge */}
+              <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-ruby text-white text-[9px] font-bold flex items-center justify-center leading-none shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                ?
+              </span>
+            </button>
+          </Tooltip>
           {projectPath ? (
             <Link
               to="/overview"

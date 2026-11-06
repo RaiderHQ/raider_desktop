@@ -1,4 +1,5 @@
 import React, { useRef } from 'react'
+import Tooltip from '@components/Tooltip'
 
 export interface SegmentedOption<T extends string> {
   value: T
@@ -15,6 +16,8 @@ interface SegmentedControlProps<T extends string> {
   value: T
   onChange: (value: T) => void
   testId?: string
+  /** Plain-language help, shown on hover and focus of the group */
+  tooltip?: string
 }
 
 function SegmentedControl<T extends string>({
@@ -22,7 +25,8 @@ function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
-  testId
+  testId,
+  tooltip
 }: SegmentedControlProps<T>): React.ReactElement {
   const refs = useRef<(HTMLButtonElement | null)[]>([])
 
@@ -53,45 +57,53 @@ function SegmentedControl<T extends string>({
     }
   }
 
+  const group = (
+    <div
+      role="radiogroup"
+      aria-label={label}
+      aria-describedby={options.find((o) => o.disabled && o.describedBy)?.describedBy}
+      data-testid={testId}
+      className="inline-flex rounded-md border border-neutral-bdr bg-white p-1 gap-1"
+    >
+      {options.map((option, index) => {
+        const selected = option.value === value
+        return (
+          <button
+            key={option.value}
+            ref={(el) => {
+              refs.current[index] = el
+            }}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            aria-disabled={option.disabled || undefined}
+            aria-describedby={option.describedBy}
+            tabIndex={selected ? 0 : -1}
+            onClick={() => !option.disabled && onChange(option.value)}
+            onKeyDown={(e) => handleKeyDown(e, index)}
+            className={`px-4 py-2 text-sm rounded transition-colors focus:outline-none focus:ring-2 focus:ring-ruby ${
+              selected ? 'bg-ruby text-white' : 'text-neutral-dk hover:bg-neutral-bdr/40'
+            } ${option.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {option.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+
   return (
     <div>
       <span className="block mb-1 text-xs font-semibold uppercase tracking-wider text-neutral-dk">
         {label}
       </span>
-      <div
-        role="radiogroup"
-        aria-label={label}
-        aria-describedby={options.find((o) => o.disabled && o.describedBy)?.describedBy}
-        data-testid={testId}
-        className="inline-flex rounded-md border border-neutral-bdr bg-white p-1 gap-1"
-      >
-        {options.map((option, index) => {
-          const selected = option.value === value
-          return (
-            <button
-              key={option.value}
-              ref={(el) => {
-                refs.current[index] = el
-              }}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              aria-disabled={option.disabled || undefined}
-              aria-describedby={option.describedBy}
-              tabIndex={selected ? 0 : -1}
-              onClick={() => !option.disabled && onChange(option.value)}
-              onKeyDown={(e) => handleKeyDown(e, index)}
-              className={`px-4 py-2 text-sm rounded transition-colors focus:outline-none focus:ring-2 focus:ring-ruby ${
-                selected
-                  ? 'bg-ruby text-white'
-                  : 'text-neutral-dk hover:bg-neutral-bdr/40'
-              } ${option.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {option.label}
-            </button>
-          )
-        })}
-      </div>
+      {tooltip ? (
+        <Tooltip content={tooltip} position="bottom">
+          {group}
+        </Tooltip>
+      ) : (
+        group
+      )}
     </div>
   )
 }
