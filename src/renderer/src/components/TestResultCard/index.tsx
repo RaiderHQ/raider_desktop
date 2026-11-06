@@ -244,7 +244,9 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
             {traceTestId && (
               <Tooltip
                 content={
-                  showTrace ? t('tooltips.dashboard.backToResults') : t('tooltips.dashboard.viewTrace')
+                  showTrace
+                    ? t('tooltips.dashboard.backToResults')
+                    : t('tooltips.dashboard.viewTrace')
                 }
               >
                 <button

@@ -1154,25 +1154,53 @@ const Overview: React.FC = () => {
                 <div>
                   <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.page')}</label>
                   <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
-                    <input type="text" value={pagePath} onChange={(e) => setPagePath(e.target.value)} onBlur={handlePathsUpdate} placeholder="e.g. pages" className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full" />
+                    <input
+                      type="text"
+                      value={pagePath}
+                      onChange={(e) => setPagePath(e.target.value)}
+                      onBlur={handlePathsUpdate}
+                      placeholder="e.g. pages"
+                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
+                    />
                   </Tooltip>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.feature')}</label>
                   <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
-                    <input type="text" value={featurePath} onChange={(e) => setFeaturePath(e.target.value)} onBlur={handlePathsUpdate} placeholder="e.g. features" className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full" />
+                    <input
+                      type="text"
+                      value={featurePath}
+                      onChange={(e) => setFeaturePath(e.target.value)}
+                      onBlur={handlePathsUpdate}
+                      placeholder="e.g. features"
+                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
+                    />
                   </Tooltip>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.spec')}</label>
                   <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
-                    <input type="text" value={specPath} onChange={(e) => setSpecPath(e.target.value)} onBlur={handlePathsUpdate} placeholder="e.g. spec" className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full" />
+                    <input
+                      type="text"
+                      value={specPath}
+                      onChange={(e) => setSpecPath(e.target.value)}
+                      onBlur={handlePathsUpdate}
+                      placeholder="e.g. spec"
+                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
+                    />
                   </Tooltip>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.helper')}</label>
                   <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
-                    <input type="text" value={helperPath} onChange={(e) => setHelperPath(e.target.value)} onBlur={handlePathsUpdate} placeholder="e.g. helpers" className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full" />
+                    <input
+                      type="text"
+                      value={helperPath}
+                      onChange={(e) => setHelperPath(e.target.value)}
+                      onBlur={handlePathsUpdate}
+                      placeholder="e.g. helpers"
+                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
+                    />
                   </Tooltip>
                 </div>
               </div>

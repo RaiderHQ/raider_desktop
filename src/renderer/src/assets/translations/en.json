@@ -756,20 +756,19 @@
   },
   "tooltips": {
     "recorder": {
-      "newTest": "Create a new blank test inside the active suite. Give it a name and a URL, then press Record.",
-      "deleteStep": "Remove this step from the test. The remaining steps will still run in order.",
-      "setBreakpoint": "Set a breakpoint here — click 'Record from here' to replay steps up to this point headlessly, then continue recording from this page state.",
+      "deleteStep": "Remove this step; the others still run in order",
+      "setBreakpoint": "Replay steps up to here, then keep recording from this point",
       "clearBreakpoint": "Clear this breakpoint."
     },
     "overview": {
       "urlInput": "The address tests open first, for example https://staging.example.com",
       "browserSelect": "The browser tests run in",
       "headlessToggle": "Run the browser hidden; faster, but you cannot watch it",
-      "runMode": "Which tests Run starts: all, smoke, regression or a tag",
+      "runMode": "Which tests start: all, smoke, regression or a tag",
       "rerunFailed": "Run only the tests that failed last time",
       "timeout": "Seconds a test may take before it fails",
-      "implicitWait": "Seconds Selenium automatically waits for a page element to appear before giving up. 0 means no automatic wait.",
-      "explicitWait": "Maximum seconds to wait for a specific condition — such as a button becoming clickable.",
+      "implicitWait": "Seconds Selenium waits for an element to appear; 0 means no wait",
+      "explicitWait": "Longest wait for one condition, such as a button becoming clickable",
       "tabTests": "Record, run and fix your tests",
       "tabFiles": "Browse and edit project files; set the browser and base URL",
       "tabScaffold": "Generate pages, tests and helpers from templates",
@@ -799,7 +798,7 @@
       "recordFromHere": "Replay the steps above, then keep recording",
       "drag": "Drag to move this step; steps run top to bottom",
       "edit": "Edit this step's code",
-      "weakLocator": "This step finds the element by its position in the page, which can break when the page changes. Re-record the step to pick a steadier one."
+      "weakLocator": "Found by position, which can break when the page changes; re-record it"
     },
     "failedStep": {
       "editValue": "Change the typed text",
@@ -831,7 +830,7 @@
       "treeRow": "Open in the editor; right-click for more",
       "runTests": "Run every test in the project",
       "deviceName": "The device the tests run on",
-      "osVersion": "Its OS version",
+      "osVersion": "Its system version",
       "appFile": "The app file to install"
     },
     "runPanel": {
@@ -862,7 +861,7 @@
       "name": "Lowercase letters, numbers and underscores; this is the folder name",
       "target": "What the tests will drive",
       "phones": "Which phones the tests run on",
-      "framework": "How tests are written: RSpec (Ruby) or Cucumber (plain-text steps)",
+      "framework": "How tests are written: RSpec (plain Ruby) or Cucumber (plain-text steps)",
       "ci": "Which CI service gets a ready-made pipeline file",
       "accessibility": "Adds an accessibility check to every test",
       "examples": "Adds example pages and tests to learn from",
@@ -874,7 +873,7 @@
     },
     "installGuide": {
       "back": "Go back to the start page",
-      "github": "Open the Ruby Raider repository on GitHub",
+      "github": "Open the Ruby Raider code repository",
       "website": "Open the Ruby Raider website"
     },
     "scaffold": {
