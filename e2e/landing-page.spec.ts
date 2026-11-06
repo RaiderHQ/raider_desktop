@@ -103,6 +103,30 @@ test.describe('Landing Page', () => {
     await expect(page.getByRole('heading', { name: 'Creating a New Project' })).toBeVisible()
   })
 
+  test('Learn more in a card help opens the documentation page through the main process', async ({
+    electronApp,
+    page
+  }) => {
+    // Record instead of opening a real browser
+    await electronApp.evaluate(async ({ shell }) => {
+      const opened: string[] = []
+      ;(globalThis as unknown as { __openedUrls: string[] }).__openedUrls = opened
+      shell.openExternal = async (url: string): Promise<void> => {
+        opened.push(url)
+      }
+    })
+    await page.locator('button[aria-label="Help"]').nth(1).click()
+    await expect(page.getByRole('heading', { name: 'Creating a New Project' })).toBeVisible()
+    await page.getByRole('button', { name: /Learn more about .* in the documentation/ }).click()
+    await expect
+      .poll(() =>
+        electronApp.evaluate(
+          () => (globalThis as unknown as { __openedUrls: string[] }).__openedUrls
+        )
+      )
+      .toEqual(['https://ruby-raider.onrender.com/docs/projects.html'])
+  })
+
   test('info modal can be closed', async ({ page }) => {
     // Quick record's card comes first; Create's help icon is the second
     const infoIcons = page.locator('button[aria-label="Help"]')
