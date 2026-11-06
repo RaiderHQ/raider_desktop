@@ -144,12 +144,24 @@ function createWindow(): void {
   // Set the main window instance in our app state module
   setMainWindow(newMainWindow)
 
-  // Closing while recording saves the recording first
+  const closeOrQuit = (): void => (quitting ? app.quit() : newMainWindow.close())
+
+  // Closing while recording saves the recording first. The flush's close listener is
+  // registered before the guard's, so the guard leaves a close the flush holds alone;
+  // once the recording is saved there is nothing left for the guard to ask about.
+  let guard: ReturnType<typeof installDocumentEdited> | undefined
   installCloseFlush(newMainWindow, ipcMain, {
-    close: () => (quitting ? app.quit() : newMainWindow.close())
+    close: closeOrQuit,
+    onBeforeClose: () => guard?.markClean()
   })
 
-  installDocumentEdited(newMainWindow, ipcMain)
+  // Closing with unsaved changes asks first; Cancel also cancels a pending quit
+  guard = installDocumentEdited(newMainWindow, ipcMain, {
+    close: closeOrQuit,
+    onCancel: () => {
+      quitting = false
+    }
+  })
 
   if (is.dev && appState.mainWindow) {
     appState.mainWindow.webContents.openDevTools()

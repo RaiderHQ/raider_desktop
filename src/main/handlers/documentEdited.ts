@@ -11,6 +11,8 @@ interface DocumentEditedOptions {
   dialog?: Pick<typeof dialog, 'showMessageBoxSync'>
   /** Closes for real once the choice is made; defaults to closing the window */
   close?: () => void
+  /** Runs when the person cancels the close, so a held quit does not carry on later */
+  onCancel?: () => void
   /** How long Save waits for the page to report a clean document */
   timeoutMs?: number
 }
@@ -19,6 +21,8 @@ interface DocumentEditedOptions {
  * The page reports its open document ('document-edited'); the window shows the
  * edited dot. Closing an edited window asks to save first: Save sends the save
  * command and closes once the page reports clean (or stays open after timeoutMs).
+ * A close another listener already holds (the recording flush) is not the guard's:
+ * install the guard after it so its close listener runs second.
  */
 export function installDocumentEdited(
   win: BrowserWindow,
@@ -26,24 +30,28 @@ export function installDocumentEdited(
   {
     dialog: dlg = dialog,
     close = (): void => win.close(),
+    onCancel = (): void => {},
     timeoutMs = 5000
   }: DocumentEditedOptions = {}
-): { state: () => DocumentEditedState } {
+): { state: () => DocumentEditedState; markClean: () => void } {
   let current: DocumentEditedState = { edited: false, name: '' }
   let busy = false
   let afterReport: (() => void) | null = null
 
-  const onEdited = (_event: unknown, flag: unknown, name: unknown): void => {
+  const onEdited = (event: { sender?: unknown }, flag: unknown, name: unknown): void => {
+    if (win.isDestroyed() || event?.sender !== win.webContents) return
     current = {
       edited: flag === true,
       name: typeof name === 'string' ? name.slice(0, 200) : ''
     }
-    if (!win.isDestroyed()) win.setDocumentEdited(current.edited)
+    win.setDocumentEdited(current.edited)
     if (!current.edited) afterReport?.()
   }
   ipc.on('document-edited', onEdited)
 
   win.on('close', (event) => {
+    // Held by another listener (the recording flush owns closes while recording)
+    if (event.defaultPrevented) return
     if (busy) {
       event.preventDefault()
       return
@@ -82,10 +90,15 @@ export function installDocumentEdited(
       win.webContents.send('menu-command', 'save')
     } else {
       busy = false
+      onCancel()
     }
   })
 
   win.on('closed', () => ipc.removeListener('document-edited', onEdited))
 
-  return { state: () => current }
+  const markClean = (): void => {
+    current = { ...current, edited: false }
+  }
+
+  return { state: () => current, markClean }
 }
