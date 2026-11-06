@@ -790,7 +790,7 @@
       "startRecording": "Open the page and start recording",
       "cancelNew": "Go back without starting a recording",
       "cancelPick": "Stop picking and keep recording",
-      "addAssertion": "Pick something on the page to check, or right-click it",
+      "addAssertion": "Pick something on the page and add a check for it",
       "examples": "Pick which test in the file to work on",
       "saveAsNew": "Keep these steps as a separate recorded test"
     },

@@ -66,7 +66,8 @@ import recorderEvent, { RecorderEventData } from './handlers/recording/recorderE
 import {
   handleRecorderPickCancelled,
   handleRecorderPicked,
-  handleSetPickMode
+  handleSetPickMode,
+  handleShowAssertionContextMenu
 } from './handlers/recording/pickMode'
 import registerRecorderWebContents from './handlers/recording/registerRecorderWebContents'
 import loadUrlRequest from './handlers/loadUrlRequest'
@@ -76,7 +77,6 @@ import replayInWebview, { cancelWebviewReplay } from './handlers/recording/repla
 import stopRecordingMain from './handlers/recording/stopRecordingMain'
 import saveRecording from './handlers/recording/saveRecording'
 import { installCloseFlush } from './handlers/recording/closeFlush'
-import { showAssertionContextMenu } from './handlers/recording/assertionContextMenu'
 import saveTrace from './handlers/trace/saveTrace'
 import loadTrace from './handlers/trace/loadTrace'
 import deleteTrace from './handlers/trace/deleteTrace'
@@ -439,7 +439,9 @@ app.whenReady().then(() => {
   })
 
   // --- Assertion Context Menu Handler ---
-  ipcMain.on('show-assertion-context-menu', showAssertionContextMenu)
+  ipcMain.on('show-assertion-context-menu', (event, data: unknown) =>
+    handleShowAssertionContextMenu(event.sender.id, data)
+  )
 })
 
 app.on('window-all-closed', () => {

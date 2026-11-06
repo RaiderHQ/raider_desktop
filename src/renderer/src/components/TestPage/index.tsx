@@ -479,7 +479,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
                 </button>
               </Tooltip>
             )}
-            {recording.isRecording && <CheckSomethingButton disabled={picking} />}
+            {recording.isRecording && <CheckSomethingButton disabled={picking || isReplaying} />}
             <Tooltip
               content={t('tooltips.testPage.run')}
               shortcut="run"

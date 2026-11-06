@@ -332,11 +332,25 @@ describe('installPickMode', () => {
   })
 
   it('a right-click while picking for a check is blocked', () => {
+    // The recorder's own right-click listener sits on the document, as in recorderPreload
+    const recorderMenu = vi.fn(() => send('show-assertion-context-menu', {}))
+    document.addEventListener('contextmenu', recorderMenu, true)
+    const pageMenu = vi.fn()
+    document.getElementById('save')!.addEventListener('contextmenu', pageMenu)
     pick.setPicking(true)
     const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
     document.getElementById('save')!.dispatchEvent(event)
+    document.removeEventListener('contextmenu', recorderMenu, true)
     expect(event.defaultPrevented).toBe(true)
+    expect(recorderMenu).not.toHaveBeenCalled()
+    expect(pageMenu).not.toHaveBeenCalled()
     expect(send).not.toHaveBeenCalledWith('show-assertion-context-menu', expect.anything())
-    expect(send).not.toHaveBeenCalled()
+
+    // Control: with picking off the same listener does run
+    pick.setPicking(false)
+    document.addEventListener('contextmenu', recorderMenu, true)
+    document.getElementById('save')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }))
+    document.removeEventListener('contextmenu', recorderMenu, true)
+    expect(recorderMenu).toHaveBeenCalledTimes(1)
   })
 })

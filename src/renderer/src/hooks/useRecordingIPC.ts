@@ -124,6 +124,8 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
     // Complete steps are added directly; text checks first ask the user for the expected text
     const handleAddAssertion = (message: AssertionMessage): void => {
       if (picking()) return
+      // A menu left open past Stop & save adds nothing
+      if (!useRecorderStore.getState().isRecording) return
       if (isPendingAssertion(message)) {
         setAssertionInfo(message)
       } else {

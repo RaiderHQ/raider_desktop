@@ -144,36 +144,54 @@ const text = (v: unknown): string | undefined => (typeof v === 'string' ? v : un
 /** Text from the untrusted page, capped so a hostile page can't flood the menu */
 const capped = (v: unknown, max: number): string | undefined => text(v)?.slice(0, max)
 
-export function handleRecorderPicked(senderId: number, data: unknown): void {
-  if (!fromPickingGuest(senderId) || typeof data !== 'object' || data === null) return
+/** Validates what the untrusted page sent for the assertion menu: strings only, each capped */
+export function assertionRequestFrom(data: unknown): AssertionMenuRequest | null {
+  if (typeof data !== 'object' || data === null) return null
   const d = data as Record<string, unknown>
-  const hints: LabelHints = {
-    innerText: text(d.innerText),
-    ariaLabel: text(d.ariaLabel),
-    placeholder: text(d.placeholder),
-    locator: d.locator
+  return {
+    selector: capped(d.selector, 2000) ?? '',
+    strategy: capped(d.strategy, 32) ?? '',
+    locator: d.locator,
+    ariaLabel: capped(d.ariaLabel, 200),
+    placeholder: capped(d.placeholder, 200),
+    // The right-click path sends `elementText`, the pick path `innerText`
+    elementText: capped(d.elementText ?? d.innerText, 200),
+    elementValue: capped(d.elementValue, 500),
+    inputType: capped(d.inputType, 32),
+    pageTitle: capped(d.pageTitle, 300),
+    pageUrl: capped(d.pageUrl, 2000)
   }
-  const element = toElementTarget(text(d.strategy) ?? '', text(d.selector) ?? '', hints)
+}
+
+/** A right-click in the recorder page: only the recorder may ask for the assertion menu */
+export function handleShowAssertionContextMenu(senderId: number, data: unknown): void {
+  if (appState.recorderWebContentsId === null || senderId !== appState.recorderWebContentsId) {
+    return
+  }
+  const request = assertionRequestFrom(data)
+  if (request) showAssertionContextMenu(null, request)
+}
+
+export function handleRecorderPicked(senderId: number, data: unknown): void {
+  if (!fromPickingGuest(senderId)) return
+  const request = assertionRequestFrom(data)
+  if (!request) return
+  const hints: LabelHints = {
+    innerText: request.elementText,
+    ariaLabel: request.ariaLabel,
+    placeholder: request.placeholder,
+    locator: request.locator
+  }
+  const element = toElementTarget(request.strategy, request.selector, hints)
   // Nothing usable to find it by: the guest has already stopped, so keep it picking
   if (!element) {
     guest()?.send('recorder-pick-mode', true)
     return
   }
   if (appState.pickPurpose === 'assert') {
-    const request: AssertionMenuRequest = {
-      selector: text(d.selector) ?? '',
-      strategy: text(d.strategy) ?? '',
-      locator: d.locator,
-      ariaLabel: hints.ariaLabel,
-      placeholder: hints.placeholder,
-      elementText: hints.innerText,
-      elementValue: capped(d.elementValue, 500),
-      inputType: capped(d.inputType, 32),
-      pageTitle: capped(d.pageTitle, 300),
-      pageUrl: capped(d.pageUrl, 2000)
-    }
-    showAssertionContextMenu(null, request)
+    // Pick mode ends first: a popup that blocks or throws must not leave it on
     endPickMode({ cancelled: true, reason: 'asserted' })
+    showAssertionContextMenu(null, request)
     return
   }
   endPickMode({ element })

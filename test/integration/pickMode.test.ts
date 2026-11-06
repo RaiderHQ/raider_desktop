@@ -38,6 +38,7 @@ import {
   setPickMode,
   handleSetPickMode,
   handleRecorderPicked,
+  handleShowAssertionContextMenu,
   handleRecorderPickCancelled
 } from '../../src/main/handlers/recording/pickMode'
 import registerRecorderWebContents from '../../src/main/handlers/recording/registerRecorderWebContents'
@@ -174,6 +175,59 @@ describe('pick mode in main', () => {
     expect(request.pageUrl).toBeUndefined()
     expect(picked()).toEqual([['recorder-picked', { cancelled: true, reason: 'asserted' }]])
     expect(state.pickMode).toBe(false)
+  })
+
+  it('caps the label hints and the selector in main', async () => {
+    await pickOn(() => handleSetPickMode(1, true, 'assert'))
+    handleRecorderPicked(7, {
+      strategy: 'css',
+      selector: '#' + 'a'.repeat(3000),
+      innerText: 'i'.repeat(500),
+      ariaLabel: 'l'.repeat(500),
+      placeholder: 'p'.repeat(500)
+    })
+    const request = showMenu.mock.calls[0][1] as Record<string, string>
+    expect(request.selector.length).toBe(2000)
+    expect(request.elementText.length).toBe(200)
+    expect(request.ariaLabel.length).toBe(200)
+    expect(request.placeholder.length).toBe(200)
+  })
+
+  it('ends the pick before the menu opens, so a menu that throws leaves pick mode off', async () => {
+    await pickOn(() => handleSetPickMode(1, true, 'assert'))
+    showMenu.mockImplementationOnce(() => {
+      expect(state.pickMode).toBe(false)
+      throw new Error('popup failed')
+    })
+    expect(() => handleRecorderPicked(7, { strategy: 'css', selector: '#x' })).toThrow()
+    expect(state.pickMode).toBe(false)
+    expect(picked()).toEqual([['recorder-picked', { cancelled: true, reason: 'asserted' }]])
+  })
+
+  describe('a right-click in the recorder', () => {
+    it('ignores a sender that is not the recorder', () => {
+      handleShowAssertionContextMenu(8, { strategy: 'css', selector: '#x' })
+      expect(showMenu).not.toHaveBeenCalled()
+    })
+
+    it('opens the menu with fields capped like a pick', () => {
+      handleShowAssertionContextMenu(7, {
+        strategy: 'css',
+        selector: '#x',
+        elementText: 'Save',
+        pageUrl: 'u'.repeat(10_000),
+        elementValue: 5
+      })
+      const request = showMenu.mock.calls[0][1] as Record<string, unknown>
+      expect(request).toMatchObject({ selector: '#x', elementText: 'Save' })
+      expect((request.pageUrl as string).length).toBe(2000)
+      expect(request.elementValue).toBeUndefined()
+    })
+
+    it('ignores a payload that is not an object', () => {
+      handleShowAssertionContextMenu(7, 'x')
+      expect(showMenu).not.toHaveBeenCalled()
+    })
   })
 
   it('an unknown purpose is refused', async () => {

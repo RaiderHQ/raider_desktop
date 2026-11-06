@@ -1301,5 +1301,32 @@ describe('Check something…', () => {
     fireEvent.click(screen.getByRole('button', { name: 'testPage.stop' }))
     expect(useRecorderStore.getState().assertPicking).toBe(false)
     expect(api.stopRecordingMain).toHaveBeenCalled()
+    const stepsAfterStop = JSON.stringify(useRecorderStore.getState().activeTest?.steps)
+    await emit('add-assertion-step', { id: 'z', kind: 'assert', check: 'displayed' })
+    await emit('recorder-picked', { cancelled: true, reason: 'asserted' })
+    expect(JSON.stringify(useRecorderStore.getState().activeTest?.steps)).toBe(stepsAfterStop)
+    expect(useRecorderStore.getState().assertPicking).toBe(false)
+  })
+
+  it('a late refusal of an earlier start does not end a newer pick', async () => {
+    await recordingNow()
+    const late: Array<(r: { success: boolean }) => void> = []
+    setPick().mockImplementation(
+      (on: boolean) =>
+        new Promise((resolve) => (on ? late.push(resolve) : resolve({ success: true })))
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.addAssertion' }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.addAssertion' }))
+    await act(async () => late[0]({ success: false }))
+    expect(useRecorderStore.getState().assertPicking).toBe(true)
+    await act(async () => late[1]({ success: false }))
+    expect(useRecorderStore.getState().assertPicking).toBe(false)
+  })
+
+  it('is disabled while a replay runs', async () => {
+    await recordingNow()
+    act(() => useRecorderStore.getState().setIsReplayingToBreakpoint(true))
+    expect(screen.getByRole('button', { name: 'testPage.addAssertion' })).toBeDisabled()
   })
 })

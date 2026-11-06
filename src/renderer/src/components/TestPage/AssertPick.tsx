@@ -6,8 +6,12 @@ import useRecorderStore from '@foundation/Stores/recorderStore'
 const toolbarButton =
   'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white disabled:text-neutral-mid disabled:cursor-not-allowed'
 
+// Which start is the latest: a late answer to an earlier one must not end a newer pick
+let startToken = 0
+
 /** Ends only the pick for a check; the recording goes on */
 export const cancelAssertPick = (): void => {
+  startToken++
   void Promise.resolve(window.api.setPickMode(false)).catch((error: unknown) =>
     console.error('Ending the pick failed:', error)
   )
@@ -16,14 +20,18 @@ export const cancelAssertPick = (): void => {
 
 /** Picking an element to check: the banner goes when main reports the pick ended */
 const startAssertPick = (): void => {
+  const token = ++startToken
+  const failed = (): void => {
+    if (token === startToken) useRecorderStore.getState().setAssertPicking(false)
+  }
   useRecorderStore.getState().setAssertPicking(true)
   Promise.resolve(window.api.setPickMode(true, 'assert'))
     .then((result) => {
-      if (!result.success) useRecorderStore.getState().setAssertPicking(false)
+      if (!result.success) failed()
     })
     .catch((error: unknown) => {
       console.error('Starting the pick failed:', error)
-      useRecorderStore.getState().setAssertPicking(false)
+      failed()
     })
 }
 
