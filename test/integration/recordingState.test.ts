@@ -12,6 +12,7 @@ beforeEach(() => {
   appState.mainWindow = { isDestroyed: () => false, webContents } as never
 })
 afterEach(() => {
+  appState.recording = false
   appState.mainWindow = savedWindow
 })
 
@@ -42,8 +43,27 @@ describe('installRecordingState', () => {
 
   it.each([false, 'true', 1, null, undefined, {}])('reports false for %j', (value) => {
     const { send, onChange } = setup()
+    // Something other than true means "not recording": a change only while recording
+    appState.recording = true
     send(value)
     expect(onChange).toHaveBeenLastCalledWith(false)
+  })
+
+  it('passes on a change only, not the same value again', () => {
+    const { send, onChange } = setup()
+    appState.recording = false
+    send(false)
+    expect(onChange).not.toHaveBeenCalled()
+    send(true)
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenLastCalledWith(true)
+    // index.ts records the new state in onChange; the mock does not, so do it here
+    appState.recording = true
+    send(true)
+    expect(onChange).toHaveBeenCalledTimes(1)
+    send(false)
+    expect(onChange).toHaveBeenLastCalledWith(false)
+    appState.recording = false
   })
 
   it('ignores anything but the main window', () => {

@@ -381,6 +381,19 @@ describe('MainTemplate project files toasts', () => {
       })
     })
 
+    it('closing the sheet opened from the concepts modal focuses the header logo', () => {
+      const root = document.createElement('div')
+      root.id = 'root'
+      document.body.appendChild(root)
+      renderAt('/overview')
+      fireEvent.click(screen.getByRole('button', { name: 'How Ruby Raider works' }))
+      fireEvent.click(screen.getByRole('button', { name: /concepts\.shortcuts/ }))
+      fireEvent.keyDown(screen.getByRole('dialog', { name: 'shortcuts.title' }), { key: 'Escape' })
+      expect(screen.queryByRole('dialog', { name: 'shortcuts.title' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'How Ruby Raider works' })).toHaveFocus()
+      root.remove()
+    })
+
     describe('with unsaved edits', () => {
       afterEach(() => useEditorStore.setState({ pageDirty: false, inlineDirty: false }))
 

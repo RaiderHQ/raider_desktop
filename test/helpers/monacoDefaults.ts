@@ -48,7 +48,7 @@ const monacoDefaults = async (os: Os): Promise<{ chords: Set<string>; count: num
   const realPlatform = process.platform
   Object.defineProperty(process, 'platform', { value: PROCESS_PLATFORM[os], configurable: true })
   // The clipboard contribution probes this at load; jsdom does not have it
-  ;(document as unknown as Record<string, unknown>).queryCommandSupported = () => false
+  ;(document as unknown as Record<string, unknown>).queryCommandSupported = (): boolean => false
   try {
     await import('monaco-editor/esm/vs/editor/editor.all.js')
   } finally {

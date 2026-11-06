@@ -4,13 +4,16 @@ import { appState } from '../appState'
 /**
  * The main window reports whether a recording is running on 'menu-recording' (one way,
  * for the Record / Stop & save menu item). Only the boolean true counts, and only the
- * main window's page may say it.
+ * main window's page may say it. An unchanged value is not passed on.
  */
 export function installRecordingState(ipc: IpcMain, onChange: (recording: boolean) => void): void {
   ipc.on('menu-recording', (event: { sender?: unknown }, active: unknown) => {
     const main = appState.mainWindow
     if (!main || main.isDestroyed() || event.sender !== main.webContents) return
-    onChange(active === true)
+    const recording = active === true
+    // The page repeats itself; rebuilding the menu for an unchanged value is wasted work
+    if (recording === appState.recording) return
+    onChange(recording)
   })
 }
 

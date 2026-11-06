@@ -44,6 +44,18 @@ describe('ShortcutsSheet', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('Esc still closes after a click inside the table moved focus to the dialog', () => {
+    const onClose = vi.fn()
+    render(<ShortcutsSheet onClose={onClose} />)
+    // A click on non-focusable text focuses the nearest focusable ancestor: the dialog
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toHaveAttribute('tabindex', '-1')
+    dialog.focus()
+    expect(dialog).toHaveFocus()
+    fireEvent.keyDown(document.activeElement as Element, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalled()
+  })
+
   it('Tab stays inside', () => {
     render(<ShortcutsSheet onClose={vi.fn()} />)
     const close = screen.getByRole('button', { name: 'shortcuts.close' })

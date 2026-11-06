@@ -28,6 +28,14 @@ const MainTemplate: React.FC = (): JSX.Element => {
   const [missingGems, setMissingGems] = useState<string[] | undefined>(undefined)
   const [isConceptsModalOpen, setIsConceptsModalOpen] = useState(false)
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false)
+  // The sheet opened from the concepts modal: its footer button is gone, so focus goes to the logo
+  const logoRef = useRef<HTMLButtonElement>(null)
+  const sheetFromConcepts = useRef(false)
+  useEffect(() => {
+    if (isShortcutsOpen || !sheetFromConcepts.current) return
+    sheetFromConcepts.current = false
+    logoRef.current?.focus()
+  }, [isShortcutsOpen])
 
   // Run ruby check once at app startup
   useEffect(() => {
@@ -174,6 +182,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
           {/* Logo: clickable, opens concepts modal */}
           <Tooltip content={t('tooltips.header.logo')} position="bottom">
             <button
+              ref={logoRef}
               onClick={() => setIsConceptsModalOpen(true)}
               aria-label="How Ruby Raider works"
               className="relative group focus:outline-none"
@@ -213,6 +222,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
         <ConceptsModal
           onClose={() => setIsConceptsModalOpen(false)}
           onOpenShortcuts={() => {
+            sheetFromConcepts.current = true
             setIsConceptsModalOpen(false)
             setIsShortcutsOpen(true)
           }}

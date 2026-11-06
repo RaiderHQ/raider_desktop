@@ -70,9 +70,10 @@ const ShortcutsSheet: React.FC<ShortcutsSheetProps> = ({ onClose }) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="shortcuts-title"
+        tabIndex={-1}
         onKeyDown={onKeyDown}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-xl shadow-elevated w-full max-w-md max-h-[85vh] flex flex-col"
+        className="bg-white rounded-xl shadow-elevated w-full max-w-md max-h-[85vh] flex flex-col focus:outline-none"
       >
         <div className="px-6 py-4 border-b border-neutral-bdr shrink-0">
           <h2 id="shortcuts-title" className="text-lg font-semibold text-neutral-dark">
