@@ -115,6 +115,8 @@ describe('QuickRecordDialog', (): void => {
     const draft = useRecorderStore.getState().draftTest
     expect(draft?.name).toBe('Checkout')
     expect(draft?.url).toBe('https://example.com')
+    // The test page starts the recorder itself, so Start really starts (D8)
+    expect(useRecorderStore.getState().recordOnOpen).toBe(true)
     expect(mockNavigate).toHaveBeenCalledWith('/overview/tests/new')
     expect(onClose).toHaveBeenCalled()
   })

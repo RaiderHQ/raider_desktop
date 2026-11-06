@@ -2,6 +2,7 @@ import React, { SetStateAction, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
+import { toRecordableUrl } from '@shared/recordUrl'
 import CommandList from '@components/CommandList'
 import OutputPanel from '@components/OutputPanel'
 import StyledPanel from '@components/StyledPanel'
@@ -283,11 +284,36 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   }
 
   const startDraft = (name: string, url: string): void => {
+    // A bad address keeps the form: no draft is made that can't record (D8)
+    if (url.trim() !== '' && !toRecordableUrl(url)) {
+      toast.error(t('recorder.unsupportedUrl'))
+      return
+    }
     useRecorderStore.getState().startDraft(name, url)
     recording
       .start(draftTarget)
       .catch((error: unknown) => console.error('Recording failed:', error))
   }
+
+  // Quick record made the draft elsewhere and asked for the recorder to start on arrival
+  const hasTest = !!test
+  useEffect(() => {
+    // The flag is read from the store and consumed here, so a re-render can't start twice
+    const store = useRecorderStore.getState()
+    if (!isDraft || !hasTest || !store.recordOnOpen) return
+    store.setRecordOnOpen(false)
+    // A fresh target object per run: a start the rehearsal mount abandoned sees the next
+    // run's target in the store and stops itself before it reaches main
+    recording
+      .start({ ...draftTarget })
+      .catch((error: unknown) => console.error('Recording failed:', error))
+    return (): void => {
+      // Gone before the recorder got going (StrictMode's rehearsal mount, or a quick leave):
+      // the hook's own cleanup has already abandoned the start, so ask again next time
+      const { isRecording, recordingTarget } = useRecorderStore.getState()
+      if (!isRecording && !recordingTarget) useRecorderStore.getState().setRecordOnOpen(true)
+    }
+  }, [isDraft, hasTest])
 
   const moreOptions = [
     ...(readOnly || recordingDisabled

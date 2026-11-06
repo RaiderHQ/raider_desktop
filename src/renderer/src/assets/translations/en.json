@@ -1,7 +1,7 @@
 {
   "landing": {
     "title": "Welcome to Ruby Raider!",
-    "subtitle": "It is a gem that provides a generator and scaffolding to simplify UI test automation.",
+    "subtitle": "Record, run and fix UI tests without leaving the app.",
     "quickRecordings": {
       "title": "Quick recordings",
       "hint": "Recordings Raider keeps in its own folder. Open one to keep going or save it to a folder.",
@@ -182,27 +182,27 @@
         "unexpected": "An unexpected error occurred. Please try again."
       },
       "implicitWait": {
-        "label": "Implicit Wait"
+        "label": "Implicit wait"
       },
       "explicitWait": {
-        "label": "Explicit Wait"
+        "label": "Explicit wait"
       }
     },
     "timeout": {
       "label": "Test timeout",
-      "updateButton": "Update Timeout",
+      "updateButton": "Update timeout",
       "updateSuccess": "Timeout updated successfully!"
     },
     "viewport": {
       "title": "Viewport",
       "width": "Width:",
       "height": "Height:",
-      "updateButton": "Update Viewport",
+      "updateButton": "Update viewport",
       "updateSuccess": "Viewport updated successfully!"
     },
     "browserOptions": {
       "placeholder": "Add option (e.g. headless)...",
-      "updateButton": "Update Options",
+      "updateButton": "Update options",
       "updateSuccess": "Browser options updated!"
     },
     "paths": {
@@ -261,20 +261,19 @@
       "urlPlaceholder": "https://example.com",
       "browserLabel": "Browser",
       "headlessLabel": "Headless",
-      "urlUpdateSuccess": "Base URL updated!",
       "urlUpdateFailed": "Failed to update base URL.",
-      "browserUpdateSuccess": "Browser updated!",
       "browserUpdateFailed": "Failed to update browser.",
-      "headlessUpdateSuccess": "Headless mode updated!",
       "headlessUpdateFailed": "Failed to update headless mode.",
       "runModeLabel": "Run",
       "runMode": {
-        "all": "All Tests",
+        "all": "All tests",
         "smoke": "Smoke",
         "regression": "Regression"
       },
       "customTagPlaceholder": "Tag name...",
-      "rerunFailed": "Re-run Failed"
+      "rerunFailed": "Re-run failed",
+      "urlInvalid": "Enter a full address starting with http:// or https://, for example https://example.com.",
+      "saved": "Saved"
     }
   },
   "editor": {
@@ -295,16 +294,16 @@
     "loading": "Loading..."
   },
   "testResults": {
-    "breakdown": "Test Results Breakdown",
+    "breakdown": "Test results breakdown",
     "status": "Status",
-    "viewScreenshot": "View Screenshot",
+    "viewScreenshot": "View screenshot",
     "video": "Failure video",
     "passed": "Passed",
     "failed": "Failed",
     "skipped": "Skipped",
     "quarantined": "Quarantined",
     "quarantinedTooltip": "Failed, but quarantined in Raider; did not fail the build",
-    "viewTrace": "View Trace",
+    "viewTrace": "View trace",
     "failedAt": "Failed at",
     "stackTrace": "Stack trace",
     "moreFrames": "… {{count}} more",
@@ -315,23 +314,23 @@
     }
   },
   "dashboard": {
-    "overallSummary": "Overall Summary",
-    "totalTests": "Total Tests",
+    "overallSummary": "Overall summary",
+    "totalTests": "Total tests",
     "passed": "Passed",
     "failed": "Failed",
     "skipped": "Skipped",
     "quarantined": "Quarantined",
     "noResults": {
       "title": "No test results yet",
-      "subtitle": "Run your tests from the Files tab and results will appear here.",
-      "step1": "Open the Files tab and browse your project files.",
+      "subtitle": "Run your tests from the Tests tab or the Files tab, and the results will appear here.",
+      "step1": "Open the Tests tab and pick a test, or the Files tab to run the whole project.",
       "step2": "Use the toolbar to choose your browser, run mode, and timeout.",
-      "step3": "Click the Run button — then come back here to see the results."
+      "step3": "Click Run — then come back here to see the results."
     },
     "openReport": "Open report",
-    "viewTrace": "View Trace",
-    "backToResults": "Back to Results",
-    "traceTitle": "Trace View",
+    "viewTrace": "View trace",
+    "backToResults": "Back to results",
+    "traceTitle": "Trace view",
     "error": {
       "fetching": "Error fetching dashboard",
       "parsing": "Error parsing {{file}}",
@@ -375,7 +374,7 @@
     "restore": "Restore",
     "newTest": "New test",
     "startRecording": "Start recording",
-    "editedInCode": "Edited in code",
+    "editedInCode": "From file",
     "selectOrCreate": "Select a test, or create a new one.",
     "fileMissing": "File missing",
     "restored": "The test was restored.",
@@ -471,7 +470,7 @@
     "unsupportedUrl": "Only http and https websites can be recorded.",
     "placeholder": {
       "url": "Enter URL to record",
-      "commands": "Recorded Selenium Ruby commands will appear here..."
+      "commands": "Steps you record will appear here. Press Record to begin."
     },
     "button": {
       "setUrl": "Set URL",
@@ -559,7 +558,7 @@
       "settings": "Settings"
     },
     "recorderPage": {
-      "traceView": "Trace View",
+      "traceView": "Trace view",
       "traceViewExit": "Exit Trace"
     },
     "traceTimeline": {
@@ -609,7 +608,7 @@
   "concepts": {
     "title": "How Ruby Raider Works",
     "subtitle": "New here? These are the key ideas you need to get started.",
-    "hint": "Hover over any button or input in the app for a quick explanation. Click ℹ on any tab for more detail.",
+    "hint": "Click ℹ on any tab or card for a short explanation of what it does.",
     "installTitle": "Installation Prerequisites",
     "installSubtitle": "Ruby Raider needs three things installed on your machine before it can run.",
     "install": {
@@ -723,7 +722,7 @@
       },
       "dashboard": {
         "title": "Project Dashboard",
-        "message": "The dashboard gives you an at-a-glance view of your project's test health — total tests, recent pass/fail trends, and run history.\n\nUse it to track quality over time without having to run tests manually."
+        "message": "The dashboard shows the last run at a glance: how many tests passed, failed or were skipped, and what went wrong in each failure.\n\nOpen a failed test to see the step it failed on, the screenshot and the trace."
       }
     },
     "createProject": {
