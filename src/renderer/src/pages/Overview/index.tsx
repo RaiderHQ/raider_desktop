@@ -591,6 +591,8 @@ const Overview: React.FC = () => {
   useEffect(() => {
     // Only the file the user can see, only when it has changes, one write at a time
     if (!editingFile || activeTab !== 'files' || !fileDirty || isSavingFile) return
+    // Ruling: Cmd+S listeners stay: the menu accelerator does not reach Playwright's synthetic keys / does not pre-empt the page.
+    // File › Save (onMenuCommand) is the native path; this listener is the one e2e keystrokes reach.
     const handleKeyDown = (e: KeyboardEvent): void => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
