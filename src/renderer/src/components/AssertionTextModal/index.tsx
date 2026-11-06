@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Button from '@components/Button'
 import InputField from '@components/InputField'
 import { useTranslation } from 'react-i18next'
@@ -33,6 +33,14 @@ const AssertionTextModal: React.FC<AssertionTextModalProps> = ({
     }
   }
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return (): void => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
   const handleOutsideClick = (e: React.MouseEvent): void => {
     if ((e.target as HTMLElement).id === 'assertion-modal-overlay') {
       onClose()
@@ -46,12 +54,17 @@ const AssertionTextModal: React.FC<AssertionTextModalProps> = ({
       onClick={handleOutsideClick}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="assertion-modal-title"
         className="bg-white rounded-xl shadow-elevated w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="px-6 py-4 border-b border-neutral-bdr">
-          <h2 className="text-lg font-semibold text-neutral-dark">{t(titleKey)}</h2>
+          <h2 id="assertion-modal-title" className="text-lg font-semibold text-neutral-dark">
+            {t(titleKey)}
+          </h2>
         </div>
 
         {/* Body */}

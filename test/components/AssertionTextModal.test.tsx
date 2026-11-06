@@ -61,9 +61,7 @@ describe('AssertionTextModal', () => {
 
   it('renders text-includes title when assertionType is text-includes', () => {
     render(<AssertionTextModal {...defaultProps} assertionType="text-includes" />)
-    expect(
-      screen.getByText('recorder.assertionTextModal.titles.text-includes')
-    ).toBeInTheDocument()
+    expect(screen.getByText('recorder.assertionTextModal.titles.text-includes')).toBeInTheDocument()
     expect(
       screen.getByText('recorder.assertionTextModal.messages.text-includes')
     ).toBeInTheDocument()
@@ -71,32 +69,20 @@ describe('AssertionTextModal', () => {
 
   it('renders value title when assertionType is value', () => {
     render(<AssertionTextModal {...defaultProps} assertionType="value" />)
-    expect(
-      screen.getByText('recorder.assertionTextModal.titles.value')
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('recorder.assertionTextModal.messages.value')
-    ).toBeInTheDocument()
+    expect(screen.getByText('recorder.assertionTextModal.titles.value')).toBeInTheDocument()
+    expect(screen.getByText('recorder.assertionTextModal.messages.value')).toBeInTheDocument()
   })
 
   it('renders page-title title when assertionType is page-title', () => {
     render(<AssertionTextModal {...defaultProps} assertionType="page-title" />)
-    expect(
-      screen.getByText('recorder.assertionTextModal.titles.page-title')
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('recorder.assertionTextModal.messages.page-title')
-    ).toBeInTheDocument()
+    expect(screen.getByText('recorder.assertionTextModal.titles.page-title')).toBeInTheDocument()
+    expect(screen.getByText('recorder.assertionTextModal.messages.page-title')).toBeInTheDocument()
   })
 
   it('renders page-url title when assertionType is page-url', () => {
     render(<AssertionTextModal {...defaultProps} assertionType="page-url" />)
-    expect(
-      screen.getByText('recorder.assertionTextModal.titles.page-url')
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('recorder.assertionTextModal.messages.page-url')
-    ).toBeInTheDocument()
+    expect(screen.getByText('recorder.assertionTextModal.titles.page-url')).toBeInTheDocument()
+    expect(screen.getByText('recorder.assertionTextModal.messages.page-url')).toBeInTheDocument()
   })
 
   it('calls onClose when clicking the overlay', () => {
@@ -113,5 +99,16 @@ describe('AssertionTextModal', () => {
     const title = screen.getByText('recorder.assertionTextModal.titles.text')
     fireEvent.click(title)
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('is a labelled dialog and Esc closes it', () => {
+    const onClose = vi.fn()
+    render(<AssertionTextModal {...defaultProps} onClose={onClose} />)
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+    const title = screen.getByText('recorder.assertionTextModal.titles.text')
+    expect(dialog).toHaveAttribute('aria-labelledby', title.id)
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })

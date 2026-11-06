@@ -1268,7 +1268,27 @@ describe('Check something…', () => {
     await recordingNow()
     fireEvent.click(screen.getByRole('button', { name: 'testPage.addAssertion' }))
     expect(setPick()).toHaveBeenCalledWith(true, 'assert')
+    await act(async () => {})
     expect(screen.getByText('testPage.assertPickBanner')).toBeInTheDocument()
+  })
+
+  it('says it is getting ready until main has turned picking on', async () => {
+    await recordingNow()
+    let ready: (r: { success: boolean }) => void = () => {}
+    setPick().mockImplementation(() => new Promise((resolve) => (ready = resolve)))
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.addAssertion' }))
+    expect(screen.getByText('testPage.assertPickStarting')).toBeInTheDocument()
+    expect(screen.queryByText('testPage.assertPickBanner')).not.toBeInTheDocument()
+    await act(async () => ready({ success: true }))
+    expect(screen.getByText('testPage.assertPickBanner')).toBeInTheDocument()
+    expect(screen.queryByText('testPage.assertPickStarting')).not.toBeInTheDocument()
+  })
+
+  it('stopping closes the reopened guide card', async () => {
+    await recordingNow()
+    act(() => useRecorderStore.getState().setGuideOpen(true))
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.stop' }))
+    expect(useRecorderStore.getState().guideOpen).toBe(false)
   })
 
   it('goes back when main refuses the pick', async () => {
