@@ -8,6 +8,7 @@ import StyledPanel from '@components/StyledPanel'
 import Dropdown from '@components/Dropdown'
 import DeleteModal from '@components/DeleteModal'
 import ConfirmationModal from '@components/ConfirmationModal'
+import CodeViewToggle from '@components/CodeViewToggle'
 import AssertionTextModal from '@components/AssertionTextModal'
 import RunPanel from '@components/RunPanel'
 import FailedStepPanel from '@components/FailedStepPanel'
@@ -430,13 +431,10 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
                 {t('testPage.editCode')}
               </button>
             )}
-            <button
-              onClick={() => setShowCode(!showCode)}
-              aria-pressed={showCode}
-              className={`${toolbarButton} ${showCode ? 'bg-neutral-lt' : ''} text-neutral-dk hover:bg-neutral-50`}
-            >
-              {t('testPage.code')}
-            </button>
+            <CodeViewToggle
+              view={showCode ? 'ruby' : 'steps'}
+              onChange={(view) => setShowCode(view === 'ruby')}
+            />
             {hasLegacyOutput && (
               <button
                 onClick={() => setIsOutputVisible(!isOutputVisible)}
