@@ -1245,7 +1245,13 @@
     "view": "View",
     "help": "Help",
     "howItWorks": "How Ruby Raider works",
+    "documentation": "Documentation",
+    "recordingGuide": "Recording guide",
     "keyboardShortcuts": "Keyboard shortcuts…"
+  },
+  "docs": {
+    "learnMore": "Learn more",
+    "learnMoreAbout": "Learn more about {{topic}} in the documentation"
   },
   "errorToast": {
     "showDetails": "Show details",

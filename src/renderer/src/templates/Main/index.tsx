@@ -142,6 +142,10 @@ const MainTemplate: React.FC = (): JSX.Element => {
         setIsShortcutsOpen(command === 'shortcuts')
         return
       }
+      if (command === 'docs') {
+        void window.api.openDocs('docs.home')
+        return
+      }
       if (modalOpen.current) return
       if (command === 'new-test') {
         // Only a project has a Tests tab; with none open nothing listens

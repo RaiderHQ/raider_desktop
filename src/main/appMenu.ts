@@ -109,6 +109,8 @@ export function buildAppMenuTemplate(
     label: t('help'),
     submenu: [
       command('how-it-works', t('howItWorks')),
+      command('docs', t('documentation')),
+      command('recording-guide', t('recordingGuide')),
       command('shortcuts', t('keyboardShortcuts'), 'shortcuts')
     ]
   }
