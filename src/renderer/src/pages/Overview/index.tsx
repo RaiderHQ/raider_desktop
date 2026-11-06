@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams } from 'react-router'
+import { useLocation, useMatch, useNavigate, useParams } from 'react-router'
 import toast from 'react-hot-toast'
 import { sample } from 'lodash'
 import { FaChevronDown, FaChevronRight, FaTerminal } from 'react-icons/fa'
@@ -12,6 +12,7 @@ import TagInput from '@components/TagInput'
 import ProjectDashboard from '@components/ProjectDashboard'
 import Editor from '@components/Editor'
 import { onMenuCommand } from '@foundation/menuCommands'
+import useEditorStore from '@foundation/Stores/editorStore'
 import EditorSaveBar from '@components/EditorSaveBar'
 import UnsavedChangesModal from '@components/UnsavedChangesModal'
 import Terminal from '@components/Terminal'
@@ -57,6 +58,9 @@ const Overview: React.FC = () => {
   const showWebSettings = layout !== null && !isMobileProject
   const navigate = useNavigate()
   const { testKey } = useParams()
+  const isNewTestRoute = useMatch('/overview/tests/new') !== null
+  // Each navigation has its own key, so New test again at the same URL still lands here
+  const locationKey = useLocation().key
   const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
     useRecorderSettings()
   const [activeTab, setActiveTab] = useState<OverviewTab>('tests')
@@ -541,6 +545,17 @@ const Overview: React.FC = () => {
     else action()
   }
 
+  // The new test form is on the Tests tab; a dirty Files edit asks first
+  useEffect(() => {
+    if (isNewTestRoute) switchTab('tests')
+  }, [isNewTestRoute, locationKey])
+
+  // App-wide menu commands that would leave the page stand down while the edit is unsaved
+  useEffect(() => {
+    useEditorStore.getState().setInlineDirty(fileDirty)
+  }, [fileDirty])
+  useEffect(() => (): void => useEditorStore.getState().setInlineDirty(false), [])
+
   const handleOpenFile = (filePath: string): void => guardUnsaved(() => void loadFile(filePath))
 
   // Leaving the Files tab with an unsaved edit asks first, as opening another file does (R1)
@@ -549,9 +564,14 @@ const Overview: React.FC = () => {
     guardUnsaved(() => setActiveTab(tab))
   }
 
+  // One write at a time; a ref so a repeat in the same tick can't start a second one
+  const savingFileRef = useRef(false)
+
   /** Writes the file; true when it is on disk afterwards. */
   const handleSaveFile = useCallback(async (): Promise<boolean> => {
     if (!editingFile) return false
+    if (savingFileRef.current) return false
+    savingFileRef.current = true
     const loadingTypes = ['stashing', 'securing', 'engraving', 'prize', 'ruby']
     const toastId = toast.loading(t(`editor.save.${sample(loadingTypes)}`))
     setIsSavingFile(true)
@@ -568,6 +588,7 @@ const Overview: React.FC = () => {
       toast.error(t('editor.error.unexpectedSaveError'), { id: toastId })
       return false
     } finally {
+      savingFileRef.current = false
       setIsSavingFile(false)
     }
   }, [editingFile, fileContent, t])
@@ -591,6 +612,9 @@ const Overview: React.FC = () => {
   useEffect(() => {
     // Only the file the user can see, only when it has changes, one write at a time
     if (!editingFile || activeTab !== 'files' || !fileDirty || isSavingFile) return
+    // Kept: the e2e showed Playwright's synthetic Cmd+S reaches only this listener; whether the
+    // native File › Save accelerator also fires on a real keypress is untested; both paths are
+    // guarded against a double write.
     const handleKeyDown = (e: KeyboardEvent): void => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()

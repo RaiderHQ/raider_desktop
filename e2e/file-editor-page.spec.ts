@@ -1,4 +1,5 @@
 import { test, expect } from './electronApp'
+import { getMainIPCCalls, mockMainIPCCapture } from './helpers/ipc-mock'
 import { goToOverviewFiles, mockRubyReady } from './helpers/navigation'
 import {
   setupProjectContext,
@@ -102,6 +103,32 @@ test.describe('File Editor Page', () => {
     const calls = await getIPCCalls(page, 'editFile')
     expect(calls.length).toBe(1)
     expect(calls[0][0]).toBe('/mock/test-project/edit_me.rb')
+  })
+
+  test('Cmd+S saves in the Files editor', async ({ electronApp, page }) => {
+    const mockTree = [
+      { name: 'menu_save.rb', type: 'file', path: '/mock/test-project/menu_save.rb' }
+    ]
+    await setupProjectContext(page, { files: mockTree })
+    await page.evaluate(() => {
+      ;(window as unknown as { api: Record<string, unknown> }).api.readFile = async (): Promise<{
+        success: boolean
+        data: string
+      }> => ({ success: true, data: 'original content' })
+    })
+    await mockMainIPCCapture(electronApp, 'edit-file', { success: true })
+    await goToOverviewFiles(page)
+    await page.getByText('menu_save.rb').click()
+    await page.waitForTimeout(1500)
+
+    await page.locator('.monaco-editor .view-lines').click()
+    await page.keyboard.type('x')
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+s' : 'Control+s')
+
+    await expect.poll(async () => (await getMainIPCCalls(electronApp, 'edit-file')).length).toBe(1)
+    expect((await getMainIPCCalls(electronApp, 'edit-file'))[0][0]).toBe(
+      '/mock/test-project/menu_save.rb'
+    )
   })
 
   test('save shows success toast', async ({ page }) => {

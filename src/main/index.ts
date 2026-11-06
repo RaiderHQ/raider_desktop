@@ -53,7 +53,11 @@ import { registerRunIpc } from './handlers/run/runIpc'
 import { openTraceFromDialog, registerTraceIpc } from './handlers/trace/traceIpc'
 import { makeBaselineConfirm } from './handlers/results/baselineConfirm'
 import { acceptBaseline } from './handlers/results/acceptBaseline'
-import { installAppMenu, withLiveWindow } from './appMenu'
+import { installAppMenu, setRecordingMenuState, withLiveWindow } from './appMenu'
+import {
+  installRecordingState,
+  resetRecordingOnWindowLoss
+} from './handlers/recording/recordingState'
 import { killActiveRun } from './handlers/run/runner'
 import exportTest from './handlers/io/exportTest'
 import exportSuite from './handlers/io/exportSuite'
@@ -143,6 +147,11 @@ function createWindow(): void {
   // Set the main window instance in our app state module
   setMainWindow(newMainWindow)
 
+  resetRecordingOnWindowLoss(newMainWindow, () => {
+    appState.recording = false
+    setRecordingMenuState(false)
+  })
+
   // Closing while recording saves the recording first
   installCloseFlush(newMainWindow, ipcMain, {
     close: () => (quitting ? app.quit() : newMainWindow.close())
@@ -205,6 +214,11 @@ app.whenReady().then(() => {
     },
     { isPackaged: app.isPackaged }
   )
+
+  installRecordingState(ipcMain, (recording) => {
+    appState.recording = recording
+    setRecordingMenuState(recording)
+  })
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

@@ -70,6 +70,7 @@ const api = {
   cancelReplay: vi.fn(),
   renderStep: vi.fn(),
   setRecordingState: vi.fn(),
+  setMenuRecording: vi.fn(),
   onFlushRecording: vi.fn(() => (): void => {}),
   flushRecordingDone: vi.fn()
 }

@@ -3,6 +3,7 @@ import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { ipcSubscriptions } from '../helpers/ipcSubscriptions'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
+import { dispatchMenuCommand } from '@foundation/menuCommands'
 import CodeTestPane from '@components/CodeTestPane'
 import TestsWorkspace from '@components/TestsWorkspace'
 import useRecorderStore from '@foundation/Stores/recorderStore'
@@ -80,6 +81,7 @@ const api = {
   registerRecorderWebContents: vi.fn(),
   cancelReplay: vi.fn(),
   setRecordingState: vi.fn(),
+  setMenuRecording: vi.fn(),
   onFlushRecording: vi.fn((_cb: () => void) => (): void => {}),
   flushRecordingDone: vi.fn(),
   setActiveProject: vi.fn(),
@@ -375,6 +377,55 @@ describe('CodeTestPane', () => {
     )
     await waitFor(() => expect(api.openCodeTest).toHaveBeenCalledWith('spec/login_spec.rb'))
     expect(api.saveRecording).not.toHaveBeenCalled()
+  })
+
+  it('Stop from the menu is Stop & save while recording', async () => {
+    renderPane()
+    await screen.findByRole('button', { name: 'logs in' })
+    act(() => dispatchMenuCommand('stop'))
+    expect(api.recordOverExample).not.toHaveBeenCalled()
+    await recordOverFirstExample()
+    await act(async () => dispatchMenuCommand('stop'))
+    await waitFor(() =>
+      expect(api.recordOverExample).toHaveBeenCalledWith(
+        'spec/login_spec.rb',
+        'logs in',
+        expect.any(Array),
+        'ruby'
+      )
+    )
+  })
+
+  it('Open file from the menu opens the test file in the editor', async () => {
+    useProjectStore.setState({ projectPath: '/Users/me/project' })
+    renderPane()
+    await screen.findByRole('button', { name: 'logs in' })
+    act(() => dispatchMenuCommand('open-file'))
+    expect(screen.getByTestId('editor-state')).toHaveTextContent('spec/login_spec.rb')
+  })
+
+  it('Stop from the menu does nothing while replaying', async () => {
+    renderPane()
+    await screen.findByRole('button', { name: 'logs in' })
+    await recordOverFirstExample()
+    act(() => useRecorderStore.setState({ isReplayingToBreakpoint: true }))
+    api.recordOverExample.mockClear()
+    await act(async () => dispatchMenuCommand('stop'))
+    expect(api.recordOverExample).not.toHaveBeenCalled()
+    act(() => useRecorderStore.setState({ isReplayingToBreakpoint: false }))
+    await act(async () => dispatchMenuCommand('stop'))
+    await waitFor(() => expect(api.recordOverExample).toHaveBeenCalled())
+  })
+
+  it('Open file from the menu waits while the overwrite warning is up', async () => {
+    useProjectStore.setState({ projectPath: '/Users/me/project' })
+    renderPane()
+    fireEvent.click(await screen.findByRole('button', { name: 'testPage.record' }))
+    act(() => dispatchMenuCommand('open-file'))
+    expect(screen.queryByTestId('editor-state')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    act(() => dispatchMenuCommand('open-file'))
+    expect(screen.getByTestId('editor-state')).toBeInTheDocument()
   })
 
   it('records the selected example', async () => {

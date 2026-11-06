@@ -9,6 +9,7 @@ import Tooltip from '@components/Tooltip'
 import UnsavedChangesModal from '@components/UnsavedChangesModal'
 import { getFileLanguage } from '@foundation/helpers'
 import { onMenuCommand } from '@foundation/menuCommands'
+import useEditorStore from '@foundation/Stores/editorStore'
 import { FaArrowLeft } from 'react-icons/fa'
 
 interface FileEditorProps {
@@ -33,6 +34,12 @@ const FileEditor: React.FC = (): JSX.Element => {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [leaving, setLeaving] = useState(false)
   const dirty = fileContent !== savedContent
+
+  // App-wide menu commands that would leave this page stand down while it holds edits
+  useEffect(() => {
+    useEditorStore.getState().setPageDirty(dirty)
+  }, [dirty])
+  useEffect(() => (): void => useEditorStore.getState().setPageDirty(false), [])
 
   // One write at a time; a ref so a Cmd+S repeat in the same tick can't start a second one
   const savingRef = useRef(false)
@@ -109,6 +116,9 @@ const FileEditor: React.FC = (): JSX.Element => {
   }, [])
 
   useEffect(() => {
+    // Kept: the e2e showed Playwright's synthetic Cmd+S reaches only this listener; whether the
+    // native File › Save accelerator also fires on a real keypress is untested; both paths are
+    // guarded against a double write.
     const handleKeyDown = (e: KeyboardEvent): void => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()

@@ -22,6 +22,11 @@ describe('shortcuts', () => {
     expect(set.size).toBe(ids.length - 1)
   })
 
+  it('the shortcuts sheet is not on the macOS Help-search key', () => {
+    expect(SHORTCUTS.shortcuts.accelerator).toBe('CmdOrCtrl+Shift+H')
+    expect(SHORTCUTS.shortcuts.mac).toBe('⌘⇧H')
+  })
+
   it('platformFrom', () => {
     expect(platformFrom('MacIntel')).toBe('mac')
     expect(platformFrom('Mac')).toBe('mac')
