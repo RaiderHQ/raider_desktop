@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
+import Tooltip from '@components/Tooltip'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { useRunStore } from '@foundation/Stores/runStore'
@@ -69,9 +70,16 @@ const TestsList: React.FC<TestsListProps> = ({
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-2 p-3 border-b border-neutral-bdr">
-        <button className={`${rowButton} flex-1`} onClick={onNewTest}>
-          {t('tests.newTest')}
-        </button>
+        <Tooltip
+          content={t('tooltips.tests.newTest')}
+          shortcut="new-test"
+          position="bottom"
+          className="flex-1"
+        >
+          <button className={`${rowButton} flex-1`} onClick={onNewTest}>
+            {t('tests.newTest')}
+          </button>
+        </Tooltip>
         {headerExtra}
       </div>
       {rows.length === 0 ? (
@@ -114,15 +122,17 @@ const TestsList: React.FC<TestsListProps> = ({
                     <span className="text-xs px-2 py-0.5 rounded-full bg-status-err-bg text-red-600 font-medium">
                       {t('tests.fileMissing')}
                     </span>
-                    <button
-                      className={rowButton}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        restore(row)
-                      }}
-                    >
-                      {t('tests.restore')}
-                    </button>
+                    <Tooltip content={t('tooltips.tests.restore')} position="left">
+                      <button
+                        className={rowButton}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          restore(row)
+                        }}
+                      >
+                        {t('tests.restore')}
+                      </button>
+                    </Tooltip>
                   </>
                 )}
                 <span data-testid="row-status">

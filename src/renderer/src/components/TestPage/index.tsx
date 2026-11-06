@@ -6,6 +6,7 @@ import { toRecordableUrl } from '@shared/recordUrl'
 import CommandList from '@components/CommandList'
 import OutputPanel from '@components/OutputPanel'
 import StyledPanel from '@components/StyledPanel'
+import Tooltip from '@components/Tooltip'
 import Dropdown from '@components/Dropdown'
 import DeleteModal from '@components/DeleteModal'
 import ConfirmationModal from '@components/ConfirmationModal'
@@ -413,26 +414,32 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       ) : (
         <>
           <div className="flex items-center gap-4">
-            <input
-              type="text"
-              className={field}
-              value={nameDraft}
-              onChange={(e) => setNameDraft(e.target.value)}
-              onBlur={commitName}
-              onKeyDown={(e) => e.key === 'Enter' && commitName()}
-              placeholder={t('testPage.name')}
-              aria-label={t('testPage.name')}
-              disabled={readOnly}
-            />
-            <input
-              type="text"
-              className={field}
-              value={test.url ?? ''}
-              onChange={(e) => updateActiveTest((p) => (p ? { ...p, url: e.target.value } : null))}
-              placeholder={t('testPage.url')}
-              aria-label={t('testPage.url')}
-              disabled={readOnly}
-            />
+            <Tooltip content={t('tooltips.testPage.name')} position="bottom" className="flex-1">
+              <input
+                type="text"
+                className={field}
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={commitName}
+                onKeyDown={(e) => e.key === 'Enter' && commitName()}
+                placeholder={t('testPage.name')}
+                aria-label={t('testPage.name')}
+                disabled={readOnly}
+              />
+            </Tooltip>
+            <Tooltip content={t('tooltips.testPage.url')} position="bottom" className="flex-1">
+              <input
+                type="text"
+                className={field}
+                value={test.url ?? ''}
+                onChange={(e) =>
+                  updateActiveTest((p) => (p ? { ...p, url: e.target.value } : null))
+                }
+                placeholder={t('testPage.url')}
+                aria-label={t('testPage.url')}
+                disabled={readOnly}
+              />
+            </Tooltip>
           </div>
 
           <div className="flex items-center gap-2">
@@ -443,61 +450,87 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
               </span>
             )}
             {recording.isRecording ? (
-              <button
-                onClick={() => void recording.stop()}
-                disabled={isReplaying}
-                className={`${toolbarButton} text-neutral-dark hover:bg-neutral-100`}
-              >
-                {t('testPage.stop')}
-              </button>
+              <Tooltip content={t('tooltips.testPage.stop')} shortcut="stop" position="bottom">
+                <button
+                  onClick={() => void recording.stop()}
+                  disabled={isReplaying}
+                  className={`${toolbarButton} text-neutral-dark hover:bg-neutral-100`}
+                >
+                  {t('testPage.stop')}
+                </button>
+              </Tooltip>
             ) : (
-              <button
-                onClick={record}
-                disabled={readOnly || busy || recordingDisabled}
-                title={recordingDisabledReason}
-                className={`${toolbarButton} text-red-600 hover:bg-red-50`}
+              <Tooltip
+                content={t('tooltips.testPage.record')}
+                shortcut="record"
+                disabledReason={recordingDisabledReason}
+                position="bottom"
               >
-                {t('testPage.record')}
-              </button>
+                <button
+                  onClick={record}
+                  disabled={readOnly || busy || recordingDisabled}
+                  title={recordingDisabledReason}
+                  className={`${toolbarButton} text-red-600 hover:bg-red-50`}
+                >
+                  {t('testPage.record')}
+                </button>
+              </Tooltip>
             )}
-            <button
-              onClick={() => void recording.run()}
-              disabled={busy || runBusy || isDraft}
-              title={isDraft ? t('run.saveToRun') : undefined}
-              className={`${toolbarButton} text-green-700 hover:bg-green-50`}
+            <Tooltip
+              content={t('tooltips.testPage.run')}
+              shortcut="run"
+              disabledReason={isDraft ? t('run.saveToRun') : undefined}
+              position="bottom"
             >
-              {t('testPage.run')}
-            </button>
+              <button
+                onClick={() => void recording.run()}
+                disabled={busy || runBusy || isDraft}
+                title={isDraft ? t('run.saveToRun') : undefined}
+                className={`${toolbarButton} text-green-700 hover:bg-green-50`}
+              >
+                {t('testPage.run')}
+              </button>
+            </Tooltip>
             {/* A test from before project files has no file to edit */}
             {test.file && projectPath && (
-              <button
-                onClick={editCode}
-                disabled={busy}
-                className={`${toolbarButton} text-neutral-dk hover:bg-neutral-50`}
+              <Tooltip
+                content={t('tooltips.testPage.openFile')}
+                shortcut="open-file"
+                position="bottom"
               >
-                {t('testPage.editCode')}
-              </button>
+                <button
+                  onClick={editCode}
+                  disabled={busy}
+                  className={`${toolbarButton} text-neutral-dk hover:bg-neutral-50`}
+                >
+                  {t('testPage.editCode')}
+                </button>
+              </Tooltip>
             )}
             <CodeViewToggle
               view={showCode ? 'ruby' : 'steps'}
               onChange={(view) => setShowCode(view === 'ruby')}
             />
             {hasLegacyOutput && (
-              <button
-                onClick={() => setIsOutputVisible(!isOutputVisible)}
-                aria-pressed={isOutputVisible}
-                className={`${toolbarButton} ${isOutputVisible ? 'bg-neutral-lt' : ''} text-neutral-dk hover:bg-neutral-50`}
-              >
-                {t('testPage.lastRun')}
-              </button>
+              <Tooltip content={t('tooltips.testPage.lastRun')} position="bottom">
+                <button
+                  onClick={() => setIsOutputVisible(!isOutputVisible)}
+                  aria-pressed={isOutputVisible}
+                  className={`${toolbarButton} ${isOutputVisible ? 'bg-neutral-lt' : ''} text-neutral-dk hover:bg-neutral-50`}
+                >
+                  {t('testPage.lastRun')}
+                </button>
+              </Tooltip>
             )}
             {!isDraft && (
-              <Dropdown
-                buttonText={t('testPage.more')}
-                options={moreOptions}
-                defaultOption={-1}
-                disabled={busy}
-              />
+              <Tooltip content={t('tooltips.testPage.more')} position="bottom">
+                <Dropdown
+                  buttonText={t('testPage.more')}
+                  options={moreOptions}
+                  defaultOption={-1}
+                  disabled={busy}
+                />
+              </Tooltip>
             )}
           </div>
 
@@ -533,13 +566,15 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
                       n: test.steps.findIndex((s) => s.id === pickTarget.stepId) + 1
                     })}
               </span>
-              <button
-                type="button"
-                onClick={() => void recording.cancelPick()}
-                className={`${toolbarButton} text-neutral-dark hover:bg-neutral-100`}
-              >
-                {t('common.cancel')}
-              </button>
+              <Tooltip content={t('tooltips.testPage.cancelPick')} position="bottom">
+                <button
+                  type="button"
+                  onClick={() => void recording.cancelPick()}
+                  className={`${toolbarButton} text-neutral-dark hover:bg-neutral-100`}
+                >
+                  {t('common.cancel')}
+                </button>
+              </Tooltip>
             </div>
           )}
 

@@ -34,4 +34,41 @@ describe('copy', () => {
     )
     expect(en.landing.subtitle).toBe('Record, run and fix UI tests without leaving the app.')
   })
+  it('every tooltip is sentence case, short and has no shortcut typed in', () => {
+    const allowed = [
+      'Ruby',
+      'Raider',
+      'RSpec',
+      'Cucumber',
+      'Selenium',
+      'Appium',
+      'Chrome',
+      'Firefox',
+      'URL',
+      'CI',
+      'Esc',
+      'HTML'
+    ]
+    const strings: [string, string][] = []
+    const walk = (node: unknown, path: string): void => {
+      if (typeof node === 'string') strings.push([path, node])
+      else if (node && typeof node === 'object')
+        for (const [k, v] of Object.entries(node)) walk(v, `${path}.${k}`)
+    }
+    walk(en.tooltips, 'tooltips')
+    expect(strings.length).toBeGreaterThan(50)
+    const offenders: string[] = []
+    for (const [path, text] of strings) {
+      const bare = text.replace(/https:\/\/\S+/g, '').trim()
+      const words = bare.split(/\s+/).filter(Boolean)
+      const stray = words
+        .slice(1)
+        .filter((w) => /[A-Z]/.test(w) && !allowed.some((a) => w.startsWith(a)))
+      if (!/^[A-Z0-9]/.test(text)) offenders.push(`${path}: must start upper case or digit`)
+      if (stray.length) offenders.push(`${path}: stray capitals ${stray.join(', ')}`)
+      if (words.length > 14) offenders.push(`${path}: ${words.length} words`)
+      if (/[⌘⇧]|Ctrl\+|Cmd\+/.test(text)) offenders.push(`${path}: shortcut typed in`)
+    }
+    expect(offenders).toEqual([])
+  })
 })

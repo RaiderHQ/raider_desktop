@@ -238,6 +238,15 @@ describe('TestPage', () => {
     expect(en.recorder.unsupported.mobile).toBe("Mobile projects can't be recorded yet.")
   })
 
+  it('shows a tooltip on focus for Record, with its shortcut', async () => {
+    renderPage()
+    await opened()
+    fireEvent.focus(screen.getByRole('button', { name: 'testPage.record' }))
+    const tip = screen.getByRole('tooltip')
+    expect(tip).toHaveTextContent('tooltips.testPage.record')
+    expect(tip.querySelector('kbd')).not.toBeNull()
+  })
+
   it('keeps Record without a reason for other projects that cannot record', async () => {
     useProjectStore.setState({
       layout: { ...mobileLayout, automation: 'selenium', unsupportedReason: 'minitest' }

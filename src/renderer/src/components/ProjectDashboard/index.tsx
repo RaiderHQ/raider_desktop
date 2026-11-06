@@ -1,3 +1,4 @@
+import Tooltip from '@components/Tooltip'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
@@ -193,14 +194,16 @@ const Index: React.FC = (): JSX.Element => {
     <div className="p-4 w-full flex flex-col gap-4">
       <div className="flex justify-end">
         <span onMouseEnter={recheck}>
-          <button
-            type="button"
-            onClick={openReport}
-            disabled={!hasReport}
-            className="px-3 py-1.5 text-xs font-semibold rounded-md bg-ruby text-white disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {t('dashboard.openReport')}
-          </button>
+          <Tooltip content={t('tooltips.dashboard.openReport')} position="left">
+            <button
+              type="button"
+              onClick={openReport}
+              disabled={!hasReport}
+              className="px-3 py-1.5 text-xs font-semibold rounded-md bg-ruby text-white disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {t('dashboard.openReport')}
+            </button>
+          </Tooltip>
         </span>
       </div>
       {totalCount === 0 ? (

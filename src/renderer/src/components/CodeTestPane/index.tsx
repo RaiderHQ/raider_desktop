@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import CodeViewToggle from '@components/CodeViewToggle'
 import CommandList from '@components/CommandList'
 import ConfirmationModal from '@components/ConfirmationModal'
+import Tooltip from '@components/Tooltip'
 import StyledPanel from '@components/StyledPanel'
 import AssertionTextModal from '@components/AssertionTextModal'
 import RunPanel from '@components/RunPanel'
@@ -202,39 +203,56 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
               </span>
             )}
             {recording.isRecording ? (
-              <button
-                onClick={() => void stop()}
-                disabled={isReplaying}
-                className={`${toolbarButton} text-neutral-dark hover:bg-neutral-100`}
-              >
-                {t('testPage.stop')}
-              </button>
+              <Tooltip content={t('tooltips.testPage.stop')} shortcut="stop" position="bottom">
+                <button
+                  onClick={() => void stop()}
+                  disabled={isReplaying}
+                  className={`${toolbarButton} text-neutral-dark hover:bg-neutral-100`}
+                >
+                  {t('testPage.stop')}
+                </button>
+              </Tooltip>
             ) : (
-              <button
-                onClick={() => setConfirmingRecord(true)}
-                // Not over steps that aren't saved yet: they'd be lost
-                disabled={!selected || busy || recordingDisabled || !!recordedTest}
-                title={recordingDisabledReason}
-                className={`${toolbarButton} text-red-600 hover:bg-red-50`}
+              <Tooltip
+                content={t('tooltips.testPage.record')}
+                shortcut="record"
+                disabledReason={recordingDisabledReason}
+                position="bottom"
               >
-                {t('testPage.record')}
-              </button>
+                <button
+                  onClick={() => setConfirmingRecord(true)}
+                  // Not over steps that aren't saved yet: they'd be lost
+                  disabled={!selected || busy || recordingDisabled || !!recordedTest}
+                  title={recordingDisabledReason}
+                  className={`${toolbarButton} text-red-600 hover:bg-red-50`}
+                >
+                  {t('testPage.record')}
+                </button>
+              </Tooltip>
             )}
-            <button
-              onClick={run}
-              disabled={busy || runBusy || !file}
-              className={`${toolbarButton} text-green-700 hover:bg-green-50`}
+            <Tooltip content={t('tooltips.testPage.run')} shortcut="run" position="bottom">
+              <button
+                onClick={run}
+                disabled={busy || runBusy || !file}
+                className={`${toolbarButton} text-green-700 hover:bg-green-50`}
+              >
+                {t('testPage.run')}
+              </button>
+            </Tooltip>
+            <Tooltip
+              content={t('tooltips.testPage.openFile')}
+              shortcut="open-file"
+              position="bottom"
             >
-              {t('testPage.run')}
-            </button>
-            <button
-              onClick={editCode}
-              // Not away from steps that aren't saved yet
-              disabled={busy || !file || !projectPath || !!recordedTest}
-              className={`${toolbarButton} text-neutral-dk hover:bg-neutral-50`}
-            >
-              {t('testPage.editCode')}
-            </button>
+              <button
+                onClick={editCode}
+                // Not away from steps that aren't saved yet
+                disabled={busy || !file || !projectPath || !!recordedTest}
+                className={`${toolbarButton} text-neutral-dk hover:bg-neutral-50`}
+              >
+                {t('testPage.editCode')}
+              </button>
+            </Tooltip>
             <CodeViewToggle
               view={codePressed ? 'ruby' : 'steps'}
               onChange={toggleCode}
@@ -259,12 +277,14 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
                     {t('testPage.exampleNotUnique', { name: unsavedExample.exampleName })}
                   </p>
                 )}
-                <button
-                  onClick={() => void recording.saveAsNewTest()}
-                  className={`${toolbarButton} text-neutral-dark hover:bg-neutral-100`}
-                >
-                  {t('testPage.saveAsNew')}
-                </button>
+                <Tooltip content={t('tooltips.testPage.saveAsNew')} position="bottom">
+                  <button
+                    onClick={() => void recording.saveAsNewTest()}
+                    className={`${toolbarButton} text-neutral-dark hover:bg-neutral-100`}
+                  >
+                    {t('testPage.saveAsNew')}
+                  </button>
+                </Tooltip>
               </div>
               <div className="flex-1 min-h-0">
                 <StyledPanel>{recordedSteps ?? <></>}</StyledPanel>
@@ -280,17 +300,23 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
                 >
                   {view.examples.map((example, index) => (
                     <li key={`${index}-${example.name}`}>
-                      <button
-                        onClick={() => setSelectedName(example.name)}
-                        aria-pressed={example === selected}
-                        className={`w-full text-left text-sm px-2 py-1 rounded transition-colors ${
-                          example === selected
-                            ? 'bg-neutral-lt font-semibold text-neutral-dark'
-                            : 'text-neutral-dk hover:bg-neutral-50'
-                        }`}
+                      <Tooltip
+                        content={t('tooltips.testPage.examples')}
+                        position="bottom"
+                        className="flex w-full"
                       >
-                        {example.name}
-                      </button>
+                        <button
+                          onClick={() => setSelectedName(example.name)}
+                          aria-pressed={example === selected}
+                          className={`w-full text-left text-sm px-2 py-1 rounded transition-colors ${
+                            example === selected
+                              ? 'bg-neutral-lt font-semibold text-neutral-dark'
+                              : 'text-neutral-dk hover:bg-neutral-50'
+                          }`}
+                        >
+                          {example.name}
+                        </button>
+                      </Tooltip>
                     </li>
                   ))}
                 </ul>

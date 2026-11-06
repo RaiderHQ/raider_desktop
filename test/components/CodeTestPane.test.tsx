@@ -181,6 +181,12 @@ describe('CodeTestPane', () => {
     expect(en.recorder.unsupported.mobile).toBe("Mobile projects can't be recorded yet.")
   })
 
+  it('shows a tooltip on focus for Run', async () => {
+    renderPane()
+    fireEvent.focus(await screen.findByRole('button', { name: 'testPage.run' }))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('tooltips.testPage.run')
+  })
+
   it('keeps Record without a reason for other projects that cannot record', async () => {
     useProjectStore.setState({
       layout: { ...mobileLayout, automation: 'selenium', unsupportedReason: 'minitest' }

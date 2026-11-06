@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import Tooltip from '@components/Tooltip'
 
 export type CodeView = 'steps' | 'ruby'
 
@@ -24,24 +25,32 @@ const CodeViewToggle: React.FC<CodeViewToggleProps> = ({
 
   return (
     <div role="group" aria-label={t('testPage.view')} className="inline-flex">
-      <button
-        type="button"
-        aria-pressed={view === 'steps'}
-        aria-disabled={stepsUnavailable || undefined}
-        title={stepsUnavailableReason}
-        onClick={() => !stepsUnavailable && onChange('steps')}
-        className={`${segment} rounded-l`}
+      <Tooltip
+        content={t('tooltips.testPage.steps')}
+        disabledReason={stepsUnavailableReason}
+        position="bottom"
       >
-        {t('testPage.steps')}
-      </button>
-      <button
-        type="button"
-        aria-pressed={view === 'ruby'}
-        onClick={() => onChange('ruby')}
-        className={`${segment} rounded-r -ml-px`}
-      >
-        {t('testPage.ruby')}
-      </button>
+        <button
+          type="button"
+          aria-pressed={view === 'steps'}
+          aria-disabled={stepsUnavailable || undefined}
+          title={stepsUnavailableReason}
+          onClick={() => !stepsUnavailable && onChange('steps')}
+          className={`${segment} rounded-l`}
+        >
+          {t('testPage.steps')}
+        </button>
+      </Tooltip>
+      <Tooltip content={t('tooltips.testPage.ruby')} position="bottom">
+        <button
+          type="button"
+          aria-pressed={view === 'ruby'}
+          onClick={() => onChange('ruby')}
+          className={`${segment} rounded-r -ml-px`}
+        >
+          {t('testPage.ruby')}
+        </button>
+      </Tooltip>
     </div>
   )
 }

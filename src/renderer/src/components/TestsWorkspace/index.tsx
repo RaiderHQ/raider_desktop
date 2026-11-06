@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useMatch, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
+import Tooltip from '@components/Tooltip'
 import TestsList from '@components/TestsList'
 import TestPage from '@components/TestPage'
 import CodeTestPane from '@components/CodeTestPane'
@@ -78,12 +79,14 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
           data-testid="tests-rail"
           className="w-24 shrink-0 border-r border-neutral-bdr p-2 bg-neutral-50"
         >
-          <button
-            onClick={() => navigate('/overview/tests')}
-            className="w-full text-left text-sm font-medium text-neutral-dark hover:text-ruby px-2 py-1 rounded transition-colors"
-          >
-            {t('tests.rail')} <span aria-hidden>›</span>
-          </button>
+          <Tooltip content={t('tooltips.tests.rail')} position="bottom" className="flex w-full">
+            <button
+              onClick={() => navigate('/overview/tests')}
+              className="w-full text-left text-sm font-medium text-neutral-dark hover:text-ruby px-2 py-1 rounded transition-colors"
+            >
+              {t('tests.rail')} <span aria-hidden>›</span>
+            </button>
+          </Tooltip>
         </div>
       ) : (
         <div className="w-72 shrink-0 border-r border-neutral-bdr min-h-0">

@@ -689,60 +689,71 @@ const Overview: React.FC = () => {
     <div className="flex flex-col w-screen p-8">
       {/* Tabs */}
       <div className="flex items-center border-b border-neutral-bdr mb-4">
-        <button
-          onClick={() => switchTab('tests')}
-          className={`px-5 py-2 text-sm font-semibold transition-colors ${
-            activeTab === 'tests'
-              ? 'text-neutral-dark border-b-2 border-ruby'
-              : 'text-neutral-md hover:text-neutral-dk'
-          }`}
-        >
-          {t('overview.tabs.tests')}
-        </button>
-        <button
-          onClick={() => switchTab('files')}
-          className={`px-5 py-2 text-sm font-semibold transition-colors ${
-            activeTab === 'files'
-              ? 'text-neutral-dark border-b-2 border-ruby'
-              : 'text-neutral-md hover:text-neutral-dk'
-          }`}
-        >
-          {t('overview.tabs.files')}
-        </button>
-        <button
-          onClick={() => switchTab('scaffold')}
-          className={`px-5 py-2 text-sm font-semibold transition-colors ${
-            activeTab === 'scaffold'
-              ? 'text-neutral-dark border-b-2 border-ruby'
-              : 'text-neutral-md hover:text-neutral-dk'
-          }`}
-        >
-          Scaffolding
-        </button>
-        <button
-          onClick={() => switchTab('dashboard')}
-          className={`px-5 py-2 text-sm font-semibold transition-colors ${
-            activeTab === 'dashboard'
-              ? 'text-neutral-dark border-b-2 border-ruby'
-              : 'text-neutral-md hover:text-neutral-dk'
-          }`}
-        >
-          {t('overview.tabs.dashboard')}
-        </button>
+        <Tooltip content={t('tooltips.overview.tabTests')} position="bottom">
+          <button
+            onClick={() => switchTab('tests')}
+            className={`px-5 py-2 text-sm font-semibold transition-colors ${
+              activeTab === 'tests'
+                ? 'text-neutral-dark border-b-2 border-ruby'
+                : 'text-neutral-md hover:text-neutral-dk'
+            }`}
+          >
+            {t('overview.tabs.tests')}
+          </button>
+        </Tooltip>
+        <Tooltip content={t('tooltips.overview.tabFiles')} position="bottom">
+          <button
+            onClick={() => switchTab('files')}
+            className={`px-5 py-2 text-sm font-semibold transition-colors ${
+              activeTab === 'files'
+                ? 'text-neutral-dark border-b-2 border-ruby'
+                : 'text-neutral-md hover:text-neutral-dk'
+            }`}
+          >
+            {t('overview.tabs.files')}
+          </button>
+        </Tooltip>
+        <Tooltip content={t('tooltips.overview.tabScaffold')} position="bottom">
+          <button
+            onClick={() => switchTab('scaffold')}
+            className={`px-5 py-2 text-sm font-semibold transition-colors ${
+              activeTab === 'scaffold'
+                ? 'text-neutral-dark border-b-2 border-ruby'
+                : 'text-neutral-md hover:text-neutral-dk'
+            }`}
+          >
+            Scaffolding
+          </button>
+        </Tooltip>
+        <Tooltip content={t('tooltips.overview.tabDashboard')} position="bottom">
+          <button
+            onClick={() => switchTab('dashboard')}
+            className={`px-5 py-2 text-sm font-semibold transition-colors ${
+              activeTab === 'dashboard'
+                ? 'text-neutral-dark border-b-2 border-ruby'
+                : 'text-neutral-md hover:text-neutral-dk'
+            }`}
+          >
+            {t('overview.tabs.dashboard')}
+          </button>
+        </Tooltip>
         <div className="ml-auto flex items-center gap-2">
           {activeTab === 'files' && !terminalOpen && (
-            <button
-              onClick={() => setTerminalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-dk border border-neutral-bdr rounded hover:bg-neutral-lt transition-colors"
-              data-testid="open-terminal-btn"
-            >
-              <FaTerminal size={10} />
-              Open terminal
-            </button>
+            <Tooltip content={t('tooltips.overview.openTerminal')} position="bottom">
+              <button
+                onClick={() => setTerminalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-dk border border-neutral-bdr rounded hover:bg-neutral-lt transition-colors"
+                data-testid="open-terminal-btn"
+              >
+                <FaTerminal size={10} />
+                Open terminal
+              </button>
+            </Tooltip>
           )}
           <InfoButton
             titleKey={`help.overview.${activeTab}.title`}
             messageKey={`help.overview.${activeTab}.message`}
+            tooltip={t('tooltips.overview.info')}
           />
         </div>
       </div>
@@ -873,7 +884,11 @@ const Overview: React.FC = () => {
                   </select>
                 </div>
               </Tooltip>
-              <Tooltip content={t('tooltips.overview.rerunFailed')} position="right">
+              <Tooltip
+                content={t('tooltips.overview.rerunFailed')}
+                disabledReason={canRerunFailed ? undefined : t('run.nothingFailed')}
+                position="right"
+              >
                 <button
                   onClick={handleRerunFailed}
                   disabled={runBusy || !canRerunFailed}
@@ -888,20 +903,23 @@ const Overview: React.FC = () => {
               {!isMobileProject && (
                 <ToggleSwitch
                   label={t('run.parallel')}
+                  tooltip={t('tooltips.files.parallel')}
                   checked={runSettings.parallel}
                   onChange={(parallel) => updateRunSettings({ parallel })}
                   testId="overview-parallel-toggle"
                 />
               )}
-              <button
-                onClick={() => setMoreOptionsOpen((open) => !open)}
-                aria-expanded={moreOptionsOpen}
-                className="flex items-center gap-1 text-sm font-medium text-neutral-dk hover:text-neutral-dark transition-colors"
-                data-testid="overview-more-options"
-              >
-                {moreOptionsOpen ? <FaChevronDown size={10} /> : <FaChevronRight size={10} />}
-                {t('run.moreOptions')}
-              </button>
+              <Tooltip content={t('tooltips.files.moreOptions')} position="right">
+                <button
+                  onClick={() => setMoreOptionsOpen((open) => !open)}
+                  aria-expanded={moreOptionsOpen}
+                  className="flex items-center gap-1 text-sm font-medium text-neutral-dk hover:text-neutral-dark transition-colors"
+                  data-testid="overview-more-options"
+                >
+                  {moreOptionsOpen ? <FaChevronDown size={10} /> : <FaChevronRight size={10} />}
+                  {t('run.moreOptions')}
+                </button>
+              </Tooltip>
               {showWebSettings && (
                 <Tooltip content={t('tooltips.overview.timeout')} position="right">
                   <div className="flex items-center gap-2">
@@ -926,30 +944,33 @@ const Overview: React.FC = () => {
             {moreOptionsOpen && (
               <div className="flex items-center gap-4 flex-wrap" data-testid="overview-more-options-panel">
                 {!isMobileProject && (
-                  <div className="flex items-center gap-2">
+                  <Tooltip content={t('tooltips.files.workers')} position="right">
+                    <div className="flex items-center gap-2">
                     <label htmlFor="workers-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                      {t('run.workers')}
-                    </label>
-                    <input
-                      type="number"
-                      id="workers-input"
-                      value={runSettings.workers ?? ''}
-                      onChange={(e) => {
-                        const value = e.target.valueAsNumber
-                        updateRunSettings({
-                          workers: Number.isFinite(value) && value >= 1 ? Math.floor(value) : null
-                        })
-                      }}
-                      min={1}
-                      max={runDefaults?.maxWorkers}
+                        {t('run.workers')}
+                      </label>
+                      <input
+                        type="number"
+                        id="workers-input"
+                        value={runSettings.workers ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.valueAsNumber
+                          updateRunSettings({
+                            workers: Number.isFinite(value) && value >= 1 ? Math.floor(value) : null
+                          })
+                        }}
+                        min={1}
+                        max={runDefaults?.maxWorkers}
                       placeholder={runDefaults ? String(runDefaults.recommendedWorkers) : undefined}
-                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
-                      data-testid="overview-workers-input"
-                    />
-                  </div>
+                        className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
+                        data-testid="overview-workers-input"
+                      />
+                    </div>
+                  </Tooltip>
                 )}
                 <ToggleSwitch
                   label={t('run.quarantinedFails')}
+                  tooltip={t('tooltips.files.quarantinedFails')}
                   checked={runSettings.quarantinedFails}
                   onChange={(quarantinedFails) => updateRunSettings({ quarantinedFails })}
                   testId="overview-quarantined-fails-toggle"
@@ -959,21 +980,24 @@ const Overview: React.FC = () => {
                   <>
                     <ToggleSwitch
                       label={t('run.reuseLogins')}
+                      tooltip={t('tooltips.files.reuseLogins')}
                       checked={runSettings.reuseLogins}
                       onChange={(reuseLogins) => updateRunSettings({ reuseLogins })}
                       testId="overview-reuse-logins"
                     />
                     <div className="flex flex-col">
-                      <label className="flex items-center gap-2 text-sm text-neutral-dk">
-                        <input
-                          type="checkbox"
-                          checked={freshLoginNext}
-                          disabled={!runSettings.reuseLogins}
-                          onChange={(e) => setFreshLoginNext(e.target.checked)}
-                          data-testid="overview-fresh-login"
-                        />
-                        {t('run.freshLoginNext')}
-                      </label>
+                      <Tooltip content={t('tooltips.files.freshLogin')} position="right">
+                        <label className="flex items-center gap-2 text-sm text-neutral-dk">
+                          <input
+                            type="checkbox"
+                            checked={freshLoginNext}
+                            disabled={!runSettings.reuseLogins}
+                            onChange={(e) => setFreshLoginNext(e.target.checked)}
+                            data-testid="overview-fresh-login"
+                          />
+                          {t('run.freshLoginNext')}
+                        </label>
+                      </Tooltip>
                       <span className="text-xs text-neutral-md">{t('run.freshLoginHint')}</span>
                     </div>
                   </>
@@ -1002,6 +1026,7 @@ const Overview: React.FC = () => {
                     }}
                     placeholder={t('settings.browserOptions.placeholder')}
                     disabled={!configLoaded}
+                    tooltip={t('tooltips.files.browserOptions')}
                   />
                 </div>
               </div>
@@ -1009,7 +1034,7 @@ const Overview: React.FC = () => {
             {/* The recorder waits apply to recorded web tests only */}
             {!isMobileProject && (
               <div className="flex items-center gap-4 flex-wrap">
-                <Tooltip content={t('tooltips.recorder.implicitWait')} position="right">
+                <Tooltip content={t('tooltips.overview.implicitWait')} position="right">
                   <div className="flex items-center gap-2">
                     <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                       {t('settings.recording.implicitWait.label')}
@@ -1028,7 +1053,7 @@ const Overview: React.FC = () => {
                     />
                   </div>
                 </Tooltip>
-                <Tooltip content={t('tooltips.recorder.explicitWait')} position="right">
+                <Tooltip content={t('tooltips.overview.explicitWait')} position="right">
                   <div className="flex items-center gap-2">
                     <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                       {t('settings.recording.explicitWait.label')}
@@ -1129,19 +1154,55 @@ const Overview: React.FC = () => {
               <div className="space-y-3">
                 <div>
                   <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.page')}</label>
-                  <input type="text" value={pagePath} onChange={(e) => setPagePath(e.target.value)} onBlur={handlePathsUpdate} placeholder="e.g. pages" className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full" />
+                  <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
+                    <input
+                      type="text"
+                      value={pagePath}
+                      onChange={(e) => setPagePath(e.target.value)}
+                      onBlur={handlePathsUpdate}
+                      placeholder="e.g. pages"
+                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
+                    />
+                  </Tooltip>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.feature')}</label>
-                  <input type="text" value={featurePath} onChange={(e) => setFeaturePath(e.target.value)} onBlur={handlePathsUpdate} placeholder="e.g. features" className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full" />
+                  <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
+                    <input
+                      type="text"
+                      value={featurePath}
+                      onChange={(e) => setFeaturePath(e.target.value)}
+                      onBlur={handlePathsUpdate}
+                      placeholder="e.g. features"
+                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
+                    />
+                  </Tooltip>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.spec')}</label>
-                  <input type="text" value={specPath} onChange={(e) => setSpecPath(e.target.value)} onBlur={handlePathsUpdate} placeholder="e.g. spec" className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full" />
+                  <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
+                    <input
+                      type="text"
+                      value={specPath}
+                      onChange={(e) => setSpecPath(e.target.value)}
+                      onBlur={handlePathsUpdate}
+                      placeholder="e.g. spec"
+                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
+                    />
+                  </Tooltip>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.helper')}</label>
-                  <input type="text" value={helperPath} onChange={(e) => setHelperPath(e.target.value)} onBlur={handlePathsUpdate} placeholder="e.g. helpers" className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full" />
+                  <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
+                    <input
+                      type="text"
+                      value={helperPath}
+                      onChange={(e) => setHelperPath(e.target.value)}
+                      onBlur={handlePathsUpdate}
+                      placeholder="e.g. helpers"
+                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
+                    />
+                  </Tooltip>
                 </div>
               </div>
             </div>

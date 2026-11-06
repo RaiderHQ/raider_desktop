@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
+import Tooltip from '@components/Tooltip'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
@@ -173,28 +174,32 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
 
   return (
     <div className="relative flex items-center gap-1" ref={ref}>
-      <select
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value || null)}
-        aria-label={t('tests.suiteFilter.label')}
-        className="max-w-[7rem] border border-neutral-bdr rounded px-1.5 py-1 text-xs bg-white"
-      >
-        <option value="">{t('tests.suiteFilter.all')}</option>
-        {suites.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.name}
-          </option>
-        ))}
-      </select>
-      <button
-        aria-label={t('tests.suiteFilter.actions')}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-        className="text-xs px-2 py-1 rounded border border-neutral-bdr bg-white hover:bg-neutral-50"
-      >
-        <span aria-hidden>⋯</span>
-      </button>
+      <Tooltip content={t('tooltips.tests.suite')} position="bottom">
+        <select
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value || null)}
+          aria-label={t('tests.suiteFilter.label')}
+          className="max-w-[7rem] border border-neutral-bdr rounded px-1.5 py-1 text-xs bg-white"
+        >
+          <option value="">{t('tests.suiteFilter.all')}</option>
+          {suites.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </Tooltip>
+      <Tooltip content={t('tooltips.tests.suiteActions')} position="bottom">
+        <button
+          aria-label={t('tests.suiteFilter.actions')}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+          className="text-xs px-2 py-1 rounded border border-neutral-bdr bg-white hover:bg-neutral-50"
+        >
+          <span aria-hidden>⋯</span>
+        </button>
+      </Tooltip>
       {open && (
         <div
           role="menu"

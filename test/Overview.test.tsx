@@ -197,6 +197,29 @@ describe('Overview Page', (): void => {
     expect(screen.getByTestId('folder')).toHaveTextContent('project')
   })
 
+  it('shows a tooltip on each tab on focus', async (): Promise<void> => {
+    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+    const tabs: [string, string][] = [
+      ['overview.tabs.tests', 'tooltips.overview.tabTests'],
+      ['overview.tabs.files', 'tooltips.overview.tabFiles'],
+      ['Scaffolding', 'tooltips.overview.tabScaffold'],
+      ['overview.tabs.dashboard', 'tooltips.overview.tabDashboard']
+    ]
+    for (const [name, key] of tabs) {
+      const tab = screen.getByRole('button', { name })
+      fireEvent.focus(tab)
+      expect(screen.getByRole('tooltip')).toHaveTextContent(key)
+      fireEvent.blur(tab)
+    }
+  })
+
   it('navigates to /start-project if no project path is set', async (): Promise<void> => {
     useProjectStore.setState({ projectPath: null, files: [] })
     await act(async () => {
@@ -1066,6 +1089,12 @@ describe('Overview live runs', (): void => {
       JSON.parse(localStorage.getItem('raider.runSettings:/fake/project') as string).reuseLogins
     ).toBe(false)
     expect(screen.getByTestId('overview-fresh-login')).toBeDisabled()
+  })
+
+  it('Run in parallel has a tooltip', async () => {
+    await renderOverview()
+    fireEvent.focus(screen.getByTestId('overview-parallel-toggle'))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('tooltips.files.parallel')
   })
 
   it('sends loginState refresh when fresh login is checked', async () => {

@@ -9,6 +9,7 @@ import SelectInput from '@components/SelectInput'
 import Checkbox from '@components/Checkbox'
 import SegmentedControl from '@components/SegmentedControl'
 import LoadingScreen from '@components/LoadingScreen'
+import Tooltip from '@components/Tooltip'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
@@ -137,6 +138,7 @@ const CreateProject: React.FC = () => {
               onChange={(e) => setProjectName(e.target.value)}
               placeholder={t('newProject.input.placeholder')}
               hint={t('newProject.input.hint')}
+              tooltip={t('tooltips.newProject.name')}
               error={nameError}
             />
           </div>
@@ -146,6 +148,7 @@ const CreateProject: React.FC = () => {
               <SegmentedControl<Target>
                 label={t('newProject.question.target')}
                 testId="target-control"
+                tooltip={t('tooltips.newProject.target')}
                 value={target}
                 onChange={setTarget}
                 options={[
@@ -168,6 +171,7 @@ const CreateProject: React.FC = () => {
               <SegmentedControl<Phones>
                 label={t('newProject.question.phones')}
                 testId="phones-control"
+                tooltip={t('tooltips.newProject.phones')}
                 value={phones}
                 onChange={setPhones}
                 options={[
@@ -181,6 +185,7 @@ const CreateProject: React.FC = () => {
               label={t('newProject.question.test')}
               options={options.test}
               selected={testFramework}
+              tooltip={t('tooltips.newProject.framework')}
               onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
                 handleOptionChange(setTestFramework, target.value)
               }
@@ -198,6 +203,7 @@ const CreateProject: React.FC = () => {
                     ? t('newProject.ci.azure')
                     : t('newProject.ci.github')
                 }
+                tooltip={t('tooltips.newProject.ci')}
                 onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
                   setCiProvider(target.value === t('newProject.ci.azure') ? 'azure' : 'github')
                 }
@@ -220,6 +226,7 @@ const CreateProject: React.FC = () => {
                   checked={accessibility}
                   onChange={setAccessibility}
                   helpText={t('newProject.addons.accessibilityHelp')}
+                  tooltip={t('tooltips.newProject.accessibility')}
                 />
               )}
               {mobileSupported && (
@@ -228,6 +235,7 @@ const CreateProject: React.FC = () => {
                   checked={examples}
                   onChange={setExamples}
                   helpText={t('newProject.addons.examplesHelp')}
+                  tooltip={t('tooltips.newProject.examples')}
                 />
               )}
             </div>
@@ -235,14 +243,18 @@ const CreateProject: React.FC = () => {
 
           <div className="flex">
             <div>
-              <Button onClick={() => navigate(-1)} type="secondary">
-                {t('button.back.text')}
-              </Button>
+              <Tooltip content={t('tooltips.newProject.back')} position="top">
+                <Button onClick={() => navigate(-1)} type="secondary">
+                  {t('button.back.text')}
+                </Button>
+              </Tooltip>
             </div>
             <div className="pl-4">
-              <Button onClick={handleCreateProject} type="primary" disabled={!nameIsValid}>
-                {t('button.create.text')}
-              </Button>
+              <Tooltip content={t('tooltips.newProject.create')} position="top">
+                <Button onClick={handleCreateProject} type="primary" disabled={!nameIsValid}>
+                  {t('button.create.text')}
+                </Button>
+              </Tooltip>
             </div>
           </div>
         </div>

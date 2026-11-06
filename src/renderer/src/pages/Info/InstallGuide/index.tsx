@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import Logo from '@assets/images/logo.svg'
+import Tooltip from '@components/Tooltip'
 import { FaArrowLeft } from 'react-icons/fa'
 import { useNavigate } from 'react-router'
 
@@ -38,13 +39,15 @@ const InstallGuide: React.FC<InstallGuideProps> = ({ rubyMissing, rubyError }): 
   return (
     <div className="min-w-full items-center">
       <ContentArea>
-        <button
-          onClick={() => navigate('/')}
+        <Tooltip
+          content={t('tooltips.installGuide.back')}
+          position="right"
           className="absolute top-4 left-4"
-          aria-label="Go Back"
         >
-          <FaArrowLeft size={24} />
-        </button>
+          <button onClick={() => navigate('/')} aria-label="Go Back">
+            <FaArrowLeft size={24} />
+          </button>
+        </Tooltip>
         <div className="flex flex-col items-center">
           <div className="mb-2">
             <img src={Logo} alt={t('installGuide.logoAlt')} className="w-28 h-auto" />
@@ -55,15 +58,19 @@ const InstallGuide: React.FC<InstallGuideProps> = ({ rubyMissing, rubyError }): 
               <p>{errorMessage}</p>
             </div>
             <div className="flex justify-between space-x-4">
-              <Button
-                onClick={() => handleNavigation('https://github.com/RaiderHQ/ruby_raider')}
-                type="secondary"
-              >
-                {t('installGuide.githubButton')}
-              </Button>
-              <Button onClick={() => handleNavigation('https://ruby-raider.com/')} type="primary">
-                {t('installGuide.websiteButton')}
-              </Button>
+              <Tooltip content={t('tooltips.installGuide.github')} position="top">
+                <Button
+                  onClick={() => handleNavigation('https://github.com/RaiderHQ/ruby_raider')}
+                  type="secondary"
+                >
+                  {t('installGuide.githubButton')}
+                </Button>
+              </Tooltip>
+              <Tooltip content={t('tooltips.installGuide.website')} position="top">
+                <Button onClick={() => handleNavigation('https://ruby-raider.com/')} type="primary">
+                  {t('installGuide.websiteButton')}
+                </Button>
+              </Tooltip>
             </div>
           </div>
         </div>

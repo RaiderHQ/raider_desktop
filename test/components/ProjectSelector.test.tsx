@@ -32,6 +32,19 @@ describe('ProjectSelector', () => {
     expect(screen.getByText('Open a project')).toBeInTheDocument()
   })
 
+  it('shows its tooltip on the button and the help button on focus', () => {
+    render(
+      <MemoryRouter>
+        <ProjectSelector {...defaultProps} tooltip="Hello" />
+      </MemoryRouter>
+    )
+    fireEvent.focus(screen.getByText('Open'))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Hello')
+    fireEvent.blur(screen.getByText('Open'))
+    fireEvent.focus(screen.getByRole('button', { name: 'Help' }))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Hello')
+  })
+
   it('renders the button', () => {
     render(<MemoryRouter><ProjectSelector {...defaultProps} /></MemoryRouter>)
     expect(screen.getByText('Open')).toBeInTheDocument()

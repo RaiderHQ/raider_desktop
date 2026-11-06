@@ -111,6 +111,13 @@ describe('RunPanel', () => {
     expect(cancel).toHaveBeenCalled()
   })
 
+  it('Cancel has a tooltip on focus', () => {
+    setRun(makeRun())
+    render(<RunPanel routeKey="/tests" />)
+    fireEvent.focus(screen.getByTestId('run-cancel'))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('tooltips.runPanel.cancel')
+  })
+
   it('shows passed with Run again and no Re-run failed', () => {
     const onRunAgain = vi.fn()
     setRun(makeRun({ finished: finished('passed') }, [test1('a1', 'passed')]))

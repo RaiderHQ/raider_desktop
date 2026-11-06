@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { useRunStore } from '@foundation/Stores/runStore'
 import ConfirmationModal from '@components/ConfirmationModal'
+import Tooltip from '@components/Tooltip'
 import type { SavedLogin, SavedLoginsResult } from '@shared/types/savedLogins'
 
 const MINUTE_MS = 60_000
@@ -103,14 +104,16 @@ const SavedLogins: React.FC = () => {
             {t('logins.expired')}
           </span>
         )}
-        <button
-          type="button"
-          data-testid="saved-login-forget"
-          onClick={() => setPendingForget(login.name)}
-          className="px-2.5 py-1 text-xs font-semibold rounded-md border border-neutral-bdr text-neutral-dk hover:bg-neutral-100"
-        >
-          {t('logins.forget')}
-        </button>
+        <Tooltip content={t('tooltips.files.forgetLogin')} position="left">
+          <button
+            type="button"
+            data-testid="saved-login-forget"
+            onClick={() => setPendingForget(login.name)}
+            className="px-2.5 py-1 text-xs font-semibold rounded-md border border-neutral-bdr text-neutral-dk hover:bg-neutral-100"
+          >
+            {t('logins.forget')}
+          </button>
+        </Tooltip>
       </li>
     )
   }

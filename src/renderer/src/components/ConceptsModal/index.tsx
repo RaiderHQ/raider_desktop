@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import ReactDOM from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Logo from '@components/Logo'
+import Tooltip from '@components/Tooltip'
 
 interface Concept {
   icon: string
@@ -118,16 +119,18 @@ const ConceptsModal: React.FC<ConceptsModalProps> = ({ onClose }) => {
             <h2 className="text-lg font-semibold text-neutral-dark">{t('concepts.title')}</h2>
             <p className="text-xs text-neutral-md">{t('concepts.subtitle')}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="ml-auto text-neutral-md hover:text-neutral-dark transition-colors"
-            aria-label="Close"
-          >
+          <Tooltip content={t('tooltips.modal.close')} position="bottom" className="ml-auto">
+            <button
+              onClick={onClose}
+              className="text-neutral-md hover:text-neutral-dark transition-colors"
+              aria-label="Close"
+            >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </Tooltip>
         </div>
 
         {/* Scrollable body */}
