@@ -29,5 +29,5 @@ export function shortcutLabel(id: ShortcutId, platform: Platform): string {
 
 /** 'mac' when the platform string starts with Mac; the renderer passes navigator.platform, main passes process.platform === 'darwin' ? 'Mac' : '' */
 export function platformFrom(platform: string | undefined): Platform {
-  return platform && platform.startsWith('Mac') ? 'mac' : 'other'
+  return /^mac/i.test(platform ?? '') ? 'mac' : 'other'
 }
