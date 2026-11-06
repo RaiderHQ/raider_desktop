@@ -86,9 +86,9 @@ const installSteps: Record<OS, { icon: string; titleKey: string; descKey: string
 }
 
 const osTabs: { id: OS; label: string; icon: string }[] = [
-  { id: 'mac', label: 'macOS', icon: '' },
-  { id: 'linux', label: 'Linux', icon: '' },
-  { id: 'windows', label: 'Windows', icon: '' }
+  { id: 'mac', label: 'concepts.os.mac', icon: '' },
+  { id: 'linux', label: 'concepts.os.linux', icon: '' },
+  { id: 'windows', label: 'concepts.os.windows', icon: '' }
 ]
 
 interface ConceptsModalProps {
@@ -173,7 +173,7 @@ const ConceptsModal: React.FC<ConceptsModalProps> = ({ onClose, onOpenShortcuts 
                       : 'text-neutral-md hover:text-neutral-dk'
                   }`}
                 >
-                  {tab.label}
+                  {t(tab.label)}
                 </button>
               ))}
             </div>

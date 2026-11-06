@@ -538,11 +538,11 @@ const Overview: React.FC = () => {
         setFileContent(result.data || '')
         setSavedContent(result.data || '')
       } else {
-        toast.error('Failed to read file')
+        toast.error(t('files.toast.readFailed'))
         setEditingFile(null)
       }
     } catch {
-      toast.error('Error reading file')
+      toast.error(t('files.toast.readError'))
       setEditingFile(null)
     } finally {
       setIsLoadingFile(false)
@@ -1194,7 +1194,7 @@ const Overview: React.FC = () => {
                       value={pagePath}
                       onChange={(e) => setPagePath(e.target.value)}
                       onBlur={handlePathsUpdate}
-                      placeholder="e.g. pages"
+                      placeholder={t('overview.paths.placeholder.page')}
                       className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
                     />
                   </Tooltip>
@@ -1207,7 +1207,7 @@ const Overview: React.FC = () => {
                       value={featurePath}
                       onChange={(e) => setFeaturePath(e.target.value)}
                       onBlur={handlePathsUpdate}
-                      placeholder="e.g. features"
+                      placeholder={t('overview.paths.placeholder.feature')}
                       className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
                     />
                   </Tooltip>
@@ -1220,7 +1220,7 @@ const Overview: React.FC = () => {
                       value={specPath}
                       onChange={(e) => setSpecPath(e.target.value)}
                       onBlur={handlePathsUpdate}
-                      placeholder="e.g. spec"
+                      placeholder={t('overview.paths.placeholder.spec')}
                       className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
                     />
                   </Tooltip>
@@ -1233,7 +1233,7 @@ const Overview: React.FC = () => {
                       value={helperPath}
                       onChange={(e) => setHelperPath(e.target.value)}
                       onBlur={handlePathsUpdate}
-                      placeholder="e.g. helpers"
+                      placeholder={t('overview.paths.placeholder.helper')}
                       className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
                     />
                   </Tooltip>

@@ -280,7 +280,15 @@
       "urlInvalid": "Enter a full address starting with http:// or https://, for example https://example.com.",
       "saved": "Saved"
     },
-    "openTerminal": "Open terminal"
+    "openTerminal": "Open terminal",
+    "paths": {
+      "placeholder": {
+        "page": "e.g. pages",
+        "feature": "e.g. features",
+        "spec": "e.g. spec",
+        "helper": "e.g. helpers"
+      }
+    }
   },
   "editor": {
     "placeholder": "Start editing file content here...",
@@ -330,7 +338,8 @@
     "error": {
       "imageRead": "Error reading image",
       "imageAccess": "Error accessing image file"
-    }
+    },
+    "cardScreenshotAlt": "Screenshot"
   },
   "dashboard": {
     "overallSummary": "Overall summary",
@@ -628,8 +637,7 @@
       "secretUnnamed": "This password step has no variable yet.",
       "secretMissing": "This step types a password from {{name}}, which isn't set on this computer. Set it, restart Raider, and try again.",
       "renderFailed": "Couldn't render code",
-      "editCommand": "Edit command",
-      "doubleClickToEdit": "Double-click to edit"
+      "editCommand": "Edit command"
     }
   },
   "shortcuts": {
@@ -742,6 +750,11 @@
     "overview": {
       "title": "Project overview",
       "message": "The Overview is your project's home.\n\nBrowse files on the left, preview them on the right, and use the toolbar to set your browser, run mode, and test timeout."
+    },
+    "os": {
+      "mac": "macOS",
+      "linux": "Linux",
+      "windows": "Windows"
     }
   },
   "help": {
@@ -1238,7 +1251,8 @@
       "class_name": "Found by class",
       "tag_name": "Found by tag",
       "other": "Found by locator"
-    }
+    },
+    "stepScreenshotAlt": "Step screenshot"
   },
   "appMenu": {
     "file": "File",
@@ -1292,8 +1306,12 @@
       "duplicated": "Duplicated {{name}}",
       "duplicateFailed": "Failed to duplicate: {{error}}",
       "renamed": "Renamed to {{name}}",
-      "renameFailed": "Failed to rename: {{error}}"
-    }
+      "renameFailed": "Failed to rename: {{error}}",
+      "readFailed": "Failed to read file",
+      "readError": "Error reading file"
+    },
+    "runTests": "Run tests",
+    "emptyFolder": "Empty folder"
   },
   "closeGuard": {
     "message": "Save changes to {{name}}?",
@@ -1326,5 +1344,16 @@
   },
   "header": {
     "howItWorks": "How Ruby Raider works"
+  },
+  "gems": {
+    "toast": {
+      "installing": "Installing missing gems: {{gems}}…",
+      "installed": "Gems installed",
+      "failed": "Failed to install gems: {{error}}",
+      "error": "Error installing gems: {{error}}"
+    }
+  },
+  "terminal": {
+    "close": "Close terminal"
   }
 }

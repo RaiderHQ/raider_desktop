@@ -1,6 +1,39 @@
 import { describe, it, expect } from 'vitest'
 import en from '../src/renderer/src/assets/translations/en.json'
 
+/** Proper nouns and acronyms that keep their capitals in sentence-case copy. */
+const PROPER_NOUNS = [
+  'Ruby',
+  'Raider',
+  'RSpec',
+  'Cucumber',
+  'Selenium',
+  'Appium',
+  'Chrome',
+  'Firefox',
+  'URL',
+  'CI',
+  'Esc',
+  'HTML',
+  'GitHub',
+  'OS',
+  'Windows',
+  'macOS',
+  'Linux',
+  'iOS',
+  'Android',
+  'JSON',
+  'YAML',
+  'API',
+  'Hideout',
+  'Longship',
+  'Watir',
+  'Homebrew',
+  'WSL',
+  'LLM',
+  'AI'
+]
+
 /** Copy decisions from the 2026-11-06 hand test (D10, D12, sentence case, jargon). */
 describe('copy', () => {
   it('does not promise hover help or run history the app does not have (D10)', () => {
@@ -60,26 +93,9 @@ describe('copy', () => {
     expect(en.header.howItWorks).toBe('How Ruby Raider works')
     expect(en.landing.bubble).toBe('New here? Click me.')
     expect(en.recorder.step.editCommand).toBe('Edit command')
-    expect(en.recorder.step.doubleClickToEdit).toBe('Double-click to edit')
   })
 
   it('every tooltip is sentence case, short and has no shortcut typed in', () => {
-    const allowed = [
-      'Ruby',
-      'Raider',
-      'RSpec',
-      'Cucumber',
-      'Selenium',
-      'Appium',
-      'Chrome',
-      'Firefox',
-      'URL',
-      'CI',
-      'Esc',
-      'HTML',
-      'GitHub',
-      'OS'
-    ]
     const strings: [string, string][] = []
     const walk = (node: unknown, path: string): void => {
       if (typeof node === 'string') strings.push([path, node])
@@ -96,7 +112,8 @@ describe('copy', () => {
         .slice(1)
         .filter(
           (w) =>
-            /[A-Z]/.test(w) && !allowed.includes(w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, ''))
+            /[A-Z]/.test(w) &&
+            !PROPER_NOUNS.includes(w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, ''))
         )
       if (!/^[A-Z0-9]/.test(text)) offenders.push(`${path}: must start upper case or digit`)
       if (stray.length) offenders.push(`${path}: stray capitals ${stray.join(', ')}`)
@@ -107,37 +124,6 @@ describe('copy', () => {
   })
 
   it('no title case in buttons, labels and titles', () => {
-    const allowed = [
-      'Ruby',
-      'Raider',
-      'RSpec',
-      'Cucumber',
-      'Selenium',
-      'Appium',
-      'Chrome',
-      'Firefox',
-      'URL',
-      'CI',
-      'Esc',
-      'HTML',
-      'GitHub',
-      'OS',
-      'Windows',
-      'macOS',
-      'Linux',
-      'iOS',
-      'Android',
-      'JSON',
-      'YAML',
-      'API',
-      'Hideout',
-      'Longship',
-      'Watir',
-      'Homebrew',
-      'WSL',
-      'LLM',
-      'AI'
-    ]
     const names = [
       'title',
       'label',
@@ -165,6 +151,7 @@ describe('copy', () => {
       const last = path.split('.').pop() as string
       if (!(names.includes(last) || /(Button|Label|Title)$/.test(last))) continue
       checked++
+      // The first word is skipped below; after a stripped placeholder that is the next word.
       // Step numbers ("1. Install") and {{placeholders}} are not words.
       const words = text
         .replace(/^\d+\.\s*/, '')
@@ -176,7 +163,8 @@ describe('copy', () => {
         .slice(1)
         .filter(
           (w) =>
-            /[A-Z]/.test(w) && !allowed.includes(w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, ''))
+            /[A-Z]/.test(w) &&
+            !PROPER_NOUNS.includes(w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, ''))
         )
       if (stray.length) offenders.push(`${path}: "${text}" (${stray.join(', ')})`)
     }

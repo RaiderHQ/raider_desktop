@@ -72,7 +72,7 @@ const Folder: React.FC<FolderProps> = ({
             <button
               onClick={onRunTests}
               disabled={runDisabled}
-              title="Run tests"
+              title={t('files.runTests')}
               className="w-7 h-7 flex items-center justify-center rounded-full text-green-600 hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
@@ -117,7 +117,7 @@ const Folder: React.FC<FolderProps> = ({
               )
             })
           ) : (
-            <p className="text-sm text-neutral-md italic py-2 px-2">Empty folder</p>
+            <p className="text-sm text-neutral-md italic py-2 px-2">{t('files.emptyFolder')}</p>
           )}
         </div>
       )}
