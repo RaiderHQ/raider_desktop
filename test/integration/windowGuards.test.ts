@@ -9,7 +9,8 @@ import {
   installWindowGuards,
   isAppUrl,
   isExternalUrl,
-  isSnapshotFrameUrl
+  isSnapshotFrameUrl,
+  openExternalUrl
 } from '../../src/main/windowGuards'
 import { RECORDER_PARTITION } from '../../src/shared/recorderSession'
 
@@ -31,6 +32,33 @@ describe('isExternalUrl', () => {
     'vscode://file/x',
     'not a url'
   ])('refuses %s', (url) => expect(isExternalUrl(url)).toBe(false))
+})
+
+describe('openExternalUrl', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockOpenExternal.mockResolvedValue(undefined)
+  })
+
+  it.each(['https://github.com/RaiderHQ', 'http://localhost:3000/'])('opens %s', (url) => {
+    expect(openExternalUrl(url)).toBe(true)
+    expect(mockOpenExternal).toHaveBeenCalledWith(url)
+  })
+
+  it.each(['file:///etc/passwd', 'javascript:alert(1)', 'not a url'])('refuses %s', (url) => {
+    expect(openExternalUrl(url)).toBe(false)
+    expect(mockOpenExternal).not.toHaveBeenCalled()
+  })
+
+  it('catches and logs a rejected openExternal', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const boom = new Error('boom')
+    mockOpenExternal.mockRejectedValue(boom)
+    expect(openExternalUrl('https://example.com/')).toBe(true)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(warn).toHaveBeenCalledWith('open external failed', boom)
+    warn.mockRestore()
+  })
 })
 
 describe('isAppUrl', () => {
@@ -83,6 +111,7 @@ describe('installWindowGuards', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockOpenExternal.mockResolvedValue(undefined)
     contents = Object.assign(new EventEmitter(), {
       setWindowOpenHandler: vi.fn((h) => (openHandler = h))
     })

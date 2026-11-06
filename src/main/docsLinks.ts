@@ -1,5 +1,5 @@
-import { shell } from 'electron'
 import { isDocsLinkId, type DocsLinkId } from '../shared/docsLinkIds'
+import { openExternalUrl } from './windowGuards'
 
 const SITE = 'https://ruby-raider.onrender.com'
 
@@ -48,7 +48,7 @@ const logId = (id: unknown): string => (typeof id === 'string' ? id.slice(0, 64)
 /** Resolves a link id from the table and opens it; false when refused. */
 export async function openDocs(
   id: unknown,
-  open: (url: string) => Promise<void> = (url) => shell.openExternal(url),
+  open: (url: string) => boolean | Promise<unknown> = openExternalUrl,
   links: Record<string, string> = DOCS_LINKS
 ): Promise<boolean> {
   if (!isDocsLinkId(id) || !Object.prototype.hasOwnProperty.call(links, id)) {
@@ -61,7 +61,10 @@ export async function openDocs(
     return false
   }
   try {
-    await open(url)
+    if ((await open(url)) === false) {
+      console.warn('open-docs failed', id, 'opener refused')
+      return false
+    }
   } catch (e) {
     console.warn('open-docs failed', id, e)
     return false

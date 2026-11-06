@@ -59,6 +59,13 @@ describe('openDocs', () => {
     expect(console.warn).toHaveBeenCalledWith('open-docs failed', 'docs.home', boom)
   })
 
+  it('treats an opener that returns false as a refusal', async () => {
+    const refusing = vi.fn().mockReturnValue(false)
+    expect(await openDocs('docs.home', refusing)).toBe(false)
+    expect(refusing).toHaveBeenCalledWith(DOCS_LINKS['docs.home'])
+    expect(console.warn).toHaveBeenCalledWith('open-docs failed', 'docs.home', 'opener refused')
+  })
+
   it('logs a refused id as a short string or its type, not the raw value', async () => {
     await openDocs('x'.repeat(200), open)
     expect(console.warn).toHaveBeenCalledWith('open-docs refused', 'x'.repeat(64))
