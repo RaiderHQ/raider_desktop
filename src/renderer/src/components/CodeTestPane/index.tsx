@@ -128,10 +128,12 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
   useEffect(
     () =>
       onMenuCommand((command) => {
-        if (command === 'stop' && recording.isRecording) void stop()
-        if (command === 'open-file' && !busy && !recordedTest) editCode()
+        if (command === 'stop' && recording.isRecording && !isReplaying) void stop()
+        if (command === 'open-file' && !busy && !recordedTest && !confirmingRecord && !!file) {
+          editCode()
+        }
       }),
-    [recording.isRecording, busy, recordedTest, stop, editCode]
+    [recording.isRecording, isReplaying, busy, recordedTest, confirmingRecord, file, stop, editCode]
   )
 
   const saveAssertion = (expectedText: string): void => {

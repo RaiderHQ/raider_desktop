@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import MainTemplate from '@templates/Main'
 import { onMenuCommand } from '@foundation/menuCommands'
 import useRecorderStore from '@foundation/Stores/recorderStore'
+import useEditorStore from '@foundation/Stores/editorStore'
 
 vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string, opts?: object) => string } => ({
@@ -342,6 +343,73 @@ describe('MainTemplate project files toasts', () => {
       act(() => menuListener()('new-project'))
       expect(screen.getByTestId('where')).toHaveTextContent('/overview')
       root.remove()
+    })
+
+    describe('help overlays swap', () => {
+      let root: HTMLElement
+      beforeEach(() => {
+        root = document.createElement('div')
+        root.id = 'root'
+        document.body.appendChild(root)
+      })
+      afterEach(() => root.remove())
+
+      it('How it works with the sheet open replaces the sheet', () => {
+        renderAt('/overview')
+        act(() => menuListener()('shortcuts'))
+        act(() => menuListener()('how-it-works'))
+        expect(screen.getByText('concepts.title')).toBeInTheDocument()
+        expect(screen.queryByRole('dialog', { name: 'shortcuts.title' })).not.toBeInTheDocument()
+      })
+
+      it('the shortcuts command with the concepts modal open replaces it', () => {
+        renderAt('/overview')
+        act(() => menuListener()('how-it-works'))
+        act(() => menuListener()('shortcuts'))
+        expect(screen.queryByText('concepts.title')).not.toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'shortcuts.title' })).toBeInTheDocument()
+      })
+
+      it('neither opens over the Ruby install modal', async () => {
+        api().isRubyInstalled.mockResolvedValueOnce({ success: false })
+        renderAt('/overview')
+        await screen.findByText('recorder.rubyInstallModal.title')
+        act(() => menuListener()('shortcuts'))
+        act(() => menuListener()('how-it-works'))
+        expect(screen.queryByRole('dialog', { name: 'shortcuts.title' })).not.toBeInTheDocument()
+        expect(screen.queryByText('concepts.title')).not.toBeInTheDocument()
+      })
+    })
+
+    describe('with unsaved edits', () => {
+      afterEach(() => useEditorStore.setState({ pageDirty: false, inlineDirty: false }))
+
+      it('the file editor page keeps New test, New project and Open project out', async () => {
+        useEditorStore.setState({ pageDirty: true })
+        api().selectFolder.mockClear()
+        renderAt('/file-editor')
+        await act(async () => {
+          menuListener()('new-test')
+          menuListener()('new-project')
+          menuListener()('open-project')
+        })
+        expect(screen.getByTestId('where')).toHaveTextContent('/file-editor')
+        expect(api().selectFolder).not.toHaveBeenCalled()
+      })
+
+      it('the Files tab edit keeps the project switches out but leaves New test to the Overview', async () => {
+        useEditorStore.setState({ inlineDirty: true })
+        api().selectFolder.mockClear()
+        renderAt('/overview')
+        await act(async () => {
+          menuListener()('new-project')
+          menuListener()('open-project')
+        })
+        expect(screen.getByTestId('where')).toHaveTextContent('/overview')
+        expect(api().selectFolder).not.toHaveBeenCalled()
+        act(() => menuListener()('new-test'))
+        expect(screen.getByTestId('where')).toHaveTextContent('/overview/tests/new')
+      })
     })
 
     it('ignores anything that is not a known command', () => {

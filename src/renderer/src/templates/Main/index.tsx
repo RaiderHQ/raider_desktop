@@ -14,6 +14,7 @@ import useVersionStore from '@foundation/Stores/versionStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
+import useEditorStore from '@foundation/Stores/editorStore'
 import { installMissingGems } from '@foundation/installGems'
 import { subscribeRunEvents } from '@foundation/Stores/runStore'
 import { dispatchMenuCommand, isMenuCommand } from '@foundation/menuCommands'
@@ -94,6 +95,9 @@ const MainTemplate: React.FC = (): JSX.Element => {
   const modalOpen = useRef(false)
   modalOpen.current =
     isRubyInstallModalOpen || isGemsInstallModalOpen || isConceptsModalOpen || isShortcutsOpen
+  // The install modals gate the app; the two help overlays swap with each other instead
+  const installModalOpen = useRef(false)
+  installModalOpen.current = isRubyInstallModalOpen || isGemsInstallModalOpen
   const pickingFolder = useRef(false)
   useEffect(() => {
     const openProject = async (): Promise<void> => {
@@ -116,20 +120,23 @@ const MainTemplate: React.FC = (): JSX.Element => {
       const { recordingTarget, isRecording, isReplayingToBreakpoint } = useRecorderStore.getState()
       return !!recordingTarget || isRecording || isReplayingToBreakpoint
     }
+    // Leaving a page with unsaved edits would drop them; the editor's own prompt is the way out.
+    // The Files tab's inline editor asks about New test itself, so only a project switch waits.
+    const pageEditorDirty = (): boolean => useEditorStore.getState().pageDirty
+    const anyEditorDirty = (): boolean => pageEditorDirty() || useEditorStore.getState().inlineDirty
     return window.api.onMenuCommand((command) => {
       if (!isMenuCommand(command)) return
-      if (command === 'how-it-works') {
-        setIsConceptsModalOpen(true)
+      if (command === 'how-it-works' || command === 'shortcuts') {
+        if (installModalOpen.current) return
+        setIsConceptsModalOpen(command === 'how-it-works')
+        setIsShortcutsOpen(command === 'shortcuts')
         return
       }
       if (modalOpen.current) return
-      if (command === 'shortcuts') {
-        setIsShortcutsOpen(true)
-        return
-      }
       if (command === 'new-test') {
         // Only a project has a Tests tab; with none open nothing listens
         if (!useProjectStore.getState().projectPath) return
+        if (pageEditorDirty()) return
         if (recorderBusy()) {
           toast.error(t('quickRecord.stopFirst'))
           return
@@ -138,6 +145,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
         return
       }
       if (command === 'new-project' || command === 'open-project') {
+        if (anyEditorDirty()) return
         if (recorderBusy()) {
           toast.error(t('quickRecord.stopFirst'))
           return

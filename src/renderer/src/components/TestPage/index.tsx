@@ -257,8 +257,10 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
         if (command === 'record' && canRecord) record()
         if (command === 'run' && canRun) void recording.run()
         // Stop & save is the Stop button; Open file… is the toolbar's, which the recording blocks
-        if (command === 'stop' && recording.isRecording) void recording.stop()
-        if (command === 'open-file' && !busy) editCode()
+        if (command === 'stop' && recording.isRecording && !isReplaying) void recording.stop()
+        if (command === 'open-file' && !busy && !starting && !confirming && !!test?.file) {
+          editCode()
+        }
       }),
     [
       canRecord,
@@ -268,6 +270,10 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       recording.isRecording,
       recording.stop,
       busy,
+      isReplaying,
+      starting,
+      confirming,
+      test?.file,
       editCode
     ]
   )

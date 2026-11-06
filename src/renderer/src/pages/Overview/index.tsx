@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams } from 'react-router'
+import { useMatch, useNavigate, useParams } from 'react-router'
 import toast from 'react-hot-toast'
 import { sample } from 'lodash'
 import { FaChevronDown, FaChevronRight, FaTerminal } from 'react-icons/fa'
@@ -12,6 +12,7 @@ import TagInput from '@components/TagInput'
 import ProjectDashboard from '@components/ProjectDashboard'
 import Editor from '@components/Editor'
 import { onMenuCommand } from '@foundation/menuCommands'
+import useEditorStore from '@foundation/Stores/editorStore'
 import EditorSaveBar from '@components/EditorSaveBar'
 import UnsavedChangesModal from '@components/UnsavedChangesModal'
 import Terminal from '@components/Terminal'
@@ -57,6 +58,7 @@ const Overview: React.FC = () => {
   const showWebSettings = layout !== null && !isMobileProject
   const navigate = useNavigate()
   const { testKey } = useParams()
+  const isNewTestRoute = useMatch('/overview/tests/new') !== null
   const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
     useRecorderSettings()
   const [activeTab, setActiveTab] = useState<OverviewTab>('tests')
@@ -540,6 +542,17 @@ const Overview: React.FC = () => {
     if (fileDirty) setPendingLeave(() => action)
     else action()
   }
+
+  // The new test form is on the Tests tab; a dirty Files edit asks first
+  useEffect(() => {
+    if (isNewTestRoute) switchTab('tests')
+  }, [isNewTestRoute])
+
+  // App-wide menu commands that would leave the page stand down while the edit is unsaved
+  useEffect(() => {
+    useEditorStore.getState().setInlineDirty(fileDirty)
+  }, [fileDirty])
+  useEffect(() => (): void => useEditorStore.getState().setInlineDirty(false), [])
 
   const handleOpenFile = (filePath: string): void => guardUnsaved(() => void loadFile(filePath))
 

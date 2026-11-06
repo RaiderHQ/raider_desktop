@@ -509,6 +509,22 @@ describe('TestPage', () => {
       })
     })
 
+    it('does not open from the menu bar over a confirmation', async () => {
+      renderWithEditor(withFile)
+      await opened()
+      fireEvent.click(screen.getByRole('button', { name: 'testPage.more' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'testPage.deleteTest' }))
+      act(() => dispatchMenuCommand('open-file'))
+      expect(screen.queryByTestId('editor-state')).not.toBeInTheDocument()
+    })
+
+    it('does not open from the menu bar for a test with no file', async () => {
+      renderWithEditor(recorded)
+      await opened()
+      act(() => dispatchMenuCommand('open-file'))
+      expect(screen.queryByTestId('editor-state')).not.toBeInTheDocument()
+    })
+
     it('is disabled while recording', async () => {
       renderWithEditor(withFile)
       await opened()
@@ -709,6 +725,19 @@ describe('TestPage', () => {
     await emit('new-recorded-step', step('late'))
     expect(useRecorderStore.getState().activeTest?.steps).toEqual([])
     expect(useRecorderStore.getState().isRecording).toBe(false)
+  })
+
+  it('Stop from the menu does nothing while replaying, as the button is disabled', async () => {
+    renderPage(recorded)
+    await opened()
+    await startRecording()
+    act(() => useRecorderStore.setState({ isReplayingToBreakpoint: true, breakpointIndex: 1 }))
+    api.stopRecordingMain.mockClear()
+    act(() => dispatchMenuCommand('stop'))
+    expect(api.stopRecordingMain).not.toHaveBeenCalled()
+    act(() => useRecorderStore.setState({ isReplayingToBreakpoint: false }))
+    await act(async () => dispatchMenuCommand('stop'))
+    expect(api.stopRecordingMain).toHaveBeenCalled()
   })
 
   it('opening another test while replaying cancels the replay and saves the first', async () => {
