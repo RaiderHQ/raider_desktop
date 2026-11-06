@@ -16,7 +16,9 @@ import { buildAssertionStep, assertionModalType } from '@foundation/assertionSte
 import type { TestRow } from '@foundation/testKey'
 import type { CodeTestView } from '@shared/types/projectTest'
 import type { Step } from '@shared/types/step'
+import { onMenuCommand } from '@foundation/menuCommands'
 import { useTestRecording } from '../../hooks/useTestRecording'
+import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 
 interface CodeTestPaneProps {
   /** A test edited in code ('code' or 'codeOwnedWasRecorded'): a project file */
@@ -144,6 +146,29 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
       markLatest={recording.isRecording}
     />
   ) : null
+
+  // The menu bar's Record, Run and Save act like the buttons, under the same rules
+  const canRecord =
+    !recording.isRecording &&
+    !confirmingRecord &&
+    !!selected &&
+    !busy &&
+    !recordingDisabled &&
+    !recordedTest
+  const canRun = !busy && !runBusy && !!file && !confirmingRecord
+  const saving = recording.isRecording
+  const savingAsNew = !!recordedTest && !!unsavedExample && !saving
+  useEffect(
+    () =>
+      onMenuCommand((command) => {
+        if (command === 'record' && canRecord) setConfirmingRecord(true)
+        if (command === 'run' && canRun) run()
+        if (command === 'save' && saving) void stop()
+        if (command === 'save' && savingAsNew) void recording.saveAsNewTest()
+      }),
+    [canRecord, canRun, saving, savingAsNew, run, stop, recording.saveAsNewTest]
+  )
+  useDocumentTitle(selected?.name ?? row.name, recording.isRecording || unsavedExample !== null)
 
   const browserOpen = (recording.recordingUrl && recording.preloadPath) || isReplaying
   // Code switches the recording's steps while one is shown, else the selected test's view

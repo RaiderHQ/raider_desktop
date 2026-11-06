@@ -10,6 +10,8 @@ import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import { useRunStore } from '@foundation/Stores/runStore'
+import useTitleStore from '@foundation/Stores/titleStore'
+import { dispatchMenuCommand } from '@foundation/menuCommands'
 import type { RunView } from '@foundation/run/runModel'
 import { toRouteParam } from '@foundation/testKey'
 import type { TestRow } from '@foundation/testKey'
@@ -547,6 +549,42 @@ describe('CodeTestPane', () => {
       editCode: 'Open file…',
       run: 'Run',
       record: 'Record'
+    })
+  })
+
+  describe('menu bar Record, Run and Save', () => {
+    it('Record and Run act when the buttons are enabled', async () => {
+      renderPane()
+      await screen.findByRole('button', { name: 'testPage.record' })
+      act(() => dispatchMenuCommand('run'))
+      await waitFor(() => expect(api.startRun).toHaveBeenCalled())
+      act(() => useRunStore.setState({ isActive: false, checking: false, origin: null }))
+      act(() => dispatchMenuCommand('record'))
+      expect(await screen.findByRole('button', { name: 'Confirm' })).toBeInTheDocument()
+    })
+
+    it('does not act while the buttons are disabled', async () => {
+      useProjectStore.setState({ layout: mobileLayout })
+      renderPane()
+      await screen.findByRole('button', { name: 'testPage.record' })
+      act(() => dispatchMenuCommand('record'))
+      expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument()
+    })
+
+    it('File › Save offers the unsaved example as a new test', async () => {
+      api.recordOverExample.mockResolvedValue({ success: false, error: 'notUnique', count: 0 })
+      renderPane()
+      await recordOverFirstExample()
+      await stopAndSave()
+      await screen.findByRole('button', { name: 'testPage.saveAsNew' })
+      expect(useTitleStore.getState().document).toEqual({ name: 'logs in', edited: true })
+      await act(async () => {
+        dispatchMenuCommand('save')
+      })
+      expect(api.saveRecording).toHaveBeenCalledWith(
+        UNLISTED_SUITE_ID,
+        expect.objectContaining({ name: 'logs in' })
+      )
     })
   })
 })

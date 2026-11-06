@@ -11,6 +11,7 @@ import useRecorderStore from '@foundation/Stores/recorderStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import { useRunStore } from '@foundation/Stores/runStore'
 import { dispatchMenuCommand } from '@foundation/menuCommands'
+import useTitleStore from '@foundation/Stores/titleStore'
 import type { RunView } from '@foundation/run/runModel'
 import useProjectStore from '@foundation/Stores/projectStore'
 import type { TestRow } from '@foundation/testKey'
@@ -1225,6 +1226,68 @@ describe('TestPage re-picking the failed element', () => {
       })
       expect(spies.run).not.toHaveBeenCalled()
       expect(spies.continueRecording).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('saving (PR B)', () => {
+    it('File › Save stops and saves while recording', async () => {
+      renderPage()
+      await opened()
+      await startRecording()
+      act(() => dispatchMenuCommand('save'))
+      expect(api.stopRecordingMain).toHaveBeenCalled()
+    })
+
+    it('File › Save does nothing on a saved test', async () => {
+      renderPage()
+      await opened()
+      act(() => dispatchMenuCommand('save'))
+      expect(api.stopRecordingMain).not.toHaveBeenCalled()
+      expect(api.saveRecording).not.toHaveBeenCalled()
+    })
+
+    it('the title is edited while recording and clean after Stop & save', async () => {
+      renderPage()
+      await opened()
+      expect(useTitleStore.getState().document).toEqual({ name: 'Login works', edited: false })
+      await startRecording()
+      expect(useTitleStore.getState().document).toEqual({ name: 'Login works', edited: true })
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'testPage.stop' }))
+      })
+      await emit('recording-stopped')
+      await waitFor(() =>
+        expect(useTitleStore.getState().document).toEqual({ name: 'Login works', edited: false })
+      )
+    })
+
+    it('says the test autosaves when it is saved and idle', async () => {
+      renderPage()
+      await opened()
+      expect(screen.getByText('testPage.autosaved')).toBeInTheDocument()
+      await startRecording()
+      expect(screen.queryByText('testPage.autosaved')).not.toBeInTheDocument()
+    })
+
+    it('does not say it for a draft', async () => {
+      useRecorderStore.getState().startDraft('New one', 'https://x.test')
+      // A draft with steps is kept, whatever an earlier test's deferred cleanup does
+      act(() =>
+        useRecorderStore
+          .getState()
+          .updateActiveTest((p) => (p ? { ...p, steps: [step('a'), step('b')] } : null))
+      )
+      render(
+        <MemoryRouter>
+          <TestPage />
+        </MemoryRouter>
+      )
+      await screen.findByDisplayValue('New one')
+      expect(screen.queryByText('testPage.autosaved')).not.toBeInTheDocument()
+    })
+
+    it('has the sentence in en.json', () => {
+      expect(en.testPage.autosaved).toBe('Changes to this test are saved automatically.')
     })
   })
 })

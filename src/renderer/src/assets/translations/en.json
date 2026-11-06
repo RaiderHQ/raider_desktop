@@ -439,6 +439,7 @@
     "name": "Test name",
     "url": "Start URL",
     "record": "Record",
+    "autosaved": "Changes to this test are saved automatically.",
     "stop": "Stop & save",
     "recording": "Recording",
     "run": "Run",

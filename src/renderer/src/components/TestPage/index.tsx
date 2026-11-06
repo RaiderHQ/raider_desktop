@@ -30,6 +30,7 @@ import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import { onMenuCommand } from '@foundation/menuCommands'
 import { dropEmptyDraft, useTestRecording } from '../../hooks/useTestRecording'
 import { useFailedStep } from '../../hooks/useFailedStep'
+import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import NewTestForm from './NewTestForm'
 import RecordingLayout from './RecordingLayout'
 
@@ -55,6 +56,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const activeTest = useRecorderStore((s) => s.activeTest)
   const activeSuiteId = useRecorderStore((s) => s.activeSuiteId)
   const draftTest = useRecorderStore((s) => s.draftTest)
+  const unsavedExample = useRecorderStore((s) => s.unsavedExample)
   const runActive = useRunStore((s) => s.isActive || s.checking)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
   const runBusy = runActive || recorderRunning
@@ -136,6 +138,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const readOnly = !!test?.ownership && test.ownership !== 'recorded'
   const busy = recording.isRecording || isReplaying || picking
   const failedStep = useFailedStep(projectPath, test)
+  useDocumentTitle(test?.name ?? null, recording.isRecording || unsavedExample !== null)
 
   // The name is kept here while typing and saved on blur or Enter: main renames the
   // test's file on a real rename, so a half-typed name must never reach it
@@ -243,8 +246,10 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       onMenuCommand((command) => {
         if (command === 'record' && canRecord) record()
         if (command === 'run' && canRun) void recording.run()
+        // Everything else is saved as it changes; only a recording waits for Stop & save
+        if (command === 'save' && recording.isRecording) void recording.stop()
       }),
-    [canRecord, canRun, record, recording.run]
+    [canRecord, canRun, record, recording.run, recording.isRecording, recording.stop]
   )
 
   const startOver = (): void => {
@@ -546,9 +551,14 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
               focusBrowser={pickingStep !== null}
             />
           ) : (
-            <div className="flex-1 min-h-[12rem]">
-              <StyledPanel>{steps ?? <></>}</StyledPanel>
-            </div>
+            <>
+              <div className="flex-1 min-h-[12rem]">
+                <StyledPanel>{steps ?? <></>}</StyledPanel>
+              </div>
+              {!isDraft && !recording.isRecording && !readOnly && (
+                <p className="text-xs text-neutral-md mt-2">{t('testPage.autosaved')}</p>
+              )}
+            </>
           )}
 
           {ownRun && (
