@@ -313,6 +313,24 @@ describe('installPickMode', () => {
     )
   })
 
+  it('the pick candidate carries the full text, up to 2000 characters', () => {
+    pick.setPicking(false)
+    pick = installPickMode(
+      window,
+      send,
+      (el) => ({ ...candidate(el), ...assertionFields(el) }),
+      trusted
+    )
+    const el = document.createElement('p')
+    el.id = 'long'
+    document.body.appendChild(el)
+    Object.defineProperty(el, 'innerText', { value: 'q'.repeat(3000) })
+    pick.setPicking(true)
+    click(el)
+    const payload = send.mock.calls.at(-1)![1] as { elementText: string }
+    expect(payload.elementText).toBe('q'.repeat(2000))
+  })
+
   it("a secret field's value is empty in the candidate", () => {
     document.body.innerHTML += '<input id="pw" type="password" value="hunter2">'
     pick = installPickMode(

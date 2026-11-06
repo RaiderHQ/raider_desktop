@@ -188,7 +188,9 @@ describe('pick mode in main', () => {
     })
     const request = showMenu.mock.calls[0][1] as Record<string, string>
     expect(request.selector.length).toBe(2000)
-    expect(request.elementText.length).toBe(200)
+    // The label hint stays at 200; the full text for an exact-text check goes to 2000
+    expect(request.elementText.length).toBe(500)
+    expect(request.labelText.length).toBe(200)
     expect(request.ariaLabel.length).toBe(200)
     expect(request.placeholder.length).toBe(200)
   })
@@ -204,7 +206,38 @@ describe('pick mode in main', () => {
     expect(picked()).toEqual([['recorder-picked', { cancelled: true, reason: 'asserted' }]])
   })
 
+  it('a pick for a check keeps 300 characters of text whole, even for a region', async () => {
+    await pickOn(() => handleSetPickMode(1, true, 'assert'))
+    const long = 'w'.repeat(300)
+    handleRecorderPicked(7, {
+      strategy: 'css',
+      selector: '#region',
+      innerText: '',
+      elementText: long.repeat(10)
+    })
+    const request = showMenu.mock.calls[0][1] as Record<string, string>
+    expect(request.elementText).toBe(long.repeat(7).slice(0, 2000))
+    expect(request.labelText).toBe('')
+  })
+
+  it('rebuilds the locator from known keys with capped strings', async () => {
+    await pickOn(() => handleSetPickMode(1, true, 'assert'))
+    handleRecorderPicked(7, {
+      strategy: 'css',
+      selector: '#x',
+      locator: { by: 'role', role: 'button', name: 'n'.repeat(900), extra: 'x', positional: 'no' }
+    })
+    const request = showMenu.mock.calls[0][1] as { locator: Record<string, unknown> }
+    expect(request.locator).toEqual({ by: 'role', role: 'button', name: 'n'.repeat(500) })
+  })
+
   describe('a right-click in the recorder', () => {
+    it('is ignored while picking', async () => {
+      await pickOn()
+      handleShowAssertionContextMenu(7, { strategy: 'css', selector: '#x' })
+      expect(showMenu).not.toHaveBeenCalled()
+    })
+
     it('ignores a sender that is not the recorder', () => {
       handleShowAssertionContextMenu(8, { strategy: 'css', selector: '#x' })
       expect(showMenu).not.toHaveBeenCalled()

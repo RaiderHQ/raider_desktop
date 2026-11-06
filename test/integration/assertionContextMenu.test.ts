@@ -64,6 +64,14 @@ describe('showAssertionContextMenu', () => {
     })
   })
 
+  it('an exact-text check is pre-filled with all 300 characters of the text', () => {
+    const long = 'z'.repeat(300)
+    showAssertionContextMenu(null, { selector: '#a', strategy: 'css', elementText: long })
+    template.find((i) => i.label === t('textIs'))!.click!({} as never, undefined, {} as never)
+    const sent = mockSend.mock.calls.filter((c) => c[0] === 'add-assertion-step').at(-1)![1]
+    expect(sent).toMatchObject({ pendingAssertion: 'textEquals', text: long })
+  })
+
   it('keeps the locator on an assertion that asks for the expected text', () => {
     expect(choose(t('textIs'), ROLE_LOCATOR)).toMatchObject({
       pendingAssertion: 'textEquals',

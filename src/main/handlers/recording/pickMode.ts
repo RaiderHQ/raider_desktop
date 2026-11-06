@@ -144,6 +144,21 @@ const text = (v: unknown): string | undefined => (typeof v === 'string' ? v : un
 /** Text from the untrusted page, capped so a hostile page can't flood the menu */
 const capped = (v: unknown, max: number): string | undefined => text(v)?.slice(0, max)
 
+const LOCATOR_KEYS = ['by', 'role', 'name', 'nameFrom', 'tag', 'text', 'attribute', 'value']
+
+/** The page's locator rebuilt from known keys only, each string capped; the step still validates it */
+function locatorFrom(v: unknown): unknown {
+  if (typeof v !== 'object' || v === null) return undefined
+  const d = v as Record<string, unknown>
+  const out: Record<string, unknown> = {}
+  for (const key of LOCATOR_KEYS) {
+    const value = capped(d[key], 500)
+    if (value !== undefined) out[key] = value
+  }
+  if (typeof d.positional === 'boolean') out.positional = d.positional
+  return out
+}
+
 /** Validates what the untrusted page sent for the assertion menu: strings only, each capped */
 export function assertionRequestFrom(data: unknown): AssertionMenuRequest | null {
   if (typeof data !== 'object' || data === null) return null
@@ -151,11 +166,13 @@ export function assertionRequestFrom(data: unknown): AssertionMenuRequest | null
   return {
     selector: capped(d.selector, 2000) ?? '',
     strategy: capped(d.strategy, 32) ?? '',
-    locator: d.locator,
+    locator: locatorFrom(d.locator),
     ariaLabel: capped(d.ariaLabel, 200),
     placeholder: capped(d.placeholder, 200),
-    // The right-click path sends `elementText`, the pick path `innerText`
-    elementText: capped(d.elementText ?? d.innerText, 200),
+    // The full text, for an exact-text check; the pick path's `innerText` is only a label hint
+    // (empty for a region), so the pick path sends the full text as `elementText` too
+    elementText: capped(d.elementText ?? d.innerText, 2000),
+    labelText: capped(d.innerText, 200),
     elementValue: capped(d.elementValue, 500),
     inputType: capped(d.inputType, 32),
     pageTitle: capped(d.pageTitle, 300),
@@ -168,6 +185,8 @@ export function handleShowAssertionContextMenu(senderId: number, data: unknown):
   if (appState.recorderWebContentsId === null || senderId !== appState.recorderWebContentsId) {
     return
   }
+  // While picking, a right-click must not open a second menu over the pick
+  if (appState.pickMode) return
   const request = assertionRequestFrom(data)
   if (request) showAssertionContextMenu(null, request)
 }
@@ -177,7 +196,7 @@ export function handleRecorderPicked(senderId: number, data: unknown): void {
   const request = assertionRequestFrom(data)
   if (!request) return
   const hints: LabelHints = {
-    innerText: request.elementText,
+    innerText: request.labelText,
     ariaLabel: request.ariaLabel,
     placeholder: request.placeholder,
     locator: request.locator

@@ -14,7 +14,10 @@ export interface AssertionMenuRequest {
   locator?: unknown
   ariaLabel?: string
   placeholder?: string
+  /** The element's full text, for an exact-text check */
   elementText?: string
+  /** The short text that names the element; empty for a region. Falls back to `elementText` */
+  labelText?: string
   elementValue?: string
   inputType?: string
   pageTitle?: string
@@ -33,6 +36,7 @@ export function showAssertionContextMenu(
     ariaLabel,
     placeholder,
     elementText,
+    labelText,
     elementValue,
     inputType,
     pageTitle,
@@ -43,12 +47,11 @@ export function showAssertionContextMenu(
 
   const element =
     toElementTarget(strategy, selector, {
-      innerText: elementText,
+      innerText: labelText ?? elementText?.slice(0, 200),
       ariaLabel,
       placeholder,
       locator
-    }) ??
-    undefined
+    }) ?? undefined
   const post = (message: AssertionMessage): void => {
     appState.mainWindow!.webContents.send('add-assertion-step', message)
   }

@@ -147,13 +147,11 @@ document.addEventListener(
     const target = event.target as HTMLElement
     if (target) {
       const { selector, strategy, locator } = getPrioritizedSelector(target)
-      const elementText = target.innerText || ''
       ipcRenderer.send('show-assertion-context-menu', {
         selector,
         strategy,
         locator,
         ...labelHints(target),
-        elementText,
         ...assertionFields(target)
       })
     }
