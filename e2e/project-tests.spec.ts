@@ -97,10 +97,10 @@ test.describe('Project Tests tab', () => {
 
   test('lists every project test and marks the ones edited in code', async ({ page }) => {
     await goToOverview(page)
-    await expect(row(page, 'Login')).toContainText('Edited in code')
+    await expect(row(page, 'Login')).toContainText('From file')
     await expect(row(page, 'Search products')).toBeVisible()
-    await expect(row(page, 'Search products')).not.toContainText('Edited in code')
-    await expect(row(page, 'Add to cart')).toContainText('Edited in code')
+    await expect(row(page, 'Search products')).not.toContainText('From file')
+    await expect(row(page, 'Add to cart')).toContainText('From file')
     await expect(row(page, 'Old flow')).toContainText('File missing')
     await expect(row(page, 'Old flow').getByRole('button', { name: 'Restore' })).toBeVisible()
   })

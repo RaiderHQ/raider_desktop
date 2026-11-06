@@ -65,7 +65,7 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
       <CodeTestPane key={testKeyOf(selectedRow)} row={selectedRow} />
     )
   ) : (
-    <div className="flex items-center justify-center h-full text-neutral-mid text-sm p-8 text-center">
+    <div className="flex items-center justify-center h-full text-neutral-md text-sm p-8 text-center">
       {t('tests.selectOrCreate')}
     </div>
   )

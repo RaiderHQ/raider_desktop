@@ -127,7 +127,7 @@ const Landing: React.FC = (): JSX.Element => {
             <h2 id="quick-recordings" className="text-lg font-semibold text-neutral-dark">
               {t('landing.quickRecordings.title')}
             </h2>
-            <p className="text-sm text-neutral-mid mb-3">{t('landing.quickRecordings.hint')}</p>
+            <p className="text-sm text-neutral-md mb-3">{t('landing.quickRecordings.hint')}</p>
             <ul className="border border-neutral-bdr rounded-lg bg-white shadow-card divide-y divide-neutral-bdr">
               {quickProjects.map((project) => (
                 <li key={project.path}>
@@ -136,7 +136,7 @@ const Landing: React.FC = (): JSX.Element => {
                     className="w-full flex items-center justify-between gap-4 px-4 py-2 text-left hover:bg-neutral-50 transition-colors"
                   >
                     <span className="font-medium text-neutral-dark truncate">{project.name}</span>
-                    <span className="text-xs text-neutral-mid shrink-0">
+                    <span className="text-xs text-neutral-md shrink-0">
                       {t('landing.quickRecordings.changed', {
                         date: new Date(project.modifiedAt).toLocaleString(undefined, {
                           dateStyle: 'medium',

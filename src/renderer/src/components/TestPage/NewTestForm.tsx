@@ -93,7 +93,7 @@ const NewTestForm: React.FC<NewTestFormProps> = ({
           {t('common.cancel')}
         </button>
       </div>
-      {disabled && disabledReason && <p className="text-xs text-neutral-mid">{disabledReason}</p>}
+      {disabled && disabledReason && <p className="text-xs text-neutral-md">{disabledReason}</p>}
     </form>
   )
 }

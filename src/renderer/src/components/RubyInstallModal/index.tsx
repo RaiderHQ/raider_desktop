@@ -43,7 +43,7 @@ const RubyInstallModal: React.FC<RubyInstallModalProps> = ({ onClose, onCloseApp
               {t('recorder.rubyInstallModal.title')}
             </h2>
           </div>
-          <p className="text-sm text-neutral-mid">
+          <p className="text-sm text-neutral-md">
             {t('recorder.rubyInstallModal.message')}
           </p>
         </div>
@@ -57,7 +57,7 @@ const RubyInstallModal: React.FC<RubyInstallModalProps> = ({ onClose, onCloseApp
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-neutral-dark mb-0.5">{t(step.titleKey)}</p>
-                <p className="text-xs text-neutral-mid mb-2">{t(step.descKey)}</p>
+                <p className="text-xs text-neutral-md mb-2">{t(step.descKey)}</p>
                 <code className="block bg-neutral-50 border border-neutral-bdr rounded px-3 py-2 text-xs font-mono text-neutral-dark break-all">
                   {step.command}
                 </code>
@@ -65,7 +65,7 @@ const RubyInstallModal: React.FC<RubyInstallModalProps> = ({ onClose, onCloseApp
             </div>
           ))}
 
-          <p className="text-xs text-neutral-mid pt-2 border-t border-neutral-bdr">
+          <p className="text-xs text-neutral-md pt-2 border-t border-neutral-bdr">
             After installing, restart Ruby Raider for the changes to take effect.
           </p>
         </div>

@@ -51,7 +51,7 @@ const TagInput: React.FC<TagInputProps> = ({
               <button
                 onClick={() => removeTag(tag)}
                 disabled={disabled}
-                className="text-neutral-mid hover:text-ruby transition-colors disabled:cursor-not-allowed"
+                className="text-neutral-md hover:text-ruby transition-colors disabled:cursor-not-allowed"
               >
                 &times;
               </button>

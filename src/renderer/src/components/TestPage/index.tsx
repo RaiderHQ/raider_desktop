@@ -2,6 +2,7 @@ import React, { SetStateAction, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
+import { toRecordableUrl } from '@shared/recordUrl'
 import CommandList from '@components/CommandList'
 import OutputPanel from '@components/OutputPanel'
 import StyledPanel from '@components/StyledPanel'
@@ -13,6 +14,7 @@ import AssertionTextModal from '@components/AssertionTextModal'
 import RunPanel from '@components/RunPanel'
 import FailedStepPanel from '@components/FailedStepPanel'
 import EditValueForm from '@components/FailedStepPanel/EditValueForm'
+import { removeStepWithUndo } from '@foundation/removeStepWithUndo'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import type { RecordingTarget } from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
@@ -283,11 +285,36 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   }
 
   const startDraft = (name: string, url: string): void => {
+    // A bad address keeps the form: no draft is made that can't record (D8)
+    if (url.trim() !== '' && !toRecordableUrl(url)) {
+      toast.error(t('recorder.unsupportedUrl'))
+      return
+    }
     useRecorderStore.getState().startDraft(name, url)
     recording
       .start(draftTarget)
       .catch((error: unknown) => console.error('Recording failed:', error))
   }
+
+  // Quick record made the draft elsewhere and asked for the recorder to start on arrival
+  const hasTest = !!test
+  useEffect(() => {
+    // The flag is read from the store and consumed here, so a re-render can't start twice
+    const store = useRecorderStore.getState()
+    if (!isDraft || !hasTest || !store.recordOnOpen) return
+    store.setRecordOnOpen(false)
+    // A fresh target object per run: a start the rehearsal mount abandoned sees the next
+    // run's target in the store and stops itself before it reaches main
+    recording
+      .start({ ...draftTarget })
+      .catch((error: unknown) => console.error('Recording failed:', error))
+    return (): void => {
+      // Gone before the recorder got going (StrictMode's rehearsal mount, or a quick leave):
+      // the hook's own cleanup has already abandoned the start, so ask again next time
+      const { isRecording, recordingTarget } = useRecorderStore.getState()
+      if (!isRecording && !recordingTarget) useRecorderStore.getState().setRecordOnOpen(true)
+    }
+  }, [isDraft, hasTest])
 
   const moreOptions = [
     ...(readOnly || recordingDisabled
@@ -305,9 +332,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
           p ? { ...p, steps: typeof next === 'function' ? next(p.steps) : next } : null
         )
       }
-      onDeleteStep={(index) =>
-        updateActiveTest((p) => (p ? { ...p, steps: p.steps.filter((_, i) => i !== index) } : null))
-      }
+      onDeleteStep={(index) => removeStepWithUndo(updateActiveTest, index)}
       onEditStep={(index, step) =>
         updateActiveTest((p) =>
           p ? { ...p, steps: p.steps.map((s, i) => (i === index ? step : s)) } : null
@@ -343,17 +368,17 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   return (
     <div className="flex flex-col h-full p-4 space-y-4">
       <nav aria-label={t('testPage.breadcrumb')} className="flex items-center gap-1.5 text-sm">
-        <Link to="/overview/tests" className="text-neutral-mid hover:text-neutral-dark">
+        <Link to="/overview/tests" className="text-neutral-md hover:text-neutral-dark">
           {t('testPage.breadcrumbRoot')}
         </Link>
-        <span className="text-neutral-mid">/</span>
+        <span className="text-neutral-md">/</span>
         <span className="font-semibold text-neutral-dark truncate">
           {test?.name ?? row?.name ?? t('tests.newTest')}
         </span>
       </nav>
 
       {openFailed ? (
-        <p className="text-sm text-neutral-mid">{t('tests.actionFailed')}</p>
+        <p className="text-sm text-neutral-md">{t('tests.actionFailed')}</p>
       ) : !test ? (
         isDraft && (
           <NewTestForm

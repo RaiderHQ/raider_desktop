@@ -247,7 +247,7 @@ test.describe('Live runner', () => {
     await sendRunEvent(electronApp, finished('failed', { total: 2, passed: 1, failed: 1 }))
 
     await expect(runPhase(page)).toHaveText('Failed')
-    await expect(page.getByText('Overall Summary')).toBeVisible()
+    await expect(page.getByText('Overall summary')).toBeVisible()
     await expect(page.getByText('Login logs in with account 1', { exact: true })).toBeVisible()
     await expect(page.getByText('Checkout pays with a saved card', { exact: true })).toBeVisible()
   })
