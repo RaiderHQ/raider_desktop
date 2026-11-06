@@ -34,8 +34,9 @@ import type { TestResult } from '@foundation/Types/testResult'
 import type { Step } from '@shared/types/step'
 import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import { onMenuCommand } from '@foundation/menuCommands'
-import { dropEmptyDraft, useTestRecording } from '../../hooks/useTestRecording'
+import { dropEmptyDraft, isEmptyRecording, useTestRecording } from '../../hooks/useTestRecording'
 import { useFailedStep } from '../../hooks/useFailedStep'
+import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import NewTestForm from './NewTestForm'
 import RecordingLayout from './RecordingLayout'
 
@@ -144,6 +145,10 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const readOnly = !!test?.ownership && test.ownership !== 'recorded'
   const busy = recording.isRecording || isReplaying || picking
   const failedStep = useFailedStep(projectPath, test)
+  // Edited while recording, and while a draft holds steps Stop & save has not written yet
+  // (a draft with only its start page is one Stop & save would drop, so it is not)
+  const draftHasSteps = isDraft && !!test && !isEmptyRecording(test)
+  useDocumentTitle(test?.name ?? null, recording.isRecording || draftHasSteps)
 
   // The name is kept here while typing and saved on blur or Enter: main renames the
   // test's file on a real rename, so a half-typed name must never reach it
@@ -239,6 +244,18 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
     action(target).catch((error: unknown) => console.error('Recording failed:', error))
   }
 
+  // The editor's back button comes back to this test
+  const editCode = (): void => {
+    if (!projectPath || !test?.file) return
+    navigate('/file-editor', {
+      state: {
+        fileName: test.file.split('/').pop() ?? test.file,
+        filePath: `${projectPath}/${test.file}`,
+        returnTo: location.pathname
+      }
+    })
+  }
+
   // The menu bar's Test › Record and Run act like the toolbar buttons, under the same rules
   // A confirmation on top of the page blocks the buttons; it must block the menu too
   const confirming = confirmingDelete || confirmingStartOver || reRecordingFrom !== null
@@ -251,8 +268,34 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       onMenuCommand((command) => {
         if (command === 'record' && canRecord) record()
         if (command === 'run' && canRun) void recording.run()
+        // Stop & save is the Stop button; Open file… is the toolbar's, which the recording blocks
+        if (command === 'stop' && recording.isRecording && !isReplaying) void recording.stop()
+        if (command === 'open-file' && !busy && !starting && !confirming && !!test?.file) {
+          editCode()
+        }
+        // Everything else is saved as it changes; only a recording waits for Stop & save,
+        // and a draft whose Stop & save failed is written again (the close dialog's Save)
+        if (command !== 'save' || isReplaying) return
+        if (recording.isRecording) void recording.stop()
+        else if (draftHasSteps) void recording.saveDraft(targetSuiteId)
       }),
-    [canRecord, canRun, record, recording.run]
+    [
+      canRecord,
+      canRun,
+      record,
+      recording.run,
+      recording.isRecording,
+      recording.stop,
+      recording.saveDraft,
+      busy,
+      isReplaying,
+      starting,
+      confirming,
+      test?.file,
+      editCode,
+      draftHasSteps,
+      targetSuiteId
+    ]
   )
 
   const startOver = (): void => {
@@ -277,18 +320,6 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
     } catch (error) {
       toast.error(t('recorder.mainRecorderPanel.exportError', { error: String(error) }))
     }
-  }
-
-  // The editor's back button comes back to this test
-  const editCode = (): void => {
-    if (!projectPath || !test?.file) return
-    navigate('/file-editor', {
-      state: {
-        fileName: test.file.split('/').pop() ?? test.file,
-        filePath: `${projectPath}/${test.file}`,
-        returnTo: location.pathname
-      }
-    })
   }
 
   const deleteTest = (): void => {
@@ -452,8 +483,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
               </span>
             )}
             {recording.isRecording ? (
-              // shortcut chip added by PR C once the menu binds it
-              <Tooltip content={t('tooltips.testPage.stop')} position="bottom">
+              <Tooltip content={t('tooltips.testPage.stop')} shortcut="stop" position="bottom">
                 <button
                   onClick={() => void recording.stop()}
                   disabled={isReplaying}
@@ -499,7 +529,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             {test.file && projectPath && (
               <Tooltip
                 content={t('tooltips.testPage.openFile')}
-                // shortcut chip added by PR C once the menu binds it
+                shortcut="open-file"
                 position="bottom"
               >
                 <button
@@ -592,9 +622,14 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
               focusBrowser={pickingStep !== null || assertPicking}
             />
           ) : (
-            <div className="flex-1 min-h-[12rem]">
-              <StyledPanel>{steps ?? <></>}</StyledPanel>
-            </div>
+            <>
+              <div className="flex-1 min-h-[12rem]">
+                <StyledPanel>{steps ?? <></>}</StyledPanel>
+              </div>
+              {!isDraft && !recording.isRecording && !readOnly && (
+                <p className="text-xs text-neutral-md mt-2">{t('testPage.autosaved')}</p>
+              )}
+            </>
           )}
 
           {ownRun && (

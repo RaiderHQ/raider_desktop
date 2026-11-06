@@ -70,6 +70,7 @@ const api = {
   cancelReplay: vi.fn(),
   renderStep: vi.fn(),
   setRecordingState: vi.fn(),
+  setMenuRecording: vi.fn(),
   onFlushRecording: vi.fn((_cb: () => void) => (): void => {}),
   flushRecordingDone: vi.fn(),
   // Opening the project (setting its path) loads its files and activates it in main
@@ -319,7 +320,9 @@ describe('New test', () => {
       fireEvent.change(screen.getByLabelText(en.testPage.url), { target: { value: 'ftp://nope' } })
       fireEvent.click(startButton())
       await waitFor(() =>
-        expect(mockToast.error).toHaveBeenCalledWith('Only http and https websites can be recorded.')
+        expect(mockToast.error).toHaveBeenCalledWith(
+          'Only http and https websites can be recorded.'
+        )
       )
       expect(api.startRecordingMain).not.toHaveBeenCalled()
       expect(useRecorderStore.getState().draftTest).toBeNull()
@@ -327,7 +330,9 @@ describe('New test', () => {
     })
 
     it('a draft opened from quick record starts recording on arrival', async () => {
-      useRecorderStore.getState().startDraft('Checkout', 'https://x.test/home', { recordOnOpen: true })
+      useRecorderStore
+        .getState()
+        .startDraft('Checkout', 'https://x.test/home', { recordOnOpen: true })
       renderAt('/overview/tests/new')
       await waitFor(() => expect(api.startRecordingMain).toHaveBeenCalledTimes(1))
       expect(useRecorderStore.getState().recordOnOpen).toBe(false)

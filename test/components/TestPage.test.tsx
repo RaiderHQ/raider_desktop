@@ -11,10 +11,12 @@ import useRecorderStore from '@foundation/Stores/recorderStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import { useRunStore } from '@foundation/Stores/runStore'
 import { dispatchMenuCommand } from '@foundation/menuCommands'
+import useTitleStore from '@foundation/Stores/titleStore'
 import type { RunView } from '@foundation/run/runModel'
 import useProjectStore from '@foundation/Stores/projectStore'
 import type { TestRow } from '@foundation/testKey'
 import type { Test } from '@foundation/Types/test'
+import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import en from '@assets/translations/en.json'
 
 vi.mock('react-i18next', () => ({
@@ -97,6 +99,7 @@ const api = {
   renderStep: vi.fn(),
   cancelReplay: vi.fn(),
   setRecordingState: vi.fn(),
+  setMenuRecording: vi.fn(),
   onFlushRecording: vi.fn(() => (): void => {}),
   flushRecordingDone: vi.fn(),
   setActiveProject: vi.fn().mockResolvedValue({ success: true }),
@@ -245,6 +248,15 @@ describe('TestPage', () => {
     const tip = screen.getByRole('tooltip')
     expect(tip).toHaveTextContent('tooltips.testPage.record')
     expect(tip.querySelector('kbd')).not.toBeNull()
+  })
+
+  it('shows the Stop & save shortcut while recording', async () => {
+    renderPage({ ...recorded, file: 'spec/login_works_spec.rb' })
+    await opened()
+    await startRecording()
+    fireEvent.keyDown(window, { key: 'Tab' })
+    fireEvent.focus(screen.getByRole('button', { name: 'testPage.stop' }))
+    expect(screen.getByRole('tooltip').querySelector('kbd')).not.toBeNull()
   })
 
   it('leaves no tooltip over the More menu once it is clicked', async () => {
@@ -480,6 +492,41 @@ describe('TestPage', () => {
       })
     })
 
+    it('opens from the menu bar, but not while recording', async () => {
+      renderWithEditor(withFile)
+      await opened()
+      await startRecording()
+      act(() => dispatchMenuCommand('open-file'))
+      expect(screen.queryByTestId('editor-state')).not.toBeInTheDocument()
+    })
+
+    it('opens the test file when the menu bar asks', async () => {
+      renderWithEditor(withFile)
+      await opened()
+      act(() => dispatchMenuCommand('open-file'))
+      expect(JSON.parse(screen.getByTestId('editor-state').textContent!)).toEqual({
+        fileName: 'login_works_spec.rb',
+        filePath: '/Users/me/project/spec/login_works_spec.rb',
+        returnTo: '/overview/tests/x'
+      })
+    })
+
+    it('does not open from the menu bar over a confirmation', async () => {
+      renderWithEditor(withFile)
+      await opened()
+      fireEvent.click(screen.getByRole('button', { name: 'testPage.more' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'testPage.deleteTest' }))
+      act(() => dispatchMenuCommand('open-file'))
+      expect(screen.queryByTestId('editor-state')).not.toBeInTheDocument()
+    })
+
+    it('does not open from the menu bar for a test with no file', async () => {
+      renderWithEditor(recorded)
+      await opened()
+      act(() => dispatchMenuCommand('open-file'))
+      expect(screen.queryByTestId('editor-state')).not.toBeInTheDocument()
+    })
+
     it('is disabled while recording', async () => {
       renderWithEditor(withFile)
       await opened()
@@ -680,6 +727,19 @@ describe('TestPage', () => {
     await emit('new-recorded-step', step('late'))
     expect(useRecorderStore.getState().activeTest?.steps).toEqual([])
     expect(useRecorderStore.getState().isRecording).toBe(false)
+  })
+
+  it('Stop from the menu does nothing while replaying, as the button is disabled', async () => {
+    renderPage(recorded)
+    await opened()
+    await startRecording()
+    act(() => useRecorderStore.setState({ isReplayingToBreakpoint: true, breakpointIndex: 1 }))
+    api.stopRecordingMain.mockClear()
+    act(() => dispatchMenuCommand('stop'))
+    expect(api.stopRecordingMain).not.toHaveBeenCalled()
+    act(() => useRecorderStore.setState({ isReplayingToBreakpoint: false }))
+    await act(async () => dispatchMenuCommand('stop'))
+    expect(api.stopRecordingMain).toHaveBeenCalled()
   })
 
   it('opening another test while replaying cancels the replay and saves the first', async () => {
@@ -1215,6 +1275,17 @@ describe('TestPage re-picking the failed element', () => {
       expect(spies.run).toHaveBeenCalledTimes(1)
     })
 
+    it('Stop from the menu is Stop & save while recording', async () => {
+      renderPage(withFile)
+      await opened()
+      api.stopRecordingMain.mockClear()
+      act(() => dispatchMenuCommand('stop'))
+      expect(api.stopRecordingMain).not.toHaveBeenCalled()
+      await startRecording()
+      await act(async () => dispatchMenuCommand('stop'))
+      expect(api.stopRecordingMain).toHaveBeenCalled()
+    })
+
     it('Record from the menu records the open test, like the Record button', async () => {
       renderPage()
       await opened()
@@ -1247,6 +1318,184 @@ describe('TestPage re-picking the failed element', () => {
       })
       expect(spies.run).not.toHaveBeenCalled()
       expect(spies.continueRecording).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('saving (PR B)', () => {
+    it('File › Save stops and saves while recording', async () => {
+      renderPage()
+      await opened()
+      await startRecording()
+      act(() => dispatchMenuCommand('save'))
+      expect(api.stopRecordingMain).toHaveBeenCalled()
+    })
+
+    it('File › Save does nothing on a saved test', async () => {
+      renderPage()
+      await opened()
+      act(() => dispatchMenuCommand('save'))
+      expect(api.stopRecordingMain).not.toHaveBeenCalled()
+      expect(api.saveRecording).not.toHaveBeenCalled()
+    })
+
+    it('the title is edited while recording and clean after Stop & save', async () => {
+      renderPage()
+      await opened()
+      expect(useTitleStore.getState().document).toEqual({ name: 'Login works', edited: false })
+      await startRecording()
+      expect(useTitleStore.getState().document).toEqual({ name: 'Login works', edited: true })
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'testPage.stop' }))
+      })
+      await emit('recording-stopped')
+      await waitFor(() =>
+        expect(useTitleStore.getState().document).toEqual({ name: 'Login works', edited: false })
+      )
+    })
+
+    it('a saved idle test is not edited, even with an unsaved example elsewhere', async () => {
+      act(() =>
+        useRecorderStore.setState({
+          unsavedExample: { testId: 'other', exampleName: 'x', reason: 'notUnique' } as never
+        })
+      )
+      renderPage()
+      await opened()
+      expect(useTitleStore.getState().document).toEqual({ name: 'Login works', edited: false })
+      act(() => useRecorderStore.setState({ unsavedExample: null }))
+    })
+
+    it('a draft with steps Stop & save has not written (a failed save) is edited', async () => {
+      // Let an earlier test's deferred empty-draft cleanup run first
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0))
+      })
+      useRecorderStore.getState().startDraft('New one', 'https://x.test')
+      // Recording stopped and the save failed: the steps live only in the draft
+      act(() =>
+        useRecorderStore
+          .getState()
+          .updateActiveTest((p) => (p ? { ...p, steps: [step('a'), step('b')] } : null))
+      )
+      render(
+        <MemoryRouter>
+          <TestPage />
+        </MemoryRouter>
+      )
+      await screen.findByDisplayValue('New one')
+      expect(useRecorderStore.getState().isRecording).toBe(false)
+      expect(useTitleStore.getState().document).toEqual({ name: 'New one', edited: true })
+    })
+
+    it('File › Save on an idle draft with steps writes it again and it is no longer edited', async () => {
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0))
+      })
+      useRecorderStore.getState().startDraft('Retry me', 'https://x.test')
+      // Stop & save failed: the steps live only in the draft
+      act(() =>
+        useRecorderStore
+          .getState()
+          .updateActiveTest((p) => (p ? { ...p, steps: [step('a'), step('b')] } : null))
+      )
+      // Once saved the page falls back to the new-test form before the route changes
+      Object.assign(window.api, {
+        getProjectConfig: vi.fn().mockResolvedValue({ success: false })
+      })
+      const draftId = useRecorderStore.getState().draftTest?.id
+      render(
+        <MemoryRouter initialEntries={['/overview/tests/new']}>
+          <Routes>
+            <Route path="/overview/tests/new" element={<TestPage />} />
+            <Route path="/overview/tests/:testKey" element={<div>saved test route</div>} />
+          </Routes>
+        </MemoryRouter>
+      )
+      await screen.findByDisplayValue('Retry me')
+      expect(useTitleStore.getState().document?.edited).toBe(true)
+      await act(async () => {
+        dispatchMenuCommand('save')
+      })
+      expect(api.saveRecording).toHaveBeenCalledWith(
+        UNLISTED_SUITE_ID,
+        expect.objectContaining({ id: draftId, steps: [step('a'), step('b')] })
+      )
+      await waitFor(() => expect(useRecorderStore.getState().draftTest).toBeNull())
+      // Saved: the page reports a clean document (main's close then goes ahead)
+      expect(await screen.findByText('saved test route')).toBeInTheDocument()
+      expect(useTitleStore.getState().document?.edited ?? false).toBe(false)
+    })
+
+    it('an idle draft with only its start page is not edited (Stop & save would drop it)', async () => {
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0))
+      })
+      useRecorderStore.getState().startDraft('Start only', 'https://x.test')
+      act(() =>
+        useRecorderStore
+          .getState()
+          .updateActiveTest((p) => (p ? { ...p, steps: [step('a')] } : null))
+      )
+      render(
+        <MemoryRouter>
+          <TestPage />
+        </MemoryRouter>
+      )
+      await screen.findByDisplayValue('Start only')
+      expect(useTitleStore.getState().document).toEqual({ name: 'Start only', edited: false })
+    })
+
+    it('an idle draft with no steps is not edited', async () => {
+      // Let an earlier test's deferred empty-draft cleanup run first
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0))
+      })
+      useRecorderStore.getState().startDraft('Empty draft', 'https://x.test')
+      render(
+        <MemoryRouter>
+          <TestPage />
+        </MemoryRouter>
+      )
+      await screen.findByDisplayValue('Empty draft')
+      expect(useTitleStore.getState().document).toEqual({ name: 'Empty draft', edited: false })
+    })
+
+    it('File › Save does not stop while replaying to a step', async () => {
+      renderPage()
+      await opened()
+      await startRecording()
+      act(() => useRecorderStore.setState({ isReplayingToBreakpoint: true }))
+      act(() => dispatchMenuCommand('save'))
+      expect(api.stopRecordingMain).not.toHaveBeenCalled()
+    })
+
+    it('says the test autosaves when it is saved and idle', async () => {
+      renderPage()
+      await opened()
+      expect(screen.getByText('testPage.autosaved')).toBeInTheDocument()
+      await startRecording()
+      expect(screen.queryByText('testPage.autosaved')).not.toBeInTheDocument()
+    })
+
+    it('does not say it for a draft', async () => {
+      useRecorderStore.getState().startDraft('New one', 'https://x.test')
+      // A draft with steps is kept, whatever an earlier test's deferred cleanup does
+      act(() =>
+        useRecorderStore
+          .getState()
+          .updateActiveTest((p) => (p ? { ...p, steps: [step('a'), step('b')] } : null))
+      )
+      render(
+        <MemoryRouter>
+          <TestPage />
+        </MemoryRouter>
+      )
+      await screen.findByDisplayValue('New one')
+      expect(screen.queryByText('testPage.autosaved')).not.toBeInTheDocument()
+    })
+
+    it('has the sentence in en.json', () => {
+      expect(en.testPage.autosaved).toBe('Changes to this test are saved automatically.')
     })
   })
 })

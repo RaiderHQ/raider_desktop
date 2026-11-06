@@ -6,7 +6,8 @@ import Logo from '@components/Logo'
 import Tooltip from '@components/Tooltip'
 import RunIndicator from '@components/RunIndicator'
 import ConceptsModal from '@components/ConceptsModal'
-import RecordingGuide from '@components/RecordingGuide'
+import RecordingGuide, { openRecordingGuide } from '@components/RecordingGuide'
+import ShortcutsSheet from '@components/ShortcutsSheet'
 import RubyInstallModal from '@components/RubyInstallModal'
 import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
 import TraceViewerOverlay from '@components/TraceViewerOverlay'
@@ -14,8 +15,12 @@ import useVersionStore from '@foundation/Stores/versionStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
+import useEditorStore from '@foundation/Stores/editorStore'
 import { installMissingGems } from '@foundation/installGems'
 import { subscribeRunEvents } from '@foundation/Stores/runStore'
+import useTitleStore from '@foundation/Stores/titleStore'
+import { windowTitle } from '@shared/windowTitle'
+import { platformFrom } from '@shared/shortcuts'
 import { dispatchMenuCommand, isMenuCommand } from '@foundation/menuCommands'
 
 const MainTemplate: React.FC = (): JSX.Element => {
@@ -27,6 +32,15 @@ const MainTemplate: React.FC = (): JSX.Element => {
   const [missingGems, setMissingGems] = useState<string[] | undefined>(undefined)
   const [isConceptsModalOpen, setIsConceptsModalOpen] = useState(false)
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false)
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false)
+  // The sheet opened from the concepts modal: its footer button is gone, so focus goes to the logo
+  const logoRef = useRef<HTMLButtonElement>(null)
+  const sheetFromConcepts = useRef(false)
+  useEffect(() => {
+    if (isShortcutsOpen || !sheetFromConcepts.current) return
+    sheetFromConcepts.current = false
+    logoRef.current?.focus()
+  }, [isShortcutsOpen])
 
   // Run ruby check once at app startup
   useEffect(() => {
@@ -92,7 +106,15 @@ const MainTemplate: React.FC = (): JSX.Element => {
   // The menu bar's commands: the app-wide ones are handled here, the rest go to the open page.
   // Modal state is read through a ref so the one subscription sees the current values.
   const modalOpen = useRef(false)
-  modalOpen.current = isRubyInstallModalOpen || isGemsInstallModalOpen || isConceptsModalOpen
+  modalOpen.current =
+    isRubyInstallModalOpen ||
+    isGemsInstallModalOpen ||
+    isConceptsModalOpen ||
+    isShortcutsOpen ||
+    isGuideModalOpen
+  // The install modals gate the app; the help overlays swap with each other instead
+  const installModalOpen = useRef(false)
+  installModalOpen.current = isRubyInstallModalOpen || isGemsInstallModalOpen
   const pickingFolder = useRef(false)
   useEffect(() => {
     const openProject = async (): Promise<void> => {
@@ -115,15 +137,37 @@ const MainTemplate: React.FC = (): JSX.Element => {
       const { recordingTarget, isRecording, isReplayingToBreakpoint } = useRecorderStore.getState()
       return !!recordingTarget || isRecording || isReplayingToBreakpoint
     }
+    // Leaving a page with unsaved edits would drop them; the editor's own prompt is the way out.
+    // The Files tab's inline editor asks about New test itself, so only a project switch waits.
+    const pageEditorDirty = (): boolean => useEditorStore.getState().pageDirty
+    const anyEditorDirty = (): boolean => pageEditorDirty() || useEditorStore.getState().inlineDirty
     return window.api.onMenuCommand((command) => {
       if (!isMenuCommand(command)) return
-      // Help › Recording guide: wired when PR C lands (command 'recording-guide'); then call openRecordingGuide(() => setIsGuideModalOpen(true))
-      if (command === 'how-it-works') {
-        setIsConceptsModalOpen(true)
+      if (command === 'how-it-works' || command === 'shortcuts' || command === 'recording-guide') {
+        if (installModalOpen.current) return
+        // A swap from the menu is not the concepts modal's shortcuts button
+        sheetFromConcepts.current = false
+        setIsConceptsModalOpen(command === 'how-it-works')
+        setIsShortcutsOpen(command === 'shortcuts')
+        setIsGuideModalOpen(false)
+        // Help › Recording guide: the card while recording, the modal otherwise
+        if (command === 'recording-guide') openRecordingGuide(() => setIsGuideModalOpen(true))
         return
       }
       if (modalOpen.current) return
+      if (command === 'new-test') {
+        // Only a project has a Tests tab; with none open nothing listens
+        if (!useProjectStore.getState().projectPath) return
+        if (pageEditorDirty()) return
+        if (recorderBusy()) {
+          toast.error(t('quickRecord.stopFirst'))
+          return
+        }
+        navigate('/overview/tests/new')
+        return
+      }
       if (command === 'new-project' || command === 'open-project') {
+        if (anyEditorDirty()) return
         if (recorderBusy()) {
           toast.error(t('quickRecord.stopFirst'))
           return
@@ -144,6 +188,18 @@ const MainTemplate: React.FC = (): JSX.Element => {
   }
 
   const projectPath = useProjectStore((state) => state.projectPath)
+  const titleDocument = useTitleStore((state) => state.document)
+
+  // The window title and its edited dot follow the page's document
+  useEffect(() => {
+    const project = projectPath ? projectPath.split(/[\\/]/).filter(Boolean).pop() : null
+    document.title = windowTitle({
+      document: titleDocument,
+      project,
+      platform: platformFrom(navigator.platform)
+    })
+    window.api.setDocumentEdited(titleDocument?.edited === true, titleDocument?.name ?? '')
+  }, [titleDocument, projectPath])
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -152,6 +208,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
           {/* Logo: clickable, opens concepts modal */}
           <Tooltip content={t('tooltips.header.logo')} position="bottom">
             <button
+              ref={logoRef}
               onClick={() => setIsConceptsModalOpen(true)}
               aria-label="How Ruby Raider works"
               className="relative group focus:outline-none"
@@ -187,8 +244,16 @@ const MainTemplate: React.FC = (): JSX.Element => {
         <p className="text-neutral-md text-sm">{t('version', { version: raiderVersion })}</p>
       </footer>
 
-      {isConceptsModalOpen && <ConceptsModal onClose={() => setIsConceptsModalOpen(false)} />}
-      {/* Help › Recording guide: wired when PR C lands (command 'recording-guide') */}
+      {isConceptsModalOpen && (
+        <ConceptsModal
+          onClose={() => setIsConceptsModalOpen(false)}
+          onOpenShortcuts={() => {
+            sheetFromConcepts.current = true
+            setIsConceptsModalOpen(false)
+            setIsShortcutsOpen(true)
+          }}
+        />
+      )}
       {isGuideModalOpen && (
         <RecordingGuide variant="modal" onClose={() => setIsGuideModalOpen(false)} />
       )}
@@ -206,6 +271,8 @@ const MainTemplate: React.FC = (): JSX.Element => {
           missingGems={missingGems}
         />
       )}
+
+      {isShortcutsOpen && <ShortcutsSheet onClose={() => setIsShortcutsOpen(false)} />}
 
       <TraceViewerOverlay />
 

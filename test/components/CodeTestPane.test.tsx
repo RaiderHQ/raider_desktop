@@ -3,6 +3,7 @@ import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { ipcSubscriptions } from '../helpers/ipcSubscriptions'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
+import { dispatchMenuCommand } from '@foundation/menuCommands'
 import CodeTestPane from '@components/CodeTestPane'
 import TestsWorkspace from '@components/TestsWorkspace'
 import useRecorderStore from '@foundation/Stores/recorderStore'
@@ -10,6 +11,7 @@ import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import { useRunStore } from '@foundation/Stores/runStore'
+import useTitleStore from '@foundation/Stores/titleStore'
 import type { RunView } from '@foundation/run/runModel'
 import { toRouteParam } from '@foundation/testKey'
 import type { TestRow } from '@foundation/testKey'
@@ -80,6 +82,7 @@ const api = {
   registerRecorderWebContents: vi.fn(),
   cancelReplay: vi.fn(),
   setRecordingState: vi.fn(),
+  setMenuRecording: vi.fn(),
   onFlushRecording: vi.fn((_cb: () => void) => (): void => {}),
   flushRecordingDone: vi.fn(),
   setActiveProject: vi.fn(),
@@ -377,6 +380,55 @@ describe('CodeTestPane', () => {
     expect(api.saveRecording).not.toHaveBeenCalled()
   })
 
+  it('Stop from the menu is Stop & save while recording', async () => {
+    renderPane()
+    await screen.findByRole('button', { name: 'logs in' })
+    act(() => dispatchMenuCommand('stop'))
+    expect(api.recordOverExample).not.toHaveBeenCalled()
+    await recordOverFirstExample()
+    await act(async () => dispatchMenuCommand('stop'))
+    await waitFor(() =>
+      expect(api.recordOverExample).toHaveBeenCalledWith(
+        'spec/login_spec.rb',
+        'logs in',
+        expect.any(Array),
+        'ruby'
+      )
+    )
+  })
+
+  it('Open file from the menu opens the test file in the editor', async () => {
+    useProjectStore.setState({ projectPath: '/Users/me/project' })
+    renderPane()
+    await screen.findByRole('button', { name: 'logs in' })
+    act(() => dispatchMenuCommand('open-file'))
+    expect(screen.getByTestId('editor-state')).toHaveTextContent('spec/login_spec.rb')
+  })
+
+  it('Stop from the menu does nothing while replaying', async () => {
+    renderPane()
+    await screen.findByRole('button', { name: 'logs in' })
+    await recordOverFirstExample()
+    act(() => useRecorderStore.setState({ isReplayingToBreakpoint: true }))
+    api.recordOverExample.mockClear()
+    await act(async () => dispatchMenuCommand('stop'))
+    expect(api.recordOverExample).not.toHaveBeenCalled()
+    act(() => useRecorderStore.setState({ isReplayingToBreakpoint: false }))
+    await act(async () => dispatchMenuCommand('stop'))
+    await waitFor(() => expect(api.recordOverExample).toHaveBeenCalled())
+  })
+
+  it('Open file from the menu waits while the overwrite warning is up', async () => {
+    useProjectStore.setState({ projectPath: '/Users/me/project' })
+    renderPane()
+    fireEvent.click(await screen.findByRole('button', { name: 'testPage.record' }))
+    act(() => dispatchMenuCommand('open-file'))
+    expect(screen.queryByTestId('editor-state')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    act(() => dispatchMenuCommand('open-file'))
+    expect(screen.getByTestId('editor-state')).toBeInTheDocument()
+  })
+
   it('records the selected example', async () => {
     renderPane()
     fireEvent.click(await screen.findByRole('button', { name: 'logs out' }))
@@ -553,6 +605,61 @@ describe('CodeTestPane', () => {
       editCode: 'Open file…',
       run: 'Run',
       record: 'Record'
+    })
+  })
+
+  describe('menu bar Record, Run and Save', () => {
+    it('Record and Run act when the buttons are enabled', async () => {
+      renderPane()
+      await screen.findByRole('button', { name: 'testPage.record' })
+      act(() => dispatchMenuCommand('run'))
+      await waitFor(() => expect(api.startRun).toHaveBeenCalled())
+      act(() => useRunStore.setState({ isActive: false, checking: false, origin: null }))
+      act(() => dispatchMenuCommand('record'))
+      expect(await screen.findByRole('button', { name: 'Confirm' })).toBeInTheDocument()
+    })
+
+    it('does not act while the buttons are disabled', async () => {
+      useProjectStore.setState({ layout: mobileLayout })
+      renderPane()
+      await screen.findByRole('button', { name: 'testPage.record' })
+      act(() => dispatchMenuCommand('record'))
+      expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument()
+    })
+
+    it('an unsaved example of another test does not mark this one edited', async () => {
+      useRecorderStore.setState({
+        unsavedExample: { testId: 'another-test', exampleName: 'x', reason: 'notUnique' }
+      })
+      renderPane()
+      await screen.findByRole('button', { name: 'testPage.record' })
+      await waitFor(() =>
+        expect(useTitleStore.getState().document).toEqual({ name: 'logs in', edited: false })
+      )
+    })
+
+    it('File › Save does not stop while replaying to a step', async () => {
+      renderPane()
+      await recordOverFirstExample()
+      act(() => useRecorderStore.setState({ isReplayingToBreakpoint: true }))
+      act(() => dispatchMenuCommand('save'))
+      expect(api.stopRecordingMain).not.toHaveBeenCalled()
+    })
+
+    it('File › Save offers the unsaved example as a new test', async () => {
+      api.recordOverExample.mockResolvedValue({ success: false, error: 'notUnique', count: 0 })
+      renderPane()
+      await recordOverFirstExample()
+      await stopAndSave()
+      await screen.findByRole('button', { name: 'testPage.saveAsNew' })
+      expect(useTitleStore.getState().document).toEqual({ name: 'logs in', edited: true })
+      await act(async () => {
+        dispatchMenuCommand('save')
+      })
+      expect(api.saveRecording).toHaveBeenCalledWith(
+        UNLISTED_SUITE_ID,
+        expect.objectContaining({ name: 'logs in' })
+      )
     })
   })
 })

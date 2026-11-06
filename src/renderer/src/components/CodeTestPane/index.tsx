@@ -17,12 +17,14 @@ import RecordingLayout from '@components/TestPage/RecordingLayout'
 import { removeStepWithUndo } from '@foundation/removeStepWithUndo'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import { onMenuCommand } from '@foundation/menuCommands'
 import { useRunStore } from '@foundation/Stores/runStore'
 import { buildAssertionStep, assertionModalType } from '@foundation/assertionStep'
 import type { TestRow } from '@foundation/testKey'
 import type { CodeTestView } from '@shared/types/projectTest'
 import type { Step } from '@shared/types/step'
 import { useTestRecording } from '../../hooks/useTestRecording'
+import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 
 interface CodeTestPaneProps {
   /** A test edited in code ('code' or 'codeOwnedWasRecorded'): a project file */
@@ -130,6 +132,18 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
     if (!useRecorderStore.getState().unsavedExample) load()
   }
 
+  // The menu bar's Stop & save and Open file… act like the toolbar buttons
+  useEffect(
+    () =>
+      onMenuCommand((command) => {
+        if (command === 'stop' && recording.isRecording && !isReplaying) void stop()
+        if (command === 'open-file' && !busy && !recordedTest && !confirmingRecord && !!file) {
+          editCode()
+        }
+      }),
+    [recording.isRecording, isReplaying, busy, recordedTest, confirmingRecord, file, stop, editCode]
+  )
+
   const saveAssertion = (expectedText: string): void => {
     const info = recording.assertionInfo
     if (info) {
@@ -152,6 +166,33 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
       markLatest={recording.isRecording}
     />
   ) : null
+
+  // The menu bar's Record, Run and Save act like the buttons, under the same rules
+  const canRecord =
+    !recording.isRecording &&
+    !confirmingRecord &&
+    !!selected &&
+    !busy &&
+    !recordingDisabled &&
+    !recordedTest
+  const canRun = !busy && !runBusy && !!file && !confirmingRecord
+  const saving = recording.isRecording
+  const savingAsNew = !!recordedTest && !!unsavedExample && !saving
+  useEffect(
+    () =>
+      onMenuCommand((command) => {
+        if (command === 'record' && canRecord) setConfirmingRecord(true)
+        if (command === 'run' && canRun) run()
+        if (command === 'save' && saving && !isReplaying) void stop()
+        if (command === 'save' && savingAsNew) void recording.saveAsNewTest()
+      }),
+    [canRecord, canRun, saving, savingAsNew, isReplaying, run, stop, recording.saveAsNewTest]
+  )
+  // Edited while recording, and while this test holds an example not saved into its file
+  useDocumentTitle(
+    selected?.name ?? row.name,
+    recording.isRecording || (!!activeTest && unsavedExample?.testId === activeTest.id)
+  )
 
   const browserOpen = (recording.recordingUrl && recording.preloadPath) || isReplaying
   // Code switches the recording's steps while one is shown, else the selected test's view
@@ -185,8 +226,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
               </span>
             )}
             {recording.isRecording ? (
-              // shortcut chip added by PR C once the menu binds it
-              <Tooltip content={t('tooltips.testPage.stop')} position="bottom">
+              <Tooltip content={t('tooltips.testPage.stop')} shortcut="stop" position="bottom">
                 <button
                   onClick={() => void stop()}
                   disabled={isReplaying}
@@ -225,7 +265,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
             </Tooltip>
             <Tooltip
               content={t('tooltips.testPage.openFile')}
-              // shortcut chip added by PR C once the menu binds it
+              shortcut="open-file"
               position="bottom"
             >
               <button

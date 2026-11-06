@@ -4,8 +4,14 @@ export const MENU_COMMANDS = [
   'open-project',
   'save',
   'record',
+  'stop',
   'run',
-  'how-it-works'
+  'new-test',
+  'open-file',
+  'how-it-works',
+  'shortcuts',
+  'docs',
+  'recording-guide'
 ] as const
 export type MenuCommand = (typeof MENU_COMMANDS)[number]
 

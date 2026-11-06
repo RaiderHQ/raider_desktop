@@ -6,6 +6,8 @@ export const FLUSH_TIMEOUT_MS = 3000
 interface CloseFlushOptions {
   /** Closes for real once the recording is saved; defaults to closing the window */
   close?: () => void
+  /** Runs right before the flush's own close, so the close guard does not ask again */
+  onBeforeClose?: () => void
 }
 
 /**
@@ -17,7 +19,7 @@ interface CloseFlushOptions {
 export function installCloseFlush(
   win: BrowserWindow,
   ipc: IpcMain,
-  { close = (): void => win.close() }: CloseFlushOptions = {}
+  { close = (): void => win.close(), onBeforeClose = (): void => {} }: CloseFlushOptions = {}
 ): void {
   let recording = false
   let flushing = false
@@ -42,7 +44,9 @@ export function installCloseFlush(
       ipc.removeListener('flush-recording-done', finish)
       flushing = false
       recording = false
-      if (!win.isDestroyed()) close()
+      if (win.isDestroyed()) return
+      onBeforeClose()
+      close()
     }
     const timer = setTimeout(finish, FLUSH_TIMEOUT_MS)
     ipc.on('flush-recording-done', finish)

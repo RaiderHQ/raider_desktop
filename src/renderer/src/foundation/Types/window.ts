@@ -223,8 +223,12 @@ export interface WindowApi extends RunApi {
   }>
   registerRecorderWebContents: (webContentsId: number) => Promise<void>
   stopRecordingMain: () => Promise<CommandType>
+  /** Tells main whether the open document has unsaved changes, so closing asks first */
+  setDocumentEdited: (edited: boolean, name: string) => void
   /** Tells main whether a recording is open, so closing the window saves it first */
   setRecordingState: (active: boolean) => void
+  /** Tells main only whether a recording is running, for the Record / Stop & save menu item */
+  setMenuRecording: (recording: boolean) => void
   /** Main asks the page to save its recording before the window closes; returns an unsubscribe */
   onFlushRecording: (callback: () => void) => () => void
   flushRecordingDone: () => void

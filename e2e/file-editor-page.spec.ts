@@ -1,4 +1,5 @@
 import { test, expect } from './electronApp'
+import { getMainIPCCalls, mockMainIPCCapture } from './helpers/ipc-mock'
 import { goToOverviewFiles, mockRubyReady } from './helpers/navigation'
 import {
   setupProjectContext,
@@ -102,6 +103,62 @@ test.describe('File Editor Page', () => {
     const calls = await getIPCCalls(page, 'editFile')
     expect(calls.length).toBe(1)
     expect(calls[0][0]).toBe('/mock/test-project/edit_me.rb')
+  })
+
+  test('the window title and edited flag follow the open file', async ({ electronApp, page }) => {
+    const mockTree = [{ name: 'edit_me.rb', type: 'file', path: '/mock/test-project/edit_me.rb' }]
+    await setupProjectContext(page, { files: mockTree })
+    await page.evaluate(() => {
+      ;(window as any).api.readFile = async () => ({ success: true, data: 'original content' })
+    })
+    await goToOverviewFiles(page)
+    await page.getByText('edit_me.rb').click()
+    await page.waitForTimeout(1500)
+    await mockIPCCapture(page, 'editFile', { success: true })
+
+    const windowTitle = (): Promise<string> =>
+      electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getTitle())
+    const isEdited = (): Promise<boolean> =>
+      electronApp.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0].isDocumentEdited()
+      )
+
+    await expect.poll(windowTitle).toContain('edit_me.rb')
+    await expect.poll(windowTitle).toContain('test-project')
+
+    await page.locator('.monaco-editor .view-lines').click()
+    await page.keyboard.type('x')
+    if (process.platform === 'darwin') await expect.poll(isEdited).toBe(true)
+
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+s' : 'Control+s')
+    if (process.platform === 'darwin') await expect.poll(isEdited).toBe(false)
+    await expect.poll(windowTitle).toContain('edit_me.rb')
+  })
+
+  test('Cmd+S saves in the Files editor', async ({ electronApp, page }) => {
+    const mockTree = [
+      { name: 'menu_save.rb', type: 'file', path: '/mock/test-project/menu_save.rb' }
+    ]
+    await setupProjectContext(page, { files: mockTree })
+    await page.evaluate(() => {
+      ;(window as unknown as { api: Record<string, unknown> }).api.readFile = async (): Promise<{
+        success: boolean
+        data: string
+      }> => ({ success: true, data: 'original content' })
+    })
+    await mockMainIPCCapture(electronApp, 'edit-file', { success: true })
+    await goToOverviewFiles(page)
+    await page.getByText('menu_save.rb').click()
+    await page.waitForTimeout(1500)
+
+    await page.locator('.monaco-editor .view-lines').click()
+    await page.keyboard.type('x')
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+s' : 'Control+s')
+
+    await expect.poll(async () => (await getMainIPCCalls(electronApp, 'edit-file')).length).toBe(1)
+    expect((await getMainIPCCalls(electronApp, 'edit-file'))[0][0]).toBe(
+      '/mock/test-project/menu_save.rb'
+    )
   })
 
   test('save shows success toast', async ({ page }) => {

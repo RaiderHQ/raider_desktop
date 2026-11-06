@@ -2,6 +2,7 @@ import { render, screen, act, fireEvent, waitFor } from '@testing-library/react'
 import FileEditor from '@pages/FileEditor'
 import { dispatchMenuCommand } from '@foundation/menuCommands'
 import '@testing-library/jest-dom'
+import useTitleStore from '@foundation/Stores/titleStore'
 import { vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router'
 
@@ -149,6 +150,33 @@ describe('FileEditor Page', () => {
       expect(mockApi.editFile).toHaveBeenCalledWith('/fake/path', 'new content')
       await waitFor(() => expect(screen.getByText('editor.status.saved')).toBeInTheDocument())
       expect(saveButton()).toBeDisabled()
+    })
+
+    it('tells the window which file is open and whether it is dirty', async () => {
+      mockApi.editFile.mockResolvedValue({ success: true })
+      await act(async () => {
+        renderComponent()
+      })
+      const name = useTitleStore.getState().document?.name
+      expect(useTitleStore.getState().document).toEqual({ name, edited: false })
+      type('edited')
+      expect(useTitleStore.getState().document).toEqual({ name, edited: true })
+      await act(async () => {
+        fireEvent.click(saveButton())
+      })
+      await waitFor(() => expect(useTitleStore.getState().document?.edited).toBe(false))
+    })
+
+    it('keeps the edited state while the unsaved dialog is up', async () => {
+      await act(async () => {
+        renderComponent()
+      })
+      type('edited')
+      fireEvent.click(back())
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(useTitleStore.getState().document?.edited).toBe(true)
+      fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.cancel' }))
+      expect(useTitleStore.getState().document?.edited).toBe(true)
     })
 
     it('asks before leaving with unsaved changes, and Cancel stays', async () => {

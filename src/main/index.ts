@@ -53,7 +53,11 @@ import { registerRunIpc } from './handlers/run/runIpc'
 import { openTraceFromDialog, registerTraceIpc } from './handlers/trace/traceIpc'
 import { makeBaselineConfirm } from './handlers/results/baselineConfirm'
 import { acceptBaseline } from './handlers/results/acceptBaseline'
-import { installAppMenu, withLiveWindow } from './appMenu'
+import { installAppMenu, setRecordingMenuState, withLiveWindow } from './appMenu'
+import {
+  installRecordingState,
+  resetRecordingOnWindowLoss
+} from './handlers/recording/recordingState'
 import { killActiveRun } from './handlers/run/runner'
 import exportTest from './handlers/io/exportTest'
 import exportSuite from './handlers/io/exportSuite'
@@ -76,6 +80,7 @@ import replayStepsAndRecord from './handlers/recording/replayStepsAndRecord'
 import replayInWebview, { cancelWebviewReplay } from './handlers/recording/replayInWebview'
 import stopRecordingMain from './handlers/recording/stopRecordingMain'
 import saveRecording from './handlers/recording/saveRecording'
+import { installDocumentEdited } from './handlers/documentEdited'
 import { installCloseFlush } from './handlers/recording/closeFlush'
 import saveTrace from './handlers/trace/saveTrace'
 import loadTrace from './handlers/trace/loadTrace'
@@ -143,10 +148,29 @@ function createWindow(): void {
   // Set the main window instance in our app state module
   setMainWindow(newMainWindow)
 
-  // Closing while recording saves the recording first
-  installCloseFlush(newMainWindow, ipcMain, {
-    close: () => (quitting ? app.quit() : newMainWindow.close())
+  const closeOrQuit = (): void => (quitting ? app.quit() : newMainWindow.close())
+
+  resetRecordingOnWindowLoss(newMainWindow, () => {
+    appState.recording = false
+    setRecordingMenuState(false)
   })
+
+  // Closing while recording saves the recording first. The flush's close listener is
+  // registered before the guard's, so the guard leaves a close the flush holds alone;
+  // once the recording is saved there is nothing left for the guard to ask about.
+  const guard = { markClean: (): void => {} }
+  installCloseFlush(newMainWindow, ipcMain, {
+    close: closeOrQuit,
+    onBeforeClose: () => guard.markClean()
+  })
+
+  // Closing with unsaved changes asks first; Cancel also cancels a pending quit
+  guard.markClean = installDocumentEdited(newMainWindow, ipcMain, {
+    close: closeOrQuit,
+    onCancel: () => {
+      quitting = false
+    }
+  }).markClean
 
   if (is.dev && appState.mainWindow) {
     appState.mainWindow.webContents.openDevTools()
@@ -205,6 +229,11 @@ app.whenReady().then(() => {
     },
     { isPackaged: app.isPackaged }
   )
+
+  installRecordingState(ipcMain, (recording) => {
+    appState.recording = recording
+    setRecordingMenuState(recording)
+  })
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
