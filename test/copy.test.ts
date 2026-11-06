@@ -76,4 +76,17 @@ describe('copy', () => {
     }
     expect(offenders).toEqual([])
   })
+
+  it('the check dialogs speak plainly', () => {
+    const m = en.recorder.assertionTextModal
+    expect(Object.values(m.titles)).toEqual([
+      'Check the text',
+      'Check the text contains',
+      'Check the value',
+      'Check the page title',
+      'Check the address'
+    ])
+    expect(m.save).toBe('Add check')
+    expect(en.assertions.menu.header).toBe('Add a check')
+  })
 })

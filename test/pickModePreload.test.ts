@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { installPickMode } from '../src/preload/pickMode'
+import { assertionFields } from '../src/preload/assertionFields'
 import type { PickCandidate } from '../src/shared/types/pick'
 
 // jsdom marks dispatched events untrusted; the tests treat them as the user's own
@@ -286,6 +287,56 @@ describe('installPickMode', () => {
     click(document.getElementById('save')!)
     expect(outlines()).toHaveLength(0)
     expect(pageClick).toHaveBeenCalledTimes(1)
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('the pick candidate carries value, input type, page title and url', () => {
+    document.title = 'Sign in'
+    pick.setPicking(false)
+    pick = installPickMode(
+      window,
+      send,
+      (el) => ({ ...candidate(el), ...assertionFields(el) }),
+      trusted
+    )
+    document.body.innerHTML += '<input id="name" type="text" value="Ada">'
+    pick.setPicking(true)
+    click(document.getElementById('name')!)
+    expect(send).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        elementValue: 'Ada',
+        inputType: 'text',
+        pageTitle: 'Sign in',
+        pageUrl: window.location.href
+      })
+    )
+  })
+
+  it("a secret field's value is empty in the candidate", () => {
+    document.body.innerHTML += '<input id="pw" type="password" value="hunter2">'
+    pick = installPickMode(
+      window,
+      send,
+      (el) => ({ ...candidate(el), ...assertionFields(el) }),
+      trusted
+    )
+    pick.setPicking(true)
+    click(document.getElementById('pw')!)
+    const payload = JSON.stringify(send.mock.calls)
+    expect(payload).not.toContain('hunter2')
+    expect(send).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ elementValue: '', inputType: 'password' })
+    )
+  })
+
+  it('a right-click while picking for a check is blocked', () => {
+    pick.setPicking(true)
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    document.getElementById('save')!.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(true)
+    expect(send).not.toHaveBeenCalledWith('show-assertion-context-menu', expect.anything())
     expect(send).not.toHaveBeenCalled()
   })
 })

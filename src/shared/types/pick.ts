@@ -8,6 +8,11 @@ export interface PickCandidate {
   innerText?: string
   ariaLabel?: string
   placeholder?: string
+  /** For the assertion menu; '' for a password field */
+  elementValue?: string
+  inputType?: string
+  pageTitle?: string
+  pageUrl?: string
 }
 
 /**

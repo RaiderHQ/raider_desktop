@@ -6,7 +6,8 @@ import {
   getPrioritizedSelector as buildSelector,
   isRegion
 } from './selectorStrategy'
-import { fieldValue, isSecretField } from './secretField'
+import { fieldValue } from './secretField'
+import { assertionFields } from './assertionFields'
 import { installPickMode } from './pickMode'
 
 // Events fired before the IPC call resolves use the defaults.
@@ -47,7 +48,8 @@ const textOf = (el: Element): string =>
 const pickMode = installPickMode(window, ipcRenderer.send.bind(ipcRenderer), (el) => ({
   ...getPrioritizedSelector(el),
   innerText: textOf(el),
-  ...labelHints(el)
+  ...labelHints(el),
+  ...assertionFields(el)
 }))
 ipcRenderer.on('recorder-pick-mode', (_event, on: unknown) => pickMode.setPicking(on === true))
 
@@ -146,21 +148,13 @@ document.addEventListener(
     if (target) {
       const { selector, strategy, locator } = getPrioritizedSelector(target)
       const elementText = target.innerText || ''
-      const elementValue = isSecretField(target) ? '' : ((target as HTMLInputElement).value ?? '')
-      const inputType =
-        target.tagName === 'INPUT' ? (target as HTMLInputElement).type.toLowerCase() : ''
-      const pageTitle = document.title
-      const pageUrl = window.location.href
       ipcRenderer.send('show-assertion-context-menu', {
         selector,
         strategy,
         locator,
         ...labelHints(target),
         elementText,
-        elementValue,
-        inputType,
-        pageTitle,
-        pageUrl
+        ...assertionFields(target)
       })
     }
   },

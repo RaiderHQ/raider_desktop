@@ -503,28 +503,28 @@
     },
     "assertionTextModal": {
       "titles": {
-        "text": "Assert Element Text",
-        "text-includes": "Assert Element Text Includes",
-        "value": "Assert Element Value",
-        "page-title": "Assert Page Title",
-        "page-url": "Assert Current URL"
+        "text": "Check the text",
+        "text-includes": "Check the text contains",
+        "value": "Check the value",
+        "page-title": "Check the page title",
+        "page-url": "Check the address"
       },
       "messages": {
-        "text": "Enter the exact text you expect the element to contain.",
-        "text-includes": "Enter the text you expect to find within the element.",
-        "value": "Enter the value you expect in this input field.",
+        "text": "Enter the exact text you expect to see.",
+        "text-includes": "Enter the text you expect to find.",
+        "value": "Enter the value you expect in this field.",
         "page-title": "Enter the exact page title you expect.",
-        "page-url": "Enter the text you expect the URL to contain (e.g. /dashboard)."
+        "page-url": "Enter the part of the address you expect (for example /dashboard)."
       },
       "labels": {
-        "text": "Expected Text",
-        "text-includes": "Text to Find",
-        "value": "Expected Value",
-        "page-title": "Expected Title",
-        "page-url": "URL Contains"
+        "text": "Text",
+        "text-includes": "Text to find",
+        "value": "Value",
+        "page-title": "Title",
+        "page-url": "Part of the address"
       },
       "cancel": "Cancel",
-      "save": "Save Assertion"
+      "save": "Add check"
     },
     "deleteModal": {
       "title": "Confirm Deletion",
@@ -1252,6 +1252,24 @@
       "success": "Generated successfully!\n{{output}}",
       "failed": "Generation failed: {{error}}",
       "error": "Error: {{error}}"
+    }
+  },
+  "assertions": {
+    "menu": {
+      "header": "Add a check",
+      "wait": "Wait until it…",
+      "waitAppears": "appears",
+      "waitDisappears": "disappears",
+      "waitEnabled": "is enabled",
+      "visible": "Check it is visible",
+      "hidden": "Check it is hidden",
+      "enabled": "Check it is enabled",
+      "checked": "Check it is ticked",
+      "textIs": "Check its text is exactly…",
+      "textContains": "Check its text contains…",
+      "valueIs": "Check its value is…",
+      "titleIs": "Check the page title is…",
+      "urlContains": "Check the address contains…"
     }
   }
 }

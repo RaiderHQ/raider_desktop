@@ -1,6 +1,7 @@
 import { Menu } from 'electron'
 import { randomUUID } from 'crypto'
 import { appState } from '../appState'
+import { englishText } from '@shared/describeStepEnglish'
 import { toElementTarget } from './recorderEvent'
 import type { AssertKind } from '@shared/types/step'
 import type { AssertionMessage } from '@shared/types/pendingAssertion'
@@ -19,6 +20,8 @@ export interface AssertionMenuRequest {
   pageTitle?: string
   pageUrl?: string
 }
+
+const t = (key: string): string => englishText(`assertions.menu.${key}`)
 
 /** Pops the assertion menu; each choice sends the main window a step or a pending assertion. */
 export function showAssertionContextMenu(
@@ -64,51 +67,49 @@ export function showAssertionContextMenu(
   const isCheckable = inputType === 'checkbox' || inputType === 'radio'
 
   const template: (Electron.MenuItemConstructorOptions | Electron.MenuItem)[] = [
-    { label: 'Raider Assertions', enabled: false },
+    { label: t('header'), enabled: false },
     { type: 'separator' },
 
     // --- Wait submenu ---
     {
-      label: 'Wait for element',
+      label: t('wait'),
       submenu: [
-        { label: 'to appear', click: (): void => wait('visible') },
-        { label: 'to disappear', click: (): void => wait('hidden') },
-        { label: 'to be enabled', click: (): void => wait('enabled') }
+        { label: t('waitAppears'), click: (): void => wait('visible') },
+        { label: t('waitDisappears'), click: (): void => wait('hidden') },
+        { label: t('waitEnabled'), click: (): void => wait('enabled') }
       ]
     },
     { type: 'separator' },
 
     // --- Assert element state ---
-    { label: 'Assert element is displayed', click: (): void => check('displayed') },
-    { label: 'Assert element is NOT displayed', click: (): void => check('notDisplayed') },
-    { label: 'Assert element is enabled', click: (): void => check('enabled') },
-    ...(isCheckable
-      ? [{ label: 'Assert element is checked', click: (): void => check('checked') }]
-      : []),
+    { label: t('visible'), click: (): void => check('displayed') },
+    { label: t('hidden'), click: (): void => check('notDisplayed') },
+    { label: t('enabled'), click: (): void => check('enabled') },
+    ...(isCheckable ? [{ label: t('checked'), click: (): void => check('checked') }] : []),
     { type: 'separator' },
 
     // --- Assert content ---
     {
-      label: 'Assert element text equals',
+      label: t('textIs'),
       click: (): void => ask('textEquals', (elementText || '').trim())
     },
     {
-      label: 'Assert element text includes',
+      label: t('textContains'),
       click: (): void => ask('textIncludes', (elementText || '').trim())
     },
     {
-      label: 'Assert element value',
+      label: t('valueIs'),
       click: (): void => ask('valueEquals', (elementValue || '').trim())
     },
     { type: 'separator' },
 
     // --- Assert page ---
     {
-      label: 'Assert page title',
+      label: t('titleIs'),
       click: (): void => ask('titleEquals', pageTitle || '', false)
     },
     {
-      label: 'Assert current URL contains',
+      label: t('urlContains'),
       click: (): void => ask('urlIncludes', pageUrl || '', false)
     }
   ]
