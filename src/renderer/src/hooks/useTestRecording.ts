@@ -374,6 +374,7 @@ async function stopAndSave(t: Translate, options: StopOptions = {}): Promise<voi
     store().setBreakpointIndex(null)
   }
   store().setRecordingBrowser(null)
+  store().setAssertPicking(false)
   // Right away, not on main's 'recording-stopped': steps still in flight must not land anywhere
   store().setIsRecording(false)
   window.api.stopRecordingMain()

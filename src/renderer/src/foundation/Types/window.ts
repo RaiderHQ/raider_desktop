@@ -229,7 +229,7 @@ export interface WindowApi extends RunApi {
   onFlushRecording: (callback: () => void) => () => void
   flushRecordingDone: () => void
   /** Turns picking one element in the recorder on or off; fails when no recorder is open */
-  setPickMode: (on: boolean) => Promise<{ success: boolean }>
+  setPickMode: (on: boolean, purpose?: 'repick' | 'assert') => Promise<{ success: boolean }>
   /** Called once when picking ends, with the element or a cancel; returns an unsubscribe */
   onRecorderPicked: (callback: (result: PickResult) => void) => () => void
   loadUrlRequest: (url: string) => Promise<CommandType>

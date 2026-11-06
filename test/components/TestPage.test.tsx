@@ -1250,3 +1250,56 @@ describe('TestPage re-picking the failed element', () => {
     })
   })
 })
+
+describe('Check something…', () => {
+  const recordingNow = async (): Promise<void> => {
+    renderPage()
+    await opened()
+    await startRecording()
+    act(() => useRecorderStore.getState().setIsRecording(true))
+  }
+  beforeEach(() => {
+    ;(api as Record<string, unknown>).setPickMode = vi.fn().mockResolvedValue({ success: true })
+  })
+  const setPick = (): ReturnType<typeof vi.fn> =>
+    (api as unknown as { setPickMode: ReturnType<typeof vi.fn> }).setPickMode
+
+  it('starts a pick for a check and shows its banner', async () => {
+    await recordingNow()
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.addAssertion' }))
+    expect(setPick()).toHaveBeenCalledWith(true, 'assert')
+    expect(screen.getByText('testPage.assertPickBanner')).toBeInTheDocument()
+  })
+
+  it('goes back when main refuses the pick', async () => {
+    await recordingNow()
+    setPick().mockResolvedValue({ success: false })
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.addAssertion' }))
+    await act(async () => {})
+    expect(screen.queryByText('testPage.assertPickBanner')).not.toBeInTheDocument()
+  })
+
+  it('Esc during a check pick ends only the pick', async () => {
+    await recordingNow()
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.addAssertion' }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(setPick()).toHaveBeenLastCalledWith(false)
+    expect(api.stopRecordingMain).not.toHaveBeenCalled()
+    expect(useRecorderStore.getState().isRecording).toBe(true)
+    expect(screen.queryByText('testPage.assertPickBanner')).not.toBeInTheDocument()
+  })
+
+  it('is disabled while re-picking', async () => {
+    await recordingNow()
+    act(() => useRecorderStore.getState().setRecordingTarget({ kind: 'pick', stepId: 'a' }))
+    expect(screen.getByRole('button', { name: 'testPage.addAssertion' })).toBeDisabled()
+  })
+
+  it('stop while picking for a check adds nothing', async () => {
+    await recordingNow()
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.addAssertion' }))
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.stop' }))
+    expect(useRecorderStore.getState().assertPicking).toBe(false)
+    expect(api.stopRecordingMain).toHaveBeenCalled()
+  })
+})

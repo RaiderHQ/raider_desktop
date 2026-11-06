@@ -440,6 +440,8 @@
     "url": "Start URL",
     "record": "Record",
     "stop": "Stop & save",
+    "addAssertion": "Check something…",
+    "assertPickBanner": "Click the thing you want to check. Press Esc to cancel.",
     "recording": "Recording",
     "run": "Run",
     "steps": "Steps",
@@ -789,6 +791,7 @@
       "startRecording": "Open the page and start recording",
       "cancelNew": "Go back without starting a recording",
       "cancelPick": "Stop picking and keep recording",
+      "addAssertion": "Pick something on the page to check, or right-click it",
       "examples": "Pick which test in the file to work on",
       "saveAsNew": "Keep these steps as a separate recorded test"
     },

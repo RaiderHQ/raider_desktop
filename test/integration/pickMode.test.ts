@@ -18,9 +18,15 @@ vi.mock('electron', () => ({
   }
 }))
 
+const showMenu = vi.fn()
+vi.mock('../../src/main/handlers/recording/assertionContextMenu', () => ({
+  showAssertionContextMenu: (...args: unknown[]): unknown => showMenu(...args)
+}))
+
 vi.mock('../../src/main/handlers/appState', () => ({
   appState: {
     pickMode: false,
+    pickPurpose: 'repick',
     recorderWebContentsId: null,
     activeTraceDir: null,
     mainWindow: { webContents: { id: 1, send: (...args: unknown[]): unknown => mainSend(...args) } }
@@ -145,6 +151,42 @@ describe('pick mode in main', () => {
         }
       ]
     ])
+  })
+
+  it('a pick for a check pops the assertion menu with the validated fields and ends the pick as asserted', async () => {
+    await pickOn(() => handleSetPickMode(1, true, 'assert'))
+    handleRecorderPicked(7, {
+      strategy: 'id',
+      selector: 'q',
+      innerText: 'Search',
+      elementValue: 'v'.repeat(600),
+      inputType: 'text'.repeat(20),
+      pageTitle: 'T'.repeat(400),
+      pageUrl: 42
+    })
+    expect(showMenu).toHaveBeenCalledTimes(1)
+    const [event, request] = showMenu.mock.calls[0] as [unknown, Record<string, unknown>]
+    expect(event).toBeNull()
+    expect(request).toMatchObject({ selector: 'q', strategy: 'id', elementText: 'Search' })
+    expect((request.elementValue as string).length).toBe(500)
+    expect((request.inputType as string).length).toBe(32)
+    expect((request.pageTitle as string).length).toBe(300)
+    expect(request.pageUrl).toBeUndefined()
+    expect(picked()).toEqual([['recorder-picked', { cancelled: true, reason: 'asserted' }]])
+    expect(state.pickMode).toBe(false)
+  })
+
+  it('an unknown purpose is refused', async () => {
+    expect(await handleSetPickMode(1, true, 'delete')).toEqual({ success: false })
+    expect(await handleSetPickMode(1, true, { x: 1 })).toEqual({ success: false })
+    expect(state.pickMode).toBe(false)
+  })
+
+  it('a pick for a repick still forwards the element', async () => {
+    await pickOn(() => handleSetPickMode(1, true, 'repick'))
+    handleRecorderPicked(7, { strategy: 'css', selector: '#new', elementValue: 'x' })
+    expect(showMenu).not.toHaveBeenCalled()
+    expect(picked()).toEqual([['recorder-picked', { element: { strategy: 'css', value: '#new' } }]])
   })
 
   it.each([null, 'x', {}, { strategy: 'name', selector: 'q' }, { strategy: 'css', selector: '' }])(

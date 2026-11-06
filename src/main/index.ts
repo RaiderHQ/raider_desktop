@@ -370,7 +370,9 @@ app.whenReady().then(() => {
   )
   ipcMain.handle('stop-recording-main', stopRecordingMain)
   ipcMain.on('recorder-event', (_event, data: RecorderEventData) => recorderEvent(data))
-  ipcMain.handle('set-pick-mode', (event, on: unknown) => handleSetPickMode(event.sender.id, on))
+  ipcMain.handle('set-pick-mode', (event, on: unknown, purpose?: unknown) =>
+    handleSetPickMode(event.sender.id, on, purpose)
+  )
   ipcMain.on('recorder-picked', (event, data: unknown) =>
     handleRecorderPicked(event.sender.id, data)
   )

@@ -105,6 +105,13 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
       }
     }
 
+    // Any end of a pick (the page picked, Esc, a new page) ends the check pick; the banner goes
+    const handleRecorderPicked = (): void => {
+      if (useRecorderStore.getState().assertPicking) {
+        useRecorderStore.getState().setAssertPicking(false)
+      }
+    }
+
     const handleNewStep = (step: Step): void => {
       appendStep(step)
     }
@@ -130,8 +137,10 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
     const assertionCleanup = window.api.onAddAssertionStep(handleAddAssertion)
     const traceCleanup = window.api.onNewTraceStep(handleNewTraceStep)
     const replayFailedCleanup = window.api.onReplayFailed(handleReplayFailed)
+    const pickedCleanup = window.api.onRecorderPicked(handleRecorderPicked)
 
     return (): void => {
+      pickedCleanup()
       startCleanup()
       stopCleanup()
       stepCleanup()
