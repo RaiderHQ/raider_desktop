@@ -48,6 +48,13 @@ describe('describeStep', () => {
       key: 'recorder.commandParser.clickElement',
       values: { element: 'Main' }
     })
+    const byRole: ElementTarget = {
+      strategy: 'css',
+      value: 'aside',
+      region: true,
+      locator: { by: 'role', role: 'complementary', name: 'Sidebar' }
+    }
+    expect(describeStep({ id, kind: 'click', element: byRole }).values.element).toBe('Sidebar')
   })
 
   it('falls back to the locator name when there is no label', () => {

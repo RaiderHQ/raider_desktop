@@ -110,8 +110,10 @@ export function describeStep(step: Step): StepDescription {
     case 'navigate':
       return { key: `${P}.visit`, values: { url: step.url } }
     case 'click':
-      // A region with a name (<nav aria-label="Main">) is still "Main"; a bare one is an area
-      if (step.element.region && !step.element.label) return { key: `${P}.clickRegion`, values: {} }
+      // A region with a name (<nav aria-label="Main">, a role locator) is still "Main"; a bare one is an area
+      if (step.element.region && elementName(step.element) === THIS_ELEMENT) {
+        return { key: `${P}.clickRegion`, values: {} }
+      }
       return { key: `${P}.clickElement`, values: { element: elementName(step.element) } }
     case 'type':
       if (step.secret) {
