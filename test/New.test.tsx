@@ -101,6 +101,18 @@ describe('CreateProject Page', (): void => {
     expect(screen.getByText('button.create.text')).toBeInTheDocument()
   })
 
+  it('the project name field has a tooltip', async (): Promise<void> => {
+    await act(async (): Promise<void> => {
+      render(
+        <MemoryRouter>
+          <CreateProject />
+        </MemoryRouter>
+      )
+    })
+    fireEvent.focus(screen.getByPlaceholderText('newProject.input.placeholder'))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('tooltips.newProject.name')
+  })
+
   it('shows add-ons section', async (): Promise<void> => {
     await act(async (): Promise<void> => {
       render(

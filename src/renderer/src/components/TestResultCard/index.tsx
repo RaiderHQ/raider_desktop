@@ -242,7 +242,11 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
               </button>
             )}
             {traceTestId && (
-              <Tooltip content={t('tooltips.viewTrace')}>
+              <Tooltip
+                content={
+                  showTrace ? t('tooltips.dashboard.backToResults') : t('tooltips.dashboard.viewTrace')
+                }
+              >
                 <button
                   onClick={handleToggleTrace}
                   disabled={traceLoading}

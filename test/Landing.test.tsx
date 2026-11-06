@@ -37,14 +37,16 @@ vi.mock('@components/ProjectSelector', () => ({
     description,
     buttonValue,
     url,
-    onClick
+    onClick,
+    tooltip
   }: {
     description: string
     buttonValue: string
     url?: string
     onClick?: () => void
+    tooltip?: string
   }): JSX.Element => (
-    <div>
+    <div data-tooltip={tooltip}>
       <p>{description}</p>
       {url && <a href={url}>{url}</a>}
       <button onClick={onClick}>{buttonValue}</button>
@@ -86,6 +88,27 @@ describe('Landing Page', (): void => {
       fireEvent.click(screen.getByText('button.recorder.text'))
     })
     expect(screen.getByText('quick-record-dialog')).toBeInTheDocument()
+  })
+
+  it('the three landing cards have tooltips on focus', async (): Promise<void> => {
+    let container!: HTMLElement
+    await act(async () => {
+      ;({ container } = render(
+        <MemoryRouter>
+          <Landing />
+        </MemoryRouter>
+      ))
+    })
+    const tips = Array.from(container.querySelectorAll('[data-tooltip]')).map((n) =>
+      n.getAttribute('data-tooltip')
+    )
+    expect(tips).toEqual([
+      'tooltips.landing.quickRecord',
+      'tooltips.landing.create',
+      'tooltips.landing.open'
+    ])
+    fireEvent.focus(screen.getByRole('button', { name: 'Learn how Ruby Raider works' }))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('tooltips.landing.logo')
   })
 
   describe('Quick recordings', () => {

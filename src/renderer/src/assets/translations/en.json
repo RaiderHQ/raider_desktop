@@ -755,7 +755,6 @@
     }
   },
   "tooltips": {
-    "viewTrace": "View the step-by-step trace for this test — see screenshots and element info for every recorded action.",
     "recorder": {
       "newTest": "Create a new blank test inside the active suite. Give it a name and a URL, then press Record.",
       "deleteStep": "Remove this step from the test. The remaining steps will still run in order.",
@@ -846,6 +845,53 @@
     },
     "editor": {
       "save": "Save this file"
+    },
+    "landing": {
+      "logo": "Learn how Ruby Raider works",
+      "quickRecord": "Record a website as a test, without creating a project first",
+      "create": "Create a new test project in a folder you choose",
+      "open": "Open a Ruby Raider project folder",
+      "quickRecording": "Reopen this recording"
+    },
+    "quickRecord": {
+      "url": "The page the recording starts on",
+      "name": "What this test is called in the list",
+      "start": "Open the page and start recording"
+    },
+    "newProject": {
+      "name": "Lowercase letters, numbers and underscores; this is the folder name",
+      "target": "What the tests will drive",
+      "phones": "Which phones the tests run on",
+      "framework": "How tests are written: RSpec (Ruby) or Cucumber (plain-text steps)",
+      "ci": "Which CI service gets a ready-made pipeline file",
+      "accessibility": "Adds an accessibility check to every test",
+      "examples": "Adds example pages and tests to learn from",
+      "back": "Go back without creating",
+      "create": "Create the project folder"
+    },
+    "header": {
+      "logo": "How Ruby Raider works"
+    },
+    "installGuide": {
+      "back": "Go back to the start page",
+      "github": "Open the Ruby Raider repository on GitHub",
+      "website": "Open the Ruby Raider website"
+    },
+    "scaffold": {
+      "type": "What to generate",
+      "name": "Lowercase name, for example login",
+      "generate": "Create the file in the project"
+    },
+    "fileEditor": {
+      "back": "Back to the project"
+    },
+    "dashboard": {
+      "openReport": "Open the HTML report in your browser",
+      "viewTrace": "See every step with screenshots",
+      "backToResults": "Back to the results list"
+    },
+    "modal": {
+      "close": "Close"
     }
   },
   "run": {
@@ -1183,5 +1229,28 @@
   "steps": {
     "removed": "Step removed",
     "undo": "Undo"
+  },
+  "scaffold": {
+    "intro": "Generate page objects, specs, features, steps, helpers, or components for your project.",
+    "type": "Type",
+    "name": "Name",
+    "namePlaceholder": "e.g. login",
+    "types": {
+      "page": "Page Object",
+      "spec": "Spec",
+      "feature": "Feature",
+      "steps": "Steps",
+      "helper": "Helper",
+      "component": "Component"
+    },
+    "generate": "Generate",
+    "generating": "Generating...",
+    "toast": {
+      "noName": "Please enter a name.",
+      "noProject": "No project is open. Please open a project first.",
+      "success": "Generated successfully!\n{{output}}",
+      "failed": "Generation failed: {{error}}",
+      "error": "Error: {{error}}"
+    }
   }
 }

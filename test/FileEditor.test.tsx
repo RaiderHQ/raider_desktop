@@ -60,7 +60,7 @@ const renderComponent = (extraState: object = {}): void => {
   )
 }
 
-const back = (): HTMLElement => screen.getByText('test.txt').previousElementSibling as HTMLElement
+const back = (): HTMLElement => screen.getByRole('button', { name: 'editor.back' })
 
 describe('FileEditor Page', () => {
   it('renders loading state initially', async () => {
@@ -92,6 +92,14 @@ describe('FileEditor Page', () => {
       renderComponent()
     })
     expect(screen.getByTestId('editor')).toHaveAttribute('data-reveal-line', '')
+  })
+
+  it('Back has a tooltip on focus', async () => {
+    await act(async () => {
+      renderComponent()
+    })
+    fireEvent.focus(back())
+    expect(screen.getByRole('tooltip')).toHaveTextContent('tooltips.fileEditor.back')
   })
 
   it('Back goes to the overview by default', async () => {
