@@ -8,7 +8,7 @@ interface TechnicalDetailsProps {
 
 const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="flex flex-col gap-0.5">
-    <dt className="text-xs font-semibold text-neutral-mid">{label}</dt>
+    <dt className="text-xs font-semibold text-neutral-md">{label}</dt>
     <dd className="text-sm text-neutral-dk break-all">{children}</dd>
   </div>
 )
@@ -29,7 +29,7 @@ const TechnicalDetails: React.FC<TechnicalDetailsProps> = ({ step }) => {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
-        className="text-xs font-semibold text-neutral-mid hover:text-neutral-dk"
+        className="text-xs font-semibold text-neutral-md hover:text-neutral-dk"
       >
         <span aria-hidden="true">{open ? '▾' : '▸'}</span> {t('traceViewer.technical.show')}
       </button>

@@ -27,7 +27,7 @@ const RubyGemsInstallModal: React.FC<RubyGemsInstallModalProps> = ({
               {t('recorder.rubyGemsInstallModal.title')}
             </h2>
           </div>
-          <p className="text-sm text-neutral-mid">
+          <p className="text-sm text-neutral-md">
             {t('recorder.rubyGemsInstallModal.message', { missingGems: missingGems.join(', ') })}
           </p>
         </div>
@@ -52,14 +52,14 @@ const RubyGemsInstallModal: React.FC<RubyGemsInstallModalProps> = ({
           {/* What clicking Install Now does */}
           <div className="bg-neutral-50 border border-neutral-bdr rounded-lg p-3 space-y-2">
             <p className="text-xs font-semibold text-neutral-dk">What "Install Now" does:</p>
-            <p className="text-xs text-neutral-mid">
+            <p className="text-xs text-neutral-md">
               Ruby Raider will run <code className="font-mono bg-white border border-neutral-bdr rounded px-1">gem install {missingGems.join(' ')}</code> in the background using your current Ruby version.
             </p>
           </div>
 
           {/* Manual fallback */}
           <div>
-            <p className="text-xs text-neutral-mid">
+            <p className="text-xs text-neutral-md">
               Prefer to install manually? Open a terminal and run:
             </p>
             <code className="block mt-1 bg-neutral-50 border border-neutral-bdr rounded px-3 py-2 text-xs font-mono text-neutral-dark break-all">

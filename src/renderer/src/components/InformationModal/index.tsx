@@ -49,7 +49,7 @@ const InformationModal: React.FC<ModalProps> = ({
           <Logo size={28} />
           <h2 className="text-lg font-semibold text-neutral-dark">{title}</h2>
           <button
-            className="ml-auto text-neutral-mid hover:text-neutral-dark transition-colors"
+            className="ml-auto text-neutral-md hover:text-neutral-dark transition-colors"
             onClick={onClose}
             aria-label="Close"
           >

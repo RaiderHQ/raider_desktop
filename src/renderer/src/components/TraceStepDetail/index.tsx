@@ -23,7 +23,7 @@ type View = 'screenshot' | 'snapshot'
 type Loaded<T> = { stepId: string; value: T | null }
 
 const Placeholder: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="w-full h-48 bg-neutral-lt rounded-lg flex items-center justify-center text-sm text-neutral-mid">
+  <div className="w-full h-48 bg-neutral-lt rounded-lg flex items-center justify-center text-sm text-neutral-md">
     {children}
   </div>
 )
@@ -84,7 +84,7 @@ const Detail: React.FC<Omit<TraceStepDetailProps, 'traceKey'>> = ({
 
   if (!step) {
     return (
-      <div className="flex items-center justify-center h-full text-neutral-mid text-sm p-4">
+      <div className="flex items-center justify-center h-full text-neutral-md text-sm p-4">
         {t('traceViewer.selectStep')}
       </div>
     )
@@ -152,7 +152,7 @@ const Detail: React.FC<Omit<TraceStepDetailProps, 'traceKey'>> = ({
       className={`px-3 py-1 text-xs rounded-full border ${
         view === value
           ? 'border-ruby bg-ruby-sub text-neutral-dark'
-          : 'border-neutral-bdr text-neutral-mid hover:bg-neutral-lt'
+          : 'border-neutral-bdr text-neutral-md hover:bg-neutral-lt'
       }`}
     >
       {t(`traceViewer.view.${value}`)}
@@ -165,11 +165,11 @@ const Detail: React.FC<Omit<TraceStepDetailProps, 'traceKey'>> = ({
         {titleText && (
           <Title className="text-base text-neutral-dark break-words">{titleText}</Title>
         )}
-        {step.foundBy && <p className="text-xs text-neutral-mid">{t(step.foundBy.key)}</p>}
+        {step.foundBy && <p className="text-xs text-neutral-md">{t(step.foundBy.key)}</p>}
         {step.status === 'failed' && (
           <p className="text-sm font-semibold text-status-err">{t('traceViewer.failedStep')}</p>
         )}
-        <div className="flex gap-3 text-xs text-neutral-mid">
+        <div className="flex gap-3 text-xs text-neutral-md">
           {step.waitedMs !== null && step.waitedMs > 0 && (
             <span>{t('traceViewer.waited', { seconds: (step.waitedMs / 1000).toFixed(1) })}</span>
           )}
@@ -182,7 +182,7 @@ const Detail: React.FC<Omit<TraceStepDetailProps, 'traceKey'>> = ({
         {viewButton('snapshot')}
       </div>
       <section className="space-y-2">
-        <ViewHeading className="text-xs font-semibold text-neutral-mid">
+        <ViewHeading className="text-xs font-semibold text-neutral-md">
           {t(`traceViewer.view.${view}`)}
         </ViewHeading>
         {view === 'screenshot' ? renderScreenshot() : renderSnapshot()}

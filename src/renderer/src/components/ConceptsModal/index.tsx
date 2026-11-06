@@ -116,11 +116,11 @@ const ConceptsModal: React.FC<ConceptsModalProps> = ({ onClose }) => {
           <Logo size={28} />
           <div>
             <h2 className="text-lg font-semibold text-neutral-dark">{t('concepts.title')}</h2>
-            <p className="text-xs text-neutral-mid">{t('concepts.subtitle')}</p>
+            <p className="text-xs text-neutral-md">{t('concepts.subtitle')}</p>
           </div>
           <button
             onClick={onClose}
-            className="ml-auto text-neutral-mid hover:text-neutral-dark transition-colors"
+            className="ml-auto text-neutral-md hover:text-neutral-dark transition-colors"
             aria-label="Close"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -142,7 +142,7 @@ const ConceptsModal: React.FC<ConceptsModalProps> = ({ onClose }) => {
                 <span className="text-2xl leading-none shrink-0 mt-0.5">{concept.icon}</span>
                 <div>
                   <h3 className="text-sm font-semibold text-neutral-dark mb-0.5">{t(concept.titleKey)}</h3>
-                  <p className="text-xs text-neutral-mid leading-relaxed whitespace-pre-wrap">{t(concept.messageKey)}</p>
+                  <p className="text-xs text-neutral-md leading-relaxed whitespace-pre-wrap">{t(concept.messageKey)}</p>
                 </div>
               </div>
             ))}
@@ -154,7 +154,7 @@ const ConceptsModal: React.FC<ConceptsModalProps> = ({ onClose }) => {
               <span className="text-base">⚙️</span>
               <h3 className="text-sm font-semibold text-neutral-dark">{t('concepts.installTitle')}</h3>
             </div>
-            <p className="text-xs text-neutral-mid mb-3">{t('concepts.installSubtitle')}</p>
+            <p className="text-xs text-neutral-md mb-3">{t('concepts.installSubtitle')}</p>
 
             {/* OS tabs */}
             <div className="flex border-b border-neutral-bdr mb-4">
@@ -165,7 +165,7 @@ const ConceptsModal: React.FC<ConceptsModalProps> = ({ onClose }) => {
                   className={`px-4 py-2 text-xs font-semibold transition-colors ${
                     activeOS === tab.id
                       ? 'text-neutral-dark border-b-2 border-ruby -mb-px'
-                      : 'text-neutral-mid hover:text-neutral-dk'
+                      : 'text-neutral-md hover:text-neutral-dk'
                   }`}
                 >
                   {tab.label}
@@ -188,7 +188,7 @@ const ConceptsModal: React.FC<ConceptsModalProps> = ({ onClose }) => {
                   <span className="text-xl leading-none shrink-0 mt-0.5">{step.icon}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-neutral-dark mb-0.5">{t(step.titleKey)}</p>
-                    <p className="text-xs text-neutral-mid mb-2">{t(step.descKey)}</p>
+                    <p className="text-xs text-neutral-md mb-2">{t(step.descKey)}</p>
                     <code className="block bg-white border border-neutral-bdr rounded px-3 py-2 text-xs font-mono text-neutral-dark break-all whitespace-pre-wrap">
                       {step.command}
                     </code>
@@ -201,7 +201,7 @@ const ConceptsModal: React.FC<ConceptsModalProps> = ({ onClose }) => {
 
         {/* Footer hint */}
         <div className="px-6 py-3 border-t border-neutral-bdr shrink-0">
-          <p className="text-xs text-neutral-mid text-center">{t('concepts.hint')}</p>
+          <p className="text-xs text-neutral-md text-center">{t('concepts.hint')}</p>
         </div>
       </div>
     </div>,

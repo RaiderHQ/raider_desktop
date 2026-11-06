@@ -205,7 +205,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
           title={onEdit && !readOnly ? 'Double-click to edit' : undefined}
         >
           {renderFailed ? (
-            <span className="text-neutral-mid font-sans">{t('recorder.step.renderFailed')}</span>
+            <span className="text-neutral-md font-sans">{t('recorder.step.renderFailed')}</span>
           ) : (
             (code ?? '\u00a0')
           )}
@@ -220,7 +220,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
       <span className="text-neutral-dark">
         {t(key, values)}
         {found && (
-          <span className="flex items-center gap-1 text-xs text-neutral-mid">
+          <span className="flex items-center gap-1 text-xs text-neutral-md">
             <span data-testid="step-found-by">{t(found.key, found.values)}</span>
             {found.weak && (
               <span
@@ -299,7 +299,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
             <Tooltip content={t('tooltips.recorder.deleteStep')} position="top">
               <button
                 onClick={() => onDelete(index)}
-                className="w-6 h-6 flex items-center justify-center rounded-full text-neutral-mid hover:bg-status-err-bg hover:text-red-600 transition-colors"
+                className="w-6 h-6 flex items-center justify-center rounded-full text-neutral-md hover:bg-status-err-bg hover:text-red-600 transition-colors"
                 aria-label="Delete step"
               >
                 <span className="text-2xl font-light select-none leading-none">×</span>

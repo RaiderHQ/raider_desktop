@@ -97,14 +97,14 @@ export const MessageContent: React.FC<{ message: string }> = ({ message }) => {
               }}
               className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-neutral-50"
             >
-              <span className="text-neutral-mid">
+              <span className="text-neutral-md">
                 {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
               </span>
               <span className={`px-1.5 py-0.5 text-xs font-medium rounded border ${severityClass}`}>
                 {v.severity}
               </span>
               <span className="font-medium flex-1">{v.id}</span>
-              <span className="text-neutral-mid text-xs">
+              <span className="text-neutral-md text-xs">
                 {v.nodes.length} element{v.nodes.length !== 1 ? 's' : ''}
               </span>
             </button>
@@ -124,7 +124,7 @@ export const MessageContent: React.FC<{ message: string }> = ({ message }) => {
                   {v.nodes.map((node, i) => (
                     <div key={i} className="text-xs border rounded p-2 bg-white">
                       <code className="block text-neutral-dk break-all">{node.selector}</code>
-                      {node.fix && <p className="mt-1 text-neutral-mid">{node.fix}</p>}
+                      {node.fix && <p className="mt-1 text-neutral-md">{node.fix}</p>}
                     </div>
                   ))}
                 </div>

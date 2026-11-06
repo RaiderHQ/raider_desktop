@@ -34,12 +34,12 @@ const StepPicture: React.FC<StepPictureProps> = ({ label, path, missing, testId 
 
   return (
     <figure data-testid={testId} className="min-w-0 flex-1">
-      <figcaption className="text-xs font-medium text-neutral-mid mb-1">{label}</figcaption>
+      <figcaption className="text-xs font-medium text-neutral-md mb-1">{label}</figcaption>
       <div className="aspect-video rounded border border-neutral-bdr bg-neutral-50 flex items-center justify-center overflow-hidden">
         {src ? (
           <img src={src} alt={label} className="w-full h-full object-contain" />
         ) : (
-          src === null && <p className="text-xs text-neutral-mid px-3 text-center">{missing}</p>
+          src === null && <p className="text-xs text-neutral-md px-3 text-center">{missing}</p>
         )}
       </div>
     </figure>

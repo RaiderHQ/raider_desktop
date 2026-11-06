@@ -28,7 +28,7 @@ const InfoButton: React.FC<InfoButtonProps> = ({
       <button
         onClick={() => setIsOpen(true)}
         aria-label="Help information"
-        className={`w-7 h-7 flex items-center justify-center rounded-full text-neutral-mid hover:text-ruby hover:bg-ruby-sub transition-colors ${className}`}
+        className={`w-7 h-7 flex items-center justify-center rounded-full text-neutral-md hover:text-ruby hover:bg-ruby-sub transition-colors ${className}`}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

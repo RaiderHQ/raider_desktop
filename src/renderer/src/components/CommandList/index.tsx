@@ -87,7 +87,7 @@ const CommandList: React.FC<CommandListProps> = ({
           ))
         ) : (
           <div className="flex items-center justify-center h-full">
-            <p className="text-neutral-mid">{t('recorder.placeholder.commands')}</p>
+            <p className="text-neutral-md">{t('recorder.placeholder.commands')}</p>
           </div>
         )}
       </div>
