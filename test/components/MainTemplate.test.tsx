@@ -394,6 +394,19 @@ describe('MainTemplate project files toasts', () => {
       root.remove()
     })
 
+    it('a menu swap back to the concepts modal does not send focus to the logo when the sheet goes', () => {
+      const root = document.createElement('div')
+      root.id = 'root'
+      document.body.appendChild(root)
+      renderAt('/overview')
+      fireEvent.click(screen.getByRole('button', { name: 'How Ruby Raider works' }))
+      fireEvent.click(screen.getByRole('button', { name: /concepts\.shortcuts/ }))
+      act(() => menuListener()('how-it-works'))
+      expect(screen.getByText('concepts.title')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'How Ruby Raider works' })).not.toHaveFocus()
+      root.remove()
+    })
+
     describe('with unsaved edits', () => {
       afterEach(() => useEditorStore.setState({ pageDirty: false, inlineDirty: false }))
 

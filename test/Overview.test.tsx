@@ -1477,6 +1477,21 @@ describe('Overview live runs', (): void => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
         expect(screen.getByTestId('editor')).toHaveValue('changed')
       })
+
+      it('asks again on the next New test after Cancel, at the same URL', async () => {
+        await renderWithGo()
+        await openFile('a_spec.rb')
+        type('changed')
+        await act(async () => {
+          fireEvent.click(screen.getByText('go-new-test'))
+        })
+        fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.cancel' }))
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        await act(async () => {
+          fireEvent.click(screen.getByText('go-new-test'))
+        })
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+      })
     })
 
     it('ignores Cmd+S while another tab is showing', async () => {

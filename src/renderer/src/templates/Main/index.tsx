@@ -136,6 +136,8 @@ const MainTemplate: React.FC = (): JSX.Element => {
       if (!isMenuCommand(command)) return
       if (command === 'how-it-works' || command === 'shortcuts') {
         if (installModalOpen.current) return
+        // A swap from the menu is not the concepts modal's shortcuts button
+        sheetFromConcepts.current = false
         setIsConceptsModalOpen(command === 'how-it-works')
         setIsShortcutsOpen(command === 'shortcuts')
         return

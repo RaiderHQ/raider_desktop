@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMatch, useNavigate, useParams } from 'react-router'
+import { useLocation, useMatch, useNavigate, useParams } from 'react-router'
 import toast from 'react-hot-toast'
 import { sample } from 'lodash'
 import { FaChevronDown, FaChevronRight, FaTerminal } from 'react-icons/fa'
@@ -59,6 +59,8 @@ const Overview: React.FC = () => {
   const navigate = useNavigate()
   const { testKey } = useParams()
   const isNewTestRoute = useMatch('/overview/tests/new') !== null
+  // Each navigation has its own key, so New test again at the same URL still lands here
+  const locationKey = useLocation().key
   const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
     useRecorderSettings()
   const [activeTab, setActiveTab] = useState<OverviewTab>('tests')
@@ -546,7 +548,7 @@ const Overview: React.FC = () => {
   // The new test form is on the Tests tab; a dirty Files edit asks first
   useEffect(() => {
     if (isNewTestRoute) switchTab('tests')
-  }, [isNewTestRoute])
+  }, [isNewTestRoute, locationKey])
 
   // App-wide menu commands that would leave the page stand down while the edit is unsaved
   useEffect(() => {
