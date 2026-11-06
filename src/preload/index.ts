@@ -421,6 +421,7 @@ const api = {
     enabled: boolean
   ): Promise<{ success: boolean; output?: string; error?: string }> =>
     ipcRenderer.invoke('update-headless-mode', projectPath, enabled),
+  openDocs: (id: string): Promise<{ success: boolean }> => ipcRenderer.invoke('open-docs', id),
   getProjectConfig: async (
     projectPath: string
   ): Promise<{
