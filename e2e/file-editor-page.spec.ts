@@ -104,6 +104,36 @@ test.describe('File Editor Page', () => {
     expect(calls[0][0]).toBe('/mock/test-project/edit_me.rb')
   })
 
+  test('the window title and edited flag follow the open file', async ({ electronApp, page }) => {
+    const mockTree = [{ name: 'edit_me.rb', type: 'file', path: '/mock/test-project/edit_me.rb' }]
+    await setupProjectContext(page, { files: mockTree })
+    await page.evaluate(() => {
+      ;(window as any).api.readFile = async () => ({ success: true, data: 'original content' })
+    })
+    await goToOverviewFiles(page)
+    await page.getByText('edit_me.rb').click()
+    await page.waitForTimeout(1500)
+    await mockIPCCapture(page, 'editFile', { success: true })
+
+    const windowTitle = (): Promise<string> =>
+      electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getTitle())
+    const isEdited = (): Promise<boolean> =>
+      electronApp.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0].isDocumentEdited()
+      )
+
+    await expect.poll(windowTitle).toContain('edit_me.rb')
+    await expect.poll(windowTitle).toContain('test-project')
+
+    await page.locator('.monaco-editor .view-lines').click()
+    await page.keyboard.type('x')
+    if (process.platform === 'darwin') await expect.poll(isEdited).toBe(true)
+
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+s' : 'Control+s')
+    if (process.platform === 'darwin') await expect.poll(isEdited).toBe(false)
+    await expect.poll(windowTitle).toContain('edit_me.rb')
+  })
+
   test('save shows success toast', async ({ page }) => {
     const mockTree = [
       { name: 'save_test.rb', type: 'file', path: '/mock/test-project/save_test.rb' }

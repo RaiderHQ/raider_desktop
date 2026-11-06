@@ -24,7 +24,12 @@ async function getMainWindow(app: ElectronApplication): Promise<Page> {
     if (mainWindow) return mainWindow
     await new Promise((resolve) => setTimeout(resolve, 100))
   }
-  throw new Error(`No app window found; windows: ${app.windows().map((w) => w.url()).join(', ')}`)
+  throw new Error(
+    `No app window found; windows: ${app
+      .windows()
+      .map((w) => w.url())
+      .join(', ')}`
+  )
 }
 
 /**
@@ -43,6 +48,10 @@ export const test = base.extend<ElectronFixtures>({
       }
     })
     await use(app)
+    // A test may leave an unsaved edit; destroy() skips the close guard's dialog, which would block quitting
+    await app
+      .evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().forEach((w) => w.destroy()))
+      .catch(() => undefined)
     await app.close()
   },
   page: async ({ electronApp }, use) => {

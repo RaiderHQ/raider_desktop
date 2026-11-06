@@ -33,8 +33,9 @@ describe('EditorSaveBar', () => {
 
   it('names the shortcut in the button', () => {
     const original = Object.getOwnPropertyDescriptor(window.navigator, 'platform')
-    const setPlatform = (value: string): void =>
+    const setPlatform = (value: string): void => {
       Object.defineProperty(window.navigator, 'platform', { value, configurable: true })
+    }
     try {
       setPlatform('MacIntel')
       const { container, unmount } = render(
