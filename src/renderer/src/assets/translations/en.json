@@ -472,7 +472,7 @@
       "xpath": "Found by XPath",
       "cssOlder": "Found by CSS (older recording)",
       "xpathOlder": "Found by XPath (older recording)",
-      "weak": "May break if the page changes"
+      "weak": "This step finds the element by its position in the page, which can break when the page changes. Re-record the step to pick a steadier one."
     },
     "unsupported": {
       "mobile": "Mobile projects can't be recorded yet.",
@@ -761,7 +761,6 @@
       "implicitWait": "Seconds Selenium automatically waits for a page element to appear before giving up. 0 means no automatic wait.",
       "explicitWait": "Maximum seconds to wait for a specific condition — such as a button becoming clickable.",
       "deleteStep": "Remove this step from the test. The remaining steps will still run in order.",
-      "dragStep": "Drag to reorder this step. Tests run steps from top to bottom.",
       "setBreakpoint": "Set a breakpoint here — click 'Record from here' to replay steps up to this point headlessly, then continue recording from this page state.",
       "clearBreakpoint": "Clear this breakpoint."
     },
@@ -772,6 +771,47 @@
       "runMode": "Choose which tests to run: all of them, only smoke tests, regression tests, or a custom tag.",
       "rerunFailed": "Re-run only the tests that failed in the last run — useful for quickly confirming a fix.",
       "timeout": "Maximum seconds a single test can take before it is automatically marked as failed."
+    },
+    "testPage": {
+      "name": "Shown in the list and in the file name",
+      "url": "The page recording and runs start on",
+      "record": "Open the page and turn what you do into steps",
+      "stop": "Stop recording and keep the steps as a test",
+      "run": "Run this test and show the result below",
+      "openFile": "Open this test's Ruby file in the editor",
+      "steps": "Show the steps in plain words",
+      "ruby": "Show the generated Ruby code",
+      "lastRun": "Show the output of the last run",
+      "more": "Start over, export or delete this test",
+      "startRecording": "Open the page and start recording",
+      "cancelNew": "Go back without starting a recording",
+      "cancelPick": "Stop picking and keep recording",
+      "examples": "Pick which test in the file to work on",
+      "saveAsNew": "Keep these steps as a separate recorded test"
+    },
+    "steps": {
+      "breakpoint": "Replay to here, then record the rest from this point",
+      "recordFromHere": "Replay the steps above, then keep recording",
+      "drag": "Drag to move this step; steps run top to bottom",
+      "edit": "Edit this step's code",
+      "weakLocator": "This step finds the element by its position in the page, which can break when the page changes. Re-record the step to pick a steadier one."
+    },
+    "failedStep": {
+      "editValue": "Change the typed text",
+      "rePick": "Pick the element again on the page",
+      "reRecord": "Record this step and the ones after it again",
+      "runAgain": "Run the test again",
+      "fixInTest": "Open the failed step in the test",
+      "useThis": "Use this element",
+      "value": "The new value for this step",
+      "save": "Save the new value to this step"
+    },
+    "tests": {
+      "suite": "Which group of tests you are looking at",
+      "suiteActions": "Run, add, delete, import or export suites",
+      "newTest": "Start a new test: give it a name and a page, then record",
+      "restore": "Put this deleted test back",
+      "rail": "Show the tests list again"
     }
   },
   "run": {

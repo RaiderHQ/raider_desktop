@@ -146,6 +146,12 @@ describe('FailedStepPanel', () => {
     expect(screen.getByText(result.failure!.exceptionClass!)).toBeVisible()
   })
 
+  it('shows a tooltip on focus for Re-record from here', () => {
+    renderPanel(mapped(), null, { onReRecord: vi.fn() })
+    fireEvent.focus(screen.getByRole('button', { name: en.failedStep.reRecord }))
+    expect(screen.getByRole('tooltip')).toHaveTextContent(en.tooltips.failedStep.reRecord)
+  })
+
   it('shows the fix buttons it is given', () => {
     renderPanel(mapped(), <button>Edit value</button>)
     expect(screen.getByRole('button', { name: 'Edit value' })).toBeInTheDocument()

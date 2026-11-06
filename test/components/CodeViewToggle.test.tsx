@@ -21,6 +21,12 @@ describe('CodeViewToggle', () => {
     )
   })
 
+  it('shows a tooltip on focus for the Ruby segment', () => {
+    render(<CodeViewToggle view="steps" onChange={vi.fn()} />)
+    fireEvent.focus(screen.getByRole('button', { name: 'testPage.ruby' }))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('tooltips.testPage.ruby')
+  })
+
   it('reports the segment that was chosen', () => {
     const onChange = vi.fn()
     render(<CodeViewToggle view="steps" onChange={onChange} />)

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Tooltip from '@components/Tooltip'
 import useProjectStore from '@foundation/Stores/projectStore'
 
 interface NewTestFormProps {
@@ -55,43 +56,55 @@ const NewTestForm: React.FC<NewTestFormProps> = ({
         start()
       }}
     >
-      <input
-        type="text"
-        className={field}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder={t('testPage.name')}
-        aria-label={t('testPage.name')}
-        required
-        autoFocus
-      />
-      <input
-        type="text"
-        className={field}
-        value={url}
-        onChange={(e) => {
-          urlEdited.current = true
-          setUrl(e.target.value)
-        }}
-        placeholder={t('testPage.url')}
-        aria-label={t('testPage.url')}
-      />
+      <Tooltip content={t('tooltips.testPage.name')} position="bottom" className="flex w-full">
+        <input
+          type="text"
+          className={field}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t('testPage.name')}
+          aria-label={t('testPage.name')}
+          required
+          autoFocus
+        />
+      </Tooltip>
+      <Tooltip content={t('tooltips.testPage.url')} position="bottom" className="flex w-full">
+        <input
+          type="text"
+          className={field}
+          value={url}
+          onChange={(e) => {
+            urlEdited.current = true
+            setUrl(e.target.value)
+          }}
+          placeholder={t('testPage.url')}
+          aria-label={t('testPage.url')}
+        />
+      </Tooltip>
       <div className="flex items-center gap-2">
-        <button
-          type="submit"
-          disabled={!canStart}
-          title={disabled ? disabledReason : undefined}
-          className="text-sm px-3 py-1.5 rounded bg-ruby text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+        <Tooltip
+          content={t('tooltips.testPage.startRecording')}
+          disabledReason={disabled ? disabledReason : undefined}
+          position="bottom"
         >
-          {t('tests.startRecording')}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-sm px-3 py-1.5 rounded border border-neutral-bdr bg-white text-neutral-dk font-medium hover:bg-neutral-50 transition-colors"
-        >
-          {t('common.cancel')}
-        </button>
+          <button
+            type="submit"
+            disabled={!canStart}
+            title={disabled ? disabledReason : undefined}
+            className="text-sm px-3 py-1.5 rounded bg-ruby text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {t('tests.startRecording')}
+          </button>
+        </Tooltip>
+        <Tooltip content={t('tooltips.testPage.cancelNew')} position="bottom">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-sm px-3 py-1.5 rounded border border-neutral-bdr bg-white text-neutral-dk font-medium hover:bg-neutral-50 transition-colors"
+          >
+            {t('common.cancel')}
+          </button>
+        </Tooltip>
       </div>
       {disabled && disabledReason && <p className="text-xs text-neutral-md">{disabledReason}</p>}
     </form>

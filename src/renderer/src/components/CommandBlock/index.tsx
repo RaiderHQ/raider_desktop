@@ -198,7 +198,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
         )
       }
 
-      return (
+      const codeLine = (
         <div
           className="font-mono text-sm cursor-text whitespace-pre-wrap text-ruby"
           onDoubleClick={handleEditStart}
@@ -210,6 +210,14 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
             (code ?? '\u00a0')
           )}
         </div>
+      )
+
+      return onEdit && !readOnly ? (
+        <Tooltip content={t('tooltips.steps.edit')} position="bottom" className="w-full">
+          {codeLine}
+        </Tooltip>
+      ) : (
+        codeLine
       )
     }
 
@@ -223,15 +231,17 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
           <span className="flex items-center gap-1 text-xs text-neutral-md">
             <span data-testid="step-found-by">{t(found.key, found.values)}</span>
             {found.weak && (
-              <span
-                data-testid="step-weak-locator"
-                role="img"
-                title={t('recorder.foundBy.weak')}
-                aria-label={t('recorder.foundBy.weak')}
-                className="inline-flex"
-              >
-                <Icon name="warning" size={12} color="currentColor" />
-              </span>
+              <Tooltip content={t('tooltips.steps.weakLocator')} position="top">
+                <span
+                  data-testid="step-weak-locator"
+                  role="img"
+                  title={t('recorder.foundBy.weak')}
+                  aria-label={t('recorder.foundBy.weak')}
+                  className="inline-flex"
+                >
+                  <Icon name="warning" size={12} color="currentColor" />
+                </span>
+              </Tooltip>
             )}
           </span>
         )}
@@ -265,20 +275,24 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
     >
       {/* Breakpoint gutter */}
       {!readOnly && (
-        <div
-          className="absolute left-0 top-0 bottom-0 w-5 flex items-center justify-center cursor-pointer z-20"
-          onClick={handleGutterClick}
-          title={
-            isBreakpoint
-              ? t('tooltips.recorder.clearBreakpoint')
-              : t('tooltips.recorder.setBreakpoint')
-          }
-        >
-          <div
-            className={`w-2.5 h-2.5 rounded-full transition-colors ${
-              isBreakpoint ? 'bg-amber-400' : 'bg-transparent group-hover/block:bg-amber-200'
-            }`}
-          />
+        <div className="absolute left-0 top-0 bottom-0 w-5 z-20">
+          <Tooltip content={t('tooltips.steps.breakpoint')} className="w-full h-full">
+            <div
+              className="w-full h-full flex items-center justify-center cursor-pointer"
+              onClick={handleGutterClick}
+              title={
+                isBreakpoint
+                  ? t('tooltips.recorder.clearBreakpoint')
+                  : t('tooltips.recorder.setBreakpoint')
+              }
+            >
+              <div
+                className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                  isBreakpoint ? 'bg-amber-400' : 'bg-transparent group-hover/block:bg-amber-200'
+                }`}
+              />
+            </div>
+          </Tooltip>
         </div>
       )}
 
@@ -292,6 +306,16 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
         onDragEnd={onDragEnd}
         onDragOver={(e) => e.preventDefault()}
       >
+        {!readOnly && (
+          <div className="absolute left-0.5 top-1/2 -translate-y-1/2">
+            <Tooltip content={t('tooltips.steps.drag')} position="right">
+              <span aria-hidden="true" className="text-xs leading-none text-neutral-md select-none">
+                ⋮⋮
+              </span>
+            </Tooltip>
+          </div>
+        )}
+
         {renderContent()}
 
         {!readOnly && (
@@ -310,12 +334,14 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
       </div>
 
       {!readOnly && isBreakpoint && onRecordFromHere && (
-        <button
-          onClick={() => onRecordFromHere(index)}
-          className="mt-1 ml-5 text-xs text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded px-2 py-0.5 transition-colors font-medium"
-        >
-          ▶ {t('recorder.breakpoint.recordFromHere')}
-        </button>
+        <Tooltip content={t('tooltips.steps.recordFromHere')} position="bottom" className="ml-5">
+          <button
+            onClick={() => onRecordFromHere(index)}
+            className="mt-1 text-xs text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded px-2 py-0.5 transition-colors font-medium"
+          >
+            ▶ {t('recorder.breakpoint.recordFromHere')}
+          </button>
+        </Tooltip>
       )}
     </div>
   )

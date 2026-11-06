@@ -53,6 +53,20 @@ const startEditing = async (text: string): Promise<HTMLElement> => {
 }
 
 describe('CommandBlock', () => {
+  it('shows a tooltip on focus for Record from here', async () => {
+    await renderBlock({ isBreakpoint: true, onRecordFromHere: vi.fn() })
+    fireEvent.focus(screen.getByRole('button', { name: /recorder.breakpoint.recordFromHere/ }))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('tooltips.steps.recordFromHere')
+  })
+
+  it('has an aria-hidden drag handle with a tooltip', async () => {
+    await renderBlock({})
+    const handle = screen.getByText('⋮⋮')
+    expect(handle).toHaveAttribute('aria-hidden', 'true')
+    fireEvent.focus(handle)
+    expect(screen.getByRole('tooltip')).toHaveTextContent('tooltips.steps.drag')
+  })
+
   describe('friendly view', () => {
     it('shows the element label of a click, not Ruby', async () => {
       await renderBlock({ step: watirClick })
