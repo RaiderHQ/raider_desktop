@@ -41,7 +41,7 @@
     "title": "Create a new project",
     "subtitle": "To create a project, first you need to select the following:",
     "input": {
-      "label": "Project Name",
+      "label": "Project name",
       "placeholder": "Enter project name",
       "hint": "Letters, numbers, underscores and hyphens, with no spaces. For example my_project.",
       "invalid": "Use letters, numbers, underscores and hyphens only, with no spaces. For example my_project."
@@ -105,18 +105,18 @@
   },
   "version": "Ruby Raider Version: {{version}}",
   "installGuide": {
-    "title": "Installation Required",
+    "title": "Installation required",
     "logoAlt": "Ruby Raider Logo",
     "githubButton": "Go to GitHub",
-    "websiteButton": "Go to Website"
+    "websiteButton": "Go to website"
   },
   "information": {
     "createProject": {
-      "title": "Creating a New Project",
+      "title": "Creating a new project",
       "message": "Here you can create a new project and start automating your tests."
     },
     "openProject": {
-      "title": "Opening an Existing Project",
+      "title": "Opening an existing project",
       "message": "Here you can open an existing project and continue automating your tests."
     },
     "quickRecord": {
@@ -124,7 +124,7 @@
       "message": "Quick record lets you record a website as a test without creating a project first.\n\nRaider keeps it in a temporary project, which you can save to a folder later.\n\nNo coding needed."
     },
     "new": {
-      "title": "Start a New Project",
+      "title": "Start a new project",
       "message": "Choose the different options in the selectors and create an automation framework."
     }
   },
@@ -148,14 +148,14 @@
       "placeholder": "Enter browser URL"
     },
     "browser": {
-      "label": "Choose Browser:",
+      "label": "Choose browser:",
       "chrome": "Chrome",
       "safari": "Safari",
       "firefox": "Firefox",
       "edge": "Edge"
     },
     "updateUrlButton": "Update URL",
-    "updateBrowserButton": "Update Browser",
+    "updateBrowserButton": "Update browser",
     "updating": "Updating...",
     "error": {
       "browserUpdateFailed": "Failed to update browser. Please try again.",
@@ -172,7 +172,7 @@
       "plugins": "Plugins"
     },
     "general": {
-      "title": "General Settings",
+      "title": "General settings",
       "description": "Adjust general application settings.",
       "rubyVersion": "Ruby Version",
       "language": {
@@ -214,25 +214,25 @@
       "feature": "Features path:",
       "spec": "Specs path:",
       "helper": "Helpers path:",
-      "updateButton": "Update Paths",
+      "updateButton": "Update paths",
       "updateSuccess": "Paths updated successfully!"
     },
     "llm": {
-      "title": "AI / LLM Configuration",
+      "title": "AI / LLM configuration",
       "description": "Configure the AI provider for smart scaffolding features.",
       "provider": "Provider",
       "apiKey": "API Key",
       "model": "Model",
       "apiUrl": "API URL",
-      "saveButton": "Save Configuration",
-      "testButton": "Test Connection",
+      "saveButton": "Save configuration",
+      "testButton": "Test connection",
       "saveSuccess": "LLM configuration saved!",
       "saveFailed": "Failed to save LLM configuration.",
       "testSuccess": "Connection successful!",
       "testFailed": "Connection test failed."
     },
     "plugins": {
-      "title": "Plugin Manager",
+      "title": "Plugin manager",
       "description": "Install or uninstall plugins for your project.",
       "install": "Install",
       "uninstall": "Uninstall",
@@ -241,14 +241,14 @@
       "operationFailed": "Plugin operation failed."
     },
     "noProject": {
-      "title": "No Project Loaded",
+      "title": "No project loaded",
       "description": "Please create or open a project to configure its settings."
     }
   },
   "overview": {
     "error": {
       "permission": {
-        "title": "Permission Error",
+        "title": "Permission error",
         "message": "The application needs write permissions to modify files in the project directory. Please grant permissions to the folder containing the path: {{path}}.",
         "confirm": "Grant Permission",
         "cancel": "Cancel"
@@ -529,22 +529,22 @@
         "page-url": "URL Contains"
       },
       "cancel": "Cancel",
-      "save": "Save Assertion"
+      "save": "Save assertion"
     },
     "deleteModal": {
-      "title": "Confirm Deletion",
+      "title": "Confirm deletion",
       "message": "Are you sure you want to delete the test",
       "cancel": "Cancel",
       "delete": "Delete"
     },
     "rubyInstallModal": {
-      "title": "Ruby Not Found",
+      "title": "Ruby not found",
       "message": "Ruby Raider needs Ruby 3.2 or higher installed via rbenv. Follow the steps below to get set up.",
       "continue": "Continue",
-      "close": "Close App"
+      "close": "Close app"
     },
     "rubyGemsInstallModal": {
-      "title": "Missing Gems",
+      "title": "Missing gems",
       "message": "The following gems are missing: {{missingGems}}.",
       "yes": "Install Now",
       "no": "Skip"
@@ -567,7 +567,7 @@
       "stopReplay": "Stop Replay"
     },
     "outputPanel": {
-      "title": "Test Results:",
+      "title": "Test results:",
       "error": "Error:",
       "placeholder": "Test output will appear here..."
     },
@@ -585,7 +585,7 @@
       "traceViewExit": "Exit Trace"
     },
     "traceTimeline": {
-      "title": "Trace Timeline",
+      "title": "Trace timeline",
       "noTrace": "Record a test to see the trace timeline"
     },
     "traceDetail": {
@@ -657,7 +657,7 @@
     "subtitle": "New here? These are the key ideas you need to get started.",
     "hint": "Hover any button for what it does.",
     "shortcuts": "Keyboard shortcuts",
-    "installTitle": "Installation Prerequisites",
+    "installTitle": "Installation prerequisites",
     "installSubtitle": "Ruby Raider needs three things installed on your machine before it can run.",
     "install": {
       "mac": {
@@ -720,7 +720,7 @@
       }
     },
     "suite": {
-      "title": "Test Suite",
+      "title": "Test suite",
       "message": "A suite is a named folder that groups related tests together — for example, all tests for your login page.\n\nYou can run an entire suite at once."
     },
     "test": {
@@ -732,26 +732,26 @@
       "message": "When you press Record, a browser opens and every click, keystroke, and navigation you make is captured automatically as a step.\n\nNo code needed."
     },
     "running": {
-      "title": "Running a Test",
+      "title": "Running a test",
       "message": "When you press Run, Ruby Raider opens the browser and replays every recorded step automatically.\n\nIt then tells you whether the test passed or failed."
     },
     "steps": {
-      "title": "Recorded Steps",
+      "title": "Recorded steps",
       "message": "Steps are the individual actions in a test — things like 'click button', 'type text', or 'visit URL'.\n\nYou can reorder, edit, or delete steps at any time."
     },
     "overview": {
-      "title": "Project Overview",
+      "title": "Project overview",
       "message": "The Overview is your project's home.\n\nBrowse files on the left, preview them on the right, and use the toolbar to set your browser, run mode, and test timeout."
     }
   },
   "help": {
     "recorder": {
       "recording": {
-        "title": "Recording a Test",
+        "title": "Recording a test",
         "message": "Pick a suite from the dropdown, create a test, and enter the URL you want to test.\n\nThen press the red Record button — a browser will open and every click or keystroke you make is captured as a step.\n\nPress Stop when you're done, then Run to check if the test passes."
       },
       "dashboard": {
-        "title": "Recording Dashboard",
+        "title": "Recording dashboard",
         "message": "The dashboard shows the output from your last test run — which steps passed, which failed, and any error messages.\n\nUse it to understand what went wrong and decide what to fix or re-record."
       }
     },
@@ -761,7 +761,7 @@
         "message": "Every test in your project is listed here.\n\nRecorded tests were made with the recorder — click Edit to change them.\n\nCode tests were written by a developer, and Code-owned tests were recorded and then changed by hand. You can view and run them, but only a developer can change them."
       },
       "files": {
-        "title": "Files & Test Settings",
+        "title": "Files & test settings",
         "message": "Browse all files in your project on the left — click any file to preview it on the right.\n\nUse the toolbar above to set which browser to use, whether to run headlessly, which tests to run, and the timeout.\n\nThese settings apply every time you run your tests."
       },
       "scaffold": {
@@ -769,12 +769,12 @@
         "message": "Scaffolding generates boilerplate files for you — page objects, spec files, feature files, and helpers.\n\nFill in the form and Ruby Raider will create the right file structure so you can start writing test logic immediately without setting things up by hand."
       },
       "dashboard": {
-        "title": "Project Dashboard",
+        "title": "Project dashboard",
         "message": "The dashboard shows the last run at a glance: how many tests passed, failed or were skipped, and what went wrong in each failure.\n\nOpen a failed test to see the step it failed on, the screenshot and the trace."
       }
     },
     "createProject": {
-      "title": "Create a New Project",
+      "title": "Create a new project",
       "message": "Give your project a name, choose whether you're testing a website or a mobile app, then pick how you want to write tests. RSpec suits people who write code; Cucumber uses plain-English steps.\n\nRuby Raider will generate a ready-to-use folder structure for you."
     },
     "landing": {

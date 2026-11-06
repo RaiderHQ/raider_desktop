@@ -1272,7 +1272,9 @@ const Overview: React.FC = () => {
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 w-96">
-            <h3 className="text-sm font-semibold text-neutral-dark mb-3">{t('files.delete.title')}</h3>
+            <h3 className="text-sm font-semibold text-neutral-dark mb-3">
+              {t('files.delete.title')}
+            </h3>
             <p className="text-sm text-neutral-dk mb-4">
               {t('files.delete.message', { name: deleteConfirm.fileName })}
             </p>
@@ -1298,7 +1300,9 @@ const Overview: React.FC = () => {
       {renameTarget && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 w-96">
-            <h3 className="text-sm font-semibold text-neutral-dark mb-3">{t('files.rename.title')}</h3>
+            <h3 className="text-sm font-semibold text-neutral-dark mb-3">
+              {t('files.rename.title')}
+            </h3>
             <input
               type="text"
               value={renameValue}

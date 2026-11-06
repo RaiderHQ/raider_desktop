@@ -105,4 +105,82 @@ describe('copy', () => {
     }
     expect(offenders).toEqual([])
   })
+
+  it('no title case in buttons, labels and titles', () => {
+    const allowed = [
+      'Ruby',
+      'Raider',
+      'RSpec',
+      'Cucumber',
+      'Selenium',
+      'Appium',
+      'Chrome',
+      'Firefox',
+      'URL',
+      'CI',
+      'Esc',
+      'HTML',
+      'GitHub',
+      'OS',
+      'Windows',
+      'macOS',
+      'Linux',
+      'iOS',
+      'Android',
+      'JSON',
+      'YAML',
+      'API',
+      'Hideout',
+      'Longship',
+      'Watir',
+      'Homebrew',
+      'WSL',
+      'LLM',
+      'AI'
+    ]
+    const names = [
+      'title',
+      'label',
+      'button',
+      'save',
+      'cancel',
+      'close',
+      'delete',
+      'rename',
+      'start',
+      'stop',
+      'run',
+      'record'
+    ]
+    const found: [string, string][] = []
+    const walk = (node: unknown, path: string): void => {
+      if (typeof node === 'string') found.push([path, node])
+      else if (node && typeof node === 'object')
+        for (const [k, v] of Object.entries(node)) walk(v, path ? `${path}.${k}` : k)
+    }
+    walk(en, '')
+    const offenders: string[] = []
+    let checked = 0
+    for (const [path, text] of found) {
+      const last = path.split('.').pop() as string
+      if (!(names.includes(last) || /(Button|Label|Title)$/.test(last))) continue
+      checked++
+      // Step numbers ("1. Install") and {{placeholders}} are not words.
+      const words = text
+        .replace(/^\d+\.\s*/, '')
+        .replace(/\{\{[^}]*\}\}\??/g, '')
+        .split(/\s+/)
+        .filter(Boolean)
+      // Allowlisted names may also be followed by a second name ("Ruby Raider", "Google Chrome").
+      const stray = words
+        .slice(1)
+        .filter(
+          (w) =>
+            /[A-Z]/.test(w) && !allowed.includes(w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, ''))
+        )
+      if (stray.length) offenders.push(`${path}: "${text}" (${stray.join(', ')})`)
+    }
+    expect(checked).toBeGreaterThan(50)
+    expect(offenders).toEqual([])
+  })
 })

@@ -100,14 +100,14 @@ test.describe('Landing Page', () => {
     const infoIcons = page.locator('button[aria-label="Help"]')
     await infoIcons.nth(1).click()
     // Modal should appear with project creation info
-    await expect(page.getByRole('heading', { name: 'Creating a New Project' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Creating a new project' })).toBeVisible()
   })
 
   test('info modal can be closed', async ({ page }) => {
     // Quick record's card comes first; Create's help icon is the second
     const infoIcons = page.locator('button[aria-label="Help"]')
     await infoIcons.nth(1).click()
-    const modalTitle = page.getByRole('heading', { name: 'Creating a New Project' })
+    const modalTitle = page.getByRole('heading', { name: 'Creating a new project' })
     await expect(modalTitle).toBeVisible()
 
     // Close the modal via the close button (aria-label="Close")
