@@ -18,7 +18,6 @@ import { buildAssertionStep, assertionModalType } from '@foundation/assertionSte
 import type { TestRow } from '@foundation/testKey'
 import type { CodeTestView } from '@shared/types/projectTest'
 import type { Step } from '@shared/types/step'
-import { onMenuCommand } from '@foundation/menuCommands'
 import { useTestRecording } from '../../hooks/useTestRecording'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 
