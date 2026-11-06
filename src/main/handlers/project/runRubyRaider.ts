@@ -6,7 +6,33 @@ import { buildShellCommand } from '../../utils/shellCommand'
 import { quoteShellArg } from '../../utils/shellQuote'
 import { CommandType } from '@foundation/Types/commandType'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
+import { isValidProjectName } from '@shared/projectName'
 import { safeLog, safeError } from '../../utils/safeLog'
+
+/** Anything at all at the path: a folder, a file, or a symlink (dangling or not). */
+function entryExists(target: string): boolean {
+  try {
+    fs.lstatSync(target)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * `raider new` failed part-way and left a folder the user never asked to keep. Only a
+ * plain folder that was not there before the run is removed; a symlink or a file is
+ * not ours to touch.
+ */
+function removeHalfMadeProject(target: string): void {
+  try {
+    const entry = fs.lstatSync(target)
+    if (!entry.isDirectory() || entry.isSymbolicLink()) return
+    fs.rmSync(target, { recursive: true, force: true })
+  } catch (e) {
+    safeError('[runRubyRaider] Could not remove the half-made project:', target, e)
+  }
+}
 
 const handler = async (
   _event: IpcMainInvokeEvent,
@@ -29,6 +55,11 @@ const handler = async (
     if (typeof projectName !== 'string' || projectName.trim() === '') {
       throw new Error('Invalid projectName: Must be a non-empty string')
     }
+    if (!isValidProjectName(projectName)) {
+      throw new Error(
+        'Invalid projectName: Use letters, numbers, underscores and hyphens, starting with a letter or number'
+      )
+    }
     if (typeof framework !== 'string' || framework.trim() === '') {
       throw new Error('Invalid framework: Must be a non-empty string')
     }
@@ -43,6 +74,15 @@ const handler = async (
     }
 
     const normalizedFolderPath = path.resolve(folderPath)
+    const expectedProjectPath = path.join(normalizedFolderPath, projectName)
+    // Thor would ask "Overwrite?" on a clash and, with stdin closed, overwrite. Refuse first.
+    if (entryExists(expectedProjectPath)) {
+      return {
+        success: false,
+        output: '',
+        error: `A folder named "${projectName}" already exists in ${normalizedFolderPath}.`
+      }
+    }
     const formattedFramework = framework.toLowerCase()
     let formattedAutomation = automation.toLowerCase()
 
@@ -70,7 +110,8 @@ const handler = async (
     safeLog('[runRubyRaider] Executing:', commandToExecute)
 
     const result = await safeExec(commandToExecute, {
-      timeout: 120_000
+      timeout: 120_000,
+      closeStdin: true
     })
 
     // Thor-based CLIs may exit with code 0 even on errors, so also check stderr
@@ -89,10 +130,10 @@ const handler = async (
       }
 
       safeError('[runRubyRaider] Failed:', errorMessage)
+      removeHalfMadeProject(expectedProjectPath)
       return { success: false, error: errorMessage, output: stdout }
     }
     // Verify the project directory was actually created
-    const expectedProjectPath = path.join(normalizedFolderPath, projectName)
     if (!fs.existsSync(expectedProjectPath)) {
       safeError('[runRubyRaider] Command succeeded but project directory not found at:', expectedProjectPath)
       safeError('[runRubyRaider] stdout:', stdout)
