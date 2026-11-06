@@ -5,24 +5,37 @@ import { safeExec } from '../../src/main/utils/safeExec'
 const LOCALE_VARS = ['LC_ALL', 'LC_CTYPE', 'LANG'] as const
 
 describe('ensureUtf8Locale', () => {
-  it('adds a UTF-8 LANG and LC_ALL when no locale variable is set', () => {
+  it('adds a UTF-8 LANG when no locale variable is set, and nothing else', () => {
     const env = ensureUtf8Locale({ PATH: '/usr/bin' })
-    expect(env.LANG).toBe('en_US.UTF-8')
-    expect(env.LC_ALL).toBe('en_US.UTF-8')
-    expect(env.PATH).toBe('/usr/bin')
+    expect(env).toEqual({ PATH: '/usr/bin', LANG: 'en_US.UTF-8' })
   })
 
-  it('leaves the environment alone when a locale already names UTF-8', () => {
+  it('leaves the environment alone when the effective locale names UTF-8', () => {
     for (const name of LOCALE_VARS) {
       const env = ensureUtf8Locale({ [name]: 'fr_FR.UTF-8' })
       expect(env).toEqual({ [name]: 'fr_FR.UTF-8' })
     }
     expect(ensureUtf8Locale({ LANG: 'C.utf8' })).toEqual({ LANG: 'C.utf8' })
+    // LC_ALL wins over LANG, so a C LANG under a UTF-8 LC_ALL is fine
+    expect(ensureUtf8Locale({ LC_ALL: 'fr_FR.UTF-8', LANG: 'C' })).toEqual({
+      LC_ALL: 'fr_FR.UTF-8',
+      LANG: 'C'
+    })
   })
 
-  it('treats the C and POSIX locales as missing', () => {
-    expect(ensureUtf8Locale({ LANG: 'C' }).LC_ALL).toBe('en_US.UTF-8')
-    expect(ensureUtf8Locale({ LC_ALL: 'POSIX' }).LC_ALL).toBe('en_US.UTF-8')
+  it('fixes the character type only, keeping a non-UTF-8 LANG for messages', () => {
+    expect(ensureUtf8Locale({ LANG: 'C' })).toEqual({ LANG: 'C', LC_CTYPE: 'en_US.UTF-8' })
+    expect(ensureUtf8Locale({ LC_CTYPE: 'POSIX', LANG: 'fr_FR.UTF-8' })).toEqual({
+      LC_CTYPE: 'en_US.UTF-8',
+      LANG: 'fr_FR.UTF-8'
+    })
+  })
+
+  it('replaces an LC_ALL that overrides a UTF-8 LANG with C', () => {
+    expect(ensureUtf8Locale({ LC_ALL: 'C', LANG: 'en_US.UTF-8' })).toEqual({
+      LC_ALL: 'en_US.UTF-8',
+      LANG: 'en_US.UTF-8'
+    })
   })
 
   it('does not mutate the object it is given', () => {

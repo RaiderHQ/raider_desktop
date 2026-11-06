@@ -130,7 +130,8 @@ const handler = async (
       }
 
       safeError('[runRubyRaider] Failed:', errorMessage)
-      removeHalfMadeProject(expectedProjectPath)
+      // After a timeout only the shell was killed; ruby may still be writing, so leave it
+      if (result.exitCode !== null) removeHalfMadeProject(expectedProjectPath)
       return { success: false, error: errorMessage, output: stdout }
     }
     // Verify the project directory was actually created

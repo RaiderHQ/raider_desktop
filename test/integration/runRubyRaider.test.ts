@@ -38,7 +38,12 @@ function nothingThereThenFolder(): void {
   mockLstatSync.mockImplementation(() => asDirectory)
 }
 
-const fakeChild = () => ({ stdin: { end: vi.fn() }, on: vi.fn(), kill: vi.fn(), killed: false })
+const fakeChild = () => ({
+  stdin: { end: vi.fn(), on: vi.fn() },
+  on: vi.fn(),
+  kill: vi.fn(),
+  killed: false
+})
 let lastChild: ReturnType<typeof fakeChild>
 
 // Simulate a successful exec call
@@ -150,6 +155,18 @@ describe('runRubyRaider handler (integration)', () => {
         recursive: true,
         force: true
       })
+    })
+
+    it('leaves the folder alone after a timeout, since raider may still be writing to it', async () => {
+      mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) => {
+        cb(Object.assign(new Error('killed'), { killed: true }), '', '')
+        lastChild = fakeChild()
+        return lastChild
+      })
+      const result = await handler(...validArgs)
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('timed out')
+      expect(mockRmSync).not.toHaveBeenCalled()
     })
 
     it('leaves the path alone after a failure when it is not a plain folder', async () => {

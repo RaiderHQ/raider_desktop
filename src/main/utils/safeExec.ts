@@ -65,7 +65,11 @@ export function safeExec(command: string, options: SafeExecOptions = {}): Promis
       }
     )
 
-    if (closeStdin) child.stdin?.end()
+    if (closeStdin) {
+      // A child that is already gone would otherwise surface EPIPE as an uncaught error
+      child.stdin?.on('error', () => {})
+      child.stdin?.end()
+    }
 
     // Safety net: if the child process hasn't resolved after timeout + 5s, force kill
     const killTimer = setTimeout(() => {
