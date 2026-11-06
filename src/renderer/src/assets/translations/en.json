@@ -441,6 +441,7 @@
     "record": "Record",
     "stop": "Stop & save",
     "addAssertion": "Check something…",
+    "assertPickStarting": "Getting ready to pick…",
     "assertPickBanner": "Click the thing you want to check. Press Esc to cancel.",
     "recording": "Recording",
     "run": "Run",
@@ -632,7 +633,9 @@
     "title": "Recording a test",
     "step1": "Use the page on the right as you normally would. Every click and keystroke becomes a step here.",
     "step2": "To check something, press Check something… (or right-click the page) and choose what to check.",
-    "step3": "Press Stop & save when you are done, then Run to see it pass.",
+    "step3Before": "Press Stop & save",
+    "step3Middle": " when you are done, then Run",
+    "step3After": " to see it pass.",
     "gotIt": "Got it",
     "learnMore": "Learn more about assertions"
   },

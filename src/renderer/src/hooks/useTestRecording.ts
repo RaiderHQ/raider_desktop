@@ -375,6 +375,7 @@ async function stopAndSave(t: Translate, options: StopOptions = {}): Promise<voi
   }
   store().setRecordingBrowser(null)
   store().setAssertPicking(false)
+  store().setGuideOpen(false)
   // Right away, not on main's 'recording-stopped': steps still in flight must not land anywhere
   store().setIsRecording(false)
   window.api.stopRecordingMain()
@@ -655,7 +656,9 @@ export function useTestRecording(): TestRecording {
   const run = useCallback(async (): Promise<void> => {
     const { activeSuiteId: suiteId, activeTest: test, readOnlyView: view, setIsRunning } = store()
     const startLive = (file: string, label: string): void => {
-      void useRunStore.getState().start({ kind: 'files', files: [file] }, { route: pathname, label })
+      void useRunStore
+        .getState()
+        .start({ kind: 'files', files: [file] }, { route: pathname, label })
     }
     // Tests that are code run straight from their file, never from a copy of the steps
     const codeFile =

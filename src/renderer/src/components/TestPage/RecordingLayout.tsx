@@ -25,16 +25,22 @@ const RecordingLayout: React.FC<RecordingLayoutProps> = ({
 }) => {
   const { t } = useTranslation()
   const guideOpen = useRecorderStore((state) => state.guideOpen)
+  const isPicking = useRecorderStore((state) => state.recordingTarget?.kind === 'pick')
+  const isReplayingToBreakpoint = useRecorderStore((state) => state.isReplayingToBreakpoint)
   const [seen, setSeen] = useState(hasSeenGuide)
+  // Only for a real recording, not while re-picking an element or replaying to a breakpoint
+  const showGuide = (!seen || guideOpen) && !isPicking && !isReplayingToBreakpoint
   return (
     <div className="flex-1 flex flex-row gap-4 min-h-[24rem]">
-      <div className="w-[40%] min-h-0">
-        {(!seen || guideOpen) && (
-          <div className="mb-3">
+      <div className="w-[40%] min-h-0 flex flex-col">
+        {showGuide && (
+          <div className="mb-3 shrink-0">
             <RecordingGuide variant="card" onClose={() => setSeen(true)} />
           </div>
         )}
-        <StyledPanel>{steps ?? <></>}</StyledPanel>
+        <div data-testid="recording-steps" className="flex-1 min-h-0">
+          <StyledPanel>{steps ?? <></>}</StyledPanel>
+        </div>
       </div>
       <div className="w-[60%] border border-neutral-bdr rounded-lg overflow-hidden bg-white relative">
         <RecordingBrowser

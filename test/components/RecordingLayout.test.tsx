@@ -51,8 +51,28 @@ describe('RecordingLayout', () => {
       expect(screen.queryByText('guide.step1')).not.toBeInTheDocument()
     })
 
+    it('keeps the step panel as the flexible part of its column', () => {
+      render(layout())
+      const steps = screen.getByTestId('recording-steps')
+      expect(steps.className).toContain('flex-1')
+      expect(steps.className).toContain('min-h-0')
+      expect(steps.parentElement!.className).toContain('flex-col')
+    })
+
+    it('does not show for a re-pick or while replaying to a breakpoint', () => {
+      act(() => useRecorderStore.getState().setRecordingTarget({ kind: 'pick', stepId: 'a' }))
+      const { unmount } = render(layout())
+      expect(screen.queryByText('guide.step1')).not.toBeInTheDocument()
+      act(() => useRecorderStore.getState().setRecordingTarget(null))
+      expect(screen.getByText('guide.step1')).toBeInTheDocument()
+      act(() => useRecorderStore.getState().setIsReplayingToBreakpoint(true))
+      expect(screen.queryByText('guide.step1')).not.toBeInTheDocument()
+      act(() => useRecorderStore.getState().setIsReplayingToBreakpoint(false))
+      unmount()
+    })
+
     it('Show guide reopens it', () => {
-      localStorage.setItem('raider.recordingGuideSeen', '1')
+      localStorage.setItem('recorderGuideSeen', '1')
       render(layout())
       expect(screen.queryByText('guide.step1')).not.toBeInTheDocument()
       act(() => useRecorderStore.getState().setGuideOpen(true))

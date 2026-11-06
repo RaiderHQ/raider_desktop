@@ -1,4 +1,4 @@
-const KEY = 'raider.recordingGuideSeen'
+const KEY = 'recorderGuideSeen'
 
 /** Whether the person has already dismissed the first-recording guide. */
 export function hasSeenGuide(): boolean {
