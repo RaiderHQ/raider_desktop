@@ -640,6 +640,9 @@
       "editCommand": "Edit command"
     }
   },
+  "files": {
+    "selectToPreview": "Select a file to preview"
+  },
   "shortcuts": {
     "title": "Keyboard shortcuts",
     "action": "Action",
@@ -1269,7 +1272,27 @@
     "view": "View",
     "help": "Help",
     "howItWorks": "How Ruby Raider works",
+    "documentation": "Documentation",
+    "recordingGuide": "Recording guide",
     "keyboardShortcuts": "Keyboard shortcuts…"
+  },
+  "docs": {
+    "learnMore": "Learn more",
+    "learnMoreAbout": "Learn more about {{topic}} in the documentation",
+    "howRecordingWorks": "How recording works",
+    "howRunsWork": "How runs work",
+    "whatFilesTabDoes": "What the Files tab does",
+    "howProjectsWork": "How projects work",
+    "topics": {
+      "projects": "projects",
+      "recording": "recording",
+      "files": "the Files tab",
+      "scaffolding": "scaffolding",
+      "dashboard": "the dashboard",
+      "runs": "running tests",
+      "install": "installing Ruby Raider",
+      "raider": "Ruby Raider"
+    }
   },
   "errorToast": {
     "showDetails": "Show details",

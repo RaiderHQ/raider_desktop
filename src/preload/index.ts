@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent, webUtils } from 'electron'
+import type { DocsLinkId } from '../shared/docsLinkIds'
 import type { FileNode } from '@foundation/Types/fileNode'
 import type { CommandType } from '@foundation/Types/commandType'
 import type { Suite } from '@foundation/Types/suite'
@@ -424,6 +425,7 @@ const api = {
     enabled: boolean
   ): Promise<{ success: boolean; output?: string; error?: string }> =>
     ipcRenderer.invoke('update-headless-mode', projectPath, enabled),
+  openDocs: (id: DocsLinkId): Promise<{ success: boolean }> => ipcRenderer.invoke('open-docs', id),
   getProjectConfig: async (
     projectPath: string
   ): Promise<{

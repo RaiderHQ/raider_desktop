@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom'
 import Logo from '@components/Logo'
 import Tooltip from '@components/Tooltip'
 import { useTranslation } from 'react-i18next'
+import DocsLink from '@components/DocsLink'
+import type { DocsLinkId } from '@shared/docsLinkIds'
 
 interface CollapsibleSection {
   titleKey: string
@@ -14,13 +16,16 @@ interface ModalProps {
   message: string
   onClose: () => void
   collapsibleSections?: CollapsibleSection[]
+  /** A page of the documentation about this topic, linked in the footer */
+  docs?: { id: DocsLinkId; topic: string }
 }
 
 const InformationModal: React.FC<ModalProps> = ({
   title,
   message,
   onClose,
-  collapsibleSections
+  collapsibleSections,
+  docs
 }): JSX.Element => {
   const { t } = useTranslation()
   const [openSection, setOpenSection] = useState<number | null>(null)
@@ -108,6 +113,11 @@ const InformationModal: React.FC<ModalProps> = ({
           )}
         </div>
 
+        {docs && (
+          <div className="border-t border-neutral-bdr px-6 py-3 shrink-0">
+            <DocsLink id={docs.id} topic={docs.topic} />
+          </div>
+        )}
       </div>
     </div>,
     document.getElementById('root')!

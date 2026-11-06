@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import InformationModal from '@components/InformationModal'
 import Tooltip from '@components/Tooltip'
+import type { DocsLinkId } from '@shared/docsLinkIds'
 
 interface CollapsibleSection {
   titleKey: string
@@ -15,6 +16,7 @@ interface InfoButtonProps {
   collapsibleSections?: CollapsibleSection[]
   /** Plain-language help for the button itself, shown on hover and focus */
   tooltip?: string
+  docs?: { id: DocsLinkId; topic: string }
 }
 
 const InfoButton: React.FC<InfoButtonProps> = ({
@@ -22,7 +24,8 @@ const InfoButton: React.FC<InfoButtonProps> = ({
   messageKey,
   className = '',
   collapsibleSections,
-  tooltip
+  tooltip,
+  docs
 }) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -66,6 +69,7 @@ const InfoButton: React.FC<InfoButtonProps> = ({
           message={t(messageKey)}
           onClose={() => setIsOpen(false)}
           collapsibleSections={collapsibleSections}
+          docs={docs}
         />
       )}
     </>
