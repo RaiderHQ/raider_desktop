@@ -125,7 +125,7 @@ const ConceptsModal: React.FC<ConceptsModalProps> = ({ onClose, onOpenShortcuts 
             <button
               onClick={onClose}
               className="text-neutral-md hover:text-neutral-dark transition-colors"
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <line x1="18" y1="6" x2="6" y2="18" />

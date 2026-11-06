@@ -30,7 +30,7 @@ const InfoButton: React.FC<InfoButtonProps> = ({
   const button = (
     <button
       onClick={() => setIsOpen(true)}
-      aria-label="Help information"
+      aria-label={t('common.helpInfo')}
       className={`w-7 h-7 flex items-center justify-center rounded-full text-neutral-md hover:text-ruby hover:bg-ruby-sub transition-colors ${className}`}
     >
       <svg

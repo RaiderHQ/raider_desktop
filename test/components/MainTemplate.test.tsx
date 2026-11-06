@@ -388,11 +388,11 @@ describe('MainTemplate project files toasts', () => {
       root.id = 'root'
       document.body.appendChild(root)
       renderAt('/overview')
-      fireEvent.click(screen.getByRole('button', { name: 'How Ruby Raider works' }))
+      fireEvent.click(screen.getByRole('button', { name: 'header.howItWorks' }))
       fireEvent.click(screen.getByRole('button', { name: /concepts\.shortcuts/ }))
       fireEvent.keyDown(screen.getByRole('dialog', { name: 'shortcuts.title' }), { key: 'Escape' })
       expect(screen.queryByRole('dialog', { name: 'shortcuts.title' })).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'How Ruby Raider works' })).toHaveFocus()
+      expect(screen.getByRole('button', { name: 'header.howItWorks' })).toHaveFocus()
       root.remove()
     })
 
@@ -401,11 +401,11 @@ describe('MainTemplate project files toasts', () => {
       root.id = 'root'
       document.body.appendChild(root)
       renderAt('/overview')
-      fireEvent.click(screen.getByRole('button', { name: 'How Ruby Raider works' }))
+      fireEvent.click(screen.getByRole('button', { name: 'header.howItWorks' }))
       fireEvent.click(screen.getByRole('button', { name: /concepts\.shortcuts/ }))
       act(() => menuListener()('how-it-works'))
       expect(screen.getByText('concepts.title')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'How Ruby Raider works' })).not.toHaveFocus()
+      expect(screen.getByRole('button', { name: 'header.howItWorks' })).not.toHaveFocus()
       root.remove()
     })
 

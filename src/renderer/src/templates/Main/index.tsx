@@ -201,7 +201,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
             <button
               ref={logoRef}
               onClick={() => setIsConceptsModalOpen(true)}
-              aria-label="How Ruby Raider works"
+              aria-label={t('header.howItWorks')}
               className="relative group focus:outline-none"
             >
               <Logo size={36} />

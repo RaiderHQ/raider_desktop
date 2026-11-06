@@ -41,7 +41,7 @@ describe('ProjectSelector', () => {
     fireEvent.focus(screen.getByText('Open'))
     expect(screen.getByRole('tooltip')).toHaveTextContent('Hello')
     fireEvent.blur(screen.getByText('Open'))
-    fireEvent.focus(screen.getByRole('button', { name: 'Help' }))
+    fireEvent.focus(screen.getByRole('button', { name: 'common.help' }))
     expect(screen.getByRole('tooltip')).toHaveTextContent('Hello')
   })
 
@@ -52,7 +52,7 @@ describe('ProjectSelector', () => {
 
   it('opens the information modal when ? icon is clicked', () => {
     render(<MemoryRouter><ProjectSelector {...defaultProps} /></MemoryRouter>)
-    fireEvent.click(screen.getByLabelText('Help'))
+    fireEvent.click(screen.getByLabelText('common.help'))
     expect(screen.getByText('modal.title')).toBeInTheDocument()
     expect(screen.getByText('modal.message')).toBeInTheDocument()
   })

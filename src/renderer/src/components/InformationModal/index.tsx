@@ -53,7 +53,7 @@ const InformationModal: React.FC<ModalProps> = ({
             <button
               className="text-neutral-md hover:text-neutral-dark transition-colors"
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
               <svg
                 width="20"

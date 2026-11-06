@@ -107,7 +107,7 @@ describe('Landing Page', (): void => {
       'tooltips.landing.create',
       'tooltips.landing.open'
     ])
-    fireEvent.focus(screen.getByRole('button', { name: 'Learn how Ruby Raider works' }))
+    fireEvent.focus(screen.getByRole('button', { name: 'landing.logoLabel' }))
     expect(screen.getByRole('tooltip')).toHaveTextContent('tooltips.landing.logo')
   })
 

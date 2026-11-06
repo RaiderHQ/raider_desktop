@@ -43,6 +43,26 @@ describe('copy', () => {
     expect(en.closeGuard.cancel).toBe('Cancel')
   })
 
+  it('uses sentence case in the modals and menus', () => {
+    expect(en.concepts.title).toBe('How Ruby Raider works')
+    expect(en.concepts.hint).toBe('Hover any button for what it does.')
+    expect(en.overview.tabs.scaffold).toBe('Scaffolding')
+    expect(en.overview.openTerminal).toBe('Open terminal')
+    expect(en.files.menu.copyPath).toBe('Copy path')
+    expect(en.files.menu.rename).toBe('Rename')
+    expect(en.files.menu.duplicate).toBe('Duplicate')
+    expect(en.files.menu.delete).toBe('Delete')
+    expect(en.files.delete.title).toBe('Delete file?')
+    expect(en.files.delete.cancel).toBe('Cancel')
+    expect(en.files.delete.confirm).toBe('Delete')
+    expect(en.files.rename.title).toBe('Rename file')
+    expect(en.common.back).toBe('Go back')
+    expect(en.header.howItWorks).toBe('How Ruby Raider works')
+    expect(en.landing.bubble).toBe('New here? Click me.')
+    expect(en.recorder.step.editCommand).toBe('Edit command')
+    expect(en.recorder.step.doubleClickToEdit).toBe('Double-click to edit')
+  })
+
   it('every tooltip is sentence case, short and has no shortcut typed in', () => {
     const allowed = [
       'Ruby',

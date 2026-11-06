@@ -655,7 +655,7 @@ const Overview: React.FC = () => {
   const handleCopyPath = (): void => {
     if (!fileContextMenu) return
     navigator.clipboard.writeText(fileContextMenu.filePath)
-    toast.success('Path copied to clipboard')
+    toast.success(t('files.toast.pathCopied'))
   }
 
   const handleDeleteFile = async (): Promise<void> => {
@@ -669,10 +669,10 @@ const Overview: React.FC = () => {
     setDeleteConfirm(null)
     const res = await window.api.deleteFile(filePath)
     if (res.success) {
-      toast.success(`Deleted ${fileName}`)
+      toast.success(t('files.toast.deleted', { name: fileName }))
       useProjectStore.getState().loadFiles(projectPath)
     } else {
-      toast.error(`Failed to delete: ${res.error}`)
+      toast.error(t('files.toast.deleteFailed', { error: res.error }))
     }
   }
 
@@ -680,10 +680,10 @@ const Overview: React.FC = () => {
     if (!fileContextMenu || !projectPath) return
     const res = await window.api.duplicateFile(fileContextMenu.filePath)
     if (res.success) {
-      toast.success(`Duplicated ${fileContextMenu.fileName}`)
+      toast.success(t('files.toast.duplicated', { name: fileContextMenu.fileName }))
       useProjectStore.getState().loadFiles(projectPath)
     } else {
-      toast.error(`Failed to duplicate: ${res.error}`)
+      toast.error(t('files.toast.duplicateFailed', { error: res.error }))
     }
   }
 
@@ -705,10 +705,10 @@ const Overview: React.FC = () => {
 
     const res = await window.api.renameFile(renameTarget.filePath, renameValue.trim())
     if (res.success) {
-      toast.success(`Renamed to ${renameValue.trim()}`)
+      toast.success(t('files.toast.renamed', { name: renameValue.trim() }))
       useProjectStore.getState().loadFiles(projectPath)
     } else {
-      toast.error(`Failed to rename: ${res.error}`)
+      toast.error(t('files.toast.renameFailed', { error: res.error }))
     }
     setRenameTarget(null)
   }
@@ -750,7 +750,7 @@ const Overview: React.FC = () => {
                 : 'text-neutral-md hover:text-neutral-dk'
             }`}
           >
-            Scaffolding
+            {t('overview.tabs.scaffold')}
           </button>
         </Tooltip>
         <Tooltip content={t('tooltips.overview.tabDashboard')} position="bottom">
@@ -774,7 +774,7 @@ const Overview: React.FC = () => {
                 data-testid="open-terminal-btn"
               >
                 <FaTerminal size={10} />
-                Open terminal
+                {t('overview.openTerminal')}
               </button>
             </Tooltip>
           )}
@@ -1259,10 +1259,10 @@ const Overview: React.FC = () => {
           x={fileContextMenu.x}
           y={fileContextMenu.y}
           items={[
-            { label: 'Copy Path', onClick: handleCopyPath },
-            { label: 'Rename', onClick: handleStartRename },
-            { label: 'Duplicate', onClick: handleDuplicateFile },
-            { label: 'Delete', onClick: handleDeleteFile }
+            { label: t('files.menu.copyPath'), onClick: handleCopyPath },
+            { label: t('files.menu.rename'), onClick: handleStartRename },
+            { label: t('files.menu.duplicate'), onClick: handleDuplicateFile },
+            { label: t('files.menu.delete'), onClick: handleDeleteFile }
           ]}
           onClose={() => setFileContextMenu(null)}
         />
@@ -1272,22 +1272,22 @@ const Overview: React.FC = () => {
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 w-96">
-            <h3 className="text-sm font-semibold text-neutral-dark mb-3">Confirm Delete</h3>
+            <h3 className="text-sm font-semibold text-neutral-dark mb-3">{t('files.delete.title')}</h3>
             <p className="text-sm text-neutral-dk mb-4">
-              Are you sure you want to delete &ldquo;{deleteConfirm.fileName}&rdquo;? This cannot be undone.
+              {t('files.delete.message', { name: deleteConfirm.fileName })}
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setDeleteConfirm(null)}
                 className="px-3 py-1.5 text-sm text-neutral-dk hover:text-neutral-dark"
               >
-                Cancel
+                {t('files.delete.cancel')}
               </button>
               <button
                 onClick={handleConfirmDelete}
                 className="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700"
               >
-                Delete
+                {t('files.delete.confirm')}
               </button>
             </div>
           </div>
@@ -1298,7 +1298,7 @@ const Overview: React.FC = () => {
       {renameTarget && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 w-96">
-            <h3 className="text-sm font-semibold text-neutral-dark mb-3">Rename File</h3>
+            <h3 className="text-sm font-semibold text-neutral-dark mb-3">{t('files.rename.title')}</h3>
             <input
               type="text"
               value={renameValue}
@@ -1315,13 +1315,13 @@ const Overview: React.FC = () => {
                 onClick={() => setRenameTarget(null)}
                 className="px-3 py-1.5 text-sm text-neutral-dk hover:text-neutral-dark"
               >
-                Cancel
+                {t('files.rename.cancel')}
               </button>
               <button
                 onClick={handleRenameSubmit}
                 className="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700"
               >
-                Rename
+                {t('files.rename.confirm')}
               </button>
             </div>
           </div>

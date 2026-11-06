@@ -12,7 +12,9 @@
       "folderNotFound": "The folder does not exist.",
       "noFolderSelected": "No folder selected.",
       "openProject": "An error occurred while opening the project. Please try again."
-    }
+    },
+    "logoLabel": "Learn how Ruby Raider works",
+    "bubble": "New here? Click me."
   },
   "quickRecord": {
     "title": "Quick record",
@@ -256,7 +258,8 @@
       "tests": "Tests",
       "files": "Files",
       "dashboard": "Dashboard",
-      "settings": "Settings"
+      "settings": "Settings",
+      "scaffold": "Scaffolding"
     },
     "settings": {
       "urlLabel": "URL",
@@ -276,7 +279,8 @@
       "rerunFailed": "Re-run failed",
       "urlInvalid": "Enter a full address starting with http:// or https://, for example https://example.com.",
       "saved": "Saved"
-    }
+    },
+    "openTerminal": "Open terminal"
   },
   "editor": {
     "placeholder": "Start editing file content here...",
@@ -623,7 +627,9 @@
       "secretNameRefused": "This step reads {{name}}. A password step can only read a variable that starts with RAIDER_SECRET_, so it wasn't used.",
       "secretUnnamed": "This password step has no variable yet.",
       "secretMissing": "This step types a password from {{name}}, which isn't set on this computer. Set it, restart Raider, and try again.",
-      "renderFailed": "Couldn't render code"
+      "renderFailed": "Couldn't render code",
+      "editCommand": "Edit command",
+      "doubleClickToEdit": "Double-click to edit"
     }
   },
   "shortcuts": {
@@ -647,7 +653,7 @@
     "close": "Close"
   },
   "concepts": {
-    "title": "How Ruby Raider Works",
+    "title": "How Ruby Raider works",
     "subtitle": "New here? These are the key ideas you need to get started.",
     "hint": "Hover any button for what it does.",
     "shortcuts": "Keyboard shortcuts",
@@ -1091,7 +1097,10 @@
   },
   "common": {
     "close": "Close",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "help": "Help",
+    "helpInfo": "Help information",
+    "back": "Go back"
   },
   "traceViewer": {
     "open": "Open trace",
@@ -1258,7 +1267,33 @@
     "undo": "Undo"
   },
   "files": {
-    "unsavedSuffix": "{{name}}, unsaved changes"
+    "unsavedSuffix": "{{name}}, unsaved changes",
+    "menu": {
+      "copyPath": "Copy path",
+      "rename": "Rename",
+      "duplicate": "Duplicate",
+      "delete": "Delete"
+    },
+    "delete": {
+      "title": "Delete file?",
+      "message": "Are you sure you want to delete “{{name}}”? This cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
+    },
+    "rename": {
+      "title": "Rename file",
+      "cancel": "Cancel",
+      "confirm": "Rename"
+    },
+    "toast": {
+      "pathCopied": "Path copied to clipboard",
+      "deleted": "Deleted {{name}}",
+      "deleteFailed": "Failed to delete: {{error}}",
+      "duplicated": "Duplicated {{name}}",
+      "duplicateFailed": "Failed to duplicate: {{error}}",
+      "renamed": "Renamed to {{name}}",
+      "renameFailed": "Failed to rename: {{error}}"
+    }
   },
   "closeGuard": {
     "message": "Save changes to {{name}}?",
@@ -1288,5 +1323,8 @@
       "failed": "Generation failed: {{error}}",
       "error": "Error: {{error}}"
     }
+  },
+  "header": {
+    "howItWorks": "How Ruby Raider works"
   }
 }
