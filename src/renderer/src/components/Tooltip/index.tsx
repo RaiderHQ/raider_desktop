@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useId } from 'react'
+import React, { useState, useRef, useEffect, useId, isValidElement, cloneElement } from 'react'
 import ReactDOM from 'react-dom'
 import { shortcutLabel, platformFrom } from '@shared/shortcuts'
 import type { ShortcutId } from '@shared/shortcuts'
@@ -13,6 +13,17 @@ interface TooltipProps {
   position?: 'top' | 'bottom' | 'right' | 'left'
   className?: string
 }
+
+// True while the last input was the keyboard; a mouse click or autoFocus must not pop the bubble
+let keyboardModality = false
+let modalityInstalled = false
+const installModality = (): void => {
+  if (modalityInstalled || typeof window === 'undefined') return
+  modalityInstalled = true
+  window.addEventListener('keydown', () => (keyboardModality = true), true)
+  window.addEventListener('pointerdown', () => (keyboardModality = false), true)
+}
+installModality()
 
 const Tooltip: React.FC<TooltipProps> = ({
   content,
@@ -91,6 +102,16 @@ const Tooltip: React.FC<TooltipProps> = ({
     setVisible(false)
   }
 
+  useEffect(() => {
+    if (!visible) return undefined
+    window.addEventListener('scroll', hide, true)
+    window.addEventListener('resize', hide)
+    return (): void => {
+      window.removeEventListener('scroll', hide, true)
+      window.removeEventListener('resize', hide)
+    }
+  }, [visible])
+
   useEffect(
     () => (): void => {
       if (timerRef.current) clearTimeout(timerRef.current)
@@ -98,20 +119,33 @@ const Tooltip: React.FC<TooltipProps> = ({
     []
   )
 
+  const describedBy = visible ? id : undefined
+  const single = isValidElement(children) ? (children as React.ReactElement) : null
+  let content_: React.ReactNode = children
+  if (single && describedBy) {
+    const existing = (single.props as { 'aria-describedby'?: string })['aria-describedby']
+    content_ = cloneElement(single, {
+      'aria-describedby': existing ? `${existing} ${describedBy}` : describedBy
+    } as Record<string, unknown>)
+  }
+
   return (
     <span
       ref={triggerRef}
       className={`relative inline-flex items-center ${className}`}
       onMouseEnter={show}
       onMouseLeave={hide}
-      onFocus={showNow}
+      onFocus={(): void => {
+        if (keyboardModality) showNow()
+      }}
+      onPointerDown={hide}
       onBlur={hide}
       onKeyDown={(e): void => {
         if (e.key === 'Escape') hide()
       }}
-      aria-describedby={visible ? id : undefined}
+      aria-describedby={single ? undefined : describedBy}
     >
-      {children}
+      {content_}
       {visible &&
         ReactDOM.createPortal(
           <span

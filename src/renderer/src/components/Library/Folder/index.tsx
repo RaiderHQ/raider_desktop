@@ -63,7 +63,12 @@ const Folder: React.FC<FolderProps> = ({
         <FaFolder className="mr-2" />
         <span className="font-semibold flex-grow">{name}</span>
         {isRoot && onRunTests && (
-          <Tooltip content={t('tooltips.files.runTests')} position="bottom" className="ml-auto">
+          <Tooltip
+            content={t('tooltips.files.runTests')}
+            disabledReason={runDisabled ? t('tooltips.files.runBusy') : undefined}
+            position="bottom"
+            className="ml-auto"
+          >
             <button
               onClick={onRunTests}
               disabled={runDisabled}

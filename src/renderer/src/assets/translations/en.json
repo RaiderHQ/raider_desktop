@@ -758,14 +758,13 @@
   "tooltips": {
     "recorder": {
       "deleteStep": "Remove this step; the others still run in order",
-      "setBreakpoint": "Replay steps up to here, then keep recording from this point",
-      "clearBreakpoint": "Clear this breakpoint."
+      "clearBreakpoint": "Clear this breakpoint"
     },
     "overview": {
       "urlInput": "The address tests open first, for example https://staging.example.com",
       "browserSelect": "The browser tests run in",
       "headlessToggle": "Run the browser hidden; faster, but you cannot watch it",
-      "runMode": "Which tests start: all, smoke, regression or a tag",
+      "runMode": "Which tests a run includes: all, smoke, regression or a tag",
       "rerunFailed": "Run only the tests that failed last time",
       "timeout": "Seconds a test may take before it fails",
       "implicitWait": "Seconds Selenium waits for an element to appear; 0 means no wait",
@@ -824,6 +823,8 @@
       "workers": "How many tests run at the same time",
       "quarantinedFails": "Treat quarantined tests like any other when a run fails",
       "reuseLogins": "Skip the login steps when a saved login exists",
+      "freshLoginOff": "Turn on reusing saved logins first",
+      "runBusy": "A run is in progress",
       "freshLogin": "Ignore saved logins once, on the next run",
       "browserOptions": "Extra flags for the browser, for example no-sandbox",
       "paths": "Where generated pages, features, specs and helpers go",
@@ -831,7 +832,7 @@
       "treeRow": "Open in the editor; right-click for more",
       "runTests": "Run every test in the project",
       "deviceName": "The device the tests run on",
-      "osVersion": "Its system version",
+      "osVersion": "Its OS version",
       "appFile": "The app file to install"
     },
     "runPanel": {
@@ -862,7 +863,7 @@
       "name": "Lowercase letters, numbers and underscores; this is the folder name",
       "target": "What the tests will drive",
       "phones": "Which phones the tests run on",
-      "framework": "How tests are written: RSpec (plain Ruby) or Cucumber (plain-text steps)",
+      "framework": "How tests are written: RSpec (Ruby) or Cucumber (plain-text steps)",
       "ci": "Which CI service gets a ready-made pipeline file",
       "accessibility": "Adds an accessibility check to every test",
       "examples": "Adds example pages and tests to learn from",
@@ -874,7 +875,7 @@
     },
     "installGuide": {
       "back": "Go back to the start page",
-      "github": "Open the Ruby Raider code repository",
+      "github": "Open the Ruby Raider code on GitHub",
       "website": "Open the Ruby Raider website"
     },
     "scaffold": {
@@ -887,6 +888,7 @@
     },
     "dashboard": {
       "openReport": "Open the HTML report in your browser",
+      "noReport": "No report yet; run the tests first",
       "viewTrace": "See every step with screenshots",
       "backToResults": "Back to the results list"
     },

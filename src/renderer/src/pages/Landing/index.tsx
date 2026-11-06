@@ -124,6 +124,7 @@ const Landing: React.FC = (): JSX.Element => {
             modalTitleKey="information.openProject.title"
             modalMessageKey="information.openProject.message"
             tooltip={t('tooltips.landing.open')}
+            shortcut="open-project"
             onClick={handleOpenProject}
           />
         </div>

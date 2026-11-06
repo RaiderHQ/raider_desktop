@@ -194,7 +194,11 @@ const Index: React.FC = (): JSX.Element => {
     <div className="p-4 w-full flex flex-col gap-4">
       <div className="flex justify-end">
         <span onMouseEnter={recheck}>
-          <Tooltip content={t('tooltips.dashboard.openReport')} position="left">
+          <Tooltip
+            content={t('tooltips.dashboard.openReport')}
+            disabledReason={hasReport ? undefined : t('tooltips.dashboard.noReport')}
+            position="left"
+          >
             <button
               type="button"
               onClick={openReport}

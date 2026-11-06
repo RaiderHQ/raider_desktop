@@ -38,6 +38,7 @@ const EditorSaveBar: React.FC<EditorSaveBarProps> = ({
       </span>
       <Tooltip
         content={t('tooltips.editor.save')}
+        disabledReason={dirty ? undefined : t('editor.status.saved')}
         shortcut="save"
         position="bottom"
         className="ml-auto"

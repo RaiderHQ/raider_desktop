@@ -4,8 +4,8 @@ import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
 vi.mock('react-i18next', () => ({
-  useTranslation: (): { t: (key: string) => string } => ({
-    t: (key: string): string => key
+  useTranslation: (): { t: (key: string, opts?: object) => string } => ({
+    t: (key: string, opts?: object): string => (opts ? `${key}:${JSON.stringify(opts)}` : key)
   })
 }))
 
@@ -197,7 +197,7 @@ describe('ScaffoldPanel', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText(/Command not found/)).toBeInTheDocument()
+        expect(screen.getByText('Command not found')).toBeInTheDocument()
       })
     })
 
@@ -251,7 +251,9 @@ describe('ScaffoldPanel', () => {
       })
 
       await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith('scaffold.toast.failed')
+        expect(toast.error).toHaveBeenCalledWith(
+          'scaffold.toast.failed:{"error":"Command not found"}'
+        )
       })
     })
   })

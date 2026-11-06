@@ -20,6 +20,10 @@ const setup = (props: Partial<React.ComponentProps<typeof Tooltip>> = {}): Setup
   return { ...utils, button, wrapper: button.parentElement as HTMLElement }
 }
 
+const keyboard = (): void => {
+  fireEvent.keyDown(window, { key: 'Tab' })
+}
+
 describe('Tooltip', () => {
   it('shows on hover after 500 ms', () => {
     const { wrapper } = setup()
@@ -33,6 +37,7 @@ describe('Tooltip', () => {
 
   it('shows on focus at once and hides on blur', () => {
     const { button } = setup()
+    keyboard()
     fireEvent.focus(button)
     expect(screen.getByRole('tooltip')).toHaveTextContent('Save this file')
     fireEvent.blur(button)
@@ -41,6 +46,7 @@ describe('Tooltip', () => {
 
   it('hides on Esc and keeps focus', () => {
     const { button, wrapper } = setup()
+    keyboard()
     act(() => button.focus())
     expect(screen.getByRole('tooltip')).toBeInTheDocument()
     fireEvent.keyDown(wrapper, { key: 'Escape' })
@@ -49,22 +55,67 @@ describe('Tooltip', () => {
   })
 
   it('sets aria-describedby only while visible', () => {
-    const { button, wrapper } = setup()
-    expect(wrapper).not.toHaveAttribute('aria-describedby')
+    const { button } = setup()
+    expect(button).not.toHaveAttribute('aria-describedby')
+    keyboard()
     fireEvent.focus(button)
-    expect(wrapper).toHaveAttribute('aria-describedby', screen.getByRole('tooltip').id)
+    expect(button).toHaveAttribute('aria-describedby', screen.getByRole('tooltip').id)
     fireEvent.blur(button)
-    expect(wrapper).not.toHaveAttribute('aria-describedby')
+    expect(button).not.toHaveAttribute('aria-describedby')
+  })
+
+  it('merges with an existing aria-describedby on the child', () => {
+    render(
+      <Tooltip content="Tip">
+        <button aria-describedby="msg">Go</button>
+      </Tooltip>
+    )
+    const button = screen.getByText('Go')
+    keyboard()
+    fireEvent.focus(button)
+    expect(button.getAttribute('aria-describedby')).toBe(`msg ${screen.getByRole('tooltip').id}`)
+  })
+
+  it('does not show on a mouse-driven focus', () => {
+    const { button } = setup()
+    fireEvent.pointerDown(button)
+    fireEvent.focus(button)
+    expect(screen.queryByRole('tooltip')).toBeNull()
+  })
+
+  it('shows on a keyboard-driven focus', () => {
+    const { button } = setup()
+    keyboard()
+    fireEvent.focus(button)
+    expect(screen.getByRole('tooltip')).toBeInTheDocument()
+  })
+
+  it('hides on pointerdown', () => {
+    const { button, wrapper } = setup()
+    keyboard()
+    fireEvent.focus(button)
+    fireEvent.pointerDown(wrapper)
+    expect(screen.queryByRole('tooltip')).toBeNull()
+  })
+
+  it('hides on scroll', () => {
+    const { button } = setup()
+    keyboard()
+    fireEvent.focus(button)
+    fireEvent.scroll(window)
+    expect(screen.queryByRole('tooltip')).toBeNull()
   })
 
   it('renders the platform label in the chip', () => {
     Object.defineProperty(navigator, 'platform', { value: 'MacIntel', configurable: true })
     const { button, unmount } = setup({ shortcut: 'save' })
+    keyboard()
     fireEvent.focus(button)
     expect(screen.getByRole('tooltip').querySelector('kbd')).toHaveTextContent('⌘S')
     unmount()
     Object.defineProperty(navigator, 'platform', { value: 'Win32', configurable: true })
     const second = setup({ shortcut: 'save' })
+    keyboard()
     fireEvent.focus(second.button)
     expect(screen.getByRole('tooltip').querySelector('kbd')).toHaveTextContent('Ctrl+S')
   })
@@ -86,6 +137,7 @@ describe('Tooltip', () => {
 
   it('removes the bubble on unmount', () => {
     const { button, unmount } = setup()
+    keyboard()
     fireEvent.focus(button)
     fireEvent.mouseEnter(button.parentElement as HTMLElement)
     unmount()

@@ -450,7 +450,8 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
               </span>
             )}
             {recording.isRecording ? (
-              <Tooltip content={t('tooltips.testPage.stop')} shortcut="stop" position="bottom">
+              // shortcut chip added by PR C once the menu binds it
+              <Tooltip content={t('tooltips.testPage.stop')} position="bottom">
                 <button
                   onClick={() => void recording.stop()}
                   disabled={isReplaying}
@@ -495,7 +496,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             {test.file && projectPath && (
               <Tooltip
                 content={t('tooltips.testPage.openFile')}
-                shortcut="open-file"
+                // shortcut chip added by PR C once the menu binds it
                 position="bottom"
               >
                 <button

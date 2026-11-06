@@ -946,11 +946,11 @@ const Overview: React.FC = () => {
             {moreOptionsOpen && (
               <div className="flex items-center gap-4 flex-wrap" data-testid="overview-more-options-panel">
                 {!isMobileProject && (
-                  <Tooltip content={t('tooltips.files.workers')} position="right">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <label htmlFor="workers-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                        {t('run.workers')}
-                      </label>
+                      {t('run.workers')}
+                    </label>
+                    <Tooltip content={t('tooltips.files.workers')} position="right">
                       <input
                         type="number"
                         id="workers-input"
@@ -967,8 +967,8 @@ const Overview: React.FC = () => {
                         className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
                         data-testid="overview-workers-input"
                       />
-                    </div>
-                  </Tooltip>
+                    </Tooltip>
+                  </div>
                 )}
                 <ToggleSwitch
                   label={t('run.quarantinedFails')}
@@ -988,8 +988,14 @@ const Overview: React.FC = () => {
                       testId="overview-reuse-logins"
                     />
                     <div className="flex flex-col">
-                      <Tooltip content={t('tooltips.files.freshLogin')} position="right">
-                        <label className="flex items-center gap-2 text-sm text-neutral-dk">
+                      <label className="flex items-center gap-2 text-sm text-neutral-dk">
+                        <Tooltip
+                          content={t('tooltips.files.freshLogin')}
+                          disabledReason={
+                            runSettings.reuseLogins ? undefined : t('tooltips.files.freshLoginOff')
+                          }
+                          position="right"
+                        >
                           <input
                             type="checkbox"
                             checked={freshLoginNext}
@@ -997,9 +1003,9 @@ const Overview: React.FC = () => {
                             onChange={(e) => setFreshLoginNext(e.target.checked)}
                             data-testid="overview-fresh-login"
                           />
-                          {t('run.freshLoginNext')}
-                        </label>
-                      </Tooltip>
+                        </Tooltip>
+                        {t('run.freshLoginNext')}
+                      </label>
                       <span className="text-xs text-neutral-md">{t('run.freshLoginHint')}</span>
                     </div>
                   </>

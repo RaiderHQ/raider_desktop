@@ -47,7 +47,9 @@ describe('copy', () => {
       'URL',
       'CI',
       'Esc',
-      'HTML'
+      'HTML',
+      'GitHub',
+      'OS'
     ]
     const strings: [string, string][] = []
     const walk = (node: unknown, path: string): void => {
@@ -63,7 +65,10 @@ describe('copy', () => {
       const words = bare.split(/\s+/).filter(Boolean)
       const stray = words
         .slice(1)
-        .filter((w) => /[A-Z]/.test(w) && !allowed.some((a) => w.startsWith(a)))
+        .filter(
+          (w) =>
+            /[A-Z]/.test(w) && !allowed.includes(w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, ''))
+        )
       if (!/^[A-Z0-9]/.test(text)) offenders.push(`${path}: must start upper case or digit`)
       if (stray.length) offenders.push(`${path}: stray capitals ${stray.join(', ')}`)
       if (words.length > 14) offenders.push(`${path}: ${words.length} words`)

@@ -72,7 +72,7 @@ const TestsList: React.FC<TestsListProps> = ({
       <div className="flex items-center gap-2 p-3 border-b border-neutral-bdr">
         <Tooltip
           content={t('tooltips.tests.newTest')}
-          shortcut="new-test"
+          // shortcut chip added by PR C once the menu binds it
           position="bottom"
           className="flex-1"
         >
@@ -91,7 +91,8 @@ const TestsList: React.FC<TestsListProps> = ({
           {rows.map((row) => {
             const key = testKeyOf(row)
             const selected = key === selectedKey
-            const editedInCode = row.ownership === 'code' || row.ownership === 'codeOwnedWasRecorded'
+            const editedInCode =
+              row.ownership === 'code' || row.ownership === 'codeOwnedWasRecorded'
             const status = row.file ? fileStatus(run, row.file) : null
             return (
               <li
