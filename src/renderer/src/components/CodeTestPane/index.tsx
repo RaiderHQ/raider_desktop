@@ -164,12 +164,16 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
       onMenuCommand((command) => {
         if (command === 'record' && canRecord) setConfirmingRecord(true)
         if (command === 'run' && canRun) run()
-        if (command === 'save' && saving) void stop()
+        if (command === 'save' && saving && !isReplaying) void stop()
         if (command === 'save' && savingAsNew) void recording.saveAsNewTest()
       }),
-    [canRecord, canRun, saving, savingAsNew, run, stop, recording.saveAsNewTest]
+    [canRecord, canRun, saving, savingAsNew, isReplaying, run, stop, recording.saveAsNewTest]
   )
-  useDocumentTitle(selected?.name ?? row.name, recording.isRecording || unsavedExample !== null)
+  // Edited while recording, and while this test holds an example not saved into its file
+  useDocumentTitle(
+    selected?.name ?? row.name,
+    recording.isRecording || (!!activeTest && unsavedExample?.testId === activeTest.id)
+  )
 
   const browserOpen = (recording.recordingUrl && recording.preloadPath) || isReplaying
   // Code switches the recording's steps while one is shown, else the selected test's view

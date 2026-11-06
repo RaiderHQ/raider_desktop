@@ -187,7 +187,8 @@ const Overview: React.FC = () => {
   // What the user was about to do when asked about unsaved changes
   const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null)
   const fileDirty = !!editingFile && fileContent !== savedContent
-  useDocumentTitle(editingFile?.name ?? null, fileDirty)
+  // Only the Files tab shows the open file, so only it names the window
+  useDocumentTitle(activeTab === 'files' ? (editingFile?.name ?? null) : null, fileDirty)
 
   useEffect(() => {
     if (!projectPath) {

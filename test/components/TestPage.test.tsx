@@ -1283,6 +1283,64 @@ describe('TestPage re-picking the failed element', () => {
       )
     })
 
+    it('a saved idle test is not edited, even with an unsaved example elsewhere', async () => {
+      act(() =>
+        useRecorderStore.setState({
+          unsavedExample: { testId: 'other', exampleName: 'x', reason: 'notUnique' } as never
+        })
+      )
+      renderPage()
+      await opened()
+      expect(useTitleStore.getState().document).toEqual({ name: 'Login works', edited: false })
+      act(() => useRecorderStore.setState({ unsavedExample: null }))
+    })
+
+    it('a draft with steps Stop & save has not written (a failed save) is edited', async () => {
+      // Let an earlier test's deferred empty-draft cleanup run first
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0))
+      })
+      useRecorderStore.getState().startDraft('New one', 'https://x.test')
+      // Recording stopped and the save failed: the steps live only in the draft
+      act(() =>
+        useRecorderStore
+          .getState()
+          .updateActiveTest((p) => (p ? { ...p, steps: [step('a')] } : null))
+      )
+      render(
+        <MemoryRouter>
+          <TestPage />
+        </MemoryRouter>
+      )
+      await screen.findByDisplayValue('New one')
+      expect(useRecorderStore.getState().isRecording).toBe(false)
+      expect(useTitleStore.getState().document).toEqual({ name: 'New one', edited: true })
+    })
+
+    it('an idle draft with no steps is not edited', async () => {
+      // Let an earlier test's deferred empty-draft cleanup run first
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0))
+      })
+      useRecorderStore.getState().startDraft('Empty draft', 'https://x.test')
+      render(
+        <MemoryRouter>
+          <TestPage />
+        </MemoryRouter>
+      )
+      await screen.findByDisplayValue('Empty draft')
+      expect(useTitleStore.getState().document).toEqual({ name: 'Empty draft', edited: false })
+    })
+
+    it('File › Save does not stop while replaying to a step', async () => {
+      renderPage()
+      await opened()
+      await startRecording()
+      act(() => useRecorderStore.setState({ isReplayingToBreakpoint: true }))
+      act(() => dispatchMenuCommand('save'))
+      expect(api.stopRecordingMain).not.toHaveBeenCalled()
+    })
+
     it('says the test autosaves when it is saved and idle', async () => {
       renderPage()
       await opened()

@@ -57,7 +57,6 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const activeTest = useRecorderStore((s) => s.activeTest)
   const activeSuiteId = useRecorderStore((s) => s.activeSuiteId)
   const draftTest = useRecorderStore((s) => s.draftTest)
-  const unsavedExample = useRecorderStore((s) => s.unsavedExample)
   const runActive = useRunStore((s) => s.isActive || s.checking)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
   const runBusy = runActive || recorderRunning
@@ -139,7 +138,11 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const readOnly = !!test?.ownership && test.ownership !== 'recorded'
   const busy = recording.isRecording || isReplaying || picking
   const failedStep = useFailedStep(projectPath, test)
-  useDocumentTitle(test?.name ?? null, recording.isRecording || unsavedExample !== null)
+  // Edited while recording, and while a draft holds steps Stop & save has not written yet
+  useDocumentTitle(
+    test?.name ?? null,
+    recording.isRecording || (isDraft && (test?.steps.length ?? 0) > 0)
+  )
 
   // The name is kept here while typing and saved on blur or Enter: main renames the
   // test's file on a real rename, so a half-typed name must never reach it
@@ -248,9 +251,9 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
         if (command === 'record' && canRecord) record()
         if (command === 'run' && canRun) void recording.run()
         // Everything else is saved as it changes; only a recording waits for Stop & save
-        if (command === 'save' && recording.isRecording) void recording.stop()
+        if (command === 'save' && recording.isRecording && !isReplaying) void recording.stop()
       }),
-    [canRecord, canRun, record, recording.run, recording.isRecording, recording.stop]
+    [canRecord, canRun, record, recording.run, recording.isRecording, isReplaying, recording.stop]
   )
 
   const startOver = (): void => {

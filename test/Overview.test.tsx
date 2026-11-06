@@ -1322,6 +1322,20 @@ describe('Overview live runs', (): void => {
       )
     })
 
+    it('names the window after the open file only on the Files tab', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      expect(useTitleStore.getState().document).toEqual({ name: 'a_spec.rb', edited: false })
+      await act(async () => {
+        fireEvent.click(screen.getByText('overview.tabs.tests'))
+      })
+      expect(useTitleStore.getState().document).toBeNull()
+      // A Test page that unmounts clears the title; the Files tab sets it again
+      act(() => useTitleStore.getState().setDocument(null))
+      await openFilesTab()
+      expect(useTitleStore.getState().document).toEqual({ name: 'a_spec.rb', edited: false })
+    })
+
     it('keeps the edited state while the unsaved dialog is up', async () => {
       await renderFiles()
       await openFile('a_spec.rb')

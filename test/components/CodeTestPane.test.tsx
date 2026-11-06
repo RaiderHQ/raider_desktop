@@ -577,6 +577,25 @@ describe('CodeTestPane', () => {
       expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument()
     })
 
+    it('an unsaved example of another test does not mark this one edited', async () => {
+      useRecorderStore.setState({
+        unsavedExample: { testId: 'another-test', exampleName: 'x', reason: 'notUnique' }
+      })
+      renderPane()
+      await screen.findByRole('button', { name: 'testPage.record' })
+      await waitFor(() =>
+        expect(useTitleStore.getState().document).toEqual({ name: 'logs in', edited: false })
+      )
+    })
+
+    it('File › Save does not stop while replaying to a step', async () => {
+      renderPane()
+      await recordOverFirstExample()
+      act(() => useRecorderStore.setState({ isReplayingToBreakpoint: true }))
+      act(() => dispatchMenuCommand('save'))
+      expect(api.stopRecordingMain).not.toHaveBeenCalled()
+    })
+
     it('File › Save offers the unsaved example as a new test', async () => {
       api.recordOverExample.mockResolvedValue({ success: false, error: 'notUnique', count: 0 })
       renderPane()
