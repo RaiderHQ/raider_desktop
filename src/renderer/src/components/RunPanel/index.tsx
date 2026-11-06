@@ -8,6 +8,7 @@ import { loadRaiderResults } from '@foundation/raiderResults'
 import { fixInTestRoute, recordedTestForFile } from '@foundation/recordedTestForFile'
 import { failedStepLine, resolveFailedStep } from '../../hooks/useFailedStep'
 import MobileNotReady from '@components/MobileNotReady'
+import Tooltip from '@components/Tooltip'
 import {
   errorReason,
   progress,
@@ -202,12 +203,14 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
             <span data-testid="run-failed-step-line" className="text-xs text-neutral-dk">
               {stepLine}
             </span>
-            <Link
-              to={fixInTestRoute(recorded.id)}
-              className="text-xs text-ruby hover:underline whitespace-nowrap"
-            >
-              {t('failedStep.fixInTest')}
-            </Link>
+            <Tooltip content={t('tooltips.failedStep.fixInTest')} position="top">
+              <Link
+                to={fixInTestRoute(recorded.id)}
+                className="text-xs text-ruby hover:underline whitespace-nowrap"
+              >
+                {t('failedStep.fixInTest')}
+              </Link>
+            </Tooltip>
           </>
         )}
       </li>
@@ -239,28 +242,34 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
         </div>
         <span className="text-xs text-neutral-md">{elapsed}</span>
         {!finished && (
-          <button
-            data-testid="run-cancel"
-            className={buttonClass}
-            onClick={() => void useRunStore.getState().cancel()}
-          >
-            {t('run.cancel')}
-          </button>
+          <Tooltip content={t('tooltips.runPanel.cancel')} position="bottom">
+            <button
+              data-testid="run-cancel"
+              className={buttonClass}
+              onClick={() => void useRunStore.getState().cancel()}
+            >
+              {t('run.cancel')}
+            </button>
+          </Tooltip>
         )}
         {finished && onRunAgain && (
-          <button data-testid="run-again" className={buttonClass} onClick={onRunAgain}>
-            {t('run.runAgain')}
-          </button>
+          <Tooltip content={t('tooltips.runPanel.runAgain')} position="bottom">
+            <button data-testid="run-again" className={buttonClass} onClick={onRunAgain}>
+              {t('run.runAgain')}
+            </button>
+          </Tooltip>
         )}
         {finished && onRerunFailed && hasFailures && (
-          <button
-            data-testid="run-rerun-failed"
-            className={buttonClass}
-            title={t('run.rerunSerial')}
-            onClick={onRerunFailed}
-          >
-            {t('run.rerunFailed')}
-          </button>
+          <Tooltip content={t('tooltips.runPanel.rerunFailed')} position="bottom">
+            <button
+              data-testid="run-rerun-failed"
+              className={buttonClass}
+              title={t('run.rerunSerial')}
+              onClick={onRerunFailed}
+            >
+              {t('run.rerunFailed')}
+            </button>
+          </Tooltip>
         )}
       </div>
 
@@ -276,14 +285,19 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
 
       <div data-testid="run-filter" className="flex gap-1 p-3 pb-0">
         {FILTERS.map((f) => (
-          <button
+          <Tooltip
             key={f}
-            aria-pressed={filter === f}
-            className={`${buttonClass} ${filter === f ? 'bg-ruby-sub border-ruby' : ''}`}
-            onClick={() => setFilter(f)}
+            content={t(`tooltips.runPanel.filter${f[0].toUpperCase()}${f.slice(1)}`)}
+            position="bottom"
           >
-            {t(`run.filter.${f}`)}
-          </button>
+            <button
+              aria-pressed={filter === f}
+              className={`${buttonClass} ${filter === f ? 'bg-ruby-sub border-ruby' : ''}`}
+              onClick={() => setFilter(f)}
+            >
+              {t(`run.filter.${f}`)}
+            </button>
+          </Tooltip>
         ))}
       </div>
 

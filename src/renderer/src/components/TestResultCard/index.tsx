@@ -172,16 +172,18 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
               <p data-testid="failed-step-line" className="text-sm text-neutral-dark">
                 {stepLine}
               </p>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  navigate(fixInTestRoute(recordedTest.id))
-                }}
-                className="text-xs text-ruby hover:underline shrink-0"
-              >
-                {t('failedStep.fixInTest')}
-              </button>
+              <Tooltip content={t('tooltips.failedStep.fixInTest')} position="top">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    navigate(fixInTestRoute(recordedTest.id))
+                  }}
+                  className="text-xs text-ruby hover:underline shrink-0"
+                >
+                  {t('failedStep.fixInTest')}
+                </button>
+              </Tooltip>
             </div>
           )}
           {showFailureDetails && failure ? (
