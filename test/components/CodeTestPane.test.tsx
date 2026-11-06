@@ -244,19 +244,33 @@ describe('CodeTestPane', () => {
     renderPane()
     expect(await screen.findByText('expect(page.title).to eq("Home")')).toBeInTheDocument()
     expect(screen.queryByText('recorder.step.custom')).not.toBeInTheDocument()
-    const code = screen.getByRole('button', { name: 'testPage.code' })
-    expect(code).toHaveAttribute('aria-pressed', 'true')
-    expect(code).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'testPage.ruby' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+    // Steps stays a visible, focusable segment that says why it can't be chosen (D9)
+    const steps = screen.getByRole('button', { name: 'testPage.steps' })
+    expect(steps).toBeEnabled()
+    expect(steps).toHaveAttribute('aria-disabled', 'true')
+    expect(steps).toHaveAttribute('title', 'testPage.stepsUnavailable')
+    fireEvent.click(steps)
+    expect(screen.getByRole('button', { name: 'testPage.ruby' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
   })
 
   it('opens as code even when the steps view was on elsewhere, and offers steps when they match', async () => {
     useRecorderStore.setState({ showCode: false })
     renderPane()
     expect(await screen.findByText('goto https://x.test/first-example')).toBeInTheDocument()
-    const code = screen.getByRole('button', { name: 'testPage.code' })
-    expect(code).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(code)
-    expect(code).toHaveAttribute('aria-pressed', 'false')
+    const ruby = screen.getByRole('button', { name: 'testPage.ruby' })
+    const steps = screen.getByRole('button', { name: 'testPage.steps' })
+    expect(ruby).toHaveAttribute('aria-pressed', 'true')
+    expect(steps).not.toHaveAttribute('aria-disabled')
+    fireEvent.click(steps)
+    expect(ruby).toHaveAttribute('aria-pressed', 'false')
+    expect(steps).toHaveAttribute('aria-pressed', 'true')
     expect(await screen.findByText(/commandParser\.visit/)).toBeInTheDocument()
     expect(screen.queryByText('goto https://x.test/first-example')).not.toBeInTheDocument()
   })
@@ -530,7 +544,7 @@ describe('CodeTestPane', () => {
       overwriteTarget: '“{{name}}” in {{file}}',
       exampleNotUnique: 'Raider couldn\'t find exactly one test named "{{name}}" in this file.',
       saveAsNew: 'Save as a new test',
-      editCode: 'Edit code',
+      editCode: 'Open file…',
       run: 'Run',
       record: 'Record'
     })

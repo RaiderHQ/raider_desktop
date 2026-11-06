@@ -360,10 +360,16 @@ describe('TestPage', () => {
     expect(api.saveRecording).not.toHaveBeenCalled()
   })
 
-  it('has Record, Run, Code and More', async () => {
+  it('has Record, Run, Steps | Ruby and More', async () => {
     renderPage()
     await opened()
-    for (const label of ['testPage.record', 'testPage.run', 'testPage.code', 'testPage.more']) {
+    for (const label of [
+      'testPage.record',
+      'testPage.run',
+      'testPage.steps',
+      'testPage.ruby',
+      'testPage.more'
+    ]) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     }
     expect(screen.getByRole('button', { name: 'testPage.run' })).not.toHaveAttribute('title')
@@ -555,13 +561,16 @@ describe('TestPage', () => {
     expect(screen.queryByText('Running test: Login works...')).not.toBeInTheDocument()
   })
 
-  it('shows the steps through CommandList, and Code shows them as code', async () => {
+  it('shows the steps through CommandList, and Ruby shows them as code', async () => {
     renderPage()
     await opened()
-    const code = screen.getByRole('button', { name: 'testPage.code' })
-    expect(code).toHaveAttribute('aria-pressed', 'false')
-    fireEvent.click(code)
-    expect(code).toHaveAttribute('aria-pressed', 'true')
+    const ruby = screen.getByRole('button', { name: 'testPage.ruby' })
+    const steps = screen.getByRole('button', { name: 'testPage.steps' })
+    expect(ruby).toHaveAttribute('aria-pressed', 'false')
+    expect(steps).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(ruby)
+    expect(ruby).toHaveAttribute('aria-pressed', 'true')
+    expect(steps).toHaveAttribute('aria-pressed', 'false')
     expect(await screen.findByText('goto https://x.test/a')).toBeInTheDocument()
     expect(screen.getByText('goto https://x.test/b')).toBeInTheDocument()
   })
@@ -579,7 +588,11 @@ describe('TestPage', () => {
       breadcrumbRoot: 'Tests',
       record: 'Record',
       run: 'Run',
-      code: 'Code',
+      steps: 'Steps',
+      ruby: 'Ruby',
+      view: 'View',
+      stepsUnavailable: "Steps aren't available: Raider couldn't read every line of this test.",
+      editCode: 'Open file…',
       lastRun: 'Last run',
       more: 'More',
       stop: 'Stop & save',

@@ -293,7 +293,20 @@
       "saveFailed": "Error saving file \"{{fileName}}\". Please try again.",
       "unexpectedSaveError": "Unexpected error occurred while saving the file. Please try again."
     },
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "saveButton": "Save",
+    "back": "Back",
+    "status": {
+      "saved": "Saved",
+      "unsaved": "Unsaved changes"
+    },
+    "unsaved": {
+      "title": "Save changes to {{fileName}}?",
+      "message": "Your changes will be lost if you don't save them.",
+      "save": "Save",
+      "discard": "Don't save",
+      "cancel": "Cancel"
+    }
   },
   "testResults": {
     "breakdown": "Test results breakdown",
@@ -429,7 +442,10 @@
     "stop": "Stop & save",
     "recording": "Recording",
     "run": "Run",
-    "code": "Code",
+    "steps": "Steps",
+    "ruby": "Ruby",
+    "view": "View",
+    "stepsUnavailable": "Steps aren't available: Raider couldn't read every line of this test.",
     "lastRun": "Last run",
     "more": "More",
     "startOver": "Start over",
@@ -437,7 +453,7 @@
     "exportTest": "Export test",
     "deleteTest": "Delete test",
     "noSteps": "There are no steps to export.",
-    "editCode": "Edit code",
+    "editCode": "Open file…",
     "examples": "Tests in this file",
     "overwriteTarget": "“{{name}}” in {{file}}",
     "overwriteConfirm": "This test has code edits. Recording will replace them. Continue?",

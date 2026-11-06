@@ -11,6 +11,8 @@ import ToggleSwitch from '@components/ToggleSwitch'
 import TagInput from '@components/TagInput'
 import ProjectDashboard from '@components/ProjectDashboard'
 import Editor from '@components/Editor'
+import EditorSaveBar from '@components/EditorSaveBar'
+import UnsavedChangesModal from '@components/UnsavedChangesModal'
 import Terminal from '@components/Terminal'
 import Tooltip from '@components/Tooltip'
 import TestsWorkspace from '@components/TestsWorkspace'
@@ -174,7 +176,15 @@ const Overview: React.FC = () => {
   // Inline editor state
   const [editingFile, setEditingFile] = useState<{ path: string; name: string } | null>(null)
   const [fileContent, setFileContent] = useState('')
+  // What is on disk, as far as this page knows; the file is dirty when the editor differs
+  const [savedContent, setSavedContent] = useState('')
   const [isLoadingFile, setIsLoadingFile] = useState(false)
+  const [isSavingFile, setIsSavingFile] = useState(false)
+  // Each discard remounts the editor so Monaco shows the saved text again
+  const [editorRevision, setEditorRevision] = useState(0)
+  // What the user was about to do when asked about unsaved changes
+  const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null)
+  const fileDirty = !!editingFile && fileContent !== savedContent
 
   useEffect(() => {
     if (!projectPath) {
@@ -503,7 +513,7 @@ const Overview: React.FC = () => {
     startRun(projectRun?.scope ?? runModeScope())
   }
 
-  const handleOpenFile = async (filePath: string): Promise<void> => {
+  const loadFile = async (filePath: string): Promise<void> => {
     const fileName = filePath.split('/').pop() || ''
     setEditingFile({ path: filePath, name: fileName })
     setIsLoadingFile(true)
@@ -511,6 +521,7 @@ const Overview: React.FC = () => {
       const result = await window.api.readFile(filePath)
       if (result.success) {
         setFileContent(result.data || '')
+        setSavedContent(result.data || '')
       } else {
         toast.error('Failed to read file')
         setEditingFile(null)
@@ -523,33 +534,68 @@ const Overview: React.FC = () => {
     }
   }
 
-  const handleSaveFile = useCallback(async (): Promise<void> => {
-    if (!editingFile) return
+  /** Asks about unsaved changes first; runs `action` at once when there are none. */
+  const guardUnsaved = (action: () => void): void => {
+    if (fileDirty) setPendingLeave(() => action)
+    else action()
+  }
+
+  const handleOpenFile = (filePath: string): void => guardUnsaved(() => void loadFile(filePath))
+
+  // Tabs need no guard: the editor's state lives here and comes back when the tab does
+  const switchTab = (tab: OverviewTab): void => setActiveTab(tab)
+
+  /** Writes the file; true when it is on disk afterwards. */
+  const handleSaveFile = useCallback(async (): Promise<boolean> => {
+    if (!editingFile) return false
     const loadingTypes = ['stashing', 'securing', 'engraving', 'prize', 'ruby']
     const toastId = toast.loading(t(`editor.save.${sample(loadingTypes)}`))
+    setIsSavingFile(true)
     try {
       const res = await window.api.editFile(editingFile.path, fileContent)
       if (res.success) {
+        setSavedContent(fileContent)
         toast.success(t('editor.success'), { id: toastId })
-      } else {
-        toast.error(t('editor.error.saveFailed', { fileName: editingFile.name }), { id: toastId })
+        return true
       }
+      toast.error(t('editor.error.saveFailed', { fileName: editingFile.name }), { id: toastId })
+      return false
     } catch {
       toast.error(t('editor.error.unexpectedSaveError'), { id: toastId })
+      return false
+    } finally {
+      setIsSavingFile(false)
     }
   }, [editingFile, fileContent, t])
 
+  // The dialog stays up (and keeps focus from the editor) until the write has finished
+  const saveThenLeave = async (): Promise<void> => {
+    const action = pendingLeave
+    const saved = await handleSaveFile()
+    setPendingLeave(null)
+    if (saved && action) action()
+  }
+
+  const discardThenLeave = (): void => {
+    const action = pendingLeave
+    setPendingLeave(null)
+    setFileContent(savedContent)
+    setEditorRevision((n) => n + 1)
+    action?.()
+  }
+
   useEffect(() => {
-    if (!editingFile) return
+    // Only the file the user can see, only when it has changes, one write at a time
+    if (!editingFile || activeTab !== 'files' || !fileDirty || isSavingFile) return
     const handleKeyDown = (e: KeyboardEvent): void => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
-        handleSaveFile()
+        void handleSaveFile()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [editingFile, handleSaveFile])
+  }, [editingFile, activeTab, fileDirty, isSavingFile, handleSaveFile])
 
   const handleFileContextMenu = (e: React.MouseEvent, filePath: string, fileName: string): void => {
     e.preventDefault()
@@ -628,7 +674,7 @@ const Overview: React.FC = () => {
       {/* Tabs */}
       <div className="flex items-center border-b border-neutral-bdr mb-4">
         <button
-          onClick={() => setActiveTab('tests')}
+          onClick={() => switchTab('tests')}
           className={`px-5 py-2 text-sm font-semibold transition-colors ${
             activeTab === 'tests'
               ? 'text-neutral-dark border-b-2 border-ruby'
@@ -638,7 +684,7 @@ const Overview: React.FC = () => {
           {t('overview.tabs.tests')}
         </button>
         <button
-          onClick={() => setActiveTab('files')}
+          onClick={() => switchTab('files')}
           className={`px-5 py-2 text-sm font-semibold transition-colors ${
             activeTab === 'files'
               ? 'text-neutral-dark border-b-2 border-ruby'
@@ -648,7 +694,7 @@ const Overview: React.FC = () => {
           {t('overview.tabs.files')}
         </button>
         <button
-          onClick={() => setActiveTab('scaffold')}
+          onClick={() => switchTab('scaffold')}
           className={`px-5 py-2 text-sm font-semibold transition-colors ${
             activeTab === 'scaffold'
               ? 'text-neutral-dark border-b-2 border-ruby'
@@ -658,7 +704,7 @@ const Overview: React.FC = () => {
           Scaffolding
         </button>
         <button
-          onClick={() => setActiveTab('dashboard')}
+          onClick={() => switchTab('dashboard')}
           className={`px-5 py-2 text-sm font-semibold transition-colors ${
             activeTab === 'dashboard'
               ? 'text-neutral-dark border-b-2 border-ruby'
@@ -1010,9 +1056,12 @@ const Overview: React.FC = () => {
               <div className="flex-1 flex flex-col overflow-hidden">
                 {editingFile ? (
                   <>
-                    <div className="flex items-center px-4 py-2 border-b border-neutral-bdr shrink-0">
-                      <span className="text-sm font-semibold text-neutral-dark truncate">{editingFile.name}</span>
-                    </div>
+                    <EditorSaveBar
+                      fileName={editingFile.name}
+                      dirty={fileDirty}
+                      saving={isSavingFile}
+                      onSave={() => void handleSaveFile()}
+                    />
                     {isLoadingFile ? (
                       <div className="flex-1 flex items-center justify-center text-neutral-md text-sm">
                         {t('editor.loading')}
@@ -1020,6 +1069,7 @@ const Overview: React.FC = () => {
                     ) : (
                       <div className="flex-1 overflow-hidden">
                         <Editor
+                          key={`${editingFile.path}:${editorRevision}`}
                           value={fileContent}
                           language={getFileLanguage(editingFile.path)}
                           onChange={(value: string | undefined) => setFileContent(value || '')}
@@ -1164,6 +1214,14 @@ const Overview: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+      {pendingLeave && editingFile && (
+        <UnsavedChangesModal
+          fileName={editingFile.name}
+          onSave={() => void saveThenLeave()}
+          onDiscard={discardThenLeave}
+          onCancel={() => setPendingLeave(null)}
+        />
       )}
     </div>
   )

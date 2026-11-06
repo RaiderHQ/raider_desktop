@@ -83,7 +83,7 @@ test.describe('Tests tab (recorder)', () => {
     await goToTest(page, 'id:t1')
     await expect(page.getByLabel('Test name')).toHaveValue('Search products')
     await expect(page.getByLabel('Start URL')).toHaveValue('https://example.com')
-    for (const name of ['Record', 'Run', 'Code', 'More']) {
+    for (const name of ['Record', 'Run', 'Steps', 'Ruby', 'More']) {
       await expect(page.getByRole('button', { name, exact: true })).toBeVisible()
     }
     // A test's runs show in its run panel; Last run is only for projects on the old suite format

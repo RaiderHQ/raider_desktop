@@ -117,7 +117,7 @@ test('a recorded page gets stable locators, and each step says how it was found'
   }
 
   // The Selenium code finds Save by its role and name
-  await page.getByRole('button', { name: 'Code', exact: true }).click()
+  await page.getByRole('button', { name: 'Ruby', exact: true }).click()
   await expect(page.getByText(/find_element\(xpath: '/).first()).toBeVisible()
   await expect(
     page.getByText(/find_element\(xpath: '\/\/button\[normalize-space\(\)="Save"/)
