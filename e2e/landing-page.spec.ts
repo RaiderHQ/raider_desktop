@@ -14,7 +14,7 @@ test.describe('Landing Page', () => {
 
   test('shows subtitle description', async ({ page }) => {
     await expect(
-      page.getByText('It is a gem that provides a generator and scaffolding')
+      page.getByText('Record, run and fix UI tests without leaving the app.')
     ).toBeVisible()
   })
 

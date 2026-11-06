@@ -306,4 +306,33 @@ describe('New test', () => {
     }
     expect(screen.queryByText('Untitled Test')).not.toBeInTheDocument()
   })
+
+  describe('starting (D8)', () => {
+    it('an unsupported URL keeps the form and starts nothing', async () => {
+      renderAt('/overview/tests/new')
+      fireEvent.change(await screen.findByLabelText(en.testPage.name), {
+        target: { value: 'Add to cart' }
+      })
+      fireEvent.change(screen.getByLabelText(en.testPage.url), { target: { value: 'ftp://nope' } })
+      fireEvent.click(startButton())
+      await waitFor(() =>
+        expect(mockToast.error).toHaveBeenCalledWith('Only http and https websites can be recorded.')
+      )
+      expect(api.startRecordingMain).not.toHaveBeenCalled()
+      expect(useRecorderStore.getState().draftTest).toBeNull()
+      expect(startButton()).toBeInTheDocument()
+    })
+
+    it('a draft opened from quick record starts recording on arrival', async () => {
+      useRecorderStore.getState().startDraft('Checkout', 'https://x.test/home', { recordOnOpen: true })
+      renderAt('/overview/tests/new')
+      await waitFor(() => expect(api.startRecordingMain).toHaveBeenCalledTimes(1))
+      expect(useRecorderStore.getState().recordOnOpen).toBe(false)
+    })
+
+    it('a draft opened from the form does not start twice', async () => {
+      await startDraft()
+      expect(api.startRecordingMain).toHaveBeenCalledTimes(1)
+    })
+  })
 })

@@ -32,6 +32,16 @@ import type { RunDefaults, RunScope } from '@shared/types/runEvents'
 
 type OverviewTab = 'tests' | 'files' | 'scaffold' | 'dashboard'
 
+/** A base URL the browser can open: a full http or https address. */
+const isWebAddress = (value: string): boolean => {
+  try {
+    const url = new URL(value.trim())
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 
 const Overview: React.FC = () => {
   const { t } = useTranslation()
@@ -112,6 +122,19 @@ const Overview: React.FC = () => {
 
   // Test settings state
   const [browserUrl, setBrowserUrl] = useState('')
+  // Why the typed base URL can't be saved, shown under the field
+  const [urlError, setUrlError] = useState<string | null>(null)
+  // A quiet "Saved" next to the settings after a successful write, instead of a toast
+  const [settingsSaved, setSettingsSaved] = useState(false)
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showSaved = (): void => {
+    setSettingsSaved(true)
+    if (savedTimer.current) clearTimeout(savedTimer.current)
+    savedTimer.current = setTimeout(() => setSettingsSaved(false), 2500)
+  }
+  useEffect(() => (): void => {
+    if (savedTimer.current) clearTimeout(savedTimer.current)
+  }, [])
   const [selectedBrowser, setSelectedBrowser] = useState('chrome')
   const [headless, setHeadless] = useState(false)
 
@@ -284,6 +307,11 @@ const Overview: React.FC = () => {
       return
     }
     if (!browserUrl.trim()) return
+    if (!isWebAddress(browserUrl)) {
+      setUrlError(t('overview.settings.urlInvalid'))
+      return
+    }
+    setUrlError(null)
     try {
       const response = await window.api.updateBrowserUrl(projectPath, browserUrl)
       if (!response.success) {
@@ -291,7 +319,7 @@ const Overview: React.FC = () => {
         return
       }
       localStorage.setItem('browserUrl', browserUrl)
-      toast.success(t('overview.settings.urlUpdateSuccess'))
+      showSaved()
     } catch (error) {
       toast.error(`${t('overview.settings.urlUpdateFailed')}: ${(error as Error).message}`)
     }
@@ -317,7 +345,7 @@ const Overview: React.FC = () => {
         return
       }
       localStorage.setItem('selectedBrowser', browser)
-      toast.success(t('overview.settings.browserUpdateSuccess'))
+      showSaved()
     } catch (error) {
       toast.error(`${t('overview.settings.browserUpdateFailed')}: ${(error as Error).message}`)
       if (isCurrent()) setConfigLoaded(true)
@@ -355,7 +383,7 @@ const Overview: React.FC = () => {
         return
       }
       localStorage.setItem('headless', String(enabled))
-      toast.success(t('overview.settings.headlessUpdateSuccess'))
+      showSaved()
     } catch (error) {
       setHeadless(!enabled)
       toast.error(`${t('overview.settings.headlessUpdateFailed')}: ${(error as Error).message}`)
@@ -638,7 +666,7 @@ const Overview: React.FC = () => {
               data-testid="open-terminal-btn"
             >
               <FaTerminal size={10} />
-              Open Terminal
+              Open terminal
             </button>
           )}
           <InfoButton
@@ -704,10 +732,22 @@ const Overview: React.FC = () => {
                       if (e.key === 'Enter') handleUrlSave()
                     }}
                     placeholder={t('overview.settings.urlPlaceholder')}
-                    className="flex-1 border border-neutral-bdr rounded px-2 py-1 text-sm"
+                    aria-invalid={urlError ? true : undefined}
+                    aria-describedby={urlError ? 'overview-url-error' : undefined}
+                    className={`flex-1 border rounded px-2 py-1 text-sm ${urlError ? 'border-status-err' : 'border-neutral-bdr'}`}
                     data-testid="overview-url-input"
                   />
+                  {settingsSaved && (
+                    <span role="status" className="text-xs text-status-ok whitespace-nowrap">
+                      {t('overview.settings.saved')}
+                    </span>
+                  )}
                 </div>
+                {urlError && (
+                  <p id="overview-url-error" role="alert" className="text-xs text-status-err mt-1">
+                    {urlError}
+                  </p>
+                )}
               </Tooltip>
             )}
             <div className="flex items-center gap-4 flex-wrap">

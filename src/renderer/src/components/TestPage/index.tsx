@@ -2,6 +2,7 @@ import React, { SetStateAction, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
+import { toRecordableUrl } from '@shared/recordUrl'
 import CommandList from '@components/CommandList'
 import OutputPanel from '@components/OutputPanel'
 import StyledPanel from '@components/StyledPanel'
@@ -282,11 +283,26 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   }
 
   const startDraft = (name: string, url: string): void => {
+    // A bad address keeps the form: no draft is made that can't record (D8)
+    if (url.trim() !== '' && !toRecordableUrl(url)) {
+      toast.error(t('recorder.unsupportedUrl'))
+      return
+    }
     useRecorderStore.getState().startDraft(name, url)
     recording
       .start(draftTarget)
       .catch((error: unknown) => console.error('Recording failed:', error))
   }
+
+  // Quick record made the draft elsewhere and asked for the recorder to start on arrival
+  const recordOnOpen = useRecorderStore((s) => s.recordOnOpen)
+  useEffect(() => {
+    if (!isDraft || !test || !recordOnOpen) return
+    useRecorderStore.getState().setRecordOnOpen(false)
+    recording
+      .start(draftTarget)
+      .catch((error: unknown) => console.error('Recording failed:', error))
+  }, [isDraft, test, recordOnOpen])
 
   const moreOptions = [
     ...(readOnly || recordingDisabled

@@ -1204,4 +1204,55 @@ describe('Overview live runs', (): void => {
       mockApi.prepareSuiteRun.mockResolvedValue({ mode: 'legacy' })
     }
   })
+
+  describe('settings feedback (D6)', () => {
+    it('rejects a base URL that is not a web address, inline, without saving', async () => {
+      await renderOverview()
+      const urlInput = screen.getByTestId('overview-url-input')
+      fireEvent.change(urlInput, { target: { value: 'not a url' } })
+      fireEvent.blur(urlInput)
+      expect(screen.getByRole('alert')).toHaveTextContent('overview.settings.urlInvalid')
+      expect(urlInput).toHaveAttribute('aria-invalid', 'true')
+      expect(mockApi.updateBrowserUrl).not.toHaveBeenCalled()
+      expect(localStorage.getItem('browserUrl')).toBeNull()
+    })
+
+    it('rejects an address without http or https', async () => {
+      await renderOverview()
+      const urlInput = screen.getByTestId('overview-url-input')
+      fireEvent.change(urlInput, { target: { value: 'ftp://files.test' } })
+      fireEvent.keyDown(urlInput, { key: 'Enter' })
+      expect(screen.getByRole('alert')).toHaveTextContent('overview.settings.urlInvalid')
+      expect(mockApi.updateBrowserUrl).not.toHaveBeenCalled()
+    })
+
+    it('says Saved next to the settings instead of a toast once the URL is written', async () => {
+      await renderOverview()
+      const urlInput = screen.getByTestId('overview-url-input')
+      fireEvent.change(urlInput, { target: { value: 'https://ok.test' } })
+      fireEvent.blur(urlInput)
+      await waitFor(() => expect(mockApi.updateBrowserUrl).toHaveBeenCalled())
+      expect(await screen.findByRole('status')).toHaveTextContent('overview.settings.saved')
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('clears the error once a good address is saved', async () => {
+      await renderOverview()
+      const urlInput = screen.getByTestId('overview-url-input')
+      fireEvent.change(urlInput, { target: { value: 'nope' } })
+      fireEvent.blur(urlInput)
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+      fireEvent.change(urlInput, { target: { value: 'https://ok.test' } })
+      fireEvent.blur(urlInput)
+      await waitFor(() => expect(mockApi.updateBrowserUrl).toHaveBeenCalled())
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('says Saved after the headless switch is written', async () => {
+      await renderOverview()
+      fireEvent.click(screen.getByTestId('overview-headless-toggle'))
+      await waitFor(() => expect(mockApi.updateHeadlessMode).toHaveBeenCalled())
+      expect(await screen.findByRole('status')).toHaveTextContent('overview.settings.saved')
+    })
+  })
 })
