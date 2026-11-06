@@ -166,7 +166,15 @@ describe('CommandList', () => {
   })
 
   it('offers Show guide while recording, which reopens the guide', () => {
-    render(<CommandList steps={steps} setSteps={vi.fn()} onDeleteStep={vi.fn()} showCode={false} markLatest />)
+    render(
+      <CommandList
+        steps={steps}
+        setSteps={vi.fn()}
+        onDeleteStep={vi.fn()}
+        showCode={false}
+        markLatest
+      />
+    )
     fireEvent.click(screen.getByText('testPage.showGuide'))
     expect(useRecorderStore.getState().guideOpen).toBe(true)
   })
