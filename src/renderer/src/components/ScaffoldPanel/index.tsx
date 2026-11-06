@@ -76,12 +76,15 @@ const ScaffoldPanel: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        <p className="text-sm text-neutral-mid">
+        <p className="text-sm text-neutral-md">
           Generate page objects, specs, features, steps, helpers, or components for your project.
         </p>
         <div>
-          <label className={labelClass}>Type</label>
+          <label htmlFor="scaffold-type" className={labelClass}>
+            Type
+          </label>
           <select
+            id="scaffold-type"
             value={type}
             onChange={(e) => setType(e.target.value as ScaffoldComponentType)}
             className={inputClass}
@@ -94,8 +97,11 @@ const ScaffoldPanel: React.FC = () => {
           </select>
         </div>
         <div>
-          <label className={labelClass}>Name</label>
+          <label htmlFor="scaffold-name" className={labelClass}>
+            Name
+          </label>
           <input
+            id="scaffold-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}

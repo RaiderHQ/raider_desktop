@@ -56,11 +56,11 @@ beforeEach(() => {
 
 describe('ScaffoldPanel', () => {
   describe('Rendering', () => {
-    it('shows type dropdown and name input', () => {
+    it('shows type dropdown and name input, each named by its label', () => {
       render(<ScaffoldPanel />)
 
-      expect(screen.getByText('Type')).toBeInTheDocument()
-      expect(screen.getByText('Name')).toBeInTheDocument()
+      expect(screen.getByLabelText('Type')).toBe(screen.getByRole('combobox'))
+      expect(screen.getByLabelText('Name')).toBe(screen.getByRole('textbox'))
       expect(screen.getByText('Generate')).toBeInTheDocument()
     })
 

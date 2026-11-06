@@ -34,7 +34,7 @@ const ComparisonImage: React.FC<{ path: string; alt: string }> = ({ path, alt })
   }, [path])
 
   if (src === null) {
-    return <p className="text-xs text-neutral-mid">{t('screenshotComparison.imageUnavailable')}</p>
+    return <p className="text-xs text-neutral-md">{t('screenshotComparison.imageUnavailable')}</p>
   }
   if (src === undefined) return <div className="h-24" aria-hidden="true" />
   return <img src={src} alt={alt} className="max-w-full rounded border border-neutral-bdr" />
@@ -126,7 +126,7 @@ const ComparisonEntry: React.FC<{ comparison: Comparison }> = ({ comparison: c }
           <span id={`${baseId}-name`} className="text-sm font-medium text-neutral-dark truncate">
             {c.name}
           </span>
-          <span className="text-xs text-neutral-mid">
+          <span className="text-xs text-neutral-md">
             {t(`screenshotComparison.status.${c.status}`)}
           </span>
         </div>
@@ -140,7 +140,7 @@ const ComparisonEntry: React.FC<{ comparison: Comparison }> = ({ comparison: c }
             {t('screenshotComparison.accept')}
           </button>
         )}
-        <span role="status" className="text-xs text-neutral-mid">
+        <span role="status" className="text-xs text-neutral-md">
           {accept === 'updated' && t('screenshotComparison.acceptDone')}
           {accept === 'unchanged' && t('screenshotComparison.acceptUnchanged')}
         </span>
@@ -156,10 +156,10 @@ const ComparisonEntry: React.FC<{ comparison: Comparison }> = ({ comparison: c }
         </p>
       )}
       {c.diffPixels !== null && allowanceParts.length > 0 && (
-        <p className="text-xs text-neutral-mid">{allowanceParts.join(' · ')}</p>
+        <p className="text-xs text-neutral-md">{allowanceParts.join(' · ')}</p>
       )}
       {sizeChanged && c.expectedSize && c.actualSize && (
-        <p className="text-xs text-neutral-mid">
+        <p className="text-xs text-neutral-md">
           {t('screenshotComparison.sizeChanged', {
             ew: c.expectedSize[0],
             eh: c.expectedSize[1],
@@ -224,7 +224,7 @@ const ScreenshotComparison: React.FC<ScreenshotComparisonProps> = ({ comparisons
 
   return (
     <section data-testid="screenshot-comparison" className="mt-3 space-y-3">
-      <h3 className="text-xs font-semibold text-neutral-mid uppercase tracking-wide">
+      <h3 className="text-xs font-semibold text-neutral-md uppercase tracking-wide">
         {t('screenshotComparison.title')}
       </h3>
       {shown.length > 0 && (
@@ -235,7 +235,7 @@ const ScreenshotComparison: React.FC<ScreenshotComparisonProps> = ({ comparisons
         </ul>
       )}
       {matched.length > 0 && (
-        <p className="text-xs text-neutral-mid">
+        <p className="text-xs text-neutral-md">
           {t('screenshotComparison.matched', { count: matched.length })}
         </p>
       )}

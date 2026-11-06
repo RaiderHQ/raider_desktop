@@ -178,7 +178,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
       </main>
 
       <footer className="flex justify-center py-3 bg-white border-t border-neutral-bdr">
-        <p className="text-neutral-mid text-sm">{t('version', { version: raiderVersion })}</p>
+        <p className="text-neutral-md text-sm">{t('version', { version: raiderVersion })}</p>
       </footer>
 
       {isConceptsModalOpen && <ConceptsModal onClose={() => setIsConceptsModalOpen(false)} />}

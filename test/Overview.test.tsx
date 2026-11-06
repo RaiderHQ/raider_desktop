@@ -30,9 +30,7 @@ vi.mock('@components/Library/Folder', () => ({
   }): JSX.Element => (
     <div data-testid="folder">
       {name}
-      {onRunTests && (
-        <button data-testid="run-tests" onClick={onRunTests} disabled={runDisabled} />
-      )}
+      {onRunTests && <button data-testid="run-tests" onClick={onRunTests} disabled={runDisabled} />}
     </div>
   )
 }))
@@ -48,9 +46,9 @@ vi.mock('@components/ProjectDashboard', () => ({
 // A stand-in by default; the real component where its async load matters
 const realDeviceSettings = vi.hoisted(() => ({ on: false }))
 vi.mock('@components/DeviceSettings', async () => {
-  const { default: Real } = await vi.importActual<
-    typeof import('@components/DeviceSettings')
-  >('@components/DeviceSettings')
+  const { default: Real } = await vi.importActual<typeof import('@components/DeviceSettings')>(
+    '@components/DeviceSettings'
+  )
   return {
     default: (
       props: React.ComponentProps<typeof Real> & { focusRef?: React.Ref<HTMLInputElement> }
@@ -365,7 +363,9 @@ describe('Overview Settings Toolbar', (): void => {
   })
 
   it('keeps the browser login and recorder wait controls for a web project', async () => {
-    useProjectStore.setState({ layout: { ...appiumLayout, automation: 'selenium', recordable: true } })
+    useProjectStore.setState({
+      layout: { ...appiumLayout, automation: 'selenium', recordable: true }
+    })
     await renderOverview()
 
     fireEvent.click(screen.getByTestId('overview-more-options'))
@@ -842,9 +842,11 @@ describe('Overview Settings Toolbar', (): void => {
       // Nothing recorded yet: an empty draft is never saved, so there is nothing to lose
       expect(button).toBeEnabled()
       act(() =>
-        useRecorderStore.getState().updateActiveTest((p) =>
-          p ? { ...p, steps: [{ id: 'c', kind: 'custom', code: 'x' }] } : null
-        )
+        useRecorderStore
+          .getState()
+          .updateActiveTest((p) =>
+            p ? { ...p, steps: [{ id: 'c', kind: 'custom', code: 'x' }] } : null
+          )
       )
       expect(button).toBeDisabled()
       expect(button).toHaveAttribute('title', 'quickRecord.stopFirst')
@@ -1236,6 +1238,92 @@ describe('Overview live runs', (): void => {
       useRunStore.setState({ start } as never)
       act(() => dispatchMenuCommand('run'))
       expect(start).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('settings feedback (D6)', () => {
+    it('rejects a base URL that is not a web address, inline, without saving', async () => {
+      await renderOverview()
+      const urlInput = screen.getByTestId('overview-url-input')
+      fireEvent.change(urlInput, { target: { value: 'not a url' } })
+      fireEvent.blur(urlInput)
+      expect(screen.getByRole('alert')).toHaveTextContent('overview.settings.urlInvalid')
+      expect(urlInput).toHaveAttribute('aria-invalid', 'true')
+      expect(mockApi.updateBrowserUrl).not.toHaveBeenCalled()
+      expect(localStorage.getItem('browserUrl')).toBeNull()
+    })
+
+    it('rejects an address without http or https', async () => {
+      await renderOverview()
+      const urlInput = screen.getByTestId('overview-url-input')
+      fireEvent.change(urlInput, { target: { value: 'ftp://files.test' } })
+      fireEvent.keyDown(urlInput, { key: 'Enter' })
+      expect(screen.getByRole('alert')).toHaveTextContent('overview.settings.urlInvalid')
+      expect(mockApi.updateBrowserUrl).not.toHaveBeenCalled()
+    })
+
+    it('says Saved next to the settings instead of a toast once the URL is written', async () => {
+      await renderOverview()
+      const urlInput = screen.getByTestId('overview-url-input')
+      fireEvent.change(urlInput, { target: { value: 'https://ok.test' } })
+      fireEvent.blur(urlInput)
+      await waitFor(() => expect(mockApi.updateBrowserUrl).toHaveBeenCalled())
+      expect(await screen.findByRole('status')).toHaveTextContent('overview.settings.saved')
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('clears the error once a good address is saved', async () => {
+      await renderOverview()
+      const urlInput = screen.getByTestId('overview-url-input')
+      fireEvent.change(urlInput, { target: { value: 'nope' } })
+      fireEvent.blur(urlInput)
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+      fireEvent.change(urlInput, { target: { value: 'https://ok.test' } })
+      fireEvent.blur(urlInput)
+      await waitFor(() => expect(mockApi.updateBrowserUrl).toHaveBeenCalled())
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('does not write the address again when nothing changed', async () => {
+      localStorage.setItem('browserUrl', 'https://same.test')
+      await renderOverview()
+      const urlInput = screen.getByTestId('overview-url-input')
+      expect(urlInput).toHaveValue('https://same.test')
+      fireEvent.blur(urlInput)
+      fireEvent.keyDown(urlInput, { key: 'Enter' })
+      await act(async () => {})
+      expect(mockApi.updateBrowserUrl).not.toHaveBeenCalled()
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+
+    it('trims the address before writing it', async () => {
+      await renderOverview()
+      const urlInput = screen.getByTestId('overview-url-input')
+      fireEvent.change(urlInput, { target: { value: '  https://ok.test ' } })
+      fireEvent.blur(urlInput)
+      await waitFor(() =>
+        expect(mockApi.updateBrowserUrl).toHaveBeenCalledWith('/fake/project', 'https://ok.test')
+      )
+      expect(localStorage.getItem('browserUrl')).toBe('https://ok.test')
+    })
+
+    it('drops the error as soon as the field changes', async () => {
+      await renderOverview()
+      const urlInput = screen.getByTestId('overview-url-input')
+      fireEvent.change(urlInput, { target: { value: 'nope' } })
+      fireEvent.blur(urlInput)
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+      fireEvent.change(urlInput, { target: { value: '' } })
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      fireEvent.blur(urlInput)
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('says Saved after the headless switch is written', async () => {
+      await renderOverview()
+      fireEvent.click(screen.getByTestId('overview-headless-toggle'))
+      await waitFor(() => expect(mockApi.updateHeadlessMode).toHaveBeenCalled())
+      expect(await screen.findByRole('status')).toHaveTextContent('overview.settings.saved')
     })
   })
 })

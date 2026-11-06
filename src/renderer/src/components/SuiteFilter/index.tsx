@@ -210,7 +210,7 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
             {t('tests.suiteFilter.run')}
           </button>
           {mobileProject && (
-            <p id={mobileNoteId} className="px-3 pb-1.5 text-xs text-neutral-mid">
+            <p id={mobileNoteId} className="px-3 pb-1.5 text-xs text-neutral-md">
               {t('suites.mobileUnavailable')}
             </p>
           )}
@@ -253,7 +253,7 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
             {t('tests.suiteFilter.importSuite')}
           </button>
           {mobileProject && (
-            <p id={mobileImportNoteId} className="px-3 pb-1.5 text-xs text-neutral-mid">
+            <p id={mobileImportNoteId} className="px-3 pb-1.5 text-xs text-neutral-md">
               {t('tests.mobileNoImport')}
             </p>
           )}

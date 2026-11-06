@@ -220,7 +220,7 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ projectPath, layout, fo
           className="border border-neutral-bdr rounded px-2 py-1 text-sm w-48"
           data-testid={`device-${group.platform}-${field}`}
         />
-        <span id={`${inputId}-help`} className="text-xs text-neutral-mid max-w-[12rem]">
+        <span id={`${inputId}-help`} className="text-xs text-neutral-md max-w-[12rem]">
           {help}
         </span>
       </div>
