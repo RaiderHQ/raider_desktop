@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Logo from '@components/Logo'
 import Tooltip from '@components/Tooltip'
+import { shortcutLabel, platformFrom } from '@shared/shortcuts'
 
 interface Concept {
   icon: string
@@ -92,9 +93,10 @@ const osTabs: { id: OS; label: string; icon: string }[] = [
 
 interface ConceptsModalProps {
   onClose: () => void
+  onOpenShortcuts: () => void
 }
 
-const ConceptsModal: React.FC<ConceptsModalProps> = ({ onClose }) => {
+const ConceptsModal: React.FC<ConceptsModalProps> = ({ onClose, onOpenShortcuts }) => {
   const { t } = useTranslation()
   const [activeOS, setActiveOS] = useState<OS>('mac')
 
@@ -203,8 +205,17 @@ const ConceptsModal: React.FC<ConceptsModalProps> = ({ onClose }) => {
         </div>
 
         {/* Footer hint */}
-        <div className="px-6 py-3 border-t border-neutral-bdr shrink-0">
-          <p className="text-xs text-neutral-md text-center">{t('concepts.hint')}</p>
+        <div className="px-6 py-3 border-t border-neutral-bdr shrink-0 flex items-center justify-between gap-3">
+          <p className="text-xs text-neutral-md">{t('concepts.hint')}</p>
+          <button
+            onClick={onOpenShortcuts}
+            className="shrink-0 inline-flex items-center gap-2 text-xs font-semibold text-neutral-dk hover:text-neutral-dark"
+          >
+            {t('concepts.shortcuts')}
+            <kbd className="px-1.5 py-0.5 rounded bg-neutral-100 font-sans font-medium">
+              {shortcutLabel('shortcuts', platformFrom(navigator.platform))}
+            </kbd>
+          </button>
         </div>
       </div>
     </div>,

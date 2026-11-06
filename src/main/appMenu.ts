@@ -1,5 +1,7 @@
 import { Menu } from 'electron'
 import { englishText } from '../shared/describeStepEnglish'
+import { SHORTCUTS, type ShortcutId } from '../shared/shortcuts'
+import { appState } from './handlers/appState'
 
 /** What the menu bar can ask the renderer to do; the renderer checks the value before acting. */
 export type MenuCommand =
@@ -7,8 +9,14 @@ export type MenuCommand =
   | 'open-project'
   | 'save'
   | 'record'
+  | 'stop'
   | 'run'
+  | 'new-test'
+  | 'open-file'
   | 'how-it-works'
+  | 'shortcuts'
+  | 'docs'
+  | 'recording-guide'
 
 export interface MenuActions {
   /** File → Open trace…: a main-side dialog; the renderer never sends a path */
@@ -20,6 +28,8 @@ export interface MenuActions {
 export interface MenuOptions {
   /** The shipped app hides Reload, Force reload and Developer tools */
   isPackaged: boolean
+  /** Test › Record reads Stop & save while a recording runs */
+  recording?: boolean
 }
 
 const t = (key: string): string => englishText(`appMenu.${key}`)
@@ -37,23 +47,23 @@ export function buildAppMenuTemplate(
   const command = (
     id: MenuCommand,
     label: string,
-    accelerator?: string
+    shortcut?: ShortcutId
   ): Electron.MenuItemConstructorOptions => ({
     id,
     label,
-    accelerator,
+    accelerator: shortcut ? SHORTCUTS[shortcut].accelerator : undefined,
     click: () => actions.onCommand(id)
   })
 
   const file: Electron.MenuItemConstructorOptions = {
     label: t('file'),
     submenu: [
-      command('new-project', t('newProject'), 'CmdOrCtrl+N'),
-      command('open-project', t('openProject'), 'CmdOrCtrl+O'),
+      command('new-project', t('newProject'), 'new-project'),
+      command('open-project', t('openProject'), 'open-project'),
       { type: 'separator' },
       { id: 'open-trace', label: t('openTrace'), click: () => actions.onOpenTrace() },
       { type: 'separator' },
-      command('save', t('save'), 'CmdOrCtrl+S'),
+      command('save', t('save'), 'save'),
       { type: 'separator' },
       isMac ? { role: 'close' } : { role: 'quit' }
     ]
@@ -61,8 +71,17 @@ export function buildAppMenuTemplate(
   const test: Electron.MenuItemConstructorOptions = {
     label: t('test'),
     submenu: [
-      command('record', t('record'), 'CmdOrCtrl+Shift+R'),
-      command('run', t('run'), 'CmdOrCtrl+R')
+      {
+        id: 'record',
+        label: t(options.recording ? 'stopAndSave' : 'record'),
+        accelerator: SHORTCUTS.record.accelerator,
+        // Decided at click time from what the page last reported, not from the label
+        click: () => actions.onCommand(appState.recording ? 'stop' : 'record')
+      },
+      command('run', t('run'), 'run'),
+      { type: 'separator' },
+      command('new-test', t('newTest'), 'new-test'),
+      command('open-file', t('openFile'), 'open-file')
     ]
   }
   // Reload would take Cmd+R from Run: only the empty string clears a role's default accelerator
@@ -88,7 +107,10 @@ export function buildAppMenuTemplate(
   const help: Electron.MenuItemConstructorOptions = {
     ...(isMac ? { role: 'help' as const } : {}),
     label: t('help'),
-    submenu: [command('how-it-works', t('howItWorks'))]
+    submenu: [
+      command('how-it-works', t('howItWorks')),
+      command('shortcuts', t('keyboardShortcuts'), 'shortcuts')
+    ]
   }
   return [
     ...(isMac ? [{ role: 'appMenu' } as const] : []),
@@ -99,6 +121,27 @@ export function buildAppMenuTemplate(
     { role: 'windowMenu' },
     help
   ]
+}
+
+let installed: { actions: MenuActions; options: MenuOptions } | null = null
+
+function setMenu(recording: boolean): void {
+  if (!installed) return
+  const { actions, options } = installed
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate(
+      buildAppMenuTemplate(process.platform, actions, { ...options, recording })
+    )
+  )
+}
+
+/**
+ * Test › Record reads Stop & save while recording. The whole menu is rebuilt and
+ * re-installed (the native menu does not reliably follow a changed label); the item
+ * keeps its id and accelerator. No-op before the menu is installed.
+ */
+export function setRecordingMenuState(recording: boolean): void {
+  setMenu(recording)
 }
 
 /**
@@ -116,7 +159,6 @@ export function withLiveWindow<Args extends unknown[]>(
 }
 
 export function installAppMenu(actions: MenuActions, options: MenuOptions): void {
-  Menu.setApplicationMenu(
-    Menu.buildFromTemplate(buildAppMenuTemplate(process.platform, actions, options))
-  )
+  installed = { actions, options }
+  setMenu(appState.recording)
 }

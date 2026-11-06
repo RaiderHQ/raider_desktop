@@ -307,6 +307,8 @@ const api = {
     ipcRenderer.send('document-edited', edited, name),
   /** Tells main whether a recording is open, so closing the window saves it first */
   setRecordingState: (active: boolean): void => ipcRenderer.send('recording-state', active),
+  /** Tells main only whether a recording is running, for the Record / Stop & save menu item */
+  setMenuRecording: (recording: boolean): void => ipcRenderer.send('menu-recording', recording),
   /** Main asks the page to save its recording before the window closes; returns an unsubscribe */
   onFlushRecording: (callback: () => void): (() => void) => {
     const listener = (): void => callback()

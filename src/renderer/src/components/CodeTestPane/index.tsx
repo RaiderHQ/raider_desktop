@@ -12,6 +12,7 @@ import RecordingLayout from '@components/TestPage/RecordingLayout'
 import { removeStepWithUndo } from '@foundation/removeStepWithUndo'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import { onMenuCommand } from '@foundation/menuCommands'
 import { useRunStore } from '@foundation/Stores/runStore'
 import { buildAssertionStep, assertionModalType } from '@foundation/assertionStep'
 import type { TestRow } from '@foundation/testKey'
@@ -125,6 +126,18 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
     if (!useRecorderStore.getState().unsavedExample) load()
   }
 
+  // The menu bar's Stop & save and Open file… act like the toolbar buttons
+  useEffect(
+    () =>
+      onMenuCommand((command) => {
+        if (command === 'stop' && recording.isRecording && !isReplaying) void stop()
+        if (command === 'open-file' && !busy && !recordedTest && !confirmingRecord && !!file) {
+          editCode()
+        }
+      }),
+    [recording.isRecording, isReplaying, busy, recordedTest, confirmingRecord, file, stop, editCode]
+  )
+
   const saveAssertion = (expectedText: string): void => {
     const info = recording.assertionInfo
     if (info) {
@@ -207,8 +220,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
               </span>
             )}
             {recording.isRecording ? (
-              // shortcut chip added by PR C once the menu binds it
-              <Tooltip content={t('tooltips.testPage.stop')} position="bottom">
+              <Tooltip content={t('tooltips.testPage.stop')} shortcut="stop" position="bottom">
                 <button
                   onClick={() => void stop()}
                   disabled={isReplaying}
@@ -246,7 +258,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
             </Tooltip>
             <Tooltip
               content={t('tooltips.testPage.openFile')}
-              // shortcut chip added by PR C once the menu binds it
+              shortcut="open-file"
               position="bottom"
             >
               <button

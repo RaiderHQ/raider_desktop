@@ -1,11 +1,29 @@
 import { describe, it, expect, vi } from 'vitest'
-import { dispatchMenuCommand, isMenuCommand, onMenuCommand } from '@foundation/menuCommands'
+import {
+  MENU_COMMANDS,
+  dispatchMenuCommand,
+  isMenuCommand,
+  onMenuCommand
+} from '@foundation/menuCommands'
 
 describe('menu commands', () => {
   it('knows the commands the menu bar sends and nothing else', () => {
-    for (const c of ['new-project', 'open-project', 'save', 'record', 'run', 'how-it-works']) {
-      expect(isMenuCommand(c)).toBe(true)
-    }
+    const sent = [
+      'new-project',
+      'open-project',
+      'save',
+      'record',
+      'stop',
+      'run',
+      'new-test',
+      'open-file',
+      'how-it-works',
+      'shortcuts',
+      'docs',
+      'recording-guide'
+    ]
+    for (const c of sent) expect(isMenuCommand(c)).toBe(true)
+    expect(MENU_COMMANDS).toEqual(sent)
     expect(isMenuCommand('rm -rf')).toBe(false)
     expect(isMenuCommand(42)).toBe(false)
   })

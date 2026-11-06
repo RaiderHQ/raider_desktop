@@ -115,6 +115,7 @@ describe('IPC Contract', () => {
     'stopRecordingMain',
     'setDocumentEdited',
     'setRecordingState',
+    'setMenuRecording',
     'onFlushRecording',
     'flushRecordingDone',
     'loadUrlRequest',

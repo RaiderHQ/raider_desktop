@@ -5,7 +5,7 @@ import { dispatchMenuCommand } from '@foundation/menuCommands'
 import '@testing-library/jest-dom'
 import useTitleStore from '@foundation/Stores/titleStore'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
-import { MemoryRouter } from 'react-router'
+import { Link, MemoryRouter } from 'react-router'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import toast from 'react-hot-toast'
@@ -1468,6 +1468,88 @@ describe('Overview live runs', (): void => {
       await waitFor(() =>
         expect(mockApi.readFile).toHaveBeenLastCalledWith('/fake/project/spec/b_spec.rb')
       )
+    })
+
+    it('two saves in one tick write once, from the keyboard and the menu alike', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await act(async () => {
+        fireEvent.keyDown(window, { key: 's', metaKey: true })
+        dispatchMenuCommand('save')
+        dispatchMenuCommand('save')
+      })
+      expect(mockApi.editFile).toHaveBeenCalledTimes(1)
+    })
+
+    describe('the new test route (menu New test)', () => {
+      // useNavigate is mocked in this file; a link changes the route for real
+      const GoNewTest = (): JSX.Element => <Link to="/overview/tests/new">go-new-test</Link>
+      const renderWithGo = async (): Promise<void> => {
+        mockApi.readFile.mockResolvedValue({ success: true, data: 'original' })
+        useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+        // The new test form listens for the recorder
+        Object.assign(mockApi, {
+          onAddAssertionStep: vi.fn(() => vi.fn()),
+          onNewRecordedStep: vi.fn(() => vi.fn()),
+          onNewTraceStep: vi.fn(() => vi.fn()),
+          onRecordingStarted: vi.fn(() => vi.fn()),
+          onRecordingStopped: vi.fn(() => vi.fn()),
+          onReplayFailed: vi.fn(() => vi.fn()),
+          setRecordingState: vi.fn(),
+          setMenuRecording: vi.fn(),
+          onFlushRecording: vi.fn(() => vi.fn()),
+          flushRecordingDone: vi.fn()
+        })
+        await act(async () => {
+          render(
+            <MemoryRouter>
+              <Overview />
+              <GoNewTest />
+            </MemoryRouter>
+          )
+        })
+        await openFilesTab()
+      }
+
+      it('leaves the Files tab for the Tests tab', async () => {
+        await renderWithGo()
+        await openFile('a_spec.rb')
+        expect(screen.getByTestId('editor')).toBeInTheDocument()
+        await act(async () => {
+          fireEvent.click(screen.getByText('go-new-test'))
+        })
+        expect(screen.queryByTestId('editor')).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      })
+
+      it('asks first over a dirty file; Cancel stays on the Files tab with the edit', async () => {
+        await renderWithGo()
+        await openFile('a_spec.rb')
+        type('changed')
+        await act(async () => {
+          fireEvent.click(screen.getByText('go-new-test'))
+        })
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.cancel' }))
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        expect(screen.getByTestId('editor')).toHaveValue('changed')
+      })
+
+      it('asks again on the next New test after Cancel, at the same URL', async () => {
+        await renderWithGo()
+        await openFile('a_spec.rb')
+        type('changed')
+        await act(async () => {
+          fireEvent.click(screen.getByText('go-new-test'))
+        })
+        fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.cancel' }))
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        await act(async () => {
+          fireEvent.click(screen.getByText('go-new-test'))
+        })
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+      })
     })
 
     it('ignores Cmd+S while another tab is showing', async () => {

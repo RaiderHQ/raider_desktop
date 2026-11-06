@@ -20,7 +20,8 @@ export const SHORTCUTS: Record<ShortcutId, { accelerator: string; mac: string; o
   'new-project': { accelerator: 'CmdOrCtrl+Shift+N', mac: '⌘⇧N', other: 'Ctrl+Shift+N' },
   'open-project': { accelerator: 'CmdOrCtrl+O', mac: '⌘O', other: 'Ctrl+O' },
   'open-file': { accelerator: 'CmdOrCtrl+Shift+E', mac: '⌘⇧E', other: 'Ctrl+Shift+E' },
-  shortcuts: { accelerator: 'CmdOrCtrl+Shift+/', mac: '⌘⇧/', other: 'Ctrl+Shift+/' }
+  // Not Shift+/: macOS's Help menu owns that key for its search field
+  shortcuts: { accelerator: 'CmdOrCtrl+Shift+H', mac: '⌘⇧H', other: 'Ctrl+Shift+H' }
 }
 
 export function shortcutLabel(id: ShortcutId, platform: Platform): string {

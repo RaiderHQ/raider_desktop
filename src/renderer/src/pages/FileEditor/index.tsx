@@ -10,6 +10,7 @@ import UnsavedChangesModal from '@components/UnsavedChangesModal'
 import { getFileLanguage } from '@foundation/helpers'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { onMenuCommand } from '@foundation/menuCommands'
+import useEditorStore from '@foundation/Stores/editorStore'
 import { FaArrowLeft } from 'react-icons/fa'
 
 interface FileEditorProps {
@@ -34,7 +35,14 @@ const FileEditor: React.FC = (): JSX.Element => {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [leaving, setLeaving] = useState(false)
   const dirty = fileContent !== savedContent
+  // One dirty value, two stores: editorStore drives the menu guards (New test, New project,
+  // Open project stand down); titleStore drives the window title and the close guard.
+  // A later cleanup may fold them into one.
   useDocumentTitle(fileName, dirty)
+  useEffect(() => {
+    useEditorStore.getState().setPageDirty(dirty)
+  }, [dirty])
+  useEffect(() => (): void => useEditorStore.getState().setPageDirty(false), [])
 
   // One write at a time; a ref so a Cmd+S repeat in the same tick can't start a second one
   const savingRef = useRef(false)
@@ -111,6 +119,9 @@ const FileEditor: React.FC = (): JSX.Element => {
   }, [])
 
   useEffect(() => {
+    // Kept: the e2e showed Playwright's synthetic Cmd+S reaches only this listener; whether the
+    // native File › Save accelerator also fires on a real keypress is untested; both paths are
+    // guarded against a double write.
     const handleKeyDown = (e: KeyboardEvent): void => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
