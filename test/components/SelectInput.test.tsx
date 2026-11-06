@@ -6,34 +6,44 @@ describe('SelectInput', () => {
   const options = ['Chrome', 'Firefox', 'Safari']
 
   it('renders the label', () => {
-    render(
-      <SelectInput label="Browser" options={options} selected="Chrome" onChange={vi.fn()} />
-    )
+    render(<SelectInput label="Browser" options={options} selected="Chrome" onChange={vi.fn()} />)
     expect(screen.getByText('Browser')).toBeInTheDocument()
   })
 
   it('renders all options', () => {
-    render(
-      <SelectInput label="Browser" options={options} selected="Chrome" onChange={vi.fn()} />
-    )
+    render(<SelectInput label="Browser" options={options} selected="Chrome" onChange={vi.fn()} />)
     expect(screen.getByText('Chrome')).toBeInTheDocument()
     expect(screen.getByText('Firefox')).toBeInTheDocument()
     expect(screen.getByText('Safari')).toBeInTheDocument()
   })
 
   it('reflects the selected value', () => {
-    render(
-      <SelectInput label="Browser" options={options} selected="Firefox" onChange={vi.fn()} />
-    )
+    render(<SelectInput label="Browser" options={options} selected="Firefox" onChange={vi.fn()} />)
     expect(screen.getByRole('combobox')).toHaveValue('Firefox')
   })
 
   it('calls onChange when selection changes', () => {
     const onChange = vi.fn()
-    render(
-      <SelectInput label="Browser" options={options} selected="Chrome" onChange={onChange} />
-    )
+    render(<SelectInput label="Browser" options={options} selected="Chrome" onChange={onChange} />)
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Safari' } })
     expect(onChange).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows a tooltip on focus only when one is given', () => {
+    const { unmount } = render(
+      <SelectInput
+        label="X"
+        options={options}
+        selected="Chrome"
+        onChange={vi.fn()}
+        tooltip="Hello"
+      />
+    )
+    fireEvent.focus(screen.getByRole('combobox'))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Hello')
+    unmount()
+    render(<SelectInput label="X" options={options} selected="Chrome" onChange={vi.fn()} />)
+    fireEvent.focus(screen.getByRole('combobox'))
+    expect(screen.queryByRole('tooltip')).toBeNull()
   })
 })

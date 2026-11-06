@@ -1,4 +1,5 @@
 import React, { useId } from 'react'
+import Tooltip from '@components/Tooltip'
 
 interface InputFieldProps {
   value: string
@@ -17,6 +18,8 @@ interface InputFieldProps {
   hint?: string
   /** Why the current value is wrong; replaces the hint and marks the field invalid */
   error?: string
+  /** Plain-language help, shown on hover and focus of the field */
+  tooltip?: string
 }
 
 const InputField: React.FC<InputFieldProps> = ({
@@ -32,7 +35,8 @@ const InputField: React.FC<InputFieldProps> = ({
   autoFocus = false,
   id,
   hint,
-  error
+  error,
+  tooltip
 }) => {
   const generatedId = useId()
   const inputId = id ?? generatedId
@@ -47,6 +51,23 @@ const InputField: React.FC<InputFieldProps> = ({
   const combinedClassName =
     `${baseStyles} ${borderStyles} ${disabled ? disabledStyles : ''} ${className}`.trim()
 
+  const input = (
+    <input
+      id={inputId}
+      type={type}
+      className={combinedClassName}
+      value={value}
+      onChange={onChange}
+      onKeyDown={onKeyDown}
+      onBlur={onBlur}
+      placeholder={placeholder}
+      disabled={disabled}
+      autoFocus={autoFocus}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={message ? messageId : undefined}
+    />
+  )
+
   return (
     <div className="w-full">
       {label && (
@@ -57,20 +78,13 @@ const InputField: React.FC<InputFieldProps> = ({
           {label}
         </label>
       )}
-      <input
-        id={inputId}
-        type={type}
-        className={combinedClassName}
-        value={value}
-        onChange={onChange}
-        onKeyDown={onKeyDown}
-        onBlur={onBlur}
-        placeholder={placeholder}
-        disabled={disabled}
-        autoFocus={autoFocus}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={message ? messageId : undefined}
-      />
+      {tooltip ? (
+        <Tooltip content={tooltip} position="bottom" className="w-full">
+          {input}
+        </Tooltip>
+      ) : (
+        input
+      )}
       {message && (
         <p
           id={messageId}
