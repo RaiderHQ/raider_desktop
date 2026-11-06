@@ -1,3 +1,4 @@
+import React from 'react'
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
@@ -82,7 +83,7 @@ const Location = (): null => {
   return null
 }
 
-const renderAt = (path: string): ReturnType<typeof render> =>
+const renderAt = (path: string, strict = false): ReturnType<typeof render> =>
   render(
     <MemoryRouter initialEntries={[path]}>
       <Location />
@@ -91,7 +92,9 @@ const renderAt = (path: string): ReturnType<typeof render> =>
         <Route path="/overview/tests/new" element={<TestsWorkspace />} />
         <Route path="/overview/tests/:testKey" element={<TestsWorkspace />} />
       </Routes>
-    </MemoryRouter>
+    </MemoryRouter>,
+    // The app renders under StrictMode, which runs effects twice in development
+    strict ? { wrapper: React.StrictMode } : undefined
   )
 
 const startButton = (): HTMLElement => screen.getByRole('button', { name: 'Start recording' })
@@ -305,5 +308,44 @@ describe('New test', () => {
       expect((test as Test).name).not.toBe('Untitled Test')
     }
     expect(screen.queryByText('Untitled Test')).not.toBeInTheDocument()
+  })
+
+  describe('starting (D8)', () => {
+    it('an unsupported URL keeps the form and starts nothing', async () => {
+      renderAt('/overview/tests/new')
+      fireEvent.change(await screen.findByLabelText(en.testPage.name), {
+        target: { value: 'Add to cart' }
+      })
+      fireEvent.change(screen.getByLabelText(en.testPage.url), { target: { value: 'ftp://nope' } })
+      fireEvent.click(startButton())
+      await waitFor(() =>
+        expect(mockToast.error).toHaveBeenCalledWith('Only http and https websites can be recorded.')
+      )
+      expect(api.startRecordingMain).not.toHaveBeenCalled()
+      expect(useRecorderStore.getState().draftTest).toBeNull()
+      expect(startButton()).toBeInTheDocument()
+    })
+
+    it('a draft opened from quick record starts recording on arrival', async () => {
+      useRecorderStore.getState().startDraft('Checkout', 'https://x.test/home', { recordOnOpen: true })
+      renderAt('/overview/tests/new')
+      await waitFor(() => expect(api.startRecordingMain).toHaveBeenCalledTimes(1))
+      expect(useRecorderStore.getState().recordOnOpen).toBe(false)
+    })
+
+    it('starts once even under StrictMode, which runs the effect twice', async () => {
+      useRecorderStore
+        .getState()
+        .startDraft('Checkout', 'https://x.test/home', { recordOnOpen: true })
+      renderAt('/overview/tests/new', true)
+      await waitFor(() => expect(api.startRecordingMain).toHaveBeenCalled())
+      await act(async () => {})
+      expect(api.startRecordingMain).toHaveBeenCalledTimes(1)
+    })
+
+    it('a draft opened from the form does not start twice', async () => {
+      await startDraft()
+      expect(api.startRecordingMain).toHaveBeenCalledTimes(1)
+    })
   })
 })

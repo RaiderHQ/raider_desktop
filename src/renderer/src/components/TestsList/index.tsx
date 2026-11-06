@@ -75,7 +75,7 @@ const TestsList: React.FC<TestsListProps> = ({
         {headerExtra}
       </div>
       {rows.length === 0 ? (
-        <div className="flex items-center justify-center flex-1 text-neutral-mid text-sm p-6 text-center">
+        <div className="flex items-center justify-center flex-1 text-neutral-md text-sm p-6 text-center">
           {t(emptyKey)}
         </div>
       ) : (

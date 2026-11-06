@@ -86,10 +86,10 @@ const StepRow: React.FC<StepRowProps> = ({
         className={`flex flex-col flex-1 min-w-0 p-2 rounded-lg border text-left transition-colors ${statusClass(step, isSelected)}`}
       >
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-bold text-neutral-mid w-5 text-center">{step.number}</span>
-          <span className="text-xs text-neutral-mid">+{seconds}s</span>
+          <span className="text-xs font-bold text-neutral-md w-5 text-center">{step.number}</span>
+          <span className="text-xs text-neutral-md">+{seconds}s</span>
           {step.waitedMs !== null && step.waitedMs >= 100 && (
-            <span className="text-xs text-neutral-mid">
+            <span className="text-xs text-neutral-md">
               {t('traceViewer.waited', { seconds: (step.waitedMs / 1000).toFixed(1) })}
             </span>
           )}
@@ -103,7 +103,7 @@ const StepRow: React.FC<StepRowProps> = ({
           />
         ) : (
           (hasScreenshot || !title) && (
-            <div className="w-full h-20 bg-neutral-lt rounded flex items-center justify-center text-xs text-neutral-mid">
+            <div className="w-full h-20 bg-neutral-lt rounded flex items-center justify-center text-xs text-neutral-md">
               {title ? t('traceViewer.loadingImage') : '...'}
             </div>
           )
@@ -115,7 +115,7 @@ const StepRow: React.FC<StepRowProps> = ({
           aria-expanded={expanded}
           aria-label={expanded ? t('traceViewer.collapseGroup') : t('traceViewer.expandGroup')}
           onClick={() => onToggle(step)}
-          className="p-2 text-xs text-neutral-mid rounded hover:bg-neutral-lt"
+          className="p-2 text-xs text-neutral-md rounded hover:bg-neutral-lt"
         >
           {expanded ? '▾' : '▸'}
         </button>
@@ -195,7 +195,7 @@ const Timeline: React.FC<Omit<TraceTimelineProps, 'traceKey'>> = ({
 
   if (rows.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-neutral-mid text-sm p-4">
+      <div className="flex items-center justify-center h-full text-neutral-md text-sm p-4">
         {t('recorder.traceTimeline.noTrace')}
       </div>
     )

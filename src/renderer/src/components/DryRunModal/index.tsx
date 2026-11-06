@@ -19,7 +19,7 @@ const DryRunModal: React.FC<DryRunModalProps> = ({ title, output, onProceed, onC
           <h3 className="text-lg font-semibold text-neutral-dark">{title}</h3>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-3">
-          <p className="text-sm text-neutral-mid mb-3">
+          <p className="text-sm text-neutral-md mb-3">
             The following files will be generated:
           </p>
           <div className="bg-neutral-lt rounded-md p-3">

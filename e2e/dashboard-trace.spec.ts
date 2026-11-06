@@ -88,7 +88,7 @@ test.describe('Dashboard trace viewer', () => {
     ])
     await openDashboard(page)
 
-    await expect(page.getByText('Overall Summary')).toBeVisible()
+    await expect(page.getByText('Overall summary')).toBeVisible()
     await expect(page.getByText('Search products')).toBeVisible()
     await expect(page.getByText('Checkout')).toBeVisible()
   })
@@ -101,7 +101,7 @@ test.describe('Dashboard trace viewer', () => {
 
     await page.getByText('Search products').click()
     await expect(page.getByText('Status:')).toBeVisible()
-    await page.getByRole('button', { name: 'View Trace' }).click()
+    await page.getByRole('button', { name: 'View trace' }).click()
 
     expect(await getIPCCalls(page, 'loadTrace')).toEqual([['t1']])
     // The timeline lists each step; picking one shows what it did
@@ -117,6 +117,6 @@ test.describe('Dashboard trace viewer', () => {
 
     await page.getByText('Search products').click()
     await expect(page.getByText('Status:')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'View Trace' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'View trace' })).toHaveCount(0)
   })
 })

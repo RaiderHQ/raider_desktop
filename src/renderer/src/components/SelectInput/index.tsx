@@ -36,7 +36,7 @@ const SelectInput: React.FC<SelectInputProps> = ({ options, onChange, selected, 
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="text-neutral-mid"
+            className="text-neutral-md"
           >
             <polyline points="6,9 12,15 18,9" />
           </svg>

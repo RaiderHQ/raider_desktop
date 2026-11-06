@@ -83,7 +83,7 @@ const SavedLogins: React.FC = () => {
       >
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-neutral-dark truncate">{login.name}</p>
-          <div className="flex items-center gap-2 text-xs text-neutral-mid">
+          <div className="flex items-center gap-2 text-xs text-neutral-md">
             {login.known ? (
               <>
                 {host && <span>{host}</span>}
@@ -119,11 +119,11 @@ const SavedLogins: React.FC = () => {
 
   return (
     <div className="border border-neutral-bdr rounded-lg bg-white">
-      <p className="px-4 pt-3 pb-2 text-xs font-semibold text-neutral-mid uppercase tracking-wide">
+      <p className="px-4 pt-3 pb-2 text-xs font-semibold text-neutral-md uppercase tracking-wide">
         {t('logins.title')}
       </p>
       {data.logins.length === 0 ? (
-        <div className="px-4 pb-4 text-xs text-neutral-mid">
+        <div className="px-4 pb-4 text-xs text-neutral-md">
           <p>{t('logins.empty')}</p>
           {data.unsupportedReason && (
             <p data-testid="saved-logins-hint" className="mt-1">

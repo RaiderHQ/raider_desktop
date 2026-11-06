@@ -35,8 +35,8 @@ test.describe('Recording Settings', () => {
   })
 
   test('shows Implicit Wait and Explicit Wait fields', async ({ page }) => {
-    await expect(page.getByText('Implicit Wait')).toBeVisible({ timeout: 5000 })
-    await expect(page.getByText('Explicit Wait')).toBeVisible()
+    await expect(page.getByText('Implicit wait')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('Explicit wait')).toBeVisible()
   })
 
   test('wait fields are number inputs', async ({ page }) => {

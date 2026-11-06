@@ -32,7 +32,7 @@ const ShowAll: React.FC<{ checked: boolean; onChange: (all: boolean) => void }> 
 }) => {
   const { t } = useTranslation()
   return (
-    <label className="flex items-center gap-2 pb-2 text-xs text-neutral-mid">
+    <label className="flex items-center gap-2 pb-2 text-xs text-neutral-md">
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       {t('traceViewer.showAll')}
     </label>
@@ -89,7 +89,7 @@ const SavedTraceViewer: React.FC<SavedTraceViewerProps> = ({ traceId, index, onC
       <header className="flex items-start justify-between gap-4 px-6 py-3 border-b border-neutral-bdr">
         <div className="min-w-0">
           <h2 className="text-lg font-semibold text-neutral-dark break-words">{test.fullName}</h2>
-          <div className="flex flex-wrap gap-3 text-xs text-neutral-mid">
+          <div className="flex flex-wrap gap-3 text-xs text-neutral-md">
             {(test.status === 'passed' || test.status === 'failed') && (
               <span className={test.status === 'failed' ? 'text-status-err' : 'text-status-ok'}>
                 {t(`traceViewer.status.${test.status}`)}
@@ -112,7 +112,7 @@ const SavedTraceViewer: React.FC<SavedTraceViewerProps> = ({ traceId, index, onC
       </header>
 
       {removed.length > 0 && (
-        <ul className="px-6 py-2 text-xs text-neutral-mid bg-neutral-lt border-b border-neutral-bdr">
+        <ul className="px-6 py-2 text-xs text-neutral-md bg-neutral-lt border-b border-neutral-bdr">
           {removed.map((key) => (
             <li key={key}>{t(`traceViewer.truncated.${key}`)}</li>
           ))}
@@ -143,7 +143,7 @@ const SavedTraceViewer: React.FC<SavedTraceViewerProps> = ({ traceId, index, onC
                 className={`px-3 py-1 text-sm border-b-2 ${
                   tab === name
                     ? 'border-ruby text-neutral-dark font-semibold'
-                    : 'border-transparent text-neutral-mid hover:text-neutral-dk'
+                    : 'border-transparent text-neutral-md hover:text-neutral-dk'
                 }`}
               >
                 {t(`traceViewer.tabs.${name}`)}

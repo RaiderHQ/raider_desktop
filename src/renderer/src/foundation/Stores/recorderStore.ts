@@ -63,8 +63,11 @@ interface RecorderStore {
   setOpenTarget: (target: { suiteId: string; testId: string } | null) => void
   setRecordingTarget: (target: RecordingTarget | null) => void
   setRecordingBrowser: (browser: { url: string; preloadPath: string } | null) => void
+  /** The test page should start the recorder as soon as the draft opens (quick record) */
+  recordOnOpen: boolean
   /** Open a new, unsaved test with this name and start URL, ready to record */
-  startDraft: (name: string, url: string) => void
+  startDraft: (name: string, url: string, options?: { recordOnOpen?: boolean }) => void
+  setRecordOnOpen: (value: boolean) => void
   setDraftTest: (test: Test | null) => void
   setUnsavedExample: (unsaved: UnsavedExample | null) => void
   setPickingStep: (step: number | null) => void
@@ -94,6 +97,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   recordingUrl: null,
   preloadPath: null,
   draftTest: null,
+  recordOnOpen: false,
   unsavedExample: null,
   pickingStep: null,
 
@@ -114,10 +118,11 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   setRecordingTarget: (target): void => set({ recordingTarget: target }),
   setRecordingBrowser: (browser): void =>
     set({ recordingUrl: browser?.url ?? null, preloadPath: browser?.preloadPath ?? null }),
-  startDraft: (name, url): void => {
+  startDraft: (name, url, options): void => {
     const draft: Test = { id: crypto.randomUUID(), name, url, steps: [] }
     set({
       draftTest: draft,
+      recordOnOpen: options?.recordOnOpen ?? false,
       activeTest: draft,
       // No suite lists a draft: nothing autosaves it, and suite updates leave it alone
       activeSuiteId: null,
@@ -145,8 +150,10 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
       openTarget: { suiteId: suite.id, testId: test.id }
     })
   },
+  setRecordOnOpen: (value): void => set({ recordOnOpen: value }),
   resetForProject: (): void =>
     set({
+      recordOnOpen: false,
       suites: [],
       activeSuiteId: null,
       activeTest: null,

@@ -76,7 +76,7 @@ const QuickRecordDialog: React.FC<QuickRecordDialogProps> = ({ onClose }) => {
       }
       setProjectPath(result.projectPath)
       // After activation: switching projects clears the recorder's open test
-      useRecorderStore.getState().startDraft(name.trim(), normalizedUrl)
+      useRecorderStore.getState().startDraft(name.trim(), normalizedUrl, { recordOnOpen: true })
       onClose()
       navigate('/overview/tests/new')
     } catch (error) {

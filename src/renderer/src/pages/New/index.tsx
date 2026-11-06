@@ -118,7 +118,7 @@ const CreateProject: React.FC = () => {
     <>
       <div className="text-center mb-10 mt-10">
         <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-neutral-dark mb-2">{t('newProject.title')}</h1>
-        <p className="text-neutral-mid text-base md:text-lg lg:text-xl">{t('newProject.subtitle')}</p>
+        <p className="text-neutral-md text-base md:text-lg lg:text-xl">{t('newProject.subtitle')}</p>
       </div>
 
       <ContentArea>
@@ -159,7 +159,7 @@ const CreateProject: React.FC = () => {
                 ]}
               />
               {!mobileSupported && (
-                <p id="mobile-needs-update" className="mt-1 text-xs text-neutral-mid">
+                <p id="mobile-needs-update" className="mt-1 text-xs text-neutral-md">
                   {t('newProject.target.mobileNeedsUpdate')}
                 </p>
               )}
@@ -203,7 +203,7 @@ const CreateProject: React.FC = () => {
                 }
               />
               {isMobile && (
-                <p className="mt-1 text-xs text-neutral-mid">{t('newProject.ci.mobileAzure')}</p>
+                <p className="mt-1 text-xs text-neutral-md">{t('newProject.ci.mobileAzure')}</p>
               )}
             </div>
           </div>
