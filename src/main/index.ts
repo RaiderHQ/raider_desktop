@@ -54,7 +54,10 @@ import { openTraceFromDialog, registerTraceIpc } from './handlers/trace/traceIpc
 import { makeBaselineConfirm } from './handlers/results/baselineConfirm'
 import { acceptBaseline } from './handlers/results/acceptBaseline'
 import { installAppMenu, setRecordingMenuState, withLiveWindow } from './appMenu'
-import { installRecordingState, resetRecordingOnWindowLoss } from './handlers/recording/recordingState'
+import {
+  installRecordingState,
+  resetRecordingOnWindowLoss
+} from './handlers/recording/recordingState'
 import { killActiveRun } from './handlers/run/runner'
 import exportTest from './handlers/io/exportTest'
 import exportSuite from './handlers/io/exportSuite'

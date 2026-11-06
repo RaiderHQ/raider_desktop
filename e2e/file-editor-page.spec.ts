@@ -111,7 +111,10 @@ test.describe('File Editor Page', () => {
     ]
     await setupProjectContext(page, { files: mockTree })
     await page.evaluate(() => {
-      ;(window as any).api.readFile = async () => ({ success: true, data: 'original content' })
+      ;(window as unknown as { api: Record<string, unknown> }).api.readFile = async (): Promise<{
+        success: boolean
+        data: string
+      }> => ({ success: true, data: 'original content' })
     })
     await mockMainIPCCapture(electronApp, 'edit-file', { success: true })
     await goToOverviewFiles(page)
@@ -122,9 +125,7 @@ test.describe('File Editor Page', () => {
     await page.keyboard.type('x')
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+s' : 'Control+s')
 
-    await expect
-      .poll(async () => (await getMainIPCCalls(electronApp, 'edit-file')).length)
-      .toBe(1)
+    await expect.poll(async () => (await getMainIPCCalls(electronApp, 'edit-file')).length).toBe(1)
     expect((await getMainIPCCalls(electronApp, 'edit-file'))[0][0]).toBe(
       '/mock/test-project/menu_save.rb'
     )
