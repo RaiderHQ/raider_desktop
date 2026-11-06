@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import toast from 'react-hot-toast'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import InfoButton from '@components/InfoButton'
@@ -15,6 +14,8 @@ import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useVersionStore, { isVersionAtLeast } from '@foundation/Stores/versionStore'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
+import { isValidProjectName } from '@shared/projectName'
+import { showErrorToast } from '@foundation/errorToast'
 
 const options = {
   test: ['Rspec', 'Cucumber']
@@ -53,12 +54,12 @@ const CreateProject: React.FC = () => {
   const [examples, setExamples] = useState(true)
 
   const isMobile = target === 'mobile' && mobileSupported
+  const nameIsValid = isValidProjectName(projectName)
+  // The rule shows under the field; it turns into an error once a wrong name is typed
+  const nameError = projectName !== '' && !nameIsValid ? t('newProject.input.invalid') : undefined
 
   const handleCreateProject = async (): Promise<void> => {
-    if (!projectName.trim()) {
-      toast.error(t('newProject.alerts.invalidName'))
-      return
-    }
+    if (!nameIsValid) return
 
     const folder = await window.api.selectFolder(t('newProject.alerts.selectFolder'))
     if (!folder) {
@@ -85,7 +86,7 @@ const CreateProject: React.FC = () => {
       )
 
       if (!raiderResult || !raiderResult.success) {
-        toast.error(`Project creation failed: ${raiderResult?.error}`)
+        showErrorToast(t('newProject.alerts.creationFailed'), raiderResult?.error)
         setLoading(false)
         return
       }
@@ -98,7 +99,7 @@ const CreateProject: React.FC = () => {
       }, 1000)
     } catch (error) {
       setLoading(false)
-      toast.error(`An unexpected error occurred: ${error}`)
+      showErrorToast(t('newProject.alerts.creationFailed'), String(error))
     }
   }
 
@@ -130,10 +131,13 @@ const CreateProject: React.FC = () => {
         <div className="bg-white p-4">
           <div className="mb-6">
             <InputField
+              id="project-name"
               label={t('newProject.input.label')}
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
               placeholder={t('newProject.input.placeholder')}
+              hint={t('newProject.input.hint')}
+              error={nameError}
             />
           </div>
 
@@ -236,7 +240,7 @@ const CreateProject: React.FC = () => {
               </Button>
             </div>
             <div className="pl-4">
-              <Button onClick={handleCreateProject} type="primary">
+              <Button onClick={handleCreateProject} type="primary" disabled={!nameIsValid}>
                 {t('button.create.text')}
               </Button>
             </div>

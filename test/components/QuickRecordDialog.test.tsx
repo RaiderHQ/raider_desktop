@@ -2,7 +2,7 @@ import { render, screen, act, fireEvent, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router'
-import toast from 'react-hot-toast'
+import { showErrorToast } from '@foundation/errorToast'
 import QuickRecordDialog from '@components/QuickRecordDialog'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
@@ -14,6 +14,7 @@ vi.mock('react-i18next', () => ({
 vi.mock('react-hot-toast', () => ({
   default: { error: vi.fn(), loading: vi.fn(), success: vi.fn() }
 }))
+vi.mock('@foundation/errorToast', () => ({ showErrorToast: vi.fn() }))
 vi.mock('@components/RubyInstallModal', () => ({
   default: (): JSX.Element => <div>ruby-install-modal</div>
 }))
@@ -126,7 +127,7 @@ describe('QuickRecordDialog', (): void => {
     await act(async () => {
       fireEvent.click(screen.getByText('quickRecord.start'))
     })
-    await waitFor(() => expect(toast.error).toHaveBeenCalled())
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled())
     expect(mockNavigate).not.toHaveBeenCalled()
     expect(useProjectStore.getState().projectPath).toBeNull()
     expect(useRecorderStore.getState().draftTest).toBeNull()
@@ -162,7 +163,7 @@ describe('QuickRecordDialog', (): void => {
       fireEvent.click(screen.getByText('quickRecord.start'))
     })
     expect(screen.getByText(/gems-install-modal ruby_raider/)).toBeInTheDocument()
-    expect(toast.error).not.toHaveBeenCalled()
+    expect(showErrorToast).not.toHaveBeenCalled()
 
     await act(async () => {
       fireEvent.click(screen.getByText('install'))
@@ -182,6 +183,6 @@ describe('QuickRecordDialog', (): void => {
       fireEvent.click(screen.getByText('quickRecord.start'))
     })
     expect(screen.queryByText(/gems-install-modal/)).not.toBeInTheDocument()
-    expect(toast.error).toHaveBeenCalledWith('quickRecord.error')
+    expect(showErrorToast).toHaveBeenCalledWith('quickRecord.error', 'disk full')
   })
 })

@@ -47,3 +47,23 @@ describe('InputField', () => {
     expect(screen.getByPlaceholderText('Enter text...')).toBeInTheDocument()
   })
 })
+
+describe('InputField accessibility', () => {
+  it('ties the label to the input', () => {
+    render(<InputField id="project-name" label="Project name" value="" onChange={vi.fn()} />)
+    expect(screen.getByLabelText('Project name')).toBe(screen.getByRole('textbox'))
+  })
+
+  it('describes the input with its hint', () => {
+    render(<InputField id="n" value="" onChange={vi.fn()} hint="Letters and numbers" />)
+    expect(screen.getByRole('textbox')).toHaveAccessibleDescription('Letters and numbers')
+    expect(screen.getByRole('textbox')).not.toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('marks the input invalid and announces the error', () => {
+    render(<InputField id="n" value="a b" onChange={vi.fn()} error="No spaces" />)
+    expect(screen.getByRole('textbox')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('textbox')).toHaveAccessibleDescription('No spaces')
+    expect(screen.getByRole('alert')).toHaveTextContent('No spaces')
+  })
+})

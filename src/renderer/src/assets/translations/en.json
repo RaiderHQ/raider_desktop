@@ -23,7 +23,7 @@
     "start": "Start",
     "starting": "Setting up…",
     "cancel": "Cancel",
-    "error": "Raider couldn't set up a quick recording: {{error}}",
+    "error": "Raider couldn't set up a quick recording.",
     "banner": "This project lives in Raider's own folder.",
     "saveTo": "Save project to…",
     "stopFirst": "Stop recording and save or discard your test first.",
@@ -33,14 +33,16 @@
   },
   "newProject": {
     "alerts": {
-      "invalidName": "Please enter a valid project name.",
+      "creationFailed": "Raider couldn't create the project.",
       "selectFolder": "Select a folder to save your project"
     },
     "title": "Create a new project",
     "subtitle": "To create a project, first you need to select the following:",
     "input": {
       "label": "Project Name",
-      "placeholder": "Enter project name"
+      "placeholder": "Enter project name",
+      "hint": "Letters, numbers, underscores and hyphens, with no spaces. For example my_project.",
+      "invalid": "Use letters, numbers, underscores and hyphens only, with no spaces. For example my_project."
     },
     "question": {
       "target": "What are you testing?",
@@ -1072,5 +1074,10 @@
       "tag_name": "Found by tag",
       "other": "Found by locator"
     }
+  },
+  "errorToast": {
+    "showDetails": "Show details",
+    "hideDetails": "Hide details",
+    "dismiss": "Dismiss"
   }
 }
