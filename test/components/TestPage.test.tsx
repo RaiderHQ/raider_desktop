@@ -1187,6 +1187,21 @@ describe('TestPage re-picking the failed element', () => {
       expect(spies.continueRecording).toHaveBeenCalledWith({ kind: 'test' })
     })
 
+    it('ignores Run and Record while a confirmation is open', async () => {
+      renderPage(withFile)
+      await opened()
+      fireEvent.click(screen.getByRole('button', { name: 'testPage.more' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'testPage.startOver' }))
+      expect(screen.getByText('testPage.startOverConfirm')).toBeInTheDocument()
+      act(() => {
+        dispatchMenuCommand('run')
+        dispatchMenuCommand('record')
+      })
+      expect(spies.run).not.toHaveBeenCalled()
+      expect(spies.continueRecording).not.toHaveBeenCalled()
+      expect(spies.start).not.toHaveBeenCalled()
+    })
+
     it('ignores Run and Record while a recording is going', async () => {
       renderPage(withFile)
       await opened()

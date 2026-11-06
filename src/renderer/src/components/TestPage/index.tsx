@@ -229,8 +229,12 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   }
 
   // The menu bar's Test › Record and Run act like the toolbar buttons, under the same rules
-  const canRecord = !!test && !readOnly && !busy && !recordingDisabled
-  const canRun = !!test && !busy && !runBusy && !isDraft
+  // A confirmation on top of the page blocks the buttons; it must block the menu too
+  const confirming = confirmingDelete || confirmingStartOver || reRecordingFrom !== null
+  // recordingTarget covers the moment between pressing Record and the recorder starting
+  const starting = useRecorderStore((s) => s.recordingTarget !== null)
+  const canRecord = !!test && !readOnly && !busy && !starting && !recordingDisabled && !confirming
+  const canRun = !!test && !busy && !starting && !runBusy && !isDraft && !confirming
   useEffect(
     () =>
       onMenuCommand((command) => {

@@ -4,6 +4,7 @@ import { vi } from 'vitest'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import MainTemplate from '@templates/Main'
 import { onMenuCommand } from '@foundation/menuCommands'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 
 vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string, opts?: object) => string } => ({
@@ -240,6 +241,48 @@ describe('MainTemplate project files toasts', () => {
       })
       off()
       expect(seen).toEqual(['save', 'record', 'run'])
+    })
+
+    it('refuses to open or create a project while a recording is going', async () => {
+      useRecorderStore.setState({ isRecording: true })
+      const toast = (await import('react-hot-toast')).default as unknown as {
+        error: ReturnType<typeof vi.fn>
+      }
+      toast.error.mockClear()
+      api().selectFolder.mockClear()
+      renderAt('/overview')
+      await act(async () => {
+        menuListener()('open-project')
+        menuListener()('new-project')
+      })
+      expect(api().selectFolder).not.toHaveBeenCalled()
+      expect(screen.getByTestId('where')).toHaveTextContent('/overview')
+      expect(toast.error).toHaveBeenCalledWith('quickRecord.stopFirst')
+      useRecorderStore.setState({ isRecording: false })
+    })
+
+    it('opens one folder picker for two quick Open project… presses', async () => {
+      api().selectFolder.mockClear()
+      let pick: (folder: string | null) => void = () => {}
+      api().selectFolder.mockReturnValueOnce(new Promise((r) => (pick = r)))
+      renderAt('/')
+      await act(async () => {
+        menuListener()('open-project')
+        menuListener()('open-project')
+      })
+      expect(api().selectFolder).toHaveBeenCalledTimes(1)
+      await act(async () => pick(null))
+    })
+
+    it('leaves the page alone while the help modal is open', () => {
+      const root = document.createElement('div')
+      root.id = 'root'
+      document.body.appendChild(root)
+      renderAt('/overview')
+      act(() => menuListener()('how-it-works'))
+      act(() => menuListener()('new-project'))
+      expect(screen.getByTestId('where')).toHaveTextContent('/overview')
+      root.remove()
     })
 
     it('ignores anything that is not a known command', () => {

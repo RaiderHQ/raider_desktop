@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import toast, { Toaster } from 'react-hot-toast'
@@ -11,6 +11,7 @@ import TraceViewerOverlay from '@components/TraceViewerOverlay'
 import useVersionStore from '@foundation/Stores/versionStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 import { installMissingGems } from '@foundation/installGems'
 import { subscribeRunEvents } from '@foundation/Stores/runStore'
 import { dispatchMenuCommand, isMenuCommand } from '@foundation/menuCommands'
@@ -85,9 +86,15 @@ const MainTemplate: React.FC = (): JSX.Element => {
   const navigate = useNavigate()
   const setProjectPath = useProjectStore((state) => state.setProjectPath)
 
-  // The menu bar's commands: the app-wide ones are handled here, the rest go to the open page
+  // The menu bar's commands: the app-wide ones are handled here, the rest go to the open page.
+  // Modal state is read through a ref so the one subscription sees the current values.
+  const modalOpen = useRef(false)
+  modalOpen.current = isRubyInstallModalOpen || isGemsInstallModalOpen || isConceptsModalOpen
+  const pickingFolder = useRef(false)
   useEffect(() => {
     const openProject = async (): Promise<void> => {
+      if (pickingFolder.current) return
+      pickingFolder.current = true
       try {
         const folder = await window.api.selectFolder(t('landing.error.selectFolder'))
         if (!folder) return
@@ -96,14 +103,32 @@ const MainTemplate: React.FC = (): JSX.Element => {
       } catch (error) {
         console.error('Opening the project failed:', error)
         toast.error(t('landing.error.openProject'))
+      } finally {
+        pickingFolder.current = false
       }
+    }
+    // Switching projects mid-recording would save the recording into the wrong project
+    const recorderBusy = (): boolean => {
+      const { recordingTarget, isRecording, isReplayingToBreakpoint } = useRecorderStore.getState()
+      return !!recordingTarget || isRecording || isReplayingToBreakpoint
     }
     return window.api.onMenuCommand((command) => {
       if (!isMenuCommand(command)) return
-      if (command === 'new-project') navigate('/new')
-      else if (command === 'open-project') void openProject()
-      else if (command === 'how-it-works') setIsConceptsModalOpen(true)
-      else dispatchMenuCommand(command)
+      if (command === 'how-it-works') {
+        setIsConceptsModalOpen(true)
+        return
+      }
+      if (modalOpen.current) return
+      if (command === 'new-project' || command === 'open-project') {
+        if (recorderBusy()) {
+          toast.error(t('quickRecord.stopFirst'))
+          return
+        }
+        if (command === 'new-project') navigate('/new')
+        else void openProject()
+        return
+      }
+      dispatchMenuCommand(command)
     })
   }, [])
 

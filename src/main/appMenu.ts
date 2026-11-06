@@ -65,11 +65,11 @@ export function buildAppMenuTemplate(
       command('run', t('run'), 'CmdOrCtrl+R')
     ]
   }
-  // Reload would take Cmd+R from Run, so the developer items carry no accelerators
+  // Reload would take Cmd+R from Run: only the empty string clears a role's default accelerator
   const developer: Electron.MenuItemConstructorOptions[] = options.isPackaged
     ? []
     : [
-        { role: 'reload', accelerator: undefined },
+        { role: 'reload', accelerator: '' },
         { role: 'forceReload' },
         { role: 'toggleDevTools' },
         { type: 'separator' }
@@ -86,6 +86,7 @@ export function buildAppMenuTemplate(
     ]
   }
   const help: Electron.MenuItemConstructorOptions = {
+    ...(isMac ? { role: 'help' as const } : {}),
     label: t('help'),
     submenu: [command('how-it-works', t('howItWorks'))]
   }

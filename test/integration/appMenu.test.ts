@@ -33,7 +33,7 @@ describe('buildAppMenuTemplate', () => {
       'Test',
       'View',
       'windowMenu',
-      'Help'
+      'help'
     ])
   })
 
@@ -80,9 +80,18 @@ describe('buildAppMenuTemplate', () => {
     )
   })
 
-  it('keeps the developer items in View while developing', () => {
-    const roles = items(build('darwin', false), 'View').map((item) => item.role)
-    expect(roles).toEqual(expect.arrayContaining(['reload', 'forceReload', 'toggleDevTools']))
+  it('keeps the developer items in View while developing, with Reload off Cmd+R', () => {
+    const view = items(build('darwin', false), 'View')
+    expect(view.map((item) => item.role)).toEqual(
+      expect.arrayContaining(['reload', 'forceReload', 'toggleDevTools'])
+    )
+    // Electron keeps the role's default accelerator unless it is set to the empty string
+    expect(view.find((item) => item.role === 'reload')).toMatchObject({ accelerator: '' })
+  })
+
+  it('marks Help as the macOS help menu', () => {
+    expect(menu(build('darwin'), 'Help')).toMatchObject({ role: 'help' })
+    expect(menu(build('linux'), 'Help').role).toBeUndefined()
   })
 
   it.each(['linux', 'win32'] as const)(

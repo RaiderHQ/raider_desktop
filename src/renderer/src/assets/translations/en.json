@@ -1021,10 +1021,6 @@
       "closed": "This trace was replaced by a newer copy of the same file. Open it again.",
       "dropOne": "Drop one trace file at a time."
     },
-    "menu": {
-      "file": "File",
-      "openTrace": "Open trace…"
-    },
     "dialogTitle": "Open a trace",
     "dialogFilter": "Traces",
     "element": {
