@@ -10,13 +10,15 @@ interface DropdownProps {
   options: DropdownOption[]
   defaultOption?: number
   disabled?: boolean
+  'aria-describedby'?: string
 }
 
 const Dropdown: React.FC<DropdownProps> = ({
   buttonText,
   options,
   defaultOption = 0,
-  disabled = false
+  disabled = false,
+  'aria-describedby': describedBy
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [selected, setSelected] = useState(defaultOption)
@@ -51,6 +53,7 @@ const Dropdown: React.FC<DropdownProps> = ({
       <div>
         <button
           onClick={handleToggle}
+          aria-describedby={describedBy}
           disabled={disabled}
           className={`text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors ${
             disabled

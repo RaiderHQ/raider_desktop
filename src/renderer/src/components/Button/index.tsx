@@ -6,6 +6,7 @@ interface ButtonProps {
   children: React.ReactNode
   disabled?: boolean
   className?: string
+  'aria-describedby'?: string
 }
 
 const Button = ({
@@ -13,7 +14,8 @@ const Button = ({
   children,
   onClick,
   disabled = false,
-  className = ''
+  className = '',
+  'aria-describedby': describedBy
 }: ButtonProps): JSX.Element => {
   const styles: Record<string, string> = {
     primary: 'bg-ruby text-white hover:shadow-card-hover',
@@ -29,7 +31,12 @@ const Button = ({
   } ${styles[disabled ? 'disabled' : type]}`
 
   return (
-    <button onClick={onClick} className={`${baseClassName} ${className}`} disabled={disabled}>
+    <button
+      onClick={onClick}
+      className={`${baseClassName} ${className}`}
+      disabled={disabled}
+      aria-describedby={describedBy}
+    >
       {children}
     </button>
   )
