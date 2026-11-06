@@ -260,6 +260,9 @@ const api = {
   readTraceEntry: (traceId: string, name: string): Promise<TraceEntryResult> =>
     ipcRenderer.invoke('trace-entry', traceId, name),
   closeTrace: (traceId: string): Promise<void> => ipcRenderer.invoke('trace-close', traceId),
+  /** Menu bar commands (New project…, Save, Run, …); the renderer checks the value */
+  onMenuCommand: (callback: (command: string) => void): (() => void) =>
+    subscribe('menu-command', callback),
   /** Subscribes to traces opened from the menu; the returned function removes only this one */
   onTraceOpened: (callback: (result: TraceOpenResult) => void): (() => void) => {
     const listener = (_event: IpcRendererEvent, result: TraceOpenResult): void => callback(result)

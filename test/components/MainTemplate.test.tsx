@@ -1,8 +1,10 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import MainTemplate from '@templates/Main'
+import { onMenuCommand } from '@foundation/menuCommands'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 
 vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string, opts?: object) => string } => ({
@@ -15,10 +17,14 @@ vi.mock('@foundation/Stores/versionStore', () => ({
   default: vi.fn(() => '2.0.0')
 }))
 
+const projectState = vi.hoisted(() => ({
+  projectPath: '/fake/project',
+  setProjectPath: vi.fn()
+}))
 vi.mock('@foundation/Stores/projectStore', () => {
   const useProjectStore = (selector?: (s: Record<string, unknown>) => unknown) =>
-    selector ? selector({ projectPath: '/fake/project' }) : { projectPath: '/fake/project' }
-  useProjectStore.getState = () => ({ projectPath: '/fake/project' })
+    selector ? selector(projectState) : projectState
+  useProjectStore.getState = () => projectState
   useProjectStore.subscribe = vi.fn()
   return { default: useProjectStore }
 })
@@ -56,7 +62,9 @@ beforeAll(() => {
     onSuitesTooNew: vi.fn(() => vi.fn()),
     onTraceOpened: vi.fn(() => vi.fn()),
     onSuitesRecovered: vi.fn(() => vi.fn()),
-    onSuiteUpdated: vi.fn(() => vi.fn())
+    onSuiteUpdated: vi.fn(() => vi.fn()),
+    onMenuCommand: vi.fn(() => vi.fn()),
+    selectFolder: vi.fn().mockResolvedValue('/picked/project')
   }
 })
 
@@ -174,5 +182,117 @@ describe('MainTemplate project files toasts', () => {
     renderMain()
     listener('onSuitesTooNew')()
     expect(toast.error).toHaveBeenCalledWith('suites.tooNew', expect.anything())
+  })
+
+  describe('menu bar commands (D11)', () => {
+    const api = (): Record<string, ReturnType<typeof vi.fn>> =>
+      (window as unknown as { api: Record<string, ReturnType<typeof vi.fn>> }).api
+    const menuListener = (): ((command: string) => void) => {
+      const subscribe = api().onMenuCommand
+      return subscribe.mock.calls[subscribe.mock.calls.length - 1][0]
+    }
+    const Where = (): JSX.Element => <div data-testid="where">{useLocation().pathname}</div>
+
+    const renderAt = (path: string): void => {
+      render(
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route element={<MainTemplate />}>
+              <Route path="*" element={<Where />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      )
+    }
+
+    it('New project… opens the create page', () => {
+      renderAt('/overview')
+      act(() => menuListener()('new-project'))
+      expect(screen.getByTestId('where')).toHaveTextContent('/new')
+    })
+
+    it('Open project… picks a folder and opens it', async () => {
+      renderAt('/')
+      await act(async () => menuListener()('open-project'))
+      expect(api().selectFolder).toHaveBeenCalled()
+      expect(projectState.setProjectPath).toHaveBeenCalledWith('/picked/project')
+      expect(screen.getByTestId('where')).toHaveTextContent('/overview')
+    })
+
+    it('How Ruby Raider works opens the concepts modal', () => {
+      // The modal portals into #root, as in the app
+      const root = document.createElement('div')
+      root.id = 'root'
+      document.body.appendChild(root)
+      renderAt('/overview')
+      act(() => menuListener()('how-it-works'))
+      expect(screen.getByText('concepts.title')).toBeInTheDocument()
+      root.remove()
+    })
+
+    it('passes Save, Record and Run on to the page that is open', () => {
+      renderAt('/overview')
+      const seen: string[] = []
+      const off = onMenuCommand((c) => seen.push(c))
+      act(() => {
+        menuListener()('save')
+        menuListener()('record')
+        menuListener()('run')
+      })
+      off()
+      expect(seen).toEqual(['save', 'record', 'run'])
+    })
+
+    it('refuses to open or create a project while a recording is going', async () => {
+      useRecorderStore.setState({ isRecording: true })
+      const toast = (await import('react-hot-toast')).default as unknown as {
+        error: ReturnType<typeof vi.fn>
+      }
+      toast.error.mockClear()
+      api().selectFolder.mockClear()
+      renderAt('/overview')
+      await act(async () => {
+        menuListener()('open-project')
+        menuListener()('new-project')
+      })
+      expect(api().selectFolder).not.toHaveBeenCalled()
+      expect(screen.getByTestId('where')).toHaveTextContent('/overview')
+      expect(toast.error).toHaveBeenCalledWith('quickRecord.stopFirst')
+      useRecorderStore.setState({ isRecording: false })
+    })
+
+    it('opens one folder picker for two quick Open project… presses', async () => {
+      api().selectFolder.mockClear()
+      let pick: (folder: string | null) => void = () => {}
+      api().selectFolder.mockReturnValueOnce(new Promise((r) => (pick = r)))
+      renderAt('/')
+      await act(async () => {
+        menuListener()('open-project')
+        menuListener()('open-project')
+      })
+      expect(api().selectFolder).toHaveBeenCalledTimes(1)
+      await act(async () => pick(null))
+    })
+
+    it('leaves the page alone while the help modal is open', () => {
+      const root = document.createElement('div')
+      root.id = 'root'
+      document.body.appendChild(root)
+      renderAt('/overview')
+      act(() => menuListener()('how-it-works'))
+      act(() => menuListener()('new-project'))
+      expect(screen.getByTestId('where')).toHaveTextContent('/overview')
+      root.remove()
+    })
+
+    it('ignores anything that is not a known command', () => {
+      renderAt('/overview')
+      const seen: string[] = []
+      const off = onMenuCommand((c) => seen.push(c))
+      act(() => menuListener()('format-disk'))
+      off()
+      expect(seen).toEqual([])
+      expect(screen.getByTestId('where')).toHaveTextContent('/overview')
+    })
   })
 })

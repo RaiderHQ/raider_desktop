@@ -11,6 +11,7 @@ import ToggleSwitch from '@components/ToggleSwitch'
 import TagInput from '@components/TagInput'
 import ProjectDashboard from '@components/ProjectDashboard'
 import Editor from '@components/Editor'
+import { onMenuCommand } from '@foundation/menuCommands'
 import EditorSaveBar from '@components/EditorSaveBar'
 import UnsavedChangesModal from '@components/UnsavedChangesModal'
 import Terminal from '@components/Terminal'
@@ -596,6 +597,18 @@ const Overview: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [editingFile, activeTab, fileDirty, isSavingFile, handleSaveFile])
+
+  // The menu bar's Run runs the project while the Files tab is showing (a test page takes it
+  // on the Tests tab); Save writes the open file there
+  useEffect(
+    () =>
+      onMenuCommand((command) => {
+        if (activeTab !== 'files') return
+        if (command === 'run') handleRunRaiderTests()
+        if (command === 'save' && editingFile && fileDirty) void handleSaveFile()
+      }),
+    [activeTab, editingFile, fileDirty, handleRunRaiderTests, handleSaveFile]
+  )
 
   const handleFileContextMenu = (e: React.MouseEvent, filePath: string, fileName: string): void => {
     e.preventDefault()

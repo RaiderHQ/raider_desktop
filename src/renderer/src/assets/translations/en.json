@@ -1038,10 +1038,6 @@
       "closed": "This trace was replaced by a newer copy of the same file. Open it again.",
       "dropOne": "Drop one trace file at a time."
     },
-    "menu": {
-      "file": "File",
-      "openTrace": "Open trace…"
-    },
     "dialogTitle": "Open a trace",
     "dialogFilter": "Traces",
     "element": {
@@ -1089,6 +1085,19 @@
       "tag_name": "Found by tag",
       "other": "Found by locator"
     }
+  },
+  "appMenu": {
+    "file": "File",
+    "newProject": "New project…",
+    "openProject": "Open project…",
+    "openTrace": "Open trace…",
+    "save": "Save",
+    "test": "Test",
+    "record": "Record",
+    "run": "Run",
+    "view": "View",
+    "help": "Help",
+    "howItWorks": "How Ruby Raider works"
   },
   "errorToast": {
     "showDetails": "Show details",

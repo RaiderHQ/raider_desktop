@@ -7,6 +7,7 @@ import Editor from '@components/Editor'
 import EditorSaveBar from '@components/EditorSaveBar'
 import UnsavedChangesModal from '@components/UnsavedChangesModal'
 import { getFileLanguage } from '@foundation/helpers'
+import { onMenuCommand } from '@foundation/menuCommands'
 import { FaArrowLeft } from 'react-icons/fa'
 
 interface FileEditorProps {
@@ -115,7 +116,13 @@ const FileEditor: React.FC = (): JSX.Element => {
     }
 
     window.addEventListener('keydown', handleKeyDown)
-    return (): void => window.removeEventListener('keydown', handleKeyDown)
+    const offMenu = onMenuCommand((command) => {
+      if (command === 'save' && dirty) void handleSave()
+    })
+    return (): void => {
+      window.removeEventListener('keydown', handleKeyDown)
+      offMenu()
+    }
   }, [handleSave, dirty])
 
   return (

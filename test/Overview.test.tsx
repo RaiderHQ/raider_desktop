@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import type React from 'react'
 import Overview from '@pages/Overview'
+import { dispatchMenuCommand } from '@foundation/menuCommands'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router'
@@ -1426,6 +1427,64 @@ describe('Overview live runs', (): void => {
       fireEvent.click(screen.getByTestId('overview-headless-toggle'))
       await waitFor(() => expect(mockApi.updateHeadlessMode).toHaveBeenCalled())
       expect(await screen.findByRole('status')).toHaveTextContent('overview.settings.saved')
+    })
+  })
+
+  describe('menu bar commands on the Files tab (D11)', () => {
+    it('Run from the menu runs the project tests while the Files tab is showing', async () => {
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      await openFilesTab()
+      const start = vi.fn()
+      useRunStore.setState({ start } as never)
+      act(() => dispatchMenuCommand('run'))
+      expect(start).toHaveBeenCalledTimes(1)
+    })
+
+    it('leaves Run to the Tests tab when that tab is showing', async () => {
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      const start = vi.fn()
+      useRunStore.setState({ start } as never)
+      act(() => dispatchMenuCommand('run'))
+      expect(start).not.toHaveBeenCalled()
+    })
+
+    it('Save from the menu writes the open file only when it has changes', async () => {
+      mockApi.readFile.mockResolvedValue({ success: true, data: 'original' })
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      await openFilesTab()
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'a_spec.rb' }))
+      })
+      await act(async () => {
+        dispatchMenuCommand('save')
+      })
+      expect(mockApi.editFile).not.toHaveBeenCalled()
+      fireEvent.change(screen.getByTestId('editor'), { target: { value: 'changed' } })
+      await act(async () => {
+        dispatchMenuCommand('save')
+      })
+      expect(mockApi.editFile).toHaveBeenCalledWith('/fake/project/spec/a_spec.rb', 'changed')
     })
   })
 })

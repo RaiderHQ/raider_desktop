@@ -23,8 +23,13 @@ export const routes: RouteObject[] = [
       {
         path: 'overview',
         element: <Overview />,
-        // Children render nothing themselves: Overview reads the testKey param
-        children: [{ path: 'tests' }, { path: 'tests/new' }, { path: 'tests/:testKey' }]
+        // Children render nothing themselves: Overview reads the testKey param. The null
+        // element says so on purpose, so React Router does not warn about a missing one.
+        children: [
+          { path: 'tests', element: null },
+          { path: 'tests/new', element: null },
+          { path: 'tests/:testKey', element: null }
+        ]
       },
       // The recorder now lives on the Tests tab
       { path: 'recorder', element: <Navigate to="/overview/tests" replace /> }

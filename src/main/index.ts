@@ -192,10 +192,18 @@ app.whenReady().then(() => {
 
   createWindow()
   installAppMenu(
-    withLiveWindow(
-      () => appState.mainWindow,
-      (win) => void openTraceFromDialog(win)
-    )
+    {
+      onOpenTrace: withLiveWindow(
+        () => appState.mainWindow,
+        (win) => void openTraceFromDialog(win)
+      ),
+      // A constant string to the renderer, which acts through its own flows (D11)
+      onCommand: withLiveWindow(
+        () => appState.mainWindow,
+        (win, command) => win.webContents.send('menu-command', command)
+      )
+    },
+    { isPackaged: app.isPackaged }
   )
 
   app.on('activate', function () {
