@@ -27,11 +27,19 @@ export const ALLOWED_DOCS_HOSTS = ['ruby-raider.onrender.com', 'github.com', 'ru
 export function isAllowedDocsUrl(url: string): boolean {
   try {
     const u = new URL(url)
-    return u.protocol === 'https:' && (ALLOWED_DOCS_HOSTS as readonly string[]).includes(u.hostname)
+    return (
+      u.protocol === 'https:' &&
+      !u.username &&
+      !u.password &&
+      u.port === '' &&
+      (ALLOWED_DOCS_HOSTS as readonly string[]).includes(u.hostname)
+    )
   } catch {
     return false
   }
 }
+
+const logId = (id: unknown): string => (typeof id === 'string' ? id.slice(0, 64) : typeof id)
 
 /** Resolves a link id from the table and opens it; false when refused. */
 export async function openDocs(
@@ -40,14 +48,19 @@ export async function openDocs(
   links: Record<string, string> = DOCS_LINKS
 ): Promise<boolean> {
   if (!isDocsLinkId(id) || !Object.prototype.hasOwnProperty.call(links, id)) {
-    console.warn('open-docs refused', id)
+    console.warn('open-docs refused', logId(id))
     return false
   }
   const url = links[id]
   if (!isAllowedDocsUrl(url)) {
-    console.warn('open-docs refused', id)
+    console.warn('open-docs refused', logId(id))
     return false
   }
-  await open(url)
+  try {
+    await open(url)
+  } catch (e) {
+    console.warn('open-docs failed', id, e)
+    return false
+  }
   return true
 }

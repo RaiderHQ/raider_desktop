@@ -1,3 +1,4 @@
+import type { DocsLinkId } from '@shared/docsLinkIds'
 import type { FileNode } from '@shared/types/fileNode'
 import type { CommandType } from '@shared/types/commandType'
 import type { Suite } from '@shared/types/suite'
@@ -303,7 +304,7 @@ export interface WindowApi extends RunApi {
     projectPath: string,
     enabled: boolean
   ) => Promise<{ success: boolean; output?: string; error?: string }>
-  openDocs: (id: string) => Promise<{ success: boolean }>
+  openDocs: (id: DocsLinkId) => Promise<{ success: boolean }>
   getProjectConfig: (projectPath: string) => Promise<{
     success: boolean
     config?: {
