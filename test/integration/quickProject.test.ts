@@ -67,6 +67,14 @@ describe('createQuickProject', () => {
     )
   })
 
+  it('counts a dangling symlink as a taken name', async () => {
+    fs.mkdirSync(quickProjectsDir(), { recursive: true })
+    fs.symlinkSync(path.join(tmp, 'gone'), path.join(quickProjectsDir(), 'shop_test'))
+    const r = await createQuickProject('https://shop.test', 'ruby')
+    expect(r.success && r.projectPath.endsWith('shop_test_2')).toBe(true)
+    expect(fs.lstatSync(path.join(quickProjectsDir(), 'shop_test')).isSymbolicLink()).toBe(true)
+  })
+
   it('fails without leaving a folder when creation fails', async () => {
     mockRun.mockImplementation(async (_e, folder: string, name: string) => {
       fs.mkdirSync(path.join(folder, name))
