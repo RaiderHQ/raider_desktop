@@ -49,6 +49,8 @@ interface RecorderStore {
   pickingStep: number | null
   /** Picking an element to add a check for, while recording */
   assertPicking: boolean
+  /** The recording guide was asked for (Show guide, Help menu) */
+  guideOpen: boolean
 
   setSuites: (suites: Suite[]) => void
   setActiveSuiteId: (id: string | null) => void
@@ -74,6 +76,7 @@ interface RecorderStore {
   setUnsavedExample: (unsaved: UnsavedExample | null) => void
   setPickingStep: (step: number | null) => void
   setAssertPicking: (value: boolean) => void
+  setGuideOpen: (value: boolean) => void
   /** Make the list row's recorded test the active one (throws when no suite lists it) */
   openTest: (row: TestRow) => Promise<void>
   /** Forget everything that belongs to the project that was open */
@@ -104,6 +107,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   unsavedExample: null,
   pickingStep: null,
   assertPicking: false,
+  guideOpen: false,
 
   setSuites: (suites) => set({ suites }),
   setActiveSuiteId: (id) => set({ activeSuiteId: id }),
@@ -139,6 +143,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   setUnsavedExample: (unsaved): void => set({ unsavedExample: unsaved }),
   setPickingStep: (step): void => set({ pickingStep: step }),
   setAssertPicking: (value): void => set({ assertPicking: value }),
+  setGuideOpen: (value): void => set({ guideOpen: value }),
   openTest: async (row): Promise<void> => {
     const suites = await window.api.getSuites()
     const suite = row.testId
@@ -172,6 +177,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
       unsavedExample: null,
       pickingStep: null,
       assertPicking: false,
+      guideOpen: false,
       breakpointIndex: null,
       failedStepId: null,
       isReplayingToBreakpoint: false,

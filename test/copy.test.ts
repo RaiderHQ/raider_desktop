@@ -89,4 +89,14 @@ describe('copy', () => {
     expect(m.save).toBe('Add check')
     expect(en.assertions.menu.header).toBe('Add a check')
   })
+
+  it('words the recording guide plainly', () => {
+    expect(en.guide.step1).toBe(
+      'Use the page on the right as you normally would. Every click and keystroke becomes a step here.'
+    )
+    expect(en.guide.step2).toBe(
+      'To check something, press Check something\u2026 (or right-click the page) and choose what to check.'
+    )
+    expect(en.guide.step3).toBe('Press Stop & save when you are done, then Run to see it pass.')
+  })
 })

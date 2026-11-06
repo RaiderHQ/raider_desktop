@@ -1,7 +1,10 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import StyledPanel from '@components/StyledPanel'
 import { RECORDER_PARTITION } from '@shared/recorderSession'
+import RecordingGuide from '@components/RecordingGuide'
+import useRecorderStore from '@foundation/Stores/recorderStore'
+import { hasSeenGuide } from '@foundation/recordingGuideSeen'
 import type { TestRecording } from '../../hooks/useTestRecording'
 
 interface RecordingLayoutProps {
@@ -21,9 +24,16 @@ const RecordingLayout: React.FC<RecordingLayoutProps> = ({
   focusBrowser = false
 }) => {
   const { t } = useTranslation()
+  const guideOpen = useRecorderStore((state) => state.guideOpen)
+  const [seen, setSeen] = useState(hasSeenGuide)
   return (
     <div className="flex-1 flex flex-row gap-4 min-h-[24rem]">
       <div className="w-[40%] min-h-0">
+        {(!seen || guideOpen) && (
+          <div className="mb-3">
+            <RecordingGuide variant="card" onClose={() => setSeen(true)} />
+          </div>
+        )}
         <StyledPanel>{steps ?? <></>}</StyledPanel>
       </div>
       <div className="w-[60%] border border-neutral-bdr rounded-lg overflow-hidden bg-white relative">

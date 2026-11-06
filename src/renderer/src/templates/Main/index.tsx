@@ -6,6 +6,7 @@ import Logo from '@components/Logo'
 import Tooltip from '@components/Tooltip'
 import RunIndicator from '@components/RunIndicator'
 import ConceptsModal from '@components/ConceptsModal'
+import RecordingGuide from '@components/RecordingGuide'
 import RubyInstallModal from '@components/RubyInstallModal'
 import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
 import TraceViewerOverlay from '@components/TraceViewerOverlay'
@@ -25,6 +26,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
   const [isGemsInstallModalOpen, setIsGemsInstallModalOpen] = useState(false)
   const [missingGems, setMissingGems] = useState<string[] | undefined>(undefined)
   const [isConceptsModalOpen, setIsConceptsModalOpen] = useState(false)
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false)
 
   // Run ruby check once at app startup
   useEffect(() => {
@@ -115,6 +117,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
     }
     return window.api.onMenuCommand((command) => {
       if (!isMenuCommand(command)) return
+      // Help › Recording guide: wired when PR C lands (command 'recording-guide'); then call openRecordingGuide(() => setIsGuideModalOpen(true))
       if (command === 'how-it-works') {
         setIsConceptsModalOpen(true)
         return
@@ -185,6 +188,10 @@ const MainTemplate: React.FC = (): JSX.Element => {
       </footer>
 
       {isConceptsModalOpen && <ConceptsModal onClose={() => setIsConceptsModalOpen(false)} />}
+      {/* Help › Recording guide: wired when PR C lands (command 'recording-guide') */}
+      {isGuideModalOpen && (
+        <RecordingGuide variant="modal" onClose={() => setIsGuideModalOpen(false)} />
+      )}
 
       {isRubyInstallModalOpen && (
         <RubyInstallModal
