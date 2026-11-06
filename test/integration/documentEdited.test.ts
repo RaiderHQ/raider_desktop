@@ -187,6 +187,18 @@ describe('closing with unsaved changes', () => {
     }).not.toThrow()
     expect(close).not.toHaveBeenCalled()
   })
+
+  it('a window closed while Save waits drops the wait: no close, no cancel later', () => {
+    vi.useFakeTimers()
+    edit()
+    showMessageBoxSync.mockReturnValue(0)
+    requestClose()
+    win.destroyed = true
+    win.emit('closed')
+    vi.advanceTimersByTime(200)
+    expect(onCancel).not.toHaveBeenCalled()
+    expect(close).not.toHaveBeenCalled()
+  })
 })
 
 describe('the close guard with the recording flush (wired like src/main/index.ts)', () => {

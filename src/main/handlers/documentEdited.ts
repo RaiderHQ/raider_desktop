@@ -37,6 +37,8 @@ export function installDocumentEdited(
   let current: DocumentEditedState = { edited: false, name: '' }
   let busy = false
   let afterReport: (() => void) | null = null
+  // The pending Save's timer, so a window that goes away mid-wait takes it along
+  let saveTimer: ReturnType<typeof setTimeout> | null = null
 
   const onEdited = (event: { sender?: unknown }, flag: unknown, name: unknown): void => {
     if (win.isDestroyed() || event?.sender !== win.webContents) return
@@ -78,12 +80,13 @@ export function installDocumentEdited(
       close()
     } else if (choice === 0) {
       const finish = (): void => {
-        clearTimeout(timer)
+        if (saveTimer) clearTimeout(saveTimer)
+        saveTimer = null
         afterReport = null
         busy = false
       }
       // The page never reported clean: the window stays open, as after Cancel
-      const timer = setTimeout(() => {
+      saveTimer = setTimeout(() => {
         finish()
         onCancel()
       }, timeoutMs)
@@ -98,7 +101,14 @@ export function installDocumentEdited(
     }
   })
 
-  win.on('closed', () => ipc.removeListener('document-edited', onEdited))
+  win.on('closed', () => {
+    ipc.removeListener('document-edited', onEdited)
+    // Gone mid-Save: nothing is left to close, and a held quit must not be cancelled
+    if (saveTimer) clearTimeout(saveTimer)
+    saveTimer = null
+    afterReport = null
+    busy = false
+  })
 
   const markClean = (): void => {
     current = { ...current, edited: false }

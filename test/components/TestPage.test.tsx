@@ -16,6 +16,7 @@ import type { RunView } from '@foundation/run/runModel'
 import useProjectStore from '@foundation/Stores/projectStore'
 import type { TestRow } from '@foundation/testKey'
 import type { Test } from '@foundation/Types/test'
+import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import en from '@assets/translations/en.json'
 
 vi.mock('react-i18next', () => ({
@@ -1305,7 +1306,7 @@ describe('TestPage re-picking the failed element', () => {
       act(() =>
         useRecorderStore
           .getState()
-          .updateActiveTest((p) => (p ? { ...p, steps: [step('a')] } : null))
+          .updateActiveTest((p) => (p ? { ...p, steps: [step('a'), step('b')] } : null))
       )
       render(
         <MemoryRouter>
@@ -1315,6 +1316,64 @@ describe('TestPage re-picking the failed element', () => {
       await screen.findByDisplayValue('New one')
       expect(useRecorderStore.getState().isRecording).toBe(false)
       expect(useTitleStore.getState().document).toEqual({ name: 'New one', edited: true })
+    })
+
+    it('File › Save on an idle draft with steps writes it again and it is no longer edited', async () => {
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0))
+      })
+      useRecorderStore.getState().startDraft('Retry me', 'https://x.test')
+      // Stop & save failed: the steps live only in the draft
+      act(() =>
+        useRecorderStore
+          .getState()
+          .updateActiveTest((p) => (p ? { ...p, steps: [step('a'), step('b')] } : null))
+      )
+      // Once saved the page falls back to the new-test form before the route changes
+      Object.assign(window.api, {
+        getProjectConfig: vi.fn().mockResolvedValue({ success: false })
+      })
+      const draftId = useRecorderStore.getState().draftTest?.id
+      render(
+        <MemoryRouter initialEntries={['/overview/tests/new']}>
+          <Routes>
+            <Route path="/overview/tests/new" element={<TestPage />} />
+            <Route path="/overview/tests/:testKey" element={<div>saved test route</div>} />
+          </Routes>
+        </MemoryRouter>
+      )
+      await screen.findByDisplayValue('Retry me')
+      expect(useTitleStore.getState().document?.edited).toBe(true)
+      await act(async () => {
+        dispatchMenuCommand('save')
+      })
+      expect(api.saveRecording).toHaveBeenCalledWith(
+        UNLISTED_SUITE_ID,
+        expect.objectContaining({ id: draftId, steps: [step('a'), step('b')] })
+      )
+      await waitFor(() => expect(useRecorderStore.getState().draftTest).toBeNull())
+      // Saved: the page reports a clean document (main's close then goes ahead)
+      expect(await screen.findByText('saved test route')).toBeInTheDocument()
+      expect(useTitleStore.getState().document?.edited ?? false).toBe(false)
+    })
+
+    it('an idle draft with only its start page is not edited (Stop & save would drop it)', async () => {
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0))
+      })
+      useRecorderStore.getState().startDraft('Start only', 'https://x.test')
+      act(() =>
+        useRecorderStore
+          .getState()
+          .updateActiveTest((p) => (p ? { ...p, steps: [step('a')] } : null))
+      )
+      render(
+        <MemoryRouter>
+          <TestPage />
+        </MemoryRouter>
+      )
+      await screen.findByDisplayValue('Start only')
+      expect(useTitleStore.getState().document).toEqual({ name: 'Start only', edited: false })
     })
 
     it('an idle draft with no steps is not edited', async () => {

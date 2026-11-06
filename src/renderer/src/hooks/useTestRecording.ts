@@ -35,6 +35,8 @@ export interface TestRecording {
   leave(): Promise<void>
   /** Saves a recording over a code example that its file couldn't take as a new recorded test */
   saveAsNewTest(): Promise<void>
+  /** Saves the open draft's steps into `suiteId` again (after Stop & save failed), then shows it */
+  saveDraft(suiteId: string): Promise<void>
   /** Replay up to step `index`, then let the user pick that step's element on the page */
   rePick(index: number): Promise<RePickOutcome>
   /** Ends picking an element (or getting to it) without changing anything */
@@ -360,6 +362,18 @@ function saveOnLeave(t: Translate): Promise<void> {
   return isBusy() ? stopAndSave(t, { leaving: true }) : saveUnsavedExample(t)
 }
 
+/** Writes a draft's steps into `suiteId`; once saved it is a recorded test like any other */
+async function saveDraftSteps(
+  t: Translate,
+  suiteId: string,
+  draft: Test,
+  options: StopOptions
+): Promise<void> {
+  if (await saveStopped(t, suiteId, draft, options)) {
+    if (store().draftTest?.id === draft.id) store().setDraftTest(null)
+  }
+}
+
 /**
  * Ends the recording (and any replay) and saves it to its target. The test is read
  * from the store when called, so later events can't change what is saved.
@@ -394,10 +408,7 @@ async function stopAndSave(t: Translate, options: StopOptions = {}): Promise<voi
         options.onDiscarded?.()
         return
       }
-      if (await saveStopped(t, target.suiteId, draft, options)) {
-        // Saved: from now on it is a recorded test like any other
-        if (store().draftTest?.id === draft.id) store().setDraftTest(null)
-      }
+      await saveDraftSteps(t, target.suiteId, draft, options)
       return
     }
     case 'example':
@@ -448,6 +459,18 @@ export function useTestRecording(): TestRecording {
   )
 
   const leave = useCallback((): Promise<void> => saveOnLeave(t), [t])
+
+  const saveDraft = useCallback(
+    async (suiteId: string): Promise<void> => {
+      const { activeTest: test, draftTest } = store()
+      if (isBusy() || !test || !draftTest || test.id !== draftTest.id) return
+      if (isEmptyRecording(test)) return
+      await saveDraftSteps(t, suiteId, test, {
+        onSaved: (key) => navigate(`/overview/tests/${toRouteParam(key)}`)
+      })
+    },
+    [t, navigate]
+  )
 
   const saveAsNewTest = useCallback(async (): Promise<void> => {
     const { unsavedExample: unsaved, activeTest: test } = store()
@@ -721,6 +744,7 @@ export function useTestRecording(): TestRecording {
     stop,
     leave,
     saveAsNewTest,
+    saveDraft,
     rePick,
     cancelPick,
     saveFixedTest,
