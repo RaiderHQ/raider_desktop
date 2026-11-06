@@ -9,7 +9,7 @@ interface StatusProps {
 const statusColors: Record<Status, { text: string; bg: string }> = {
   pass: { text: 'text-status-ok', bg: 'bg-status-ok-bg' },
   fail: { text: 'text-status-err', bg: 'bg-status-err-bg' },
-  idle: { text: 'text-neutral-mid', bg: 'bg-neutral-lt' }
+  idle: { text: 'text-neutral-md', bg: 'bg-neutral-lt' }
 }
 
 export const StatusPill: React.FC<StatusProps> = ({ status }) => {

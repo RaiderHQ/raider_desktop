@@ -27,7 +27,7 @@ const EmptyState: React.FC = () => {
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="text-neutral-mid"
+          className="text-neutral-md"
         >
           <rect x="3" y="3" width="7" height="7" rx="1" />
           <rect x="14" y="3" width="7" height="7" rx="1" />
@@ -38,7 +38,7 @@ const EmptyState: React.FC = () => {
       <h3 className="text-sm font-semibold text-neutral-dark mb-1">
         {t('dashboard.noResults.title')}
       </h3>
-      <p className="text-xs text-neutral-mid text-center mb-6 max-w-xs">
+      <p className="text-xs text-neutral-md text-center mb-6 max-w-xs">
         {t('dashboard.noResults.subtitle')}
       </p>
       <div className="space-y-3 w-full max-w-sm">
@@ -82,7 +82,7 @@ const ResultSection: React.FC<ResultSectionProps> = ({
   if (results.length === 0) return null
   return (
     <div>
-      <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-2">
+      <p className="text-xs font-semibold text-neutral-md uppercase tracking-wide mb-2">
         {t(titleKey)}
       </p>
       <div className="flex flex-col gap-2">
@@ -211,29 +211,29 @@ const Index: React.FC = (): JSX.Element => {
         <>
           {/* Summary bar */}
           <div className="border border-neutral-bdr rounded-lg bg-white px-5 py-4">
-            <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-3">
+            <p className="text-xs font-semibold text-neutral-md uppercase tracking-wide mb-3">
               {t('dashboard.overallSummary')}
             </p>
             <div className="flex gap-3 flex-wrap">
               <div className="flex flex-col items-center px-4 py-2 rounded-lg border border-neutral-bdr bg-neutral-50 min-w-[64px]">
                 <span className="text-lg font-bold text-neutral-dark">{totalCount}</span>
-                <span className="text-xs text-neutral-mid">{t('dashboard.totalTests')}</span>
+                <span className="text-xs text-neutral-md">{t('dashboard.totalTests')}</span>
               </div>
               <div className="flex flex-col items-center px-4 py-2 rounded-lg border border-neutral-bdr bg-neutral-50 min-w-[64px]">
                 <span className="text-lg font-bold text-status-ok">{passedCount}</span>
-                <span className="text-xs text-neutral-mid">{t('dashboard.passed')}</span>
+                <span className="text-xs text-neutral-md">{t('dashboard.passed')}</span>
               </div>
               <div className="flex flex-col items-center px-4 py-2 rounded-lg border border-neutral-bdr bg-neutral-50 min-w-[64px]">
                 <span className="text-lg font-bold text-status-err">{failedCount}</span>
-                <span className="text-xs text-neutral-mid">{t('dashboard.failed')}</span>
+                <span className="text-xs text-neutral-md">{t('dashboard.failed')}</span>
               </div>
               <div className="flex flex-col items-center px-4 py-2 rounded-lg border border-neutral-bdr bg-neutral-50 min-w-[64px]">
                 <span className="text-lg font-bold text-status-quarantine">{quarantinedCount}</span>
-                <span className="text-xs text-neutral-mid">{t('dashboard.quarantined')}</span>
+                <span className="text-xs text-neutral-md">{t('dashboard.quarantined')}</span>
               </div>
               <div className="flex flex-col items-center px-4 py-2 rounded-lg border border-neutral-bdr bg-neutral-50 min-w-[64px]">
                 <span className="text-lg font-bold text-amber-500">{skippedCount}</span>
-                <span className="text-xs text-neutral-mid">{t('dashboard.skipped')}</span>
+                <span className="text-xs text-neutral-md">{t('dashboard.skipped')}</span>
               </div>
             </div>
           </div>

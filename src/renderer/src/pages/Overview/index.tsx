@@ -595,7 +595,7 @@ const Overview: React.FC = () => {
           className={`px-5 py-2 text-sm font-semibold transition-colors ${
             activeTab === 'tests'
               ? 'text-neutral-dark border-b-2 border-ruby'
-              : 'text-neutral-mid hover:text-neutral-dk'
+              : 'text-neutral-md hover:text-neutral-dk'
           }`}
         >
           {t('overview.tabs.tests')}
@@ -605,7 +605,7 @@ const Overview: React.FC = () => {
           className={`px-5 py-2 text-sm font-semibold transition-colors ${
             activeTab === 'files'
               ? 'text-neutral-dark border-b-2 border-ruby'
-              : 'text-neutral-mid hover:text-neutral-dk'
+              : 'text-neutral-md hover:text-neutral-dk'
           }`}
         >
           {t('overview.tabs.files')}
@@ -615,7 +615,7 @@ const Overview: React.FC = () => {
           className={`px-5 py-2 text-sm font-semibold transition-colors ${
             activeTab === 'scaffold'
               ? 'text-neutral-dark border-b-2 border-ruby'
-              : 'text-neutral-mid hover:text-neutral-dk'
+              : 'text-neutral-md hover:text-neutral-dk'
           }`}
         >
           Scaffolding
@@ -625,7 +625,7 @@ const Overview: React.FC = () => {
           className={`px-5 py-2 text-sm font-semibold transition-colors ${
             activeTab === 'dashboard'
               ? 'text-neutral-dark border-b-2 border-ruby'
-              : 'text-neutral-mid hover:text-neutral-dk'
+              : 'text-neutral-md hover:text-neutral-dk'
           }`}
         >
           {t('overview.tabs.dashboard')}
@@ -860,7 +860,7 @@ const Overview: React.FC = () => {
                         />
                         {t('run.freshLoginNext')}
                       </label>
-                      <span className="text-xs text-neutral-mid">{t('run.freshLoginHint')}</span>
+                      <span className="text-xs text-neutral-md">{t('run.freshLoginHint')}</span>
                     </div>
                   </>
                 )}
@@ -962,7 +962,7 @@ const Overview: React.FC = () => {
                       <span className="text-sm font-semibold text-neutral-dark truncate">{editingFile.name}</span>
                     </div>
                     {isLoadingFile ? (
-                      <div className="flex-1 flex items-center justify-center text-neutral-mid text-sm">
+                      <div className="flex-1 flex items-center justify-center text-neutral-md text-sm">
                         {t('editor.loading')}
                       </div>
                     ) : (
@@ -976,7 +976,7 @@ const Overview: React.FC = () => {
                     )}
                   </>
                 ) : (
-                  <div className="flex-1 flex items-center justify-center text-neutral-mid text-sm">
+                  <div className="flex-1 flex items-center justify-center text-neutral-md text-sm">
                     Select a file to preview
                   </div>
                 )}

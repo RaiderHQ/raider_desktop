@@ -27,6 +27,8 @@ module.exports = {
         neutral: {
           dark: '#1A1A1A',
           dk: '#4A4A4A',
+          // Grey text under 18 px (5.3:1 on white); mid is for large text only (3.45:1)
+          md: '#6B6B6B',
           mid: '#8A8A8A',
           lt: '#F6F6F6',
           bdr: '#E5E5E5',

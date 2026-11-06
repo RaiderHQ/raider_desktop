@@ -62,7 +62,7 @@ const MobileNotReady: React.FC<MobileNotReadyProps> = ({ notReady }) => {
       )}
       <button
         aria-label={t('common.close')}
-        className="p-1 text-neutral-mid hover:text-neutral-dark transition-colors"
+        className="p-1 text-neutral-md hover:text-neutral-dark transition-colors"
         onClick={() => useRunStore.getState().dismissNotReady()}
       >
         <FaTimes size={10} aria-hidden />

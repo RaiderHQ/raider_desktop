@@ -45,7 +45,7 @@ const levelKey = (level: string): string =>
   `traceViewer.console.level.${Object.hasOwn(LEVELS, level) ? LEVELS[level] : 'other'}`
 
 const Message: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="flex items-center justify-center p-4 text-sm text-neutral-mid">{children}</div>
+  <div className="flex items-center justify-center p-4 text-sm text-neutral-md">{children}</div>
 )
 
 // A row's raw fields, mounted only when open.
@@ -59,7 +59,7 @@ const RowDetails: React.FC<{ label: string; rows: [string, string][] }> = ({ lab
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
-        className="text-xs text-neutral-mid hover:text-neutral-dk"
+        className="text-xs text-neutral-md hover:text-neutral-dk"
       >
         <span aria-hidden="true">{open ? '▾' : '▸'}</span> {label}
       </button>
@@ -67,7 +67,7 @@ const RowDetails: React.FC<{ label: string; rows: [string, string][] }> = ({ lab
         <dl id={panelId} className="mt-1 space-y-1">
           {rows.map(([name, value]) => (
             <div key={name} className="flex gap-2 text-xs">
-              <dt className="font-semibold text-neutral-mid shrink-0">{name}</dt>
+              <dt className="font-semibold text-neutral-md shrink-0">{name}</dt>
               <dd className="text-neutral-dk break-all">{value}</dd>
             </div>
           ))}
@@ -113,7 +113,7 @@ export const TraceNetworkList: React.FC<ListProps<RaiderTraceNetwork>> = ({
                   className={
                     failed || (item.status !== null && item.status >= 400)
                       ? 'text-status-err'
-                      : 'text-neutral-mid'
+                      : 'text-neutral-md'
                   }
                 >
                   {failed ? t('traceViewer.network.failed') : (item.status ?? '')}
@@ -132,10 +132,10 @@ export const TraceNetworkList: React.FC<ListProps<RaiderTraceNetwork>> = ({
                   </span>
                 )}
                 {item.durationMs !== null && (
-                  <span className="text-neutral-mid">{`${Math.round(item.durationMs)} ms`}</span>
+                  <span className="text-neutral-md">{`${Math.round(item.durationMs)} ms`}</span>
                 )}
                 {item.bytes !== null && (
-                  <span className="text-neutral-mid" aria-describedby={hintId}>
+                  <span className="text-neutral-md" aria-describedby={hintId}>
                     {formatBytes(item.bytes)}
                   </span>
                 )}
@@ -145,11 +145,11 @@ export const TraceNetworkList: React.FC<ListProps<RaiderTraceNetwork>> = ({
           )
         })}
       </ul>
-      <p id={hintId} className="pt-2 text-xs text-neutral-mid">
+      <p id={hintId} className="pt-2 text-xs text-neutral-md">
         {t('traceViewer.network.size')}
       </p>
       {anyMocked && (
-        <p id={mockedHintId} className="pt-1 text-xs text-neutral-mid">
+        <p id={mockedHintId} className="pt-1 text-xs text-neutral-md">
           {t('traceViewer.network.mockedHint')}
         </p>
       )}
@@ -176,7 +176,7 @@ export const TraceConsoleList: React.FC<ListProps<RaiderTraceConsole>> = ({
           <div className="flex items-baseline gap-2 text-sm">
             <span
               className={`text-xs font-semibold ${
-                item.level === 'error' ? 'text-status-err' : 'text-neutral-mid'
+                item.level === 'error' ? 'text-status-err' : 'text-neutral-md'
               }`}
             >
               {t(levelKey(item.level))}

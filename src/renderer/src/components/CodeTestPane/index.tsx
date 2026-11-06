@@ -7,6 +7,7 @@ import StyledPanel from '@components/StyledPanel'
 import AssertionTextModal from '@components/AssertionTextModal'
 import RunPanel from '@components/RunPanel'
 import RecordingLayout from '@components/TestPage/RecordingLayout'
+import { removeStepWithUndo } from '@foundation/removeStepWithUndo'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { useRunStore } from '@foundation/Stores/runStore'
@@ -22,7 +23,7 @@ interface CodeTestPaneProps {
 }
 
 const toolbarButton =
-  'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white disabled:text-neutral-mid disabled:cursor-not-allowed'
+  'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white disabled:text-neutral-md disabled:cursor-not-allowed'
 
 /**
  * A test file edited in code: its tests (examples), one shown at a time as steps or
@@ -137,9 +138,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
           p ? { ...p, steps: typeof next === 'function' ? next(p.steps) : next } : null
         )
       }
-      onDeleteStep={(index) =>
-        updateActiveTest((p) => (p ? { ...p, steps: p.steps.filter((_, i) => i !== index) } : null))
-      }
+      onDeleteStep={(index) => removeStepWithUndo(updateActiveTest, index)}
       showCode={showCode}
       markLatest={recording.isRecording}
     />
@@ -155,15 +154,15 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
   return (
     <div className="flex flex-col h-full p-4 space-y-4">
       <nav aria-label={t('testPage.breadcrumb')} className="flex items-center gap-1.5 text-sm">
-        <Link to="/overview/tests" className="text-neutral-mid hover:text-neutral-dark">
+        <Link to="/overview/tests" className="text-neutral-md hover:text-neutral-dark">
           {t('testPage.breadcrumbRoot')}
         </Link>
-        <span className="text-neutral-mid">/</span>
+        <span className="text-neutral-md">/</span>
         <span className="font-semibold text-neutral-dark truncate">{row.name}</span>
       </nav>
 
       {openFailed ? (
-        <p className="text-sm text-neutral-mid">{t('tests.actionFailed')}</p>
+        <p className="text-sm text-neutral-md">{t('tests.actionFailed')}</p>
       ) : (
         <>
           <div className="flex items-center gap-2">

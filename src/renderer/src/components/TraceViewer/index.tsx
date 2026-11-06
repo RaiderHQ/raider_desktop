@@ -22,7 +22,7 @@ const TraceViewer: React.FC<TraceViewerProps> = ({
 
   return (
     <div className="p-2 min-h-fit sm:p-4 md:p-6 w-full flex flex-col">
-      <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-3">
+      <p className="text-xs font-semibold text-neutral-md uppercase tracking-wide mb-3">
         {t('dashboard.traceTitle')}
       </p>
       <div className="flex flex-1 min-h-0 border border-neutral-bdr rounded-lg shadow-card bg-white">

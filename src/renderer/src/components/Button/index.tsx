@@ -18,7 +18,7 @@ const Button = ({
   const styles: Record<string, string> = {
     primary: 'bg-ruby text-white hover:shadow-card-hover',
     secondary: 'bg-ruby-sub text-neutral-dk border border-neutral-bdr hover:bg-ruby-glow',
-    disabled: 'bg-neutral-bdr text-neutral-mid cursor-not-allowed',
+    disabled: 'bg-neutral-bdr text-neutral-md cursor-not-allowed',
     success: 'bg-status-ok text-white hover:shadow-card-hover',
     outline: 'bg-transparent text-ruby border border-ruby hover:bg-ruby-sub',
     danger: 'bg-status-err text-white hover:shadow-card-hover'

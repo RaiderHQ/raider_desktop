@@ -102,7 +102,7 @@ const Folder: React.FC<FolderProps> = ({
               )
             })
           ) : (
-            <p className="text-sm text-neutral-mid italic py-2 px-2">Empty folder</p>
+            <p className="text-sm text-neutral-md italic py-2 px-2">Empty folder</p>
           )}
         </div>
       )}

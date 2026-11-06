@@ -19,7 +19,7 @@ interface SuiteFilterProps {
 type Outcome = { success: boolean; path?: string; error?: string }
 
 const menuItem =
-  'block w-full text-left px-3 py-1.5 text-xs text-neutral-dk hover:bg-neutral-50 disabled:text-neutral-mid disabled:cursor-not-allowed disabled:hover:bg-white'
+  'block w-full text-left px-3 py-1.5 text-xs text-neutral-dk hover:bg-neutral-50 disabled:text-neutral-md disabled:cursor-not-allowed disabled:hover:bg-white'
 
 /** Picks which suite the Tests list shows, and holds the suite-level actions. */
 const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
@@ -210,7 +210,7 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
             {t('tests.suiteFilter.run')}
           </button>
           {mobileProject && (
-            <p id={mobileNoteId} className="px-3 pb-1.5 text-xs text-neutral-mid">
+            <p id={mobileNoteId} className="px-3 pb-1.5 text-xs text-neutral-md">
               {t('suites.mobileUnavailable')}
             </p>
           )}
@@ -253,7 +253,7 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
             {t('tests.suiteFilter.importSuite')}
           </button>
           {mobileProject && (
-            <p id={mobileImportNoteId} className="px-3 pb-1.5 text-xs text-neutral-mid">
+            <p id={mobileImportNoteId} className="px-3 pb-1.5 text-xs text-neutral-md">
               {t('tests.mobileNoImport')}
             </p>
           )}

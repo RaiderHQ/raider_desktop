@@ -1072,5 +1072,9 @@
       "tag_name": "Found by tag",
       "other": "Found by locator"
     }
+  },
+  "steps": {
+    "removed": "Step removed",
+    "undo": "Undo"
   }
 }

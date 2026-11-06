@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useId } from 'react'
 
 interface ToggleSwitchProps {
   label: string
@@ -17,11 +17,16 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   description,
   testId
 }) => {
+  const id = useId()
+  const labelId = `${id}-label`
+  const descriptionId = `${id}-description`
   return (
     <div className="flex items-center gap-3">
       <button
         role="switch"
         aria-checked={checked}
+        aria-labelledby={labelId}
+        aria-describedby={description ? descriptionId : undefined}
         data-testid={testId}
         onClick={() => onChange(!checked)}
         disabled={disabled}
@@ -36,8 +41,14 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
         />
       </button>
       <div className="flex flex-col">
-        <span className="text-sm font-medium text-neutral-dk">{label}</span>
-        {description && <span className="text-xs text-neutral-mid">{description}</span>}
+        <span id={labelId} className="text-sm font-medium text-neutral-dk">
+          {label}
+        </span>
+        {description && (
+          <span id={descriptionId} className="text-xs text-neutral-md">
+            {description}
+          </span>
+        )}
       </div>
     </div>
   )

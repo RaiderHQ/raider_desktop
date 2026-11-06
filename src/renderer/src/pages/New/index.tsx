@@ -155,7 +155,7 @@ const CreateProject: React.FC = () => {
                 ]}
               />
               {!mobileSupported && (
-                <p id="mobile-needs-update" className="mt-1 text-xs text-neutral-mid">
+                <p id="mobile-needs-update" className="mt-1 text-xs text-neutral-md">
                   {t('newProject.target.mobileNeedsUpdate')}
                 </p>
               )}
@@ -199,7 +199,7 @@ const CreateProject: React.FC = () => {
                 }
               />
               {isMobile && (
-                <p className="mt-1 text-xs text-neutral-mid">{t('newProject.ci.mobileAzure')}</p>
+                <p className="mt-1 text-xs text-neutral-md">{t('newProject.ci.mobileAzure')}</p>
               )}
             </div>
           </div>

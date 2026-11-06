@@ -23,7 +23,7 @@ const TraceDetailPanel: React.FC<TraceDetailPanelProps> = ({ step }): JSX.Elemen
 
   if (!step) {
     return (
-      <div className="flex items-center justify-center h-full text-neutral-mid text-sm p-4">
+      <div className="flex items-center justify-center h-full text-neutral-md text-sm p-4">
         Select a step to view details
       </div>
     )
@@ -41,14 +41,14 @@ const TraceDetailPanel: React.FC<TraceDetailPanelProps> = ({ step }): JSX.Elemen
           className="w-full rounded-lg border border-neutral-bdr shadow-sm"
         />
       ) : step.screenshotPath ? (
-        <div className="w-full h-48 bg-neutral-lt rounded-lg flex items-center justify-center text-sm text-neutral-mid">
+        <div className="w-full h-48 bg-neutral-lt rounded-lg flex items-center justify-center text-sm text-neutral-md">
           Loading screenshot...
         </div>
       ) : null}
 
       {/* Command */}
       <div>
-        <h4 className="text-xs font-semibold text-neutral-mid uppercase mb-1">
+        <h4 className="text-xs font-semibold text-neutral-md uppercase mb-1">
           {t('recorder.traceDetail.command')}
         </h4>
         <pre className="text-sm bg-neutral-lt p-2 rounded border border-neutral-bdr overflow-x-auto whitespace-pre-wrap">
@@ -59,7 +59,7 @@ const TraceDetailPanel: React.FC<TraceDetailPanelProps> = ({ step }): JSX.Elemen
       {/* Page URL */}
       {step.url && (
         <div>
-          <h4 className="text-xs font-semibold text-neutral-mid uppercase mb-1">
+          <h4 className="text-xs font-semibold text-neutral-md uppercase mb-1">
             {t('recorder.traceDetail.pageUrl')}
           </h4>
           <p className="text-sm text-neutral-dk break-all">{step.url}</p>
@@ -68,7 +68,7 @@ const TraceDetailPanel: React.FC<TraceDetailPanelProps> = ({ step }): JSX.Elemen
 
       {/* Timestamp */}
       <div>
-        <h4 className="text-xs font-semibold text-neutral-mid uppercase mb-1">
+        <h4 className="text-xs font-semibold text-neutral-md uppercase mb-1">
           {t('recorder.traceDetail.timestamp')}
         </h4>
         <p className="text-sm text-neutral-dk">
@@ -79,7 +79,7 @@ const TraceDetailPanel: React.FC<TraceDetailPanelProps> = ({ step }): JSX.Elemen
       {/* Element Info */}
       {step.elementInfo && (
         <div>
-          <h4 className="text-xs font-semibold text-neutral-mid uppercase mb-1">
+          <h4 className="text-xs font-semibold text-neutral-md uppercase mb-1">
             {t('recorder.traceDetail.elementInfo')}
           </h4>
           <div className="text-sm bg-neutral-lt p-2 rounded border border-neutral-bdr space-y-1">

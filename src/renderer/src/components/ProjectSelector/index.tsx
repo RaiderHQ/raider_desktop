@@ -30,7 +30,7 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     <div className="relative flex flex-col items-center justify-center w-full">
       <div className="relative flex flex-col items-center justify-center w-full border border-neutral-bdr p-8 rounded-lg bg-white shadow-card hover:shadow-card-hover transition-shadow duration-200">
         <button
-          className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full text-neutral-mid hover:text-ruby hover:bg-ruby-sub transition-colors"
+          className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full text-neutral-md hover:text-ruby hover:bg-ruby-sub transition-colors"
           onClick={() => setModalOpen(true)}
           aria-label="Help"
         >

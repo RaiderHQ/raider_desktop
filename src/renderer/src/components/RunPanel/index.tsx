@@ -35,13 +35,13 @@ const matches = (filter: Filter, state: TestState): boolean =>
   (filter === 'queued' && state === 'queued')
 
 const stateClass: Record<TestState, string> = {
-  queued: 'bg-neutral-lt text-neutral-mid',
+  queued: 'bg-neutral-lt text-neutral-md',
   started: 'bg-neutral-lt text-neutral-dk',
   passed: 'bg-status-ok-bg text-status-ok',
   failed: 'bg-status-err-bg text-status-err',
   quarantined: 'bg-status-quarantine-bg text-status-quarantine',
   pending: 'bg-neutral-lt text-neutral-dk',
-  skipped: 'bg-neutral-lt text-neutral-mid'
+  skipped: 'bg-neutral-lt text-neutral-md'
 }
 
 const formatElapsed = (ms: number): string => {
@@ -192,10 +192,10 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
           </span>
         )}
         {test.attempt !== undefined && test.attempt > 1 && (
-          <span className="text-xs text-neutral-mid">{`#${test.attempt}`}</span>
+          <span className="text-xs text-neutral-md">{`#${test.attempt}`}</span>
         )}
         {test.durationMs !== undefined && (
-          <span className="text-xs text-neutral-mid">{formatDuration(test.durationMs)}</span>
+          <span className="text-xs text-neutral-md">{formatDuration(test.durationMs)}</span>
         )}
         {stepLine && recorded && (
           <>
@@ -237,7 +237,7 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
             </span>
           )}
         </div>
-        <span className="text-xs text-neutral-mid">{elapsed}</span>
+        <span className="text-xs text-neutral-md">{elapsed}</span>
         {!finished && (
           <button
             data-testid="run-cancel"
@@ -290,7 +290,7 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
       <div className="max-h-80 overflow-y-auto">
         {files.map((file) => (
           <div key={file}>
-            <div className="px-3 pt-3 text-xs font-medium text-neutral-mid truncate">{file}</div>
+            <div className="px-3 pt-3 text-xs font-medium text-neutral-md truncate">{file}</div>
             <ul className="divide-y divide-neutral-bdr">
               {tests.filter((x) => x.file === file).map(row)}
             </ul>
@@ -308,7 +308,7 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
           {t('run.technicalDetails')}
         </summary>
         {(finished?.truncated || run.outputTrimmed) && (
-          <p className="text-xs text-neutral-mid mt-2">{t('run.trimmed')}</p>
+          <p className="text-xs text-neutral-md mt-2">{t('run.trimmed')}</p>
         )}
         {/* Joining megabytes of output on every event is costly, so only while it's on show */}
         {detailsOpen && (
