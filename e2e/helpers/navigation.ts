@@ -18,7 +18,7 @@ export async function navigateTo(page: Page, route: string): Promise<void> {
 export function openProjectButton(page: Page): Locator {
   return page
     .getByRole('heading', { name: 'Open existing project' })
-    .locator('xpath=following-sibling::button')
+    .locator('xpath=following-sibling::*//button | following-sibling::button')
 }
 
 /**
