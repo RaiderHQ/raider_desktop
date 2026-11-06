@@ -27,13 +27,13 @@ const FoldedFrames: React.FC<{ lines: string[] }> = ({ lines }) => {
         type="button"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="text-neutral-mid hover:underline"
+        className="text-neutral-md hover:underline"
       >
         {t('testResults.moreFrames', { count: lines.length })}
       </button>
       {open &&
         lines.map((line, i) => (
-          <div key={i} className="text-neutral-mid">
+          <div key={i} className="text-neutral-md">
             {line}
           </div>
         ))}
@@ -106,7 +106,7 @@ const FailureDetails: React.FC<FailureDetailsProps> = ({
       )}
       <MessageContent message={failure.message} />
       {appFrame && (
-        <p data-testid="failure-location-row" className="mt-2 text-xs text-neutral-mid">
+        <p data-testid="failure-location-row" className="mt-2 text-xs text-neutral-md">
           {t('testResults.failedAt')}{' '}
           {target ? (
             <button
@@ -128,7 +128,7 @@ const FailureDetails: React.FC<FailureDetailsProps> = ({
         </p>
       )}
       {!appFrame && (durationMs !== undefined || browser) && (
-        <p className="mt-2 text-xs text-neutral-mid">
+        <p className="mt-2 text-xs text-neutral-md">
           {[durationMs !== undefined ? `${durationMs} ms` : null, browser]
             .filter(Boolean)
             .join(' · ')}
@@ -210,7 +210,7 @@ const FailureDetails: React.FC<FailureDetailsProps> = ({
       <div className="min-w-0 flex-1">
         {collapsed ? (
           <details data-testid="technical-details">
-            <summary className="text-xs text-neutral-mid cursor-pointer hover:text-neutral-dark">
+            <summary className="text-xs text-neutral-md cursor-pointer hover:text-neutral-dark">
               {t('failedStep.technicalDetails')}
             </summary>
             <div className="mt-1">{technical}</div>

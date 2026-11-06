@@ -22,7 +22,7 @@ const Checkbox: React.FC<CheckboxProps> = ({ label, checked, onChange, disabled 
       />
       <div className="flex flex-col">
         <span className="text-sm text-neutral-dk">{label}</span>
-        {helpText && <span className="text-xs text-neutral-mid">{helpText}</span>}
+        {helpText && <span className="text-xs text-neutral-md">{helpText}</span>}
       </div>
     </label>
   )

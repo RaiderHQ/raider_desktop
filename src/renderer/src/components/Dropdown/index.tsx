@@ -54,7 +54,7 @@ const Dropdown: React.FC<DropdownProps> = ({
           disabled={disabled}
           className={`text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors ${
             disabled
-              ? 'text-neutral-mid cursor-not-allowed bg-white'
+              ? 'text-neutral-md cursor-not-allowed bg-white'
               : 'text-neutral-dk bg-white hover:bg-neutral-50'
           }`}
         >

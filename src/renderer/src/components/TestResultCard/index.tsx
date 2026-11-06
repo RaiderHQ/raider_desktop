@@ -79,7 +79,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
   } else if (status === 'failed' || status === 'broken') {
     statusIcon = <FaTimesCircle className="text-red-500" />
   } else if (status === 'skipped' || status === 'pending') {
-    statusIcon = <FaExclamationCircle className="text-neutral-mid" />
+    statusIcon = <FaExclamationCircle className="text-neutral-md" />
   } else if (status === 'quarantined') {
     statusIcon = (
       <Tooltip content={t('testResults.quarantinedTooltip')} position="left">
@@ -156,7 +156,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
         onClick={() => setOpen(!open)}
       >
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-neutral-mid shrink-0">{chevronIcon}</span>
+          <span className="text-neutral-md shrink-0">{chevronIcon}</span>
           <span className="text-sm font-semibold text-neutral-dark truncate">{name}</span>
         </div>
         <div className="pl-4 shrink-0">{statusIcon}</div>
@@ -164,7 +164,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
 
       {open && (
         <div className="border-t border-neutral-bdr px-4 py-3">
-          <p className="text-xs text-neutral-mid mb-1">
+          <p className="text-xs text-neutral-md mb-1">
             {t('testResults.status')}: <span className="font-medium text-neutral-dk">{t(`testResults.${status}`)}</span>
           </p>
           {stepLine && recordedTest && (
@@ -199,7 +199,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
               {message && <MessageContent message={message} />}
               {backtrace && backtrace.length > 0 && (
                 <div className="mt-3">
-                  <p className="text-xs font-semibold text-neutral-mid uppercase tracking-wide mb-1">
+                  <p className="text-xs font-semibold text-neutral-md uppercase tracking-wide mb-1">
                     Backtrace
                   </p>
                   <pre className="text-xs font-mono text-neutral-dk bg-neutral-50 border border-neutral-bdr rounded px-3 py-2 overflow-auto max-h-40 whitespace-pre-wrap break-all">

@@ -38,7 +38,7 @@ const TraceSnapshotFrame: React.FC<TraceSnapshotFrameProps> = ({ snapshot }) => 
   }
   if (srcDoc === null) {
     return (
-      <div className="w-full h-48 bg-neutral-lt rounded-lg flex items-center justify-center text-sm text-neutral-mid">
+      <div className="w-full h-48 bg-neutral-lt rounded-lg flex items-center justify-center text-sm text-neutral-md">
         {t('traceViewer.snapshotUnsafe')}
       </div>
     )
