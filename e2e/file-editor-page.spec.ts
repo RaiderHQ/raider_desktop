@@ -93,7 +93,9 @@ test.describe('File Editor Page', () => {
     // Now mock editFile with capture
     await mockIPCCapture(page, 'editFile', { success: true })
 
-    // Trigger save via Cmd+S
+    // Cmd+S saves only once there is a change to save
+    await page.locator('.monaco-editor .view-lines').click()
+    await page.keyboard.type('x')
     await page.keyboard.press('Meta+s')
     await page.waitForTimeout(1000)
 
@@ -118,6 +120,8 @@ test.describe('File Editor Page', () => {
     await page.waitForTimeout(1500)
     await mockIPCCapture(page, 'editFile', { success: true })
 
+    await page.locator('.monaco-editor .view-lines').click()
+    await page.keyboard.type('x')
     await page.keyboard.press('Meta+s')
     await page.waitForTimeout(1000)
 
@@ -141,6 +145,8 @@ test.describe('File Editor Page', () => {
     await page.waitForTimeout(1500)
     await mockIPCCaptureFailure(page, 'editFile', 'Permission denied')
 
+    await page.locator('.monaco-editor .view-lines').click()
+    await page.keyboard.type('x')
     await page.keyboard.press('Meta+s')
     await page.waitForTimeout(1000)
 
