@@ -117,6 +117,7 @@ const openFilesTab = async (): Promise<void> => {
 }
 
 const mockApi = {
+  openDocs: vi.fn().mockResolvedValue({ success: true }),
   listProjectTests: vi.fn().mockResolvedValue([]),
   getSuites: vi.fn().mockResolvedValue([]),
   readDirectory: vi.fn().mockResolvedValue([]),
@@ -245,6 +246,19 @@ describe('Overview Page', (): void => {
     expect(tabs[0]).toBe('overview.tabs.tests')
     expect(screen.getByText('tests.empty')).toBeInTheDocument()
     expect(screen.queryByTestId('folder')).not.toBeInTheDocument()
+  })
+
+  it('the Tests tab empty state links to how recording works', async (): Promise<void> => {
+    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+    fireEvent.click(screen.getByText('docs.howRecordingWorks'))
+    expect(mockApi.openDocs).toHaveBeenCalledWith('docs.recorder')
   })
 
   it('renders Files, Scaffolding, and Dashboard tabs', async (): Promise<void> => {

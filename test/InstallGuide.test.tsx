@@ -2,6 +2,7 @@ import { render, screen, act } from '@testing-library/react'
 import InstallGuide from '@pages/Info/InstallGuide'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
+import { fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 
 // Mocking necessary modules and hooks
@@ -44,5 +45,25 @@ describe('InstallGuide Page', () => {
     })
     expect(screen.getByText('installGuide.githubButton')).toBeInTheDocument()
     expect(screen.getByText('installGuide.websiteButton')).toBeInTheDocument()
+  })
+
+  it('Go to GitHub opens docs.gem and Go to website opens docs.site, not window.open', async () => {
+    const openDocs = vi.fn().mockResolvedValue({ success: true })
+    // @ts-expect-error - Mocking window.api
+    window.api = { openDocs }
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <InstallGuide rubyMissing={false} />
+        </MemoryRouter>
+      )
+    })
+    fireEvent.click(screen.getByText('installGuide.githubButton'))
+    expect(openDocs).toHaveBeenLastCalledWith('docs.gem')
+    fireEvent.click(screen.getByText('installGuide.websiteButton'))
+    expect(openDocs).toHaveBeenLastCalledWith('docs.site')
+    expect(open).not.toHaveBeenCalled()
+    open.mockRestore()
   })
 })

@@ -20,9 +20,6 @@ interface InstallGuideProps {
 const InstallGuide: React.FC<InstallGuideProps> = ({ rubyMissing, rubyError }): JSX.Element => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const handleNavigation = (url: string): void => {
-    window.open(url, '_blank')
-  }
 
   let errorMessage = ''
 
@@ -60,14 +57,14 @@ const InstallGuide: React.FC<InstallGuideProps> = ({ rubyMissing, rubyError }): 
             <div className="flex justify-between space-x-4">
               <Tooltip content={t('tooltips.installGuide.github')} position="top">
                 <Button
-                  onClick={() => handleNavigation('https://github.com/RaiderHQ/ruby_raider')}
+                  onClick={() => void window.api.openDocs('docs.gem')}
                   type="secondary"
                 >
                   {t('installGuide.githubButton')}
                 </Button>
               </Tooltip>
               <Tooltip content={t('tooltips.installGuide.website')} position="top">
-                <Button onClick={() => handleNavigation('https://ruby-raider.com/')} type="primary">
+                <Button onClick={() => void window.api.openDocs('docs.site')} type="primary">
                   {t('installGuide.websiteButton')}
                 </Button>
               </Tooltip>

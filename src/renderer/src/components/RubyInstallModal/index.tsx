@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom'
 import Button from '@components/Button'
 import { useTranslation } from 'react-i18next'
+import DocsLink from '@components/DocsLink'
 
 interface RubyInstallModalProps {
   onClose: () => void
@@ -71,7 +72,8 @@ const RubyInstallModal: React.FC<RubyInstallModalProps> = ({ onClose, onCloseApp
         </div>
 
         {/* Actions */}
-        <div className="px-6 py-4 border-t border-neutral-bdr flex justify-end gap-3 shrink-0">
+        <div className="px-6 py-4 border-t border-neutral-bdr flex justify-end items-center gap-3 shrink-0">
+          <DocsLink id="docs.install" topic={t('docs.topics.install')} className="mr-auto" />
           <Button onClick={onCloseApp} type="secondary">
             {t('recorder.rubyInstallModal.close')}
           </Button>

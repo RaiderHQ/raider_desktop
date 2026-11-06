@@ -19,6 +19,8 @@ import Terminal from '@components/Terminal'
 import Tooltip from '@components/Tooltip'
 import TestsWorkspace from '@components/TestsWorkspace'
 import InfoButton from '@components/InfoButton'
+import DocsLink from '@components/DocsLink'
+import type { DocsLinkId } from '@shared/docsLinkIds'
 import RunPanel from '@components/RunPanel'
 import DeviceSettings from '@components/DeviceSettings'
 import useProjectStore from '@foundation/Stores/projectStore'
@@ -35,6 +37,16 @@ import { getFileLanguage } from '@foundation/helpers'
 import type { RunDefaults, RunScope } from '@shared/types/runEvents'
 
 type OverviewTab = 'tests' | 'files' | 'scaffold' | 'dashboard'
+
+const OVERVIEW_DOCS: Record<
+  OverviewTab,
+  (t: (key: string) => string) => { id: DocsLinkId; topic: string }
+> = {
+  tests: (t) => ({ id: 'docs.recorder', topic: t('docs.topics.recording') }),
+  files: (t) => ({ id: 'docs.testScreen', topic: t('docs.topics.files') }),
+  scaffold: (t) => ({ id: 'docs.scaffolding', topic: t('docs.topics.scaffolding') }),
+  dashboard: (t) => ({ id: 'docs.dashboard', topic: t('docs.topics.dashboard') })
+}
 
 /** A base URL the browser can open: a full http or https address. */
 const isWebAddress = (value: string): boolean => {
@@ -778,6 +790,7 @@ const Overview: React.FC = () => {
             titleKey={`help.overview.${activeTab}.title`}
             messageKey={`help.overview.${activeTab}.message`}
             tooltip={t('tooltips.overview.info')}
+            docs={OVERVIEW_DOCS[activeTab](t)}
           />
         </div>
       </div>
@@ -1149,8 +1162,11 @@ const Overview: React.FC = () => {
                     )}
                   </>
                 ) : (
-                  <div className="flex-1 flex items-center justify-center text-neutral-md text-sm">
-                    Select a file to preview
+                  <div className="flex-1 flex flex-col items-center justify-center gap-2 text-neutral-md text-sm">
+                    {t('files.selectToPreview')}
+                    <DocsLink id="docs.testScreen" topic={t('docs.topics.files')}>
+                      {t('docs.whatFilesTabDoes')}
+                    </DocsLink>
                   </div>
                 )}
               </div>

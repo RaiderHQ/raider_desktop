@@ -183,6 +183,23 @@ describe('ProjectDashboard Open report button', () => {
   })
 })
 
+describe('ProjectDashboard empty state', () => {
+  it('the empty state links to how runs work', async () => {
+    useRunStore.setState({ run: null, origin: null, isActive: false })
+    useProjectStore.setState({ projectPath: '/proj' })
+    const openDocs = vi.fn().mockResolvedValue({ success: true })
+    window.api = {
+      setActiveProject: vi.fn().mockResolvedValue({ success: true }),
+      reportExists: vi.fn().mockResolvedValue(false),
+      readDirectory: vi.fn().mockResolvedValue([]),
+      openDocs
+    } as unknown as typeof window.api
+    render(<ProjectDashboard />)
+    fireEvent.click(await screen.findByText('docs.howRunsWork'))
+    expect(openDocs).toHaveBeenCalledWith('docs.running')
+  })
+})
+
 describe('ProjectDashboard with quarantined results', () => {
   it('counts quarantined separately and lists them in their own section', async () => {
     useProjectStore.setState({ projectPath: '/proj' })

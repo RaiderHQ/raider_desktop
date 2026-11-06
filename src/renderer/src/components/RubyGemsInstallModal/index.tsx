@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom'
 import Button from '@components/Button'
 import { useTranslation } from 'react-i18next'
+import DocsLink from '@components/DocsLink'
 
 interface RubyGemsInstallModalProps {
   onInstall: () => void
@@ -69,7 +70,8 @@ const RubyGemsInstallModal: React.FC<RubyGemsInstallModalProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="px-6 py-4 border-t border-neutral-bdr flex justify-end gap-3">
+        <div className="px-6 py-4 border-t border-neutral-bdr flex justify-end items-center gap-3">
+          <DocsLink id="docs.install" topic={t('docs.topics.install')} className="mr-auto" />
           <Button onClick={onClose} type="secondary">
             {t('recorder.rubyGemsInstallModal.no')}
           </Button>

@@ -1,5 +1,6 @@
 import React, { useRef } from 'react'
 import CommandBlock from '@components/CommandBlock'
+import DocsLink from '@components/DocsLink'
 import { useTranslation } from 'react-i18next'
 import type { Step } from '@shared/types/step'
 
@@ -86,8 +87,11 @@ const CommandList: React.FC<CommandListProps> = ({
             </React.Fragment>
           ))
         ) : (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex flex-col items-center justify-center gap-2 h-full">
             <p className="text-neutral-md">{t('recorder.placeholder.commands')}</p>
+            <DocsLink id="docs.recorder" topic={t('docs.topics.recording')}>
+              {t('docs.howRecordingWorks')}
+            </DocsLink>
           </div>
         )}
       </div>
