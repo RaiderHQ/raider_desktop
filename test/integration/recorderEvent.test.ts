@@ -198,6 +198,43 @@ describe('toElementTarget', () => {
     expect(toElementTarget('css', 'main > div', { innerText: '' })!.label).toBeUndefined()
   })
 
+  it('keeps the region flag only when the preload sends exactly true (R4)', () => {
+    expect(toElementTarget('css', 'main > div', { region: true })).toEqual({
+      strategy: 'css',
+      value: 'main > div',
+      region: true
+    })
+    expect(toElementTarget('css', '.x', { region: false })).toEqual({
+      strategy: 'css',
+      value: '.x'
+    })
+    expect(toElementTarget('css', '.x', { region: 'true' })).toEqual({
+      strategy: 'css',
+      value: '.x'
+    })
+    expect(toElementTarget('css', '.x', { region: 1 })).toEqual({
+      strategy: 'css',
+      value: '.x'
+    })
+  })
+
+  it('carries the region flag from a click event onto the step', () => {
+    const step = recorderEventToStep({
+      action: 'click',
+      selector: 'main > div',
+      strategy: 'css',
+      tagName: 'DIV',
+      innerText: '',
+      region: true
+    })
+    expect(step).toEqual({
+      id: expect.any(String),
+      kind: 'click',
+      element: { strategy: 'css', value: 'main > div', region: true }
+    })
+    expect(isStep(step)).toBe(true)
+  })
+
   it('keeps a label of exactly 60 characters whole', () => {
     const el = toElementTarget('css', '.x', { innerText: 'y'.repeat(60) })
     expect(el!.label).toBe('y'.repeat(60))

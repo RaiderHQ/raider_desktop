@@ -1300,17 +1300,68 @@ describe('Overview live runs', (): void => {
       )
     })
 
-    it('keeps the edit across a tab switch without asking', async () => {
+    it('asks before switching tabs over unsaved changes; Cancel stays with the edit (R1)', async () => {
       await renderFiles()
       await openFile('a_spec.rb')
       type('changed')
       await act(async () => {
         fireEvent.click(screen.getByText('overview.tabs.tests'))
       })
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.cancel' }))
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      await openFilesTab()
       expect(screen.getByTestId('editor')).toHaveValue('changed')
       expect(screen.getByText('editor.status.unsaved')).toBeInTheDocument()
+    })
+
+    it("Don't save switches tabs and drops the edit", async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await act(async () => {
+        fireEvent.click(screen.getByText('overview.tabs.dashboard'))
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.discard' }))
+      })
+      expect(mockApi.editFile).not.toHaveBeenCalled()
+      expect(screen.queryByTestId('editor')).not.toBeInTheDocument()
+      await openFilesTab()
+      expect(screen.getByTestId('editor')).toHaveValue('original')
+      expect(screen.queryByText('editor.status.unsaved')).not.toBeInTheDocument()
+    })
+
+    it('Save writes the file and then switches tabs', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await act(async () => {
+        fireEvent.click(screen.getByText('overview.tabs.dashboard'))
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.save' }))
+      })
+      expect(mockApi.editFile).toHaveBeenCalledWith('/fake/project/spec/a_spec.rb', 'changed')
+      await waitFor(() => expect(screen.queryByTestId('editor')).not.toBeInTheDocument())
+    })
+
+    it('clicking the Files tab again with an unsaved edit does not ask', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await openFilesTab()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.getByTestId('editor')).toHaveValue('changed')
+    })
+
+    it('switches tabs at once when the file is saved', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      await act(async () => {
+        fireEvent.click(screen.getByText('overview.tabs.dashboard'))
+      })
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('editor')).not.toBeInTheDocument()
     })
 
     it('keeps the dialog up until the save before leaving has finished', async () => {
@@ -1338,6 +1389,10 @@ describe('Overview live runs', (): void => {
       type('changed')
       await act(async () => {
         fireEvent.click(screen.getByText('overview.tabs.tests'))
+      })
+      // The tab switch asks first (R1); leaving without saving lands on the Tests tab
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.discard' }))
       })
       fireEvent.keyDown(window, { key: 's', metaKey: true })
       expect(mockApi.editFile).not.toHaveBeenCalled()

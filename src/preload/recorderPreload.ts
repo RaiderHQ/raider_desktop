@@ -68,6 +68,8 @@ document.addEventListener(
       pageUrl: window.location.href,
       innerText: textOf(target),
       ...labelHints(target),
+      // A page region, so the step can say "an empty area" rather than "this element"
+      region: isRegion(target),
       boundingRect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
     })
   },

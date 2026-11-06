@@ -31,6 +31,25 @@ describe('describeStep', () => {
     expect(JSON.stringify(values)).not.toMatch(/css=|xpath=|id=/)
   })
 
+  it('calls a click on a bare page region "an empty area", never "this element" (R4)', () => {
+    const region: ElementTarget = { strategy: 'css', value: 'main > div', region: true }
+    expect(describeStep({ id, kind: 'click', element: region })).toEqual({
+      key: 'recorder.commandParser.clickRegion',
+      values: {}
+    })
+    expect(englishText('recorder.commandParser.clickRegion')).toBe(
+      'Click an empty area of the page'
+    )
+  })
+
+  it('keeps the name of a region that has one, such as a labelled nav', () => {
+    const named: ElementTarget = { strategy: 'css', value: 'nav', label: 'Main', region: true }
+    expect(describeStep({ id, kind: 'click', element: named })).toEqual({
+      key: 'recorder.commandParser.clickElement',
+      values: { element: 'Main' }
+    })
+  })
+
   it('falls back to the locator name when there is no label', () => {
     const el = (locator: ElementTarget['locator']): ElementTarget => ({ ...bare, locator })
     const name = (l: ElementTarget['locator']): string =>

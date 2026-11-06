@@ -186,7 +186,7 @@ describe('CommandBlock', () => {
       expect(await screen.findByText('recorder.step.renderFailed')).toBeInTheDocument()
       fireEvent.doubleClick(screen.getByText('recorder.step.renderFailed'))
       expect(screen.queryByLabelText('Edit command')).not.toBeInTheDocument()
-      fireEvent.click(screen.getByLabelText('Delete step'))
+      fireEvent.click(screen.getByLabelText('recorder.step.delete'))
       expect(onDelete).toHaveBeenCalledWith(0)
     })
 
@@ -202,7 +202,7 @@ describe('CommandBlock', () => {
     it('calls onDelete with the correct index', async () => {
       const onDelete = vi.fn()
       await renderBlock({ showCode: true, onDelete, index: 2 })
-      fireEvent.click(screen.getByLabelText('Delete step'))
+      fireEvent.click(screen.getByLabelText('recorder.step.delete'))
       expect(onDelete).toHaveBeenCalledWith(2)
     })
   })

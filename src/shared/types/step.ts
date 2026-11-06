@@ -24,6 +24,7 @@ export interface ElementTarget {
   label?: string // human name, e.g. 'Login button' (from innerText/aria-label)
   ref?: { page: string; name: string }
   locator?: Locator // semantic locator the recorder captured; strategy/value stay as the fallback
+  region?: boolean // a layout element with no words of its own: the step says "an empty area"
 }
 
 export type AssertKind =
@@ -136,6 +137,7 @@ function isElementTarget(v: unknown): v is ElementTarget {
   if (v.label !== undefined && !isStr(v.label)) return false
   if (v.ref !== undefined && !(isObj(v.ref) && isStr(v.ref.page) && isStr(v.ref.name))) return false
   if (v.locator !== undefined && !isLocator(v.locator)) return false
+  if (v.region !== undefined && typeof v.region !== 'boolean') return false
   return true
 }
 
