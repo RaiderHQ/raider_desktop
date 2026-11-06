@@ -1,4 +1,4 @@
-import { render, screen, act, fireEvent } from '@testing-library/react'
+import { render, screen, act, fireEvent, waitFor } from '@testing-library/react'
 import FileEditor from '@pages/FileEditor'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
@@ -107,5 +107,99 @@ describe('FileEditor Page', () => {
     })
     fireEvent.click(back())
     expect(screen.getByText('test route')).toBeInTheDocument()
+  })
+
+  describe('saving (D3)', () => {
+    beforeEach(() => mockApi.editFile.mockReset())
+
+    const type = (text: string): void => {
+      fireEvent.change(screen.getByTestId('editor'), { target: { value: text } })
+    }
+    const saveButton = (): HTMLElement => screen.getByRole('button', { name: 'editor.saveButton' })
+
+    it('has a Save button that wakes up once the file is edited', async () => {
+      await act(async () => {
+        renderComponent()
+      })
+      expect(saveButton()).toBeDisabled()
+      expect(screen.getByText('editor.status.saved')).toBeInTheDocument()
+      type('file content changed')
+      expect(saveButton()).toBeEnabled()
+      expect(screen.getByText('editor.status.unsaved')).toBeInTheDocument()
+    })
+
+    it('saves the edited content with the button and reports it as saved', async () => {
+      mockApi.editFile.mockResolvedValue({ success: true })
+      await act(async () => {
+        renderComponent()
+      })
+      type('new content')
+      await act(async () => {
+        fireEvent.click(saveButton())
+      })
+      expect(mockApi.editFile).toHaveBeenCalledWith('/fake/path', 'new content')
+      await waitFor(() => expect(screen.getByText('editor.status.saved')).toBeInTheDocument())
+      expect(saveButton()).toBeDisabled()
+    })
+
+    it('asks before leaving with unsaved changes, and Cancel stays', async () => {
+      await act(async () => {
+        renderComponent()
+      })
+      type('edited')
+      fireEvent.click(back())
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.cancel' }))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.getByTestId('editor')).toBeInTheDocument()
+    })
+
+    it("Don't save leaves without writing", async () => {
+      await act(async () => {
+        renderComponent()
+      })
+      type('edited')
+      fireEvent.click(back())
+      fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.discard' }))
+      expect(mockApi.editFile).not.toHaveBeenCalled()
+      expect(screen.getByText('overview route')).toBeInTheDocument()
+    })
+
+    it('Save writes the file and then leaves', async () => {
+      mockApi.editFile.mockResolvedValue({ success: true })
+      await act(async () => {
+        renderComponent({ returnTo: '/overview/tests/abc' })
+      })
+      type('edited')
+      fireEvent.click(back())
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.save' }))
+      })
+      expect(mockApi.editFile).toHaveBeenCalledWith('/fake/path', 'edited')
+      expect(await screen.findByText('test route')).toBeInTheDocument()
+    })
+
+    it('stays when the save before leaving fails', async () => {
+      mockApi.editFile.mockResolvedValue({ success: false, error: 'read-only' })
+      await act(async () => {
+        renderComponent()
+      })
+      type('edited')
+      fireEvent.click(back())
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.save' }))
+      })
+      expect(screen.queryByText('overview route')).not.toBeInTheDocument()
+      expect(screen.getByTestId('editor')).toBeInTheDocument()
+    })
+
+    it('leaves straight away when nothing changed', async () => {
+      await act(async () => {
+        renderComponent()
+      })
+      fireEvent.click(back())
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.getByText('overview route')).toBeInTheDocument()
+    })
   })
 })

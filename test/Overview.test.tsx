@@ -21,17 +21,20 @@ vi.mock('@components/Library/Folder', () => ({
   default: ({
     name,
     onRunTests,
-    runDisabled
+    runDisabled,
+    onFileClick
   }: {
     name: string | undefined
     onRunTests?: () => void
     runDisabled?: boolean
+    onFileClick?: (path: string) => void
   }): JSX.Element => (
     <div data-testid="folder">
       {name}
-      {onRunTests && (
-        <button data-testid="run-tests" onClick={onRunTests} disabled={runDisabled} />
-      )}
+      {onRunTests && <button data-testid="run-tests" onClick={onRunTests} disabled={runDisabled} />}
+      {/* Two files to click, for the inline editor */}
+      <button onClick={() => onFileClick?.('/fake/project/spec/a_spec.rb')}>a_spec.rb</button>
+      <button onClick={() => onFileClick?.('/fake/project/spec/b_spec.rb')}>b_spec.rb</button>
     </div>
   )
 }))
@@ -47,9 +50,9 @@ vi.mock('@components/ProjectDashboard', () => ({
 // A stand-in by default; the real component where its async load matters
 const realDeviceSettings = vi.hoisted(() => ({ on: false }))
 vi.mock('@components/DeviceSettings', async () => {
-  const { default: Real } = await vi.importActual<
-    typeof import('@components/DeviceSettings')
-  >('@components/DeviceSettings')
+  const { default: Real } = await vi.importActual<typeof import('@components/DeviceSettings')>(
+    '@components/DeviceSettings'
+  )
   return {
     default: (
       props: React.ComponentProps<typeof Real> & { focusRef?: React.Ref<HTMLInputElement> }
@@ -66,7 +69,19 @@ vi.mock('@components/DeviceSettings', async () => {
 })
 
 vi.mock('@components/Editor', () => ({
-  default: (): JSX.Element => <div data-testid="editor">Editor</div>
+  default: ({
+    value,
+    onChange
+  }: {
+    value: string
+    onChange?: (value: string) => void
+  }): JSX.Element => (
+    <textarea
+      data-testid="editor"
+      defaultValue={value}
+      onChange={(e) => onChange?.(e.target.value)}
+    />
+  )
 }))
 
 vi.mock('@foundation/helpers', () => ({
@@ -364,7 +379,9 @@ describe('Overview Settings Toolbar', (): void => {
   })
 
   it('keeps the browser login and recorder wait controls for a web project', async () => {
-    useProjectStore.setState({ layout: { ...appiumLayout, automation: 'selenium', recordable: true } })
+    useProjectStore.setState({
+      layout: { ...appiumLayout, automation: 'selenium', recordable: true }
+    })
     await renderOverview()
 
     fireEvent.click(screen.getByTestId('overview-more-options'))
@@ -841,9 +858,11 @@ describe('Overview Settings Toolbar', (): void => {
       // Nothing recorded yet: an empty draft is never saved, so there is nothing to lose
       expect(button).toBeEnabled()
       act(() =>
-        useRecorderStore.getState().updateActiveTest((p) =>
-          p ? { ...p, steps: [{ id: 'c', kind: 'custom', code: 'x' }] } : null
-        )
+        useRecorderStore
+          .getState()
+          .updateActiveTest((p) =>
+            p ? { ...p, steps: [{ id: 'c', kind: 'custom', code: 'x' }] } : null
+          )
       )
       expect(button).toBeDisabled()
       expect(button).toHaveAttribute('title', 'quickRecord.stopFirst')
@@ -1203,5 +1222,93 @@ describe('Overview live runs', (): void => {
       mockApi.getSuites.mockResolvedValue([])
       mockApi.prepareSuiteRun.mockResolvedValue({ mode: 'legacy' })
     }
+  })
+
+  describe('inline editor saving (D3)', () => {
+    const renderFiles = async (): Promise<void> => {
+      mockApi.readFile.mockResolvedValue({ success: true, data: 'original' })
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      await openFilesTab()
+    }
+    const openFile = async (name: string): Promise<void> => {
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name }))
+      })
+    }
+    const type = (text: string): void => {
+      fireEvent.change(screen.getByTestId('editor'), { target: { value: text } })
+    }
+    const saveButton = (): HTMLElement => screen.getByRole('button', { name: 'editor.saveButton' })
+
+    it('has a Save button that wakes up once the file is edited', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      expect(saveButton()).toBeDisabled()
+      type('changed')
+      expect(saveButton()).toBeEnabled()
+      expect(screen.getByText('editor.status.unsaved')).toBeInTheDocument()
+      await act(async () => {
+        fireEvent.click(saveButton())
+      })
+      expect(mockApi.editFile).toHaveBeenCalledWith('/fake/project/spec/a_spec.rb', 'changed')
+      await waitFor(() => expect(saveButton()).toBeDisabled())
+    })
+
+    it('asks before opening another file over unsaved changes; Cancel keeps the edit', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await openFile('b_spec.rb')
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.cancel' }))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(mockApi.readFile).toHaveBeenCalledTimes(1)
+      expect(screen.getByTestId('editor')).toHaveValue('changed')
+    })
+
+    it("Don't save opens the other file without writing", async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await openFile('b_spec.rb')
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.discard' }))
+      })
+      expect(mockApi.editFile).not.toHaveBeenCalled()
+      expect(mockApi.readFile).toHaveBeenLastCalledWith('/fake/project/spec/b_spec.rb')
+    })
+
+    it('Save writes the first file and then opens the other', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await openFile('b_spec.rb')
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.save' }))
+      })
+      expect(mockApi.editFile).toHaveBeenCalledWith('/fake/project/spec/a_spec.rb', 'changed')
+      await waitFor(() =>
+        expect(mockApi.readFile).toHaveBeenLastCalledWith('/fake/project/spec/b_spec.rb')
+      )
+    })
+
+    it('asks before switching tabs over unsaved changes', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await act(async () => {
+        fireEvent.click(screen.getByText('overview.tabs.tests'))
+      })
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.cancel' }))
+      expect(screen.getByTestId('editor')).toBeInTheDocument()
+    })
   })
 })

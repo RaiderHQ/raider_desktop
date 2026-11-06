@@ -153,6 +153,29 @@ test.describe('Project Tests tab', () => {
     await expect(page.getByRole('button', { name: 'Open file…' })).toBeVisible()
   })
 
+  test('Open file… shows the file in a full-height editor with a Save button (D2, D3)', async ({
+    page
+  }) => {
+    await mockIPCCapture(page, 'openCodeTest', codeView)
+    await mockIPC(page, 'readFile', { success: true, data: "describe 'Login' do\nend\n" })
+    await goToOverview(page)
+    await row(page, 'Login').click()
+    await page.getByRole('button', { name: 'Open file…' }).click()
+    await expect(page).toHaveURL(/#\/file-editor/)
+
+    const monaco = page.locator('.monaco-editor').first()
+    await expect(monaco).toBeVisible()
+    const box = await monaco.boundingBox()
+    expect(box?.height ?? 0).toBeGreaterThan(300)
+
+    await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled()
+    await expect(page.getByText('Saved')).toBeVisible()
+
+    // The Ruby test on this page keeps its own view control
+    await page.getByRole('button', { name: 'Back' }).click()
+    await expect(page).toHaveURL(/#\/overview\/tests\//)
+  })
+
   test('a test edited in code shows its tests, without fields to change', async ({ page }) => {
     await mockIPCCapture(page, 'openCodeTest', codeView)
     await goToOverview(page)

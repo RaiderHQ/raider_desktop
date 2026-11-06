@@ -292,7 +292,20 @@
       "saveFailed": "Error saving file \"{{fileName}}\". Please try again.",
       "unexpectedSaveError": "Unexpected error occurred while saving the file. Please try again."
     },
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "saveButton": "Save",
+    "back": "Back",
+    "status": {
+      "saved": "Saved",
+      "unsaved": "Unsaved changes"
+    },
+    "unsaved": {
+      "title": "Save changes to {{fileName}}?",
+      "message": "Your changes will be lost if you don't save them.",
+      "save": "Save",
+      "discard": "Don't save",
+      "cancel": "Cancel"
+    }
   },
   "testResults": {
     "breakdown": "Test Results Breakdown",

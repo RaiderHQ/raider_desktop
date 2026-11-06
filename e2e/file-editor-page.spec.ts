@@ -64,7 +64,9 @@ test.describe('File Editor Page', () => {
     // Mock a slow readFile
     await page.evaluate(() => {
       ;(window as any).api.readFile = () =>
-        new Promise((resolve) => setTimeout(() => resolve({ success: true, data: 'content' }), 3000))
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ success: true, data: 'content' }), 3000)
+        )
     })
     await goToOverviewFiles(page)
 
@@ -76,9 +78,7 @@ test.describe('File Editor Page', () => {
   })
 
   test('save triggers editFile IPC with correct path and content', async ({ page }) => {
-    const mockTree = [
-      { name: 'edit_me.rb', type: 'file', path: '/mock/test-project/edit_me.rb' }
-    ]
+    const mockTree = [{ name: 'edit_me.rb', type: 'file', path: '/mock/test-project/edit_me.rb' }]
     await setupProjectContext(page, { files: mockTree })
     await page.evaluate(() => {
       ;(window as any).api.readFile = async () => ({
@@ -164,10 +164,67 @@ test.describe('File Editor Page', () => {
     await page.waitForTimeout(1500)
 
     // Click back button (FaArrowLeft icon in a button)
-    const backBtn = page.locator('button').filter({ has: page.locator('svg') }).first()
+    const backBtn = page
+      .locator('button')
+      .filter({ has: page.locator('svg') })
+      .first()
     await backBtn.click()
     await page.waitForTimeout(800)
 
     expect(page.url()).toContain('#/overview')
+  })
+
+  test('the Save button saves what was typed (D3)', async ({ page }) => {
+    const mockTree = [{ name: 'typed.rb', type: 'file', path: '/mock/test-project/typed.rb' }]
+    await setupProjectContext(page, { files: mockTree })
+    await page.evaluate(() => {
+      ;(window as any).api.readFile = async () => ({ success: true, data: 'original' })
+    })
+    await goToOverviewFiles(page)
+    await page.getByText('typed.rb').click()
+    await page.waitForTimeout(1500)
+    await mockIPCCapture(page, 'editFile', { success: true })
+
+    const save = page.getByRole('button', { name: 'Save', exact: true })
+    await expect(save).toBeDisabled()
+    await page.locator('.monaco-editor .view-lines').click()
+    await page.keyboard.press('End')
+    await page.keyboard.type(' plus')
+    await expect(page.getByText('Unsaved changes')).toBeVisible()
+    await expect(save).toBeEnabled()
+    await save.click()
+
+    await expect
+      .poll(() => getIPCCalls(page, 'editFile'))
+      .toEqual([['/mock/test-project/typed.rb', 'original plus']])
+    await expect(save).toBeDisabled()
+    await expect(page.getByText('Saved')).toBeVisible()
+  })
+
+  test('opening another file over unsaved changes asks first (D3)', async ({ page }) => {
+    const mockTree = [
+      { name: 'one.rb', type: 'file', path: '/mock/test-project/one.rb' },
+      { name: 'two.rb', type: 'file', path: '/mock/test-project/two.rb' }
+    ]
+    await setupProjectContext(page, { files: mockTree })
+    await page.evaluate(() => {
+      ;(window as any).api.readFile = async () => ({ success: true, data: 'original' })
+    })
+    await goToOverviewFiles(page)
+    await page.getByText('one.rb').click()
+    await page.waitForTimeout(1500)
+    await mockIPCCapture(page, 'editFile', { success: true })
+
+    await page.locator('.monaco-editor .view-lines').click()
+    await page.keyboard.type('x')
+    await expect(page.getByText('Unsaved changes')).toBeVisible()
+    await page.getByText('two.rb').click()
+
+    const dialog = page.getByRole('dialog', { name: 'Save changes to one.rb?' })
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole('button', { name: "Don't save" }).click()
+    await expect(dialog).toBeHidden()
+    expect(await getIPCCalls(page, 'editFile')).toEqual([])
+    await expect(page.getByText('two.rb').first()).toBeVisible()
   })
 })
