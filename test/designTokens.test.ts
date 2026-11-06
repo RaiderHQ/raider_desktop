@@ -26,7 +26,8 @@ const sourceFiles = (dir: string): string[] =>
 
 /**
  * WCAG "large text" is 24 px, or about 18.7 px bold: text-2xl and up at any weight,
- * or text-lg / text-xl in a semibold or bold face. Disabled controls are exempt.
+ * or text-lg / text-xl in a semibold or bold face. Disabled controls (disabled: and
+ * aria-disabled: variants) are exempt.
  * The check is line by line, so a size set on another line of a className is not seen.
  */
 const isLargeText = (line: string): boolean =>
@@ -49,7 +50,7 @@ describe('neutral text tokens', () => {
     const offenders = sourceFiles(root).flatMap((file) =>
       readFileSync(file, 'utf8')
         .split('\n')
-        .map((line, i) => ({ line: line.replace(/disabled:text-neutral-mid/g, ''), i }))
+        .map((line, i) => ({ line: line.replace(/(aria-)?disabled:text-neutral-mid/g, ''), i }))
         .filter(({ line }) => line.includes('text-neutral-mid') && !isLargeText(line))
         .map(({ i }) => `${file.slice(root.length + 1)}:${i + 1}`)
     )
