@@ -1,4 +1,4 @@
-import type { Platform } from './platform'
+import type { Platform } from './shortcuts'
 
 export interface TitleParts {
   document?: { name: string; edited: boolean } | null

@@ -219,18 +219,18 @@ describe('the close guard with the recording flush (wired like src/main/index.ts
     quit.mockReset()
     showMessageBoxSync.mockReset()
     const closeOrQuit = (): void => (quitting ? quit() : wired.close())
-    let guard: ReturnType<typeof installDocumentEdited> | undefined
+    const guard = { markClean: (): void => {} }
     installCloseFlush(wired as never, wiredIpc as never, {
       close: closeOrQuit,
-      onBeforeClose: () => guard?.markClean()
+      onBeforeClose: () => guard.markClean()
     })
-    guard = installDocumentEdited(wired as never, wiredIpc as never, {
+    guard.markClean = installDocumentEdited(wired as never, wiredIpc as never, {
       dialog: { showMessageBoxSync },
       close: closeOrQuit,
       onCancel: () => {
         quitting = false
       }
-    })
+    }).markClean
   })
 
   const from = (): { sender: unknown } => ({ sender: wired.webContents })

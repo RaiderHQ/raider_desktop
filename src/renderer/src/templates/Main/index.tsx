@@ -17,7 +17,7 @@ import { installMissingGems } from '@foundation/installGems'
 import { subscribeRunEvents } from '@foundation/Stores/runStore'
 import useTitleStore from '@foundation/Stores/titleStore'
 import { windowTitle } from '@shared/windowTitle'
-import { platformFrom } from '@shared/platform'
+import { platformFrom } from '@shared/shortcuts'
 import { dispatchMenuCommand, isMenuCommand } from '@foundation/menuCommands'
 
 const MainTemplate: React.FC = (): JSX.Element => {

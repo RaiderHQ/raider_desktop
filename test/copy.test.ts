@@ -34,6 +34,15 @@ describe('copy', () => {
     )
     expect(en.landing.subtitle).toBe('Record, run and fix UI tests without leaving the app.')
   })
+  it('words the save branch plainly (PR B)', () => {
+    expect(en.testPage.autosaved).toBe('Changes to this test are saved automatically.')
+    expect(en.files.unsavedSuffix).toBe('{{name}}, unsaved changes')
+    expect(en.closeGuard.message).toBe('Save changes to {{name}}?')
+    expect(en.closeGuard.save).toBe('Save')
+    expect(en.closeGuard.discard).toBe("Don't save")
+    expect(en.closeGuard.cancel).toBe('Cancel')
+  })
+
   it('every tooltip is sentence case, short and has no shortcut typed in', () => {
     const allowed = [
       'Ruby',
