@@ -167,6 +167,35 @@ describe('getPrioritizedSelector: candidates', () => {
     expect(pick(document.querySelector('div')!).locator?.by).not.toBe('text')
   })
 
+  describe('containers (D16)', () => {
+    it('does not name a container by the text of the things inside it', () => {
+      document.body.innerHTML =
+        '<main><div class="page"><button>Save</button><p>Email</p><h2>Summer sale</h2></div></main>'
+      const div = document.querySelector('div')!
+      const result = pick(div)
+      expect(result.locator?.by).not.toBe('text')
+      expect(result.selector).not.toContain('Summer sale')
+    })
+
+    it('does not name the body by the whole page text', () => {
+      document.body.innerHTML = '<h1>Shop</h1><p>Welcome</p>'
+      expect(pick(document.body).locator?.by).not.toBe('text')
+    })
+
+    it('still names a paragraph that holds its own text around inline marks', () => {
+      document.body.innerHTML = '<div><p>Read the <b>terms</b> first</p><p>Other</p></div>'
+      const p = document.querySelector('p')!
+      expect(pick(p).locator).toEqual({ by: 'text', text: 'Read the terms first' })
+    })
+
+    it('still names a cell or list item by its text', () => {
+      document.body.innerHTML = '<ul><li><span>Apples</span></li><li><span>Pears</span></li></ul>'
+      const li = document.querySelectorAll('li')[1]
+      expect(pick(li).locator?.by).not.toBe('text')
+      expect(pick(li.firstElementChild!).locator).toEqual({ by: 'text', text: 'Pears' })
+    })
+  })
+
   it.each([':r1:', 'ember123', 'a1b2c3d4e5', 'btn-12345'])('skips the generated id %s', (id) => {
     document.body.innerHTML = '<p>a</p><p>b</p>'
     const el = document.querySelectorAll('p')[1]

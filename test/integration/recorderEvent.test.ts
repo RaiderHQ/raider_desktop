@@ -163,9 +163,22 @@ describe('locator on recorder events', () => {
 })
 
 describe('toElementTarget', () => {
-  it('caps a long text label at 60 characters', () => {
-    const el = toElementTarget('css', '.x', { innerText: 'a'.repeat(100) })
-    expect(el!.label).toHaveLength(60)
+  it('cuts a long text label on a word boundary with an ellipsis, within 60 characters', () => {
+    const text = 'Save Email Summer sale Pricing Report A Delete Report B Delete Report C and more'
+    const el = toElementTarget('css', '.x', { innerText: text })
+    expect(el!.label!.length).toBeLessThanOrEqual(60)
+    expect(el!.label).toMatch(/\S…$/)
+    expect(el!.label).toBe('Save Email Summer sale Pricing Report A Delete Report B…')
+  })
+
+  it('cuts inside a single long word rather than drop the whole label', () => {
+    const el = toElementTarget('css', '.x', { innerText: 'x'.repeat(100) })
+    expect(el!.label).toBe('x'.repeat(59) + '…')
+  })
+
+  it('keeps a label of exactly 60 characters whole', () => {
+    const el = toElementTarget('css', '.x', { innerText: 'y'.repeat(60) })
+    expect(el!.label).toBe('y'.repeat(60))
   })
 
   it('collapses whitespace in the label', () => {
