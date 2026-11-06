@@ -8,6 +8,7 @@ import EditorSaveBar from '@components/EditorSaveBar'
 import Tooltip from '@components/Tooltip'
 import UnsavedChangesModal from '@components/UnsavedChangesModal'
 import { getFileLanguage } from '@foundation/helpers'
+import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { onMenuCommand } from '@foundation/menuCommands'
 import { FaArrowLeft } from 'react-icons/fa'
 
@@ -33,6 +34,7 @@ const FileEditor: React.FC = (): JSX.Element => {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [leaving, setLeaving] = useState(false)
   const dirty = fileContent !== savedContent
+  useDocumentTitle(fileName, dirty)
 
   // One write at a time; a ref so a Cmd+S repeat in the same tick can't start a second one
   const savingRef = useRef(false)

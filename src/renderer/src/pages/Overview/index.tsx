@@ -11,6 +11,7 @@ import ToggleSwitch from '@components/ToggleSwitch'
 import TagInput from '@components/TagInput'
 import ProjectDashboard from '@components/ProjectDashboard'
 import Editor from '@components/Editor'
+import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { onMenuCommand } from '@foundation/menuCommands'
 import EditorSaveBar from '@components/EditorSaveBar'
 import UnsavedChangesModal from '@components/UnsavedChangesModal'
@@ -186,6 +187,7 @@ const Overview: React.FC = () => {
   // What the user was about to do when asked about unsaved changes
   const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null)
   const fileDirty = !!editingFile && fileContent !== savedContent
+  useDocumentTitle(editingFile?.name ?? null, fileDirty)
 
   useEffect(() => {
     if (!projectPath) {
