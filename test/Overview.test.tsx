@@ -3,6 +3,7 @@ import type React from 'react'
 import Overview from '@pages/Overview'
 import { dispatchMenuCommand } from '@foundation/menuCommands'
 import '@testing-library/jest-dom'
+import useTitleStore from '@foundation/Stores/titleStore'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { Link, MemoryRouter } from 'react-router'
 import useRecorderStore from '@foundation/Stores/recorderStore'
@@ -23,14 +24,16 @@ vi.mock('@components/Library/Folder', () => ({
     name,
     onRunTests,
     runDisabled,
-    onFileClick
+    onFileClick,
+    dirtyPath
   }: {
+    dirtyPath?: string
     name: string | undefined
     onRunTests?: () => void
     runDisabled?: boolean
     onFileClick?: (path: string) => void
   }): JSX.Element => (
-    <div data-testid="folder">
+    <div data-testid="folder" data-dirty-path={dirtyPath ?? ''}>
       {name}
       {onRunTests && <button data-testid="run-tests" onClick={onRunTests} disabled={runDisabled} />}
       {/* Two files to click, for the inline editor */}
@@ -1277,6 +1280,20 @@ describe('Overview live runs', (): void => {
     }
     const saveButton = (): HTMLElement => screen.getByRole('button', { name: 'editor.saveButton' })
 
+    it('the tree shows the dot once the open file is edited', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      const dirtyPath = (): string | null =>
+        screen.getByTestId('folder').getAttribute('data-dirty-path')
+      expect(dirtyPath()).toBe('')
+      type('changed')
+      expect(dirtyPath()).toBe('/fake/project/spec/a_spec.rb')
+      await act(async () => {
+        fireEvent.click(saveButton())
+      })
+      await waitFor(() => expect(dirtyPath()).toBe(''))
+    })
+
     it('has a Save button that wakes up once the file is edited', async () => {
       await renderFiles()
       await openFile('a_spec.rb')
@@ -1289,6 +1306,47 @@ describe('Overview live runs', (): void => {
       })
       expect(mockApi.editFile).toHaveBeenCalledWith('/fake/project/spec/a_spec.rb', 'changed')
       await waitFor(() => expect(saveButton()).toBeDisabled())
+    })
+
+    it('tells the window which file is open and whether it is dirty', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      expect(useTitleStore.getState().document).toEqual({ name: 'a_spec.rb', edited: false })
+      type('changed')
+      expect(useTitleStore.getState().document).toEqual({ name: 'a_spec.rb', edited: true })
+      await act(async () => {
+        fireEvent.click(saveButton())
+      })
+      await waitFor(() =>
+        expect(useTitleStore.getState().document).toEqual({ name: 'a_spec.rb', edited: false })
+      )
+    })
+
+    it('names the window after the open file only on the Files tab', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      expect(useTitleStore.getState().document).toEqual({ name: 'a_spec.rb', edited: false })
+      await act(async () => {
+        fireEvent.click(screen.getByText('overview.tabs.tests'))
+      })
+      expect(useTitleStore.getState().document).toBeNull()
+      // A Test page that unmounts clears the title; the Files tab sets it again
+      act(() => useTitleStore.getState().setDocument(null))
+      await openFilesTab()
+      expect(useTitleStore.getState().document).toEqual({ name: 'a_spec.rb', edited: false })
+    })
+
+    it('keeps the edited state while the unsaved dialog is up', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await act(async () => {
+        fireEvent.click(screen.getByText('overview.tabs.tests'))
+      })
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(useTitleStore.getState().document?.edited).toBe(true)
+      fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.cancel' }))
+      expect(useTitleStore.getState().document?.edited).toBe(true)
     })
 
     it('asks before opening another file over unsaved changes; Cancel keeps the edit', async () => {

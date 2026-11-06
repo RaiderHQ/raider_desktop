@@ -19,6 +19,7 @@ import type { TestRow } from '@foundation/testKey'
 import type { CodeTestView } from '@shared/types/projectTest'
 import type { Step } from '@shared/types/step'
 import { useTestRecording } from '../../hooks/useTestRecording'
+import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 
 interface CodeTestPaneProps {
   /** A test edited in code ('code' or 'codeOwnedWasRecorded'): a project file */
@@ -158,6 +159,33 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
       markLatest={recording.isRecording}
     />
   ) : null
+
+  // The menu bar's Record, Run and Save act like the buttons, under the same rules
+  const canRecord =
+    !recording.isRecording &&
+    !confirmingRecord &&
+    !!selected &&
+    !busy &&
+    !recordingDisabled &&
+    !recordedTest
+  const canRun = !busy && !runBusy && !!file && !confirmingRecord
+  const saving = recording.isRecording
+  const savingAsNew = !!recordedTest && !!unsavedExample && !saving
+  useEffect(
+    () =>
+      onMenuCommand((command) => {
+        if (command === 'record' && canRecord) setConfirmingRecord(true)
+        if (command === 'run' && canRun) run()
+        if (command === 'save' && saving && !isReplaying) void stop()
+        if (command === 'save' && savingAsNew) void recording.saveAsNewTest()
+      }),
+    [canRecord, canRun, saving, savingAsNew, isReplaying, run, stop, recording.saveAsNewTest]
+  )
+  // Edited while recording, and while this test holds an example not saved into its file
+  useDocumentTitle(
+    selected?.name ?? row.name,
+    recording.isRecording || (!!activeTest && unsavedExample?.testId === activeTest.id)
+  )
 
   const browserOpen = (recording.recordingUrl && recording.preloadPath) || isReplaying
   // Code switches the recording's steps while one is shown, else the selected test's view

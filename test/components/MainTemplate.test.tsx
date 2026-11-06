@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import MainTemplate from '@templates/Main'
 import { onMenuCommand } from '@foundation/menuCommands'
 import useRecorderStore from '@foundation/Stores/recorderStore'
+import useTitleStore from '@foundation/Stores/titleStore'
 import useEditorStore from '@foundation/Stores/editorStore'
 
 vi.mock('react-i18next', () => ({
@@ -65,6 +66,7 @@ beforeAll(() => {
     onSuitesRecovered: vi.fn(() => vi.fn()),
     onSuiteUpdated: vi.fn(() => vi.fn()),
     onMenuCommand: vi.fn(() => vi.fn()),
+    setDocumentEdited: vi.fn(),
     selectFolder: vi.fn().mockResolvedValue('/picked/project')
   }
 })
@@ -447,5 +449,36 @@ describe('MainTemplate project files toasts', () => {
       expect(seen).toEqual([])
       expect(screen.getByTestId('where')).toHaveTextContent('/overview')
     })
+  })
+})
+
+describe('MainTemplate window title', () => {
+  afterEach(() => act(() => useTitleStore.getState().setDocument(null)))
+
+  const api = (): { setDocumentEdited: ReturnType<typeof vi.fn> } =>
+    (window as unknown as { api: { setDocumentEdited: ReturnType<typeof vi.fn> } }).api
+
+  it('sets the window title from the project and the document', () => {
+    render(
+      <MemoryRouter initialEntries={['/overview']}>
+        <MainTemplate />
+      </MemoryRouter>
+    )
+    act(() => useTitleStore.getState().setDocument({ name: 'login_spec.rb', edited: true }))
+    const dot = navigator.platform.toLowerCase().startsWith('mac') ? '' : '• '
+    expect(document.title).toBe(`${dot}login_spec.rb — project — Ruby Raider`)
+    expect(api().setDocumentEdited).toHaveBeenLastCalledWith(true, 'login_spec.rb')
+  })
+
+  it('clears the edited flag when the document is cleared', () => {
+    render(
+      <MemoryRouter initialEntries={['/overview']}>
+        <MainTemplate />
+      </MemoryRouter>
+    )
+    act(() => useTitleStore.getState().setDocument({ name: 'login_spec.rb', edited: true }))
+    act(() => useTitleStore.getState().setDocument(null))
+    expect(document.title).toBe('project — Ruby Raider')
+    expect(api().setDocumentEdited).toHaveBeenLastCalledWith(false, '')
   })
 })
