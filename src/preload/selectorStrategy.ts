@@ -271,11 +271,59 @@ function byTestId(el: Element, attribute: string): Candidate | null {
   })
 }
 
+// Layout elements: a click on one of these is a click on a region, not on a piece of text
+const CONTAINER_TAGS = new Set([
+  'html',
+  'body',
+  'div',
+  'section',
+  'main',
+  'article',
+  'form',
+  'header',
+  'footer',
+  'nav',
+  'aside',
+  'ul',
+  'ol',
+  'table',
+  'tbody',
+  'thead',
+  'tfoot',
+  'tr',
+  'td',
+  'th',
+  'li',
+  'dl',
+  'figure',
+  'details',
+  'dialog',
+  'fieldset'
+])
+
+// Words the element carries in its own text nodes; separators alone ("|", "·") don't count
+const ownText = (el: Element): string => {
+  const text = Array.from(el.childNodes)
+    .filter((node) => node.nodeType === Node.TEXT_NODE)
+    .map((node) => node.textContent ?? '')
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return /[\p{L}\p{N}]/u.test(text) ? text : ''
+}
+
+/** A click on a layout element with no words of its own: a region of the page, not a thing on it. */
+export const isRegion = (el: Element): boolean =>
+  CONTAINER_TAGS.has(el.tagName.toLowerCase()) && !ownText(el)
+
 // The innermost element carrying the text: a parent whose child has the same text defers to it.
+// A container with no words of its own is not named by the words of the things inside it
+// (that would be the whole page text for a click on the page background) (D16).
 function byText(el: Element): Candidate | null {
   const text = normalizedText(el)
   if (!text || text.length > NAME_MAX) return null
   if (Array.from(el.children).some((child) => normalizedText(child) === text)) return null
+  if (isRegion(el)) return null
   const t = xpathLiteral(text)
   return checked(el, {
     selector: `//*[normalize-space()=${t}][not(*[normalize-space()=${t}])]`,

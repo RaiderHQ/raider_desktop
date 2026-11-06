@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   getPrioritizedSelector,
   cssEscape,
+  isRegion,
   xpathCount,
   DEFAULT_PRIORITIES
 } from '../src/preload/selectorStrategy'
@@ -165,6 +166,58 @@ describe('getPrioritizedSelector: candidates', () => {
     expect(pick(span).locator).toEqual({ by: 'text', text: 'Order total' })
     // the wrapper cannot claim the text; it falls through to another pick
     expect(pick(document.querySelector('div')!).locator?.by).not.toBe('text')
+  })
+
+  describe('containers (D16)', () => {
+    it('does not name a container by the text of the things inside it', () => {
+      document.body.innerHTML =
+        '<main><div class="page"><button>Save</button><p>Email</p><h2>Summer sale</h2></div></main>'
+      const div = document.querySelector('div')!
+      const result = pick(div)
+      expect(result.locator?.by).not.toBe('text')
+      expect(result.selector).not.toContain('Summer sale')
+    })
+
+    it('does not name the body by the whole page text', () => {
+      document.body.innerHTML = '<h1>Shop</h1><p>Welcome</p>'
+      expect(pick(document.body).locator?.by).not.toBe('text')
+    })
+
+    it('still names a paragraph that holds its own text around inline marks', () => {
+      document.body.innerHTML = '<div><p>Read the <b>terms</b> first</p><p>Other</p></div>'
+      const p = document.querySelector('p')!
+      expect(pick(p).locator).toEqual({ by: 'text', text: 'Read the terms first' })
+    })
+
+    it('names an item by its text when the text is its own', () => {
+      document.body.innerHTML = '<ul><li>Apples</li><li>Pears</li></ul>'
+      const li = document.querySelectorAll('li')[1]
+      expect(pick(li).locator).toEqual({ by: 'text', text: 'Pears' })
+    })
+
+    it('does not name a cell or item by the controls inside it', () => {
+      document.body.innerHTML =
+        '<table><tr><td><button>Edit</button><button>Delete</button></td></tr></table>'
+      expect(pick(document.querySelector('td')!).locator?.by).not.toBe('text')
+      document.body.innerHTML = '<ul><li><a href="#">Home</a><a href="#">About</a></li></ul>'
+      expect(pick(document.querySelector('li')!).locator?.by).not.toBe('text')
+    })
+
+    it('ignores whitespace and separators between children', () => {
+      document.body.innerHTML = '<div>\n  <span>A</span>\n  <span>B</span>\n</div>'
+      expect(pick(document.querySelector('div')!).locator?.by).not.toBe('text')
+      document.body.innerHTML = '<nav><a href="#">Home</a> | <a href="#">About</a></nav>'
+      expect(pick(document.querySelector('nav')!).locator?.by).not.toBe('text')
+    })
+
+    it('tells a click on a page region from a click on a named thing', () => {
+      document.body.innerHTML =
+        '<div class="page"><button>Save</button><p>Email</p></div><p>Read me</p>'
+      expect(isRegion(document.querySelector('div')!)).toBe(true)
+      expect(isRegion(document.body)).toBe(true)
+      expect(isRegion(document.querySelector('button')!)).toBe(false)
+      expect(isRegion(document.querySelectorAll('p')[1])).toBe(false)
+    })
   })
 
   it.each([':r1:', 'ember123', 'a1b2c3d4e5', 'btn-12345'])('skips the generated id %s', (id) => {
