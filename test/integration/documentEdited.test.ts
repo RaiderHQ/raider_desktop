@@ -275,6 +275,19 @@ describe('the close guard with the recording flush (wired like src/main/index.ts
     expect(wired.close).not.toHaveBeenCalled()
   })
 
+  it('a Save that times out during a quit, then a plain close, does not quit', () => {
+    editWired()
+    quitting = true
+    showMessageBoxSync.mockReturnValueOnce(0).mockReturnValueOnce(1)
+    wired.closeOnce()
+    vi.advanceTimersByTime(5000)
+    expect(wired.isDestroyed()).toBe(false)
+    wired.closeOnce()
+    expect(quit).not.toHaveBeenCalled()
+    expect(wired.close).toHaveBeenCalledTimes(1)
+    expect(wired.isDestroyed()).toBe(true)
+  })
+
   it('Cancel after a quit, then a plain close, does not quit', () => {
     editWired()
     quitting = true

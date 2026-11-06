@@ -11,7 +11,7 @@ interface DocumentEditedOptions {
   dialog?: Pick<typeof dialog, 'showMessageBoxSync'>
   /** Closes for real once the choice is made; defaults to closing the window */
   close?: () => void
-  /** Runs when the person cancels the close, so a held quit does not carry on later */
+  /** Runs when the close is cancelled (Cancel, or Save timing out), so a held quit does not carry on later */
   onCancel?: () => void
   /** How long Save waits for the page to report a clean document */
   timeoutMs?: number
@@ -82,7 +82,11 @@ export function installDocumentEdited(
         afterReport = null
         busy = false
       }
-      const timer = setTimeout(finish, timeoutMs)
+      // The page never reported clean: the window stays open, as after Cancel
+      const timer = setTimeout(() => {
+        finish()
+        onCancel()
+      }, timeoutMs)
       afterReport = (): void => {
         finish()
         if (!win.isDestroyed()) close()
