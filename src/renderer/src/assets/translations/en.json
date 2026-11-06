@@ -625,10 +625,31 @@
       "renderFailed": "Couldn't render code"
     }
   },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "action": "Action",
+    "key": "Shortcut",
+    "actions": {
+      "save": "Save",
+      "run": "Run",
+      "record": "Record",
+      "stop": "Stop & save",
+      "new-test": "New test",
+      "new-project": "New project",
+      "open-project": "Open project",
+      "open-file": "Open file",
+      "how-it-works": "How Ruby Raider works",
+      "docs": "Documentation",
+      "shortcuts": "Keyboard shortcuts"
+    },
+    "learnMore": "Learn more about recording",
+    "close": "Close"
+  },
   "concepts": {
     "title": "How Ruby Raider Works",
     "subtitle": "New here? These are the key ideas you need to get started.",
-    "hint": "Click ℹ on any tab or card for a short explanation of what it does.",
+    "hint": "Hover any button for what it does.",
+    "shortcuts": "Keyboard shortcuts",
     "installTitle": "Installation Prerequisites",
     "installSubtitle": "Ruby Raider needs three things installed on your machine before it can run.",
     "install": {

@@ -6,6 +6,7 @@ import Logo from '@components/Logo'
 import Tooltip from '@components/Tooltip'
 import RunIndicator from '@components/RunIndicator'
 import ConceptsModal from '@components/ConceptsModal'
+import ShortcutsSheet from '@components/ShortcutsSheet'
 import RubyInstallModal from '@components/RubyInstallModal'
 import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
 import TraceViewerOverlay from '@components/TraceViewerOverlay'
@@ -200,7 +201,15 @@ const MainTemplate: React.FC = (): JSX.Element => {
         <p className="text-neutral-md text-sm">{t('version', { version: raiderVersion })}</p>
       </footer>
 
-      {isConceptsModalOpen && <ConceptsModal onClose={() => setIsConceptsModalOpen(false)} />}
+      {isConceptsModalOpen && (
+        <ConceptsModal
+          onClose={() => setIsConceptsModalOpen(false)}
+          onOpenShortcuts={() => {
+            setIsConceptsModalOpen(false)
+            setIsShortcutsOpen(true)
+          }}
+        />
+      )}
 
       {isRubyInstallModalOpen && (
         <RubyInstallModal
@@ -216,7 +225,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
         />
       )}
 
-      {/* ShortcutsSheet: Task 4 (open: isShortcutsOpen) */}
+      {isShortcutsOpen && <ShortcutsSheet onClose={() => setIsShortcutsOpen(false)} />}
 
       <TraceViewerOverlay />
 

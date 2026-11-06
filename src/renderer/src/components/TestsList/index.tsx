@@ -72,7 +72,7 @@ const TestsList: React.FC<TestsListProps> = ({
       <div className="flex items-center gap-2 p-3 border-b border-neutral-bdr">
         <Tooltip
           content={t('tooltips.tests.newTest')}
-          // shortcut chip added by PR C once the menu binds it
+          shortcut="new-test"
           position="bottom"
           className="flex-1"
         >

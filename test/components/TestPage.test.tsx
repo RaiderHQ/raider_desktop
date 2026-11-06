@@ -248,6 +248,15 @@ describe('TestPage', () => {
     expect(tip.querySelector('kbd')).not.toBeNull()
   })
 
+  it('shows the Stop & save shortcut while recording', async () => {
+    renderPage({ ...recorded, file: 'spec/login_works_spec.rb' })
+    await opened()
+    await startRecording()
+    fireEvent.keyDown(window, { key: 'Tab' })
+    fireEvent.focus(screen.getByRole('button', { name: 'testPage.stop' }))
+    expect(screen.getByRole('tooltip').querySelector('kbd')).not.toBeNull()
+  })
+
   it('leaves no tooltip over the More menu once it is clicked', async () => {
     renderPage()
     await opened()

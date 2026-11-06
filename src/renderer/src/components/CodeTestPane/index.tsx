@@ -189,8 +189,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
               </span>
             )}
             {recording.isRecording ? (
-              // shortcut chip added by PR C once the menu binds it
-              <Tooltip content={t('tooltips.testPage.stop')} position="bottom">
+              <Tooltip content={t('tooltips.testPage.stop')} shortcut="stop" position="bottom">
                 <button
                   onClick={() => void stop()}
                   disabled={isReplaying}
@@ -228,7 +227,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
             </Tooltip>
             <Tooltip
               content={t('tooltips.testPage.openFile')}
-              // shortcut chip added by PR C once the menu binds it
+              shortcut="open-file"
               position="bottom"
             >
               <button

@@ -1,4 +1,4 @@
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
@@ -309,6 +309,28 @@ describe('MainTemplate project files toasts', () => {
       })
       expect(api().selectFolder).toHaveBeenCalledTimes(1)
       await act(async () => pick(null))
+    })
+
+    it('the shortcuts command opens the sheet', () => {
+      const root = document.createElement('div')
+      root.id = 'root'
+      document.body.appendChild(root)
+      renderAt('/overview')
+      act(() => menuListener()('shortcuts'))
+      expect(screen.getByRole('dialog', { name: 'shortcuts.title' })).toBeInTheDocument()
+      root.remove()
+    })
+
+    it('opening the sheet from the concepts modal closes the concepts modal', () => {
+      const root = document.createElement('div')
+      root.id = 'root'
+      document.body.appendChild(root)
+      renderAt('/overview')
+      act(() => menuListener()('how-it-works'))
+      fireEvent.click(screen.getByRole('button', { name: /concepts\.shortcuts/ }))
+      expect(screen.queryByText('concepts.title')).not.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'shortcuts.title' })).toBeInTheDocument()
+      root.remove()
     })
 
     it('leaves the page alone while the help modal is open', () => {
