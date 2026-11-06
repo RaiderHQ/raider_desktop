@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import DocsLink from '@components/DocsLink'
 import { SHORTCUTS, shortcutLabel, platformFrom } from '@shared/shortcuts'
 import type { ShortcutId } from '@shared/shortcuts'
 
@@ -105,7 +106,11 @@ const ShortcutsSheet: React.FC<ShortcutsSheetProps> = ({ onClose }) => {
               ))}
             </tbody>
           </table>
-          {/* DocsLink docs.recorder: PR D */}
+          <div className="mt-4">
+            <DocsLink id="docs.recorder" topic={t('docs.topics.recording')}>
+              {t('shortcuts.learnMore')}
+            </DocsLink>
+          </div>
         </div>
         <div className="border-t border-neutral-bdr px-6 py-4 flex justify-end shrink-0">
           <CloseButton innerRef={closeRef} onClick={onClose} label={t('shortcuts.close')} />

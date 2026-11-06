@@ -27,6 +27,16 @@ const defaultProps = {
 }
 
 describe('ProjectSelector', () => {
+  it("the card's info modal links to docs.projects", () => {
+    const openDocs = vi.fn().mockResolvedValue({ success: true })
+    // @ts-expect-error - Mocking window.api
+    window.api = { openDocs }
+    render(<MemoryRouter><ProjectSelector {...defaultProps} /></MemoryRouter>)
+    fireEvent.click(screen.getByRole('button', { name: 'Help' }))
+    fireEvent.click(screen.getByText('docs.learnMore'))
+    expect(openDocs).toHaveBeenCalledWith('docs.projects')
+  })
+
   it('renders the description', () => {
     render(<MemoryRouter><ProjectSelector {...defaultProps} /></MemoryRouter>)
     expect(screen.getByText('Open a project')).toBeInTheDocument()

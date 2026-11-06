@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import ReactDOM from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import DocsLink from '@components/DocsLink'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { markGuideSeen } from '@foundation/recordingGuideSeen'
 import { platformFrom, shortcutLabel } from '@shared/shortcuts'
@@ -78,9 +79,9 @@ const RecordingGuide: React.FC<RecordingGuideProps> = ({ variant, onClose }) => 
         </li>
       </ol>
       <div className="mt-3 flex items-center justify-between">
-        {/* "Learn more about assertions" (guide.learnMore, data-docs="docs.assertions") returns
-            as a DocsLink once PR D lands; until then it would be a button that does nothing */}
-        <span />
+        <DocsLink id="docs.assertions" topic={t('docs.topics.recording')}>
+          {t('guide.learnMore')}
+        </DocsLink>
         <button
           ref={gotItRef}
           type="button"

@@ -101,6 +101,7 @@ import updateViewport from './handlers/config/updateViewport'
 import updateBrowserOptions from './handlers/config/updateBrowserOptions'
 import updatePaths from './handlers/config/updatePaths'
 import updateHeadlessMode from './handlers/config/updateHeadlessMode'
+import { openDocs } from './docsLinks'
 import getProjectConfig from './handlers/config/getProjectConfig'
 import { spawnTerminal, writeTerminal, resizeTerminal, killTerminal } from './handlers/terminal/terminalManager'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
@@ -436,6 +437,7 @@ app.whenReady().then(() => {
   ipcMain.handle('update-headless-mode', (event, projectPath: string, enabled: boolean) =>
     updateHeadlessMode(event, projectPath, enabled)
   )
+  ipcMain.handle('open-docs', async (_event, id: unknown) => ({ success: await openDocs(id) }))
   ipcMain.handle('get-project-config', (_event, projectPath: string) =>
     getProjectConfig(projectPath)
   )

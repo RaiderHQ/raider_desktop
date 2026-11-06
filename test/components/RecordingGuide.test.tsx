@@ -8,7 +8,11 @@ vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string) => string } => ({ t: (key: string): string => key })
 }))
 
+const openDocs = vi.fn().mockResolvedValue({ success: true })
+
 beforeEach(() => {
+  ;(window as unknown as Record<string, unknown>).api = { openDocs }
+  openDocs.mockClear()
   localStorage.clear()
   useRecorderStore.setState({ guideOpen: true })
 })
@@ -24,8 +28,13 @@ describe('RecordingGuide', () => {
     expect(li.textContent).toMatch(/^guide\.step3Before.+guide\.step3Middle.+guide\.step3After$/)
     expect(li.querySelectorAll('kbd')).toHaveLength(2)
     expect(li.querySelector('kbd')!.previousSibling!.textContent).toBe('guide.step3Before')
-    // No docs button until the docs link exists
-    expect(screen.queryByText('guide.learnMore')).not.toBeInTheDocument()
+    expect(screen.getByText('guide.learnMore')).toBeInTheDocument()
+  })
+
+  it('Learn more opens the assertions page of the docs', () => {
+    render(<RecordingGuide variant="card" />)
+    fireEvent.click(screen.getByText('guide.learnMore'))
+    expect(openDocs).toHaveBeenCalledWith('docs.assertions')
   })
 
   it('the card is a labelled region', () => {

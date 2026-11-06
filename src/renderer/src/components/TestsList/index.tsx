@@ -2,6 +2,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import Tooltip from '@components/Tooltip'
+import DocsLink from '@components/DocsLink'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { useRunStore } from '@foundation/Stores/runStore'
@@ -83,8 +84,13 @@ const TestsList: React.FC<TestsListProps> = ({
         {headerExtra}
       </div>
       {rows.length === 0 ? (
-        <div className="flex items-center justify-center flex-1 text-neutral-md text-sm p-6 text-center">
+        <div className="flex flex-col items-center justify-center gap-2 flex-1 text-neutral-md text-sm p-6 text-center">
           {t(emptyKey)}
+          {emptyKey === 'tests.empty' && (
+            <DocsLink id="docs.recorder" topic={t('docs.topics.recording')}>
+              {t('docs.howRecordingWorks')}
+            </DocsLink>
+          )}
         </div>
       ) : (
         <ul className="flex-1 overflow-y-auto divide-y divide-neutral-bdr">

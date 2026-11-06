@@ -66,6 +66,7 @@ beforeAll(() => {
     onSuitesRecovered: vi.fn(() => vi.fn()),
     onSuiteUpdated: vi.fn(() => vi.fn()),
     onMenuCommand: vi.fn(() => vi.fn()),
+    openDocs: vi.fn().mockResolvedValue({ success: true }),
     setDocumentEdited: vi.fn(),
     selectFolder: vi.fn().mockResolvedValue('/picked/project')
   }
@@ -256,7 +257,7 @@ describe('MainTemplate project files toasts', () => {
       }
     })
 
-    it('passes Stop, Open file and Docs on to the page', () => {
+    it('passes Stop and Open file on to the page, but not Docs (it opens the docs site)', () => {
       renderAt('/overview')
       const seen: string[] = []
       const off = onMenuCommand((c) => seen.push(c))
@@ -266,7 +267,7 @@ describe('MainTemplate project files toasts', () => {
         menuListener()('docs')
       })
       off()
-      expect(seen).toEqual(['stop', 'open-file', 'docs'])
+      expect(seen).toEqual(['stop', 'open-file'])
     })
 
     describe('Help › Recording guide', () => {
@@ -351,6 +352,12 @@ describe('MainTemplate project files toasts', () => {
       })
       expect(api().selectFolder).toHaveBeenCalledTimes(1)
       await act(async () => pick(null))
+    })
+
+    it('the docs command opens docs.home', () => {
+      renderAt('/overview')
+      act(() => menuListener()('docs'))
+      expect(api().openDocs).toHaveBeenCalledWith('docs.home')
     })
 
     it('the shortcuts command opens the sheet', () => {

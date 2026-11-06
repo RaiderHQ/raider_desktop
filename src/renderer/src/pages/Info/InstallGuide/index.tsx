@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import DocsLink from '@components/DocsLink'
 import Button from '@components/Button'
 import ContentArea from '@components/ContentArea'
 import Logo from '@assets/images/logo.svg'
@@ -20,9 +21,6 @@ interface InstallGuideProps {
 const InstallGuide: React.FC<InstallGuideProps> = ({ rubyMissing, rubyError }): JSX.Element => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const handleNavigation = (url: string): void => {
-    window.open(url, '_blank')
-  }
 
   let errorMessage = ''
 
@@ -60,17 +58,20 @@ const InstallGuide: React.FC<InstallGuideProps> = ({ rubyMissing, rubyError }): 
             <div className="flex justify-between space-x-4">
               <Tooltip content={t('tooltips.installGuide.github')} position="top">
                 <Button
-                  onClick={() => handleNavigation('https://github.com/RaiderHQ/ruby_raider')}
+                  onClick={() => void window.api.openDocs('docs.gem')}
                   type="secondary"
                 >
                   {t('installGuide.githubButton')}
                 </Button>
               </Tooltip>
               <Tooltip content={t('tooltips.installGuide.website')} position="top">
-                <Button onClick={() => handleNavigation('https://ruby-raider.com/')} type="primary">
+                <Button onClick={() => void window.api.openDocs('docs.site')} type="primary">
                   {t('installGuide.websiteButton')}
                 </Button>
               </Tooltip>
+            </div>
+            <div className="mt-3">
+              <DocsLink id="docs.install" topic={t('docs.topics.install')} />
             </div>
           </div>
         </div>

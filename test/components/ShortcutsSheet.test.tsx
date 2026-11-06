@@ -63,4 +63,12 @@ describe('ShortcutsSheet', () => {
     expect(fireEvent.keyDown(close, { key: 'Tab', shiftKey: true })).toBe(false)
     expect(close).toHaveFocus()
   })
+
+  it('Learn more about recording opens docs.recorder', () => {
+    const openDocs = vi.fn().mockResolvedValue({ success: true })
+    ;(window as unknown as Record<string, unknown>).api = { openDocs }
+    render(<ShortcutsSheet onClose={vi.fn()} />)
+    fireEvent.click(screen.getByText('shortcuts.learnMore'))
+    expect(openDocs).toHaveBeenCalledWith('docs.recorder')
+  })
 })

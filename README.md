@@ -10,7 +10,7 @@
    <h3>The Desktop Companion for Ruby Raider</h3>
 
    <p align="center">
-      <a href="https://ruby-raider.com/">Website</a>
+      <a href="https://ruby-raider.onrender.com/">Website</a>
       ·
       <a href="https://github.com/RaiderHQ/raider_desktop/releases">Downloads</a>
       ·
@@ -26,6 +26,8 @@
 > Raider Desktop is currently fully tested for **macOS only**. Windows and Linux builds are generated via CI but are not yet fully tested. On Windows the app has native code paths (see [Windows](#windows)), but the in-app install guide recommends WSL.
 
 Raider Desktop is the UI companion for [Ruby Raider](https://github.com/RaiderHQ/ruby_raider) — a Ruby test automation framework. It provides an intuitive interface for creating projects, recording tests, editing code, running suites, and viewing results, all without needing to touch the command line.
+
+Documentation: https://ruby-raider.onrender.com/docs/
 
 ## Table of Contents
 
