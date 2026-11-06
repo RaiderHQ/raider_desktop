@@ -116,8 +116,9 @@ const FileEditor: React.FC = (): JSX.Element => {
   }, [])
 
   useEffect(() => {
-    // Ruling: Cmd+S listeners stay: the menu accelerator does not reach Playwright's synthetic keys / does not pre-empt the page.
-    // File › Save (onMenuCommand below) is the native path; this listener is the one e2e keystrokes reach.
+    // Kept: the e2e showed Playwright's synthetic Cmd+S reaches only this listener; whether the
+    // native File › Save accelerator also fires on a real keypress is untested; both paths are
+    // guarded against a double write.
     const handleKeyDown = (e: KeyboardEvent): void => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()

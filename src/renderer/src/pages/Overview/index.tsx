@@ -562,9 +562,14 @@ const Overview: React.FC = () => {
     guardUnsaved(() => setActiveTab(tab))
   }
 
+  // One write at a time; a ref so a repeat in the same tick can't start a second one
+  const savingFileRef = useRef(false)
+
   /** Writes the file; true when it is on disk afterwards. */
   const handleSaveFile = useCallback(async (): Promise<boolean> => {
     if (!editingFile) return false
+    if (savingFileRef.current) return false
+    savingFileRef.current = true
     const loadingTypes = ['stashing', 'securing', 'engraving', 'prize', 'ruby']
     const toastId = toast.loading(t(`editor.save.${sample(loadingTypes)}`))
     setIsSavingFile(true)
@@ -581,6 +586,7 @@ const Overview: React.FC = () => {
       toast.error(t('editor.error.unexpectedSaveError'), { id: toastId })
       return false
     } finally {
+      savingFileRef.current = false
       setIsSavingFile(false)
     }
   }, [editingFile, fileContent, t])
@@ -604,8 +610,9 @@ const Overview: React.FC = () => {
   useEffect(() => {
     // Only the file the user can see, only when it has changes, one write at a time
     if (!editingFile || activeTab !== 'files' || !fileDirty || isSavingFile) return
-    // Ruling: Cmd+S listeners stay: the menu accelerator does not reach Playwright's synthetic keys / does not pre-empt the page.
-    // File › Save (onMenuCommand) is the native path; this listener is the one e2e keystrokes reach.
+    // Kept: the e2e showed Playwright's synthetic Cmd+S reaches only this listener; whether the
+    // native File › Save accelerator also fires on a real keypress is untested; both paths are
+    // guarded against a double write.
     const handleKeyDown = (e: KeyboardEvent): void => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()

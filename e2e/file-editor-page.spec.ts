@@ -105,7 +105,7 @@ test.describe('File Editor Page', () => {
     expect(calls[0][0]).toBe('/mock/test-project/edit_me.rb')
   })
 
-  test('Cmd+S saves in the Files editor through the menu', async ({ electronApp, page }) => {
+  test('Cmd+S saves in the Files editor', async ({ electronApp, page }) => {
     const mockTree = [
       { name: 'menu_save.rb', type: 'file', path: '/mock/test-project/menu_save.rb' }
     ]

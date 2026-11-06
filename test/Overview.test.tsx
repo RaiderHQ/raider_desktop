@@ -1412,6 +1412,18 @@ describe('Overview live runs', (): void => {
       )
     })
 
+    it('two saves in one tick write once, from the keyboard and the menu alike', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await act(async () => {
+        fireEvent.keyDown(window, { key: 's', metaKey: true })
+        dispatchMenuCommand('save')
+        dispatchMenuCommand('save')
+      })
+      expect(mockApi.editFile).toHaveBeenCalledTimes(1)
+    })
+
     describe('the new test route (menu New test)', () => {
       // useNavigate is mocked in this file; a link changes the route for real
       const GoNewTest = (): JSX.Element => <Link to="/overview/tests/new">go-new-test</Link>
