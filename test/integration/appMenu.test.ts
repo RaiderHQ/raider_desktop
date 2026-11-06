@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const mockMenu = vi.hoisted(() => ({
   buildFromTemplate: vi.fn((template: unknown) => ({ template })),
@@ -94,40 +94,52 @@ describe('buildAppMenuTemplate', () => {
   })
 
   describe('Record / Stop & save', () => {
-    const fakeMenu = (template: Item[]): { menu: never; record: Item } => {
-      const record = items(template, 'Test').find((i) => i.id === 'record')!
-      const menu = {
-        getMenuItemById: (id: string): Item | null => (id === 'record' ? record : null)
-      }
-      return { menu: menu as never, record }
+    afterEach(() => {
+      appState.recording = false
+    })
+
+    const installedRecord = (): Item => {
+      const template = mockMenu.buildFromTemplate.mock.calls.at(-1)![0] as Item[]
+      return items(template, 'Test').find((i) => i.id === 'record')!
     }
 
-    it('relabelling keeps the id and accelerator', () => {
-      const { menu, record } = fakeMenu(build('darwin'))
-      setRecordingMenuState(true, menu)
-      expect(record).toMatchObject({
+    it('rebuilds the menu with the Record item relabelled, keeping id and accelerator', () => {
+      installAppMenu(actions(), { isPackaged: true })
+      setRecordingMenuState(true)
+      expect(installedRecord()).toMatchObject({
         id: 'record',
         label: 'Stop & save',
         accelerator: 'CmdOrCtrl+Shift+R'
       })
-      setRecordingMenuState(false, menu)
-      expect(record).toMatchObject({ id: 'record', label: 'Record' })
+      setRecordingMenuState(false)
+      expect(installedRecord()).toMatchObject({
+        id: 'record',
+        label: 'Record',
+        accelerator: 'CmdOrCtrl+Shift+R'
+      })
+      expect(mockMenu.setApplicationMenu).toHaveBeenCalledTimes(3)
     })
 
-    it('is a no-op when no menu is set', () => {
-      expect(() => setRecordingMenuState(true, null)).not.toThrow()
-    })
-
-    it('the toggle follows the reported state, not the click', () => {
+    it('keeps the actions on the rebuilt menu', () => {
       const a = actions()
-      const { record } = fakeMenu(buildAppMenuTemplate('darwin', a, { isPackaged: true }))
+      installAppMenu(a, { isPackaged: true })
+      setRecordingMenuState(true)
+      appState.recording = true
+      ;(installedRecord().click as () => void)()
+      expect(a.onCommand).toHaveBeenLastCalledWith('stop')
+    })
+
+    it('the click follows the reported state at click time', () => {
+      const a = actions()
+      const record = items(buildAppMenuTemplate('darwin', a, { isPackaged: true }), 'Test').find(
+        (i) => i.id === 'record'
+      )!
       appState.recording = false
       ;(record.click as () => void)()
       expect(a.onCommand).toHaveBeenLastCalledWith('record')
       appState.recording = true
       ;(record.click as () => void)()
       expect(a.onCommand).toHaveBeenLastCalledWith('stop')
-      appState.recording = false
     })
   })
 

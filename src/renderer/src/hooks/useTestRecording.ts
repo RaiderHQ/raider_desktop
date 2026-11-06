@@ -464,6 +464,11 @@ export function useTestRecording(): TestRecording {
     window.api.setRecordingState(isRecording || hasUnsavedExample)
   }, [isRecording, hasUnsavedExample])
 
+  // The menu's Record / Stop & save item follows only the recording itself
+  useEffect(() => {
+    window.api.setMenuRecording(isRecording)
+  }, [isRecording])
+
   useEffect(
     () =>
       window.api.onFlushRecording(() => {
@@ -479,6 +484,7 @@ export function useTestRecording(): TestRecording {
     () => (): void => {
       saveOnLeave(t).catch((error: unknown) => console.error('Saving the recording failed:', error))
       window.api.setRecordingState(false)
+      window.api.setMenuRecording(false)
     },
     []
   )
@@ -654,7 +660,9 @@ export function useTestRecording(): TestRecording {
   const run = useCallback(async (): Promise<void> => {
     const { activeSuiteId: suiteId, activeTest: test, readOnlyView: view, setIsRunning } = store()
     const startLive = (file: string, label: string): void => {
-      void useRunStore.getState().start({ kind: 'files', files: [file] }, { route: pathname, label })
+      void useRunStore
+        .getState()
+        .start({ kind: 'files', files: [file] }, { route: pathname, label })
     }
     // Tests that are code run straight from their file, never from a copy of the steps
     const codeFile =

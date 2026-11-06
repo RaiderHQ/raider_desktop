@@ -80,6 +80,7 @@ const api = {
   registerRecorderWebContents: vi.fn(),
   cancelReplay: vi.fn(),
   setRecordingState: vi.fn(),
+  setMenuRecording: vi.fn(),
   onFlushRecording: vi.fn((_cb: () => void) => (): void => {}),
   flushRecordingDone: vi.fn(),
   setActiveProject: vi.fn(),

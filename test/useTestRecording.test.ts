@@ -69,6 +69,7 @@ const api = {
   readDirectory: vi.fn(),
   listProjectTests: vi.fn(),
   setRecordingState: vi.fn(),
+  setMenuRecording: vi.fn(),
   onFlushRecording: vi.fn(),
   flushRecordingDone: vi.fn(),
   setPickMode: vi.fn(),
@@ -679,6 +680,15 @@ describe('useTestRecording', () => {
     await emit('new-recorded-step', step('late'))
     await emit('new-trace-step', { id: 'tr' })
     expect(useRecorderStore.getState().activeTest).toEqual(other)
+  })
+
+  it('tells the menu only whether a recording is running', async () => {
+    const rec = await mount()
+    expect(api.setMenuRecording).toHaveBeenLastCalledWith(false)
+    await recordingTest(rec)
+    expect(api.setMenuRecording).toHaveBeenLastCalledWith(true)
+    await act(() => rec.stop())
+    expect(api.setMenuRecording).toHaveBeenLastCalledWith(false)
   })
 
   it('tells main whether it is recording', async () => {

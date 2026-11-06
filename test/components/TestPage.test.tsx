@@ -97,6 +97,7 @@ const api = {
   renderStep: vi.fn(),
   cancelReplay: vi.fn(),
   setRecordingState: vi.fn(),
+  setMenuRecording: vi.fn(),
   onFlushRecording: vi.fn(() => (): void => {}),
   flushRecordingDone: vi.fn(),
   setActiveProject: vi.fn().mockResolvedValue({ success: true }),

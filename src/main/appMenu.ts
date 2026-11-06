@@ -28,6 +28,8 @@ export interface MenuActions {
 export interface MenuOptions {
   /** The shipped app hides Reload, Force reload and Developer tools */
   isPackaged: boolean
+  /** Test › Record reads Stop & save while a recording runs */
+  recording?: boolean
 }
 
 const t = (key: string): string => englishText(`appMenu.${key}`)
@@ -71,7 +73,7 @@ export function buildAppMenuTemplate(
     submenu: [
       {
         id: 'record',
-        label: t('record'),
+        label: t(options.recording ? 'stopAndSave' : 'record'),
         accelerator: SHORTCUTS.record.accelerator,
         // Decided at click time from what the page last reported, not from the label
         click: () => actions.onCommand(appState.recording ? 'stop' : 'record')
@@ -121,13 +123,25 @@ export function buildAppMenuTemplate(
   ]
 }
 
-/** Relabels Test › Record to Stop & save while recording; only the label changes. No-op without a menu. */
-export function setRecordingMenuState(
-  recording: boolean,
-  menu: Menu | null = Menu.getApplicationMenu()
-): void {
-  const item = menu?.getMenuItemById('record')
-  if (item) item.label = t(recording ? 'stopAndSave' : 'record')
+let installed: { actions: MenuActions; options: MenuOptions } | null = null
+
+function setMenu(recording: boolean): void {
+  if (!installed) return
+  const { actions, options } = installed
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate(
+      buildAppMenuTemplate(process.platform, actions, { ...options, recording })
+    )
+  )
+}
+
+/**
+ * Test › Record reads Stop & save while recording. The whole menu is rebuilt and
+ * re-installed (the native menu does not reliably follow a changed label); the item
+ * keeps its id and accelerator. No-op before the menu is installed.
+ */
+export function setRecordingMenuState(recording: boolean): void {
+  setMenu(recording)
 }
 
 /**
@@ -145,7 +159,6 @@ export function withLiveWindow<Args extends unknown[]>(
 }
 
 export function installAppMenu(actions: MenuActions, options: MenuOptions): void {
-  Menu.setApplicationMenu(
-    Menu.buildFromTemplate(buildAppMenuTemplate(process.platform, actions, options))
-  )
+  installed = { actions, options }
+  setMenu(appState.recording)
 }
