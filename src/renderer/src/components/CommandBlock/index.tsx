@@ -202,7 +202,6 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
         <div
           className="font-mono text-sm cursor-text whitespace-pre-wrap text-ruby"
           onDoubleClick={handleEditStart}
-          title={onEdit && !readOnly ? 'Double-click to edit' : undefined}
         >
           {renderFailed ? (
             <span className="text-neutral-md font-sans">{t('recorder.step.renderFailed')}</span>
@@ -276,15 +275,15 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
       {/* Breakpoint gutter */}
       {!readOnly && (
         <div className="absolute left-0 top-0 bottom-0 w-5 z-20">
-          <Tooltip content={t('tooltips.steps.breakpoint')} className="w-full h-full">
+          <Tooltip
+            content={
+              isBreakpoint ? t('tooltips.recorder.clearBreakpoint') : t('tooltips.steps.breakpoint')
+            }
+            className="w-full h-full"
+          >
             <div
               className="w-full h-full flex items-center justify-center cursor-pointer"
               onClick={handleGutterClick}
-              title={
-                isBreakpoint
-                  ? t('tooltips.recorder.clearBreakpoint')
-                  : t('tooltips.recorder.setBreakpoint')
-              }
             >
               <div
                 className={`w-2.5 h-2.5 rounded-full transition-colors ${

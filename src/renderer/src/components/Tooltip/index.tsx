@@ -110,7 +110,6 @@ const Tooltip: React.FC<TooltipProps> = ({
       window.removeEventListener('scroll', hide, true)
       window.removeEventListener('resize', hide)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible])
 
   useEffect(
