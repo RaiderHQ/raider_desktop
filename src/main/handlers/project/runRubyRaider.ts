@@ -106,7 +106,11 @@ const handler = async (
     const versionMatch = rubyCommand.match(/rbenv shell ([\d.]+)/)
     const rubyVersionForShell = versionMatch ? versionMatch[1] : undefined
 
-    const commandToExecute = buildShellCommand(normalizedFolderPath, raiderCommand, rubyVersionForShell)
+    const commandToExecute = buildShellCommand(
+      normalizedFolderPath,
+      raiderCommand,
+      rubyVersionForShell
+    )
     safeLog('[runRubyRaider] Executing:', commandToExecute)
 
     const result = await safeExec(commandToExecute, {
@@ -124,19 +128,25 @@ const handler = async (
       if (stderr || stdout) {
         errorMessage = stderr || stdout
       } else if (result.exitCode === null) {
-        errorMessage = 'Project creation timed out. Try running "raider new" manually in the terminal.'
+        errorMessage =
+          'Project creation timed out. Try running "raider new" manually in the terminal.'
       } else {
         errorMessage = `Project creation failed (exit code ${result.exitCode}). Try running "raider new" manually in the terminal.`
       }
 
       safeError('[runRubyRaider] Failed:', errorMessage)
-      // After a timeout only the shell was killed; ruby may still be writing, so leave it
-      if (result.exitCode !== null) removeHalfMadeProject(expectedProjectPath)
+      // Only after raider itself failed: after a timeout only the shell was killed and ruby
+      // may still be writing; after exit 0 with stderr only, the folder may be a whole project
+      if (result.exitCode !== null && result.exitCode !== 0)
+        removeHalfMadeProject(expectedProjectPath)
       return { success: false, error: errorMessage, output: stdout }
     }
     // Verify the project directory was actually created
     if (!fs.existsSync(expectedProjectPath)) {
-      safeError('[runRubyRaider] Command succeeded but project directory not found at:', expectedProjectPath)
+      safeError(
+        '[runRubyRaider] Command succeeded but project directory not found at:',
+        expectedProjectPath
+      )
       safeError('[runRubyRaider] stdout:', stdout)
       return {
         success: false,

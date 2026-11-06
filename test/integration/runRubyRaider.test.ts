@@ -157,6 +157,18 @@ describe('runRubyRaider handler (integration)', () => {
       })
     })
 
+    it('leaves the folder alone when raider exited 0 but wrote only to stderr', async () => {
+      // The stderr heuristic reports a failure; the folder may still be a whole project
+      mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) => {
+        cb(null, '', 'warning: something')
+        lastChild = fakeChild()
+        return lastChild
+      })
+      const result = await handler(...validArgs)
+      expect(result.success).toBe(false)
+      expect(mockRmSync).not.toHaveBeenCalled()
+    })
+
     it('leaves the folder alone after a timeout, since raider may still be writing to it', async () => {
       mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) => {
         cb(Object.assign(new Error('killed'), { killed: true }), '', '')
