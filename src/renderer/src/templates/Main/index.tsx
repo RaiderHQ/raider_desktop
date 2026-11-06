@@ -14,6 +14,9 @@ import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { installMissingGems } from '@foundation/installGems'
 import { subscribeRunEvents } from '@foundation/Stores/runStore'
+import useTitleStore from '@foundation/Stores/titleStore'
+import { windowTitle } from '@shared/windowTitle'
+import { platformFrom } from '@shared/platform'
 import { dispatchMenuCommand, isMenuCommand } from '@foundation/menuCommands'
 
 const MainTemplate: React.FC = (): JSX.Element => {
@@ -140,6 +143,18 @@ const MainTemplate: React.FC = (): JSX.Element => {
   }
 
   const projectPath = useProjectStore((state) => state.projectPath)
+  const titleDocument = useTitleStore((state) => state.document)
+
+  // The window title and its edited dot follow the page's document
+  useEffect(() => {
+    const project = projectPath ? projectPath.split(/[\\/]/).filter(Boolean).pop() : null
+    document.title = windowTitle({
+      document: titleDocument,
+      project,
+      platform: platformFrom(navigator.platform)
+    })
+    window.api.setDocumentEdited(titleDocument?.edited === true, titleDocument?.name ?? '')
+  }, [titleDocument, projectPath])
 
   return (
     <div className="min-h-screen bg-white flex flex-col">

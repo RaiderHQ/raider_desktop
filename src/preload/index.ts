@@ -303,6 +303,8 @@ const api = {
     ipcRenderer.invoke('register-recorder-webcontents', webContentsId),
   stopRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('stop-recording-main'),
   /** Tells main whether a recording is open, so closing the window saves it first */
+  setDocumentEdited: (edited: boolean, name: string): void =>
+    ipcRenderer.send('document-edited', edited, name),
   setRecordingState: (active: boolean): void => ipcRenderer.send('recording-state', active),
   /** Main asks the page to save its recording before the window closes; returns an unsubscribe */
   onFlushRecording: (callback: () => void): (() => void) => {

@@ -75,6 +75,7 @@ import replayStepsAndRecord from './handlers/recording/replayStepsAndRecord'
 import replayInWebview, { cancelWebviewReplay } from './handlers/recording/replayInWebview'
 import stopRecordingMain from './handlers/recording/stopRecordingMain'
 import saveRecording from './handlers/recording/saveRecording'
+import { installDocumentEdited } from './handlers/documentEdited'
 import { installCloseFlush } from './handlers/recording/closeFlush'
 import { showAssertionContextMenu } from './handlers/recording/assertionContextMenu'
 import saveTrace from './handlers/trace/saveTrace'
@@ -147,6 +148,8 @@ function createWindow(): void {
   installCloseFlush(newMainWindow, ipcMain, {
     close: () => (quitting ? app.quit() : newMainWindow.close())
   })
+
+  installDocumentEdited(newMainWindow, ipcMain)
 
   if (is.dev && appState.mainWindow) {
     appState.mainWindow.webContents.openDevTools()

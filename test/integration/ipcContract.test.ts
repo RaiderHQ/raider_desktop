@@ -113,6 +113,7 @@ describe('IPC Contract', () => {
     'replayInWebview',
     'registerRecorderWebContents',
     'stopRecordingMain',
+    'setDocumentEdited',
     'setRecordingState',
     'onFlushRecording',
     'flushRecordingDone',
