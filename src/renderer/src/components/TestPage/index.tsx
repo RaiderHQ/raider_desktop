@@ -41,7 +41,7 @@ const field =
   'block w-full px-3 py-1 border border-neutral-bdr rounded text-sm focus:ring-ruby focus:border-ruby transition-colors disabled:bg-neutral-lt disabled:cursor-not-allowed'
 
 const toolbarButton =
-  'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white disabled:text-neutral-md disabled:cursor-not-allowed'
+  'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white disabled:text-neutral-mid disabled:cursor-not-allowed'
 
 /** A recorded test (or a new one): its name, start URL, steps, and what can be done with it. */
 const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE_ID }) => {

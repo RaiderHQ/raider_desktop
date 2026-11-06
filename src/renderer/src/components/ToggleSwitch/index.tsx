@@ -18,14 +18,15 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   testId
 }) => {
   const id = useId()
-  const labelId = `${id}-label`
+  const switchId = `${id}-switch`
   const descriptionId = `${id}-description`
   return (
     <div className="flex items-center gap-3">
       <button
+        id={switchId}
+        type="button"
         role="switch"
         aria-checked={checked}
-        aria-labelledby={labelId}
         aria-describedby={description ? descriptionId : undefined}
         data-testid={testId}
         onClick={() => onChange(!checked)}
@@ -41,9 +42,9 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
         />
       </button>
       <div className="flex flex-col">
-        <span id={labelId} className="text-sm font-medium text-neutral-dk">
+        <label htmlFor={switchId} className="text-sm font-medium text-neutral-dk cursor-pointer">
           {label}
-        </span>
+        </label>
         {description && (
           <span id={descriptionId} className="text-xs text-neutral-md">
             {description}

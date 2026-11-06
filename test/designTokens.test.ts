@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'fs'
-import { execFileSync } from 'child_process'
-import { resolve } from 'path'
+import { readdirSync, readFileSync, statSync } from 'fs'
+import { join, resolve } from 'path'
 import config from '../tailwind.config.js'
 
 const neutral = (config as { theme: { extend: { colors: { neutral: Record<string, string> } } } })
@@ -18,6 +17,22 @@ const contrast = (a: string, b: string): number => {
   return (l1 + 0.05) / (l2 + 0.05)
 }
 
+const sourceFiles = (dir: string): string[] =>
+  readdirSync(dir).flatMap((name) => {
+    const full = join(dir, name)
+    if (statSync(full).isDirectory()) return sourceFiles(full)
+    return /\.tsx?$/.test(name) ? [full] : []
+  })
+
+/**
+ * WCAG "large text" is 24 px, or about 18.7 px bold: text-2xl and up at any weight,
+ * or text-lg / text-xl in a semibold or bold face. Disabled controls are exempt.
+ * The check is line by line, so a size set on another line of a className is not seen.
+ */
+const isLargeText = (line: string): boolean =>
+  /text-(2xl|3xl|4xl|5xl|6xl)\b/.test(line) ||
+  (/text-(lg|xl)\b/.test(line) && /font-(semibold|bold|extrabold)\b/.test(line))
+
 describe('neutral text tokens', () => {
   it('has a token for small grey text that passes 4.5:1 on white', () => {
     expect(neutral.md).toBe('#6B6B6B')
@@ -29,15 +44,15 @@ describe('neutral text tokens', () => {
     expect(contrast(neutral.mid, '#FFFFFF')).toBeGreaterThanOrEqual(3)
   })
 
-  it('does not use the light token for text below 18 px', () => {
-    // Lines that set small text (or no size at all) with the light grey token
-    const out = execFileSync(
-      'grep',
-      ['-rn', '--include=*.tsx', 'text-neutral-mid', resolve(__dirname, '../src/renderer/src')],
-      { encoding: 'utf8' }
+  it('does not use the light token for text that is not large', () => {
+    const root = resolve(__dirname, '../src/renderer/src')
+    const offenders = sourceFiles(root).flatMap((file) =>
+      readFileSync(file, 'utf8')
+        .split('\n')
+        .map((line, i) => ({ line: line.replace(/disabled:text-neutral-mid/g, ''), i }))
+        .filter(({ line }) => line.includes('text-neutral-mid') && !isLargeText(line))
+        .map(({ i }) => `${file.slice(root.length + 1)}:${i + 1}`)
     )
-      .split('\n')
-      .filter((line) => line && !/text-(lg|xl|2xl|3xl|4xl|5xl)\b/.test(line))
-    expect(out).toEqual([])
+    expect(offenders).toEqual([])
   })
 })

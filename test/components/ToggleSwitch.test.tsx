@@ -30,4 +30,16 @@ describe('ToggleSwitch', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Headless' }))
     expect(onChange).toHaveBeenCalledWith(true)
   })
+
+  it('toggles when its label text is clicked', () => {
+    const onChange = vi.fn()
+    render(<ToggleSwitch label="Headless" checked={false} onChange={onChange} />)
+    fireEvent.click(screen.getByText('Headless'))
+    expect(onChange).toHaveBeenCalledWith(true)
+  })
+
+  it('never submits a form around it', () => {
+    render(<ToggleSwitch label="Headless" checked={false} onChange={vi.fn()} />)
+    expect(screen.getByRole('switch')).toHaveAttribute('type', 'button')
+  })
 })

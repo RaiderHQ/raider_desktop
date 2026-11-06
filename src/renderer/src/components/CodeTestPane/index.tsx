@@ -23,7 +23,7 @@ interface CodeTestPaneProps {
 }
 
 const toolbarButton =
-  'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white disabled:text-neutral-md disabled:cursor-not-allowed'
+  'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white disabled:text-neutral-mid disabled:cursor-not-allowed'
 
 /**
  * A test file edited in code: its tests (examples), one shown at a time as steps or

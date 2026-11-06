@@ -69,4 +69,54 @@ describe('removeStepWithUndo', () => {
     removeStepWithUndo(s.update, 0)
     expect(s.test).toBeNull()
   })
+
+  it('leaves another test alone when Undo is clicked after switching', async () => {
+    render(<Toaster />)
+    const s = store()
+    await act(async () => {
+      removeStepWithUndo(s.update, 1)
+    })
+    const other = { id: 'other', name: 'O', url: 'https://o.test', steps: [] } as unknown as Test
+    s.test = other
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    })
+    expect(s.test.steps).toEqual([])
+  })
+
+  it('inserts once even when Undo is clicked twice', async () => {
+    render(<Toaster />)
+    const s = store()
+    await act(async () => {
+      removeStepWithUndo(s.update, 1)
+    })
+    const undo = screen.getByRole('button', { name: 'Undo' })
+    await act(async () => {
+      fireEvent.click(undo)
+      fireEvent.click(undo)
+    })
+    expect(s.test?.steps.map((x) => x.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it.each([
+    ['newest first', [0, 1]],
+    ['oldest first', [1, 0]]
+  ])('puts two quick removals back in order, undone %s', async (_order, clicks) => {
+    render(<Toaster />)
+    const s = store()
+    s.test = { ...(s.test as Test), steps: [...steps, { id: 'd', kind: 'navigate' } as Step] }
+    await act(async () => {
+      removeStepWithUndo(s.update, 1) // b
+      removeStepWithUndo(s.update, 1) // c
+    })
+    expect(s.test?.steps.map((x) => x.id)).toEqual(['a', 'd'])
+    const undos = screen.getAllByRole('button', { name: 'Undo' })
+    expect(undos).toHaveLength(2)
+    for (const i of clicks) {
+      await act(async () => {
+        fireEvent.click(undos[i])
+      })
+    }
+    expect(s.test?.steps.map((x) => x.id)).toEqual(['a', 'b', 'c', 'd'])
+  })
 })
