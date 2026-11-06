@@ -198,7 +198,7 @@ test.describe('File Editor Page', () => {
       .poll(() => getIPCCalls(page, 'editFile'))
       .toEqual([['/mock/test-project/typed.rb', 'original plus']])
     await expect(save).toBeDisabled()
-    await expect(page.getByText('Saved')).toBeVisible()
+    await expect(page.getByText('Saved', { exact: true })).toBeVisible()
   })
 
   test('opening another file over unsaved changes asks first (D3)', async ({ page }) => {

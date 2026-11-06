@@ -169,7 +169,7 @@ test.describe('Project Tests tab', () => {
     expect(box?.height ?? 0).toBeGreaterThan(300)
 
     await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled()
-    await expect(page.getByText('Saved')).toBeVisible()
+    await expect(page.getByText('Saved', { exact: true })).toBeVisible()
 
     // The Ruby test on this page keeps its own view control
     await page.getByRole('button', { name: 'Back' }).click()
