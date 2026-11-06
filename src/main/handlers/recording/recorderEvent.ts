@@ -54,10 +54,20 @@ const RECORDABLE_KEYS = new Set([
 
 const clean = (text: string | undefined): string => (text ?? '').replace(/\s+/g, ' ').trim()
 
-/** Human name for an element: its text (capped), else aria-label, else placeholder. */
+/** Cuts on a word boundary with an ellipsis; inside a word only when there is no boundary to use. */
+function shorten(text: string): string {
+  if (text.length <= LABEL_MAX) return text
+  const boundary = text.lastIndexOf(' ', LABEL_MAX - 1)
+  const kept = boundary > LABEL_MAX / 2 ? text.slice(0, boundary) : text.slice(0, LABEL_MAX - 1)
+  return `${kept.replace(/[\s,;:.\-–—]+$/, '')}…`
+}
+
+/** Human name for an element: its text (shortened), else aria-label, else placeholder. */
 function elementLabel(hints: LabelHints): string | undefined {
   const label =
-    clean(hints.innerText).slice(0, LABEL_MAX) || clean(hints.ariaLabel) || clean(hints.placeholder)
+    shorten(clean(hints.innerText)) ||
+    shorten(clean(hints.ariaLabel)) ||
+    shorten(clean(hints.placeholder))
   return label || undefined
 }
 

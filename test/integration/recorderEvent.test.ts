@@ -163,9 +163,44 @@ describe('locator on recorder events', () => {
 })
 
 describe('toElementTarget', () => {
-  it('caps a long text label at 60 characters', () => {
-    const el = toElementTarget('css', '.x', { innerText: 'a'.repeat(100) })
-    expect(el!.label).toHaveLength(60)
+  it('cuts a long text label on a word boundary with an ellipsis, within 60 characters', () => {
+    const text = 'Save Email Summer sale Pricing Report A Delete Report B Delete Report C and more'
+    const el = toElementTarget('css', '.x', { innerText: text })
+    expect(el!.label!.length).toBeLessThanOrEqual(60)
+    expect(el!.label).toMatch(/\S…$/)
+    expect(el!.label).toBe('Save Email Summer sale Pricing Report A Delete Report B…')
+  })
+
+  it('cuts inside a single long word rather than drop the whole label', () => {
+    const el = toElementTarget('css', '.x', { innerText: 'x'.repeat(100) })
+    expect(el!.label).toBe('x'.repeat(59) + '…')
+  })
+
+  it('uses a space at the limit itself as the boundary', () => {
+    const text = 'a'.repeat(59) + ' ' + 'b'.repeat(20)
+    expect(toElementTarget('css', '.x', { innerText: text })!.label).toBe('a'.repeat(59) + '…')
+  })
+
+  it('does not leave punctuation before the ellipsis', () => {
+    const text = 'Terms and conditions, privacy policy, cookies and tracking, and more besides'
+    expect(toElementTarget('css', '.x', { innerText: text })!.label).toBe(
+      'Terms and conditions, privacy policy, cookies and tracking…'
+    )
+  })
+
+  it('shortens an aria-label and a placeholder the same way', () => {
+    const long = 'word '.repeat(20).trim()
+    expect(toElementTarget('css', '.x', { ariaLabel: long })!.label!.length).toBeLessThanOrEqual(60)
+    expect(toElementTarget('css', '.x', { placeholder: long })!.label).toMatch(/…$/)
+  })
+
+  it('names a region click by nothing when the preload sends no text', () => {
+    expect(toElementTarget('css', 'main > div', { innerText: '' })!.label).toBeUndefined()
+  })
+
+  it('keeps a label of exactly 60 characters whole', () => {
+    const el = toElementTarget('css', '.x', { innerText: 'y'.repeat(60) })
+    expect(el!.label).toBe('y'.repeat(60))
   })
 
   it('collapses whitespace in the label', () => {

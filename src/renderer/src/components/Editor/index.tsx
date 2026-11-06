@@ -1,6 +1,5 @@
-import { useMemo, useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
-import { debounce } from 'lodash'
 import * as monaco from 'monaco-editor'
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
@@ -82,21 +81,8 @@ const MonacoEditor = ({ value, language, onChange, revealLine }: EditorProps): J
     reveal(revealLine)
   }
 
-  const debouncedOnChange = useMemo(() => {
-    if (!onChange) return undefined
-
-    return debounce((value: string | undefined) => {
-      onChange(value)
-    }, 300)
-  }, [onChange])
-
-  const handleEditorChange = (value: string | undefined): void => {
-    if (!debouncedOnChange) {
-      return
-    }
-
-    debouncedOnChange(value)
-  }
+  // Not debounced: a Save or a leave right after the last keystroke must see that keystroke
+  const handleEditorChange = (value: string | undefined): void => onChange?.(value)
 
   return (
     <Editor

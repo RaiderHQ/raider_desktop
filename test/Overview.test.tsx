@@ -22,15 +22,20 @@ vi.mock('@components/Library/Folder', () => ({
   default: ({
     name,
     onRunTests,
-    runDisabled
+    runDisabled,
+    onFileClick
   }: {
     name: string | undefined
     onRunTests?: () => void
     runDisabled?: boolean
+    onFileClick?: (path: string) => void
   }): JSX.Element => (
     <div data-testid="folder">
       {name}
       {onRunTests && <button data-testid="run-tests" onClick={onRunTests} disabled={runDisabled} />}
+      {/* Two files to click, for the inline editor */}
+      <button onClick={() => onFileClick?.('/fake/project/spec/a_spec.rb')}>a_spec.rb</button>
+      <button onClick={() => onFileClick?.('/fake/project/spec/b_spec.rb')}>b_spec.rb</button>
     </div>
   )
 }))
@@ -65,7 +70,19 @@ vi.mock('@components/DeviceSettings', async () => {
 })
 
 vi.mock('@components/Editor', () => ({
-  default: (): JSX.Element => <div data-testid="editor">Editor</div>
+  default: ({
+    value,
+    onChange
+  }: {
+    value: string
+    onChange?: (value: string) => void
+  }): JSX.Element => (
+    <textarea
+      data-testid="editor"
+      defaultValue={value}
+      onChange={(e) => onChange?.(e.target.value)}
+    />
+  )
 }))
 
 vi.mock('@foundation/helpers', () => ({
@@ -1208,8 +1225,9 @@ describe('Overview live runs', (): void => {
     }
   })
 
-  describe('menu bar commands on the Files tab (D11)', () => {
-    it('Run from the menu runs the project tests while the Files tab is showing', async () => {
+  describe('inline editor saving (D3)', () => {
+    const renderFiles = async (): Promise<void> => {
+      mockApi.readFile.mockResolvedValue({ success: true, data: 'original' })
       useProjectStore.setState({ projectPath: '/fake/project', files: [] })
       await act(async () => {
         render(
@@ -1219,25 +1237,110 @@ describe('Overview live runs', (): void => {
         )
       })
       await openFilesTab()
-      const start = vi.fn()
-      useRunStore.setState({ start } as never)
-      act(() => dispatchMenuCommand('run'))
-      expect(start).toHaveBeenCalledTimes(1)
+    }
+    const openFile = async (name: string): Promise<void> => {
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name }))
+      })
+    }
+    const type = (text: string): void => {
+      fireEvent.change(screen.getByTestId('editor'), { target: { value: text } })
+    }
+    const saveButton = (): HTMLElement => screen.getByRole('button', { name: 'editor.saveButton' })
+
+    it('has a Save button that wakes up once the file is edited', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      expect(saveButton()).toBeDisabled()
+      type('changed')
+      expect(saveButton()).toBeEnabled()
+      expect(screen.getByText('editor.status.unsaved')).toBeInTheDocument()
+      await act(async () => {
+        fireEvent.click(saveButton())
+      })
+      expect(mockApi.editFile).toHaveBeenCalledWith('/fake/project/spec/a_spec.rb', 'changed')
+      await waitFor(() => expect(saveButton()).toBeDisabled())
     })
 
-    it('leaves Run to the Tests tab when that tab is showing', async () => {
-      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+    it('asks before opening another file over unsaved changes; Cancel keeps the edit', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await openFile('b_spec.rb')
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.cancel' }))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(mockApi.readFile).toHaveBeenCalledTimes(1)
+      expect(screen.getByTestId('editor')).toHaveValue('changed')
+    })
+
+    it("Don't save opens the other file without writing", async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await openFile('b_spec.rb')
       await act(async () => {
-        render(
-          <MemoryRouter>
-            <Overview />
-          </MemoryRouter>
-        )
+        fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.discard' }))
       })
-      const start = vi.fn()
-      useRunStore.setState({ start } as never)
-      act(() => dispatchMenuCommand('run'))
-      expect(start).not.toHaveBeenCalled()
+      expect(mockApi.editFile).not.toHaveBeenCalled()
+      expect(mockApi.readFile).toHaveBeenLastCalledWith('/fake/project/spec/b_spec.rb')
+    })
+
+    it('Save writes the first file and then opens the other', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await openFile('b_spec.rb')
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.save' }))
+      })
+      expect(mockApi.editFile).toHaveBeenCalledWith('/fake/project/spec/a_spec.rb', 'changed')
+      await waitFor(() =>
+        expect(mockApi.readFile).toHaveBeenLastCalledWith('/fake/project/spec/b_spec.rb')
+      )
+    })
+
+    it('keeps the edit across a tab switch without asking', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await act(async () => {
+        fireEvent.click(screen.getByText('overview.tabs.tests'))
+      })
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await openFilesTab()
+      expect(screen.getByTestId('editor')).toHaveValue('changed')
+      expect(screen.getByText('editor.status.unsaved')).toBeInTheDocument()
+    })
+
+    it('keeps the dialog up until the save before leaving has finished', async () => {
+      let finish: (v: { success: boolean }) => void = () => {}
+      mockApi.editFile.mockReturnValue(new Promise((r) => (finish = r)))
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await openFile('b_spec.rb')
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.save' }))
+      })
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(mockApi.readFile).toHaveBeenCalledTimes(1)
+      await act(async () => finish({ success: true }))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await waitFor(() =>
+        expect(mockApi.readFile).toHaveBeenLastCalledWith('/fake/project/spec/b_spec.rb')
+      )
+    })
+
+    it('ignores Cmd+S while another tab is showing', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await act(async () => {
+        fireEvent.click(screen.getByText('overview.tabs.tests'))
+      })
+      fireEvent.keyDown(window, { key: 's', metaKey: true })
+      expect(mockApi.editFile).not.toHaveBeenCalled()
     })
   })
 
@@ -1324,6 +1427,64 @@ describe('Overview live runs', (): void => {
       fireEvent.click(screen.getByTestId('overview-headless-toggle'))
       await waitFor(() => expect(mockApi.updateHeadlessMode).toHaveBeenCalled())
       expect(await screen.findByRole('status')).toHaveTextContent('overview.settings.saved')
+    })
+  })
+
+  describe('menu bar commands on the Files tab (D11)', () => {
+    it('Run from the menu runs the project tests while the Files tab is showing', async () => {
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      await openFilesTab()
+      const start = vi.fn()
+      useRunStore.setState({ start } as never)
+      act(() => dispatchMenuCommand('run'))
+      expect(start).toHaveBeenCalledTimes(1)
+    })
+
+    it('leaves Run to the Tests tab when that tab is showing', async () => {
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      const start = vi.fn()
+      useRunStore.setState({ start } as never)
+      act(() => dispatchMenuCommand('run'))
+      expect(start).not.toHaveBeenCalled()
+    })
+
+    it('Save from the menu writes the open file only when it has changes', async () => {
+      mockApi.readFile.mockResolvedValue({ success: true, data: 'original' })
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      await openFilesTab()
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'a_spec.rb' }))
+      })
+      await act(async () => {
+        dispatchMenuCommand('save')
+      })
+      expect(mockApi.editFile).not.toHaveBeenCalled()
+      fireEvent.change(screen.getByTestId('editor'), { target: { value: 'changed' } })
+      await act(async () => {
+        dispatchMenuCommand('save')
+      })
+      expect(mockApi.editFile).toHaveBeenCalledWith('/fake/project/spec/a_spec.rb', 'changed')
     })
   })
 })

@@ -1,6 +1,7 @@
 import React, { SetStateAction, useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
+import CodeViewToggle from '@components/CodeViewToggle'
 import CommandList from '@components/CommandList'
 import ConfirmationModal from '@components/ConfirmationModal'
 import StyledPanel from '@components/StyledPanel'
@@ -148,8 +149,11 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
   // Code switches the recording's steps while one is shown, else the selected test's view
   const showingRecording = !!browserOpen || !!(recordedTest && unsavedExample)
   const codePressed = showingRecording ? showCode : exampleAsCode
-  const toggleCode = (): void =>
-    showingRecording ? setShowCode(!showCode) : setShowSteps(exampleAsCode)
+  const toggleCode = (view: 'steps' | 'ruby'): void => {
+    const code = view === 'ruby'
+    if (showingRecording) setShowCode(code)
+    else setShowSteps(!code)
+  }
 
   return (
     <div className="flex flex-col h-full p-4 space-y-4">
@@ -206,15 +210,14 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
             >
               {t('testPage.editCode')}
             </button>
-            <button
-              onClick={toggleCode}
-              aria-pressed={codePressed}
-              // No steps view for code Raider can't show as steps
-              disabled={!showingRecording && !stepsMatchFile}
-              className={`${toolbarButton} ${codePressed ? 'bg-neutral-lt' : ''} text-neutral-dk hover:bg-neutral-50`}
-            >
-              {t('testPage.code')}
-            </button>
+            <CodeViewToggle
+              view={codePressed ? 'ruby' : 'steps'}
+              onChange={toggleCode}
+              // No steps view for code Raider can't show as steps: the segment says why (D9)
+              stepsUnavailableReason={
+                !showingRecording && !stepsMatchFile ? t('testPage.stepsUnavailable') : undefined
+              }
+            />
           </div>
 
           {browserOpen ? (

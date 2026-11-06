@@ -150,7 +150,30 @@ test.describe('Project Tests tab', () => {
     await expect(page).toHaveURL(/#\/overview\/tests\/[A-Za-z0-9_-]+$/)
     await expect(page.getByLabel('Test name')).toHaveValue('Search products')
     await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Edit code' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Open file…' })).toBeVisible()
+  })
+
+  test('Open file… shows the file in a full-height editor with a Save button (D2, D3)', async ({
+    page
+  }) => {
+    await mockIPCCapture(page, 'openCodeTest', codeView)
+    await mockIPC(page, 'readFile', { success: true, data: "describe 'Login' do\nend\n" })
+    await goToOverview(page)
+    await row(page, 'Login').click()
+    await page.getByRole('button', { name: 'Open file…' }).click()
+    await expect(page).toHaveURL(/#\/file-editor/)
+
+    const monaco = page.locator('.monaco-editor').first()
+    await expect(monaco).toBeVisible()
+    const box = await monaco.boundingBox()
+    expect(box?.height ?? 0).toBeGreaterThan(300)
+
+    await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled()
+    await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Back' }).click()
+    await expect(page).toHaveURL(/#\/overview\/tests\//)
+    await expect(page.getByRole('group', { name: 'View' })).toBeVisible()
   })
 
   test('a test edited in code shows its tests, without fields to change', async ({ page }) => {
@@ -168,7 +191,7 @@ test.describe('Project Tests tab', () => {
     await expect(
       page.getByRole('button', { name: 'shows an error with a wrong password' })
     ).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Edit code' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Open file…' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeVisible()
     await expect(page.getByLabel('Test name')).toHaveCount(0)
   })
@@ -258,7 +281,7 @@ test.describe('Project Tests tab', () => {
     await goToOverview(page)
     await row(page, 'Add to cart').click()
 
-    await expect(page.getByRole('button', { name: 'Edit code' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Open file…' })).toBeVisible()
     expect(await getIPCCalls(page, 'openCodeTest')).toEqual([['spec/cart_spec.rb']])
     await expect(page.getByLabel('Test name')).toHaveCount(0)
     await expect(page.getByLabel('Start URL')).toHaveCount(0)
