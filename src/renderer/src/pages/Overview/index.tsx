@@ -505,7 +505,8 @@ const Overview: React.FC = () => {
 
   const handleOpenFile = (filePath: string): void => guardUnsaved(() => void loadFile(filePath))
 
-  const switchTab = (tab: OverviewTab): void => guardUnsaved(() => setActiveTab(tab))
+  // Tabs need no guard: the editor's state lives here and comes back when the tab does
+  const switchTab = (tab: OverviewTab): void => setActiveTab(tab)
 
   /** Writes the file; true when it is on disk afterwards. */
   const handleSaveFile = useCallback(async (): Promise<boolean> => {
@@ -530,10 +531,12 @@ const Overview: React.FC = () => {
     }
   }, [editingFile, fileContent, t])
 
+  // The dialog stays up (and keeps focus from the editor) until the write has finished
   const saveThenLeave = async (): Promise<void> => {
     const action = pendingLeave
+    const saved = await handleSaveFile()
     setPendingLeave(null)
-    if ((await handleSaveFile()) && action) action()
+    if (saved && action) action()
   }
 
   const discardThenLeave = (): void => {
@@ -545,7 +548,8 @@ const Overview: React.FC = () => {
   }
 
   useEffect(() => {
-    if (!editingFile) return
+    // Only the file the user can see, only when it has changes, one write at a time
+    if (!editingFile || activeTab !== 'files' || !fileDirty || isSavingFile) return
     const handleKeyDown = (e: KeyboardEvent): void => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
@@ -554,7 +558,7 @@ const Overview: React.FC = () => {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [editingFile, handleSaveFile])
+  }, [editingFile, activeTab, fileDirty, isSavingFile, handleSaveFile])
 
   const handleFileContextMenu = (e: React.MouseEvent, filePath: string, fileName: string): void => {
     e.preventDefault()

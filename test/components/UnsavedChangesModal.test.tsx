@@ -36,4 +36,25 @@ describe('UnsavedChangesModal', () => {
     expect(onDiscard).toHaveBeenCalledTimes(1)
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
+
+  it('takes focus on Save, cancels on Escape and gives focus back when it closes', () => {
+    const before = document.createElement('button')
+    document.body.appendChild(before)
+    before.focus()
+    const { onCancel } = renderModal()
+    expect(screen.getByRole('button', { name: 'editor.unsaved.save' })).toHaveFocus()
+    fireEvent.keyDown(document.activeElement as Element, { key: 'Escape' })
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps Tab inside the dialog', () => {
+    renderModal()
+    const cancel = screen.getByRole('button', { name: 'editor.unsaved.cancel' })
+    const save = screen.getByRole('button', { name: 'editor.unsaved.save' })
+    save.focus()
+    fireEvent.keyDown(save, { key: 'Tab' })
+    expect(cancel).toHaveFocus()
+    fireEvent.keyDown(cancel, { key: 'Tab', shiftKey: true })
+    expect(save).toHaveFocus()
+  })
 })

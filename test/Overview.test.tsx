@@ -1299,16 +1299,47 @@ describe('Overview live runs', (): void => {
       )
     })
 
-    it('asks before switching tabs over unsaved changes', async () => {
+    it('keeps the edit across a tab switch without asking', async () => {
       await renderFiles()
       await openFile('a_spec.rb')
       type('changed')
       await act(async () => {
         fireEvent.click(screen.getByText('overview.tabs.tests'))
       })
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await openFilesTab()
+      expect(screen.getByTestId('editor')).toHaveValue('changed')
+      expect(screen.getByText('editor.status.unsaved')).toBeInTheDocument()
+    })
+
+    it('keeps the dialog up until the save before leaving has finished', async () => {
+      let finish: (v: { success: boolean }) => void = () => {}
+      mockApi.editFile.mockReturnValue(new Promise((r) => (finish = r)))
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await openFile('b_spec.rb')
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.save' }))
+      })
       expect(screen.getByRole('dialog')).toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: 'editor.unsaved.cancel' }))
-      expect(screen.getByTestId('editor')).toBeInTheDocument()
+      expect(mockApi.readFile).toHaveBeenCalledTimes(1)
+      await act(async () => finish({ success: true }))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await waitFor(() =>
+        expect(mockApi.readFile).toHaveBeenLastCalledWith('/fake/project/spec/b_spec.rb')
+      )
+    })
+
+    it('ignores Cmd+S while another tab is showing', async () => {
+      await renderFiles()
+      await openFile('a_spec.rb')
+      type('changed')
+      await act(async () => {
+        fireEvent.click(screen.getByText('overview.tabs.tests'))
+      })
+      fireEvent.keyDown(window, { key: 's', metaKey: true })
+      expect(mockApi.editFile).not.toHaveBeenCalled()
     })
   })
 })

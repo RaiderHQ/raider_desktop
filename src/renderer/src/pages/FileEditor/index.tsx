@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
@@ -32,13 +32,19 @@ const FileEditor: React.FC = (): JSX.Element => {
   const [leaving, setLeaving] = useState(false)
   const dirty = fileContent !== savedContent
 
+  // One write at a time; a ref so a Cmd+S repeat in the same tick can't start a second one
+  const savingRef = useRef(false)
+
   /** Writes the file; true when it is on disk afterwards. */
   const handleSave = useCallback(async (): Promise<boolean> => {
+    if (savingRef.current) return false
+    savingRef.current = true
     const loadingTypes: string[] = ['stashing', 'securing', 'engraving', 'prize', 'ruby']
     const toastId: string = toast.loading(t(`editor.save.${sample(loadingTypes)}`))
 
     if (!filePath || filePath.trim() === '') {
       toast.error(t('editor.error.invalidFilePath'), { id: toastId })
+      savingRef.current = false
       return false
     }
 
@@ -56,6 +62,7 @@ const FileEditor: React.FC = (): JSX.Element => {
       toast.error(t('editor.error.unexpectedSaveError'), { id: toastId })
       return false
     } finally {
+      savingRef.current = false
       setIsSaving(false)
     }
   }, [filePath, fileContent, fileName, t])
@@ -103,13 +110,13 @@ const FileEditor: React.FC = (): JSX.Element => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
-        void handleSave()
+        if (dirty) void handleSave()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return (): void => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleSave])
+  }, [handleSave, dirty])
 
   return (
     <div className="flex flex-col w-screen p-8">

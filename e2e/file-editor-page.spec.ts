@@ -225,6 +225,8 @@ test.describe('File Editor Page', () => {
     await dialog.getByRole('button', { name: "Don't save" }).click()
     await expect(dialog).toBeHidden()
     expect(await getIPCCalls(page, 'editFile')).toEqual([])
-    await expect(page.getByText('two.rb').first()).toBeVisible()
+    // two.rb is now the open file
+    await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+    await expect(page.locator('span.font-semibold', { hasText: 'two.rb' })).toBeVisible()
   })
 })

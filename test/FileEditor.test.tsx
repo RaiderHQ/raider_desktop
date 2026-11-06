@@ -202,4 +202,30 @@ describe('FileEditor Page', () => {
       expect(screen.getByText('overview route')).toBeInTheDocument()
     })
   })
+
+  describe('Cmd+S (D3 review)', () => {
+    beforeEach(() => mockApi.editFile.mockReset())
+
+    it('does nothing when there is nothing to save', async () => {
+      await act(async () => {
+        renderComponent()
+      })
+      fireEvent.keyDown(window, { key: 's', metaKey: true })
+      expect(mockApi.editFile).not.toHaveBeenCalled()
+    })
+
+    it('does not start a second write while one is running', async () => {
+      let finish: (v: { success: boolean }) => void = () => {}
+      mockApi.editFile.mockReturnValue(new Promise((r) => (finish = r)))
+      await act(async () => {
+        renderComponent()
+      })
+      fireEvent.change(screen.getByTestId('editor'), { target: { value: 'edited' } })
+      fireEvent.keyDown(window, { key: 's', metaKey: true })
+      await act(async () => {})
+      fireEvent.keyDown(window, { key: 's', metaKey: true })
+      expect(mockApi.editFile).toHaveBeenCalledTimes(1)
+      await act(async () => finish({ success: true }))
+    })
+  })
 })

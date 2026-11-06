@@ -171,9 +171,9 @@ test.describe('Project Tests tab', () => {
     await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled()
     await expect(page.getByText('Saved', { exact: true })).toBeVisible()
 
-    // The Ruby test on this page keeps its own view control
     await page.getByRole('button', { name: 'Back' }).click()
     await expect(page).toHaveURL(/#\/overview\/tests\//)
+    await expect(page.getByRole('group', { name: 'View' })).toBeVisible()
   })
 
   test('a test edited in code shows its tests, without fields to change', async ({ page }) => {
