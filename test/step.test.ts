@@ -119,6 +119,12 @@ describe('isStep with a locator', () => {
     const element = { ...el, locator: { by: 'role', role: 'button' } }
     expect(isStep({ id: '1', kind: 'click', element })).toBe(false)
   })
+  it('accepts a boolean region flag and rejects any other value', () => {
+    expect(isStep({ id: '1', kind: 'click', element: { ...el, region: true } })).toBe(true)
+    expect(isStep({ id: '1', kind: 'click', element: { ...el, region: false } })).toBe(true)
+    expect(isStep({ id: '1', kind: 'click', element: { ...el, region: 'yes' } })).toBe(false)
+    expect(isStep({ id: '1', kind: 'click', element: { ...el, region: 1 } })).toBe(false)
+  })
 })
 
 describe('isWeakLocator', () => {

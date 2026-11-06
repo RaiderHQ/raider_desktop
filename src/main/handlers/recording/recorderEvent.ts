@@ -22,6 +22,8 @@ export interface RecorderEventData {
   ariaLabel?: string
   placeholder?: string
   locator?: unknown
+  /** A click on a layout element with no words of its own (a region of the page) */
+  region?: unknown
   boundingRect?: { x: number; y: number; width: number; height: number }
 }
 
@@ -31,6 +33,8 @@ export interface LabelHints {
   placeholder?: string
   /** Semantic locator from the preload; kept only when it is well-formed */
   locator?: unknown
+  /** The preload's region flag; kept only when it is exactly true */
+  region?: unknown
 }
 
 const LABEL_MAX = 60
@@ -83,6 +87,7 @@ export function toElementTarget(
     ? { strategy, value: selector, label }
     : { strategy, value: selector }
   if (isLocator(hints.locator)) target.locator = hints.locator
+  if (hints.region === true) target.region = true
   return target
 }
 

@@ -85,7 +85,7 @@ describe('CommandList', () => {
         showCode={false}
       />
     )
-    fireEvent.click(screen.getByLabelText('Delete step'))
+    fireEvent.click(screen.getByLabelText('recorder.step.delete'))
     expect(onDeleteStep).toHaveBeenCalledWith(0)
   })
 

@@ -543,8 +543,11 @@ const Overview: React.FC = () => {
 
   const handleOpenFile = (filePath: string): void => guardUnsaved(() => void loadFile(filePath))
 
-  // Tabs need no guard: the editor's state lives here and comes back when the tab does
-  const switchTab = (tab: OverviewTab): void => setActiveTab(tab)
+  // Leaving the Files tab with an unsaved edit asks first, as opening another file does (R1)
+  const switchTab = (tab: OverviewTab): void => {
+    if (tab === activeTab) return
+    guardUnsaved(() => setActiveTab(tab))
+  }
 
   /** Writes the file; true when it is on disk afterwards. */
   const handleSaveFile = useCallback(async (): Promise<boolean> => {

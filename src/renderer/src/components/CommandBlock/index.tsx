@@ -300,7 +300,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
               <button
                 onClick={() => onDelete(index)}
                 className="w-6 h-6 flex items-center justify-center rounded-full text-neutral-md hover:bg-status-err-bg hover:text-red-600 transition-colors"
-                aria-label="Delete step"
+                aria-label={t('recorder.step.delete')}
               >
                 <span className="text-2xl font-light select-none leading-none">×</span>
               </button>
