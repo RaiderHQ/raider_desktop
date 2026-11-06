@@ -1248,6 +1248,41 @@ describe('Overview live runs', (): void => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
 
+    it('does not write the address again when nothing changed', async () => {
+      localStorage.setItem('browserUrl', 'https://same.test')
+      await renderOverview()
+      const urlInput = screen.getByTestId('overview-url-input')
+      expect(urlInput).toHaveValue('https://same.test')
+      fireEvent.blur(urlInput)
+      fireEvent.keyDown(urlInput, { key: 'Enter' })
+      await act(async () => {})
+      expect(mockApi.updateBrowserUrl).not.toHaveBeenCalled()
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+
+    it('trims the address before writing it', async () => {
+      await renderOverview()
+      const urlInput = screen.getByTestId('overview-url-input')
+      fireEvent.change(urlInput, { target: { value: '  https://ok.test ' } })
+      fireEvent.blur(urlInput)
+      await waitFor(() =>
+        expect(mockApi.updateBrowserUrl).toHaveBeenCalledWith('/fake/project', 'https://ok.test')
+      )
+      expect(localStorage.getItem('browserUrl')).toBe('https://ok.test')
+    })
+
+    it('drops the error as soon as the field changes', async () => {
+      await renderOverview()
+      const urlInput = screen.getByTestId('overview-url-input')
+      fireEvent.change(urlInput, { target: { value: 'nope' } })
+      fireEvent.blur(urlInput)
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+      fireEvent.change(urlInput, { target: { value: '' } })
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      fireEvent.blur(urlInput)
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
     it('says Saved after the headless switch is written', async () => {
       await renderOverview()
       fireEvent.click(screen.getByTestId('overview-headless-toggle'))

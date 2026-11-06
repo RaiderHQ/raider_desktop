@@ -124,6 +124,13 @@ const Overview: React.FC = () => {
   const [browserUrl, setBrowserUrl] = useState('')
   // Why the typed base URL can't be saved, shown under the field
   const [urlError, setUrlError] = useState<string | null>(null)
+  // The address as last loaded or written: a blur that changes nothing writes nothing
+  const savedUrl = useRef('')
+  const loadBrowserUrl = (value: string): void => {
+    setBrowserUrl(value)
+    savedUrl.current = value.trim()
+    setUrlError(null)
+  }
   // A quiet "Saved" next to the settings after a successful write, instead of a toast
   const [settingsSaved, setSettingsSaved] = useState(false)
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -203,11 +210,11 @@ const Overview: React.FC = () => {
             browserArguments
           } = result.config
           if (baseUrl) {
-            setBrowserUrl(baseUrl)
+            loadBrowserUrl(baseUrl)
             localStorage.setItem('browserUrl', baseUrl)
           } else {
             const storedUrl = localStorage.getItem('browserUrl')
-            if (storedUrl) setBrowserUrl(storedUrl)
+            if (storedUrl) loadBrowserUrl(storedUrl)
           }
           if (browser) {
             setSelectedBrowser(browser)
@@ -230,7 +237,7 @@ const Overview: React.FC = () => {
           const storedUrl = localStorage.getItem('browserUrl')
           const storedBrowser = localStorage.getItem('selectedBrowser')
           const storedHeadless = localStorage.getItem('headless')
-          if (storedUrl) setBrowserUrl(storedUrl)
+          if (storedUrl) loadBrowserUrl(storedUrl)
           if (storedBrowser) setSelectedBrowser(storedBrowser)
           if (storedHeadless !== null) setHeadless(storedHeadless === 'true')
         }
@@ -242,7 +249,7 @@ const Overview: React.FC = () => {
         const storedUrl = localStorage.getItem('browserUrl')
         const storedBrowser = localStorage.getItem('selectedBrowser')
         const storedHeadless = localStorage.getItem('headless')
-        if (storedUrl) setBrowserUrl(storedUrl)
+        if (storedUrl) loadBrowserUrl(storedUrl)
         if (storedBrowser) setSelectedBrowser(storedBrowser)
         if (storedHeadless !== null) setHeadless(storedHeadless === 'true')
       }
@@ -306,19 +313,21 @@ const Overview: React.FC = () => {
       toast.error(t('settings.noProject.description'))
       return
     }
-    if (!browserUrl.trim()) return
-    if (!isWebAddress(browserUrl)) {
+    const url = browserUrl.trim()
+    if (!url || url === savedUrl.current) return
+    if (!isWebAddress(url)) {
       setUrlError(t('overview.settings.urlInvalid'))
       return
     }
     setUrlError(null)
     try {
-      const response = await window.api.updateBrowserUrl(projectPath, browserUrl)
+      const response = await window.api.updateBrowserUrl(projectPath, url)
       if (!response.success) {
         toast.error(response.error || t('overview.settings.urlUpdateFailed'))
         return
       }
-      localStorage.setItem('browserUrl', browserUrl)
+      localStorage.setItem('browserUrl', url)
+      savedUrl.current = url
       showSaved()
     } catch (error) {
       toast.error(`${t('overview.settings.urlUpdateFailed')}: ${(error as Error).message}`)
@@ -726,7 +735,10 @@ const Overview: React.FC = () => {
                   <input
                     type="text"
                     value={browserUrl}
-                    onChange={(e) => setBrowserUrl(e.target.value)}
+                    onChange={(e) => {
+                      setBrowserUrl(e.target.value)
+                      setUrlError(null)
+                    }}
                     onBlur={handleUrlSave}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleUrlSave()

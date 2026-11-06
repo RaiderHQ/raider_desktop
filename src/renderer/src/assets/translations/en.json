@@ -261,11 +261,8 @@
       "urlPlaceholder": "https://example.com",
       "browserLabel": "Browser",
       "headlessLabel": "Headless",
-      "urlUpdateSuccess": "Base URL updated!",
       "urlUpdateFailed": "Failed to update base URL.",
-      "browserUpdateSuccess": "Browser updated!",
       "browserUpdateFailed": "Failed to update browser.",
-      "headlessUpdateSuccess": "Headless mode updated!",
       "headlessUpdateFailed": "Failed to update headless mode.",
       "runModeLabel": "Run",
       "runMode": {

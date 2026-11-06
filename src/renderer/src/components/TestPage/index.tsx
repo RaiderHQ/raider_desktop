@@ -295,14 +295,24 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   }
 
   // Quick record made the draft elsewhere and asked for the recorder to start on arrival
-  const recordOnOpen = useRecorderStore((s) => s.recordOnOpen)
+  const hasTest = !!test
   useEffect(() => {
-    if (!isDraft || !test || !recordOnOpen) return
-    useRecorderStore.getState().setRecordOnOpen(false)
+    // The flag is read from the store and consumed here, so a re-render can't start twice
+    const store = useRecorderStore.getState()
+    if (!isDraft || !hasTest || !store.recordOnOpen) return
+    store.setRecordOnOpen(false)
+    // A fresh target object per run: a start the rehearsal mount abandoned sees the next
+    // run's target in the store and stops itself before it reaches main
     recording
-      .start(draftTarget)
+      .start({ ...draftTarget })
       .catch((error: unknown) => console.error('Recording failed:', error))
-  }, [isDraft, test, recordOnOpen])
+    return (): void => {
+      // Gone before the recorder got going (StrictMode's rehearsal mount, or a quick leave):
+      // the hook's own cleanup has already abandoned the start, so ask again next time
+      const { isRecording, recordingTarget } = useRecorderStore.getState()
+      if (!isRecording && !recordingTarget) useRecorderStore.getState().setRecordOnOpen(true)
+    }
+  }, [isDraft, hasTest])
 
   const moreOptions = [
     ...(readOnly || recordingDisabled
