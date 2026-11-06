@@ -481,6 +481,25 @@ describe('TestPage', () => {
       })
     })
 
+    it('opens from the menu bar, but not while recording', async () => {
+      renderWithEditor(withFile)
+      await opened()
+      await startRecording()
+      act(() => dispatchMenuCommand('open-file'))
+      expect(screen.queryByTestId('editor-state')).not.toBeInTheDocument()
+    })
+
+    it('opens the test file when the menu bar asks', async () => {
+      renderWithEditor(withFile)
+      await opened()
+      act(() => dispatchMenuCommand('open-file'))
+      expect(JSON.parse(screen.getByTestId('editor-state').textContent!)).toEqual({
+        fileName: 'login_works_spec.rb',
+        filePath: '/Users/me/project/spec/login_works_spec.rb',
+        returnTo: '/overview/tests/x'
+      })
+    })
+
     it('is disabled while recording', async () => {
       renderWithEditor(withFile)
       await opened()
@@ -1214,6 +1233,17 @@ describe('TestPage re-picking the failed element', () => {
       await opened()
       act(() => dispatchMenuCommand('run'))
       expect(spies.run).toHaveBeenCalledTimes(1)
+    })
+
+    it('Stop from the menu is Stop & save while recording', async () => {
+      renderPage(withFile)
+      await opened()
+      api.stopRecordingMain.mockClear()
+      act(() => dispatchMenuCommand('stop'))
+      expect(api.stopRecordingMain).not.toHaveBeenCalled()
+      await startRecording()
+      await act(async () => dispatchMenuCommand('stop'))
+      expect(api.stopRecordingMain).toHaveBeenCalled()
     })
 
     it('Record from the menu records the open test, like the Record button', async () => {

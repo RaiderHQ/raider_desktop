@@ -3,6 +3,7 @@ import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { ipcSubscriptions } from '../helpers/ipcSubscriptions'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
+import { dispatchMenuCommand } from '@foundation/menuCommands'
 import CodeTestPane from '@components/CodeTestPane'
 import TestsWorkspace from '@components/TestsWorkspace'
 import useRecorderStore from '@foundation/Stores/recorderStore'
@@ -376,6 +377,31 @@ describe('CodeTestPane', () => {
     )
     await waitFor(() => expect(api.openCodeTest).toHaveBeenCalledWith('spec/login_spec.rb'))
     expect(api.saveRecording).not.toHaveBeenCalled()
+  })
+
+  it('Stop from the menu is Stop & save while recording', async () => {
+    renderPane()
+    await screen.findByRole('button', { name: 'logs in' })
+    act(() => dispatchMenuCommand('stop'))
+    expect(api.recordOverExample).not.toHaveBeenCalled()
+    await recordOverFirstExample()
+    await act(async () => dispatchMenuCommand('stop'))
+    await waitFor(() =>
+      expect(api.recordOverExample).toHaveBeenCalledWith(
+        'spec/login_spec.rb',
+        'logs in',
+        expect.any(Array),
+        'ruby'
+      )
+    )
+  })
+
+  it('Open file from the menu opens the test file in the editor', async () => {
+    useProjectStore.setState({ projectPath: '/Users/me/project' })
+    renderPane()
+    await screen.findByRole('button', { name: 'logs in' })
+    act(() => dispatchMenuCommand('open-file'))
+    expect(screen.getByTestId('editor-state')).toHaveTextContent('spec/login_spec.rb')
   })
 
   it('records the selected example', async () => {

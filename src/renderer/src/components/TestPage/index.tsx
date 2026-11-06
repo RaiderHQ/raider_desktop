@@ -232,6 +232,18 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
     action(target).catch((error: unknown) => console.error('Recording failed:', error))
   }
 
+  // The editor's back button comes back to this test
+  const editCode = (): void => {
+    if (!projectPath || !test?.file) return
+    navigate('/file-editor', {
+      state: {
+        fileName: test.file.split('/').pop() ?? test.file,
+        filePath: `${projectPath}/${test.file}`,
+        returnTo: location.pathname
+      }
+    })
+  }
+
   // The menu bar's Test › Record and Run act like the toolbar buttons, under the same rules
   // A confirmation on top of the page blocks the buttons; it must block the menu too
   const confirming = confirmingDelete || confirmingStartOver || reRecordingFrom !== null
@@ -244,8 +256,20 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       onMenuCommand((command) => {
         if (command === 'record' && canRecord) record()
         if (command === 'run' && canRun) void recording.run()
+        // Stop & save is the Stop button; Open file… is the toolbar's, which the recording blocks
+        if (command === 'stop' && recording.isRecording) void recording.stop()
+        if (command === 'open-file' && !busy) editCode()
       }),
-    [canRecord, canRun, record, recording.run]
+    [
+      canRecord,
+      canRun,
+      record,
+      recording.run,
+      recording.isRecording,
+      recording.stop,
+      busy,
+      editCode
+    ]
   )
 
   const startOver = (): void => {
@@ -270,18 +294,6 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
     } catch (error) {
       toast.error(t('recorder.mainRecorderPanel.exportError', { error: String(error) }))
     }
-  }
-
-  // The editor's back button comes back to this test
-  const editCode = (): void => {
-    if (!projectPath || !test?.file) return
-    navigate('/file-editor', {
-      state: {
-        fileName: test.file.split('/').pop() ?? test.file,
-        filePath: `${projectPath}/${test.file}`,
-        returnTo: location.pathname
-      }
-    })
   }
 
   const deleteTest = (): void => {

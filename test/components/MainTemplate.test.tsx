@@ -230,6 +230,43 @@ describe('MainTemplate project files toasts', () => {
       root.remove()
     })
 
+    it('New test opens the Tests tab new test form when a project is open', () => {
+      renderAt('/overview')
+      act(() => menuListener()('new-test'))
+      expect(screen.getByTestId('where')).toHaveTextContent('/overview/tests/new')
+    })
+
+    it('New test is ignored when no project is open', async () => {
+      const toast = (await import('react-hot-toast')).default as unknown as {
+        error: ReturnType<typeof vi.fn>
+      }
+      toast.error.mockClear()
+      projectState.projectPath = null as unknown as string
+      try {
+        renderAt('/')
+        act(() => menuListener()('new-test'))
+        expect(screen.getByTestId('where')).toHaveTextContent('/')
+        expect(screen.getByTestId('where')).not.toHaveTextContent('tests/new')
+        expect(toast.error).not.toHaveBeenCalled()
+      } finally {
+        projectState.projectPath = '/fake/project'
+      }
+    })
+
+    it('passes Stop, Open file, Docs and the recording guide on to the page', () => {
+      renderAt('/overview')
+      const seen: string[] = []
+      const off = onMenuCommand((c) => seen.push(c))
+      act(() => {
+        menuListener()('stop')
+        menuListener()('open-file')
+        menuListener()('docs')
+        menuListener()('recording-guide')
+      })
+      off()
+      expect(seen).toEqual(['stop', 'open-file', 'docs', 'recording-guide'])
+    })
+
     it('passes Save, Record and Run on to the page that is open', () => {
       renderAt('/overview')
       const seen: string[] = []

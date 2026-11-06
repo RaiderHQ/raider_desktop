@@ -12,6 +12,7 @@ import RecordingLayout from '@components/TestPage/RecordingLayout'
 import { removeStepWithUndo } from '@foundation/removeStepWithUndo'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import { onMenuCommand } from '@foundation/menuCommands'
 import { useRunStore } from '@foundation/Stores/runStore'
 import { buildAssertionStep, assertionModalType } from '@foundation/assertionStep'
 import type { TestRow } from '@foundation/testKey'
@@ -122,6 +123,16 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
     // Written into the file: show what it holds now
     if (!useRecorderStore.getState().unsavedExample) load()
   }
+
+  // The menu bar's Stop & save and Open file… act like the toolbar buttons
+  useEffect(
+    () =>
+      onMenuCommand((command) => {
+        if (command === 'stop' && recording.isRecording) void stop()
+        if (command === 'open-file' && !busy && !recordedTest) editCode()
+      }),
+    [recording.isRecording, busy, recordedTest, stop, editCode]
+  )
 
   const saveAssertion = (expectedText: string): void => {
     const info = recording.assertionInfo

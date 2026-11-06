@@ -25,6 +25,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
   const [isGemsInstallModalOpen, setIsGemsInstallModalOpen] = useState(false)
   const [missingGems, setMissingGems] = useState<string[] | undefined>(undefined)
   const [isConceptsModalOpen, setIsConceptsModalOpen] = useState(false)
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false)
 
   // Run ruby check once at app startup
   useEffect(() => {
@@ -90,7 +91,8 @@ const MainTemplate: React.FC = (): JSX.Element => {
   // The menu bar's commands: the app-wide ones are handled here, the rest go to the open page.
   // Modal state is read through a ref so the one subscription sees the current values.
   const modalOpen = useRef(false)
-  modalOpen.current = isRubyInstallModalOpen || isGemsInstallModalOpen || isConceptsModalOpen
+  modalOpen.current =
+    isRubyInstallModalOpen || isGemsInstallModalOpen || isConceptsModalOpen || isShortcutsOpen
   const pickingFolder = useRef(false)
   useEffect(() => {
     const openProject = async (): Promise<void> => {
@@ -120,6 +122,20 @@ const MainTemplate: React.FC = (): JSX.Element => {
         return
       }
       if (modalOpen.current) return
+      if (command === 'shortcuts') {
+        setIsShortcutsOpen(true)
+        return
+      }
+      if (command === 'new-test') {
+        // Only a project has a Tests tab; with none open nothing listens
+        if (!useProjectStore.getState().projectPath) return
+        if (recorderBusy()) {
+          toast.error(t('quickRecord.stopFirst'))
+          return
+        }
+        navigate('/overview/tests/new')
+        return
+      }
       if (command === 'new-project' || command === 'open-project') {
         if (recorderBusy()) {
           toast.error(t('quickRecord.stopFirst'))
@@ -199,6 +215,8 @@ const MainTemplate: React.FC = (): JSX.Element => {
           missingGems={missingGems}
         />
       )}
+
+      {/* ShortcutsSheet: Task 4 (open: isShortcutsOpen) */}
 
       <TraceViewerOverlay />
 
