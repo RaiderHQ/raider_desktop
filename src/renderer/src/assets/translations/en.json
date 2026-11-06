@@ -439,6 +439,7 @@
     "name": "Test name",
     "url": "Start URL",
     "record": "Record",
+    "autosaved": "Changes to this test are saved automatically.",
     "stop": "Stop & save",
     "recording": "Recording",
     "run": "Run",
@@ -1278,6 +1279,15 @@
   "steps": {
     "removed": "Step removed",
     "undo": "Undo"
+  },
+  "files": {
+    "unsavedSuffix": "{{name}}, unsaved changes"
+  },
+  "closeGuard": {
+    "message": "Save changes to {{name}}?",
+    "save": "Save",
+    "discard": "Don't save",
+    "cancel": "Cancel"
   },
   "scaffold": {
     "intro": "Generate page objects, specs, features, steps, helpers, or components for your project.",

@@ -303,6 +303,9 @@ const api = {
   registerRecorderWebContents: async (webContentsId: number): Promise<void> =>
     ipcRenderer.invoke('register-recorder-webcontents', webContentsId),
   stopRecordingMain: async (): Promise<CommandType> => ipcRenderer.invoke('stop-recording-main'),
+  /** Tells main whether the open document has unsaved changes, so closing asks first */
+  setDocumentEdited: (edited: boolean, name: string): void =>
+    ipcRenderer.send('document-edited', edited, name),
   /** Tells main whether a recording is open, so closing the window saves it first */
   setRecordingState: (active: boolean): void => ipcRenderer.send('recording-state', active),
   /** Tells main only whether a recording is running, for the Record / Stop & save menu item */

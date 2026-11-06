@@ -29,8 +29,9 @@ import type { TestResult } from '@foundation/Types/testResult'
 import type { Step } from '@shared/types/step'
 import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import { onMenuCommand } from '@foundation/menuCommands'
-import { dropEmptyDraft, useTestRecording } from '../../hooks/useTestRecording'
+import { dropEmptyDraft, isEmptyRecording, useTestRecording } from '../../hooks/useTestRecording'
 import { useFailedStep } from '../../hooks/useFailedStep'
+import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import NewTestForm from './NewTestForm'
 import RecordingLayout from './RecordingLayout'
 
@@ -137,6 +138,10 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const readOnly = !!test?.ownership && test.ownership !== 'recorded'
   const busy = recording.isRecording || isReplaying || picking
   const failedStep = useFailedStep(projectPath, test)
+  // Edited while recording, and while a draft holds steps Stop & save has not written yet
+  // (a draft with only its start page is one Stop & save would drop, so it is not)
+  const draftHasSteps = isDraft && !!test && !isEmptyRecording(test)
+  useDocumentTitle(test?.name ?? null, recording.isRecording || draftHasSteps)
 
   // The name is kept here while typing and saved on blur or Enter: main renames the
   // test's file on a real rename, so a half-typed name must never reach it
@@ -261,6 +266,11 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
         if (command === 'open-file' && !busy && !starting && !confirming && !!test?.file) {
           editCode()
         }
+        // Everything else is saved as it changes; only a recording waits for Stop & save,
+        // and a draft whose Stop & save failed is written again (the close dialog's Save)
+        if (command !== 'save' || isReplaying) return
+        if (recording.isRecording) void recording.stop()
+        else if (draftHasSteps) void recording.saveDraft(targetSuiteId)
       }),
     [
       canRecord,
@@ -269,12 +279,15 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       recording.run,
       recording.isRecording,
       recording.stop,
+      recording.saveDraft,
       busy,
       isReplaying,
       starting,
       confirming,
       test?.file,
-      editCode
+      editCode,
+      draftHasSteps,
+      targetSuiteId
     ]
   )
 
@@ -599,9 +612,14 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
               focusBrowser={pickingStep !== null}
             />
           ) : (
-            <div className="flex-1 min-h-[12rem]">
-              <StyledPanel>{steps ?? <></>}</StyledPanel>
-            </div>
+            <>
+              <div className="flex-1 min-h-[12rem]">
+                <StyledPanel>{steps ?? <></>}</StyledPanel>
+              </div>
+              {!isDraft && !recording.isRecording && !readOnly && (
+                <p className="text-xs text-neutral-md mt-2">{t('testPage.autosaved')}</p>
+              )}
+            </>
           )}
 
           {ownRun && (

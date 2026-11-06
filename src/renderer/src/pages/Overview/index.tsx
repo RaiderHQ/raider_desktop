@@ -11,6 +11,7 @@ import ToggleSwitch from '@components/ToggleSwitch'
 import TagInput from '@components/TagInput'
 import ProjectDashboard from '@components/ProjectDashboard'
 import Editor from '@components/Editor'
+import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { onMenuCommand } from '@foundation/menuCommands'
 import useEditorStore from '@foundation/Stores/editorStore'
 import EditorSaveBar from '@components/EditorSaveBar'
@@ -202,6 +203,15 @@ const Overview: React.FC = () => {
   // What the user was about to do when asked about unsaved changes
   const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null)
   const fileDirty = !!editingFile && fileContent !== savedContent
+  // One dirty value, two stores: editorStore drives the menu guards (New test, New project,
+  // Open project stand down); titleStore drives the window title and the close guard.
+  // A later cleanup may fold them into one.
+  // Only the Files tab shows the open file, so only it names the window
+  useDocumentTitle(activeTab === 'files' ? (editingFile?.name ?? null) : null, fileDirty)
+  useEffect(() => {
+    useEditorStore.getState().setInlineDirty(fileDirty)
+  }, [fileDirty])
+  useEffect(() => (): void => useEditorStore.getState().setInlineDirty(false), [])
 
   useEffect(() => {
     if (!projectPath) {
@@ -561,12 +571,6 @@ const Overview: React.FC = () => {
   useEffect(() => {
     if (isNewTestRoute) switchTab('tests')
   }, [isNewTestRoute, locationKey])
-
-  // App-wide menu commands that would leave the page stand down while the edit is unsaved
-  useEffect(() => {
-    useEditorStore.getState().setInlineDirty(fileDirty)
-  }, [fileDirty])
-  useEffect(() => (): void => useEditorStore.getState().setInlineDirty(false), [])
 
   const handleOpenFile = (filePath: string): void => guardUnsaved(() => void loadFile(filePath))
 
@@ -1128,6 +1132,7 @@ const Overview: React.FC = () => {
                   path={projectPath || ''}
                   files={files}
                   defaultOpen={true}
+                  dirtyPath={fileDirty ? editingFile?.path : undefined}
                   onFileClick={handleOpenFile}
                   isRoot={true}
                   onRunTests={handleRunRaiderTests}

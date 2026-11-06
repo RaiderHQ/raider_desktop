@@ -30,6 +30,8 @@ describe('shortcuts', () => {
   it('platformFrom', () => {
     expect(platformFrom('MacIntel')).toBe('mac')
     expect(platformFrom('Mac')).toBe('mac')
+    // Case-insensitive
+    expect(platformFrom('macos')).toBe('mac')
     expect(platformFrom('Win32')).toBe('other')
     expect(platformFrom('Linux x86_64')).toBe('other')
     expect(platformFrom(undefined)).toBe('other')

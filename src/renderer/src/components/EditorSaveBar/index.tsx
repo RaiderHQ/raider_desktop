@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@components/Tooltip'
+import { platformFrom, shortcutLabel } from '@shared/shortcuts'
 
 interface EditorSaveBarProps {
   fileName: string
@@ -49,6 +50,9 @@ const EditorSaveBar: React.FC<EditorSaveBarProps> = ({
           className="text-xs px-3 py-1 rounded border font-semibold transition-colors bg-ruby text-white border-ruby hover:shadow-card-hover disabled:bg-white disabled:text-neutral-mid disabled:border-neutral-bdr disabled:cursor-not-allowed"
         >
           {t('editor.saveButton')}
+          <kbd aria-hidden="true" className="ml-1.5 text-[10px] opacity-80">
+            {shortcutLabel('save', platformFrom(navigator.platform))}
+          </kbd>
         </button>
       </Tooltip>
     </div>

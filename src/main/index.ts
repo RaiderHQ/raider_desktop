@@ -79,6 +79,7 @@ import replayStepsAndRecord from './handlers/recording/replayStepsAndRecord'
 import replayInWebview, { cancelWebviewReplay } from './handlers/recording/replayInWebview'
 import stopRecordingMain from './handlers/recording/stopRecordingMain'
 import saveRecording from './handlers/recording/saveRecording'
+import { installDocumentEdited } from './handlers/documentEdited'
 import { installCloseFlush } from './handlers/recording/closeFlush'
 import { showAssertionContextMenu } from './handlers/recording/assertionContextMenu'
 import saveTrace from './handlers/trace/saveTrace'
@@ -148,15 +149,29 @@ function createWindow(): void {
   // Set the main window instance in our app state module
   setMainWindow(newMainWindow)
 
+  const closeOrQuit = (): void => (quitting ? app.quit() : newMainWindow.close())
+
   resetRecordingOnWindowLoss(newMainWindow, () => {
     appState.recording = false
     setRecordingMenuState(false)
   })
 
-  // Closing while recording saves the recording first
+  // Closing while recording saves the recording first. The flush's close listener is
+  // registered before the guard's, so the guard leaves a close the flush holds alone;
+  // once the recording is saved there is nothing left for the guard to ask about.
+  const guard = { markClean: (): void => {} }
   installCloseFlush(newMainWindow, ipcMain, {
-    close: () => (quitting ? app.quit() : newMainWindow.close())
+    close: closeOrQuit,
+    onBeforeClose: () => guard.markClean()
   })
+
+  // Closing with unsaved changes asks first; Cancel also cancels a pending quit
+  guard.markClean = installDocumentEdited(newMainWindow, ipcMain, {
+    close: closeOrQuit,
+    onCancel: () => {
+      quitting = false
+    }
+  }).markClean
 
   if (is.dev && appState.mainWindow) {
     appState.mainWindow.webContents.openDevTools()

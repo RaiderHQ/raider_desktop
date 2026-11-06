@@ -31,6 +31,27 @@ describe('EditorSaveBar', () => {
     expect(tip.querySelector('kbd')).not.toBeNull()
   })
 
+  it('names the shortcut in the button', () => {
+    const original = Object.getOwnPropertyDescriptor(window.navigator, 'platform')
+    const setPlatform = (value: string): void => {
+      Object.defineProperty(window.navigator, 'platform', { value, configurable: true })
+    }
+    try {
+      setPlatform('MacIntel')
+      const { container, unmount } = render(
+        <EditorSaveBar fileName="a.rb" dirty saving={false} onSave={vi.fn()} />
+      )
+      expect(container.querySelector('button kbd')).toHaveTextContent('⌘S')
+      expect(container.querySelector('button kbd')).toHaveAttribute('aria-hidden', 'true')
+      unmount()
+      setPlatform('Win32')
+      const win = render(<EditorSaveBar fileName="a.rb" dirty saving={false} onSave={vi.fn()} />)
+      expect(win.container.querySelector('button kbd')).toHaveTextContent('Ctrl+S')
+    } finally {
+      if (original) Object.defineProperty(window.navigator, 'platform', original)
+    }
+  })
+
   it('keeps Save off while a save is in flight', () => {
     render(<EditorSaveBar fileName="a.rb" dirty saving onSave={vi.fn()} />)
     expect(screen.getByRole('button', { name: 'editor.saveButton' })).toBeDisabled()

@@ -8,6 +8,7 @@ import EditorSaveBar from '@components/EditorSaveBar'
 import Tooltip from '@components/Tooltip'
 import UnsavedChangesModal from '@components/UnsavedChangesModal'
 import { getFileLanguage } from '@foundation/helpers'
+import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { onMenuCommand } from '@foundation/menuCommands'
 import useEditorStore from '@foundation/Stores/editorStore'
 import { FaArrowLeft } from 'react-icons/fa'
@@ -34,8 +35,10 @@ const FileEditor: React.FC = (): JSX.Element => {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [leaving, setLeaving] = useState(false)
   const dirty = fileContent !== savedContent
-
-  // App-wide menu commands that would leave this page stand down while it holds edits
+  // One dirty value, two stores: editorStore drives the menu guards (New test, New project,
+  // Open project stand down); titleStore drives the window title and the close guard.
+  // A later cleanup may fold them into one.
+  useDocumentTitle(fileName, dirty)
   useEffect(() => {
     useEditorStore.getState().setPageDirty(dirty)
   }, [dirty])
