@@ -4,6 +4,7 @@ import Button from '@components/Button'
 import InformationModal from '@components/InformationModal'
 import Tooltip from '@components/Tooltip'
 import { useTranslation } from 'react-i18next'
+import type { ShortcutId } from '@shared/shortcuts'
 
 interface ProjectSelectorProps {
   icon: string
@@ -15,6 +16,8 @@ interface ProjectSelectorProps {
   modalMessageKey: string
   /** Shown on the card's button and its help button */
   tooltip?: string
+  /** Chip on the card's button tooltip */
+  shortcut?: ShortcutId
 }
 
 const ProjectSelector: React.FC<ProjectSelectorProps> = ({
@@ -25,14 +28,15 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   onClick,
   modalTitleKey,
   modalMessageKey,
-  tooltip
+  tooltip,
+  shortcut
 }): JSX.Element => {
   const [isModalOpen, setModalOpen] = useState(false)
   const { t } = useTranslation()
 
-  const withTooltip = (node: React.ReactElement): React.ReactElement =>
+  const withTooltip = (node: React.ReactElement, chip?: ShortcutId): React.ReactElement =>
     tooltip ? (
-      <Tooltip content={tooltip} position="bottom">
+      <Tooltip content={tooltip} shortcut={chip} position="bottom">
         {node}
       </Tooltip>
     ) : (
@@ -59,7 +63,8 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 strokeLinecap="round"
               >
                 <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
               </svg>
             </button>
           )}
@@ -69,9 +74,9 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
         </div>
         <h2 className="text-[1.35rem] font-semibold text-neutral-dark mb-6">{description}</h2>
         {url ? (
-          <Link to={url}>{withTooltip(<Button>{buttonValue}</Button>)}</Link>
+          <Link to={url}>{withTooltip(<Button>{buttonValue}</Button>, shortcut)}</Link>
         ) : (
-          withTooltip(<Button onClick={onClick}>{buttonValue}</Button>)
+          withTooltip(<Button onClick={onClick}>{buttonValue}</Button>, shortcut)
         )}
       </div>
 

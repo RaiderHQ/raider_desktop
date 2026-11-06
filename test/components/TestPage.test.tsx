@@ -240,10 +240,23 @@ describe('TestPage', () => {
   it('shows a tooltip on focus for Record, with its shortcut', async () => {
     renderPage()
     await opened()
+    fireEvent.keyDown(window, { key: 'Tab' })
     fireEvent.focus(screen.getByRole('button', { name: 'testPage.record' }))
     const tip = screen.getByRole('tooltip')
     expect(tip).toHaveTextContent('tooltips.testPage.record')
     expect(tip.querySelector('kbd')).not.toBeNull()
+  })
+
+  it('leaves no tooltip over the More menu once it is clicked', async () => {
+    renderPage()
+    await opened()
+    const more = screen.getByRole('button', { name: 'testPage.more' })
+    fireEvent.keyDown(window, { key: 'Tab' })
+    fireEvent.focus(more)
+    expect(screen.getByRole('tooltip')).toBeInTheDocument()
+    fireEvent.pointerDown(more)
+    fireEvent.click(more)
+    expect(screen.queryByRole('tooltip')).toBeNull()
   })
 
   it('keeps Record without a reason for other projects that cannot record', async () => {
