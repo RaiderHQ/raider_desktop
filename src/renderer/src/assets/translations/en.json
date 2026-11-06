@@ -1217,10 +1217,14 @@
     "save": "Save",
     "test": "Test",
     "record": "Record",
+    "stopAndSave": "Stop & save",
     "run": "Run",
+    "newTest": "New test…",
+    "openFile": "Open file…",
     "view": "View",
     "help": "Help",
-    "howItWorks": "How Ruby Raider works"
+    "howItWorks": "How Ruby Raider works",
+    "keyboardShortcuts": "Keyboard shortcuts…"
   },
   "errorToast": {
     "showDetails": "Show details",

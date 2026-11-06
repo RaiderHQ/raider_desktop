@@ -53,7 +53,8 @@ import { registerRunIpc } from './handlers/run/runIpc'
 import { openTraceFromDialog, registerTraceIpc } from './handlers/trace/traceIpc'
 import { makeBaselineConfirm } from './handlers/results/baselineConfirm'
 import { acceptBaseline } from './handlers/results/acceptBaseline'
-import { installAppMenu, withLiveWindow } from './appMenu'
+import { installAppMenu, setRecordingMenuState, withLiveWindow } from './appMenu'
+import { installRecordingState } from './handlers/recording/recordingState'
 import { killActiveRun } from './handlers/run/runner'
 import exportTest from './handlers/io/exportTest'
 import exportSuite from './handlers/io/exportSuite'
@@ -205,6 +206,11 @@ app.whenReady().then(() => {
     },
     { isPackaged: app.isPackaged }
   )
+
+  installRecordingState(ipcMain, (recording) => {
+    appState.recording = recording
+    setRecordingMenuState(recording)
+  })
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

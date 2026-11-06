@@ -1,5 +1,7 @@
 import { Menu } from 'electron'
 import { englishText } from '../shared/describeStepEnglish'
+import { SHORTCUTS, type ShortcutId } from '../shared/shortcuts'
+import { appState } from './handlers/appState'
 
 /** What the menu bar can ask the renderer to do; the renderer checks the value before acting. */
 export type MenuCommand =
@@ -7,8 +9,14 @@ export type MenuCommand =
   | 'open-project'
   | 'save'
   | 'record'
+  | 'stop'
   | 'run'
+  | 'new-test'
+  | 'open-file'
   | 'how-it-works'
+  | 'shortcuts'
+  | 'docs'
+  | 'recording-guide'
 
 export interface MenuActions {
   /** File → Open trace…: a main-side dialog; the renderer never sends a path */
@@ -37,23 +45,23 @@ export function buildAppMenuTemplate(
   const command = (
     id: MenuCommand,
     label: string,
-    accelerator?: string
+    shortcut?: ShortcutId
   ): Electron.MenuItemConstructorOptions => ({
     id,
     label,
-    accelerator,
+    accelerator: shortcut ? SHORTCUTS[shortcut].accelerator : undefined,
     click: () => actions.onCommand(id)
   })
 
   const file: Electron.MenuItemConstructorOptions = {
     label: t('file'),
     submenu: [
-      command('new-project', t('newProject'), 'CmdOrCtrl+N'),
-      command('open-project', t('openProject'), 'CmdOrCtrl+O'),
+      command('new-project', t('newProject'), 'new-project'),
+      command('open-project', t('openProject'), 'open-project'),
       { type: 'separator' },
       { id: 'open-trace', label: t('openTrace'), click: () => actions.onOpenTrace() },
       { type: 'separator' },
-      command('save', t('save'), 'CmdOrCtrl+S'),
+      command('save', t('save'), 'save'),
       { type: 'separator' },
       isMac ? { role: 'close' } : { role: 'quit' }
     ]
@@ -61,8 +69,17 @@ export function buildAppMenuTemplate(
   const test: Electron.MenuItemConstructorOptions = {
     label: t('test'),
     submenu: [
-      command('record', t('record'), 'CmdOrCtrl+Shift+R'),
-      command('run', t('run'), 'CmdOrCtrl+R')
+      {
+        id: 'record',
+        label: t('record'),
+        accelerator: SHORTCUTS.record.accelerator,
+        // Decided at click time from what the page last reported, not from the label
+        click: () => actions.onCommand(appState.recording ? 'stop' : 'record')
+      },
+      command('run', t('run'), 'run'),
+      { type: 'separator' },
+      command('new-test', t('newTest'), 'new-test'),
+      command('open-file', t('openFile'), 'open-file')
     ]
   }
   // Reload would take Cmd+R from Run: only the empty string clears a role's default accelerator
@@ -88,7 +105,10 @@ export function buildAppMenuTemplate(
   const help: Electron.MenuItemConstructorOptions = {
     ...(isMac ? { role: 'help' as const } : {}),
     label: t('help'),
-    submenu: [command('how-it-works', t('howItWorks'))]
+    submenu: [
+      command('how-it-works', t('howItWorks')),
+      command('shortcuts', t('keyboardShortcuts'), 'shortcuts')
+    ]
   }
   return [
     ...(isMac ? [{ role: 'appMenu' } as const] : []),
@@ -99,6 +119,15 @@ export function buildAppMenuTemplate(
     { role: 'windowMenu' },
     help
   ]
+}
+
+/** Relabels Test › Record to Stop & save while recording; only the label changes. No-op without a menu. */
+export function setRecordingMenuState(
+  recording: boolean,
+  menu: Menu | null = Menu.getApplicationMenu()
+): void {
+  const item = menu?.getMenuItemById('record')
+  if (item) item.label = t(recording ? 'stopAndSave' : 'record')
 }
 
 /**

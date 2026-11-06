@@ -41,6 +41,8 @@ interface AppState {
   pickMode: boolean
   /** When pick mode last ended (ms); clicks just after it are the rest of the pick, not steps */
   pickModeEndedAt: number
+  /** The page reported a recording in progress (drives the Record / Stop & save menu item) */
+  recording: boolean
 }
 
 export const appState: AppState = {
@@ -62,7 +64,8 @@ export const appState: AppState = {
   activeReplayProcess: null,
   isReplayingInWebview: false,
   pickMode: false,
-  pickModeEndedAt: 0
+  pickModeEndedAt: 0,
+  recording: false
 }
 
 export function setProjectAutomation(automation: string | null): void {

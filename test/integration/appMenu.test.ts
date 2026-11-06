@@ -6,7 +6,14 @@ const mockMenu = vi.hoisted(() => ({
 }))
 vi.mock('electron', () => ({ Menu: mockMenu }))
 
-import { buildAppMenuTemplate, installAppMenu, withLiveWindow } from '../../src/main/appMenu'
+import {
+  buildAppMenuTemplate,
+  installAppMenu,
+  setRecordingMenuState,
+  withLiveWindow
+} from '../../src/main/appMenu'
+import { SHORTCUTS } from '../../src/shared/shortcuts'
+import { appState } from '../../src/main/handlers/appState'
 
 type Item = Electron.MenuItemConstructorOptions
 const menu = (template: Item[], label: string): Item =>
@@ -49,20 +56,79 @@ describe('buildAppMenuTemplate', () => {
       'separator',
       'close'
     ])
-    expect(file[0]).toMatchObject({ label: 'New project…', accelerator: 'CmdOrCtrl+N' })
+    expect(file[0]).toMatchObject({ label: 'New project…', accelerator: 'CmdOrCtrl+Shift+N' })
     expect(file[1]).toMatchObject({ label: 'Open project…', accelerator: 'CmdOrCtrl+O' })
     expect(file[3]).toMatchObject({ label: 'Open trace…' })
     expect(file[5]).toMatchObject({ label: 'Save', accelerator: 'CmdOrCtrl+S' })
   })
 
-  it('Test has Record and Run', () => {
+  it('Test has Record, Run, New test and Open file', () => {
     const test = items(build('darwin'), 'Test')
-    expect(test[0]).toMatchObject({
-      id: 'record',
-      label: 'Record',
-      accelerator: 'CmdOrCtrl+Shift+R'
+    expect(test.map((item) => item.id ?? item.type)).toEqual([
+      'record',
+      'run',
+      'separator',
+      'new-test',
+      'open-file'
+    ])
+    expect(test[0]).toMatchObject({ label: 'Record', accelerator: 'CmdOrCtrl+Shift+R' })
+    expect(test[1]).toMatchObject({ label: 'Run', accelerator: 'CmdOrCtrl+R' })
+  })
+
+  it('New test is Cmd+N and New project Cmd+Shift+N', () => {
+    const all = build('darwin').flatMap((m) => (Array.isArray(m.submenu) ? m.submenu : []))
+    expect(all.find((i) => i.id === 'new-test')!.accelerator).toBe('CmdOrCtrl+N')
+    expect(all.find((i) => i.id === 'new-project')!.accelerator).toBe('CmdOrCtrl+Shift+N')
+  })
+
+  it('every accelerator comes from the shared table', () => {
+    const template = build('darwin', false)
+    const table = new Set(Object.values(SHORTCUTS).map((s) => s.accelerator))
+    const all = template.flatMap((m) => (Array.isArray(m.submenu) ? m.submenu : []))
+    for (const item of all) {
+      if (item.id && item.accelerator && item.id in SHORTCUTS)
+        expect(item.accelerator).toBe(SHORTCUTS[item.id as keyof typeof SHORTCUTS].accelerator)
+    }
+    const literals = JSON.stringify(template).match(/CmdOrCtrl\+[^"]*/g) ?? []
+    for (const literal of literals) expect(table.has(literal)).toBe(true)
+  })
+
+  describe('Record / Stop & save', () => {
+    const fakeMenu = (template: Item[]): { menu: never; record: Item } => {
+      const record = items(template, 'Test').find((i) => i.id === 'record')!
+      const menu = {
+        getMenuItemById: (id: string): Item | null => (id === 'record' ? record : null)
+      }
+      return { menu: menu as never, record }
+    }
+
+    it('relabelling keeps the id and accelerator', () => {
+      const { menu, record } = fakeMenu(build('darwin'))
+      setRecordingMenuState(true, menu)
+      expect(record).toMatchObject({
+        id: 'record',
+        label: 'Stop & save',
+        accelerator: 'CmdOrCtrl+Shift+R'
+      })
+      setRecordingMenuState(false, menu)
+      expect(record).toMatchObject({ id: 'record', label: 'Record' })
     })
-    expect(test[1]).toMatchObject({ id: 'run', label: 'Run', accelerator: 'CmdOrCtrl+R' })
+
+    it('is a no-op when no menu is set', () => {
+      expect(() => setRecordingMenuState(true, null)).not.toThrow()
+    })
+
+    it('the toggle follows the reported state, not the click', () => {
+      const a = actions()
+      const { record } = fakeMenu(buildAppMenuTemplate('darwin', a, { isPackaged: true }))
+      appState.recording = false
+      ;(record.click as () => void)()
+      expect(a.onCommand).toHaveBeenLastCalledWith('record')
+      appState.recording = true
+      ;(record.click as () => void)()
+      expect(a.onCommand).toHaveBeenLastCalledWith('stop')
+      appState.recording = false
+    })
   })
 
   it('Help opens How Ruby Raider works', () => {
@@ -121,6 +187,8 @@ describe('buildAppMenuTemplate', () => {
     ;(items(template, 'File').find((i) => i.id === 'open-trace')!.click as () => void)()
     expect(a.onOpenTrace).toHaveBeenCalledTimes(1)
     expect(a.onCommand).toHaveBeenCalledTimes(6)
+    ;(items(template, 'Help').find((i) => i.id === 'shortcuts')!.click as () => void)()
+    expect(a.onCommand).toHaveBeenLastCalledWith('shortcuts')
   })
 })
 
