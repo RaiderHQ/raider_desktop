@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, Outlet } from 'react-router'
+import { Link, Outlet, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import toast, { Toaster } from 'react-hot-toast'
 import Logo from '@components/Logo'
@@ -13,6 +13,7 @@ import useRubyStore from '@foundation/Stores/rubyStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { installMissingGems } from '@foundation/installGems'
 import { subscribeRunEvents } from '@foundation/Stores/runStore'
+import { dispatchMenuCommand, isMenuCommand } from '@foundation/menuCommands'
 
 const MainTemplate: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -80,6 +81,31 @@ const MainTemplate: React.FC = (): JSX.Element => {
 
   // One subscription for the whole app; the run panel and indicators read the store
   useEffect(() => subscribeRunEvents(), [])
+
+  const navigate = useNavigate()
+  const setProjectPath = useProjectStore((state) => state.setProjectPath)
+
+  // The menu bar's commands: the app-wide ones are handled here, the rest go to the open page
+  useEffect(() => {
+    const openProject = async (): Promise<void> => {
+      try {
+        const folder = await window.api.selectFolder(t('landing.error.selectFolder'))
+        if (!folder) return
+        setProjectPath(folder)
+        navigate('/overview')
+      } catch (error) {
+        console.error('Opening the project failed:', error)
+        toast.error(t('landing.error.openProject'))
+      }
+    }
+    return window.api.onMenuCommand((command) => {
+      if (!isMenuCommand(command)) return
+      if (command === 'new-project') navigate('/new')
+      else if (command === 'open-project') void openProject()
+      else if (command === 'how-it-works') setIsConceptsModalOpen(true)
+      else dispatchMenuCommand(command)
+    })
+  }, [])
 
   const { rubyCommand } = useRubyStore()
 

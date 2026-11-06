@@ -10,6 +10,7 @@ import { testKeyOf, toRouteParam } from '@foundation/testKey'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import { useRunStore } from '@foundation/Stores/runStore'
+import { dispatchMenuCommand } from '@foundation/menuCommands'
 import type { RunView } from '@foundation/run/runModel'
 import useProjectStore from '@foundation/Stores/projectStore'
 import type { TestRow } from '@foundation/testKey'
@@ -1167,5 +1168,35 @@ describe('TestPage re-picking the failed element', () => {
     expect(screen.getByText('failedStep.reRecordConfirmTitle')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
     expect(spies.recordFromHere).toHaveBeenCalledWith(0, { kind: 'test' })
+  })
+
+  describe('menu bar Test › Record and Run (D11)', () => {
+    const withFile: Test = { ...recorded, file: 'spec/login_works_spec.rb' }
+
+    it('Run from the menu runs the open test', async () => {
+      renderPage(withFile)
+      await opened()
+      act(() => dispatchMenuCommand('run'))
+      expect(spies.run).toHaveBeenCalledTimes(1)
+    })
+
+    it('Record from the menu records the open test, like the Record button', async () => {
+      renderPage()
+      await opened()
+      act(() => dispatchMenuCommand('record'))
+      expect(spies.continueRecording).toHaveBeenCalledWith({ kind: 'test' })
+    })
+
+    it('ignores Run and Record while a recording is going', async () => {
+      renderPage(withFile)
+      await opened()
+      await startRecording()
+      act(() => {
+        dispatchMenuCommand('run')
+        dispatchMenuCommand('record')
+      })
+      expect(spies.run).not.toHaveBeenCalled()
+      expect(spies.continueRecording).not.toHaveBeenCalled()
+    })
   })
 })

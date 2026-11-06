@@ -24,6 +24,7 @@ import type { TestRow } from '@foundation/testKey'
 import type { TestResult } from '@foundation/Types/testResult'
 import type { Step } from '@shared/types/step'
 import { UNLISTED_SUITE_ID } from '@shared/types/suite'
+import { onMenuCommand } from '@foundation/menuCommands'
 import { dropEmptyDraft, useTestRecording } from '../../hooks/useTestRecording'
 import { useFailedStep } from '../../hooks/useFailedStep'
 import NewTestForm from './NewTestForm'
@@ -226,6 +227,18 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
     const action = test.steps.length > 0 ? recording.continueRecording : recording.start
     action(target).catch((error: unknown) => console.error('Recording failed:', error))
   }
+
+  // The menu bar's Test › Record and Run act like the toolbar buttons, under the same rules
+  const canRecord = !!test && !readOnly && !busy && !recordingDisabled
+  const canRun = !!test && !busy && !runBusy && !isDraft
+  useEffect(
+    () =>
+      onMenuCommand((command) => {
+        if (command === 'record' && canRecord) record()
+        if (command === 'run' && canRun) void recording.run()
+      }),
+    [canRecord, canRun, record, recording.run]
+  )
 
   const startOver = (): void => {
     setConfirmingStartOver(false)

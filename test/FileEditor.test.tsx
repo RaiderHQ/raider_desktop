@@ -1,5 +1,6 @@
 import { render, screen, act, fireEvent } from '@testing-library/react'
 import FileEditor from '@pages/FileEditor'
+import { dispatchMenuCommand } from '@foundation/menuCommands'
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router'
@@ -107,5 +108,21 @@ describe('FileEditor Page', () => {
     })
     fireEvent.click(back())
     expect(screen.getByText('test route')).toBeInTheDocument()
+  })
+
+  describe('File › Save (D11)', () => {
+    beforeEach(() => mockApi.editFile.mockReset())
+
+    it('saves the file when the menu says so', async () => {
+      mockApi.editFile.mockResolvedValue({ success: true })
+      await act(async () => {
+        renderComponent()
+      })
+      fireEvent.change(screen.getByTestId('editor'), { target: { value: 'edited' } })
+      await act(async () => {
+        dispatchMenuCommand('save')
+      })
+      expect(mockApi.editFile).toHaveBeenCalledWith('/fake/path', 'edited')
+    })
   })
 })

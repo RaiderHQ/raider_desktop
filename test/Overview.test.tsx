@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import type React from 'react'
 import Overview from '@pages/Overview'
+import { dispatchMenuCommand } from '@foundation/menuCommands'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router'
@@ -1203,5 +1204,38 @@ describe('Overview live runs', (): void => {
       mockApi.getSuites.mockResolvedValue([])
       mockApi.prepareSuiteRun.mockResolvedValue({ mode: 'legacy' })
     }
+  })
+
+  describe('menu bar commands on the Files tab (D11)', () => {
+    it('Run from the menu runs the project tests while the Files tab is showing', async () => {
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      await openFilesTab()
+      const start = vi.fn()
+      useRunStore.setState({ start } as never)
+      act(() => dispatchMenuCommand('run'))
+      expect(start).toHaveBeenCalledTimes(1)
+    })
+
+    it('leaves Run to the Tests tab when that tab is showing', async () => {
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      const start = vi.fn()
+      useRunStore.setState({ start } as never)
+      act(() => dispatchMenuCommand('run'))
+      expect(start).not.toHaveBeenCalled()
+    })
   })
 })

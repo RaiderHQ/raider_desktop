@@ -263,6 +263,8 @@ export interface WindowApi extends RunApi {
   /** One screenshot or snapshot, fetched lazily by the name the index gives */
   readTraceEntry: (traceId: string, name: string) => Promise<TraceEntryResult>
   closeTrace: (traceId: string) => Promise<void>
+  /** Menu bar commands as plain strings; returns an unsubscribe function */
+  onMenuCommand: (callback: (command: string) => void) => () => void
   /** Traces opened from File → Open trace; returns an unsubscribe function */
   onTraceOpened: (callback: (result: TraceOpenResult) => void) => () => void
 

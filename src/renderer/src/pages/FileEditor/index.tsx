@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { sample } from 'lodash'
 import Editor from '@components/Editor'
 import { getFileLanguage } from '@foundation/helpers'
+import { onMenuCommand } from '@foundation/menuCommands'
 import { FaArrowLeft } from 'react-icons/fa'
 
 interface FileEditorProps {
@@ -83,7 +84,13 @@ const FileEditor: React.FC = (): JSX.Element => {
     }
 
     window.addEventListener('keydown', handleKeyDown)
-    return (): void => window.removeEventListener('keydown', handleKeyDown)
+    const offMenu = onMenuCommand((command) => {
+      if (command === 'save') handleSave()
+    })
+    return (): void => {
+      window.removeEventListener('keydown', handleKeyDown)
+      offMenu()
+    }
   }, [handleSave])
 
   return (

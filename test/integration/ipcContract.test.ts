@@ -135,6 +135,9 @@ describe('IPC Contract', () => {
     'onTraceOpened',
     'openDroppedTrace',
 
+    // Menu bar
+    'onMenuCommand',
+
     // Results
     'acceptBaseline',
 
@@ -253,6 +256,7 @@ describe('IPC Contract', () => {
     const off = ipcRenderer.removeListener as ReturnType<typeof vi.fn>
     const channels: Record<string, string> = {
       onSuiteUpdated: 'suite-updated',
+      onMenuCommand: 'menu-command',
       onSuitesRecovered: 'suites-recovered',
       onRecordingStarted: 'recording-started',
       onRecordingStopped: 'recording-stopped',

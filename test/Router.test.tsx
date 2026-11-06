@@ -36,4 +36,16 @@ describe('routes', () => {
     )
     expect(await screen.findByTestId('overview')).toHaveTextContent('/overview/tests')
   })
+
+  it('gives every test route an element, so React Router has nothing to warn about (D15)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    render(
+      <MemoryRouter initialEntries={['/overview/tests/abc']}>
+        <Routed />
+      </MemoryRouter>
+    )
+    expect(screen.getByTestId('overview')).toHaveTextContent('/overview/tests/abc')
+    expect(warn.mock.calls.flat().join(' ')).not.toMatch(/does not have an element/)
+    warn.mockRestore()
+  })
 })
