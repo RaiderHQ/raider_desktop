@@ -85,6 +85,7 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
           title={t(modalTitleKey)}
           onClose={() => setModalOpen(false)}
           message={t(modalMessageKey)}
+          docs={{ id: 'docs.projects', topic: t('docs.topics.projects') }}
         />
       )}
     </div>

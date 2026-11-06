@@ -1,6 +1,7 @@
 import Tooltip from '@components/Tooltip'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import DocsLink from '@components/DocsLink'
 import toast from 'react-hot-toast'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { useRunStore } from '@foundation/Stores/runStore'
@@ -58,6 +59,9 @@ const EmptyState: React.FC = () => {
           </div>
         ))}
       </div>
+      <DocsLink id="docs.running" topic={t('docs.topics.runs')} className="mt-4">
+        {t('docs.howRunsWork')}
+      </DocsLink>
     </div>
   )
 }

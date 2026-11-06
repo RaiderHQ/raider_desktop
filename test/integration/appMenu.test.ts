@@ -143,9 +143,14 @@ describe('buildAppMenuTemplate', () => {
     })
   })
 
-  it('Help opens How Ruby Raider works', () => {
+  it('Help has How Ruby Raider works, Documentation, Recording guide and Keyboard shortcuts', () => {
     const help = items(build('darwin'), 'Help')
-    expect(help[0]).toMatchObject({ id: 'how-it-works', label: 'How Ruby Raider works' })
+    expect(help.map((i) => [i.id, i.label])).toEqual([
+      ['how-it-works', 'How Ruby Raider works'],
+      ['docs', 'Documentation'],
+      ['recording-guide', 'Recording guide'],
+      ['shortcuts', 'Keyboard shortcuts…']
+    ])
   })
 
   it('the shipped app has no Reload, Force reload or Developer tools in View', () => {

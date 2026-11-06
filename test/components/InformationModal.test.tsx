@@ -18,6 +18,27 @@ afterEach(() => {
 })
 
 describe('InformationModal', () => {
+  it('shows a Learn more link that opens its id', () => {
+    const openDocs = vi.fn().mockResolvedValue({ success: true })
+    // @ts-expect-error - Mocking window.api
+    window.api = { openDocs }
+    render(
+      <InformationModal
+        title="T"
+        message="M"
+        onClose={vi.fn()}
+        docs={{ id: 'docs.projects', topic: 'projects' }}
+      />
+    )
+    fireEvent.click(screen.getByText('docs.learnMore'))
+    expect(openDocs).toHaveBeenCalledWith('docs.projects')
+  })
+
+  it('has no Learn more link without docs', () => {
+    render(<InformationModal title="T" message="M" onClose={vi.fn()} />)
+    expect(screen.queryByText('docs.learnMore')).not.toBeInTheDocument()
+  })
+
   it('renders the title and message', () => {
     render(
       <InformationModal title="Hello Title" message="Hello message" onClose={vi.fn()} />

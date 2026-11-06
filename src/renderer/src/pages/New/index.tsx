@@ -127,6 +127,7 @@ const CreateProject: React.FC = () => {
           titleKey="help.createProject.title"
           messageKey="help.createProject.message"
           className="absolute top-2 right-4"
+          docs={{ id: 'docs.projects', topic: t('docs.topics.projects') }}
         />
 
         <div className="bg-white p-4">

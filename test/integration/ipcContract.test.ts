@@ -166,6 +166,7 @@ describe('IPC Contract', () => {
     'updateBrowserOptions',
     'updateHeadlessMode',
     'getProjectConfig',
+    'openDocs',
 
     // Path Configuration
     'updatePaths',

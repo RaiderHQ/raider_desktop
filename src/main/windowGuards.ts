@@ -11,6 +11,16 @@ export function isExternalUrl(url: string): boolean {
   }
 }
 
+const logOpenFailure = (e: unknown): void => console.warn('open external failed', e)
+
+/** Opens a web URL in the system browser; false when the URL is not http(s). The only shell.openExternal call. */
+export function openExternalUrl(url: string): boolean {
+  if (!isExternalUrl(url)) return false
+  // Repeats the check above on purpose: the Electronegativity gate allows only this exact reviewed line shape
+  if (isExternalUrl(url)) void shell.openExternal(url).catch(logOpenFailure)
+  return true
+}
+
 /**
  * True when `url` is the app's own page: the dev server's origin, or the bundled
  * index.html (any hash route). A dropped .html file or a website is not.
@@ -47,7 +57,7 @@ export function installWindowGuards(
   { appUrl, recorderPreload }: { appUrl: string; recorderPreload: string }
 ): void {
   contents.setWindowOpenHandler(({ url }) => {
-    if (isExternalUrl(url)) void shell.openExternal(url)
+    openExternalUrl(url)
     return { action: 'deny' }
   })
 
