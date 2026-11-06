@@ -32,7 +32,7 @@ describe('ProjectSelector', () => {
     // @ts-expect-error - Mocking window.api
     window.api = { openDocs }
     render(<MemoryRouter><ProjectSelector {...defaultProps} /></MemoryRouter>)
-    fireEvent.click(screen.getByRole('button', { name: 'Help' }))
+    fireEvent.click(screen.getByRole('button', { name: 'common.help' }))
     fireEvent.click(screen.getByText('docs.learnMore'))
     expect(openDocs).toHaveBeenCalledWith('docs.projects')
   })
