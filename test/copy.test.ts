@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import en from '../src/renderer/src/assets/translations/en.json'
 
 /** Proper nouns and acronyms that keep their capitals in sentence-case copy. */
@@ -207,5 +209,145 @@ describe('copy', () => {
     }
     expect(checked).toBeGreaterThan(50)
     expect(offenders).toEqual([])
+  })
+})
+
+/** JSON keeps the last of two equal keys, so a duplicate silently drops strings (U5). */
+describe('en.json catalog', () => {
+  const SOURCE = resolve(__dirname, '../src/renderer/src/assets/translations/en.json')
+  const text = readFileSync(SOURCE, 'utf8')
+
+  /** Every object key that appears twice in the same object, as a dotted path. */
+  const duplicateKeys = (json: string): string[] => {
+    const dups: string[] = []
+    let i = 0
+    const ws = (): void => {
+      while (i < json.length && /\s/.test(json[i])) i++
+    }
+    const str = (): string => {
+      let s = ''
+      i++ // opening quote
+      while (json[i] !== '"') {
+        if (i >= json.length) throw new Error('unterminated string in en.json')
+        if (json[i] === '\\') {
+          s += json[i] + json[i + 1]
+          i += 2
+          continue
+        }
+        s += json[i++]
+      }
+      i++ // closing quote
+      return s
+    }
+    const value = (path: string[]): void => {
+      ws()
+      const c = json[i]
+      if (c === '{') object(path)
+      else if (c === '[') array(path)
+      else if (c === '"') str()
+      else while (i < json.length && !/[,\]}]/.test(json[i])) i++
+    }
+    const object = (path: string[]): void => {
+      i++
+      const seen = new Set<string>()
+      ws()
+      if (json[i] === '}') {
+        i++
+        return
+      }
+      for (;;) {
+        ws()
+        const key = str()
+        if (seen.has(key)) dups.push([...path, key].join('.'))
+        seen.add(key)
+        ws()
+        i++ // colon
+        value([...path, key])
+        ws()
+        if (json[i] === ',') {
+          i++
+          continue
+        }
+        i++ // closing brace
+        return
+      }
+    }
+    const array = (path: string[]): void => {
+      i++
+      ws()
+      if (json[i] === ']') {
+        i++
+        return
+      }
+      for (;;) {
+        value(path)
+        ws()
+        if (json[i] === ',') {
+          i++
+          continue
+        }
+        i++ // closing bracket
+        return
+      }
+    }
+    value([])
+    return dups
+  }
+
+  it('has no duplicate key at any level', () => {
+    expect(duplicateKeys('{"a":{"b":1,"b":2},"a":3,"c":[{"d":1,"d":2}]}')).toEqual([
+      'a.b',
+      'a',
+      'c.d'
+    ])
+    expect(duplicateKeys(text)).toEqual([])
+  })
+
+  it('has every key the renderer asks for by name', () => {
+    const walk = (key: string): unknown =>
+      key.split('.').reduce<unknown>((node, part) => {
+        if (node && typeof node === 'object' && Object.hasOwn(node, part))
+          return (node as Record<string, unknown>)[part]
+        return undefined
+      }, en)
+    const isString = (key: string): boolean => typeof walk(key) === 'string'
+    // Plurals live under key_one and key_other, both needed
+    const lookup = (key: string): boolean =>
+      isString(key) || (isString(`${key}_one`) && isString(`${key}_other`))
+    const sources = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+        const full = join(dir, entry.name)
+        if (entry.isDirectory()) return sources(full)
+        return /\.tsx?$/.test(entry.name) ? [full] : []
+      })
+    const files = sources(resolve(__dirname, '../src'))
+    const wanted = new Set<string>()
+    const prefixes = new Set<string>()
+    for (const file of files) {
+      const src = readFileSync(file, 'utf8')
+      // Main's menus define t as englishText(`prefix.${key}`); their keys live under that prefix
+      const prefix =
+        src.match(
+          /const t = \(key: string\): string => englishText\(`([A-Za-z.]+)\$\{key\}`\)/
+        )?.[1] ?? ''
+      // t('key'), t("key"), t(`key`) with no ${}, englishText('key'), and both branches of
+      // t(cond ? 'a' : 'b')
+      for (const m of src.matchAll(/\bt\(\s*(['"`])([A-Za-z0-9_.-]+)\1/g)) wanted.add(prefix + m[2])
+      for (const m of src.matchAll(/\benglishText\(\s*(['"])([A-Za-z0-9_.-]+)\1/g)) wanted.add(m[2])
+      for (const m of src.matchAll(
+        /\bt\(\s*[^?)\n]*\?\s*(['"])([A-Za-z0-9_.-]+)\1\s*:\s*(['"])([A-Za-z0-9_.-]+)\3/g
+      )) {
+        wanted.add(prefix + m[2])
+        wanted.add(prefix + m[4])
+      }
+      // t(`prefix.${x}`): the branch under the prefix must at least exist
+      for (const m of src.matchAll(/\bt\(\s*`([A-Za-z0-9_.-]+)\.\$\{/g)) prefixes.add(prefix + m[1])
+    }
+    expect(wanted.size).toBeGreaterThan(200)
+    const missing = [...wanted].filter((key) => !lookup(key)).sort()
+    expect(missing).toEqual([])
+    expect(prefixes.size).toBeGreaterThan(5)
+    const missingBranches = [...prefixes].filter((p) => typeof walk(p) !== 'object').sort()
+    expect(missingBranches).toEqual([])
   })
 })
