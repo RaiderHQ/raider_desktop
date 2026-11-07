@@ -6,6 +6,7 @@ import ProjectMenu from '@components/ProjectMenu'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useEditorStore from '@foundation/Stores/editorStore'
+import type { RecentProjectEntry } from '@shared/types/recentProject'
 import en from '../../src/renderer/src/assets/translations/en.json'
 
 const translate = (key: string): string => {
@@ -51,11 +52,33 @@ const open = (): void => {
   fireEvent.click(screen.getByRole('button', { name: /shop/ }))
 }
 
+const recent = (path: string, extra: Partial<RecentProjectEntry> = {}): RecentProjectEntry => ({
+  path,
+  name: path.split('/').pop() ?? path,
+  lastOpened: 1,
+  exists: true,
+  isRaider: true,
+  ...extra
+})
+
+// A recent entry reads as "name path": its two lines joined with a space
+const menuItems = (): string[] =>
+  screen.getAllByRole('menuitem').map((m) =>
+    m.children.length > 0
+      ? Array.from(m.children)
+          .map((c) => c.textContent)
+          .join(' ')
+      : (m.textContent ?? '')
+  )
+
 describe('ProjectMenu', () => {
   beforeEach(() => {
     // The project store tells main about the active project when it changes
     Object.assign(window, {
-      api: { setActiveProject: vi.fn().mockResolvedValue({ success: true }) }
+      api: {
+        setActiveProject: vi.fn().mockResolvedValue({ success: true }),
+        listRecentProjects: vi.fn().mockResolvedValue([])
+      }
     })
     mockToast.error.mockClear()
     useProjectStore.setState({ projectPath: '/Users/me/work/shop' })
@@ -136,6 +159,73 @@ describe('ProjectMenu', () => {
     expect(button).not.toHaveClass('text-xs', 'h-7')
     expect(button.querySelector('svg')).not.toBeNull()
     expect(button).not.toHaveTextContent('▾')
+  })
+
+  describe('recent projects (V3)', () => {
+    const list = (entries: RecentProjectEntry[]): void => {
+      ;(window.api.listRecentProjects as ReturnType<typeof vi.fn>).mockResolvedValue(entries)
+    }
+
+    it('lists the last three other projects above Switch project…, with name and path', async () => {
+      list([
+        recent('/Users/me/work/shop'),
+        recent('/Users/me/work/bank'),
+        recent('/Users/me/work/blog'),
+        recent('/Users/me/work/wiki'),
+        recent('/Users/me/work/zoo')
+      ])
+      renderMenu()
+      open()
+      await screen.findByRole('menuitem', { name: /bank/ })
+      expect(window.api.listRecentProjects).toHaveBeenCalledTimes(1)
+      expect(menuItems()).toEqual([
+        'bank /Users/me/work/bank',
+        'blog /Users/me/work/blog',
+        'wiki /Users/me/work/wiki',
+        'Switch project…',
+        'New project…'
+      ])
+    })
+
+    it('skips folders that are gone or not Raider projects', async () => {
+      list([
+        recent('/Users/me/work/gone', { exists: false }),
+        recent('/Users/me/work/plain', { isRaider: false }),
+        recent('/Users/me/work/bank')
+      ])
+      renderMenu()
+      open()
+      await screen.findByRole('menuitem', { name: /bank/ })
+      expect(menuItems()).toEqual(['bank /Users/me/work/bank', 'Switch project…', 'New project…'])
+    })
+
+    it('opens a recent project in place, with no folder dialog', async () => {
+      list([recent('/Users/me/work/bank')])
+      renderMenu()
+      open()
+      fireEvent.click(await screen.findByRole('menuitem', { name: /bank/ }))
+      expect(useProjectStore.getState().projectPath).toBe('/Users/me/work/bank')
+      expect(screen.getByTestId('where')).toHaveTextContent('/overview')
+      expect(screen.queryByRole('menu')).toBeNull()
+    })
+
+    it('keeps the guards: a running recording stays, and says why', async () => {
+      list([recent('/Users/me/work/bank')])
+      useRecorderStore.setState({ isRecording: true } as never)
+      renderMenu()
+      open()
+      fireEvent.click(await screen.findByRole('menuitem', { name: /bank/ }))
+      expect(useProjectStore.getState().projectPath).toBe('/Users/me/work/shop')
+      expect(mockToast.error).toHaveBeenCalledWith(en.quickRecord.stopFirst)
+    })
+
+    it('shows only the two commands when the list fails or is empty', async () => {
+      ;(window.api.listRecentProjects as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('x'))
+      renderMenu()
+      open()
+      await Promise.resolve()
+      expect(menuItems()).toEqual(['Switch project…', 'New project…'])
+    })
   })
 
   it('puts focus back on the trigger after Escape', () => {
