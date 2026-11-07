@@ -116,12 +116,26 @@ describe('ProjectMenu', () => {
     expect(mockToast.error).toHaveBeenCalledWith(en.overview.projectMenu.unsaved)
   })
 
-  it('falls back to a plain label for a root folder, and names the path in its title', () => {
+  it('falls back to a plain label for a root folder, and names the path in its tooltip', () => {
     useProjectStore.setState({ projectPath: '/' })
     renderMenu()
     const button = screen.getByTestId('project-menu')
     expect(button).toHaveTextContent('Project')
-    expect(button).toHaveAttribute('title', '/')
+    expect(button).not.toHaveAttribute('title')
+    fireEvent.keyDown(window, { key: 'Tab' })
+    fireEvent.focus(button)
+    const tip = screen.getByRole('tooltip')
+    expect(tip).toHaveTextContent(en.tooltips.overview.projectMenu)
+    expect(tip).toHaveTextContent('/')
+  })
+
+  it('sits on the tabs: the same type size and weight as a tab label, with a chevron icon', () => {
+    renderMenu()
+    const button = screen.getByTestId('project-menu')
+    expect(button).toHaveClass('text-sm', 'font-semibold', 'py-2')
+    expect(button).not.toHaveClass('text-xs', 'h-7')
+    expect(button.querySelector('svg')).not.toBeNull()
+    expect(button).not.toHaveTextContent('▾')
   })
 
   it('puts focus back on the trigger after Escape', () => {
