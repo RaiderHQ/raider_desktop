@@ -1,3 +1,5 @@
+import path from 'path'
+import type { RecentProjectEntry } from '../shared/types/recentProject'
 import { Menu } from 'electron'
 import { englishText } from '../shared/describeStepEnglish'
 import { SHORTCUTS, type ShortcutId } from '../shared/shortcuts'
@@ -23,6 +25,10 @@ export interface MenuActions {
   onOpenTrace: () => void
   /** Every other command goes to the renderer, which acts through its existing flows */
   onCommand: (command: MenuCommand) => void
+  /** File → Open recent → a project: the path is one main stored itself */
+  onOpenRecent: (projectPath: string) => void
+  /** File → Open recent → Clear recent */
+  onClearRecent: () => void
 }
 
 export interface MenuOptions {
@@ -30,6 +36,36 @@ export interface MenuOptions {
   isPackaged: boolean
   /** Test › Record reads Stop & save while a recording runs */
   recording?: boolean
+  /** File › Open recent, newest first */
+  recentProjects?: RecentProjectEntry[]
+}
+
+/** Menu labels for the recent projects: the stored names, with the parent folder when two clash */
+export function recentProjectLabels(projects: RecentProjectEntry[]): string[] {
+  const counts = new Map<string, number>()
+  for (const p of projects) counts.set(p.name, (counts.get(p.name) ?? 0) + 1)
+  return projects.map((p) => {
+    const parent = path.basename(path.dirname(p.path))
+    const name = (counts.get(p.name) ?? 0) > 1 && parent ? `${p.name} (${parent})` : p.name
+    return p.exists ? name : `${name} (${t('notFound')})`
+  })
+}
+
+function openRecentSubmenu(
+  actions: MenuActions,
+  projects: RecentProjectEntry[]
+): Electron.MenuItemConstructorOptions[] {
+  if (projects.length === 0) return [{ label: t('noRecentProjects'), enabled: false }]
+  const labels = recentProjectLabels(projects)
+  return [
+    ...projects.map((project, i) => ({
+      label: labels[i],
+      enabled: project.exists,
+      click: (): void => actions.onOpenRecent(project.path)
+    })),
+    { type: 'separator' as const },
+    { id: 'clear-recent', label: t('clearRecent'), click: (): void => actions.onClearRecent() }
+  ]
 }
 
 const t = (key: string): string => englishText(`appMenu.${key}`)
@@ -60,6 +96,11 @@ export function buildAppMenuTemplate(
     submenu: [
       command('new-project', t('newProject'), 'new-project'),
       command('open-project', t('openProject'), 'open-project'),
+      {
+        id: 'open-recent',
+        label: t('openRecent'),
+        submenu: openRecentSubmenu(actions, options.recentProjects ?? [])
+      },
       { type: 'separator' },
       { id: 'open-trace', label: t('openTrace'), click: () => actions.onOpenTrace() },
       { type: 'separator' },
@@ -144,6 +185,13 @@ function setMenu(recording: boolean): void {
  */
 export function setRecordingMenuState(recording: boolean): void {
   setMenu(recording)
+}
+
+/** File › Open recent follows the stored list; the menu is rebuilt like the recording state */
+export function setRecentProjectsMenu(recentProjects: RecentProjectEntry[]): void {
+  if (!installed) return
+  installed.options.recentProjects = recentProjects
+  setMenu(appState.recording)
 }
 
 /**

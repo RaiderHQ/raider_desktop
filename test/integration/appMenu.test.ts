@@ -10,6 +10,7 @@ import {
   buildAppMenuTemplate,
   installAppMenu,
   setRecordingMenuState,
+  setRecentProjectsMenu,
   withLiveWindow
 } from '../../src/main/appMenu'
 import { SHORTCUTS } from '../../src/shared/shortcuts'
@@ -22,10 +23,18 @@ const items = (template: Item[], label: string): Item[] => menu(template, label)
 const actions = (): {
   onOpenTrace: ReturnType<typeof vi.fn>
   onCommand: ReturnType<typeof vi.fn>
+  onOpenRecent: ReturnType<typeof vi.fn>
+  onClearRecent: ReturnType<typeof vi.fn>
 } => ({
   onOpenTrace: vi.fn(),
-  onCommand: vi.fn()
+  onCommand: vi.fn(),
+  onOpenRecent: vi.fn(),
+  onClearRecent: vi.fn()
 })
+const recent = [
+  { path: '/work/shop', name: 'shop', lastOpened: 2, exists: true, isRaider: true },
+  { path: '/work/gone', name: 'gone', lastOpened: 1, exists: false, isRaider: false }
+]
 const build = (platform: NodeJS.Platform, isPackaged = true): Item[] =>
   buildAppMenuTemplate(platform, actions(), { isPackaged })
 
@@ -44,11 +53,12 @@ describe('buildAppMenuTemplate', () => {
     ])
   })
 
-  it('File has New project, Open project, Open trace and Save, then Close', () => {
+  it('File has New project, Open project, Open recent, Open trace and Save, then Close', () => {
     const file = items(build('darwin'), 'File')
     expect(file.map((item) => item.id ?? item.type ?? item.role)).toEqual([
       'new-project',
       'open-project',
+      'open-recent',
       'separator',
       'open-trace',
       'separator',
@@ -58,8 +68,46 @@ describe('buildAppMenuTemplate', () => {
     ])
     expect(file[0]).toMatchObject({ label: 'New project…', accelerator: 'CmdOrCtrl+Shift+N' })
     expect(file[1]).toMatchObject({ label: 'Open project…', accelerator: 'CmdOrCtrl+O' })
-    expect(file[3]).toMatchObject({ label: 'Open trace…' })
-    expect(file[5]).toMatchObject({ label: 'Save', accelerator: 'CmdOrCtrl+S' })
+    expect(file[2]).toMatchObject({ label: 'Open recent' })
+    expect(file[4]).toMatchObject({ label: 'Open trace…' })
+    expect(file[6]).toMatchObject({ label: 'Save', accelerator: 'CmdOrCtrl+S' })
+  })
+
+  it('Open recent lists the stored projects by name, a missing folder disabled, then Clear recent', () => {
+    const a = actions()
+    const file = items(buildAppMenuTemplate('darwin', a, { isPackaged: true, recentProjects: recent }), 'File')
+    const submenu = file[2].submenu as Item[]
+    expect(submenu.map((item) => item.label ?? item.type)).toEqual([
+      'shop',
+      'gone (not found)',
+      'separator',
+      'Clear recent'
+    ])
+    expect(submenu[0].enabled).not.toBe(false)
+    expect(submenu[1].enabled).toBe(false)
+    ;(submenu[0].click as () => void)()
+    expect(a.onOpenRecent).toHaveBeenCalledWith('/work/shop')
+    ;(submenu[3].click as () => void)()
+    expect(a.onClearRecent).toHaveBeenCalled()
+    expect(a.onCommand).not.toHaveBeenCalled()
+  })
+
+  it('Open recent with nothing stored is a single disabled line', () => {
+    const submenu = items(build('darwin'), 'File')[2].submenu as Item[]
+    expect(submenu.map((item) => item.label)).toEqual(['No recent projects'])
+    expect(submenu[0].enabled).toBe(false)
+  })
+
+  it('two folders with the same name show their parent folder too', () => {
+    const twins = [
+      { path: '/work/a/shop', name: 'shop', lastOpened: 2, exists: true, isRaider: true },
+      { path: '/work/b/shop', name: 'shop', lastOpened: 1, exists: true, isRaider: true }
+    ]
+    const submenu = items(
+      buildAppMenuTemplate('darwin', actions(), { isPackaged: true, recentProjects: twins }),
+      'File'
+    )[2].submenu as Item[]
+    expect(submenu.slice(0, 2).map((item) => item.label)).toEqual(['shop (a)', 'shop (b)'])
   })
 
   it('Test has Record, Run, New test and View file', () => {
@@ -102,6 +150,24 @@ describe('buildAppMenuTemplate', () => {
       const template = mockMenu.buildFromTemplate.mock.calls.at(-1)![0] as Item[]
       return items(template, 'Test').find((i) => i.id === 'record')!
     }
+
+    it('rebuilds File › Open recent when the stored list changes (U8)', () => {
+      installAppMenu(actions(), { isPackaged: true })
+      const openRecent = (): Item[] => {
+        const template = mockMenu.buildFromTemplate.mock.calls.at(-1)![0] as Item[]
+        return items(template, 'File').find((i) => i.id === 'open-recent')!.submenu as Item[]
+      }
+      expect(openRecent().map((i) => i.label)).toEqual(['No recent projects'])
+      setRecentProjectsMenu(recent)
+      expect(openRecent().map((i) => i.label ?? i.type)).toEqual([
+        'shop',
+        'gone (not found)',
+        'separator',
+        'Clear recent'
+      ])
+      setRecentProjectsMenu([])
+      expect(openRecent().map((i) => i.label)).toEqual(['No recent projects'])
+    })
 
     it('rebuilds the menu with the Record item relabelled, keeping id and accelerator', () => {
       installAppMenu(actions(), { isPackaged: true })

@@ -3,7 +3,11 @@ import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { setMainWindow, appState } from './handlers/appState'
-import { getLongshipConfig, setLongshipConfig, LongshipConfig } from './handlers/longship/longshipConfig'
+import {
+  getLongshipConfig,
+  setLongshipConfig,
+  LongshipConfig
+} from './handlers/longship/longshipConfig'
 import type { Test } from '@foundation/Types/test'
 import type { TestData } from '@foundation/Types/testData'
 import type { TraceStep } from '@foundation/Types/traceStep'
@@ -53,7 +57,12 @@ import { registerRunIpc } from './handlers/run/runIpc'
 import { openTraceFromDialog, registerTraceIpc } from './handlers/trace/traceIpc'
 import { makeBaselineConfirm } from './handlers/results/baselineConfirm'
 import { acceptBaseline } from './handlers/results/acceptBaseline'
-import { installAppMenu, setRecordingMenuState, withLiveWindow } from './appMenu'
+import {
+  installAppMenu,
+  setRecentProjectsMenu,
+  setRecordingMenuState,
+  withLiveWindow
+} from './appMenu'
 import {
   installRecordingState,
   resetRecordingOnWindowLoss
@@ -86,6 +95,12 @@ import saveTrace from './handlers/trace/saveTrace'
 import loadTrace from './handlers/trace/loadTrace'
 import deleteTrace from './handlers/trace/deleteTrace'
 import setActiveProject, { getRecorderSettings } from './handlers/project/setActiveProject'
+import {
+  clearRecentProjects,
+  listRecentProjects,
+  recordRecentProject,
+  removeRecentProject
+} from './handlers/project/recentProjects'
 import updateRecordingSettings from './handlers/config/updateRecordingSettings'
 import { closeApp } from './handlers/closeApp'
 import {
@@ -103,7 +118,12 @@ import updatePaths from './handlers/config/updatePaths'
 import updateHeadlessMode from './handlers/config/updateHeadlessMode'
 import { openDocs } from './docsLinks'
 import getProjectConfig from './handlers/config/getProjectConfig'
-import { spawnTerminal, writeTerminal, resizeTerminal, killTerminal } from './handlers/terminal/terminalManager'
+import {
+  spawnTerminal,
+  writeTerminal,
+  resizeTerminal,
+  killTerminal
+} from './handlers/terminal/terminalManager'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { Step } from '@shared/types/step'
 import { renderStep } from './codegen/steps'
@@ -226,9 +246,18 @@ app.whenReady().then(() => {
       onCommand: withLiveWindow(
         () => appState.mainWindow,
         (win, command) => win.webContents.send('menu-command', command)
-      )
+      ),
+      // A path main stored itself; the renderer applies its guards and opens it like a row (U8)
+      onOpenRecent: withLiveWindow(
+        () => appState.mainWindow,
+        (win, projectPath) => win.webContents.send('open-recent-project', projectPath)
+      ),
+      onClearRecent: () => {
+        clearRecentProjects()
+        setRecentProjectsMenu([])
+      }
     },
-    { isPackaged: app.isPackaged }
+    { isPackaged: app.isPackaged, recentProjects: listRecentProjects() }
   )
 
   installRecordingState(ipcMain, (recording) => {
@@ -263,7 +292,16 @@ app.whenReady().then(() => {
       mobile: string | null,
       options?: ProjectCreationOptions
     ) =>
-      runRubyRaider(event, folderPath, projectName, framework, automation, rubyCommand, mobile, options)
+      runRubyRaider(
+        event,
+        folderPath,
+        projectName,
+        framework,
+        automation,
+        rubyCommand,
+        mobile,
+        options
+      )
   )
   ipcMain.handle('create-quick-project', (_event, url: string, rubyCommand: string) =>
     createQuickProject(url, rubyCommand)
@@ -370,9 +408,27 @@ app.whenReady().then(() => {
     if (result.success && !isListed(args.testId)) deleteTrace(args.testId)
     return result
   })
-  ipcMain.handle('set-active-project', (_event, projectPath: string | null) =>
-    setActiveProject(projectPath)
-  )
+  ipcMain.handle('set-active-project', async (_event, projectPath: string | null) => {
+    const result = await setActiveProject(projectPath)
+    // Only a project that opened is worth remembering; quick recordings keep their own list
+    if (result.success && projectPath) {
+      recordRecentProject(projectPath)
+      setRecentProjectsMenu(listRecentProjects())
+    }
+    return result
+  })
+  ipcMain.handle('list-recent-projects', () => listRecentProjects())
+  ipcMain.handle('remove-recent-project', (_event, projectPath: unknown) => {
+    if (typeof projectPath === 'string') removeRecentProject(projectPath)
+    const projects = listRecentProjects()
+    setRecentProjectsMenu(projects)
+    return projects
+  })
+  ipcMain.handle('clear-recent-projects', () => {
+    clearRecentProjects()
+    setRecentProjectsMenu([])
+    return []
+  })
   ipcMain.handle('get-recorder-settings', () => getRecorderSettings())
   ipcMain.handle('list-saved-logins', listSavedLoginsHandler)
   ipcMain.handle('forget-saved-login', (_event, name: unknown) => forgetSavedLoginHandler(name))
@@ -395,9 +451,7 @@ app.whenReady().then(() => {
     cancelWebviewReplay()
     return { success: true }
   })
-  ipcMain.handle('replay-in-webview', (event, steps: Step[]) =>
-    replayInWebview(event, steps)
-  )
+  ipcMain.handle('replay-in-webview', (event, steps: Step[]) => replayInWebview(event, steps))
   ipcMain.handle('stop-recording-main', stopRecordingMain)
   ipcMain.on('recorder-event', (_event, data: RecorderEventData) => recorderEvent(data))
   ipcMain.handle('set-pick-mode', (event, on: unknown, purpose?: unknown) =>
@@ -446,7 +500,12 @@ app.whenReady().then(() => {
   ipcMain.handle(
     'update-paths',
     (event, projectPath: string, pathValue: string, pathType?: string) =>
-      updatePaths(event, projectPath, pathValue, pathType as 'feature' | 'spec' | 'helper' | undefined)
+      updatePaths(
+        event,
+        projectPath,
+        pathValue,
+        pathType as 'feature' | 'spec' | 'helper' | undefined
+      )
   )
 
   // --- Longship Integration Handlers ---

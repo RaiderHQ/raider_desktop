@@ -229,6 +229,21 @@ describe('copy', () => {
     expect(offenders).toEqual([])
   })
 
+  it('names the recent projects plainly (U8)', () => {
+    expect(en.landing.recentProjects).toEqual({
+      title: 'Recent projects',
+      hint: 'Projects you opened with Raider on this computer.',
+      opened: 'Opened {{date}}',
+      folderNotFound: 'Folder not found',
+      remove: 'Remove',
+      removeLabel: 'Remove {{name}} from recent projects'
+    })
+    expect(en.tooltips.landing.recentProject).toBe('Open this project')
+    expect(en.appMenu.openRecent).toBe('Open recent')
+    expect(en.appMenu.clearRecent).toBe('Clear recent')
+    expect(en.appMenu.noRecentProjects).toBe('No recent projects')
+  })
+
   it('names the project menu plainly (U7)', () => {
     expect(en.overview.projectMenu).toEqual({
       switch: 'Switch project…',
