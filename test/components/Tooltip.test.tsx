@@ -145,3 +145,100 @@ describe('Tooltip', () => {
     expect(() => vi.advanceTimersByTime(1000)).not.toThrow()
   })
 })
+
+describe('Tooltip placement', () => {
+  const margin = 8
+  const bubble = { width: 260, height: 40 }
+
+  // jsdom lays nothing out: the trigger and the bubble get the rects a real window would give
+  const layout = (trigger: Partial<DOMRect>, viewport = { width: 1024, height: 700 }): void => {
+    Object.defineProperty(window, 'innerWidth', { value: viewport.width, configurable: true })
+    Object.defineProperty(window, 'innerHeight', { value: viewport.height, configurable: true })
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element
+    ) {
+      const base = { x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0 }
+      if (this.getAttribute('role') === 'tooltip') {
+        const left = parseFloat((this as HTMLElement).style.left) || 0
+        const top = parseFloat((this as HTMLElement).style.top) || 0
+        return {
+          ...base,
+          ...bubble,
+          left,
+          top,
+          right: left + bubble.width,
+          bottom: top + bubble.height,
+          toJSON: () => ({})
+        } as DOMRect
+      }
+      const r = { ...base, width: 80, height: 28, ...trigger }
+      return {
+        ...r,
+        right: r.left + r.width,
+        bottom: r.top + r.height,
+        toJSON: () => ({})
+      } as DOMRect
+    })
+  }
+
+  const shown = (position: React.ComponentProps<typeof Tooltip>['position']): HTMLElement => {
+    const { button } = setup({ position })
+    keyboard()
+    fireEvent.focus(button)
+    return screen.getByRole('tooltip')
+  }
+
+  const box = (tip: HTMLElement): { left: number; top: number; right: number; bottom: number } => {
+    const left = parseFloat(tip.style.left)
+    const top = parseFloat(tip.style.top)
+    return { left, top, right: left + bubble.width, bottom: top + bubble.height }
+  }
+
+  it('a left tooltip near the left edge stays inside the window', () => {
+    layout({ left: 12, top: 100 })
+    const b = box(shown('left'))
+    expect(b.left).toBeGreaterThanOrEqual(margin)
+    expect(b.right).toBeLessThanOrEqual(window.innerWidth - margin)
+  })
+
+  it('a bottom tooltip near the left edge shifts right instead of centring off screen', () => {
+    layout({ left: 4, top: 100 })
+    const b = box(shown('bottom'))
+    expect(b.left).toBeGreaterThanOrEqual(margin)
+    expect(b.top).toBeGreaterThanOrEqual(128)
+  })
+
+  it('a right tooltip near the right edge flips to the left', () => {
+    layout({ left: 1024 - 90, top: 100 })
+    const b = box(shown('right'))
+    expect(b.right).toBeLessThanOrEqual(window.innerWidth - margin)
+    expect(b.right).toBeLessThanOrEqual(1024 - 90)
+  })
+
+  it('a top tooltip near the top edge flips below the trigger', () => {
+    layout({ left: 300, top: 10 })
+    const b = box(shown('top'))
+    expect(b.top).toBeGreaterThanOrEqual(10 + 28)
+    expect(b.top).toBeGreaterThanOrEqual(margin)
+  })
+
+  it('a bottom tooltip near the bottom edge flips above the trigger', () => {
+    layout({ left: 300, top: 700 - 30 })
+    const b = box(shown('bottom'))
+    expect(b.bottom).toBeLessThanOrEqual(700 - 30)
+    expect(b.bottom).toBeLessThanOrEqual(window.innerHeight - margin)
+  })
+
+  it('shows the detail line under the content', () => {
+    layout({ left: 300, top: 100 })
+    render(
+      <Tooltip content="Switch project" detail="/Users/me/shop">
+        <button>shop</button>
+      </Tooltip>
+    )
+    keyboard()
+    fireEvent.focus(screen.getByText('shop'))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Switch project')
+    expect(screen.getByRole('tooltip')).toHaveTextContent('/Users/me/shop')
+  })
+})
