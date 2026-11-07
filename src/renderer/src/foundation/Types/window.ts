@@ -181,6 +181,10 @@ export interface WindowApi extends RunApi {
   exportProject: () => Promise<{ success: boolean; path?: string; error?: string }>
   importProject: () => Promise<{ success: boolean; error?: string }>
   importSuite: () => Promise<{ success: boolean; suite?: Suite; error?: string }>
+  setTestTags: (
+    fileRel: string,
+    tags: string[]
+  ) => Promise<{ success: boolean; fileOnly?: boolean; error?: string }>
   importTest: (suiteId: string) => Promise<{ success: boolean; test?: Test; error?: string }>
 
   // --- Saved logins (active project) ---

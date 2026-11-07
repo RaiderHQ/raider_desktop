@@ -6,6 +6,7 @@ import { rubyString, STRING_LITERAL } from './ruby'
 import { renderStep } from './steps'
 import { describeStepEnglish } from '../../shared/describeStepEnglish'
 import { withSecretNames } from '../../shared/secretSteps'
+import { normalizeTags } from '../../shared/tags'
 import type { Automation } from './steps'
 import type { StepLines } from '../../shared/types/projectTest'
 
@@ -70,9 +71,15 @@ const indent = (text: string, spaces: number): string =>
     .map((line) => (line === '' ? line : ' '.repeat(spaces) + line))
     .join('\n')
 
+/** `, :a, :b` for the describe line (sorted symbols), or nothing without tags. */
+const tagMetadata = (tags: string[] | undefined): string =>
+  normalizeTags(tags)
+    .map((tag) => `, :${tag}`)
+    .join('')
+
 /** Builds a standalone RSpec file (run and export share it) from structured steps. */
 export function generateRspecFile(
-  test: { name: string; steps: Step[] },
+  test: { name: string; steps: Step[]; tags?: string[] },
   automation: Automation,
   settings: FileSettings
 ): string {
@@ -87,7 +94,7 @@ export function generateRspecFile(
     `require '${watir ? 'watir' : 'selenium-webdriver'}'`,
     "require 'rspec'",
     '',
-    `describe ${name} do`,
+    `describe ${name}${tagMetadata(test.tags)} do`,
     '  before(:each) do',
     ...setup.map((l) => `    ${l}`),
     '  end',
@@ -153,7 +160,7 @@ type ProjectSpecOptions = { fileRelPath: string; helperPath: string; waitHelper?
  * `fileRelPath` and `helperPath` are relative to the project root.
  */
 export function generateProjectSpecFile(
-  test: { name: string; steps: Step[] },
+  test: { name: string; steps: Step[]; tags?: string[] },
   automation: Automation,
   opts: ProjectSpecOptions
 ): string {
@@ -162,7 +169,7 @@ export function generateProjectSpecFile(
 
 /** The project spec file plus the lines each step was written to. */
 export function generateProjectSpecFileWithMap(
-  test: { name: string; steps: Step[] },
+  test: { name: string; steps: Step[]; tags?: string[] },
   automation: Automation,
   opts: ProjectSpecOptions
 ): { content: string; stepLines: StepLines } {
@@ -211,7 +218,7 @@ export function generateProjectSpecFileWithMap(
     ...(cops ? [`# rubocop:disable ${cops}`] : []),
     `require_relative ${rubyString(toHelper)}`,
     '',
-    `describe ${name} do`,
+    `describe ${name}${tagMetadata(test.tags)} do`,
     ...setup,
     ...(setup.length ? [''] : []),
     `  it ${name} do`

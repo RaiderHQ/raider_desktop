@@ -234,6 +234,11 @@ const api = {
     ipcRenderer.invoke('import-project'),
   importSuite: (): Promise<{ success: boolean; suite?: Suite; error?: string }> =>
     ipcRenderer.invoke('import-suite'),
+  setTestTags: (
+    fileRel: string,
+    tags: string[]
+  ): Promise<{ success: boolean; fileOnly?: boolean; error?: string }> =>
+    ipcRenderer.invoke('set-test-tags', fileRel, tags),
   importTest: (suiteId: string): Promise<{ success: boolean; test?: Test; error?: string }> =>
     ipcRenderer.invoke('import-test', suiteId),
 

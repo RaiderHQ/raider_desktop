@@ -184,3 +184,13 @@ describe('generated file syntax', () => {
     }
   })
 })
+
+describe('generateRspecFile tags', () => {
+  it('writes sorted symbols on the describe line, nothing without tags', () => {
+    const tagged = generateRspecFile({ ...test, tags: ['b', 'a'] }, 'selenium', settings)
+    expect(tagged).toMatch(/^describe '.*', :a, :b do$/m)
+    expect(generateRspecFile({ ...test, tags: [] }, 'selenium', settings)).toBe(
+      generateRspecFile(test, 'selenium', settings)
+    )
+  })
+})

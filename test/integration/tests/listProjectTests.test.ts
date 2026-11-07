@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 import { listProjectTests } from '../../../src/main/handlers/tests/listProjectTests'
-import { saveRecordedTest } from '../../../src/main/handlers/tests/recordedTests'
+import { saveRecordedTest, setTagsForFile } from '../../../src/main/handlers/tests/recordedTests'
 import { readSidecar } from '../../../src/main/handlers/tests/sidecar'
 import type { ProjectLayout } from '../../../src/shared/types/projectLayout'
 import type { Test } from '../../../src/shared/types/test'
@@ -97,7 +97,14 @@ describe('listProjectTests', () => {
     await unlink(join(project, s.file))
     const list = await listProjectTests(project, layout)
     expect(list).toEqual([
-      { file: s.file, name: 'Alpha', ownership: 'recorded', testId: 'a', missingFile: true }
+      {
+        file: s.file,
+        name: 'Alpha',
+        ownership: 'recorded',
+        testId: 'a',
+        missingFile: true,
+        tags: []
+      }
     ])
   })
 
@@ -121,7 +128,7 @@ describe('listProjectTests', () => {
     await writeFile(join(project, 'spec/h_spec.rb'), "describe 'H' do\nend\n")
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const list = await listProjectTests(project, layout)
-    expect(list).toEqual([{ file: 'spec/h_spec.rb', name: 'H', ownership: 'code' }])
+    expect(list).toEqual([{ file: 'spec/h_spec.rb', name: 'H', ownership: 'code', tags: [] }])
     await rm(outside, { recursive: true, force: true })
   })
 
@@ -137,5 +144,62 @@ describe('listProjectTests', () => {
     }
     await writeFile(join(project, 'spec/ok_spec.rb'), "describe 'Ok' do\nend\n")
     expect((await listProjectTests(project, layout)).map((e) => e.name)).toEqual(['Ok'])
+  })
+
+  describe('tags', () => {
+    it('reads recorded tests from the sidecar', async () => {
+      const a = await saveRecordedTest(project, layout, rec('a', 'Alpha'))
+      await setTagsForFile(project, layout, a.file, ['smoke', 'api'])
+      await saveRecordedTest(project, layout, rec('b', 'Bravo'))
+      const by = Object.fromEntries(
+        (await listProjectTests(project, layout)).map((e) => [e.name, e])
+      )
+      expect(by.Alpha.tags).toEqual(['api', 'smoke'])
+      expect(by.Bravo.tags).toEqual([])
+    })
+
+    it('reads code tests and edited recorded tests from the first describe line', async () => {
+      await writeFile(
+        join(project, 'spec/hand_spec.rb'),
+        "RSpec.describe 'Hand', :b, :a, type: :feature do\n  describe 'x', :nope do\n  end\nend\n"
+      )
+      const c = await saveRecordedTest(project, layout, rec('c', 'Charlie'))
+      await setTagsForFile(project, layout, c.file, ['old'])
+      const text = await readFile(join(project, c.file), 'utf-8')
+      await writeFile(
+        join(project, c.file),
+        text.replace("describe 'Charlie', :old do", "describe 'Charlie', :edited do") + '\nputs 1\n'
+      )
+      const by = Object.fromEntries(
+        (await listProjectTests(project, layout)).map((e) => [e.name, e])
+      )
+      expect(by.Hand.tags).toEqual(['a', 'b'])
+      expect(by.Charlie.ownership).toBe('codeOwnedWasRecorded')
+      expect(by.Charlie.tags).toEqual(['edited'])
+    })
+
+    it('a save never takes tags from its caller and keeps the stored ones', async () => {
+      const a = await saveRecordedTest(project, layout, rec('a', 'Alpha'))
+      await setTagsForFile(project, layout, a.file, ['smoke'])
+      const saved = await saveRecordedTest(project, layout, {
+        ...rec('a', 'Alpha'),
+        tags: ['stale']
+      })
+      expect(saved.tags).toEqual(['smoke'])
+      const again = await saveRecordedTest(project, layout, {
+        ...rec('a', 'Alpha'),
+        name: 'Alpha 2',
+        tags: ['stale']
+      })
+      expect(again.tags).toEqual(['smoke'])
+      expect(await readFile(join(project, again.file), 'utf-8')).toContain(
+        "describe 'Alpha 2', :smoke do"
+      )
+      const fresh = await saveRecordedTest(project, layout, {
+        ...rec('z', 'Zulu'),
+        tags: ['stale']
+      })
+      expect(fresh.tags).toBeUndefined()
+    })
   })
 })

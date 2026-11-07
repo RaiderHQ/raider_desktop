@@ -2,6 +2,7 @@ import fs from 'fs/promises'
 import { posix } from 'path'
 import { isRaiderFile, markCodeOwned } from './recordedTests'
 import { assertRealInside, isSafeRelPath, listSidecars, resolveInside } from './sidecar'
+import { findDescribeLine, tagsFromDescribeLine } from '../../../shared/tags'
 import { safeError } from '../../utils/safeLog'
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
 import type { ProjectTestEntry, Sidecar } from '../../../shared/types/projectTest'
@@ -58,6 +59,12 @@ async function readSpec(projectPath: string, fileRel: string): Promise<string | 
   return fs.readFile(target, 'utf-8')
 }
 
+/** Tags in the metadata of the file's first describe line. */
+const fileTags = (content: string | null): string[] => {
+  const found = content ? findDescribeLine(content) : null
+  return found ? tagsFromDescribeLine(found.line) : []
+}
+
 const fallbackName = (content: string | null, file: string): string =>
   (content && DESCRIBE.exec(content)?.[2]) || posix.basename(file)
 
@@ -91,21 +98,24 @@ async function entryFor(
 ): Promise<ProjectTestEntry> {
   try {
     if (!sidecar) {
-      return {
-        file,
-        name: fallbackName(await readSpec(projectPath, file), file),
-        ownership: 'code'
-      }
+      const content = await readSpec(projectPath, file)
+      return { file, name: fallbackName(content, file), ownership: 'code', tags: fileTags(content) }
     }
+    const owned = await recordedOwnership(projectPath, sidecar)
     return {
       file,
       name: sidecar.name,
       testId: sidecar.id,
-      ...(await recordedOwnership(projectPath, sidecar))
+      ...owned,
+      // Raider's record is the truth for a test it still owns; edited code speaks for itself
+      tags:
+        owned.ownership === 'recorded'
+          ? (sidecar.tags ?? [])
+          : fileTags(await readSpec(projectPath, file))
     }
   } catch (error) {
     safeError(`Could not read ${file}:`, error)
-    return { file, name: sidecar?.name ?? posix.basename(file), ownership: 'code' }
+    return { file, name: sidecar?.name ?? posix.basename(file), ownership: 'code', tags: [] }
   }
 }
 
@@ -131,7 +141,7 @@ export async function listProjectTests(
         entries.push(await entryFor(projectPath, file, sidecars.get(file) ?? null))
       } catch (error) {
         safeError(`Could not list ${file}:`, error)
-        entries.push({ file, name: posix.basename(file), ownership: 'code' })
+        entries.push({ file, name: posix.basename(file), ownership: 'code', tags: [] })
       }
     }
   }

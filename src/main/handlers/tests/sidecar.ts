@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto'
 import { dirname, isAbsolute, join, relative, resolve } from 'path'
 import { isStep } from '../../../shared/types/step'
 import { refusedSecretName, withSecretNames } from '../../../shared/secretSteps'
+import { normalizeTags } from '../../../shared/tags'
 import type { Sidecar, StepLines } from '../../../shared/types/projectTest'
 
 export class SidecarUnreadableError extends Error {
@@ -91,11 +92,13 @@ async function createExclusive(target: string, body: string): Promise<void> {
 export async function writeFileAtomic(
   target: string,
   body: string,
-  { exclusive = false }: { exclusive?: boolean } = {}
+  { exclusive = false, mode }: { exclusive?: boolean; mode?: number } = {}
 ): Promise<void> {
   const tmp = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`
   try {
-    await fs.writeFile(tmp, body, 'utf-8')
+    // Private until it is complete; the target's mode (without setuid bits) is applied after
+    await fs.writeFile(tmp, body, { encoding: 'utf-8', mode: (mode ?? 0o666) & 0o600 })
+    if (mode !== undefined) await fs.chmod(tmp, mode & 0o777)
     if (!exclusive) await fs.rename(tmp, target)
     else {
       try {
@@ -141,6 +144,7 @@ function isSidecar(value: unknown): value is Sidecar {
     [s.id, s.name, s.url, s.file, s.hash, s.createdAt, s.updatedAt].every(isStr) &&
     (s.automation === 'selenium' || s.automation === 'watir') &&
     (s.codeOwned === undefined || s.codeOwned === true) &&
+    (s.tags === undefined || Array.isArray(s.tags)) &&
     Array.isArray(s.steps) &&
     s.steps.every(isStep)
   )
@@ -195,8 +199,11 @@ export async function readSidecar(projectPath: string, fileRel: string): Promise
       if ('title' in range && typeof range.title !== 'string') delete range.title
     }
   }
+  // Invalid tag entries are dropped one by one; a sidecar left with none has no tags
+  const { tags: storedTags, ...rest } = parsed
+  const tags = normalizeTags(storedTags)
   // Secret steps saved before names were stored are named once here; the next save keeps them
-  return { ...parsed, steps: withSecretNames(parsed.steps) }
+  return { ...rest, steps: withSecretNames(parsed.steps), ...(tags.length > 0 && { tags }) }
 }
 
 // Writes and deletes per sidecar path are chained so they can't interleave or reorder
@@ -205,7 +212,9 @@ const sidecarQueues = new Map<string, Promise<unknown>>()
 export async function writeSidecar(projectPath: string, sidecar: Sidecar): Promise<void> {
   const file = sidecarPath(projectPath, sidecar.file)
   // Serialize now so later in-memory mutations don't leak into this write
-  const body = JSON.stringify(sidecar, null, 2)
+  const { tags, ...rest } = sidecar
+  const clean = normalizeTags(tags)
+  const body = JSON.stringify({ ...rest, ...(clean.length > 0 && { tags: clean }) }, null, 2)
   return serialize(sidecarQueues, file, async () => {
     await assertRealInside(projectPath, file)
     await fs.mkdir(dirname(file), { recursive: true })

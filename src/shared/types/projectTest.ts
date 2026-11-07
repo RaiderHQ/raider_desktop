@@ -30,6 +30,8 @@ export interface Sidecar {
   /** Absent for sidecars written before maps were stored */
   stepLines?: StepLines
   codeOwned?: true
+  /** Normalized: lower-case, sorted, unique (see shared/tags) */
+  tags?: string[]
   /** ISO */
   createdAt: string
   updatedAt: string
@@ -45,6 +47,8 @@ export interface ProjectTestEntry {
   ownership: Ownership
   /** Present when a sidecar exists */
   testId?: string
+  /** Sorted tags: the sidecar's for a recorded test, else the first describe line's */
+  tags: string[]
   /** Sidecar exists but the file is gone */
   missingFile?: true
 }
