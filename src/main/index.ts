@@ -48,7 +48,6 @@ import { prepareTestRun } from './handlers/testing/prepareRuns'
 import { mapFailedStepHandler } from './handlers/tests/mapFailedStep'
 import { runTestHandler } from './handlers/testing/runProjectTests'
 import getTests from './handlers/getTests'
-import { isListed } from './handlers/tests/suiteStore'
 import { registerRunIpc } from './handlers/run/runIpc'
 import { openTraceFromDialog, registerTraceIpc } from './handlers/trace/traceIpc'
 import { makeBaselineConfirm } from './handlers/results/baselineConfirm'
@@ -378,8 +377,8 @@ app.whenReady().then(() => {
     }
   )
 
-  ipcMain.handle('prepare-test-run', (_event, testId: string, test?: Test) =>
-    prepareTestRun(testId, test)
+  ipcMain.handle('prepare-test-run', (_event, projectPath: unknown, testId: string, test?: Test) =>
+    prepareTestRun(projectPath, testId, test)
   )
   ipcMain.handle('export-test', (_event, testData: TestData) => exportTest(testData))
   ipcMain.handle('export-project', exportProject)
@@ -390,7 +389,8 @@ app.whenReady().then(() => {
   )
   ipcMain.handle('delete-test', async (_event, args) => {
     const result = await deleteTest(appState.mainWindow!, args)
-    if (result.success && !isListed(args.testId)) deleteTrace(args.testId)
+    // A test edited in code keeps its file, so it keeps its trace too
+    if (result.success && !result.codeOwned) deleteTrace(args.testId)
     return result
   })
   ipcMain.handle('set-active-project', async (_event, projectPath: string | null) => {
@@ -447,8 +447,8 @@ app.whenReady().then(() => {
     registerRecorderWebContents(webContentsId)
   )
 
-  ipcMain.handle('save-recording', (_event, test: Test) =>
-    saveRecording(appState.mainWindow, test)
+  ipcMain.handle('save-recording', (_event, projectPath: unknown, test: Test) =>
+    saveRecording(appState.mainWindow, projectPath, test)
   )
   ipcMain.handle('save-trace', (_event, testId: string, trace: TraceStep[], stepIds?: string[]) =>
     saveTrace(testId, trace, stepIds)

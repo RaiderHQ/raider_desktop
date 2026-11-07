@@ -22,8 +22,20 @@ vi.mock('react-hot-toast', () => ({
 }))
 
 const rows: TestRow[] = [
-  { name: 'Login works', file: 'spec/login_spec.rb', testId: 't1', ownership: 'recorded', tags: [] },
-  { name: 'Cart totals', file: 'spec/cart_spec.rb', testId: 't2', ownership: 'codeOwnedWasRecorded', tags: [] },
+  {
+    name: 'Login works',
+    file: 'spec/login_spec.rb',
+    testId: 't1',
+    ownership: 'recorded',
+    tags: []
+  },
+  {
+    name: 'Cart totals',
+    file: 'spec/cart_spec.rb',
+    testId: 't2',
+    ownership: 'codeOwnedWasRecorded',
+    tags: []
+  },
   { name: 'API health', file: 'spec/api_spec.rb', ownership: 'code', tags: [] }
 ]
 
@@ -112,7 +124,9 @@ describe('TestsList', () => {
     setup({ selectedKey: 'id:t2' })
     const sel = screen.getByText('Cart totals').closest('[role=button]')
     expect(sel).toHaveAttribute('aria-current', 'true')
-    expect(screen.getByText('Login works').closest('[role=button]')).not.toHaveAttribute('aria-current')
+    expect(screen.getByText('Login works').closest('[role=button]')).not.toHaveAttribute(
+      'aria-current'
+    )
   })
 
   it('shows "Edited in code" for code and codeOwnedWasRecorded rows only', () => {
@@ -165,13 +179,22 @@ describe('TestsList', () => {
 
   it('a missing-file row keeps Restore, which does not select the row', async () => {
     const p = setup({
-      rows: [{ name: 'Login works', file: 'spec/login_spec.rb', testId: 't1', ownership: 'recorded', missingFile: true, tags: [] }]
+      rows: [
+        {
+          name: 'Login works',
+          file: 'spec/login_spec.rb',
+          testId: 't1',
+          ownership: 'recorded',
+          missingFile: true,
+          tags: []
+        }
+      ]
     })
     expect(screen.getByText('tests.fileMissing')).toBeInTheDocument()
     await act(async () => {
       fireEvent.click(screen.getByText('tests.restore'))
     })
-    expect(api.saveRecording).toHaveBeenCalledWith(savedTests[0])
+    expect(api.saveRecording).toHaveBeenCalledWith(expect.any(String), savedTests[0])
     expect(p.onSelect).not.toHaveBeenCalled()
   })
 

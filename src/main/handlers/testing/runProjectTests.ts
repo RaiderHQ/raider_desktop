@@ -1,6 +1,7 @@
 import { appState } from '../appState'
 import runRecording from './runRecording'
-import { activeSuiteMode } from '../tests/suiteStore'
+import { activationSettled } from '../project/setActiveProject'
+import { filesStore } from '../tests/recordedStore'
 import { detectProjectLayout } from '../project/projectLayout'
 import type { Test } from '../../../shared/types/test'
 import { mobileNoLegacyResult, type LegacyRunResult } from '../../../shared/types/prepareRun'
@@ -32,7 +33,8 @@ export async function runTestHandler(
   rubyCommand: string,
   _test?: Test // kept for the IPC signature; the legacy path runs the cached test
 ): Promise<RunResult> {
-  if ((await activeSuiteMode()) === 'files') return { success: false, output: USE_LIVE_RUNNER }
+  await activationSettled()
+  if (filesStore()) return { success: false, output: USE_LIVE_RUNNER }
   if (await isMobileProject(projectPath)) return mobileNoLegacyResult()
 
   const cached = appState.tests.get(testId)

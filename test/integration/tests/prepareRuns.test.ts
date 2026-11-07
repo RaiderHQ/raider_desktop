@@ -19,7 +19,7 @@ import { DEFAULT_RECORDER_SETTINGS } from '../../../src/main/handlers/config/pro
 import setActiveProject from '../../../src/main/handlers/project/setActiveProject'
 import saveRecording from '../../../src/main/handlers/recording/saveRecording'
 import { prepareTestRun } from '../../../src/main/handlers/testing/prepareRuns'
-import * as suiteStore from '../../../src/main/handlers/tests/suiteStore'
+import * as recordedStore from '../../../src/main/handlers/tests/recordedStore'
 import type { Test } from '../../../src/shared/types/test'
 
 let project: string
@@ -64,18 +64,18 @@ afterEach(async () => {
 describe('prepareTestRun', () => {
   it('returns legacy mode without a files-mode project', async () => {
     await setActiveProject(null)
-    expect(await prepareTestRun('t')).toEqual({ mode: 'legacy' })
+    expect(await prepareTestRun(project, 't')).toEqual({ mode: 'legacy' })
   })
 
   it('saves the given test when it differs from the cached one', async () => {
     await setActiveProject(project)
-    await saveRecording(win, checkout())
+    await saveRecording(win, project, checkout())
     const edited = {
       ...checkout(),
       steps: [{ id: 'n', kind: 'navigate', url: 'https://shop.test/edited' }]
     } as Test
 
-    expect(await prepareTestRun('t-checkout', edited)).toEqual({
+    expect(await prepareTestRun(project, 't-checkout', edited)).toEqual({
       mode: 'files',
       file: 'spec/checkout_spec.rb'
     })
@@ -86,7 +86,7 @@ describe('prepareTestRun', () => {
 
   it('saves a test that is not saved yet', async () => {
     await setActiveProject(project)
-    expect(await prepareTestRun('t-new', checkout('t-new'))).toEqual({
+    expect(await prepareTestRun(project, 't-new', checkout('t-new'))).toEqual({
       mode: 'files',
       file: 'spec/checkout_spec.rb'
     })
@@ -94,17 +94,17 @@ describe('prepareTestRun', () => {
 
   it('lists a test that was not saved yet among the project tests', async () => {
     await setActiveProject(project)
-    await prepareTestRun('t-new', checkout('t-new'))
+    await prepareTestRun(project, 't-new', checkout('t-new'))
     expect(appState.tests.get('t-new')?.file).toBe('spec/checkout_spec.rb')
   })
 
   it('restores a missing recorded file', async () => {
     await setActiveProject(project)
-    await saveRecording(win, checkout())
+    await saveRecording(win, project, checkout())
     const spec = join(project, 'spec', 'checkout_spec.rb')
     await rm(spec)
 
-    expect(await prepareTestRun('t-checkout')).toEqual({
+    expect(await prepareTestRun(project, 't-checkout')).toEqual({
       mode: 'files',
       file: 'spec/checkout_spec.rb'
     })
@@ -113,11 +113,11 @@ describe('prepareTestRun', () => {
 
   it('returns a code-owned file without saving', async () => {
     await setActiveProject(project)
-    await saveRecording(win, checkout())
+    await saveRecording(win, project, checkout())
     const spec = join(project, 'spec', 'checkout_spec.rb')
     await writeFile(spec, (await readFile(spec, 'utf-8')) + '\nputs "hand edit"\n')
 
-    const result = await prepareTestRun('t-checkout', { ...checkout(), name: 'New' })
+    const result = await prepareTestRun(project, 't-checkout', { ...checkout(), name: 'New' })
 
     expect(result).toEqual({ mode: 'files', file: 'spec/checkout_spec.rb' })
     expect(await readFile(spec, 'utf-8')).toContain('hand edit')
@@ -125,16 +125,16 @@ describe('prepareTestRun', () => {
 
   it('reports a failed save', async () => {
     await setActiveProject(project)
-    vi.spyOn(suiteStore, 'saveRecordedTestInProject').mockRejectedValue(new Error('disk full'))
+    vi.spyOn(recordedStore, 'saveRecordedTestInProject').mockRejectedValue(new Error('disk full'))
 
-    expect(await prepareTestRun('t-new', checkout('t-new'))).toEqual({
+    expect(await prepareTestRun(project, 't-new', checkout('t-new'))).toEqual({
       error: 'The test could not be saved, so it was not run.'
     })
   })
 
   it('reports an unknown test', async () => {
     await setActiveProject(project)
-    expect(await prepareTestRun('nope')).toEqual({
+    expect(await prepareTestRun(project, 'nope')).toEqual({
       error: 'Test with ID nope not found.'
     })
   })

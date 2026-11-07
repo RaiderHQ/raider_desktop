@@ -6,6 +6,7 @@ import { FileNode } from '@foundation/Types/fileNode'
 import { RaiderConfig } from '@foundation/Types/raiderConfig'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import useRecorderStore from '@foundation/Stores/recorderStore'
+import { useTestsListStore } from '@foundation/Stores/testsListStore'
 
 interface ProjectStore {
   projectPath: string | null
@@ -98,6 +99,8 @@ useProjectStore.subscribe(
     useProjectStore.setState({ layout: null })
     // Nor does the recorder's open test: saving it would write it into the new project
     useRecorderStore.getState().resetForProject()
+    // Nor does the list of tests: the new project's are loaded when something shows them
+    useTestsListStore.setState({ rows: null, tests: [] })
     if (projectPath) {
       return
     }

@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
+import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { ipcSubscriptions } from '../helpers/ipcSubscriptions'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { dispatchMenuCommand } from '@foundation/menuCommands'
@@ -53,7 +54,7 @@ const codeRow: TestRow = {
   name: 'Login',
   file: 'spec/login_spec.rb',
   ownership: 'code',
- 
+
   tags: []
 }
 
@@ -125,6 +126,7 @@ const stopAndSave = async (): Promise<void> => {
 }
 
 beforeEach(() => {
+  useTestsListStore.setState({ rows: null, tests: [] })
   vi.clearAllMocks()
   listeners.clear()
   api.getTests.mockResolvedValue([])
@@ -455,6 +457,7 @@ describe('CodeTestPane', () => {
       fireEvent.click(screen.getByRole('button', { name: 'testPage.saveAsNew' }))
     })
     expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
       expect.objectContaining({ name: 'logs in', steps: expect.arrayContaining([clickStep]) })
     )
     expect(mockToast.success).toHaveBeenCalledWith(expect.stringContaining('tests.saved'))
@@ -504,6 +507,7 @@ describe('CodeTestPane', () => {
     })
     await waitFor(() =>
       expect(api.saveRecording).toHaveBeenCalledWith(
+        expect.any(String),
         expect.objectContaining({ steps: expect.arrayContaining([clickStep]) })
       )
     )
@@ -524,6 +528,7 @@ describe('CodeTestPane', () => {
     const savedOnceAsNewTest = async (): Promise<void> => {
       await waitFor(() => expect(api.saveRecording).toHaveBeenCalledTimes(1))
       expect(api.saveRecording).toHaveBeenCalledWith(
+        expect.any(String),
         expect.objectContaining({ name: 'logs in', steps: expect.arrayContaining([clickStep]) })
       )
       expect(mockToast.success).toHaveBeenCalledWith(expect.stringContaining('tests.saved'))
@@ -653,6 +658,7 @@ describe('CodeTestPane', () => {
         dispatchMenuCommand('save')
       })
       expect(api.saveRecording).toHaveBeenCalledWith(
+        expect.any(String),
         expect.objectContaining({ name: 'logs in' })
       )
     })

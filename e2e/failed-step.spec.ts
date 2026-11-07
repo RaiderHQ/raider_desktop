@@ -204,8 +204,8 @@ test.describe('Failed step', () => {
     await page.getByTestId('edit-value-form').getByRole('button', { name: 'Save' }).click()
 
     await expect.poll(async () => (await getIPCCalls(page, 'saveRecording')).length).toBe(1)
-    const [[saved]] = (await getIPCCalls(page, 'saveRecording')) as [
-      [{ steps: Array<{ expected?: string }> }]
+    const [[, saved]] = (await getIPCCalls(page, 'saveRecording')) as [
+      [string, { steps: Array<{ expected?: string }> }]
     ]
     expect(saved.steps[3].expected).toBe('Hello')
     await expect(page.getByText('Fixed. Run again to check.')).toBeVisible()

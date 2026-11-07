@@ -140,7 +140,7 @@ test.describe('Test page', () => {
     ).toBeVisible()
     const saves = await getIPCCalls(page, 'saveRecording')
     expect(saves).toHaveLength(1)
-    expect(saves[0][0]).toMatchObject({
+    expect(saves[0][1]).toMatchObject({
       name: 'Checkout',
       url: 'https://example.com/shop',
       steps: [{ kind: 'navigate', url: 'https://example.com/shop' }, { id: 'step-click' }]

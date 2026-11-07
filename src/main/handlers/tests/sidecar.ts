@@ -13,6 +13,17 @@ export class SidecarUnreadableError extends Error {
   }
 }
 
+/** A sidecar holds a password step that reads a variable other than RAIDER_SECRET_*. */
+export class SidecarSecretRefusedError extends SidecarUnreadableError {
+  constructor(
+    message: string,
+    readonly secretName: string
+  ) {
+    super(message)
+    this.name = 'SidecarSecretRefusedError'
+  }
+}
+
 const testsDir = (projectPath: string): string => join(projectPath, '.raider', 'tests')
 
 /** True for a relative POSIX path with no empty, `.` or `..` segments. */
@@ -186,8 +197,9 @@ export async function readSidecar(projectPath: string, fileRel: string): Promise
     ? steps.map(refusedSecretName).find((name) => name !== undefined)
     : undefined
   if (refused !== undefined) {
-    throw new SidecarUnreadableError(
-      `Sidecar ${fileRel} has a password step that reads ${refused}. Only RAIDER_SECRET_ variables are allowed.`
+    throw new SidecarSecretRefusedError(
+      `Sidecar ${fileRel} has a password step that reads ${refused}. Only RAIDER_SECRET_ variables are allowed.`,
+      refused
     )
   }
   if (!isSidecar(parsed)) throw new SidecarUnreadableError(`Sidecar has a bad shape: ${fileRel}`)

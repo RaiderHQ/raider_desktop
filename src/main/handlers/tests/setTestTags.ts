@@ -1,6 +1,6 @@
 import { appState } from '../appState'
 import { activationSettled } from '../project/setActiveProject'
-import { broadcast, filesStore } from './suiteStore'
+import { broadcast, filesStore } from './recordedStore'
 import { setTagsForFile } from './recordedTests'
 import { isSafeRelPath } from './sidecar'
 import { MAX_TAGS, normalizeTags } from '../../../shared/tags'

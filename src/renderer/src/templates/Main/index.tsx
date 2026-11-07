@@ -70,30 +70,14 @@ const MainTemplate: React.FC = (): JSX.Element => {
     checkRuby()
   }, [])
 
-  // Whoever reads the tests (the run panel, the dashboard) finds them current
-  useEffect(() => {
-    const reload = (): void => void useTestsListStore.getState().reload()
-    return window.api.onTestsUpdated(reload)
-  }, [])
-
-  useEffect(() => {
-    const onMigrated = (info: { migrated: number; postponed: boolean }): void => {
-      if (info.postponed) {
-        toast(t('suites.migrated.postponed'), { icon: '\u26A0\uFE0F', duration: 10000 })
-      } else {
-        toast.success(t('suites.migrated.done', { count: info.migrated }), { duration: 6000 })
-      }
-    }
-    const onTooNew = (): void => {
-      toast.error(t('suites.tooNew'), { duration: 10000 })
-    }
-    const offMigrated = window.api.onTestsMigrated(onMigrated)
-    const offTooNew = window.api.onTestsTooNew(onTooNew)
-    return (): void => {
-      offMigrated()
-      offTooNew()
-    }
-  }, [])
+  // The one place that follows main's tests: the list, the run panel and the dashboard read the store
+  useEffect(
+    () =>
+      window.api.onTestsUpdated((tests) => {
+        void useTestsListStore.getState().applyUpdate(tests)
+      }),
+    []
+  )
 
   // One subscription for the whole app; the run panel and indicators read the store
   useEffect(() => subscribeRunEvents(), [])

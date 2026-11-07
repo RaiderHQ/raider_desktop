@@ -393,13 +393,6 @@
   "project": {
     "activationFailed": "This project's saved tests and recorder settings couldn't be loaded, so nothing will be recorded or saved for it. Fix the problem and open the project again. Details: {{error}}"
   },
-  "suites": {
-    "migrated": {
-      "done": "Your recorded tests are now saved as project files.",
-      "postponed": "Raider couldn't move your recorded tests into the project yet. They're safe and Raider will try again next time."
-    },
-    "tooNew": "This project's suites were saved by a newer version of Raider. Update Raider to see and change them."
-  },
   "errors": {
     "ruby": {
       "commandFailed": "Ruby command failed.\nCommand: {{command}}\nOutput: {{output}}\nDebug Info:\n{{debugInfo}}",
@@ -427,7 +420,6 @@
     "emptyNoRecording": "No tests found in this project yet.",
     "actionFailed": "Raider couldn't open this test. Nothing was changed.",
     "listFailed": "Raider couldn't load the tests list. Try again in a moment.",
-    "mobileNoImport": "Mobile projects can't import recorded tests yet.",
     "rail": "Tests",
     "tagFilter": {
       "label": "Tag",
@@ -439,7 +431,8 @@
       "runTagged": "Run tagged tests",
       "importTest": "Import test",
       "importProject": "Import project",
-      "exportProject": "Export project"
+      "exportProject": "Export project",
+      "importSummary": "Imported {{imported}}, skipped {{skipped}} already in the project, {{failed}} failed."
     },
     "importCustomCode": {
       "one": "This test runs custom Ruby code. Import anyway?",

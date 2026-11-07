@@ -37,7 +37,12 @@ export function useTestsSync(): void {
         const { activeTest, activeTestSaved, updateActiveTest } = useRecorderStore.getState()
         if (!activeTestSaved || !activeTest) return
         const now = updated.find((t) => t.id === activeTest.id)
-        if (!now) return
+        if (!now) {
+          // Gone from the project (deleted, or its file removed): the editor keeps what is on
+          // screen, but the next edit must not write it back as a new file
+          useRecorderStore.getState().setActiveTestSaved(false)
+          return
+        }
         updateActiveTest((live) =>
           live && live.id === now.id ? withServerFields(live, now) : live
         )

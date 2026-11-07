@@ -1,28 +1,22 @@
 import { BrowserWindow } from 'electron'
-import {
-  activeSuiteMode,
-  broadcast,
-  filesStore,
-  lockedError,
-  NO_PROJECT_ERROR,
-  removeRecordedTest
-} from './tests/suiteStore'
+import { activationSettled } from './project/setActiveProject'
+import { broadcast, filesStore, noStoreError, removeRecordedTest } from './tests/recordedStore'
 
 type DeletionResult = {
   success: boolean
   error?: string
+  /** The file was edited in code and stays; its trace is kept too */
+  codeOwned?: true
 }
 
 export default async (
   _mainWindow: BrowserWindow | null,
   { testId }: { testId: string }
 ): Promise<DeletionResult> => {
-  const mode = await activeSuiteMode()
-  if (mode === 'locked') return { success: false, error: lockedError() }
-
+  await activationSettled()
   const store = filesStore()
-  if (!store) return { success: false, error: NO_PROJECT_ERROR }
-  await removeRecordedTest(store, testId)
-  broadcast(store)
-  return { success: true }
+  if (!store) return { success: false, error: noStoreError() }
+  const result = await removeRecordedTest(store, testId)
+  if (result.success) broadcast(store)
+  return result
 }
