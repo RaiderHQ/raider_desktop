@@ -113,7 +113,7 @@ beforeEach(() => {
     },
     { name: 'Checkout', file: 'spec/checkout_spec.rb', testId: 't2', ownership: 'recorded' }
   ])
-  api.saveRecording.mockImplementation(async (test: Test) => ({
+  api.saveRecording.mockImplementation(async (_path: string, test: Test) => ({
     success: true,
     test: { ...test, file: 'spec/search_products_spec.rb' }
   }))
@@ -163,6 +163,7 @@ describe('TestsWorkspace recording mode', () => {
     )
     expect(api.saveRecording).toHaveBeenCalledTimes(1)
     expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
       expect.objectContaining({ id: 't1', steps: [expect.anything(), step('n')] })
     )
     expect(screen.queryByTestId('tests-rail')).not.toBeInTheDocument()
@@ -184,6 +185,7 @@ describe('TestsWorkspace recording mode', () => {
     expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], expect.any(Array))
     expect(api.stopRecordingMain).toHaveBeenCalled()
     expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
       expect.objectContaining({ id: 't1', steps: [expect.anything(), step('n')] })
     )
     expect(await screen.findByText(en.tests.selectOrCreate)).toBeInTheDocument()

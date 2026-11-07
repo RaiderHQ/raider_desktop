@@ -140,6 +140,7 @@ const opened = async (name = 'Login works'): Promise<void> => {
 }
 
 beforeEach(() => {
+  useTestsListStore.setState({ rows: null, tests: [] })
   vi.clearAllMocks()
   api.getTests.mockResolvedValue(savedTests)
   api.listProjectTests.mockResolvedValue([
@@ -354,6 +355,7 @@ describe('TestPage', () => {
       await vi.advanceTimersByTimeAsync(1)
     })
     expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
       expect.objectContaining({ id: 't1', url: 'https://x.test/new' })
     )
   })
@@ -373,6 +375,7 @@ describe('TestPage', () => {
       await vi.advanceTimersByTimeAsync(500)
     })
     expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
       expect.objectContaining({ id: 't1', name: 'Login still works' })
     )
   })
@@ -420,7 +423,6 @@ describe('TestPage', () => {
       runId: 'r1',
       projectPath: '/p',
       scope: { kind: 'files', files: ['spec/login_works_spec.rb'] },
-      framework: 'rspec',
       workers: 1,
       liveEvents: true,
       startedAt: new Date().toISOString(),
@@ -651,6 +653,18 @@ describe('TestPage', () => {
     expect(await screen.findByText('tests list route')).toBeInTheDocument()
   })
 
+  it('a delete that fails says so and stays on the page', async () => {
+    api.deleteTest.mockResolvedValue({ success: false, error: 'The test could not be deleted.' })
+    renderPage()
+    await opened()
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.more' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'testPage.deleteTest' }))
+    fireEvent.click(screen.getByRole('button', { name: 'recorder.deleteModal.delete' }))
+    await waitFor(() => expect(mockToast.error).toHaveBeenCalledWith('testPage.deleteFailed'))
+    expect(screen.queryByText('tests list route')).not.toBeInTheDocument()
+    expect(screen.getByDisplayValue('Login works')).toBeInTheDocument()
+  })
+
   it('Last run toggles the output of the last run', async () => {
     useRunOutputStore.setState({ runOutput: 'Running test: Login works...' })
     renderPage()
@@ -726,6 +740,7 @@ describe('TestPage', () => {
     await waitFor(() => expect(api.saveTrace).toHaveBeenCalledTimes(1))
     expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], expect.any(Array))
     expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
       expect.objectContaining({ id: 't1', steps: [step('a'), step('b'), step('n')] })
     )
     expect(api.setRecordingState).toHaveBeenLastCalledWith(false)
@@ -749,6 +764,7 @@ describe('TestPage', () => {
     expect(api.saveTrace).toHaveBeenCalledTimes(1)
     expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], expect.any(Array))
     expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
       expect.objectContaining({ id: 't1', steps: [step('a'), step('b'), step('n')] })
     )
     expect(useRecorderStore.getState().activeTest?.id).toBe('t2')
@@ -783,7 +799,10 @@ describe('TestPage', () => {
     await opened('Empty one')
 
     expect(api.cancelReplay).toHaveBeenCalled()
-    expect(api.saveRecording).toHaveBeenCalledWith(expect.objectContaining({ id: 't1' }))
+    expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ id: 't1' })
+    )
     expect(useRecorderStore.getState().isReplayingToBreakpoint).toBe(false)
     expect(useRecorderStore.getState().breakpointIndex).toBeNull()
   })
@@ -985,6 +1004,7 @@ describe('TestPage fixing a failed value', () => {
     fireEvent.click(screen.getByRole('button', { name: 'failedStep.save' }))
     expect(await screen.findByText('failedStep.fixed')).toBeInTheDocument()
     expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
       expect.objectContaining({
         id: 't1',
         steps: [step('a'), { ...typed.steps[1], text: 'new' }]
@@ -1052,7 +1072,7 @@ describe('TestPage fixing a failed value', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'failedStep.save' }))
     await waitFor(() => expect(api.saveRecording).toHaveBeenCalled())
-    expect(api.saveRecording.mock.calls[0][0].steps).toEqual([
+    expect(api.saveRecording.mock.calls[0][1].steps).toEqual([
       step('a'),
       { ...typed.steps[1], text: 'new' },
       step('z')
@@ -1448,6 +1468,7 @@ describe('TestPage re-picking the failed element', () => {
         dispatchMenuCommand('save')
       })
       expect(api.saveRecording).toHaveBeenCalledWith(
+        expect.any(String),
         expect.objectContaining({ id: draftId, steps: [step('a'), step('b')] })
       )
       await waitFor(() => expect(useRecorderStore.getState().draftTest).toBeNull())

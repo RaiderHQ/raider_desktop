@@ -10,9 +10,9 @@
 
 export type RunScope =
   | { kind: 'all' }
-  /** Project-relative POSIX spec or feature paths; each must be a project test file (spec, or feature in Cucumber projects). */
+  /** Project-relative POSIX spec paths; each must be a project test file. */
   | { kind: 'files'; files: string[] }
-  /** "spec/a_spec.rb:12" for run-one / run-line; the file part must be a project test file (spec, or feature in Cucumber projects). */
+  /** "spec/a_spec.rb:12" for run-one / run-line; the file part must be a project test file. */
   | { kind: 'locations'; locations: string[] }
   /** Each tag must match /^[A-Za-z0-9_:-]+$/. */
   | { kind: 'tags'; tags: string[] }
@@ -63,7 +63,6 @@ export type RunEvent =
       type: 'run:started'
       runId: string
       startedAt: string
-      framework: 'rspec' | 'cucumber'
       scope: RunScope
       workers: number
       /** False when the project's raider_reporter is older than 0.11: no phases past booting, no plan, no per-test events. */
@@ -105,8 +104,8 @@ export type RunEvent =
       status: ExampleStatus
       durationMs?: number
       /**
-       * 1-based. Cucumber --retry emits one event per attempt; RSpec (rspec-retry)
-       * emits a single final event with the total attempt count.
+       * 1-based. RSpec (rspec-retry) emits a single final event with the total
+       * attempt count.
        */
       attempt?: number
       worker?: number

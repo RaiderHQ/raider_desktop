@@ -336,7 +336,6 @@ describe('runStore finish hook', () => {
     type: 'run:started',
     runId: 'r1',
     startedAt: 't',
-    framework: 'rspec',
     scope,
     workers: 1,
     liveEvents: true

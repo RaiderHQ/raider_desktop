@@ -15,7 +15,6 @@ function make(over: { liveEvents?: boolean; workers?: number } = {}): {
     runId: RID,
     request: { scope: { kind: 'all' }, rubyCommand: 'ruby' },
     projectPath: '/p',
-    framework: 'rspec',
     workers: over.workers ?? 1,
     liveEvents: over.liveEvents ?? true,
     emit: (e): void => void emitted.push(e),
@@ -61,7 +60,6 @@ describe('RunSession', () => {
     expect(emitted[0]).toMatchObject({
       type: 'run:started',
       runId: RID,
-      framework: 'rspec',
       workers: 1,
       liveEvents: true,
       startedAt: '2026-01-01T00:00:00.000Z'
@@ -95,7 +93,7 @@ describe('RunSession', () => {
     expect(finished(emitted).counts.total).toBe(5)
   })
 
-  it('counts the latest status per id under cucumber retry', () => {
+  it('counts the latest status per id when an example is retried', () => {
     const { session, emitted } = make()
     session.apply([planned(1)])
     session.apply([example('w0-0', 'failed'), example('w0-0', 'passed')])

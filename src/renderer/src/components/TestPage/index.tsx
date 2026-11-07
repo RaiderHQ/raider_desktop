@@ -36,6 +36,7 @@ import { MAX_TAG_LENGTH, MAX_TAGS, TAG_RE, normalizeTags } from '@shared/tags'
 import type { TestRow } from '@foundation/testKey'
 import type { TestResult } from '@foundation/Types/testResult'
 import type { Step } from '@shared/types/step'
+import { activeProjectPath } from '@foundation/activeProject'
 import { onMenuCommand } from '@foundation/menuCommands'
 import { dropEmptyDraft, isEmptyRecording, useTestRecording } from '../../hooks/useTestRecording'
 import { useFailedStep } from '../../hooks/useFailedStep'
@@ -221,7 +222,7 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
     // Saved right away, not left to the debounce: opening another test cancels that timer
     const renamed = { ...test, name }
     if (activeTestSaved) {
-      Promise.resolve(window.api.saveRecording(renamed))
+      Promise.resolve(window.api.saveRecording(activeProjectPath(), renamed))
         .then((result) => handleSaveResult(result, renamed.id, t))
         .catch((error: unknown) => console.error('Saving the new name failed:', error))
     }
@@ -378,10 +379,19 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
   const deleteTest = (): void => {
     setConfirmingDelete(false)
     if (!activeTestSaved || !test) return
-    Promise.resolve(window.api.deleteTest(test.id)).catch((error: unknown) =>
-      console.error('Deleting the test failed:', error)
-    )
-    navigate('/overview/tests')
+    // Back to the list only once it is gone: a failed delete leaves the test where it is
+    Promise.resolve(window.api.deleteTest(test.id))
+      .then((result) => {
+        if (result?.success === false) {
+          toast.error(t('testPage.deleteFailed'))
+          return
+        }
+        navigate('/overview/tests')
+      })
+      .catch((error: unknown) => {
+        console.error('Deleting the test failed:', error)
+        toast.error(t('testPage.deleteFailed'))
+      })
   }
 
   const saveAssertion = (expectedText: string): void => {

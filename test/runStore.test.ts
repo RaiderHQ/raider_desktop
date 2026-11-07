@@ -12,7 +12,6 @@ const events: RunEvent[] = [
     type: 'run:started',
     runId: 'r1',
     startedAt: 't',
-    framework: 'rspec',
     scope: { kind: 'all' },
     workers: 1,
     liveEvents: true

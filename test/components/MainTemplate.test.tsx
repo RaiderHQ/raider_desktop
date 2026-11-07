@@ -58,10 +58,8 @@ beforeAll(() => {
       .fn()
       .mockResolvedValue({ success: true, rubyCommand: 'ruby', rubyVersion: '3.2.0' }),
     closeApp: vi.fn(),
-    onTestsMigrated: vi.fn(() => vi.fn()),
     onRunEvent: vi.fn(() => vi.fn()),
     getActiveRun: vi.fn().mockResolvedValue(null),
-    onTestsTooNew: vi.fn(() => vi.fn()),
     onTraceOpened: vi.fn(() => vi.fn()),
     onTestsUpdated: vi.fn(() => vi.fn()),
     onMenuCommand: vi.fn(() => vi.fn()),
@@ -104,18 +102,11 @@ describe('MainTemplate Navigation', () => {
   })
 })
 
-describe('MainTemplate project files toasts', () => {
+describe('MainTemplate tests updates', () => {
   type Api = Record<string, ReturnType<typeof vi.fn>>
   const api = (): Api => (window as unknown as { api: Api }).api
   const listener = (name: string): ((...args: unknown[]) => void) =>
     api()[name].mock.calls.at(-1)![0]
-  const toastMock = async (): Promise<
-    ReturnType<typeof vi.fn> & {
-      success: ReturnType<typeof vi.fn>
-      error: ReturnType<typeof vi.fn>
-    }
-  > => (await import('react-hot-toast')).default as never
-
   const renderMain = (): void => {
     render(
       <MemoryRouter initialEntries={['/overview']}>
@@ -124,31 +115,17 @@ describe('MainTemplate project files toasts', () => {
     )
   }
 
-  it('says the recorded tests are now project files', async () => {
-    const toast = await toastMock()
-    toast.success.mockClear()
+  it('applies the tests main announces to the store and lists the files once', async () => {
+    const { useTestsListStore } = await import('@foundation/Stores/testsListStore')
+    const listProjectTests = vi.fn().mockResolvedValue([])
+    api().listProjectTests = listProjectTests as never
     renderMain()
-    listener('onTestsMigrated')({ migrated: 2, postponed: false })
-    expect(toast.success).toHaveBeenCalledWith(
-      'suites.migrated.done {"count":2}',
-      expect.anything()
-    )
-  })
-
-  it('says a postponed move keeps the tests safe', async () => {
-    const toast = await toastMock()
-    toast.mockClear()
-    renderMain()
-    listener('onTestsMigrated')({ migrated: 0, postponed: true })
-    expect(toast).toHaveBeenCalledWith('suites.migrated.postponed', expect.anything())
-  })
-
-  it('says tests from a newer Raider are left alone', async () => {
-    const toast = await toastMock()
-    toast.error.mockClear()
-    renderMain()
-    listener('onTestsTooNew')()
-    expect(toast.error).toHaveBeenCalledWith('suites.tooNew', expect.anything())
+    const tests = [{ id: 't1', name: 'A', url: '', steps: [] }]
+    await act(async () => {
+      listener('onTestsUpdated')(tests)
+    })
+    expect(useTestsListStore.getState().tests).toEqual(tests)
+    expect(listProjectTests).toHaveBeenCalledTimes(1)
   })
 
   describe('menu bar commands (D11)', () => {

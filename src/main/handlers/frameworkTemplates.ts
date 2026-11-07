@@ -6,8 +6,7 @@
  */
 
 /**
- * Returns the file extension for export. Every framework exports an RSpec
- * `.rb` file until Cucumber feature generation lands.
+ * Returns the file extension for export: always an RSpec `.rb` file.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function getExportExtension(_framework: string | null): string {

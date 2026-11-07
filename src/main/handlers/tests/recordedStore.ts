@@ -1,6 +1,4 @@
 import { appState } from '../appState'
-import type { SuiteMode } from '../appState'
-import { activationSettled } from '../project/setActiveProject'
 import {
   CodeOwnedError,
   deleteRecordedTest,
@@ -15,9 +13,9 @@ import type { Sidecar } from '../../../shared/types/projectTest'
 import type { Test } from '../../../shared/types/test'
 
 /**
- * The recorded tests of a project that keeps them as files, as they were when a
- * handler started. Handlers write through this snapshot, never through appState,
- * so nothing lands in a project the user has switched away from.
+ * The recorded tests of a project, as they were when a handler started. Handlers write
+ * through this snapshot, never through appState, so nothing lands in a project the user
+ * has switched away from.
  */
 export interface FilesStore {
   projectPath: string
@@ -25,34 +23,42 @@ export interface FilesStore {
   tests: Map<string, Test>
 }
 
-/** Why the active project's tests can't be changed (only meaningful in locked mode). */
-export const lockedError = (): string =>
-  appState.suiteLock === 'cannotRecord'
-    ? "Raider can't change these tests because this project can no longer record tests."
-    : 'These tests were saved by a newer version of Raider and cannot be changed.'
+export const CANNOT_RECORD_ERROR =
+  "Raider can't change these tests because this project can't record tests."
 export const PROJECT_CHANGED_ERROR = 'The project was closed before this change could be saved.'
 export const INVALID_TEST_ERROR = 'This test could not be saved.'
+export const NO_PROJECT_ERROR = 'No project is open.'
 export const importFailed = (count: number): string =>
   count === 1 ? '1 test could not be imported.' : `${count} tests could not be imported.`
-export const NO_PROJECT_ERROR = 'No project is open.'
 
-/** The active project's mode, once any in-flight activation has finished. */
-export async function activeSuiteMode(): Promise<SuiteMode> {
-  await activationSettled()
-  return appState.suiteMode
+/** Recorded tests can only be written into an RSpec project that can record. */
+export const canRecordFiles = (layout: ProjectLayout): boolean =>
+  layout.framework === 'rspec' && layout.recordable
+
+/** Why there is no store: no project is open, or the open one can't record. */
+export const noStoreError = (): string =>
+  appState.projectPath && appState.layout ? CANNOT_RECORD_ERROR : NO_PROJECT_ERROR
+
+/** A snapshot of the active project's tests, or null without a project or when it can't record. */
+export function filesStore(): FilesStore | null {
+  if (!appState.projectPath || !appState.layout || !canRecordFiles(appState.layout)) return null
+  return { projectPath: appState.projectPath, layout: appState.layout, tests: appState.tests }
 }
 
-/** A snapshot of the active files-mode project, or null in any other mode or without a project. */
-export function filesStore(): FilesStore | null {
-  if (appState.suiteMode !== 'files' || !appState.projectPath || !appState.layout) return null
-  return { projectPath: appState.projectPath, layout: appState.layout, tests: appState.tests }
+/**
+ * The active store, but only for the project the renderer says it is working on: a save in
+ * flight during a project switch must never land in the other project.
+ */
+export function storeForProject(projectPath: unknown): FilesStore | { error: string } {
+  const store = filesStore()
+  if (!store) return { error: noStoreError() }
+  if (projectPath !== store.projectPath) return { error: PROJECT_CHANGED_ERROR }
+  return store
 }
 
 /** Still the active project's store: a re-activation replaces the map, so it fails too. */
 export const isCurrent = (store: FilesStore): boolean =>
-  appState.suiteMode === 'files' &&
-  appState.projectPath === store.projectPath &&
-  appState.tests === store.tests
+  appState.projectPath === store.projectPath && appState.tests === store.tests
 
 export class ProjectChangedError extends Error {
   constructor() {
@@ -151,20 +157,23 @@ export async function tagSavedTest(store: FilesStore, saved: Test, tags: string[
   return tagged
 }
 
+export type RemoveResult = { success: true; codeOwned?: true } | { success: false; error: string }
+
 /**
- * Deletes a test's files and forgets it. A test edited in code keeps its file (it then
- * shows as a code test); any other failure is logged and the file stays too.
+ * Deletes a test's files, then forgets it. A test edited in code keeps its file (it then shows
+ * as a code test) and is forgotten. Any other failure leaves the test where it is.
  */
-export async function removeRecordedTest(store: FilesStore, testId: string): Promise<void> {
-  store.tests.delete(testId)
+export async function removeRecordedTest(store: FilesStore, testId: string): Promise<RemoveResult> {
   try {
     await deleteRecordedTest(store.projectPath, testId)
   } catch (error) {
     if (!(error instanceof CodeOwnedError)) {
       safeError(`Could not delete the file of recorded test ${testId}:`, error)
+      return { success: false, error: 'The test could not be deleted.' }
     }
+    store.tests.delete(testId)
+    return { success: true, codeOwned: true }
   }
+  store.tests.delete(testId)
+  return { success: true }
 }
-
-/** Whether the active project still has the test. */
-export const isListed = (testId: string): boolean => appState.tests.has(testId)

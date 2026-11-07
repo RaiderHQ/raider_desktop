@@ -1,6 +1,7 @@
 import { appState } from '../appState'
 import runRecording from './runRecording'
-import { activeSuiteMode } from '../tests/suiteStore'
+import { activationSettled } from '../project/setActiveProject'
+import { filesStore, PROJECT_CHANGED_ERROR } from '../tests/recordedStore'
 import { detectProjectLayout } from '../project/projectLayout'
 import type { Test } from '../../../shared/types/test'
 import { mobileNoLegacyResult, type LegacyRunResult } from '../../../shared/types/prepareRun'
@@ -10,9 +11,9 @@ type RunResult = LegacyRunResult
 const USE_LIVE_RUNNER = 'Use the live runner.'
 
 /** True for an Appium project, read from its Gemfile while its layout isn't known yet */
-async function isMobileProject(projectPath: string): Promise<boolean> {
+async function isMobileProject(): Promise<boolean> {
   if (appState.layout) return appState.layout.automation === 'appium'
-  const path = appState.projectPath ?? projectPath
+  const path = appState.projectPath
   if (!path) return false
   try {
     return (await detectProjectLayout(path)).automation === 'appium'
@@ -32,8 +33,14 @@ export async function runTestHandler(
   rubyCommand: string,
   _test?: Test // kept for the IPC signature; the legacy path runs the cached test
 ): Promise<RunResult> {
-  if ((await activeSuiteMode()) === 'files') return { success: false, output: USE_LIVE_RUNNER }
-  if (await isMobileProject(projectPath)) return mobileNoLegacyResult()
+  await activationSettled()
+  if (!appState.projectPath) return { success: false, output: `Test with ID ${testId} not found.` }
+  // A run asked for during a project switch must not start in the other project
+  if (projectPath !== appState.projectPath) {
+    return { success: false, output: PROJECT_CHANGED_ERROR }
+  }
+  if (filesStore()) return { success: false, output: USE_LIVE_RUNNER }
+  if (await isMobileProject()) return mobileNoLegacyResult()
 
   const cached = appState.tests.get(testId)
   if (!cached) return { success: false, output: `Test with ID ${testId} not found.` }

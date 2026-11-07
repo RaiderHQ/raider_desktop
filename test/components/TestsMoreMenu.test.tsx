@@ -133,10 +133,54 @@ describe('TestsMoreMenu', () => {
     expect(screen.getByRole('menuitem', { name: 'Run tagged tests' })).toBeEnabled()
   })
 
-  it('disables Import test in a mobile project', () => {
-    useProjectStore.setState({ layout: { automation: 'appium' } as never })
+  it('disables both imports, with the reason, in a project that cannot record', () => {
+    useProjectStore.setState({
+      layout: { recordable: false, unsupportedReason: 'mobile' } as never
+    })
     render(<TestsMoreMenu tag={null} />)
     open()
-    expect(screen.getByRole('menuitem', { name: 'Import test' })).toBeDisabled()
+    for (const name of ['Import test', 'Import project']) {
+      const item = screen.getByRole('menuitem', { name })
+      expect(item).toBeDisabled()
+      expect(item).toHaveAttribute('title', "Mobile projects can't be recorded yet.")
+    }
+    // Exporting what the project has stays possible
+    expect(screen.getByRole('menuitem', { name: 'Export project' })).toBeEnabled()
+  })
+
+  it('falls back to the generic reason', () => {
+    useProjectStore.setState({ layout: { recordable: false } as never })
+    render(<TestsMoreMenu tag={null} />)
+    open()
+    expect(screen.getByRole('menuitem', { name: 'Import test' })).toHaveAttribute(
+      'title',
+      "Raider can't record into this project yet."
+    )
+  })
+
+  it('says what an import of a project did', async () => {
+    api.importProject.mockResolvedValue({ success: true, imported: 2, skipped: 1, failed: 0 })
+    render(<TestsMoreMenu tag={null} />)
+    open()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Import project' }))
+    await waitFor(() =>
+      expect(mockToast.success).toHaveBeenCalledWith(
+        'Imported 2, skipped 1 already in the project, 0 failed.'
+      )
+    )
+  })
+
+  it('reports a partly failed import as an error', async () => {
+    api.importProject.mockResolvedValue({
+      success: false,
+      error: '1 test could not be imported.',
+      imported: 1,
+      skipped: 0,
+      failed: 1
+    })
+    render(<TestsMoreMenu tag={null} />)
+    open()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Import project' }))
+    await waitFor(() => expect(mockToast.error).toHaveBeenCalled())
   })
 })

@@ -55,6 +55,25 @@ afterEach(async () => {
 const tests = (): { name: string; tags?: string[]; file?: string }[] =>
   Array.from(appState.tests.values()).sort((a, b) => a.name.localeCompare(b.name))
 
+const sidecarFor = (file: string, over: Record<string, unknown> = {}): string =>
+  JSON.stringify({
+    version: 1,
+    id: 'old-id',
+    name: 'Pay',
+    url: 'http://x.test',
+    steps: [nav('http://x.test')],
+    file,
+    automation: 'selenium',
+    hash: 'h',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    ...over
+  })
+const writeSidecarFile = async (file: string, body: string): Promise<void> => {
+  await mkdir(join(source, '.raider', 'tests'), { recursive: true })
+  await writeFile(join(source, '.raider', 'tests', `${file}.json`), body)
+}
+
 describe('importProject', () => {
   it('returns error when mainWindow is null', async () => {
     expect(await importProject(null as never)).toEqual({
@@ -73,61 +92,41 @@ describe('importProject', () => {
     expect(await importProject(win)).toEqual({ success: false, error: 'No project is open.' })
   })
 
-  it('imports every .rb file under the folder, as tests with a spec file each', async () => {
+  it('imports the top-level *_spec.rb files, one spec file each, and reports the counts', async () => {
     await setActiveProject(project)
-    await writeFile(join(source, 'top.rb'), exported('Top'))
-    await mkdir(join(source, 'checkout'))
-    await writeFile(join(source, 'checkout', 'pay.rb'), exported('Pay'))
+    await writeFile(join(source, 'top_spec.rb'), exported('Top'))
+    await writeFile(join(source, 'second_spec.rb'), exported('Second'))
+    await writeFile(join(source, 'notes.rb'), exported('Not a spec'))
     await writeFile(join(source, 'readme.md'), 'not a test')
 
-    expect(await importProject(win)).toEqual({ success: true })
+    expect(await importProject(win)).toEqual({ success: true, imported: 2, skipped: 0, failed: 0 })
 
-    expect(tests().map((t) => t.name)).toEqual(['Pay', 'Top'])
-    expect(tests().every((t) => t.file?.startsWith('spec/'))).toBe(true)
+    expect(tests().map((t) => t.name)).toEqual(['Second', 'Top'])
     expect(await readFile(join(project, 'spec', 'top_spec.rb'), 'utf-8')).toContain('http://x.test')
     expect(send).toHaveBeenCalledWith('tests-updated', expect.any(Array))
-    expect(reload).toHaveBeenCalled()
+    // The window is not reloaded: the list follows the broadcast
+    expect(reload).not.toHaveBeenCalled()
   })
 
-  it('tags the tests of a subfolder with the folder name, run through the tag rule', async () => {
+  it('reads nothing from subfolders and gives no tag for a folder name', async () => {
     await setActiveProject(project)
-    await writeFile(join(source, 'top.rb'), exported('Top'))
-    await mkdir(join(source, 'Smoke tests'))
-    await writeFile(join(source, 'Smoke tests', 'login.rb'), exported('Login'))
-    await mkdir(join(source, '2nd wave'))
-    await writeFile(join(source, '2nd wave', 'cart.rb'), exported('Cart'))
+    await writeFile(join(source, 'top_spec.rb'), exported('Top'))
+    await mkdir(join(source, 'smoke'))
+    await writeFile(join(source, 'smoke', 'login_spec.rb'), exported('Login'))
 
     await importProject(win)
 
-    const byName = Object.fromEntries(tests().map((t) => [t.name, t.tags]))
-    expect(byName.Top).toBeUndefined()
-    expect(byName.Login).toEqual(['smoke_tests'])
-    expect(byName.Cart).toEqual(['t_2nd_wave'])
-    expect(await readFile(join(project, 'spec', 'login_spec.rb'), 'utf-8')).toContain(
-      "describe 'Login', :smoke_tests do"
-    )
+    expect(tests().map((t) => t.name)).toEqual(['Top'])
+    expect(tests()[0].tags).toBeUndefined()
   })
 
-  it('keeps the tags and steps of an export, from the sidecars written beside it', async () => {
+  it('merges the tags of the sidecar with those of the describe line', async () => {
     await setActiveProject(project)
-    await writeFile(join(source, 'pay_spec.rb'), exported('Pay'))
-    await mkdir(join(source, '.raider', 'tests'), { recursive: true })
     await writeFile(
-      join(source, '.raider', 'tests', 'pay_spec.rb.json'),
-      JSON.stringify({
-        version: 1,
-        id: 'old-id',
-        name: 'Pay',
-        url: 'http://x.test',
-        steps: [nav('http://x.test')],
-        file: 'pay_spec.rb',
-        automation: 'selenium',
-        hash: 'h',
-        tags: ['smoke', 'regression'],
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z'
-      })
+      join(source, 'pay_spec.rb'),
+      exported('Pay') + "describe 'Pay', :smoke, :Bad_Tag! do\nend\n"
     )
+    await writeSidecarFile('pay_spec.rb', sidecarFor('pay_spec.rb', { tags: ['regression'] }))
 
     await importProject(win)
 
@@ -138,10 +137,84 @@ describe('importProject', () => {
     expect(appState.tests.has('old-id')).toBe(false)
   })
 
+  it('takes the tags of the describe line when there is no sidecar', async () => {
+    await setActiveProject(project)
+    await writeFile(
+      join(source, 'login_spec.rb'),
+      "# Test: Login\ndescribe 'Login', :smoke do\nend\n"
+    )
+
+    await importProject(win)
+
+    expect(tests()[0].tags).toEqual(['smoke'])
+  })
+
+  it('refuses the whole import for a sidecar whose password step reads another variable', async () => {
+    await setActiveProject(project)
+    await writeFile(join(source, 'ok_spec.rb'), exported('Ok'))
+    await writeFile(join(source, 'pay_spec.rb'), '# Test: Pay\n')
+    await writeSidecarFile(
+      'pay_spec.rb',
+      sidecarFor('pay_spec.rb', {
+        steps: [
+          {
+            id: 'p',
+            kind: 'type',
+            element: { strategy: 'id', value: 'pw' },
+            text: '',
+            secret: true,
+            secretName: 'GITHUB_TOKEN'
+          }
+        ]
+      })
+    )
+
+    const result = await importProject(win)
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('GITHUB_TOKEN')
+    expect(appState.tests.size).toBe(0)
+  })
+
+  it('counts a malformed sidecar as failed, logs it, and imports the rest', async () => {
+    await setActiveProject(project)
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    await writeFile(join(source, 'ok_spec.rb'), exported('Ok'))
+    await writeFile(join(source, 'bad_spec.rb'), exported('Bad'))
+    await writeSidecarFile('bad_spec.rb', '{not json')
+
+    const result = await importProject(win)
+
+    expect(result).toEqual({
+      success: false,
+      error: '1 test could not be imported.',
+      imported: 1,
+      skipped: 0,
+      failed: 1
+    })
+    expect(tests().map((t) => t.name)).toEqual(['Ok'])
+    expect(log).toHaveBeenCalled()
+  })
+
+  it('skips a test whose name the project already has, and counts it', async () => {
+    await setActiveProject(project)
+    await writeFile(join(source, 'one_spec.rb'), exported('Same'))
+    await writeFile(join(source, 'two_spec.rb'), exported('Fresh'))
+    await importProject(win)
+
+    const again = await importProject(win)
+
+    expect(again).toEqual({ success: true, imported: 0, skipped: 2, failed: 0 })
+    expect(tests().map((t) => t.file)).toHaveLength(2)
+  })
+
   it('asks before importing hidden custom Ruby and imports nothing on cancel', async () => {
     await setActiveProject(project)
     const custom: Step = { id: 'c', kind: 'custom', code: 'system("id")' }
-    await writeFile(join(source, 'bad.rb'), writeExportHeader({ testName: 'Bad', steps: [custom] }))
+    await writeFile(
+      join(source, 'bad_spec.rb'),
+      writeExportHeader({ testName: 'Bad', steps: [custom] })
+    )
     mockDialog.showMessageBox.mockResolvedValue({ response: 1 })
 
     const result = await importProject(win)
@@ -151,18 +224,9 @@ describe('importProject', () => {
     expect(appState.tests.size).toBe(0)
   })
 
-  it('adds to the tests the project has: it replaces nothing', async () => {
-    await setActiveProject(project)
-    await writeFile(join(source, 'one.rb'), exported('Same'))
-    await importProject(win)
-    await importProject(win)
-
-    expect(tests().map((t) => t.file)).toEqual(['spec/same_spec.rb', 'spec/same_2_spec.rb'])
-  })
-
   it('falls back to the file name when there is no test comment', async () => {
     await setActiveProject(project)
-    await writeFile(join(source, 'my_test.rb'), '# no comment\n')
+    await writeFile(join(source, 'my_test_spec.rb'), '# no comment\n')
 
     await importProject(win)
 
@@ -172,31 +236,68 @@ describe('importProject', () => {
   it('parses steps from a legacy file between begin and puts, as Steps', async () => {
     await setActiveProject(project)
     await writeFile(
-      join(source, 'step.rb'),
+      join(source, 'step_spec.rb'),
       '# Test: Step Test\nbegin\n  @driver.get("http://x.com")\n  @driver.find_element(:id, "btn").click\n  puts "Test \'Step Test\' passed successfully!"'
     )
 
     await importProject(win)
 
-    expect(tests()).toHaveLength(1)
     expect(Array.from(appState.tests.values())[0].steps).toEqual([
       { id: expect.any(String), kind: 'navigate', url: 'http://x.com' },
       { id: expect.any(String), kind: 'click', element: { strategy: 'id', value: 'btn' } }
     ])
   })
 
-  it('skips .raider, hidden tooling folders and symlinks', async () => {
+  it('skips links', async () => {
     await setActiveProject(project)
-    await mkdir(join(source, 'node_modules'))
-    await writeFile(join(source, 'node_modules', 'dep.rb'), exported('Dep'))
-    await mkdir(join(source, '.raider'))
-    await writeFile(join(source, '.raider', 'x.rb'), exported('Hidden'))
-    await symlink(join(project, 'Gemfile'), join(source, 'link.rb'))
-    await writeFile(join(source, 'real.rb'), exported('Real'))
+    await symlink(join(project, 'Gemfile'), join(source, 'link_spec.rb'))
+    await writeFile(join(source, 'real_spec.rb'), exported('Real'))
 
     await importProject(win)
 
     expect(tests().map((t) => t.name)).toEqual(['Real'])
+  })
+
+  it('counts a spec file over 1 MiB as failed and imports the rest', async () => {
+    await setActiveProject(project)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    await writeFile(join(source, 'ok_spec.rb'), exported('Ok'))
+    await writeFile(join(source, 'big_spec.rb'), '# Test: Big\n' + 'x'.repeat(1024 * 1024))
+
+    const result = await importProject(win)
+
+    expect(result).toMatchObject({ success: false, imported: 1, failed: 1 })
+    expect(tests().map((t) => t.name)).toEqual(['Ok'])
+  })
+
+  it('counts an oversized or non-regular sidecar as failed', async () => {
+    await setActiveProject(project)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    await writeFile(join(source, 'big_spec.rb'), exported('Big'))
+    await writeSidecarFile('big_spec.rb', ' '.repeat(1024 * 1024 + 1))
+    await writeFile(join(source, 'link_spec.rb'), exported('Link'))
+    await mkdir(join(source, '.raider', 'tests'), { recursive: true })
+    await symlink(join(project, 'Gemfile'), join(source, '.raider', 'tests', 'link_spec.rb.json'))
+
+    const result = await importProject(win)
+
+    expect(result).toMatchObject({ success: false, imported: 0, failed: 2 })
+    expect(appState.tests.size).toBe(0)
+  })
+
+  it('refuses a folder with no spec files', async () => {
+    await setActiveProject(project)
+    const result = await importProject(win)
+    expect(result).toEqual({ success: false, error: 'There are no *_spec.rb files there.' })
+  })
+
+  it('refuses a folder with more than 500 spec files', async () => {
+    await setActiveProject(project)
+    for (let i = 0; i < 501; i++) await writeFile(join(source, `t${i}_spec.rb`), '# Test: x\n')
+    const result = await importProject(win)
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('500')
+    expect(appState.tests.size).toBe(0)
   })
 
   it('returns the error when the folder cannot be read', async () => {

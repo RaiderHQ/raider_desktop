@@ -13,6 +13,17 @@ export class SidecarUnreadableError extends Error {
   }
 }
 
+/** A sidecar holds a password step that reads a variable other than RAIDER_SECRET_*. */
+export class SidecarSecretRefusedError extends SidecarUnreadableError {
+  constructor(
+    message: string,
+    readonly secretName: string
+  ) {
+    super(message)
+    this.name = 'SidecarSecretRefusedError'
+  }
+}
+
 const testsDir = (projectPath: string): string => join(projectPath, '.raider', 'tests')
 
 /** True for a relative POSIX path with no empty, `.` or `..` segments. */
@@ -186,8 +197,9 @@ export async function readSidecar(projectPath: string, fileRel: string): Promise
     ? steps.map(refusedSecretName).find((name) => name !== undefined)
     : undefined
   if (refused !== undefined) {
-    throw new SidecarUnreadableError(
-      `Sidecar ${fileRel} has a password step that reads ${refused}. Only RAIDER_SECRET_ variables are allowed.`
+    throw new SidecarSecretRefusedError(
+      `Sidecar ${fileRel} has a password step that reads ${refused}. Only RAIDER_SECRET_ variables are allowed.`,
+      refused
     )
   }
   if (!isSidecar(parsed)) throw new SidecarUnreadableError(`Sidecar has a bad shape: ${fileRel}`)
@@ -209,7 +221,15 @@ export async function readSidecar(projectPath: string, fileRel: string): Promise
 // Writes and deletes per sidecar path are chained so they can't interleave or reorder
 const sidecarQueues = new Map<string, Promise<unknown>>()
 
-export async function writeSidecar(projectPath: string, sidecar: Sidecar): Promise<void> {
+/**
+ * Writes the sidecar of `sidecar.file`. With `exclusive`, a record that already exists is
+ * never replaced (EEXIST): for folders Raider does not own, like an export target.
+ */
+export async function writeSidecar(
+  projectPath: string,
+  sidecar: Sidecar,
+  { exclusive = false }: { exclusive?: boolean } = {}
+): Promise<void> {
   const file = sidecarPath(projectPath, sidecar.file)
   // Serialize now so later in-memory mutations don't leak into this write
   const { tags, ...rest } = sidecar
@@ -218,7 +238,7 @@ export async function writeSidecar(projectPath: string, sidecar: Sidecar): Promi
   return serialize(sidecarQueues, file, async () => {
     await assertRealInside(projectPath, file)
     await fs.mkdir(dirname(file), { recursive: true })
-    await writeFileAtomic(file, body)
+    await writeFileAtomic(file, body, { exclusive })
   })
 }
 

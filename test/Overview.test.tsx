@@ -5,6 +5,7 @@ import { dispatchMenuCommand } from '@foundation/menuCommands'
 import '@testing-library/jest-dom'
 import useTitleStore from '@foundation/Stores/titleStore'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
+import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { Link, MemoryRouter } from 'react-router'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
@@ -172,6 +173,7 @@ const webLayout = {
 } as const
 
 beforeEach(async () => {
+  useTestsListStore.setState({ rows: null, tests: [] })
   vi.clearAllMocks()
   localStorage.clear()
   // @ts-expect-error - Mocking window.api
@@ -1013,7 +1015,6 @@ describe('Overview live runs', (): void => {
     runId: 'r0',
     projectPath: '/fake/project',
     scope: { kind: 'all' },
-    framework: 'rspec',
     workers: 1,
     liveEvents: true,
     startedAt: '2026-01-01T00:00:00Z',

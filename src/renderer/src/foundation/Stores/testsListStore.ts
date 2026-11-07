@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import i18n from 'i18next'
 import type { Test } from '@foundation/Types/test'
 import type { TestRow } from '@foundation/testKey'
+import type { ProjectTestEntry } from '@shared/types/projectTest'
 
 interface TestsListStore {
   /** null until the first load finishes */
@@ -10,6 +11,8 @@ interface TestsListStore {
   /** The recorded tests with their steps, as main has them (what a failed run is mapped against) */
   tests: Test[]
   reload: () => Promise<void>
+  /** main announced the tests (with their steps): keep them, and list the files again */
+  applyUpdate: (tests: Test[]) => Promise<void>
 }
 
 /**
@@ -18,10 +21,30 @@ interface TestsListStore {
  */
 let latestReload = 0
 
+const toRow = (e: ProjectTestEntry): TestRow => ({
+  name: e.name,
+  file: e.file,
+  testId: e.testId,
+  ownership: e.ownership,
+  ...(e.missingFile ? { missingFile: true as const } : {}),
+  tags: e.tags ?? []
+})
+
 export const useTestsListStore = create<TestsListStore>(
   (set, get): TestsListStore => ({
     rows: null,
     tests: [],
+    applyUpdate: async (tests): Promise<void> => {
+      // Newer than any reload still on its way
+      const mine = ++latestReload
+      set({ tests })
+      try {
+        const entries = await window.api.listProjectTests()
+        if (mine === latestReload) set({ rows: entries.map(toRow) })
+      } catch (error) {
+        console.error('Listing the project tests failed:', error)
+      }
+    },
     reload: async (): Promise<void> => {
       // Only the newest reload may write: older ones can resolve late
       const mine = ++latestReload
@@ -30,14 +53,7 @@ export const useTestsListStore = create<TestsListStore>(
           window.api.listProjectTests(),
           window.api.getTests()
         ])
-        const rows: TestRow[] = entries.map((e) => ({
-          name: e.name,
-          file: e.file,
-          testId: e.testId,
-          ownership: e.ownership,
-          ...(e.missingFile ? { missingFile: true as const } : {}),
-          tags: e.tags ?? []
-        }))
+        const rows = entries.map(toRow)
         if (mine === latestReload) set({ rows, tests })
       } catch (error) {
         console.error('Listing the project tests failed:', error)

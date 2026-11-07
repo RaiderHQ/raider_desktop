@@ -18,8 +18,8 @@ import { pushToLongship } from '../longship/pushToLongship'
 import { buildShellCommand } from '../../utils/shellCommand'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
 import { safeWarn } from '../../utils/safeLog'
-import { buildRunCommand, validateTags, type Framework } from './runCommand'
-import { runnableFiles } from './runnableFiles'
+import { buildRunCommand, validateTags } from './runCommand'
+import { listedFiles } from '../tests/projectTestIpc'
 import { clampWorkers, runDefaults } from './runDefaults'
 import { reporterVersion, supportsLiveEvents } from './reporterVersion'
 import { EventTail } from './eventTail'
@@ -106,7 +106,7 @@ const nonEmptyStrings = (value: unknown, what: string): string[] => {
 }
 
 /** Checks the (untrusted) request; only listed project tests and safe tags may run. */
-async function validate(request: unknown, framework: Framework): Promise<RunRequest> {
+async function validate(request: unknown): Promise<RunRequest> {
   if (typeof request !== 'object' || request === null) throw new Error('No run request was given.')
   const { scope, rubyCommand, loginState } = request as RunRequest
   if (!isValidRubyCommand(rubyCommand)) {
@@ -121,16 +121,15 @@ async function validate(request: unknown, framework: Framework): Promise<RunRequ
     case 'all':
       break
     case 'files':
-      await runnableFiles(nonEmptyStrings(s.files, 'files'), framework)
+      await listedFiles(nonEmptyStrings(s.files, 'files'))
       break
     case 'locations':
-      await runnableFiles(
+      await listedFiles(
         nonEmptyStrings(s.locations, 'locations').map((location) => {
           const match = LOCATION.exec(location)
           if (!match) throw new Error(`Not a test location: ${location}`)
           return match[1]
-        }),
-        framework
+        })
       )
       break
     case 'tags':
@@ -140,14 +139,6 @@ async function validate(request: unknown, framework: Framework): Promise<RunRequ
       throw new Error('Unknown run scope.')
   }
   return request as RunRequest
-}
-
-async function detectFramework(projectPath: string): Promise<Framework> {
-  try {
-    return (await fs.stat(path.join(projectPath, 'spec'))).isDirectory() ? 'rspec' : 'cucumber'
-  } catch {
-    return 'cucumber'
-  }
 }
 
 type ResultFile = { shard: boolean; finished: number; statuses: unknown[] }
@@ -228,13 +219,11 @@ export async function startRun(
   try {
     const projectPath = appState.projectPath
     if (!projectPath) throw new Error('No project is open.')
-    const framework = await detectFramework(projectPath)
-    const valid = await validate(request, framework)
+    const valid = await validate(request)
     // The files were checked against the project open now; run only if it's still the same one
     if (appState.projectPath !== projectPath)
       throw new Error('The project changed, so the tests were not run.')
     const { command, workers } = buildRunCommand({
-      framework,
       scope: valid.scope,
       workers: clampWorkers(valid.workers, runDefaults().maxWorkers),
       rubyCommand: valid.rubyCommand
@@ -250,7 +239,6 @@ export async function startRun(
       runId,
       request: valid,
       projectPath,
-      framework,
       workers,
       liveEvents,
       emit: (e): void => {

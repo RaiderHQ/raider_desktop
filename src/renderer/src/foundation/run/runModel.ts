@@ -29,7 +29,6 @@ export interface RunView {
   runId: string
   projectPath: string
   scope: RunScope
-  framework: 'rspec' | 'cucumber'
   workers: number
   liveEvents: boolean
   startedAt: string
@@ -70,7 +69,6 @@ export function reduceRun(
       runId: event.runId,
       projectPath: projectPath ?? '',
       scope: event.scope,
-      framework: event.framework,
       workers: event.workers,
       liveEvents: event.liveEvents,
       startedAt: event.startedAt,

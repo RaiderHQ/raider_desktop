@@ -79,12 +79,6 @@ describe('describeTraceStep', () => {
     )
   })
 
-  it('uses the Gherkin name for cucumber steps', () => {
-    expect(
-      describeTraceStep(make({ action: 'cucumber_step', name: 'When I log in as admin' }))
-    ).toEqual({ key: 'traceViewer.step.cucumber', values: { name: 'When I log in as admin' } })
-  })
-
   it('names the compared screenshot, and says when it did not match', () => {
     const base = { action: 'match_screenshot', name: 'home', locator: null }
     expect(describeTraceStep(make({ ...base, status: 'passed' }))).toEqual({
@@ -143,7 +137,6 @@ describe('describeTraceStep', () => {
       'find_element',
       'find_elements',
       'eventually',
-      'cucumber_step',
       'tap'
     ]
     const steps = [
@@ -160,14 +153,6 @@ describe('describeTraceStep', () => {
 })
 
 describe('describeTraceStep hardening', () => {
-  it('hides the name of a secret cucumber step', () => {
-    const result = describeTraceStep(
-      make({ action: 'cucumber_step', name: 'When I type "hunter2"', secret: true })
-    )
-    expect(result).toEqual({ key: 'traceViewer.step.cucumberSecret', values: {} })
-    expect(JSON.stringify(result)).not.toContain('hunter2')
-  })
-
   it('drops the query, fragment and credentials from the navigate url', () => {
     const result = describeTraceStep(
       make({ action: 'navigate', url: 'http://u:p@127.0.0.1:55539/a/b?token=abc#x' })

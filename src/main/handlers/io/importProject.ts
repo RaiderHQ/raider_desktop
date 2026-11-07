@@ -1,6 +1,6 @@
 import { dialog, BrowserWindow } from 'electron'
 import { lastDialogDirectory, rememberDialogPick } from '../../utils/dialogDirectory'
-import * as fs from 'fs'
+import { lstat, readdir, readFile } from 'fs/promises'
 import * as path from 'path'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
@@ -11,51 +11,79 @@ import {
   secretRefused,
   type ImportedTest
 } from './confirmCustomCode'
-import { readSidecar } from '../tests/sidecar'
-import { normalizeTags, tagFromName } from '../../../shared/tags'
+import { activationSettled } from '../project/setActiveProject'
+import { readSidecar, SidecarSecretRefusedError } from '../tests/sidecar'
+import { findDescribeLine, normalizeTags, tagsFromDescribeLine } from '../../../shared/tags'
+import { safeError } from '../../utils/safeLog'
 import {
-  activeSuiteMode,
   broadcast,
   filesStore,
   importFailed,
   isCurrent,
-  lockedError,
-  NO_PROJECT_ERROR,
+  noStoreError,
   PROJECT_CHANGED_ERROR,
   saveRecordedTestInProject,
   tagSavedTest
-} from '../tests/suiteStore'
+} from '../tests/recordedStore'
 
-const SKIP_DIRS = new Set(['node_modules', '.git', 'vendor', '.raider'])
+/** The most spec files one import reads. */
+export const MAX_IMPORT_FILES = 500
+/** The largest spec file or record one import reads. */
+export const MAX_IMPORT_BYTES = 1024 * 1024
 
-/** Every `.rb` file under `dir`, as POSIX paths relative to it. Links are not followed. */
-function rubyFilesUnder(dir: string, prefix = ''): string[] {
-  const out: string[] = []
-  for (const entry of fs.readdirSync(path.join(dir, prefix), { withFileTypes: true })) {
-    const rel = prefix ? `${prefix}/${entry.name}` : entry.name
-    if (entry.isDirectory()) {
-      if (!SKIP_DIRS.has(entry.name)) out.push(...rubyFilesUnder(dir, rel))
-    } else if (entry.isFile() && entry.name.endsWith('.rb')) out.push(rel)
-  }
-  return out.sort()
+/** `file` as text, if it is a regular file (no link, no pipe) of at most MAX_IMPORT_BYTES. */
+async function readSmallRegularFile(file: string): Promise<string> {
+  const stat = await lstat(file)
+  if (!stat.isFile()) throw new Error(`Not a regular file: ${path.basename(file)}`)
+  if (stat.size > MAX_IMPORT_BYTES) throw new Error(`Too large to import: ${path.basename(file)}`)
+  return readFile(file, 'utf-8')
 }
 
-interface ImportedFile extends ImportedTest {
+export interface ImportProjectResult {
+  success: boolean
+  error?: string
+  imported?: number
+  /** Tests whose name the project already has */
+  skipped?: number
+  failed?: number
+}
+
+interface Candidate extends ImportedTest {
   test: Test
   tags: string[]
 }
 
+/** A record beside the spec must be a small regular file before anything reads it. */
+async function checkSidecarFile(root: string, name: string): Promise<void> {
+  const file = path.join(root, '.raider', 'tests', `${name}.json`)
+  let stat
+  try {
+    stat = await lstat(file)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return
+    throw error
+  }
+  if (!stat.isFile()) throw new Error(`Not a regular file: ${name}.json`)
+  if (stat.size > MAX_IMPORT_BYTES) throw new Error(`Too large to import: ${name}.json`)
+}
+
+/**
+ * 'import-project': every top-level `*_spec.rb` of the chosen folder (the flat layout
+ * 'export-project' writes). The record in `<folder>/.raider/tests/` gives the tags when
+ * there is one; the file's describe line gives them otherwise. Nothing is read from
+ * subfolders, and nothing already in the project is replaced or changed.
+ */
 export default async function importProject(
   mainWindow: BrowserWindow
-): Promise<{ success: boolean; error?: string }> {
+): Promise<ImportProjectResult> {
   if (!mainWindow) {
     return { success: false, error: 'Main window not found' }
   }
   try {
-    if ((await activeSuiteMode()) === 'locked') return { success: false, error: lockedError() }
+    await activationSettled()
     // Taken before the dialog: the import goes to the project that was open when it started
     const store = filesStore()
-    if (!store) return { success: false, error: NO_PROJECT_ERROR }
+    if (!store) return { success: false, error: noStoreError() }
     const result = await dialog.showOpenDialog(mainWindow, {
       defaultPath: lastDialogDirectory(),
       properties: ['openDirectory']
@@ -67,60 +95,91 @@ export default async function importProject(
     }
 
     const root = result.filePaths[0]
-    const imported: ImportedFile[] = []
-    const stepIds = new Set<string>()
-
-    for (const rel of rubyFilesUnder(root)) {
-      const fileContent = fs.readFileSync(path.join(root, rel), 'utf-8')
-
-      // Exported files carry their steps as JSON; older files hold Ruby lines. An export
-      // from this app also has a record in .raider/tests/ that holds the tags
-      const header = readExportHeader(fileContent)
-      if (header.refusedSecret !== undefined) {
-        return { success: false, error: secretRefused(header.refusedSecret) }
-      }
-      const sidecar = await readSidecar(root, rel).catch(() => null)
-      const steps = withUniqueIds(header.steps ?? sidecar?.steps ?? [], stepIds)
-      const test: Test = {
-        id: randomUUID(),
-        name: header.testName ?? sidecar?.name ?? path.basename(rel, '.rb'),
-        url: startUrl(steps),
-        steps
-      }
-      // A subfolder's name is a tag on the tests it holds
-      const folder = path.posix.dirname(rel)
-      const folderTag = folder === '.' ? '' : tagFromName(path.posix.basename(folder))
-      imported.push({
-        name: test.name,
-        steps,
-        test,
-        tags: normalizeTags([...(sidecar?.tags ?? []), ...(folderTag ? [folderTag] : [])])
-      })
+    const files = (await readdir(root, { withFileTypes: true }))
+      .filter((entry) => entry.isFile() && entry.name.endsWith('_spec.rb'))
+      .map((entry) => entry.name)
+      .sort()
+    if (files.length === 0) return { success: false, error: 'There are no *_spec.rb files there.' }
+    if (files.length > MAX_IMPORT_FILES) {
+      return { success: false, error: `There are more than ${MAX_IMPORT_FILES} spec files there.` }
     }
 
-    if (!(await confirmCustomCode(mainWindow, imported))) {
+    const candidates: Candidate[] = []
+    const stepIds = new Set<string>()
+    let failed = 0
+    for (const name of files) {
+      try {
+        const content = await readSmallRegularFile(path.join(root, name))
+        // Exported files carry their steps as JSON; older files hold Ruby lines
+        const header = readExportHeader(content)
+        if (header.refusedSecret !== undefined) {
+          return { success: false, error: secretRefused(header.refusedSecret) }
+        }
+        await checkSidecarFile(root, name)
+        const sidecar = await readSidecar(root, name)
+        const steps = withUniqueIds(header.steps ?? sidecar?.steps ?? [], stepIds)
+        const test: Test = {
+          id: randomUUID(),
+          name: header.testName ?? sidecar?.name ?? path.basename(name, '_spec.rb'),
+          url: startUrl(steps),
+          steps
+        }
+        const found = findDescribeLine(content)
+        candidates.push({
+          name: test.name,
+          steps,
+          test,
+          tags: normalizeTags([
+            ...(sidecar?.tags ?? []),
+            ...(found ? tagsFromDescribeLine(found.line) : [])
+          ])
+        })
+      } catch (error) {
+        if (error instanceof SidecarSecretRefusedError) {
+          return { success: false, error: secretRefused(error.secretName) }
+        }
+        safeError(`Could not read ${name} for the import:`, error)
+        failed++
+      }
+    }
+
+    // import-test and import-project agree: a name the project already has is skipped
+    const taken = new Set(Array.from(store.tests.values()).map((t) => t.name))
+    const fresh = candidates.filter((c) => {
+      if (taken.has(c.name)) return false
+      taken.add(c.name)
+      return true
+    })
+    const skipped = candidates.length - fresh.length
+
+    if (!(await confirmCustomCode(mainWindow, fresh))) {
       return { success: false, error: importCancelled() }
     }
 
-    if (!isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
-
     // Each test gets a fresh id and a file of its own: an import never replaces a test
-    let failed = 0
-    for (const { test, tags } of imported) {
+    let imported = 0
+    for (const { test, tags } of fresh) {
       if (!isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
       try {
         const saved = await saveRecordedTestInProject(store, test)
         if (!saved.success) throw new Error(saved.error)
         await tagSavedTest(store, saved.test, tags)
-      } catch {
+        imported++
+      } catch (error) {
+        safeError(`Could not import ${test.name}:`, error)
         failed++
       }
     }
     broadcast(store)
-    mainWindow.reload()
-    return failed > 0 ? { success: false, error: importFailed(failed) } : { success: true }
+    return {
+      success: failed === 0,
+      imported,
+      skipped,
+      failed,
+      ...(failed > 0 && { error: importFailed(failed) })
+    }
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error)
-    return { success: false, error: errorMessage }
+    safeError('Importing the project failed:', error)
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 }

@@ -14,7 +14,6 @@ const started = (liveEvents = true): RunEvent => ({
   type: 'run:started',
   runId,
   startedAt: '2026-10-31T10:00:00Z',
-  framework: 'rspec',
   scope: { kind: 'all' },
   workers: 2,
   liveEvents

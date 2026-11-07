@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtemp, mkdir, readFile, writeFile, rm, access, readdir } from 'fs/promises'
+import { mkdtemp, mkdir, readFile, writeFile, rm, access, readdir, chmod } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -20,12 +20,15 @@ import deleteTest from '../../../src/main/handlers/deleteTest'
 import saveRecording from '../../../src/main/handlers/recording/saveRecording'
 import importTest from '../../../src/main/handlers/io/importTest'
 import getTests from '../../../src/main/handlers/getTests'
-import * as migration from '../../../src/main/handlers/tests/migrateToProjectFiles'
 import * as loading from '../../../src/main/handlers/tests/loadTests'
-import { filesStore, saveRecordedTestInProject } from '../../../src/main/handlers/tests/suiteStore'
+import {
+  filesStore,
+  saveRecordedTestInProject,
+  tagSavedTest
+} from '../../../src/main/handlers/tests/recordedStore'
 import { saveRecordedTest } from '../../../src/main/handlers/tests/recordedTests'
 import * as sidecars from '../../../src/main/handlers/tests/sidecar'
-import { saveSuiteIndex } from '../../../src/main/handlers/suitePersistence'
+import { readSidecar } from '../../../src/main/handlers/tests/sidecar'
 import type { Test } from '../../../src/shared/types/test'
 
 let project: string
@@ -95,7 +98,7 @@ describe('recorded tests as project files', () => {
   it('save writes the spec file and its record, and tells the renderer', async () => {
     await setActiveProject(project)
 
-    const result = await saveRecording(win, checkout())
+    const result = await saveRecording(win, project, checkout())
 
     // The saved test comes back with its file, so the page can say where it went
     expect(result).toEqual({
@@ -113,8 +116,8 @@ describe('recorded tests as project files', () => {
 
   it('autosaving an existing test updates its file in place', async () => {
     await setActiveProject(project)
-    await saveRecording(win, checkout())
-    await saveRecording(win, { ...checkout(), name: 'Checkout renamed' })
+    await saveRecording(win, project, checkout())
+    await saveRecording(win, project, { ...checkout(), name: 'Checkout renamed' })
 
     expect((await readdir(join(project, 'spec'))).sort()).toEqual(['checkout_spec.rb'])
     expect(await readFile(join(project, 'spec', 'checkout_spec.rb'), 'utf-8')).toContain(
@@ -125,22 +128,22 @@ describe('recorded tests as project files', () => {
 
   it('autosaving a known test reads only its own sidecar, not every one', async () => {
     await setActiveProject(project)
-    await saveRecording(win, checkout())
-    await saveRecording(win, checkout('other'))
+    await saveRecording(win, project, checkout())
+    await saveRecording(win, project, checkout('other'))
     const scan = vi.spyOn(sidecars, 'listSidecars')
 
-    await saveRecording(win, { ...checkout(), name: 'Checkout again' })
+    await saveRecording(win, project, { ...checkout(), name: 'Checkout again' })
 
     expect(scan).not.toHaveBeenCalled()
   })
 
   it('save of code-owned returns codeOwned', async () => {
     await setActiveProject(project)
-    await saveRecording(win, checkout())
+    await saveRecording(win, project, checkout())
     const spec = join(project, 'spec', 'checkout_spec.rb')
     await writeFile(spec, (await readFile(spec, 'utf-8')) + '\nputs "hand edit"\n')
 
-    const result = await saveRecording(win, { ...checkout(), name: 'Renamed' })
+    const result = await saveRecording(win, project, { ...checkout(), name: 'Renamed' })
 
     expect(result).toEqual({ success: false, error: 'codeOwned' })
     expect(await readFile(spec, 'utf-8')).toContain('hand edit')
@@ -150,7 +153,10 @@ describe('recorded tests as project files', () => {
   it('refuses a test whose steps it cannot store', async () => {
     await setActiveProject(project)
 
-    const result = await saveRecording(win, { ...checkout(), steps: [{ nope: true }] } as never)
+    const result = await saveRecording(win, project, {
+      ...checkout(),
+      steps: [{ nope: true }]
+    } as never)
 
     expect(result.success).toBe(false)
     expect(await exists(join(project, 'spec'))).toBe(false)
@@ -158,7 +164,7 @@ describe('recorded tests as project files', () => {
 
   it('delete removes a recorded file', async () => {
     await setActiveProject(project)
-    await saveRecording(win, checkout())
+    await saveRecording(win, project, checkout())
 
     expect(await deleteTest(win, { testId: 't-checkout' })).toEqual({ success: true })
 
@@ -168,11 +174,14 @@ describe('recorded tests as project files', () => {
 
   it('delete keeps code-owned file', async () => {
     await setActiveProject(project)
-    await saveRecording(win, checkout())
+    await saveRecording(win, project, checkout())
     const spec = join(project, 'spec', 'checkout_spec.rb')
     await writeFile(spec, (await readFile(spec, 'utf-8')) + '\nputs "hand edit"\n')
 
-    expect(await deleteTest(win, { testId: 't-checkout' })).toEqual({ success: true })
+    expect(await deleteTest(win, { testId: 't-checkout' })).toEqual({
+      success: true,
+      codeOwned: true
+    })
 
     expect(await readFile(spec, 'utf-8')).toContain('hand edit')
     expect(lastTests()).toEqual([])
@@ -190,7 +199,7 @@ describe('recorded tests as project files', () => {
     })
 
     const first = await importTest(win)
-    await saveRecording(win, { ...first.test!, name: 'Other name' })
+    await saveRecording(win, project, { ...first.test!, name: 'Other name' })
     const second = await importTest(win)
 
     expect(first.success).toBe(true)
@@ -225,7 +234,7 @@ describe('recorded tests as project files', () => {
 
   it('restart round trip', async () => {
     await setActiveProject(project)
-    await saveRecording(win, checkout())
+    await saveRecording(win, project, checkout())
 
     await setActiveProject(null)
     await setActiveProject(project)
@@ -249,95 +258,45 @@ describe('recorded tests as project files', () => {
   })
 
   it('a save without a project says so', async () => {
-    const result = await saveRecording(win, checkout())
+    const result = await saveRecording(win, project, checkout())
     expect(result).toEqual({ success: false, error: 'No project is open.' })
   })
 })
 
 describe('activation', () => {
-  const v2 = (): unknown => ({
+  const suites = JSON.stringify({
     version: 2,
     suites: [{ id: 's1', name: 'Old', tests: [checkout()] }]
   })
+  const writeSuites = async (body: string): Promise<void> => {
+    await mkdir(join(project, '.raider'), { recursive: true })
+    await writeFile(suitesJson(project), body)
+  }
 
-  it('a project that cannot record is locked and shows no tests', async () => {
-    await writeFile(join(project, 'Gemfile'), "gem 'cucumber'\ngem 'rspec'\n")
-    await setActiveProject(project)
-
-    const result = await saveRecording(win, checkout())
-
-    expect(appState.suiteMode).toBe('locked')
-    expect(result.success).toBe(false)
-    expect(result.error).toMatch(/can no longer record/)
-    expect(await exists(join(project, 'spec'))).toBe(false)
-  })
-
-  it('migrates version 2 suites and tells the renderer', async () => {
-    await mkdir(join(project, '.raider'))
-    await writeFile(suitesJson(project), JSON.stringify(v2()))
-
-    await setActiveProject(project)
-
-    expect(await exists(join(project, 'spec', 'checkout_spec.rb'))).toBe(true)
-    expect(send).toHaveBeenCalledWith('tests-migrated', { migrated: 1, postponed: false })
-    expect(lastTests()[0]).toMatchObject({ id: 't-checkout', ownership: 'recorded' })
-  })
-
-  it('says nothing when there was nothing to migrate', async () => {
-    await setActiveProject(project)
-    expect(send.mock.calls.map(([channel]) => channel)).not.toContain('tests-migrated')
-  })
-
-  it('a postponed migration says so and the project still opens', async () => {
-    await mkdir(join(project, '.raider'))
-    await writeFile(suitesJson(project), JSON.stringify(v2()))
-    vi.spyOn(migration, 'migrateToProjectFiles').mockRejectedValue(
-      new migration.MigrationPostponedError('backup', new Error('disk full'))
-    )
-
-    const result = await setActiveProject(project)
-
-    expect(result.success).toBe(true)
-    expect(send).toHaveBeenCalledWith('tests-migrated', { migrated: 0, postponed: true })
-    expect((await readJson(suitesJson(project))).version).toBe(2)
-  })
-
-  it('any migration error is treated as postponed', async () => {
-    vi.spyOn(migration, 'migrateToProjectFiles').mockRejectedValue(new TypeError('boom'))
-
-    const result = await setActiveProject(project)
-
-    expect(result.success).toBe(true)
-    expect(send).toHaveBeenCalledWith('tests-migrated', { migrated: 0, postponed: true })
-  })
-
-  it('a newer suites file opens with no tests and is never written', async () => {
-    await mkdir(join(project, '.raider'))
-    const newer = JSON.stringify({ version: 9, suites: [] })
-    await writeFile(suitesJson(project), newer)
-
-    const result = await setActiveProject(project)
-    const saved = await saveRecording(win, checkout())
-
-    expect(result.success).toBe(true)
-    expect(appState.tests.size).toBe(0)
-    expect(send).toHaveBeenCalledWith('tests-too-new')
-    expect(saved.success).toBe(false)
-    expect(await readFile(suitesJson(project), 'utf-8')).toBe(newer)
-  })
-
-  it('recorded tests in a project that can no longer record are shown read-only', async () => {
+  it('a project that cannot record shows its recorded tests and refuses to change them', async () => {
     await saveRecordedTest(project, layout, checkout())
     await writeFile(join(project, 'Gemfile'), "gem 'rspec'\ngem 'capybara'\n")
 
     await setActiveProject(project)
-    const saved = await saveRecording(win, checkout())
+    const saved = await saveRecording(win, project, checkout())
 
     expect(lastTests()[0].id).toBe('t-checkout')
-    expect(send.mock.calls.map(([channel]) => channel)).not.toContain('tests-too-new')
     expect(saved.success).toBe(false)
-    expect(saved.error).not.toMatch(/newer/)
-    expect(saved.error).toMatch(/can no longer record/)
+    expect(saved.error).toMatch(/can't record/)
+  })
+
+  it('never opens suites.json: a file of any age or state is left exactly as it is', async () => {
+    for (const body of [suites, JSON.stringify({ version: 9, suites: [] }), '{not json']) {
+      await writeSuites(body)
+      const result = await setActiveProject(project)
+      expect(result.success).toBe(true)
+      expect(await readFile(suitesJson(project), 'utf-8')).toBe(body)
+    }
+    // Its tests are not turned into spec files, and nothing about it is announced
+    expect(await exists(join(project, 'spec'))).toBe(false)
+    expect(send.mock.calls.map(([channel]) => channel).sort()).toEqual(
+      ['tests-updated', 'tests-updated', 'tests-updated'].sort()
+    )
   })
 
   it('says why opening failed when the tests cannot be loaded', async () => {
@@ -354,12 +313,113 @@ describe('activation', () => {
   })
 })
 
+describe('saves are tied to the project the renderer is working on', () => {
+  it('refuses a save for another project with a fixed error', async () => {
+    await setActiveProject(project)
+
+    const result = await saveRecording(win, other, checkout())
+
+    expect(result).toEqual({
+      success: false,
+      error: 'The project was closed before this change could be saved.'
+    })
+    expect(await exists(join(project, 'spec'))).toBe(false)
+    expect(await exists(join(other, 'spec'))).toBe(false)
+  })
+
+  it('refuses a save with no project path at all', async () => {
+    await setActiveProject(project)
+    expect((await saveRecording(win, undefined, checkout())).success).toBe(false)
+    expect(await exists(join(project, 'spec'))).toBe(false)
+  })
+})
+
+describe('deleting', () => {
+  it('keeps the test when its files cannot be removed, and says so', async () => {
+    await setActiveProject(project)
+    await saveRecording(win, project, checkout())
+    const spec = join(project, 'spec')
+    await chmod(spec, 0o555)
+    try {
+      const result = await deleteTest(win, { testId: 't-checkout' })
+
+      // Running as root can delete anyway; elsewhere the failure must keep the test
+      if (!result.success) {
+        expect(result.error).toBe('The test could not be deleted.')
+        expect(appState.tests.has('t-checkout')).toBe(true)
+        expect(await exists(join(spec, 'checkout_spec.rb'))).toBe(true)
+      }
+    } finally {
+      await chmod(spec, 0o755)
+    }
+  })
+
+  it('reports a failed removal without touching the list', async () => {
+    await setActiveProject(project)
+    await saveRecording(win, project, checkout())
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const recordedTests = await import('../../../src/main/handlers/tests/recordedTests')
+    vi.spyOn(recordedTests, 'deleteRecordedTest').mockRejectedValueOnce(
+      Object.assign(new Error('EACCES'), { code: 'EACCES' })
+    )
+
+    const result = await deleteTest(win, { testId: 't-checkout' })
+
+    expect(result).toEqual({ success: false, error: 'The test could not be deleted.' })
+    expect(appState.tests.has('t-checkout')).toBe(true)
+  })
+
+  it('says a test edited in code kept its file', async () => {
+    await setActiveProject(project)
+    await saveRecording(win, project, checkout())
+    const spec = join(project, 'spec', 'checkout_spec.rb')
+    await writeFile(spec, (await readFile(spec, 'utf-8')) + '\nputs "hand edit"\n')
+
+    expect(await deleteTest(win, { testId: 't-checkout' })).toEqual({
+      success: true,
+      codeOwned: true
+    })
+    expect(appState.tests.has('t-checkout')).toBe(false)
+  })
+})
+
+describe('tagSavedTest', () => {
+  it('writes the tags into the sidecar and the describe line, and the stored copy', async () => {
+    await setActiveProject(project)
+    const saved = await saveRecording(win, project, checkout())
+
+    const tagged = await tagSavedTest(filesStore()!, saved.test!, ['Smoke', 'login', 'bad tag'])
+
+    expect(tagged.tags).toEqual(['login', 'smoke'])
+    expect(appState.tests.get('t-checkout')?.tags).toEqual(['login', 'smoke'])
+    expect(await readFile(join(project, 'spec', 'checkout_spec.rb'), 'utf-8')).toContain(
+      "describe 'Checkout', :login, :smoke do"
+    )
+    expect((await readSidecar(project, 'spec/checkout_spec.rb'))?.tags).toEqual(['login', 'smoke'])
+  })
+
+  it('does nothing without tags', async () => {
+    await setActiveProject(project)
+    const saved = await saveRecording(win, project, checkout())
+    expect(await tagSavedTest(filesStore()!, saved.test!, [])).toBe(saved.test)
+  })
+
+  it('keeps the test, untagged, when the tags cannot be written', async () => {
+    await setActiveProject(project)
+    const saved = await saveRecording(win, project, checkout())
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const recordedTests = await import('../../../src/main/handlers/tests/recordedTests')
+    vi.spyOn(recordedTests, 'setTagsForFile').mockRejectedValueOnce(new Error('disk full'))
+
+    expect(await tagSavedTest(filesStore()!, saved.test!, ['smoke'])).toBe(saved.test)
+    expect(appState.tests.get('t-checkout')?.tags).toBeUndefined()
+  })
+})
+
 describe('recorded tests found in the project', () => {
-  it('every recorded test is listed when the project opens, with or without a suites file', async () => {
+  it('every recorded test is listed when the project opens', async () => {
     await saveRecordedTest(project, layout, checkout('a'))
     await saveRecordedTest(project, layout, { ...checkout('b'), name: 'Second' })
-    await saveSuiteIndex(project, [{ id: 's1', name: 'Smoke', testIds: ['a'] }])
-    const before = await readFile(suitesJson(project), 'utf-8')
 
     await setActiveProject(project)
 
@@ -368,8 +428,27 @@ describe('recorded tests found in the project', () => {
         .map((t) => t.id)
         .sort()
     ).toEqual(['a', 'b'])
-    // Opening a project never writes the suites file any more
-    expect(await readFile(suitesJson(project), 'utf-8')).toBe(before)
+  })
+
+  it('ignores a sidecar stored somewhere other than its file says', async () => {
+    await saveRecordedTest(project, layout, checkout('real'))
+    const sidecar = JSON.parse(await readFile(sidecarJson('spec/checkout_spec.rb'), 'utf-8'))
+    await mkdir(join(project, '.raider', 'tests', 'spec', 'elsewhere'), { recursive: true })
+    await writeFile(
+      sidecarJson('spec/elsewhere/other_spec.rb'),
+      JSON.stringify({ ...sidecar, id: 'stray', file: 'spec/checkout_spec.rb' })
+    )
+
+    expect((await loading.loadRecordedTests(project)).map((t) => t.id)).toEqual(['real'])
+  })
+
+  it('a missing spec file still counts as recorded', async () => {
+    await saveRecordedTest(project, layout, checkout('gone'))
+    await rm(join(project, 'spec', 'checkout_spec.rb'))
+
+    expect(await loading.loadRecordedTests(project)).toEqual([
+      expect.objectContaining({ id: 'gone', ownership: 'recorded' })
+    ])
   })
 
   it('a test edited in code is listed too, still view-only', async () => {

@@ -123,8 +123,6 @@ export async function listProjectTests(
   projectPath: string,
   layout: ProjectLayout
 ): Promise<ProjectTestEntry[]> {
-  if (layout.framework !== 'rspec') return []
-
   // A sidecar only counts when it sits where its own `file` says
   const sidecars = new Map<string, Sidecar>()
   for (const { fileRel, sidecar } of await sidecarsOrNone(projectPath)) {

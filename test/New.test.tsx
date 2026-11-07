@@ -96,7 +96,6 @@ describe('CreateProject Page', (): void => {
     expect(screen.getByText('newProject.title')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('newProject.input.placeholder')).toBeInTheDocument()
     expect(screen.getByText('newProject.question.target')).toBeInTheDocument()
-    expect(screen.getByText('newProject.question.test')).toBeInTheDocument()
     expect(screen.getByText('button.back.text')).toBeInTheDocument()
     expect(screen.getByText('button.create.text')).toBeInTheDocument()
   })
@@ -153,7 +152,6 @@ describe('CreateProject Page', (): void => {
     expect(runRubyRaider).toHaveBeenCalledWith(
       '/tmp/projects',
       'proj',
-      'rspec',
       'selenium',
       '/usr/bin/ruby',
       null,
@@ -174,7 +172,6 @@ describe('CreateProject Page', (): void => {
     expect(run).toHaveBeenCalledWith(
       '/tmp/projects',
       'proj',
-      'rspec',
       'selenium',
       '/usr/bin/ruby',
       null,
@@ -203,7 +200,6 @@ describe('CreateProject Page', (): void => {
     expect(run).toHaveBeenCalledWith(
       '/tmp/projects',
       'proj',
-      'rspec',
       'selenium',
       '/usr/bin/ruby',
       value,
@@ -234,7 +230,6 @@ describe('CreateProject Page', (): void => {
     expect(run).toHaveBeenCalledWith(
       '/tmp/projects',
       'proj',
-      'rspec',
       'selenium',
       '/usr/bin/ruby',
       null,
@@ -253,7 +248,7 @@ describe('CreateProject Page', (): void => {
     expect(box).toBeChecked()
     fireEvent.click(box)
     await create(run)
-    expect(run.mock.calls[0][6]).toEqual({ accessibility: false, ci: 'github', examples: false })
+    expect(run.mock.calls[0][5]).toEqual({ accessibility: false, ci: 'github', examples: false })
   })
 
   it('keeps the examples checkbox under Mobile app', async (): Promise<void> => {
@@ -277,7 +272,7 @@ describe('CreateProject Page', (): void => {
         screen.queryByRole('checkbox', { name: /newProject.addons.examples/ })
       ).not.toBeInTheDocument()
       await create(run)
-      expect(run.mock.calls[0][6]).toEqual({ accessibility: false, ci: 'github' })
+      expect(run.mock.calls[0][5]).toEqual({ accessibility: false, ci: 'github' })
     }
   )
 

@@ -1,5 +1,4 @@
 export type { Test } from './test'
-export type { Suite } from './suite'
 export type { TraceStep } from './traceStep'
 export type { FileNode } from './fileNode'
 export type { CommandType, CommandOptions } from './commandType'

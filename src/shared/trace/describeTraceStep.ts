@@ -65,10 +65,6 @@ export function plainUrl(url: string | null): string {
 export function describeTraceStep(step: RaiderTraceStep): TraceText & { element?: TraceText } {
   if (step.kind === 'failure') return { key: `${S}.failure`, values: {} }
   const { action } = step
-  if (action === 'cucumber_step') {
-    if (step.secret) return { key: `${S}.cucumberSecret`, values: {} }
-    return { key: `${S}.cucumber`, values: { name: step.name ?? '' } }
-  }
   if (action === 'match_screenshot') {
     const key = step.status === 'failed' ? 'matchScreenshotFailed' : 'matchScreenshot'
     return { key: `${S}.${key}`, values: { name: step.name ?? '' } }

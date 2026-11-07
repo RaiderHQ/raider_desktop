@@ -52,11 +52,10 @@ describe('createQuickProject', () => {
     const b = await createQuickProject('https://shop.test', 'ruby')
     expect(a).toEqual({ success: true, projectPath: path.join(quickProjectsDir(), 'shop_test') })
     expect(b.success && b.projectPath.endsWith('shop_test_2')).toBe(true)
-    expect(mockRun.mock.calls[0].slice(0, 6)).toEqual([
+    expect(mockRun.mock.calls[0].slice(0, 5)).toEqual([
       null,
       quickProjectsDir(),
       'shop_test',
-      'rspec',
       'selenium',
       'ruby'
     ])

@@ -12,7 +12,14 @@ interface TestsMoreMenuProps {
   tag: string | null
 }
 
-type Outcome = { success: boolean; path?: string; error?: string }
+type Outcome = {
+  success: boolean
+  path?: string
+  error?: string
+  imported?: number
+  skipped?: number
+  failed?: number
+}
 
 const menuItem =
   'block w-full text-left px-3 py-1.5 text-xs text-neutral-dk hover:bg-neutral-50 disabled:text-neutral-mid disabled:cursor-not-allowed disabled:hover:bg-white'
@@ -23,7 +30,12 @@ const TestsMoreMenu: React.FC<TestsMoreMenuProps> = ({ tag }) => {
   const runActive = useRunStore((s) => s.isActive || s.checking)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
   const runBusy = runActive || recorderRunning
-  const mobileProject = useProjectStore((s) => s.layout?.automation === 'appium')
+  // A project Raider can't record into keeps its spec files read-only: nothing is imported into it
+  const cannotImportReason = useProjectStore((s) => {
+    const layout = s.layout
+    if (!layout || layout.recordable !== false) return undefined
+    return t(`recorder.unsupported.${layout.unsupportedReason ?? 'generic'}`)
+  })
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -36,6 +48,17 @@ const TestsMoreMenu: React.FC<TestsMoreMenuProps> = ({ tag }) => {
   }, [])
 
   const report = (kind: 'import' | 'export', type: string, result: Outcome): void => {
+    if (result.imported !== undefined) {
+      // import-project says how many came in, were already there, or failed
+      const text = t('tests.moreMenu.importSummary', {
+        imported: result.imported,
+        skipped: result.skipped ?? 0,
+        failed: result.failed ?? 0
+      })
+      if (result.success) toast.success(text)
+      else toast.error(text)
+      return
+    }
     if (result.success) {
       toast.success(
         kind === 'import'
@@ -115,8 +138,8 @@ const TestsMoreMenu: React.FC<TestsMoreMenuProps> = ({ tag }) => {
           <button
             role="menuitem"
             className={menuItem}
-            disabled={mobileProject}
-            title={mobileProject ? t('tests.mobileNoImport') : undefined}
+            disabled={cannotImportReason !== undefined}
+            title={cannotImportReason}
             onClick={() => act('import', 'Test', () => window.api.importTest())}
           >
             {t('tests.moreMenu.importTest')}
@@ -124,6 +147,8 @@ const TestsMoreMenu: React.FC<TestsMoreMenuProps> = ({ tag }) => {
           <button
             role="menuitem"
             className={menuItem}
+            disabled={cannotImportReason !== undefined}
+            title={cannotImportReason}
             onClick={() => act('import', 'Project', () => window.api.importProject())}
           >
             {t('tests.moreMenu.importProject')}
