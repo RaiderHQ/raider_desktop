@@ -1290,13 +1290,16 @@ describe('Overview live runs', (): void => {
     expect(screen.getByTestId('run-panel')).toBeInTheDocument()
   })
 
-  it("shows a suite run started on the Tests tab in Overview's panel", async () => {
-    mockApi.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [] }])
-    mockApi.prepareSuiteRun.mockResolvedValue({
-      mode: 'files',
-      files: ['spec/login_spec.rb'],
-      skipped: []
-    })
+  it("shows a tagged run started on the Tests tab in Overview's panel", async () => {
+    mockApi.listProjectTests.mockResolvedValue([
+      {
+        name: 'Login',
+        file: 'spec/login_spec.rb',
+        testId: 't1',
+        ownership: 'recorded',
+        tags: ['smoke']
+      }
+    ])
     try {
       useProjectStore.setState({ projectPath: '/fake/project', files: [] })
       await act(async () => {
@@ -1306,26 +1309,28 @@ describe('Overview live runs', (): void => {
           </MemoryRouter>
         )
       })
-      const select = await screen.findByLabelText('tests.suiteFilter.label')
+      const select = await screen.findByTestId('tag-filter')
       await waitFor(() => expect(select.querySelectorAll('option')).toHaveLength(2))
-      fireEvent.change(select, { target: { value: 's1' } })
-      fireEvent.click(screen.getByRole('button', { name: 'tests.suiteFilter.actions' }))
+      fireEvent.change(select, { target: { value: 'smoke' } })
+      fireEvent.click(screen.getByRole('button', { name: 'tests.moreMenu.actions' }))
       await act(async () => {
-        fireEvent.click(screen.getByRole('menuitem', { name: 'tests.suiteFilter.run' }))
+        fireEvent.click(screen.getByRole('menuitem', { name: 'tests.moreMenu.runTagged' }))
       })
       await waitFor(() => expect(mockApi.startRun).toHaveBeenCalledTimes(1))
-      expect(useRunStore.getState().origin).toEqual({ route: '/overview', label: 'Smoke' })
+      expect(useRunStore.getState().origin).toEqual({
+        route: '/overview',
+        label: 'run.originTagged'
+      })
       // Main reports the run started
       act(() =>
         useRunStore.setState({
-          run: { ...failedRun(), scope: { kind: 'files', files: ['spec/login_spec.rb'] } },
+          run: { ...failedRun(), scope: { kind: 'tags', tags: ['smoke'] } },
           isActive: false
         })
       )
       expect(screen.getByTestId('run-panel')).toBeInTheDocument()
     } finally {
-      mockApi.getSuites.mockResolvedValue([])
-      mockApi.prepareSuiteRun.mockResolvedValue({ mode: 'legacy' })
+      mockApi.listProjectTests.mockResolvedValue([])
     }
   })
 
