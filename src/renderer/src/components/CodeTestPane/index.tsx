@@ -5,6 +5,7 @@ import CodeViewToggle from '@components/CodeViewToggle'
 import CommandList from '@components/CommandList'
 import ConfirmationModal from '@components/ConfirmationModal'
 import Tooltip from '@components/Tooltip'
+import TagChips from '@components/TagChips'
 import StyledPanel from '@components/StyledPanel'
 import AssertionTextModal from '@components/AssertionTextModal'
 import {
@@ -218,6 +219,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
         <p className="text-sm text-neutral-md">{t('tests.actionFailed')}</p>
       ) : (
         <>
+          {!recording.isRecording && <TagChips tags={row.tags} />}
           <div className="flex flex-wrap items-center gap-2">
             {recording.isRecording && (
               <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">

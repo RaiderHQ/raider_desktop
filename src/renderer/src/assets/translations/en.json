@@ -477,6 +477,11 @@
     "breadcrumb": "Breadcrumb",
     "breadcrumbRoot": "Tests",
     "name": "Test name",
+    "tags": {
+      "label": "Tags",
+      "placeholder": "Add a tag",
+      "invalid": "Letters, digits and underscores only, starting with a letter"
+    },
     "url": "Start URL",
     "record": "Record",
     "autosaved": "Changes to this test are saved automatically.",
@@ -851,6 +856,8 @@
     },
     "testPage": {
       "name": "Shown in the list and in the file name",
+      "tags": "Tags group tests for a run: smoke, regression, or your own",
+      "tagsReadOnly": "Edit the describe line in the file to change these tags",
       "url": "The page recording and runs start on",
       "record": "Open the page and turn what you do into steps",
       "stop": "Stop recording and keep the steps as a test",

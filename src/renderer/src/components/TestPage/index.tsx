@@ -8,6 +8,8 @@ import OutputPanel from '@components/OutputPanel'
 import StyledPanel from '@components/StyledPanel'
 import Tooltip from '@components/Tooltip'
 import Dropdown from '@components/Dropdown'
+import TagInput from '@components/TagInput'
+import TagChips from '@components/TagChips'
 import DeleteModal from '@components/DeleteModal'
 import ConfirmationModal from '@components/ConfirmationModal'
 import CodeViewToggle from '@components/CodeViewToggle'
@@ -29,6 +31,8 @@ import { useRunStore } from '@foundation/Stores/runStore'
 import { buildAssertionStep, assertionModalType } from '@foundation/assertionStep'
 import { handleSaveResult } from '@foundation/saveResult'
 import { testKeyOf } from '@foundation/testKey'
+import { useTestsListStore } from '@foundation/Stores/testsListStore'
+import { normalizeTags } from '@shared/tags'
 import type { TestRow } from '@foundation/testKey'
 import type { TestResult } from '@foundation/Types/testResult'
 import type { Step } from '@shared/types/step'
@@ -150,6 +154,26 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const target: RecordingTarget = isDraft ? draftTarget : { kind: 'test' }
   const readOnly = !!test?.ownership && test.ownership !== 'recorded'
   const busy = recording.isRecording || isReplaying || picking
+  const [tagsInvalid, setTagsInvalid] = useState(false)
+  const codeOwnedTags = row?.ownership === 'code' || row?.ownership === 'codeOwnedWasRecorded'
+  const changeTags = (next: string[]): void => {
+    if (!row?.file) return
+    const tags = normalizeTags(next)
+    setTagsInvalid(tags.length < new Set(next.map((x) => x.trim().toLowerCase())).size)
+    window.api
+      .setTestTags(row.file, tags)
+      .then((result) => {
+        if (!result.success) {
+          toast.error(result.error ?? t('tests.actionFailed'))
+          return
+        }
+        return useTestsListStore.getState().reload()
+      })
+      .catch((error: unknown) => {
+        console.error('Saving the tags failed:', error)
+        toast.error(String(error))
+      })
+  }
   const failedStep = useFailedStep(projectPath, test)
   // Edited while recording, and while a draft holds steps Stop & save has not written yet
   // (a draft with only its start page is one Stop & save would drop, so it is not)
@@ -480,6 +504,26 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
               />
             </Tooltip>
           </div>
+
+          {row?.file && !recording.isRecording && (
+            <div className="flex flex-col gap-1">
+              {codeOwnedTags ? (
+                <TagChips tags={row.tags} />
+              ) : (
+                <TagInput
+                  tags={row.tags}
+                  onChange={changeTags}
+                  placeholder={t('testPage.tags.placeholder')}
+                  tooltip={t('tooltips.testPage.tags')}
+                />
+              )}
+              {tagsInvalid && (
+                <p role="status" className="text-xs text-neutral-md">
+                  {t('testPage.tags.invalid')}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center gap-2">
             {recording.isRecording && (
