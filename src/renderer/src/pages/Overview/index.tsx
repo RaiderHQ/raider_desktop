@@ -36,6 +36,7 @@ import { loadRaiderResults } from '@foundation/raiderResults'
 import { FileNode } from '@foundation/Types/fileNode'
 import type { TestResult } from '@foundation/Types/testResult'
 import { getFileLanguage } from '@foundation/helpers'
+import { TAG_RE } from '@shared/tags'
 import type { RunDefaults, RunScope } from '@shared/types/runEvents'
 
 type OverviewTab = 'tests' | 'files' | 'scaffold' | 'dashboard'
@@ -121,7 +122,9 @@ const Overview: React.FC = () => {
     setActiveTab('files')
     focusDevice()
   }, [deviceFocusRequested, focusDevice])
-  const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression'>('all')
+  const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression' | 'custom'>('all')
+  const [customTag, setCustomTag] = useState('')
+  const tagInputRef = useRef<HTMLInputElement | null>(null)
 
   // Live run state
   const run = useRunStore((state) => state.run)
@@ -521,10 +524,28 @@ const Overview: React.FC = () => {
   }
 
   const runModeScope = (): RunScope =>
-    runMode === 'all' ? { kind: 'all' } : { kind: 'tags', tags: [runMode] }
+    runMode === 'all'
+      ? { kind: 'all' }
+      : { kind: 'tags', tags: [runMode === 'custom' ? customTag.toLowerCase() : runMode] }
+
+  // A custom tag has to be a valid Playwright-style tag name before Run is allowed
+  const customTagProblem =
+    runMode !== 'custom'
+      ? undefined
+      : customTag === ''
+        ? t('overview.settings.customTagEmpty')
+        : TAG_RE.test(customTag.toLowerCase())
+          ? undefined
+          : t('overview.settings.customTagInvalid')
 
   const handleRunRaiderTests = (): void => {
     if (runBusy) return
+    if (customTagProblem) {
+      // Say why nothing ran: show the toolbar and put the cursor in the tag field
+      setActiveTab('files')
+      setTimeout(() => tagInputRef.current?.focus(), 0)
+      return
+    }
     startRun(runModeScope())
   }
 
@@ -537,7 +558,7 @@ const Overview: React.FC = () => {
 
   // The panel only shows Overview's own run, so its scope is the one Overview last started
   const handleRunAgain = (): void => {
-    if (runBusy) return
+    if (runBusy || (!projectRun && customTagProblem)) return
     startRun(projectRun?.scope ?? runModeScope())
   }
 
@@ -826,7 +847,8 @@ const Overview: React.FC = () => {
 
       {activeTab === 'tests' && (
         <div className="relative w-full">
-          <TestsWorkspace />
+          {/* A project switched in place (the project menu, File › Open recent) gets a fresh list */}
+          <TestsWorkspace key={projectPath ?? ''} />
         </div>
       )}
 
@@ -917,16 +939,45 @@ const Overview: React.FC = () => {
                   </label>
                   <select
                     value={runMode}
-                    onChange={(e) => setRunMode(e.target.value as 'all' | 'smoke' | 'regression')}
+                    onChange={(e) =>
+                      setRunMode(e.target.value as 'all' | 'smoke' | 'regression' | 'custom')
+                    }
                     className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[140px]"
                     data-testid="overview-run-mode-select"
                   >
                     <option value="all">{t('overview.settings.runMode.all')}</option>
                     <option value="smoke">{t('overview.settings.runMode.smoke')}</option>
                     <option value="regression">{t('overview.settings.runMode.regression')}</option>
+                    <option value="custom">{t('overview.settings.runMode.custom')}</option>
                   </select>
                 </div>
               </Tooltip>
+              {runMode === 'custom' && (
+                <input
+                  ref={tagInputRef}
+                  type="text"
+                  autoFocus
+                  value={customTag}
+                  onChange={(e) => setCustomTag(e.target.value)}
+                  placeholder={t('overview.settings.customTagPlaceholder')}
+                  aria-label={t('overview.settings.customTagLabel')}
+                  aria-invalid={customTag !== '' && !!customTagProblem}
+                  aria-describedby={
+                    customTag !== '' && customTagProblem ? 'overview-run-tag-error' : undefined
+                  }
+                  className="border border-neutral-bdr rounded px-3 py-1 text-sm w-[140px] lowercase"
+                  data-testid="overview-run-tag-input"
+                />
+              )}
+              {runMode === 'custom' && (
+                <span
+                  id="overview-run-tag-error"
+                  className="text-xs text-red-600"
+                  aria-live="polite"
+                >
+                  {customTag !== '' && customTagProblem ? customTagProblem : ''}
+                </span>
+              )}
               <Tooltip
                 content={t('tooltips.overview.rerunFailed')}
                 disabledReason={canRerunFailed ? undefined : t('run.nothingFailed')}
@@ -1138,7 +1189,8 @@ const Overview: React.FC = () => {
                   onFileClick={handleOpenFile}
                   isRoot={true}
                   onRunTests={handleRunRaiderTests}
-                  runDisabled={runBusy}
+                  runDisabled={runBusy || !!customTagProblem}
+                  runDisabledReason={runBusy ? undefined : customTagProblem}
                   onFileContextMenu={handleFileContextMenu}
                   onFolderContextMenu={handleFolderContextMenu}
                 />

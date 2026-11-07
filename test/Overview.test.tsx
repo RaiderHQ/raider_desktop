@@ -24,9 +24,11 @@ vi.mock('@components/Library/Folder', () => ({
     name,
     onRunTests,
     runDisabled,
+    runDisabledReason,
     onFileClick,
     dirtyPath
   }: {
+    runDisabledReason?: string
     dirtyPath?: string
     name: string | undefined
     onRunTests?: () => void
@@ -35,7 +37,14 @@ vi.mock('@components/Library/Folder', () => ({
   }): JSX.Element => (
     <div data-testid="folder" data-dirty-path={dirtyPath ?? ''}>
       {name}
-      {onRunTests && <button data-testid="run-tests" onClick={onRunTests} disabled={runDisabled} />}
+      {onRunTests && (
+        <button
+          data-testid="run-tests"
+          data-disabled-reason={runDisabledReason ?? ''}
+          onClick={onRunTests}
+          disabled={runDisabled}
+        />
+      )}
       {/* Two files to click, for the inline editor */}
       <button onClick={() => onFileClick?.('/fake/project/spec/a_spec.rb')}>a_spec.rb</button>
       <button onClick={() => onFileClick?.('/fake/project/spec/b_spec.rb')}>b_spec.rb</button>
@@ -732,15 +741,15 @@ describe('Overview Settings Toolbar', (): void => {
     expect(options[1]).toHaveValue('firefox')
   })
 
-  it('offers only All, Smoke and Regression run modes', async () => {
+  it('offers All, Smoke, Regression and Custom run modes', async () => {
     await renderOverview()
 
     const select = screen.getByTestId('overview-run-mode-select')
     const values = Array.from(select.querySelectorAll('option')).map(
       (o) => (o as HTMLOptionElement).value
     )
-    expect(values).toEqual(['all', 'smoke', 'regression'])
-    expect(screen.queryByTestId('overview-custom-tag-input')).not.toBeInTheDocument()
+    expect(values).toEqual(['all', 'smoke', 'regression', 'custom'])
+    expect(screen.queryByTestId('overview-run-tag-input')).not.toBeInTheDocument()
   })
 
   it('reads the timeout and browser arguments back from the project config', async () => {
@@ -1065,6 +1074,53 @@ describe('Overview live runs', (): void => {
       fireEvent.click(screen.getByTestId('run-tests'))
     })
     expect(scopeSent()).toEqual({ kind: 'tags', tags: ['smoke'] })
+  })
+
+  it('shows a tag input when the run mode is Custom', async () => {
+    await renderOverview()
+    expect(screen.queryByTestId('overview-run-tag-input')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByTestId('overview-run-mode-select'), {
+      target: { value: 'custom' }
+    })
+    expect(screen.getByTestId('overview-run-tag-input')).toBeInTheDocument()
+    // Empty is not runnable, and says why
+    expect(screen.getByTestId('run-tests')).toBeDisabled()
+    expect(screen.getByTestId('run-tests')).toHaveAttribute(
+      'data-disabled-reason',
+      'overview.settings.customTagEmpty'
+    )
+  })
+
+  it('disables Run and explains an invalid custom tag', async () => {
+    await renderOverview()
+    fireEvent.change(screen.getByTestId('overview-run-mode-select'), {
+      target: { value: 'custom' }
+    })
+    fireEvent.change(screen.getByTestId('overview-run-tag-input'), {
+      target: { value: '9Bad-Tag' }
+    })
+    // The raw value is kept; CSS shows it lower-case
+    expect(screen.getByTestId('overview-run-tag-input')).toHaveValue('9Bad-Tag')
+    expect(screen.getByText('overview.settings.customTagInvalid')).toBeInTheDocument()
+    expect(screen.getByTestId('run-tests')).toBeDisabled()
+    expect(screen.getByTestId('run-tests')).toHaveAttribute(
+      'data-disabled-reason',
+      'overview.settings.customTagInvalid'
+    )
+    expect(mockApi.startRun).not.toHaveBeenCalled()
+  })
+
+  it('runs the typed custom tag', async () => {
+    await renderOverview()
+    fireEvent.change(screen.getByTestId('overview-run-mode-select'), {
+      target: { value: 'custom' }
+    })
+    fireEvent.change(screen.getByTestId('overview-run-tag-input'), { target: { value: 'Nightly' } })
+    expect(screen.queryByText('overview.settings.customTagInvalid')).not.toBeInTheDocument()
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('run-tests'))
+    })
+    expect(scopeSent()).toEqual({ kind: 'tags', tags: ['nightly'] })
   })
 
   it('sends the recommended workers when Run in parallel is on', async () => {
