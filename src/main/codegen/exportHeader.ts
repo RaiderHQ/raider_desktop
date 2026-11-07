@@ -5,25 +5,19 @@ import { migrateLegacySteps } from './legacy'
 import { refusedSecretName, withSecretNames } from '../../shared/secretSteps'
 
 /**
- * Exported test files start with Ruby comments naming the test (and suite) and
+ * Exported test files start with Ruby comments naming the test and
  * holding its steps as one line of JSON, so an exported file imports back
- * losslessly. Files without the steps line fall back to the legacy format.
+ * losslessly. A `# Suite:` line in a file exported by an older Raider is ignored. Files without the steps line fall back to the legacy format.
  */
 
 const TEST = '# Test: '
-const SUITE = '# Suite: '
 const STEPS = '# raider-steps: '
 
 // Header values must stay on their comment line
 const oneLine = (text: string): string => text.replace(/[\r\n]+/g, ' ')
 
-export function writeExportHeader(header: {
-  testName: string
-  suiteName?: string
-  steps: Step[]
-}): string {
+export function writeExportHeader(header: { testName: string; steps: Step[] }): string {
   const lines = [`${TEST}${oneLine(header.testName)}`]
-  if (header.suiteName !== undefined) lines.push(`${SUITE}${oneLine(header.suiteName)}`)
   // JSON.stringify escapes newlines inside strings, so this is always a single line
   lines.push(`${STEPS}${JSON.stringify(header.steps)}`)
   return `${lines.join('\n')}\n\n`
@@ -56,7 +50,6 @@ function legacySteps(text: string): Step[] | undefined {
 
 export function readExportHeader(text: string): {
   testName?: string
-  suiteName?: string
   steps?: Step[]
   /** A secret step in the JSON line reads this variable, which isn't a RAIDER_SECRET_ one */
   refusedSecret?: string
@@ -71,8 +64,8 @@ export function readExportHeader(text: string): {
   // Legacy files may have the test comment anywhere, so fall back to a loose match
   const testName = value(TEST) ?? text.match(/# Test: (.*)/)?.[1]
   return json.refusedSecret === undefined
-    ? { testName, suiteName: value(SUITE), steps }
-    : { testName, suiteName: value(SUITE), steps, refusedSecret: json.refusedSecret }
+    ? { testName, steps }
+    : { testName, steps, refusedSecret: json.refusedSecret }
 }
 
 /** The URL a test starts at: its first navigate step's URL, or '' when it has none. */

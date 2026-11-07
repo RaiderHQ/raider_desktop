@@ -4,10 +4,16 @@ import { MemoryRouter } from 'react-router'
 import RunPanel from '@components/RunPanel'
 import { useRunStore } from '@foundation/Stores/runStore'
 import useProjectStore from '@foundation/Stores/projectStore'
-import useRecorderStore from '@foundation/Stores/recorderStore'
+import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { fixInTestRoute } from '@foundation/recordedTestForFile'
 import type { RunView } from '@foundation/run/runModel'
 import en from '@assets/translations/en.json'
+
+// The list's own loading is not under test: the tests come from the store
+vi.mock('../../src/renderer/src/hooks/useTestsList', async () => {
+  const { useTestsListStore } = await import('@foundation/Stores/testsListStore')
+  return { useRecordedTests: () => useTestsListStore((s) => s.tests) }
+})
 
 const text = (key: string, values?: Record<string, unknown>): string => {
   const found = key.split('.').reduce<unknown>((o, k) => (o as Record<string, unknown>)?.[k], en)
@@ -90,11 +96,9 @@ beforeEach(() => {
   load(resultsJson('2026-10-31T10:00:05.000Z'))
   window.api = { ...api, setActiveProject: vi.fn().mockResolvedValue({}) } as unknown as typeof window.api
   useProjectStore.setState({ projectPath: '/work/shop' })
-  useRecorderStore.setState({
-    suites: [{ id: 's1', name: 'S', tests: [recordedTest('Save')] }] as never
-  })
+  useTestsListStore.setState({ tests: [recordedTest('Save')] as never })
 })
-afterEach(() => useRecorderStore.setState({ suites: [] }))
+afterEach(() => useTestsListStore.setState({ tests: [] }))
 
 describe('RunPanel failed recorded tests', () => {
   it('shows the plain line and Fix in test, loading results once per run', async () => {
@@ -110,17 +114,13 @@ describe('RunPanel failed recorded tests', () => {
     expect(screen.queryByText(/#btn-x/)).toBeNull()
     const loads = api.readDirectory.mock.calls.length
     rerender(ui)
-    useRecorderStore.setState({
-      suites: [{ id: 's1', name: 'S', tests: [recordedTest('Save')] }] as never
-    })
+    useTestsListStore.setState({ tests: [recordedTest('Save')] as never })
     await Promise.resolve()
     expect(api.readDirectory).toHaveBeenCalledTimes(loads)
   })
 
   it('says the element could not be found for an unlabelled element', async () => {
-    useRecorderStore.setState({
-      suites: [{ id: 's1', name: 'S', tests: [recordedTest('')] }] as never
-    })
+    useTestsListStore.setState({ tests: [recordedTest('')] as never })
     setRun(makeRun())
     render(ui)
     expect(await screen.findByTestId('run-failed-step-line')).toHaveTextContent(
@@ -130,7 +130,7 @@ describe('RunPanel failed recorded tests', () => {
   })
 
   it('loads no results for a failed code test', async () => {
-    useRecorderStore.setState({ suites: [] })
+    useTestsListStore.setState({ tests: [] })
     setRun(makeRun())
     render(ui)
     await Promise.resolve()

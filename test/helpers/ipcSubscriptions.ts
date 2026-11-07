@@ -11,8 +11,7 @@ const subscribe =
 
 /** The main-to-renderer `window.api.on*` subscriptions, backed by a channel map the test emits into */
 export const ipcSubscriptions = (listeners: IpcListeners): Record<string, unknown> => ({
-  onSuiteUpdated: subscribe(listeners, 'suite-updated'),
-  onSuitesRecovered: subscribe(listeners, 'suites-recovered'),
+  onTestsUpdated: subscribe(listeners, 'tests-updated'),
   onRecordingStarted: subscribe(listeners, 'recording-started'),
   onRecordingStopped: subscribe(listeners, 'recording-stopped'),
   onNewRecordedStep: subscribe(listeners, 'new-recorded-step'),

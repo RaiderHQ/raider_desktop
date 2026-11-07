@@ -10,7 +10,7 @@ import {
 } from '../../../src/main/handlers/tests/migrateToProjectFiles'
 import * as sidecarModule from '../../../src/main/handlers/tests/sidecar'
 import { listSidecars } from '../../../src/main/handlers/tests/sidecar'
-import { saveSuiteIndex, saveSuites } from '../../../src/main/handlers/suitePersistence'
+import { saveSuiteIndex } from '../../../src/main/handlers/suitePersistence'
 import type { ProjectLayout } from '../../../src/shared/types/projectLayout'
 import type { Test } from '../../../src/shared/types/test'
 
@@ -217,7 +217,7 @@ describe('migrateToProjectFiles', () => {
     const real = recorded.saveRecordedTest
     const changed = { version: 2, suites: [...v2.suites, { id: 's3', name: 'New', tests: [] }] }
     vi.spyOn(recorded, 'saveRecordedTest').mockImplementation(async (p, l, t, o) => {
-      if (t.id === 't3') await saveSuites(project, changed.suites)
+      if (t.id === 't3') await writeSuites({ version: 2, suites: changed.suites })
       return real(p, l, t, o)
     })
     await writeSuites(v2)

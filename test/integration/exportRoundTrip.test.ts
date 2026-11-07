@@ -12,19 +12,23 @@ const mockOpenPath = vi.hoisted(() => vi.fn())
 vi.mock('electron', () => ({
   BrowserWindow: { getFocusedWindow: (): object => ({}) },
   dialog: mockDialog,
-  shell: { openPath: mockOpenPath }
+  shell: { openPath: mockOpenPath },
+  app: { getPath: (): string => tmpdir() }
+}))
+vi.mock('../../src/main/utils/safeExec', () => ({
+  safeExec: vi.fn().mockResolvedValue({ stdout: '{"examples":[]}', stderr: '', exitCode: 0 })
 }))
 
 import { appState } from '../../src/main/handlers/appState'
 import { DEFAULT_RECORDER_SETTINGS } from '../../src/main/handlers/config/projectSettings'
-import * as persistence from '../../src/main/handlers/suitePersistence'
+import setActiveProject from '../../src/main/handlers/project/setActiveProject'
+import exportProject from '../../src/main/handlers/io/exportProject'
+import importProject from '../../src/main/handlers/io/importProject'
 import exportTest from '../../src/main/handlers/io/exportTest'
-import exportSuite from '../../src/main/handlers/io/exportSuite'
 import importTest from '../../src/main/handlers/io/importTest'
-import importSuite from '../../src/main/handlers/io/importSuite'
 import { readExportHeader, writeExportHeader } from '../../src/main/codegen/exportHeader'
 import type { Step } from '../../src/shared/types/step'
-import type { Suite } from '../../src/shared/types/suite'
+import type { Test } from '../../src/shared/types/test'
 
 const steps: Step[] = [
   { id: 'n', kind: 'navigate', url: 'https://x.test' },
@@ -38,19 +42,29 @@ const steps: Step[] = [
   { id: 'a', kind: 'assert', check: 'titleEquals', expected: 'Results' },
   { id: 'c', kind: 'custom', code: 'puts "hi" # comment\nputs 2' }
 ]
-const win = { webContents: { send: vi.fn() } } as never
+const win = { webContents: { send: vi.fn() }, reload: vi.fn() } as never
 
 let dir: string
+/** An RSpec project to import into; the export and import work on the project that is open. */
+const openProject = async (): Promise<void> => {
+  const project = join(dir, 'project')
+  await mkdir(project, { recursive: true })
+  await writeFile(join(project, 'Gemfile'), "gem 'rspec'\ngem 'watir'\n")
+  const keep = new Map(appState.tests)
+  await setActiveProject(project)
+  for (const [id, test] of keep) appState.tests.set(id, test)
+}
+
 beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), 'roundtrip-'))
-  appState.suites = new Map()
+  appState.tests = new Map()
   appState.projectAutomation = 'watir'
   appState.projectFramework = 'rspec'
   appState.recorderSettings = { ...DEFAULT_RECORDER_SETTINGS }
-  vi.spyOn(persistence, 'persistActiveSuites').mockResolvedValue()
   mockDialog.showMessageBox.mockReset().mockResolvedValue({ response: 0 })
 })
 afterEach(async () => {
+  await setActiveProject(null)
   vi.restoreAllMocks()
   await rm(dir, { recursive: true, force: true })
 })
@@ -65,51 +79,49 @@ describe('export then import round trips', () => {
     expect(text.startsWith('# Test: Search\n# raider-steps: ')).toBe(true)
     expect(text).toContain("require 'watir'")
 
-    appState.suites = new Map([['s1', { id: 's1', name: 'S', tests: [] }]])
+    await openProject()
     mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [file] })
-    const res = await importTest(win, 's1')
+    const res = await importTest(win)
     expect(res.test!.name).toBe('Search')
     expect(res.test!.steps).toEqual(steps)
   })
 
-  it('a suite', async () => {
-    const suite: Suite = {
-      id: 'orig',
-      name: 'Checkout',
-      tests: [
-        { id: 't1', name: 'Pay', url: '', steps },
-        { id: 't2', name: 'Cancel', url: '', steps: [steps[0]] }
-      ]
-    }
-    appState.suites = new Map([['orig', suite]])
+  it('a project, with its tags', async () => {
+    const tests: Test[] = [
+      { id: 't1', name: 'Pay', url: '', steps, tags: ['smoke'] },
+      { id: 't2', name: 'Cancel', url: '', steps: [steps[0]] }
+    ]
+    appState.tests = new Map(tests.map((t) => [t.id, t]))
     const out = join(dir, 'checkout')
     mockDialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: out })
-    expect((await exportSuite('orig')).success).toBe(true)
-    expect(await readFile(join(out, 'pay.rb'), 'utf-8')).toContain('# Suite: Checkout\n')
+    expect((await exportProject()).success).toBe(true)
+    expect((await readdir(out)).sort()).toEqual(['.raider', 'cancel_spec.rb', 'pay_spec.rb'])
+    expect(await readFile(join(out, 'pay_spec.rb'), 'utf-8')).not.toContain('# Suite:')
 
-    appState.suites = new Map()
+    await openProject()
+    appState.tests = new Map()
     mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [out] })
-    const res = await importSuite(win)
+    expect(await importProject(win)).toEqual({ success: true })
     const withoutIds = (list: Step[]): unknown[] =>
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       list.map(({ id: _id, ...rest }) => rest)
-    const byName = Object.fromEntries(res.suite!.tests.map((t) => [t.name, t.steps]))
-    expect(withoutIds(byName.Pay)).toEqual(withoutIds(steps))
-    expect(withoutIds(byName.Cancel)).toEqual(withoutIds([steps[0]]))
+    const byName = Object.fromEntries(Array.from(appState.tests.values()).map((t) => [t.name, t]))
+    expect(withoutIds(byName.Pay.steps)).toEqual(withoutIds(steps))
+    expect(withoutIds(byName.Cancel.steps)).toEqual(withoutIds([steps[0]]))
+    expect(byName.Pay.tags).toEqual(['smoke'])
+    expect(byName.Cancel.tags).toBeUndefined()
     // Both tests share the navigate step's id; whichever imports second gets a fresh one
-    const ids = res.suite!.tests.flatMap((t) => t.steps.map((s) => s.id))
+    const ids = Array.from(appState.tests.values()).flatMap((t) => t.steps.map((s) => s.id))
     expect(new Set(ids).size).toBe(ids.length)
-    expect((await readdir(out)).sort()).toEqual(['cancel.rb', 'pay.rb'])
   })
 
-  it('importTest gives fresh ids to steps already used in the target suite', async () => {
+  it('importTest gives fresh ids to steps already used in the project', async () => {
     const file = join(dir, 'dup.rb')
     await writeFile(file, writeExportHeader({ testName: 'Dup', steps: [steps[0]] }))
-    appState.suites = new Map([
-      ['s1', { id: 's1', name: 'S', tests: [{ id: 'x', name: 'X', url: '', steps: [steps[0]] }] }]
-    ])
+    await openProject()
+    appState.tests.set('x', { id: 'x', name: 'X', url: '', steps: [steps[0]] })
     mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [file] })
-    const res = await importTest(win, 's1')
+    const res = await importTest(win)
     expect(res.test!.steps[0].id).not.toBe('n')
   })
 
@@ -120,9 +132,10 @@ describe('export then import round trips', () => {
       join(legacyDir, 'old.rb'),
       '# Test: Old\nbegin\n  @driver.get("https://x.test")\n  puts "Test \'Old\' passed successfully!"\n'
     )
+    await openProject()
     mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [legacyDir] })
-    const res = await importSuite(win)
-    expect(res.suite!.tests[0]).toMatchObject({
+    expect(await importProject(win)).toEqual({ success: true })
+    expect(Array.from(appState.tests.values())[0]).toMatchObject({
       name: 'Old',
       steps: [{ kind: 'navigate', url: 'https://x.test' }]
     })
@@ -136,9 +149,9 @@ describe('importing custom Ruby code', () => {
   const importFile = async (fileSteps: Step[]): Promise<Awaited<ReturnType<typeof importTest>>> => {
     const file = join(dir, 'shared.rb')
     await writeFile(file, writeExportHeader({ testName: 'Shared', steps: fileSteps }))
-    appState.suites = new Map([['s1', { id: 's1', name: 'S', tests: [] }]])
+    await openProject()
     mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [file] })
-    return importTest(win, 's1')
+    return importTest(win)
   }
 
   it('shows the custom code and imports nothing when the user cancels', async () => {
@@ -153,7 +166,7 @@ describe('importing custom Ruby code', () => {
     expect(box.cancelId).toBe(1)
     expect(box.defaultId).toBe(1)
     expect(res.success).toBe(false)
-    expect(appState.suites.get('s1')!.tests).toEqual([])
+    expect(appState.tests.size).toBe(0)
   })
 
   it('says how much is hidden when the code is long, and can open all of it as text', async () => {
@@ -217,7 +230,7 @@ describe('importing custom Ruby code', () => {
     expect(res.success).toBe(false)
     expect(res.error).toContain('GITHUB_TOKEN')
     expect(res.error).toContain('RAIDER_SECRET_')
-    expect(appState.suites.get('s1')!.tests).toEqual([])
+    expect(appState.tests.size).toBe(0)
   })
 
   it('does not ask when the file holds no custom steps', async () => {
@@ -226,7 +239,7 @@ describe('importing custom Ruby code', () => {
     expect(mockDialog.showMessageBox).not.toHaveBeenCalled()
   })
 
-  it('asks once for a suite, listing each test that runs custom code', async () => {
+  it('asks once for a project folder, listing each test that runs custom code', async () => {
     const suiteDir = join(dir, 'shared-suite')
     await mkdir(suiteDir)
     await writeFile(join(suiteDir, 'a.rb'), writeExportHeader({ testName: 'A', steps: [custom] }))
@@ -238,7 +251,8 @@ describe('importing custom Ruby code', () => {
     mockDialog.showMessageBox.mockResolvedValue({ response: 1 })
     mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [suiteDir] })
 
-    const res = await importSuite(win)
+    await openProject()
+    const res = await importProject(win)
 
     expect(mockDialog.showMessageBox).toHaveBeenCalledTimes(1)
     const box = mockDialog.showMessageBox.mock.calls[0][1]
@@ -247,7 +261,7 @@ describe('importing custom Ruby code', () => {
     expect(box.detail).toContain('C:')
     expect(box.detail).not.toContain('B:')
     expect(res.success).toBe(false)
-    expect(appState.suites.size).toBe(0)
+    expect(appState.tests.size).toBe(0)
   })
 
   // The user picks a file in a dialog and never sees its body, so every source of
@@ -264,15 +278,15 @@ describe('importing custom Ruby code', () => {
   ])('asks before importing custom Ruby from %s', async (_label, body) => {
     const file = join(dir, 'old.rb')
     await writeFile(file, body)
-    appState.suites = new Map([['s1', { id: 's1', name: 'S', tests: [] }]])
+    await openProject()
     mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [file] })
     mockDialog.showMessageBox.mockResolvedValue({ response: 1 })
 
-    const res = await importTest(win, 's1')
+    const res = await importTest(win)
 
     expect(mockDialog.showMessageBox.mock.calls[0][1].detail).toContain('some_helper(1)')
     expect(res.success).toBe(false)
-    expect(appState.suites.get('s1')!.tests).toEqual([])
+    expect(appState.tests.size).toBe(0)
   })
 })
 
@@ -303,11 +317,12 @@ describe('readExportHeader', () => {
   })
 
   it('keeps names on one line', () => {
-    const header = writeExportHeader({ testName: 'a\nb', suiteName: 'c\r\nd', steps: [] })
-    expect(readExportHeader(header)).toEqual({
-      testName: 'a b',
-      suiteName: 'c d',
-      steps: []
-    })
+    const header = writeExportHeader({ testName: 'a\nb', steps: [] })
+    expect(readExportHeader(header)).toEqual({ testName: 'a b', steps: [] })
+  })
+
+  it('ignores the suite line of a file exported by an older Raider', () => {
+    const header = '# Test: Old\n# Suite: Checkout\n# raider-steps: []\n'
+    expect(readExportHeader(header)).toEqual({ testName: 'Old', steps: [] })
   })
 })

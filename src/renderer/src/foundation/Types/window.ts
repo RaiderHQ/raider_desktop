@@ -1,7 +1,6 @@
 import type { DocsLinkId } from '@shared/docsLinkIds'
 import type { FileNode } from '@shared/types/fileNode'
 import type { CommandType } from '@shared/types/commandType'
-import type { Suite } from '@shared/types/suite'
 import type { Test } from '@shared/types/test'
 import type { TraceStep } from '@shared/types/traceStep'
 import type { Step } from '@shared/types/step'
@@ -12,7 +11,6 @@ import type { RecentProjectEntry } from '@shared/types/recentProject'
 import type { PickResult } from '@shared/types/pick'
 import type {
   LegacyRunResult,
-  PrepareSuiteRunResult,
   PrepareTestRunResult
 } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
@@ -135,24 +133,20 @@ export interface WindowApi extends RunApi {
   runCommand: (command: string) => Promise<CommandType>
   /** `test`, when given, is saved before it runs, so the run never lags behind the editor */
   runTest: (
-    suiteId: string,
     testId: string,
     projectPath: string,
     rubyCommand: string,
     test?: Test
   ) => Promise<LegacyRunResult>
-  runSuite: (suiteId: string, projectPath: string, rubyCommand: string) => Promise<LegacyRunResult>
   /** Saves `test` when needed and returns the spec file to run live; runs nothing */
-  prepareTestRun: (suiteId: string, testId: string, test?: Test) => Promise<PrepareTestRunResult>
-  /** Restores missing recorded files and returns the suite's spec files; runs nothing */
-  prepareSuiteRun: (suiteId: string) => Promise<PrepareSuiteRunResult>
+  prepareTestRun: (testId: string, test?: Test) => Promise<PrepareTestRunResult>
 
   // --- Step Rendering ---
   /** Ruby for one step, in the active project's automation (Selenium or Watir). */
   renderStep: (step: Step) => Promise<string>
 
-  // --- Suite Management ---
-  getSuites: () => Promise<Suite[]>
+  /** The active project's recorded tests, with their steps; [] without a project */
+  getTests: () => Promise<Test[]>
   /** Every spec file of the active project (recorded or hand-written); [] without a project */
   listProjectTests: () => Promise<ProjectTestEntry[]>
   /** Read-only view of a listed spec file; rejects for any other path */
@@ -175,17 +169,13 @@ export interface WindowApi extends RunApi {
     | { success: false; error: 'notUnique'; count: number }
     | { success: false; error: string }
   >
-  createSuite: (suiteName: string) => Promise<{ success: boolean; suite?: Suite; error?: string }>
-  deleteSuite: (suiteId: string) => Promise<{ success: boolean }>
-  exportSuite: (suiteId: string) => Promise<{ success: boolean; path?: string; error?: string }>
   exportProject: () => Promise<{ success: boolean; path?: string; error?: string }>
   importProject: () => Promise<{ success: boolean; error?: string }>
-  importSuite: () => Promise<{ success: boolean; suite?: Suite; error?: string }>
   setTestTags: (
     fileRel: string,
     tags: string[]
   ) => Promise<{ success: boolean; fileOnly?: boolean; error?: string }>
-  importTest: (suiteId: string) => Promise<{ success: boolean; test?: Test; error?: string }>
+  importTest: () => Promise<{ success: boolean; test?: Test; error?: string }>
 
   // --- Saved logins (active project) ---
   /** The project's saved logins, without cookies or storage */
@@ -194,11 +184,8 @@ export interface WindowApi extends RunApi {
 
   // --- Test Management ---
   /** `test` is the test as saved, with its project file when it has one */
-  saveRecording: (
-    suiteId: string,
-    testData: Test
-  ) => Promise<{ success: boolean; error?: string; test?: Test }>
-  deleteTest: (suiteId: string, testId: string) => Promise<void>
+  saveRecording: (testData: Test) => Promise<{ success: boolean; error?: string; test?: Test }>
+  deleteTest: (testId: string) => Promise<void>
   exportTest: (
     testName: string,
     steps: Step[]
@@ -284,8 +271,8 @@ export interface WindowApi extends RunApi {
   onTraceOpened: (callback: (result: TraceOpenResult) => void) => () => void
 
   // --- Main-to-renderer events (each returns an unsubscribe function) ---
-  onSuiteUpdated: (callback: (suites: Suite[]) => void) => () => void
-  onSuitesRecovered: (callback: (info?: { backupSaved?: boolean }) => void) => () => void
+  /** The recorded tests changed; carries them as main now has them */
+  onTestsUpdated: (callback: (tests: Test[]) => void) => () => void
   onRecordingStarted: (callback: (loadedUrl: string) => void) => () => void
   onRecordingStopped: (callback: () => void) => () => void
   onNewRecordedStep: (callback: (step: Step) => void) => () => void
@@ -298,8 +285,8 @@ export interface WindowApi extends RunApi {
   onTestsMigrated: (
     callback: (info: { migrated: number; postponed: boolean }) => void
   ) => () => void
-  /** Sent when the project's suites were saved by a newer Raider and are left untouched */
-  onSuitesTooNew: (callback: () => void) => () => void
+  /** Sent when the project's tests were saved by a newer Raider and are left untouched */
+  onTestsTooNew: (callback: () => void) => () => void
 
   // --- Scaffolding ---
   scaffoldGenerate: (

@@ -1,217 +1,214 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { mkdtemp, mkdir, readFile, writeFile, rm, symlink } from 'fs/promises'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
-const mockSend = vi.fn()
-const mockReload = vi.fn()
-
+const mockDialog = vi.hoisted(() => ({ showOpenDialog: vi.fn(), showMessageBox: vi.fn() }))
+const mockUserData = vi.hoisted(() => ({ dir: '' }))
 vi.mock('electron', () => ({
-  dialog: {
-    showOpenDialog: vi.fn(),
-    showMessageBox: vi.fn()
-  },
-  BrowserWindow: {}
+  BrowserWindow: class {},
+  dialog: mockDialog,
+  app: { getPath: (): string => mockUserData.dir }
+}))
+vi.mock('../../src/main/utils/safeExec', () => ({
+  safeExec: vi.fn().mockResolvedValue({ stdout: '{"examples":[]}', stderr: '', exitCode: 0 })
 }))
 
-vi.mock('fs', () => ({
-  default: {
-    readdirSync: vi.fn(),
-    readFileSync: vi.fn()
-  },
-  readdirSync: vi.fn(),
-  readFileSync: vi.fn()
-}))
+import importProject from '../../src/main/handlers/io/importProject'
+import setActiveProject from '../../src/main/handlers/project/setActiveProject'
+import { appState } from '../../src/main/handlers/appState'
+import { DEFAULT_RECORDER_SETTINGS } from '../../src/main/handlers/config/projectSettings'
+import { writeExportHeader } from '../../src/main/codegen/exportHeader'
+import type { Step } from '../../src/shared/types/step'
 
-vi.mock('crypto', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('crypto')>()
-  return {
-    ...actual,
-    randomUUID: vi.fn(() => 'mock-uuid-1234')
-  }
+const send = vi.fn()
+const reload = vi.fn()
+const win = { webContents: { send }, reload } as never
+
+const nav = (url: string): Step => ({ id: `n-${url}`, kind: 'navigate', url })
+const exported = (name: string, url = 'http://x.test'): string =>
+  writeExportHeader({ testName: name, steps: [nav(url)] }) + '# body\n'
+
+let project: string
+let source: string
+
+beforeEach(async () => {
+  project = await mkdtemp(join(tmpdir(), 'raider-imp-project-'))
+  source = await mkdtemp(join(tmpdir(), 'raider-imp-source-'))
+  mockUserData.dir = source
+  await writeFile(join(project, 'Gemfile'), "gem 'rspec'\ngem 'selenium-webdriver'\n")
+  appState.projectPath = null
+  appState.tests = new Map()
+  appState.mainWindow = win
+  appState.recorderSettings = { ...DEFAULT_RECORDER_SETTINGS }
+  vi.clearAllMocks()
+  mockDialog.showMessageBox.mockResolvedValue({ response: 0 })
+  mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [source] })
 })
 
-vi.mock('../../src/main/handlers/appState', () => ({
-  appState: {
-    suites: new Map(),
-    mainWindow: {
-      webContents: {
-        send: (...args: unknown[]) => mockSend(...args)
-      },
-      reload: () => mockReload()
-    }
-  }
-}))
+afterEach(async () => {
+  await setActiveProject(null)
+  await rm(project, { recursive: true, force: true })
+  await rm(source, { recursive: true, force: true })
+})
 
-import { dialog } from 'electron'
-import * as fs from 'fs'
-import importProject from '../../src/main/handlers/io/importProject'
-import { appState } from '../../src/main/handlers/appState'
+const tests = (): { name: string; tags?: string[]; file?: string }[] =>
+  Array.from(appState.tests.values()).sort((a, b) => a.name.localeCompare(b.name))
 
-const mockShowOpenDialog = dialog.showOpenDialog as ReturnType<typeof vi.fn>
-const mockShowMessageBox = dialog.showMessageBox as ReturnType<typeof vi.fn>
-const mockReaddirSync = fs.readdirSync as ReturnType<typeof vi.fn>
-const mockReadFileSync = fs.readFileSync as ReturnType<typeof vi.fn>
-
-const fakeMainWindow = {
-  webContents: { send: mockSend },
-  reload: mockReload
-} as any
-
-describe('importProject handler', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    appState.suites = new Map()
-    // Legacy bodies with unmapped Ruby lines hold custom steps, so they ask first
-    mockShowMessageBox.mockResolvedValue({ response: 0 })
-  })
-
+describe('importProject', () => {
   it('returns error when mainWindow is null', async () => {
-    const result = await importProject(null as any)
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('Main window not found')
-  })
-
-  it('returns error when user cancels directory selection', async () => {
-    mockShowOpenDialog.mockResolvedValue({ canceled: true, filePaths: [] })
-    const result = await importProject(fakeMainWindow)
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('No directory selected')
-  })
-
-  it('returns error when no file paths are returned', async () => {
-    mockShowOpenDialog.mockResolvedValue({ canceled: false, filePaths: [] })
-    const result = await importProject(fakeMainWindow)
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('No directory selected')
-  })
-
-  it('imports project with subdirectories as suites', async () => {
-    mockShowOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/tmp/project'] })
-
-    // Project root: two suite directories
-    mockReaddirSync
-      .mockReturnValueOnce([
-        { name: 'auth_suite', isDirectory: () => true },
-        { name: 'dashboard_suite', isDirectory: () => true }
-      ])
-      // auth_suite files
-      .mockReturnValueOnce(['login_test.rb', 'signup_test.rb'])
-      // dashboard_suite files
-      .mockReturnValueOnce(['load_test.rb'])
-
-    mockReadFileSync
-      .mockReturnValueOnce('# Test: Login Test\nbegin\n  step1\n  puts "Test \'Login Test\' passed successfully!"')
-      .mockReturnValueOnce('# Test: Signup Test\nbegin\n  step2\n  puts "Test \'Signup Test\' passed successfully!"')
-      .mockReturnValueOnce('# no test name comment\nsome content')
-
-    const result = await importProject(fakeMainWindow)
-    expect(result.success).toBe(true)
-    expect(appState.suites.size).toBe(2)
-  })
-
-  it('asks before importing hidden custom Ruby and keeps the current suites on cancel', async () => {
-    appState.suites.set('old-suite', { id: 'old-suite', name: 'Old', tests: [] })
-    mockShowOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/tmp/project'] })
-    mockReaddirSync
-      .mockReturnValueOnce([{ name: 'suite1', isDirectory: () => true }])
-      .mockReturnValueOnce(['shared.rb'])
-    mockReadFileSync.mockReturnValue(
-      '# Test: Shared\n# raider-steps: [{"id":"c","kind":"custom","code":"system(\'id\')"}]\n'
-    )
-    mockShowMessageBox.mockResolvedValue({ response: 1 })
-
-    const result = await importProject(fakeMainWindow)
-
-    expect(mockShowMessageBox.mock.calls[0][1].detail).toContain("system('id')")
-    expect(result.success).toBe(false)
-    expect([...appState.suites.keys()]).toEqual(['old-suite'])
-    expect(mockReload).not.toHaveBeenCalled()
-  })
-
-  it('clears existing suites before importing', async () => {
-    appState.suites.set('old-suite', { id: 'old-suite', name: 'Old', tests: [] })
-
-    mockShowOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/tmp/project'] })
-    mockReaddirSync.mockReturnValueOnce([]) // no subdirectories
-
-    const result = await importProject(fakeMainWindow)
-    expect(result.success).toBe(true)
-    expect(appState.suites.size).toBe(0)
-  })
-
-  it('extracts test name from comment in file content', async () => {
-    mockShowOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/tmp/project'] })
-    mockReaddirSync
-      .mockReturnValueOnce([{ name: 'suite1', isDirectory: () => true }])
-      .mockReturnValueOnce(['test.rb'])
-    mockReadFileSync.mockReturnValue('# Test: My Custom Test\nbegin\n  @driver.get("http://x.com")\n  puts "Test \'My Custom Test\' passed successfully!"')
-
-    await importProject(fakeMainWindow)
-
-    const suite = Array.from(appState.suites.values())[0]
-    expect(suite.tests[0].name).toBe('My Custom Test')
-  })
-
-  it('falls back to filename when no test name comment found', async () => {
-    mockShowOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/tmp/project'] })
-    mockReaddirSync
-      .mockReturnValueOnce([{ name: 'suite1', isDirectory: () => true }])
-      .mockReturnValueOnce(['my_test.rb'])
-    mockReadFileSync.mockReturnValue('some ruby code without test comment')
-
-    await importProject(fakeMainWindow)
-
-    const suite = Array.from(appState.suites.values())[0]
-    expect(suite.tests[0].name).toBe('my_test')
-  })
-
-  it('skips non-.rb files', async () => {
-    mockShowOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/tmp/project'] })
-    mockReaddirSync
-      .mockReturnValueOnce([{ name: 'suite1', isDirectory: () => true }])
-      .mockReturnValueOnce(['readme.md', 'test.rb', 'config.yml'])
-    mockReadFileSync.mockReturnValue('# Test: Test\ncode')
-
-    await importProject(fakeMainWindow)
-
-    const suite = Array.from(appState.suites.values())[0]
-    expect(suite.tests).toHaveLength(1)
-  })
-
-  it('sends suite-updated event and reloads the window', async () => {
-    mockShowOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/tmp/project'] })
-    mockReaddirSync.mockReturnValueOnce([])
-
-    await importProject(fakeMainWindow)
-
-    expect(mockSend).toHaveBeenCalledWith('suite-updated', expect.any(Array))
-    expect(mockReload).toHaveBeenCalled()
-  })
-
-  it('returns error when readdirSync throws', async () => {
-    mockShowOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/tmp/project'] })
-    mockReaddirSync.mockImplementation(() => {
-      throw new Error('Permission denied')
+    expect(await importProject(null as never)).toEqual({
+      success: false,
+      error: 'Main window not found'
     })
-
-    const result = await importProject(fakeMainWindow)
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('Permission denied')
   })
 
-  it('parses steps from file content between begin and puts, as Steps', async () => {
-    mockShowOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/tmp/project'] })
-    mockReaddirSync
-      .mockReturnValueOnce([{ name: 'suite1', isDirectory: () => true }])
-      .mockReturnValueOnce(['test.rb'])
-    mockReadFileSync.mockReturnValue(
+  it('returns error when the user cancels the directory selection', async () => {
+    await setActiveProject(project)
+    mockDialog.showOpenDialog.mockResolvedValue({ canceled: true, filePaths: [] })
+    expect(await importProject(win)).toEqual({ success: false, error: 'No directory selected' })
+  })
+
+  it('says so when no project is open', async () => {
+    expect(await importProject(win)).toEqual({ success: false, error: 'No project is open.' })
+  })
+
+  it('imports every .rb file under the folder, as tests with a spec file each', async () => {
+    await setActiveProject(project)
+    await writeFile(join(source, 'top.rb'), exported('Top'))
+    await mkdir(join(source, 'checkout'))
+    await writeFile(join(source, 'checkout', 'pay.rb'), exported('Pay'))
+    await writeFile(join(source, 'readme.md'), 'not a test')
+
+    expect(await importProject(win)).toEqual({ success: true })
+
+    expect(tests().map((t) => t.name)).toEqual(['Pay', 'Top'])
+    expect(tests().every((t) => t.file?.startsWith('spec/'))).toBe(true)
+    expect(await readFile(join(project, 'spec', 'top_spec.rb'), 'utf-8')).toContain('http://x.test')
+    expect(send).toHaveBeenCalledWith('tests-updated', expect.any(Array))
+    expect(reload).toHaveBeenCalled()
+  })
+
+  it('tags the tests of a subfolder with the folder name, run through the tag rule', async () => {
+    await setActiveProject(project)
+    await writeFile(join(source, 'top.rb'), exported('Top'))
+    await mkdir(join(source, 'Smoke tests'))
+    await writeFile(join(source, 'Smoke tests', 'login.rb'), exported('Login'))
+    await mkdir(join(source, '2nd wave'))
+    await writeFile(join(source, '2nd wave', 'cart.rb'), exported('Cart'))
+
+    await importProject(win)
+
+    const byName = Object.fromEntries(tests().map((t) => [t.name, t.tags]))
+    expect(byName.Top).toBeUndefined()
+    expect(byName.Login).toEqual(['smoke_tests'])
+    expect(byName.Cart).toEqual(['t_2nd_wave'])
+    expect(await readFile(join(project, 'spec', 'login_spec.rb'), 'utf-8')).toContain(
+      "describe 'Login', :smoke_tests do"
+    )
+  })
+
+  it('keeps the tags and steps of an export, from the sidecars written beside it', async () => {
+    await setActiveProject(project)
+    await writeFile(join(source, 'pay_spec.rb'), exported('Pay'))
+    await mkdir(join(source, '.raider', 'tests'), { recursive: true })
+    await writeFile(
+      join(source, '.raider', 'tests', 'pay_spec.rb.json'),
+      JSON.stringify({
+        version: 1,
+        id: 'old-id',
+        name: 'Pay',
+        url: 'http://x.test',
+        steps: [nav('http://x.test')],
+        file: 'pay_spec.rb',
+        automation: 'selenium',
+        hash: 'h',
+        tags: ['smoke', 'regression'],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z'
+      })
+    )
+
+    await importProject(win)
+
+    expect(tests()).toEqual([
+      expect.objectContaining({ name: 'Pay', tags: ['regression', 'smoke'] })
+    ])
+    // A fresh id: an import never replaces a test
+    expect(appState.tests.has('old-id')).toBe(false)
+  })
+
+  it('asks before importing hidden custom Ruby and imports nothing on cancel', async () => {
+    await setActiveProject(project)
+    const custom: Step = { id: 'c', kind: 'custom', code: 'system("id")' }
+    await writeFile(join(source, 'bad.rb'), writeExportHeader({ testName: 'Bad', steps: [custom] }))
+    mockDialog.showMessageBox.mockResolvedValue({ response: 1 })
+
+    const result = await importProject(win)
+
+    expect(result.success).toBe(false)
+    expect(mockDialog.showMessageBox).toHaveBeenCalledTimes(1)
+    expect(appState.tests.size).toBe(0)
+  })
+
+  it('adds to the tests the project has: it replaces nothing', async () => {
+    await setActiveProject(project)
+    await writeFile(join(source, 'one.rb'), exported('Same'))
+    await importProject(win)
+    await importProject(win)
+
+    expect(tests().map((t) => t.file)).toEqual(['spec/same_spec.rb', 'spec/same_2_spec.rb'])
+  })
+
+  it('falls back to the file name when there is no test comment', async () => {
+    await setActiveProject(project)
+    await writeFile(join(source, 'my_test.rb'), '# no comment\n')
+
+    await importProject(win)
+
+    expect(tests().map((t) => t.name)).toEqual(['my_test'])
+  })
+
+  it('parses steps from a legacy file between begin and puts, as Steps', async () => {
+    await setActiveProject(project)
+    await writeFile(
+      join(source, 'step.rb'),
       '# Test: Step Test\nbegin\n  @driver.get("http://x.com")\n  @driver.find_element(:id, "btn").click\n  puts "Test \'Step Test\' passed successfully!"'
     )
 
-    await importProject(fakeMainWindow)
+    await importProject(win)
 
-    const suite = Array.from(appState.suites.values())[0]
-    expect(suite.tests[0].steps).toEqual([
+    expect(tests()).toHaveLength(1)
+    expect(Array.from(appState.tests.values())[0].steps).toEqual([
       { id: expect.any(String), kind: 'navigate', url: 'http://x.com' },
       { id: expect.any(String), kind: 'click', element: { strategy: 'id', value: 'btn' } }
     ])
+  })
+
+  it('skips .raider, hidden tooling folders and symlinks', async () => {
+    await setActiveProject(project)
+    await mkdir(join(source, 'node_modules'))
+    await writeFile(join(source, 'node_modules', 'dep.rb'), exported('Dep'))
+    await mkdir(join(source, '.raider'))
+    await writeFile(join(source, '.raider', 'x.rb'), exported('Hidden'))
+    await symlink(join(project, 'Gemfile'), join(source, 'link.rb'))
+    await writeFile(join(source, 'real.rb'), exported('Real'))
+
+    await importProject(win)
+
+    expect(tests().map((t) => t.name)).toEqual(['Real'])
+  })
+
+  it('returns the error when the folder cannot be read', async () => {
+    await setActiveProject(project)
+    mockDialog.showOpenDialog.mockResolvedValue({
+      canceled: false,
+      filePaths: [join(source, 'does-not-exist')]
+    })
+
+    const result = await importProject(win)
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('ENOENT')
   })
 })

@@ -1,66 +1,60 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { mkdtemp, readFile, readdir, rm, access } from 'fs/promises'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
+const mockDialog = vi.hoisted(() => ({ showSaveDialog: vi.fn(), showOpenDialog: vi.fn() }))
 vi.mock('electron', () => ({
-  BrowserWindow: {
-    getFocusedWindow: vi.fn()
-  },
-  dialog: {
-    showSaveDialog: vi.fn()
-  }
+  BrowserWindow: { getFocusedWindow: vi.fn() },
+  dialog: mockDialog
 }))
 
-vi.mock('fs', () => ({
-  default: {
-    existsSync: vi.fn(),
-    mkdirSync: vi.fn(),
-    writeFileSync: vi.fn(),
-    chmodSync: vi.fn()
-  },
-  existsSync: vi.fn(),
-  mkdirSync: vi.fn(),
-  writeFileSync: vi.fn(),
-  chmodSync: vi.fn()
-}))
-
-vi.mock('../../src/main/handlers/appState', () => ({
-  appState: {
-    suites: new Map(),
-    projectFramework: 'rspec',
-    projectAutomation: 'selenium',
-    recorderSettings: { browser: 'chrome', headless: false, implicitWait: 0, explicitWait: 30 }
-  }
-}))
-
-vi.mock('../../src/main/codegen/testFile', () => ({
-  generateRspecFile: vi.fn(() => '# generated test content'),
-  toAutomation: vi.fn(() => 'selenium')
-}))
-
-vi.mock('../../src/main/handlers/frameworkTemplates', () => ({
-  getExportExtension: vi.fn(() => 'rb')
-}))
-
-import { BrowserWindow, dialog } from 'electron'
-import fs from 'fs'
+import { BrowserWindow } from 'electron'
 import exportProject from '../../src/main/handlers/io/exportProject'
 import { appState } from '../../src/main/handlers/appState'
+import { DEFAULT_RECORDER_SETTINGS } from '../../src/main/handlers/config/projectSettings'
+import { readExportHeader } from '../../src/main/codegen/exportHeader'
+import { readSidecar } from '../../src/main/handlers/tests/sidecar'
+import type { Step } from '../../src/shared/types/step'
+import type { Test } from '../../src/shared/types/test'
 
 const mockGetFocusedWindow = BrowserWindow.getFocusedWindow as ReturnType<typeof vi.fn>
-const mockShowSaveDialog = dialog.showSaveDialog as ReturnType<typeof vi.fn>
-const mockExistsSync = fs.existsSync as ReturnType<typeof vi.fn>
-const mockMkdirSync = fs.mkdirSync as ReturnType<typeof vi.fn>
-const mockWriteFileSync = fs.writeFileSync as ReturnType<typeof vi.fn>
-const mockChmodSync = fs.chmodSync as ReturnType<typeof vi.fn>
-
 const fakeWindow = { id: 1 }
 
-describe('exportProject handler', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockGetFocusedWindow.mockReturnValue(fakeWindow)
-    appState.suites = new Map()
-  })
+const nav = (url: string): Step => ({ id: `n-${url}`, kind: 'navigate', url })
+const test = (id: string, name: string, tags?: string[]): Test => ({
+  id,
+  name,
+  url: 'https://x.test',
+  steps: [nav('https://x.test')],
+  ...(tags && { tags })
+})
 
+let dir: string
+let out: string
+
+beforeEach(async () => {
+  dir = await mkdtemp(join(tmpdir(), 'raider-export-'))
+  out = join(dir, 'raider-project')
+  vi.clearAllMocks()
+  mockGetFocusedWindow.mockReturnValue(fakeWindow)
+  appState.tests = new Map()
+  appState.projectFramework = 'rspec'
+  appState.projectAutomation = 'selenium'
+  appState.recorderSettings = { ...DEFAULT_RECORDER_SETTINGS }
+})
+
+afterEach(async () => {
+  await rm(dir, { recursive: true, force: true })
+})
+
+const exists = (p: string): Promise<boolean> =>
+  access(p).then(
+    () => true,
+    () => false
+  )
+
+describe('exportProject handler', () => {
   it('returns error when no focused window is available', async () => {
     mockGetFocusedWindow.mockReturnValue(null)
     const result = await exportProject()
@@ -69,107 +63,106 @@ describe('exportProject handler', () => {
   })
 
   it('returns error when user cancels dialog', async () => {
-    mockShowSaveDialog.mockResolvedValue({ canceled: true, filePath: undefined })
+    mockDialog.showSaveDialog.mockResolvedValue({ canceled: true, filePath: undefined })
     const result = await exportProject()
     expect(result.success).toBe(false)
     expect(result.error).toContain('cancelled')
   })
 
-  it('creates project directory if it does not exist', async () => {
-    mockShowSaveDialog.mockResolvedValue({ canceled: false, filePath: '/tmp/project' })
-    mockExistsSync.mockReturnValue(false)
-    await exportProject()
-    expect(mockMkdirSync).toHaveBeenCalledWith('/tmp/project')
-  })
-
-  it('does not create project directory if it already exists', async () => {
-    mockShowSaveDialog.mockResolvedValue({ canceled: false, filePath: '/tmp/project' })
-    mockExistsSync.mockReturnValue(true)
-    await exportProject()
-    expect(mockMkdirSync).not.toHaveBeenCalled()
-  })
-
-  it('exports empty project successfully with no suites', async () => {
-    mockShowSaveDialog.mockResolvedValue({ canceled: false, filePath: '/tmp/project' })
-    mockExistsSync.mockReturnValue(true)
+  it('creates the project directory if it does not exist', async () => {
+    mockDialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: out })
     const result = await exportProject()
-    expect(result.success).toBe(true)
-    expect(result.path).toBe('/tmp/project')
-    expect(mockWriteFileSync).not.toHaveBeenCalled()
+    expect(result).toEqual({ success: true, path: out })
+    expect(await exists(out)).toBe(true)
+    expect(await readdir(out)).toEqual([])
   })
 
-  it('creates suite folders and writes test files for each suite', async () => {
-    appState.suites.set('suite-1', {
-      id: 'suite-1',
-      name: 'Auth Suite',
-      tests: [
-        { id: 'test-1', name: 'Login test', url: '', steps: ['step1'] },
-        { id: 'test-2', name: 'Signup test', url: '', steps: ['step2'] }
-      ]
-    })
-    appState.suites.set('suite-2', {
-      id: 'suite-2',
-      name: 'Dashboard Suite',
-      tests: [
-        { id: 'test-3', name: 'Load dashboard', url: '', steps: ['step3'] }
-      ]
-    })
-
-    mockShowSaveDialog.mockResolvedValue({ canceled: false, filePath: '/tmp/project' })
-    // First call: project dir exists, then suite dirs don't exist
-    mockExistsSync.mockReturnValueOnce(true).mockReturnValueOnce(false).mockReturnValueOnce(false)
+  it('writes one spec file per test, flat, with no suite folders', async () => {
+    appState.tests.set('t1', test('t1', 'Login test'))
+    appState.tests.set('t2', test('t2', 'Signup test'))
+    appState.tests.set('t3', test('t3', 'Load dashboard'))
+    mockDialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: out })
 
     const result = await exportProject()
-    expect(result.success).toBe(true)
-    expect(result.path).toBe('/tmp/project')
-    // 2 suite directories created
-    expect(mockMkdirSync).toHaveBeenCalledTimes(2)
-    // 3 test files written
-    expect(mockWriteFileSync).toHaveBeenCalledTimes(3)
+
+    expect(result).toEqual({ success: true, path: out })
+    expect((await readdir(out)).sort()).toEqual([
+      '.raider',
+      'load_dashboard_spec.rb',
+      'login_test_spec.rb',
+      'signup_test_spec.rb'
+    ])
+    const text = await readFile(join(out, 'login_test_spec.rb'), 'utf-8')
+    expect(text).not.toContain('# Suite:')
+    expect(readExportHeader(text)).toMatchObject({
+      testName: 'Login test',
+      steps: [nav('https://x.test')]
+    })
+  })
+
+  it('writes the sidecar of each test under .raider/tests, with its tags', async () => {
+    appState.tests.set('t1', test('t1', 'Login', ['regression', 'smoke']))
+    mockDialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: out })
+
+    await exportProject()
+
+    const sidecar = await readSidecar(out, 'login_spec.rb')
+    expect(sidecar).toMatchObject({
+      id: 't1',
+      name: 'Login',
+      file: 'login_spec.rb',
+      tags: ['regression', 'smoke'],
+      steps: [nav('https://x.test')]
+    })
+    expect(await readFile(join(out, 'login_spec.rb'), 'utf-8')).toContain(
+      "describe 'Login', :regression, :smoke do"
+    )
+  })
+
+  it('gives two tests with the same name two files', async () => {
+    appState.tests.set('t1', test('t1', 'Same'))
+    appState.tests.set('t2', test('t2', 'Same'))
+    mockDialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: out })
+
+    await exportProject()
+
+    expect((await readdir(out)).filter((f) => f.endsWith('.rb')).sort()).toEqual([
+      'same_2_spec.rb',
+      'same_spec.rb'
+    ])
   })
 
   it('sets file permissions on non-windows platforms', async () => {
-    appState.suites.set('suite-1', {
-      id: 'suite-1',
-      name: 'Suite',
-      tests: [{ id: 'test-1', name: 'Test', url: '', steps: [] }]
-    })
-    mockShowSaveDialog.mockResolvedValue({ canceled: false, filePath: '/tmp/project' })
-    mockExistsSync.mockReturnValueOnce(true).mockReturnValueOnce(false)
+    appState.tests.set('t1', test('t1', 'Test'))
+    mockDialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: out })
+    const { stat } = await import('fs/promises')
 
-    const originalPlatform = process.platform
-    Object.defineProperty(process, 'platform', { value: 'darwin' })
     await exportProject()
-    expect(mockChmodSync).toHaveBeenCalledTimes(1)
-    Object.defineProperty(process, 'platform', { value: originalPlatform })
+
+    if (process.platform !== 'win32') {
+      expect((await stat(join(out, 'test_spec.rb'))).mode & 0o777).toBe(0o755)
+    }
   })
 
-  it('returns error when file write throws', async () => {
-    appState.suites.set('suite-1', {
-      id: 'suite-1',
-      name: 'Suite',
-      tests: [{ id: 'test-1', name: 'Test', url: '', steps: [] }]
-    })
-    mockShowSaveDialog.mockResolvedValue({ canceled: false, filePath: '/tmp/project' })
-    mockExistsSync.mockReturnValue(true)
-    mockWriteFileSync.mockImplementation(() => {
-      throw new Error('Write failed')
+  it('returns the error when the folder cannot be written', async () => {
+    appState.tests.set('t1', test('t1', 'Test'))
+    mockDialog.showSaveDialog.mockResolvedValue({
+      canceled: false,
+      filePath: join(dir, 'missing', 'deeper')
     })
 
     const result = await exportProject()
+
     expect(result.success).toBe(false)
-    expect(result.error).toContain('Write failed')
+    expect(result.error).toContain('ENOENT')
   })
 
-  it('calls showSaveDialog with correct default path', async () => {
-    mockShowSaveDialog.mockResolvedValue({ canceled: true, filePath: undefined })
+  it('calls showSaveDialog with the right default path', async () => {
+    mockDialog.showSaveDialog.mockResolvedValue({ canceled: true, filePath: undefined })
     await exportProject()
-    expect(mockShowSaveDialog).toHaveBeenCalledWith(
+    expect(mockDialog.showSaveDialog).toHaveBeenCalledWith(
       fakeWindow,
-      expect.objectContaining({
-        defaultPath: 'raider-project',
-        title: 'Export Project'
-      })
+      expect.objectContaining({ defaultPath: 'raider-project', title: 'Export Project' })
     )
   })
 })

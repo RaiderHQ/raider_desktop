@@ -12,26 +12,22 @@ describe('recorder state on project switch', () => {
     useProjectStore.setState({ projectPath: '/a' })
   })
 
-  it('clears the open test, suite, read-only view and breakpoints', () => {
+  it('clears the open test, read-only view and breakpoints', () => {
     useRecorderStore.setState({
-      activeSuiteId: 's1',
+      activeTestSaved: true,
       activeTest: { id: 't', name: 'T_A', url: '', steps: [] },
       readOnlyView: { file: 'spec/x_spec.rb', examples: [] },
       readOnlyTitle: 'X',
-      openTarget: { suiteId: 's1', testId: 't' },
       breakpointIndex: 2,
-      failedStepId: 'x',
-      suites: [{ id: 's1', name: 'S', tests: [] }]
+      failedStepId: 'x'
     })
     useProjectStore.setState({ projectPath: '/b' })
     const s = useRecorderStore.getState()
     expect(s.activeTest).toBeNull()
-    expect(s.activeSuiteId).toBeNull()
+    expect(s.activeTestSaved).toBe(false)
     expect(s.readOnlyView).toBeNull()
     expect(s.readOnlyTitle).toBeNull()
-    expect(s.openTarget).toBeNull()
     expect(s.breakpointIndex).toBeNull()
     expect(s.failedStepId).toBeNull()
-    expect(s.suites).toEqual([])
   })
 })

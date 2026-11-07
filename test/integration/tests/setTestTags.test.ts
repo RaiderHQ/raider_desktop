@@ -58,7 +58,7 @@ describe('setTestTags', () => {
     expect(after?.tags).toEqual(['api', 'smoke'])
     expect(after?.hash).toBe(hashRuby(text))
     expect(after?.updatedAt >= s.updatedAt).toBe(true)
-    expect(send).toHaveBeenCalledWith('suite-updated', expect.anything())
+    expect(send).toHaveBeenCalledWith('tests-updated', expect.anything())
     const entry = (await listProjectTestsHandler()).find((e) => e.file === s.file)
     expect(entry).toMatchObject({ ownership: 'recorded', tags: ['api', 'smoke'] })
     // clearing removes them again

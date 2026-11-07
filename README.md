@@ -25,7 +25,7 @@
 > [!WARNING]
 > Raider Desktop is currently fully tested for **macOS only**. Windows and Linux builds are generated via CI but are not yet fully tested. On Windows the app has native code paths (see [Windows](#windows)), but the in-app install guide recommends WSL.
 
-Raider Desktop is the UI companion for [Ruby Raider](https://github.com/RaiderHQ/ruby_raider) — a Ruby test automation framework. It provides an intuitive interface for creating projects, recording tests, editing code, running suites, and viewing results, all without needing to touch the command line.
+Raider Desktop is the UI companion for [Ruby Raider](https://github.com/RaiderHQ/ruby_raider) — a Ruby test automation framework. It provides an intuitive interface for creating projects, recording tests, editing code, running tests, and viewing results, all without needing to touch the command line.
 
 Documentation: https://ruby-raider.onrender.com/docs/
 
@@ -92,12 +92,12 @@ Record user interactions in an embedded browser and generate test scripts automa
 - **Embedded browser** — Records clicks, navigation, and form inputs directly inside the app
 - **Dual view** — Toggle between human-readable "Friendly View" and generated "Code View"
 - **Trace timeline** — Visual timeline of each recorded step with screenshot thumbnails
-- **Suite management** — Create, delete, and organize test suites and individual tests
-- **Import/Export** — Share tests, suites, or entire projects
+- **Tags** — Group tests with tags (`smoke`, `regression`, or your own) and filter the Tests list by tag
+- **Import/Export** — From the Tests list's More menu: share single tests, or import and export a whole project (one spec file per test, with its steps and tags)
 
 #### Test Execution
 
-- Run individual tests, full suites, or re-run only failed tests
+- Run individual tests, every test with a tag (More > Run tagged tests), or re-run only failed tests
 - View structured output with pass/fail indicators
 - Accessibility violation reports parsed from axe-core output with severity badges and fix suggestions
 

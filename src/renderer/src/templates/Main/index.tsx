@@ -14,6 +14,7 @@ import TraceViewerOverlay from '@components/TraceViewerOverlay'
 import useVersionStore from '@foundation/Stores/versionStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useProjectStore from '@foundation/Stores/projectStore'
+import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { installMissingGems } from '@foundation/installGems'
 import { subscribeRunEvents } from '@foundation/Stores/runStore'
 import useTitleStore from '@foundation/Stores/titleStore'
@@ -69,12 +70,10 @@ const MainTemplate: React.FC = (): JSX.Element => {
     checkRuby()
   }, [])
 
+  // Whoever reads the tests (the run panel, the dashboard) finds them current
   useEffect(() => {
-    const cleanup = window.api.onSuitesRecovered((info?: { backupSaved?: boolean }) => {
-      const key = info?.backupSaved === false ? 'backupFailed' : 'backupSaved'
-      toast.error(t(`suites.recovered.${key}`), { duration: 10000 })
-    })
-    return (): void => cleanup()
+    const reload = (): void => void useTestsListStore.getState().reload()
+    return window.api.onTestsUpdated(reload)
   }, [])
 
   useEffect(() => {
@@ -89,7 +88,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
       toast.error(t('suites.tooNew'), { duration: 10000 })
     }
     const offMigrated = window.api.onTestsMigrated(onMigrated)
-    const offTooNew = window.api.onSuitesTooNew(onTooNew)
+    const offTooNew = window.api.onTestsTooNew(onTooNew)
     return (): void => {
       offMigrated()
       offTooNew()

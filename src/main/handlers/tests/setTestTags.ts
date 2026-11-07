@@ -34,17 +34,15 @@ export async function setTestTags(fileRel: unknown, tags: unknown): Promise<SetT
     if (saved.kind === 'notFound') return fail(NOT_FOUND)
     if (saved.kind === 'describeLine') return fail(DESCRIBE_LINE)
 
-    // Lists reload from the suites; keep the in-memory copies in step
+    // Lists reload from the tests; keep the in-memory copies in step
     const store = filesStore()
     if (store && store.projectPath === projectPath) {
-      for (const suite of store.suites.values()) {
-        for (const test of suite.tests) {
-          if (test.file === fileRel) test.tags = clean.length > 0 ? clean : undefined
-        }
+      for (const test of store.tests.values()) {
+        if (test.file === fileRel) test.tags = clean.length > 0 ? clean : undefined
       }
       broadcast(store)
     } else {
-      appState.mainWindow?.webContents.send('suite-updated', Array.from(appState.suites.values()))
+      appState.mainWindow?.webContents.send('tests-updated', Array.from(appState.tests.values()))
     }
     return saved.kind === 'fileOnly' ? { success: true, fileOnly: true } : { success: true }
   } catch (error) {

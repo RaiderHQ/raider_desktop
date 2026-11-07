@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import useRecorderStore from '@foundation/Stores/recorderStore'
+import { useRecordedTests } from './useTestsList'
 import type { TraceStep } from '@foundation/Types/traceStep'
 
 export interface TraceViewerState {
@@ -17,7 +17,7 @@ export interface TraceViewerState {
  * ProjectDashboard.
  */
 export function useTraceViewer(): TraceViewerState {
-  const suites = useRecorderStore((s) => s.suites)
+  const tests = useRecordedTests()
 
   const [viewingTraceTestId, setViewingTraceTestId] = useState<string | null>(null)
   const [traceSteps, setTraceSteps] = useState<TraceStep[]>([])
@@ -25,10 +25,8 @@ export function useTraceViewer(): TraceViewerState {
 
   // Build a map from test name to test (for hasTrace lookup)
   const testByName = new Map<string, { id: string; hasTrace?: boolean }>()
-  for (const suite of suites) {
-    for (const test of suite.tests) {
-      testByName.set(test.name, { id: test.id, hasTrace: test.hasTrace })
-    }
+  for (const test of tests) {
+    testByName.set(test.name, { id: test.id, hasTrace: test.hasTrace })
   }
 
   const handleViewTrace = async (testName: string): Promise<void> => {

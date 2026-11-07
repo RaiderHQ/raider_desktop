@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { TFunction } from 'i18next'
 import { useRunStore } from '@foundation/Stores/runStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
+import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import type { RunView } from '@foundation/run/runModel'
 import { loadRaiderResults } from '@foundation/raiderResults'
 import type { TestResult } from '@foundation/Types/testResult'
@@ -9,7 +10,6 @@ import { describeStep, elementName } from '@shared/describeStep'
 import { failureReason, type FailureReason } from '@shared/failureReason'
 import type { Step } from '@shared/types/step'
 import type { Test } from '@shared/types/test'
-import type { Suite } from '@foundation/Types/suite'
 
 export type FailedStepState =
   | { status: 'none' }
@@ -51,8 +51,8 @@ export async function resolveFailedStep(
 }
 
 /** The test as main last saved it: it only changes when a save is broadcast */
-const savedCopyOf = (suites: Suite[], testId: string | null): Test | null =>
-  testId === null ? null : (suites.flatMap((s) => s.tests).find((tt) => tt.id === testId) ?? null)
+const savedCopyOf = (tests: Test[], testId: string | null): Test | null =>
+  testId === null ? null : (tests.find((tt) => tt.id === testId) ?? null)
 
 /**
  * The failed step for one known result; none until main has answered, `pending` meanwhile.
@@ -66,7 +66,7 @@ export function useFailedStepFor(
 ): FailedStepState & { pending: boolean } {
   const testId = test?.id ?? null
   const key = projectPath && testId ? `${projectPath}\n${testId}` : null
-  const saved = useRecorderStore((s) => savedCopyOf(s.suites, testId))
+  const saved = useTestsListStore((s) => savedCopyOf(s.tests, testId))
   const stepIds = test?.steps.map((s) => s.id).join('\n')
   // Kept with the test it was for: another test or project never paints this answer,
   // the same one keeps it while re-asking

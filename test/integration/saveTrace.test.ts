@@ -25,7 +25,7 @@ vi.mock('electron', () => ({
 
 vi.mock('../../src/main/handlers/appState', () => ({
   appState: {
-    suites: new Map(),
+    tests: new Map(),
     mainWindow: {
       webContents: {
         send: (...args: unknown[]) => mockSend(...args)
@@ -42,7 +42,7 @@ describe('saveTrace handler', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    appState.suites = new Map()
+    appState.tests = new Map()
   })
 
   afterEach(() => {
@@ -122,12 +122,7 @@ describe('saveTrace handler', () => {
   })
 
   it('sets hasTrace flag on matching test in appState', async () => {
-    const suite = {
-      id: 'suite-1',
-      name: 'Test Suite',
-      tests: [{ id: testId, name: 'My Test', url: '', steps: [] }]
-    }
-    appState.suites.set('suite-1', suite)
+    appState.tests.set(testId, { id: testId, name: 'My Test', url: '', steps: [] })
 
     const trace: TraceStep[] = [
       {
@@ -140,17 +135,12 @@ describe('saveTrace handler', () => {
 
     await saveTrace(testId, trace)
 
-    const test = appState.suites.get('suite-1')?.tests.find((t) => t.id === testId)
+    const test = appState.tests.get(testId)
     expect(test?.hasTrace).toBe(true)
   })
 
-  it('broadcasts suite-updated after saving', async () => {
-    const suite = {
-      id: 'suite-1',
-      name: 'Test Suite',
-      tests: [{ id: testId, name: 'My Test', url: '', steps: [] }]
-    }
-    appState.suites.set('suite-1', suite)
+  it('broadcasts tests-updated after saving', async () => {
+    appState.tests.set(testId, { id: testId, name: 'My Test', url: '', steps: [] })
 
     const trace: TraceStep[] = [
       {
@@ -163,7 +153,7 @@ describe('saveTrace handler', () => {
 
     await saveTrace(testId, trace)
 
-    expect(mockSend).toHaveBeenCalledWith('suite-updated', expect.any(Array))
+    expect(mockSend).toHaveBeenCalledWith('tests-updated', expect.any(Array))
   })
 
   it('handles multiple trace steps', async () => {
@@ -374,7 +364,7 @@ describe('saveTrace handler', () => {
       try {
         const result = await saveTrace(testId, [], ['s1'])
         expect(result.success).toBe(true)
-        expect(mockSend).toHaveBeenCalledWith('suite-updated', expect.any(Array))
+        expect(mockSend).toHaveBeenCalledWith('tests-updated', expect.any(Array))
         expect(ids()).toEqual(['e1'])
       } finally {
         chmodSync(picDir(), 0o755)

@@ -33,7 +33,7 @@ beforeEach(() => {
   Object.assign(window.api, ipcSubscriptions(listeners))
   useRecorderStore.getState().resetForProject()
   useRecorderStore.setState({
-    activeSuiteId: 's1',
+    activeTestSaved: true,
     activeTest: test1,
     recordingTarget: { kind: 'pick', stepId: 'b' },
     breakpointIndex: 0
