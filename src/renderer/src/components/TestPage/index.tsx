@@ -69,6 +69,17 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const ownRun = useRunStore(
     (s) => s.origin?.route === location.pathname || s.notReady?.origin.route === location.pathname
   )
+  // Recording hides the last run's panel; only a run after it shows again
+  const runStartedAt = useRunStore((s) => s.run?.startedAt)
+  const [hiddenRun, setHiddenRun] = useState<string | undefined>(undefined)
+  const wasRecording = useRef(recording.isRecording)
+  useEffect(() => {
+    if (recording.isRecording && !wasRecording.current) {
+      const startedAt = useRunStore.getState().run?.startedAt
+      if (startedAt) setHiddenRun(startedAt)
+    }
+    wasRecording.current = recording.isRecording
+  }, [recording.isRecording])
   const showCode = useRecorderStore((s) => s.showCode)
   const isOutputVisible = useRecorderStore((s) => s.isOutputVisible)
   const breakpointIndex = useRecorderStore((s) => s.breakpointIndex)
@@ -635,7 +646,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             </>
           )}
 
-          {ownRun && (
+          {ownRun && (hiddenRun === undefined || runStartedAt !== hiddenRun) && (
             <RunPanel routeKey={location.pathname} onRunAgain={() => void recording.run()} />
           )}
 

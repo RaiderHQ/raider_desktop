@@ -9,6 +9,7 @@ import { fixInTestRoute, recordedTestForFile } from '@foundation/recordedTestFor
 import { failedStepLine, resolveFailedStep } from '../../hooks/useFailedStep'
 import MobileNotReady from '@components/MobileNotReady'
 import Tooltip from '@components/Tooltip'
+import Icon from '@components/Icon'
 import {
   errorReason,
   progress,
@@ -123,6 +124,7 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
   const run = useRunStore((s) => s.run)
   const origin = useRunStore((s) => s.origin)
   const notReady = useRunStore((s) => s.notReady)
+  const collapsed = useRunStore((s) => s.resultsCollapsed)
   const projectPath = useProjectStore((s) => s.projectPath)
   const [filter, setFilter] = useState<Filter>('all')
   const [now, setNow] = useState(() => Date.now())
@@ -232,7 +234,9 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
       data-testid="run-panel"
       className="flex flex-col border border-neutral-bdr rounded-md bg-white"
     >
-      <div className="flex items-center gap-3 p-3 border-b border-neutral-bdr">
+      <div
+        className={`flex items-center gap-3 p-3 ${collapsed ? '' : 'border-b border-neutral-bdr'}`}
+      >
         <span data-testid="run-phase" className="font-medium text-neutral-dark">
           {label}
         </span>
@@ -281,73 +285,98 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
             </button>
           </Tooltip>
         )}
-      </div>
-
-      {reason && (
-        <p data-testid="run-error-reason" className="px-3 py-2 text-xs text-neutral-dk">
-          {reason}
-        </p>
-      )}
-
-      {!run.liveEvents && (
-        <p className="px-3 py-2 text-xs text-neutral-dk bg-neutral-lt">{t('run.updateReporter')}</p>
-      )}
-
-      <div data-testid="run-filter" className="flex gap-1 p-3 pb-0">
-        {FILTERS.map((f) => (
-          <Tooltip
-            key={f}
-            content={t(`tooltips.runPanel.filter${f[0].toUpperCase()}${f.slice(1)}`)}
-            position="bottom"
+        <Tooltip
+          content={t(collapsed ? 'tooltips.runPanel.showResults' : 'tooltips.runPanel.minimise')}
+          position="bottom"
+        >
+          <button
+            data-testid="run-collapse"
+            aria-label={t(collapsed ? 'run.showResults' : 'run.minimiseResults')}
+            aria-expanded={!collapsed}
+            className="p-1 rounded text-neutral-dk hover:bg-neutral-50 transition-colors"
+            onClick={() => useRunStore.getState().setResultsCollapsed(!collapsed)}
           >
-            <button
-              aria-pressed={filter === f}
-              className={`${buttonClass} ${filter === f ? 'bg-ruby-sub border-ruby' : ''}`}
-              onClick={() => setFilter(f)}
-            >
-              {t(`run.filter.${f}`)}
-            </button>
-          </Tooltip>
-        ))}
+            <Icon
+              name="chevron-down"
+              size={16}
+              color="currentColor"
+              className={`inline-flex transition-transform ${collapsed ? '-rotate-90' : ''}`}
+            />
+          </button>
+        </Tooltip>
       </div>
 
-      <div className="max-h-80 overflow-y-auto">
-        {tests.length === 0 && (
-          <p data-testid="run-filter-empty" className="px-3 py-3 text-xs text-neutral-md">
-            {t(`run.filterEmpty.${emptyLine()}`)}
-          </p>
-        )}
-        {files.map((file) => (
-          <div key={file}>
-            <div className="px-3 pt-3 text-xs font-medium text-neutral-md truncate">{file}</div>
-            <ul className="divide-y divide-neutral-bdr">
-              {tests.filter((x) => x.file === file).map(row)}
-            </ul>
+      {!collapsed && (
+        <>
+          {reason && (
+            <p data-testid="run-error-reason" className="px-3 py-2 text-xs text-neutral-dk">
+              {reason}
+            </p>
+          )}
+
+          {!run.liveEvents && (
+            <p className="px-3 py-2 text-xs text-neutral-dk bg-neutral-lt">
+              {t('run.updateReporter')}
+            </p>
+          )}
+
+          <div data-testid="run-filter" className="flex gap-1 p-3 pb-0">
+            {FILTERS.map((f) => (
+              <Tooltip
+                key={f}
+                content={t(`tooltips.runPanel.filter${f[0].toUpperCase()}${f.slice(1)}`)}
+                position="bottom"
+              >
+                <button
+                  aria-pressed={filter === f}
+                  className={`${buttonClass} ${filter === f ? 'bg-ruby-sub border-ruby' : ''}`}
+                  onClick={() => setFilter(f)}
+                >
+                  {t(`run.filter.${f}`)}
+                </button>
+              </Tooltip>
+            ))}
           </div>
-        ))}
-      </div>
 
-      <details
-        data-testid="run-tech-details"
-        className="border-t border-neutral-bdr p-3"
-        open={detailsOpen}
-        onToggle={(e) => setDetailsOpen(e.currentTarget.open)}
-      >
-        <summary className="text-xs text-neutral-dk cursor-pointer">
-          {t('run.technicalDetails')}
-        </summary>
-        {(finished?.truncated || run.outputTrimmed) && (
-          <p className="text-xs text-neutral-md mt-2">{t('run.trimmed')}</p>
-        )}
-        {/* Joining megabytes of output on every event is costly, so only while it's on show */}
-        {detailsOpen && (
-          <pre className="mt-2 p-2 rounded bg-black text-white text-xs overflow-auto whitespace-pre-wrap">
-            {run.output
-              .map((o) => (o.worker !== undefined ? `[w${o.worker}] ${o.chunk}` : o.chunk))
-              .join('')}
-          </pre>
-        )}
-      </details>
+          <div className="max-h-80 overflow-y-auto">
+            {tests.length === 0 && (
+              <p data-testid="run-filter-empty" className="px-3 py-3 text-xs text-neutral-md">
+                {t(`run.filterEmpty.${emptyLine()}`)}
+              </p>
+            )}
+            {files.map((file) => (
+              <div key={file}>
+                <div className="px-3 pt-3 text-xs font-medium text-neutral-md truncate">{file}</div>
+                <ul className="divide-y divide-neutral-bdr">
+                  {tests.filter((x) => x.file === file).map(row)}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <details
+            data-testid="run-tech-details"
+            className="border-t border-neutral-bdr p-3"
+            open={detailsOpen}
+            onToggle={(e) => setDetailsOpen(e.currentTarget.open)}
+          >
+            <summary className="text-xs text-neutral-dk cursor-pointer">
+              {t('run.technicalDetails')}
+            </summary>
+            {(finished?.truncated || run.outputTrimmed) && (
+              <p className="text-xs text-neutral-md mt-2">{t('run.trimmed')}</p>
+            )}
+            {/* Joining megabytes of output on every event is costly, so only while it's on show */}
+            {detailsOpen && (
+              <pre className="mt-2 p-2 rounded bg-black text-white text-xs overflow-auto whitespace-pre-wrap">
+                {run.output
+                  .map((o) => (o.worker !== undefined ? `[w${o.worker}] ${o.chunk}` : o.chunk))
+                  .join('')}
+              </pre>
+            )}
+          </details>
+        </>
+      )}
     </div>
   )
 }

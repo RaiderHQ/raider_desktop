@@ -33,6 +33,9 @@ interface RunStore {
   deviceFocusRequested: boolean
   /** A mobile readiness check is in flight; a run is about to start or not */
   checking: boolean
+  /** The run panel shows only its summary line; kept for the app session, never saved */
+  resultsCollapsed: boolean
+  setResultsCollapsed: (v: boolean) => void
   setFreshLoginNext: (v: boolean) => void
   ingest: (e: RunEvent) => void
   restore: () => Promise<void>
@@ -63,6 +66,8 @@ export const useRunStore = create<RunStore>(
     notReady: null,
     deviceFocusRequested: false,
     checking: false,
+    resultsCollapsed: false,
+    setResultsCollapsed: (v: boolean): void => set({ resultsCollapsed: v }),
     setFreshLoginNext: (v: boolean): void => set({ freshLoginNext: v }),
     ingest: (e: RunEvent): void => {
       const run = reduceRun(get().run, e, useProjectStore.getState().projectPath ?? undefined)

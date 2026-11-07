@@ -64,9 +64,35 @@ const setRun = (run: RunView | null, route = '/tests'): void =>
 beforeEach(() => {
   window.api = { setActiveProject: vi.fn().mockResolvedValue({}) } as unknown as typeof window.api
   useProjectStore.setState({ projectPath: '/work/shop' })
+  useRunStore.setState({ resultsCollapsed: false })
 })
 
 describe('RunPanel', () => {
+  it('minimises to the summary line, and stays minimised for the session', () => {
+    setRun(makeRun({ phase: null, finished: finished('passed', 1) }, [test1('a1', 'passed')]))
+    const { unmount } = render(<RunPanel routeKey="/tests" />)
+    expect(screen.getByTestId('run-filter')).toBeInTheDocument()
+    const toggle = screen.getByTestId('run-collapse')
+    expect(toggle).toHaveAttribute('aria-label', 'run.minimiseResults')
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.click(toggle)
+    expect(screen.queryByTestId('run-filter')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('run-tech-details')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('run-test-row')).not.toBeInTheDocument()
+    expect(screen.getByTestId('run-phase')).toHaveTextContent('run.result.passed')
+    expect(screen.getByTestId('run-collapse')).toHaveAttribute('aria-label', 'run.showResults')
+    expect(screen.getByTestId('run-collapse')).toHaveAttribute('aria-expanded', 'false')
+    unmount()
+
+    // Another panel later in the session is minimised too
+    render(<RunPanel routeKey="/tests" />)
+    expect(screen.queryByTestId('run-filter')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('run-collapse'))
+    expect(screen.getByTestId('run-filter')).toBeInTheDocument()
+    expect(screen.getByTestId('run-tech-details')).toBeInTheDocument()
+  })
+
   it('renders nothing for a different routeKey', () => {
     setRun(makeRun())
     const { container } = render(<RunPanel routeKey="/other" />)

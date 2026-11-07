@@ -908,7 +908,9 @@
       "filterAll": "Show all",
       "filterFailed": "Show only failed",
       "filterRunning": "Show only running",
-      "filterQueued": "Show only queued"
+      "filterQueued": "Show only queued",
+      "minimise": "Hide the results list; the summary stays",
+      "showResults": "Show the results list again"
     },
     "editor": {
       "save": "Save this file"
@@ -964,6 +966,8 @@
     }
   },
   "run": {
+    "minimiseResults": "Minimise results",
+    "showResults": "Show results",
     "phase": {
       "installing": "Installing gems…",
       "booting": "Starting Ruby…",
