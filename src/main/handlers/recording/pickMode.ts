@@ -2,11 +2,14 @@ import { webContents, type WebContents } from 'electron'
 import { appState } from '../appState'
 import { toElementTarget, type LabelHints } from './recorderEvent'
 import type { PickResult } from '../../../shared/types/pick'
+import { showAssertionContextMenu, type AssertionMenuRequest } from './assertionContextMenu'
 
 // Stops watching the guest for navigation; set while pick mode is on
 let unwatchGuest: (() => void) | null = null
 // Bumped whenever pick mode ends: a pick still waiting for the page to settle never starts
 let pickGeneration = 0
+
+type PickPurpose = 'repick' | 'assert'
 
 /** How long the page must have stopped loading before picking starts */
 export const PICK_SETTLE_MS = 300
@@ -93,7 +96,10 @@ function watchGuest(wc: WebContents): () => void {
  * Turns pick mode off at once, or on once the page has settled (see `settled`). Fails when
  * there is no recorder page, or when picking was ended or the page went away meanwhile.
  */
-export async function setPickMode(on: boolean): Promise<{ success: boolean }> {
+export async function setPickMode(
+  on: boolean,
+  purpose: PickPurpose = 'repick'
+): Promise<{ success: boolean }> {
   if (!on) {
     endPickMode()
     return { success: true }
@@ -108,6 +114,7 @@ export async function setPickMode(on: boolean): Promise<{ success: boolean }> {
     if (generation !== pickGeneration || guest()?.id !== wc.id) return { success: false }
     if (!appState.pickMode) {
       appState.pickMode = true
+      appState.pickPurpose = purpose
       unwatchGuest = watchGuest(wc)
     }
   }
@@ -118,10 +125,14 @@ export async function setPickMode(on: boolean): Promise<{ success: boolean }> {
 /** Only the app window may switch pick mode; the guest page never can */
 export async function handleSetPickMode(
   senderId: number,
-  on: unknown
+  on: unknown,
+  purpose?: unknown
 ): Promise<{ success: boolean }> {
   if (senderId !== appState.mainWindow?.webContents.id) return { success: false }
-  return setPickMode(on === true)
+  if (purpose !== undefined && purpose !== 'repick' && purpose !== 'assert') {
+    return { success: false }
+  }
+  return setPickMode(on === true, purpose)
 }
 
 // The guest page is untrusted: accept its messages only while picking, and only from the recorder
@@ -130,19 +141,76 @@ const fromPickingGuest = (senderId: number): boolean =>
 
 const text = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined)
 
-export function handleRecorderPicked(senderId: number, data: unknown): void {
-  if (!fromPickingGuest(senderId) || typeof data !== 'object' || data === null) return
-  const d = data as Record<string, unknown>
-  const hints: LabelHints = {
-    innerText: text(d.innerText),
-    ariaLabel: text(d.ariaLabel),
-    placeholder: text(d.placeholder),
-    locator: d.locator
+/** Text from the untrusted page, capped so a hostile page can't flood the menu */
+const capped = (v: unknown, max: number): string | undefined => text(v)?.slice(0, max)
+
+const LOCATOR_KEYS = ['by', 'role', 'name', 'nameFrom', 'tag', 'text', 'attribute', 'value']
+
+/** The page's locator rebuilt from known keys only, each string capped; the step still validates it */
+function locatorFrom(v: unknown): unknown {
+  if (typeof v !== 'object' || v === null) return undefined
+  const d = v as Record<string, unknown>
+  const out: Record<string, unknown> = {}
+  for (const key of LOCATOR_KEYS) {
+    const value = capped(d[key], 500)
+    if (value !== undefined) out[key] = value
   }
-  const element = toElementTarget(text(d.strategy) ?? '', text(d.selector) ?? '', hints)
+  if (typeof d.positional === 'boolean') out.positional = d.positional
+  return out
+}
+
+/** Validates what the untrusted page sent for the assertion menu: strings only, each capped */
+export function assertionRequestFrom(data: unknown): AssertionMenuRequest | null {
+  if (typeof data !== 'object' || data === null) return null
+  const d = data as Record<string, unknown>
+  return {
+    selector: capped(d.selector, 2000) ?? '',
+    strategy: capped(d.strategy, 32) ?? '',
+    locator: locatorFrom(d.locator),
+    ariaLabel: capped(d.ariaLabel, 200),
+    placeholder: capped(d.placeholder, 200),
+    // The full text, for an exact-text check; the pick path's `innerText` is only a label hint
+    // (empty for a region), so the pick path sends the full text as `elementText` too
+    elementText: capped(d.elementText ?? d.innerText, 2000),
+    labelText: capped(d.innerText, 200),
+    elementValue: capped(d.elementValue, 500),
+    inputType: capped(d.inputType, 32),
+    pageTitle: capped(d.pageTitle, 300),
+    pageUrl: capped(d.pageUrl, 2000)
+  }
+}
+
+/** A right-click in the recorder page: only the recorder may ask for the assertion menu */
+export function handleShowAssertionContextMenu(senderId: number, data: unknown): void {
+  if (appState.recorderWebContentsId === null || senderId !== appState.recorderWebContentsId) {
+    return
+  }
+  // While picking, a right-click must not open a second menu over the pick
+  if (appState.pickMode) return
+  const request = assertionRequestFrom(data)
+  if (request) showAssertionContextMenu(null, request)
+}
+
+export function handleRecorderPicked(senderId: number, data: unknown): void {
+  if (!fromPickingGuest(senderId)) return
+  const request = assertionRequestFrom(data)
+  if (!request) return
+  const hints: LabelHints = {
+    innerText: request.labelText,
+    ariaLabel: request.ariaLabel,
+    placeholder: request.placeholder,
+    locator: request.locator
+  }
+  const element = toElementTarget(request.strategy, request.selector, hints)
   // Nothing usable to find it by: the guest has already stopped, so keep it picking
   if (!element) {
     guest()?.send('recorder-pick-mode', true)
+    return
+  }
+  if (appState.pickPurpose === 'assert') {
+    // Pick mode ends first: a popup that blocks or throws must not leave it on
+    endPickMode({ cancelled: true, reason: 'asserted' })
+    showAssertionContextMenu(null, request)
     return
   }
   endPickMode({ element })

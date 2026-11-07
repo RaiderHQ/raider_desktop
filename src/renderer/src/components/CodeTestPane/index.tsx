@@ -7,6 +7,11 @@ import ConfirmationModal from '@components/ConfirmationModal'
 import Tooltip from '@components/Tooltip'
 import StyledPanel from '@components/StyledPanel'
 import AssertionTextModal from '@components/AssertionTextModal'
+import {
+  AssertPickBanner,
+  CheckSomethingButton,
+  useEscEndsAssertPick
+} from '@components/TestPage/AssertPick'
 import RunPanel from '@components/RunPanel'
 import RecordingLayout from '@components/TestPage/RecordingLayout'
 import { removeStepWithUndo } from '@foundation/removeStepWithUndo'
@@ -61,6 +66,8 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
   const [view, setView] = useState<CodeTestView | null>(null)
   const [openFailed, setOpenFailed] = useState(false)
   const [selectedName, setSelectedName] = useState<string | null>(null)
+  const assertPicking = useRecorderStore((s) => s.assertPicking)
+  useEscEndsAssertPick()
   const [confirmingRecord, setConfirmingRecord] = useState(false)
   // A test edited in code is shown as its code; its steps only on request
   const [showSteps, setShowSteps] = useState(false)
@@ -246,6 +253,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
                 </button>
               </Tooltip>
             )}
+            {recording.isRecording && <CheckSomethingButton disabled={isReplaying} />}
             <Tooltip content={t('tooltips.testPage.run')} shortcut="run" position="bottom">
               <button
                 onClick={run}
@@ -279,11 +287,14 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
             />
           </div>
 
+          <AssertPickBanner />
+
           {browserOpen ? (
             <RecordingLayout
               steps={recordedSteps}
               recording={recording}
               isReplaying={isReplaying}
+              focusBrowser={assertPicking}
             />
           ) : recordedTest && unsavedExample ? (
             <div className="flex-1 min-h-[12rem] flex flex-col gap-2">

@@ -320,8 +320,8 @@ const api = {
   },
   flushRecordingDone: (): void => ipcRenderer.send('flush-recording-done'),
   /** Turns picking one element in the recorder on or off; fails when no recorder is open */
-  setPickMode: async (on: boolean): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke('set-pick-mode', on),
+  setPickMode: async (on: boolean, purpose?: 'repick' | 'assert'): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('set-pick-mode', on, purpose),
   /** Called once when picking ends, with the element or a cancel; returns an unsubscribe */
   onRecorderPicked: (callback: (result: PickResult) => void): (() => void) => {
     const listener = (_event: IpcRendererEvent, result: PickResult): void => callback(result)

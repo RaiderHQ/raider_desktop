@@ -454,6 +454,9 @@
     "record": "Record",
     "autosaved": "Changes to this test are saved automatically.",
     "stop": "Stop & save",
+    "addAssertion": "Check something…",
+    "assertPickStarting": "Getting ready to pick…",
+    "assertPickBanner": "Click the thing you want to check. Press Esc to cancel.",
     "recording": "Recording",
     "run": "Run",
     "steps": "Steps",
@@ -473,6 +476,7 @@
     "overwriteConfirm": "This test has code edits. Recording will replace them. Continue?",
     "exampleNotUnique": "Raider couldn't find exactly one test named \"{{name}}\" in this file.",
     "saveAsNew": "Save as a new test",
+    "showGuide": "Show guide",
     "recordOverFailed": "Raider couldn't save the recording into this file: {{error}}. Your steps are still here."
   },
   "recorder": {
@@ -517,28 +521,28 @@
     },
     "assertionTextModal": {
       "titles": {
-        "text": "Assert Element Text",
-        "text-includes": "Assert Element Text Includes",
-        "value": "Assert Element Value",
-        "page-title": "Assert Page Title",
-        "page-url": "Assert Current URL"
+        "text": "Check the text",
+        "text-includes": "Check the text contains",
+        "value": "Check the value",
+        "page-title": "Check the page title",
+        "page-url": "Check the address"
       },
       "messages": {
-        "text": "Enter the exact text you expect the element to contain.",
-        "text-includes": "Enter the text you expect to find within the element.",
-        "value": "Enter the value you expect in this input field.",
+        "text": "Enter the exact text you expect to see.",
+        "text-includes": "Enter the text you expect to find.",
+        "value": "Enter the value you expect in this field.",
         "page-title": "Enter the exact page title you expect.",
-        "page-url": "Enter the text you expect the URL to contain (e.g. /dashboard)."
+        "page-url": "Enter the part of the address you expect (for example /dashboard)."
       },
       "labels": {
-        "text": "Expected Text",
-        "text-includes": "Text to Find",
-        "value": "Expected Value",
-        "page-title": "Expected Title",
-        "page-url": "URL Contains"
+        "text": "Text",
+        "text-includes": "Text to find",
+        "value": "Value",
+        "page-title": "Title",
+        "page-url": "Part of the address"
       },
       "cancel": "Cancel",
-      "save": "Save assertion"
+      "save": "Add check"
     },
     "deleteModal": {
       "title": "Confirm deletion",
@@ -639,6 +643,16 @@
       "renderFailed": "Couldn't render code",
       "editCommand": "Edit command"
     }
+  },
+  "guide": {
+    "title": "Recording a test",
+    "step1": "Use the page on the right as you normally would. Every click and keystroke becomes a step here.",
+    "step2": "To check something, press Check something… (or right-click the page) and choose what to check.",
+    "step3Before": "Press Stop & save",
+    "step3Middle": " when you are done, then Run",
+    "step3After": " to see it pass.",
+    "gotIt": "Got it",
+    "learnMore": "Learn more about assertions"
   },
   "files": {
     "selectToPreview": "Select a file to preview"
@@ -761,16 +775,6 @@
     }
   },
   "help": {
-    "recorder": {
-      "recording": {
-        "title": "Recording a test",
-        "message": "Pick a suite from the dropdown, create a test, and enter the URL you want to test.\n\nThen press the red Record button — a browser will open and every click or keystroke you make is captured as a step.\n\nPress Stop when you're done, then Run to check if the test passes."
-      },
-      "dashboard": {
-        "title": "Recording dashboard",
-        "message": "The dashboard shows the output from your last test run — which steps passed, which failed, and any error messages.\n\nUse it to understand what went wrong and decide what to fix or re-record."
-      }
-    },
     "overview": {
       "tests": {
         "title": "Tests",
@@ -833,6 +837,7 @@
       "startRecording": "Open the page and start recording",
       "cancelNew": "Go back without starting a recording",
       "cancelPick": "Stop picking and keep recording",
+      "addAssertion": "Pick something on the page and add a check for it",
       "examples": "Pick which test in the file to work on",
       "saveAsNew": "Keep these steps as a separate recorded test"
     },
@@ -1363,6 +1368,24 @@
       "success": "Generated successfully!\n{{output}}",
       "failed": "Generation failed: {{error}}",
       "error": "Error: {{error}}"
+    }
+  },
+  "assertions": {
+    "menu": {
+      "header": "Add a check",
+      "wait": "Wait until it…",
+      "waitAppears": "appears",
+      "waitDisappears": "disappears",
+      "waitEnabled": "is enabled",
+      "visible": "Check it is visible",
+      "hidden": "Check it is hidden",
+      "enabled": "Check it is enabled",
+      "checked": "Check it is ticked",
+      "textIs": "Check its text is exactly…",
+      "textContains": "Check its text contains…",
+      "valueIs": "Check its value is…",
+      "titleIs": "Check the page title is…",
+      "urlContains": "Check the address contains…"
     }
   },
   "header": {

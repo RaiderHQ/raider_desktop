@@ -3,6 +3,7 @@ import CommandBlock from '@components/CommandBlock'
 import DocsLink from '@components/DocsLink'
 import { useTranslation } from 'react-i18next'
 import type { Step } from '@shared/types/step'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 
 interface CommandListProps {
   steps: Step[]
@@ -39,6 +40,7 @@ const CommandList: React.FC<CommandListProps> = ({
   belowStep
 }) => {
   const { t } = useTranslation()
+  const setGuideOpen = useRecorderStore((state) => state.setGuideOpen)
   const dragItemIndex = useRef<number | null>(null)
 
   const handleDragStart = (index: number): void => {
@@ -95,6 +97,17 @@ const CommandList: React.FC<CommandListProps> = ({
           </div>
         )}
       </div>
+      {markLatest && (
+        <div className="px-1 pt-2">
+          <button
+            type="button"
+            onClick={() => setGuideOpen(true)}
+            className="text-xs text-neutral-md underline hover:text-neutral-dark"
+          >
+            {t('testPage.showGuide')}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

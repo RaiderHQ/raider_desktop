@@ -257,17 +257,57 @@ describe('MainTemplate project files toasts', () => {
       }
     })
 
-    it('passes Stop, Open file and the recording guide on to the page', () => {
+    it('passes Stop and Open file on to the page, but not Docs (it opens the docs site)', () => {
       renderAt('/overview')
       const seen: string[] = []
       const off = onMenuCommand((c) => seen.push(c))
       act(() => {
         menuListener()('stop')
         menuListener()('open-file')
-        menuListener()('recording-guide')
+        menuListener()('docs')
       })
       off()
-      expect(seen).toEqual(['stop', 'open-file', 'recording-guide'])
+      expect(seen).toEqual(['stop', 'open-file'])
+    })
+
+    describe('Help › Recording guide', () => {
+      afterEach(() => {
+        useRecorderStore.setState({ recordingUrl: null, guideOpen: false })
+      })
+
+      it('opens the guide as a modal when nothing is recording, and not on the page', () => {
+        useRecorderStore.setState({ recordingUrl: null })
+        renderAt('/overview')
+        const seen: string[] = []
+        const off = onMenuCommand((c) => seen.push(c))
+        act(() => menuListener()('recording-guide'))
+        off()
+        expect(seen).toEqual([])
+        expect(screen.getByRole('dialog', { name: 'guide.title' })).toBeInTheDocument()
+      })
+
+      it('reopens the card instead while a recording layout is showing', () => {
+        useRecorderStore.setState({ recordingUrl: 'https://example.com', guideOpen: false })
+        renderAt('/overview')
+        act(() => menuListener()('recording-guide'))
+        expect(useRecorderStore.getState().guideOpen).toBe(true)
+        expect(screen.queryByRole('dialog', { name: 'guide.title' })).not.toBeInTheDocument()
+      })
+
+      it('replaces the concepts modal, and How it works replaces the guide', () => {
+        const root = document.createElement('div')
+        root.id = 'root'
+        document.body.appendChild(root)
+        renderAt('/overview')
+        act(() => menuListener()('how-it-works'))
+        act(() => menuListener()('recording-guide'))
+        expect(screen.queryByText('concepts.title')).not.toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'guide.title' })).toBeInTheDocument()
+        act(() => menuListener()('how-it-works'))
+        expect(screen.queryByRole('dialog', { name: 'guide.title' })).not.toBeInTheDocument()
+        expect(screen.getByText('concepts.title')).toBeInTheDocument()
+        root.remove()
+      })
     })
 
     it('passes Save, Record and Run on to the page that is open', () => {

@@ -123,6 +123,31 @@ describe('copy', () => {
     expect(offenders).toEqual([])
   })
 
+  it('the check dialogs speak plainly', () => {
+    const m = en.recorder.assertionTextModal
+    expect(Object.values(m.titles)).toEqual([
+      'Check the text',
+      'Check the text contains',
+      'Check the value',
+      'Check the page title',
+      'Check the address'
+    ])
+    expect(m.save).toBe('Add check')
+    expect(en.assertions.menu.header).toBe('Add a check')
+  })
+
+  it('words the recording guide plainly', () => {
+    expect(en.guide.step1).toBe(
+      'Use the page on the right as you normally would. Every click and keystroke becomes a step here.'
+    )
+    expect(en.guide.step2).toBe(
+      'To check something, press Check something\u2026 (or right-click the page) and choose what to check.'
+    )
+    expect(en.guide.step3Before + en.guide.step3Middle + en.guide.step3After).toBe(
+      'Press Stop & save when you are done, then Run to see it pass.'
+    )
+  })
+
   it('no title case in buttons, labels and titles', () => {
     const names = [
       'title',

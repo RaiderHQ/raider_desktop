@@ -41,6 +41,8 @@ interface AppState {
   pickMode: boolean
   /** When pick mode last ended (ms); clicks just after it are the rest of the pick, not steps */
   pickModeEndedAt: number
+  /** What the pick in progress is for: a new element for a step, or an element to check */
+  pickPurpose: 'repick' | 'assert'
   /** The page reported a recording in progress (drives the Record / Stop & save menu item) */
   recording: boolean
 }
@@ -65,6 +67,7 @@ export const appState: AppState = {
   isReplayingInWebview: false,
   pickMode: false,
   pickModeEndedAt: 0,
+  pickPurpose: 'repick',
   recording: false
 }
 

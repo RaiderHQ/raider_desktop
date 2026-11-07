@@ -18,5 +18,6 @@ export const ipcSubscriptions = (listeners: IpcListeners): Record<string, unknow
   onNewRecordedStep: subscribe(listeners, 'new-recorded-step'),
   onAddAssertionStep: subscribe(listeners, 'add-assertion-step'),
   onNewTraceStep: subscribe(listeners, 'new-trace-step'),
-  onReplayFailed: subscribe(listeners, 'replay-failed')
+  onReplayFailed: subscribe(listeners, 'replay-failed'),
+  onRecorderPicked: subscribe(listeners, 'recorder-picked')
 })

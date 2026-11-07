@@ -67,3 +67,15 @@ describe('useRecordingIPC while picking an element', () => {
     expect(saveTrace).not.toHaveBeenCalled()
   })
 })
+
+describe('useRecordingIPC while picking for a check', () => {
+  it('a navigation while picking for a check clears the banner and keeps recording', async () => {
+    useRecorderStore.setState({ recordingTarget: { kind: 'test' }, isRecording: true })
+    useRecorderStore.getState().setAssertPicking(true)
+    renderHook(() => useRecordingIPC({ setAssertionInfo: vi.fn() }))
+    await emit('recorder-picked', { cancelled: true, reason: 'navigated' })
+    const s = useRecorderStore.getState()
+    expect(s.assertPicking).toBe(false)
+    expect(s.isRecording).toBe(true)
+  })
+})

@@ -1,7 +1,10 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import StyledPanel from '@components/StyledPanel'
 import { RECORDER_PARTITION } from '@shared/recorderSession'
+import RecordingGuide from '@components/RecordingGuide'
+import useRecorderStore from '@foundation/Stores/recorderStore'
+import { hasSeenGuide } from '@foundation/recordingGuideSeen'
 import type { TestRecording } from '../../hooks/useTestRecording'
 
 interface RecordingLayoutProps {
@@ -21,10 +24,23 @@ const RecordingLayout: React.FC<RecordingLayoutProps> = ({
   focusBrowser = false
 }) => {
   const { t } = useTranslation()
+  const guideOpen = useRecorderStore((state) => state.guideOpen)
+  const isPicking = useRecorderStore((state) => state.recordingTarget?.kind === 'pick')
+  const isReplayingToBreakpoint = useRecorderStore((state) => state.isReplayingToBreakpoint)
+  const [seen, setSeen] = useState(hasSeenGuide)
+  // Only for a real recording, not while re-picking an element or replaying to a breakpoint
+  const showGuide = (!seen || guideOpen) && !isPicking && !isReplayingToBreakpoint
   return (
     <div className="flex-1 flex flex-row gap-4 min-h-[24rem]">
-      <div className="w-[40%] min-h-0">
-        <StyledPanel>{steps ?? <></>}</StyledPanel>
+      <div className="w-[40%] min-h-0 flex flex-col">
+        {showGuide && (
+          <div className="mb-3 shrink-0">
+            <RecordingGuide variant="card" onClose={() => setSeen(true)} />
+          </div>
+        )}
+        <div data-testid="recording-steps" className="flex-1 min-h-0">
+          <StyledPanel>{steps ?? <></>}</StyledPanel>
+        </div>
       </div>
       <div className="w-[60%] border border-neutral-bdr rounded-lg overflow-hidden bg-white relative">
         <RecordingBrowser

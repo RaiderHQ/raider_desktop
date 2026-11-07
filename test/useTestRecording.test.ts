@@ -153,7 +153,10 @@ beforeEach(() => {
   })
   // @ts-expect-error - Mocking window.api
   window.api = api
-  Object.assign(window.api, ipcSubscriptions(listeners))
+  // The pick tests drive onRecorderPicked themselves
+  const subscriptions = ipcSubscriptions(listeners)
+  delete subscriptions.onRecorderPicked
+  Object.assign(window.api, subscriptions)
   useRecorderStore.getState().resetForProject()
   useRecorderStore.setState({ activeSuiteId: 's1', activeTest: test1 })
   useTestsListStore.setState({ rows: null })

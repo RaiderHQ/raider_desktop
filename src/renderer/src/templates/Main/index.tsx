@@ -6,6 +6,7 @@ import Logo from '@components/Logo'
 import Tooltip from '@components/Tooltip'
 import RunIndicator from '@components/RunIndicator'
 import ConceptsModal from '@components/ConceptsModal'
+import RecordingGuide, { openRecordingGuide } from '@components/RecordingGuide'
 import ShortcutsSheet from '@components/ShortcutsSheet'
 import RubyInstallModal from '@components/RubyInstallModal'
 import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
@@ -30,6 +31,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
   const [isGemsInstallModalOpen, setIsGemsInstallModalOpen] = useState(false)
   const [missingGems, setMissingGems] = useState<string[] | undefined>(undefined)
   const [isConceptsModalOpen, setIsConceptsModalOpen] = useState(false)
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false)
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false)
   // The sheet opened from the concepts modal: its footer button is gone, so focus goes to the logo
   const logoRef = useRef<HTMLButtonElement>(null)
@@ -105,8 +107,12 @@ const MainTemplate: React.FC = (): JSX.Element => {
   // Modal state is read through a ref so the one subscription sees the current values.
   const modalOpen = useRef(false)
   modalOpen.current =
-    isRubyInstallModalOpen || isGemsInstallModalOpen || isConceptsModalOpen || isShortcutsOpen
-  // The install modals gate the app; the two help overlays swap with each other instead
+    isRubyInstallModalOpen ||
+    isGemsInstallModalOpen ||
+    isConceptsModalOpen ||
+    isShortcutsOpen ||
+    isGuideModalOpen
+  // The install modals gate the app; the help overlays swap with each other instead
   const installModalOpen = useRef(false)
   installModalOpen.current = isRubyInstallModalOpen || isGemsInstallModalOpen
   const pickingFolder = useRef(false)
@@ -137,12 +143,15 @@ const MainTemplate: React.FC = (): JSX.Element => {
     const anyEditorDirty = (): boolean => pageEditorDirty() || useEditorStore.getState().inlineDirty
     return window.api.onMenuCommand((command) => {
       if (!isMenuCommand(command)) return
-      if (command === 'how-it-works' || command === 'shortcuts') {
+      if (command === 'how-it-works' || command === 'shortcuts' || command === 'recording-guide') {
         if (installModalOpen.current) return
         // A swap from the menu is not the concepts modal's shortcuts button
         sheetFromConcepts.current = false
         setIsConceptsModalOpen(command === 'how-it-works')
         setIsShortcutsOpen(command === 'shortcuts')
+        setIsGuideModalOpen(false)
+        // Help › Recording guide: the card while recording, the modal otherwise
+        if (command === 'recording-guide') openRecordingGuide(() => setIsGuideModalOpen(true))
         return
       }
       if (command === 'docs') {
@@ -248,6 +257,9 @@ const MainTemplate: React.FC = (): JSX.Element => {
             setIsShortcutsOpen(true)
           }}
         />
+      )}
+      {isGuideModalOpen && (
+        <RecordingGuide variant="modal" onClose={() => setIsGuideModalOpen(false)} />
       )}
 
       {isRubyInstallModalOpen && (

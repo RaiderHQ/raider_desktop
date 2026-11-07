@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import CommandList from '@components/CommandList'
 import '@testing-library/jest-dom'
+import useRecorderStore from '@foundation/Stores/recorderStore'
 import type { Step } from '@shared/types/step'
 
 vi.mock('react-i18next', () => ({
@@ -162,5 +163,24 @@ describe('CommandList', () => {
     const block = screen.getByTestId('step-failed')
     expect(block).toHaveClass('ring-red-400')
     expect(block).not.toHaveClass('ring-ruby/40')
+  })
+
+  it('offers Show guide while recording, which reopens the guide', () => {
+    render(
+      <CommandList
+        steps={steps}
+        setSteps={vi.fn()}
+        onDeleteStep={vi.fn()}
+        showCode={false}
+        markLatest
+      />
+    )
+    fireEvent.click(screen.getByText('testPage.showGuide'))
+    expect(useRecorderStore.getState().guideOpen).toBe(true)
+  })
+
+  it('has no Show guide when not recording', () => {
+    render(<CommandList steps={steps} setSteps={vi.fn()} onDeleteStep={vi.fn()} showCode={false} />)
+    expect(screen.queryByText('testPage.showGuide')).not.toBeInTheDocument()
   })
 })

@@ -1499,3 +1499,103 @@ describe('TestPage re-picking the failed element', () => {
     })
   })
 })
+
+describe('Check something…', () => {
+  const recordingNow = async (): Promise<void> => {
+    renderPage()
+    await opened()
+    await startRecording()
+    act(() => useRecorderStore.getState().setIsRecording(true))
+  }
+  beforeEach(() => {
+    ;(api as Record<string, unknown>).setPickMode = vi.fn().mockResolvedValue({ success: true })
+  })
+  const setPick = (): ReturnType<typeof vi.fn> =>
+    (api as unknown as { setPickMode: ReturnType<typeof vi.fn> }).setPickMode
+
+  it('starts a pick for a check and shows its banner', async () => {
+    await recordingNow()
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.addAssertion' }))
+    expect(setPick()).toHaveBeenCalledWith(true, 'assert')
+    await act(async () => {})
+    expect(screen.getByText('testPage.assertPickBanner')).toBeInTheDocument()
+  })
+
+  it('says it is getting ready until main has turned picking on', async () => {
+    await recordingNow()
+    let ready: (r: { success: boolean }) => void = () => {}
+    setPick().mockImplementation(() => new Promise((resolve) => (ready = resolve)))
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.addAssertion' }))
+    expect(screen.getByText('testPage.assertPickStarting')).toBeInTheDocument()
+    expect(screen.queryByText('testPage.assertPickBanner')).not.toBeInTheDocument()
+    await act(async () => ready({ success: true }))
+    expect(screen.getByText('testPage.assertPickBanner')).toBeInTheDocument()
+    expect(screen.queryByText('testPage.assertPickStarting')).not.toBeInTheDocument()
+  })
+
+  it('stopping closes the reopened guide card', async () => {
+    await recordingNow()
+    act(() => useRecorderStore.getState().setGuideOpen(true))
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.stop' }))
+    expect(useRecorderStore.getState().guideOpen).toBe(false)
+  })
+
+  it('goes back when main refuses the pick', async () => {
+    await recordingNow()
+    setPick().mockResolvedValue({ success: false })
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.addAssertion' }))
+    await act(async () => {})
+    expect(screen.queryByText('testPage.assertPickBanner')).not.toBeInTheDocument()
+  })
+
+  it('Esc during a check pick ends only the pick', async () => {
+    await recordingNow()
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.addAssertion' }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(setPick()).toHaveBeenLastCalledWith(false)
+    expect(api.stopRecordingMain).not.toHaveBeenCalled()
+    expect(useRecorderStore.getState().isRecording).toBe(true)
+    expect(screen.queryByText('testPage.assertPickBanner')).not.toBeInTheDocument()
+  })
+
+  it('is disabled while re-picking', async () => {
+    await recordingNow()
+    act(() => useRecorderStore.getState().setRecordingTarget({ kind: 'pick', stepId: 'a' }))
+    expect(screen.getByRole('button', { name: 'testPage.addAssertion' })).toBeDisabled()
+  })
+
+  it('stop while picking for a check adds nothing', async () => {
+    await recordingNow()
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.addAssertion' }))
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.stop' }))
+    expect(useRecorderStore.getState().assertPicking).toBe(false)
+    expect(api.stopRecordingMain).toHaveBeenCalled()
+    const stepsAfterStop = JSON.stringify(useRecorderStore.getState().activeTest?.steps)
+    await emit('add-assertion-step', { id: 'z', kind: 'assert', check: 'displayed' })
+    await emit('recorder-picked', { cancelled: true, reason: 'asserted' })
+    expect(JSON.stringify(useRecorderStore.getState().activeTest?.steps)).toBe(stepsAfterStop)
+    expect(useRecorderStore.getState().assertPicking).toBe(false)
+  })
+
+  it('a late refusal of an earlier start does not end a newer pick', async () => {
+    await recordingNow()
+    const late: Array<(r: { success: boolean }) => void> = []
+    setPick().mockImplementation(
+      (on: boolean) =>
+        new Promise((resolve) => (on ? late.push(resolve) : resolve({ success: true })))
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.addAssertion' }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.addAssertion' }))
+    await act(async () => late[0]({ success: false }))
+    expect(useRecorderStore.getState().assertPicking).toBe(true)
+    await act(async () => late[1]({ success: false }))
+    expect(useRecorderStore.getState().assertPicking).toBe(false)
+  })
+
+  it('is disabled while a replay runs', async () => {
+    await recordingNow()
+    act(() => useRecorderStore.getState().setIsReplayingToBreakpoint(true))
+    expect(screen.getByRole('button', { name: 'testPage.addAssertion' })).toBeDisabled()
+  })
+})

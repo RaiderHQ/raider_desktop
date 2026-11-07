@@ -12,6 +12,11 @@ import DeleteModal from '@components/DeleteModal'
 import ConfirmationModal from '@components/ConfirmationModal'
 import CodeViewToggle from '@components/CodeViewToggle'
 import AssertionTextModal from '@components/AssertionTextModal'
+import {
+  AssertPickBanner,
+  CheckSomethingButton,
+  useEscEndsAssertPick
+} from '@components/TestPage/AssertPick'
 import RunPanel from '@components/RunPanel'
 import FailedStepPanel from '@components/FailedStepPanel'
 import EditValueForm from '@components/FailedStepPanel/EditValueForm'
@@ -74,6 +79,8 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   )
   const picking = pickTarget !== null
   const pickingStep = useRecorderStore((s) => s.pickingStep)
+  const assertPicking = useRecorderStore((s) => s.assertPicking)
+  useEscEndsAssertPick()
   const recordingDisabled = useProjectStore((s) => s.layout?.recordable === false)
   // Only a mobile project says why Record is off, for now
   const mobileProject = useProjectStore((s) => s.layout?.unsupportedReason === 'mobile')
@@ -502,6 +509,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
                 </button>
               </Tooltip>
             )}
+            {recording.isRecording && <CheckSomethingButton disabled={picking || isReplaying} />}
             <Tooltip
               content={t('tooltips.testPage.run')}
               shortcut="run"
@@ -580,6 +588,8 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             />
           )}
 
+          <AssertPickBanner />
+
           {pickTarget && (
             <div
               role="status"
@@ -609,7 +619,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
               steps={steps}
               recording={recording}
               isReplaying={isReplaying}
-              focusBrowser={pickingStep !== null}
+              focusBrowser={pickingStep !== null || assertPicking}
             />
           ) : (
             <>
