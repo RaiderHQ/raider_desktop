@@ -62,7 +62,7 @@ describe('buildAppMenuTemplate', () => {
     expect(file[5]).toMatchObject({ label: 'Save', accelerator: 'CmdOrCtrl+S' })
   })
 
-  it('Test has Record, Run, New test and Open file', () => {
+  it('Test has Record, Run, New test and View file', () => {
     const test = items(build('darwin'), 'Test')
     expect(test.map((item) => item.id ?? item.type)).toEqual([
       'record',

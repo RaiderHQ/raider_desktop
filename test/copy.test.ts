@@ -155,6 +155,19 @@ describe('copy', () => {
     expect(en.tests.suiteFilter.actions).toBe('Suite actions')
   })
 
+  it('says "View file" for the test\'s Ruby file, with no ellipsis (U1)', () => {
+    expect(en.testPage.editCode).toBe('View file')
+    expect(en.appMenu.openFile).toBe('View file')
+    expect(en.shortcuts.actions['open-file']).toBe('View file')
+    expect(en.tooltips.testPage.openFile).toBe("View this test's Ruby file in the editor")
+  })
+
+  it('explains the view toggle: "Show as" with "Visual steps" and "Ruby code" (U2)', () => {
+    expect(en.testPage.view).toBe('Show as')
+    expect(en.testPage.steps).toBe('Visual steps')
+    expect(en.testPage.ruby).toBe('Ruby code')
+  })
+
   it('names an empty run filter plainly (U6)', () => {
     expect(en.run.filterEmpty).toEqual({
       all: 'No results yet',

@@ -257,7 +257,7 @@ describe('MainTemplate project files toasts', () => {
       }
     })
 
-    it('passes Stop and Open file on to the page, but not Docs (it opens the docs site)', () => {
+    it('passes Stop and View file on to the page, but not Docs (it opens the docs site)', () => {
       renderAt('/overview')
       const seen: string[] = []
       const off = onMenuCommand((c) => seen.push(c))
