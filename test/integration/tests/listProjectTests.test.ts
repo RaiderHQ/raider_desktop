@@ -97,7 +97,14 @@ describe('listProjectTests', () => {
     await unlink(join(project, s.file))
     const list = await listProjectTests(project, layout)
     expect(list).toEqual([
-      { file: s.file, name: 'Alpha', ownership: 'recorded', testId: 'a', missingFile: true }
+      {
+        file: s.file,
+        name: 'Alpha',
+        ownership: 'recorded',
+        testId: 'a',
+        missingFile: true,
+        tags: []
+      }
     ])
   })
 
@@ -121,7 +128,7 @@ describe('listProjectTests', () => {
     await writeFile(join(project, 'spec/h_spec.rb'), "describe 'H' do\nend\n")
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const list = await listProjectTests(project, layout)
-    expect(list).toEqual([{ file: 'spec/h_spec.rb', name: 'H', ownership: 'code' }])
+    expect(list).toEqual([{ file: 'spec/h_spec.rb', name: 'H', ownership: 'code', tags: [] }])
     await rm(outside, { recursive: true, force: true })
   })
 
@@ -137,5 +144,45 @@ describe('listProjectTests', () => {
     }
     await writeFile(join(project, 'spec/ok_spec.rb'), "describe 'Ok' do\nend\n")
     expect((await listProjectTests(project, layout)).map((e) => e.name)).toEqual(['Ok'])
+  })
+
+  describe('tags', () => {
+    it('reads recorded tests from the sidecar', async () => {
+      await saveRecordedTest(project, layout, { ...rec('a', 'Alpha'), tags: ['smoke', 'api'] })
+      await saveRecordedTest(project, layout, rec('b', 'Bravo'))
+      const by = Object.fromEntries(
+        (await listProjectTests(project, layout)).map((e) => [e.name, e])
+      )
+      expect(by.Alpha.tags).toEqual(['api', 'smoke'])
+      expect(by.Bravo.tags).toEqual([])
+    })
+
+    it('reads code tests and edited recorded tests from the first describe line', async () => {
+      await writeFile(
+        join(project, 'spec/hand_spec.rb'),
+        "RSpec.describe 'Hand', :b, 'a', type: :feature do\n  describe 'x', :nope do\n  end\nend\n"
+      )
+      const c = await saveRecordedTest(project, layout, { ...rec('c', 'Charlie'), tags: ['old'] })
+      const text = await readFile(join(project, c.file), 'utf-8')
+      await writeFile(
+        join(project, c.file),
+        text.replace("describe 'Charlie', :old do", "describe 'Charlie', :edited do") + '\nputs 1\n'
+      )
+      const by = Object.fromEntries(
+        (await listProjectTests(project, layout)).map((e) => [e.name, e])
+      )
+      expect(by.Hand.tags).toEqual(['a', 'b'])
+      expect(by.Charlie.ownership).toBe('codeOwnedWasRecorded')
+      expect(by.Charlie.tags).toEqual(['edited'])
+    })
+
+    it('a save that does not mention tags keeps them', async () => {
+      await saveRecordedTest(project, layout, { ...rec('a', 'Alpha'), tags: ['smoke'] })
+      const saved = await saveRecordedTest(project, layout, rec('a', 'Alpha'))
+      expect(saved.tags).toEqual(['smoke'])
+      expect(await readFile(join(project, saved.file), 'utf-8')).toContain(
+        "describe 'Alpha', :smoke do"
+      )
+    })
   })
 })

@@ -10,6 +10,7 @@ import { hashRuby } from './codeHash'
 import { deriveStepLines, usableStepLines } from './stepLines'
 import { usesWaitHelper } from '../project/waitHelperDetection'
 import { withSecretNames } from '../../../shared/secretSteps'
+import { normalizeTags } from '../../../shared/tags'
 import {
   assertRealInside,
   deleteSidecar,
@@ -135,6 +136,7 @@ const buildSidecar = (
   automation: toAutomation(layout.automation),
   hash: hashRuby(content),
   stepLines,
+  ...(normalizeTags(test.tags).length > 0 && { tags: normalizeTags(test.tags) }),
   createdAt,
   updatedAt: now
 })
@@ -208,6 +210,7 @@ const sameRecord = (sidecar: Sidecar, test: Test, layout: ProjectLayout): boolea
   sidecar.name === test.name &&
   sidecar.url === test.url &&
   sidecar.automation === toAutomation(layout.automation) &&
+  JSON.stringify(sidecar.tags ?? []) === JSON.stringify(normalizeTags(test.tags)) &&
   JSON.stringify(sidecar.steps) === JSON.stringify(test.steps)
 
 /**
@@ -285,16 +288,19 @@ async function sidecarAt(
 export function saveRecordedTest(
   projectPath: string,
   layout: ProjectLayout,
-  test: Test,
+  input: Test,
   options: { knownFile?: string | null } = {}
 ): Promise<Sidecar> {
-  return serialize(testQueues, testKey(projectPath, test.id), async () => {
+  return serialize(testQueues, testKey(projectPath, input.id), async () => {
     const now = new Date().toISOString()
     const current = await withCurrentWaitHelper(projectPath, layout)
     const existing =
       options.knownFile !== undefined
-        ? await sidecarAt(projectPath, test.id, options.knownFile)
-        : await findSidecarById(projectPath, test.id)
+        ? await sidecarAt(projectPath, input.id, options.knownFile)
+        : await findSidecarById(projectPath, input.id)
+    // A save that doesn't mention tags (the Recorder) keeps the ones the test has
+    const test: Test =
+      input.tags === undefined && existing?.tags ? { ...input, tags: existing.tags } : input
 
     if (!existing) {
       const { file, content, stepLines, target } = await createNewSpec(projectPath, current, test)
@@ -423,5 +429,66 @@ export function deleteRecordedTest(projectPath: string, testId: string): Promise
       }
     }
     await deleteSidecar(projectPath, existing.file)
+  })
+}
+
+/**
+ * Sets the tags of the recorded test whose spec is `fileRel`. A test Raider
+ * still owns gets its spec file and sidecar regenerated (the tags are the
+ * describe line's metadata); a test edited in code gets only its sidecar's
+ * tags. Null when no sidecar sits at `fileRel`.
+ */
+export async function setRecordedTags(
+  projectPath: string,
+  layout: ProjectLayout,
+  fileRel: string,
+  tags: string[]
+): Promise<{ sidecar: Sidecar; fileRewritten: boolean } | null> {
+  if (!isSpecRel(fileRel)) throw new Error(`Not a spec file: ${fileRel}`)
+  const first = await readSidecar(projectPath, fileRel)
+  if (!first || first.file !== fileRel) return null
+  const clean = normalizeTags(tags)
+  return serialize(testQueues, testKey(projectPath, first.id), async () => {
+    const existing = await readSidecar(projectPath, fileRel)
+    if (!existing || existing.file !== fileRel) return null
+    const now = new Date().toISOString()
+    const withTags = (sidecar: Sidecar): Sidecar => {
+      const { tags: _old, ...rest } = sidecar
+      return { ...rest, ...(clean.length > 0 && { tags: clean }), updatedAt: now }
+    }
+    const target = await recordedFilePath(projectPath, existing.file)
+    const onDisk = await readIfExists(target)
+    // Raider rewrites a file only when it can prove it wrote it
+    if (existing.codeOwned || (onDisk !== null && !isRaiderFile(onDisk, existing))) {
+      const sidecar = withTags({ ...existing, codeOwned: true })
+      await writeSidecar(projectPath, sidecar)
+      return { sidecar, fileRewritten: false }
+    }
+    const current = await withCurrentWaitHelper(projectPath, layout)
+    const test: Test = {
+      id: existing.id,
+      name: existing.name,
+      url: existing.url,
+      steps: existing.steps,
+      tags: clean
+    }
+    const { content, stepLines } = generate(test, current, existing.file)
+    if (onDisk === null) {
+      await fs.mkdir(dirname(target), { recursive: true })
+      await writeFileAtomic(target, content, { exclusive: true })
+    } else {
+      await writeFileAtomic(target, content)
+    }
+    const sidecar = buildSidecar(
+      test,
+      current,
+      existing.file,
+      content,
+      stepLines,
+      existing.createdAt,
+      now
+    )
+    await writeSidecar(projectPath, sidecar)
+    return { sidecar, fileRewritten: true }
   })
 }

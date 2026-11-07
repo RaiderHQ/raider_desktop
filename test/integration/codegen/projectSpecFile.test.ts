@@ -302,3 +302,25 @@ describe('rubocop', () => {
     60_000
   )
 })
+
+describe('generateProjectSpecFile tags', () => {
+  it('writes sorted symbols after the description', () => {
+    const out = generateProjectSpecFile({ ...test, tags: ['smoke', 'api'] }, 'selenium', opts)
+    expect(out).toContain("describe 'Checkout', :api, :smoke do")
+  })
+
+  it('is unchanged without tags', () => {
+    const plain = generateProjectSpecFile(test, 'selenium', opts)
+    expect(generateProjectSpecFile({ ...test, tags: [] }, 'selenium', opts)).toBe(plain)
+    expect(plain).toContain("describe 'Checkout' do")
+  })
+
+  it('ignores tags that are not valid', () => {
+    const out = generateProjectSpecFile(
+      { ...test, tags: ['ok', 'no way', "x'y"] },
+      'selenium',
+      opts
+    )
+    expect(out).toContain("describe 'Checkout', :ok do")
+  })
+})

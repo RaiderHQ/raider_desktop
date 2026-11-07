@@ -13,4 +13,6 @@ export interface Test {
   ownership?: Ownership
   /** Spec path relative to the project root, POSIX (project-file tests only) */
   file?: string
+  /** Tags written as RSpec metadata on the describe line (recorded project tests) */
+  tags?: string[]
 }

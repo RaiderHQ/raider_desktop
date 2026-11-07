@@ -212,3 +212,29 @@ describe('sidecar store', () => {
     ).toBe('n9')
   })
 })
+
+describe('sidecar tags', () => {
+  it('round-trips tags', async () => {
+    const s = sidecar('spec/a_spec.rb', { tags: ['api', 'smoke'] })
+    await writeSidecar(project, s)
+    expect((await readSidecar(project, 'spec/a_spec.rb'))?.tags).toEqual(['api', 'smoke'])
+  })
+
+  it('drops invalid entries on read and keeps the test', async () => {
+    await writeSidecar(project, sidecar('spec/a_spec.rb'))
+    const path = sidecarPath(project, 'spec/a_spec.rb')
+    const raw = JSON.parse(await readFile(path, 'utf-8'))
+    await writeFile(path, JSON.stringify({ ...raw, tags: ['Smoke', 3, 'bad tag', 'smoke', 'a'] }))
+    expect((await readSidecar(project, 'spec/a_spec.rb'))?.tags).toEqual(['a', 'smoke'])
+    await writeFile(path, JSON.stringify({ ...raw, tags: ['!!'] }))
+    expect((await readSidecar(project, 'spec/a_spec.rb'))?.tags).toBeUndefined()
+  })
+
+  it('refuses a sidecar whose tags are not an array', async () => {
+    await writeSidecar(project, sidecar('spec/a_spec.rb'))
+    const path = sidecarPath(project, 'spec/a_spec.rb')
+    const raw = JSON.parse(await readFile(path, 'utf-8'))
+    await writeFile(path, JSON.stringify({ ...raw, tags: 'smoke' }))
+    await expect(readSidecar(project, 'spec/a_spec.rb')).rejects.toThrow(SidecarUnreadableError)
+  })
+})
