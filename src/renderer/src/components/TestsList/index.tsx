@@ -77,7 +77,7 @@ const TestsList: React.FC<TestsListProps> = ({
           position="bottom"
           className="flex-1"
         >
-          <button className={`${rowButton} flex-1`} onClick={onNewTest}>
+          <button className={`${rowButton} h-7 flex-1 whitespace-nowrap`} onClick={onNewTest}>
             {t('tests.newTest')}
           </button>
         </Tooltip>

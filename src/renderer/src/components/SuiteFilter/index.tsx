@@ -179,7 +179,7 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value || null)}
           aria-label={t('tests.suiteFilter.label')}
-          className="max-w-[7rem] border border-neutral-bdr rounded px-1.5 py-1 text-xs bg-white"
+          className="h-7 min-w-0 max-w-[8rem] border border-neutral-bdr rounded pl-2.5 pr-7 text-xs bg-white"
         >
           <option value="">{t('tests.suiteFilter.all')}</option>
           {suites.map((s) => (
@@ -195,9 +195,12 @@ const SuiteFilter: React.FC<SuiteFilterProps> = ({ value, onChange }) => {
           aria-haspopup="menu"
           aria-expanded={open}
           onClick={() => setOpen(!open)}
-          className="text-xs px-2 py-1 rounded border border-neutral-bdr bg-white hover:bg-neutral-50"
+          className="inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap text-xs px-2.5 rounded border border-neutral-bdr bg-white text-neutral-dk hover:bg-neutral-50 font-medium"
         >
-          <span aria-hidden>⋯</span>
+          {t('tests.suiteFilter.suites')}
+          <span aria-hidden className="text-[0.6rem] leading-none">
+            ▾
+          </span>
         </button>
       </Tooltip>
       {open && (
