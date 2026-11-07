@@ -153,13 +153,3 @@ export async function clickNavLink(page: Page, route: string): Promise<void> {
   await page.locator(`a[href="#${route}"]`).click()
   await page.waitForTimeout(800)
 }
-
-/**
- * Create a test suite from the Tests list's suite actions menu (on the Tests tab).
- */
-export async function createSuiteViaUI(page: Page, suiteName: string): Promise<void> {
-  await page.getByRole('button', { name: 'Suite actions' }).click()
-  await page.getByRole('menuitem', { name: 'New suite' }).click()
-  await page.getByRole('textbox', { name: 'New suite' }).fill(suiteName)
-  await page.getByRole('button', { name: 'Create', exact: true }).click()
-}

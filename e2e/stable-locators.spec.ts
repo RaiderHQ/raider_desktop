@@ -75,7 +75,7 @@ test('a recorded page gets stable locators, and each step says how it was found'
 }) => {
   await setupProjectContext(page)
   await mockProjectTests(page, [])
-  await mockIPC(page, 'getSuites', [])
+  await mockIPC(page, 'getTests', [])
   await setProjectLayout(page, recordable)
   await goToOverview(page)
 

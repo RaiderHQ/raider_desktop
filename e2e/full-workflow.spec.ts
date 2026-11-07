@@ -2,7 +2,6 @@ import { test, expect } from './electronApp'
 import {
   goToLanding,
   goToOverview,
-  createSuiteViaUI,
   mockRubyReady,
   navigateTo
 } from './helpers/navigation'
@@ -38,16 +37,14 @@ test.describe('User Workflows', () => {
     await page.getByRole('button', { name: 'Back' }).click()
   })
 
-  test('with a project: the Tests tab, a suite, and a new test in it', async ({ page }) => {
+  test('with a project: the Tests tab, its More menu, and a new test', async ({ page }) => {
     await setupProjectContext(page)
     await goToOverview(page)
     await expect(page.getByText('Select a test, or create a new one.')).toBeVisible()
 
-    await createSuiteViaUI(page, 'Login Tests')
-    await createSuiteViaUI(page, 'Checkout Tests')
-    const suite = page.getByRole('combobox', { name: 'Suite', exact: true })
-    await expect(suite.locator('option:checked')).toHaveText('Checkout Tests')
-    await expect(suite.locator('option').filter({ hasText: 'Login Tests' })).toHaveCount(1)
+    await page.getByRole('button', { name: 'More test actions' }).click()
+    await expect(page.getByRole('menuitem', { name: 'Run tagged tests' })).toBeDisabled()
+    await page.getByRole('button', { name: 'More test actions' }).click()
 
     await page.getByRole('button', { name: 'New test', exact: true }).click()
     await expect(page).toHaveURL(/#\/overview\/tests\/new$/)
@@ -62,7 +59,7 @@ test.describe('User Workflows', () => {
     })
     await mockIPC(page, 'listProjectTests', [])
     await mockIPC(page, 'readDirectory', [])
-    await mockIPC(page, 'getSuites', [])
+    await mockIPC(page, 'getTests', [])
     await goToLanding(page)
 
     await page.getByRole('button', { name: 'Quick record' }).click()

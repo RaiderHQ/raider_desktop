@@ -187,7 +187,7 @@ const api = {
   ): Promise<{ path: string } | { cancelled: true } | { error: string }> =>
     ipcRenderer.invoke('choose-app-file', projectPath, platform),
 
-  // --- Recorder and Test Suite APIs ---
+  // --- Recorder and recorded tests APIs ---
 
   getTests: async (): Promise<Test[]> => ipcRenderer.invoke('get-tests'),
   listProjectTests: (): Promise<ProjectTestEntry[]> => ipcRenderer.invoke('list-project-tests'),
