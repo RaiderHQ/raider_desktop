@@ -108,7 +108,8 @@
     "title": "Installation required",
     "logoAlt": "Ruby Raider Logo",
     "githubButton": "Go to GitHub",
-    "websiteButton": "Go to website"
+    "websiteButton": "Go to website",
+    "rubyMissing": "Ruby wasn't found. Install rbenv and Ruby 3.2 or newer, then reopen the app."
   },
   "information": {
     "createProject": {
@@ -247,6 +248,8 @@
   },
   "overview": {
     "error": {
+      "readFile": "Couldn't read this file",
+      "unexpectedReadFile": "Something went wrong while reading this file",
       "permission": {
         "title": "Permission error",
         "message": "The application needs write permissions to modify files in the project directory. Please grant permissions to the folder containing the path: {{path}}.",
@@ -583,6 +586,7 @@
     "outputPanel": {
       "title": "Test results:",
       "error": "Error:",
+      "stackTrace": "Stack trace:",
       "placeholder": "Test output will appear here..."
     },
     "testSuitePanel": {
@@ -654,9 +658,6 @@
     "step3After": " to see it pass.",
     "gotIt": "Got it",
     "learnMore": "Learn more about assertions"
-  },
-  "files": {
-    "selectToPreview": "Select a file to preview"
   },
   "shortcuts": {
     "title": "Keyboard shortcuts",
@@ -988,6 +989,15 @@
       "running": "Running",
       "queued": "Queued"
     },
+    "filterEmpty": {
+      "all": "No results yet",
+      "noneListed": "No tests were listed for this run",
+      "failed": "No failed tests in this run",
+      "failedSoFar": "No failed tests so far",
+      "failedUnlisted": "This run failed. Open Technical details below for the output.",
+      "running": "Nothing running",
+      "queued": "Nothing queued"
+    },
     "parallel": "Run in parallel",
     "moreOptions": "More options",
     "workers": "Workers",
@@ -1310,6 +1320,7 @@
     "undo": "Undo"
   },
   "files": {
+    "selectToPreview": "Select a file to preview",
     "unsavedSuffix": "{{name}}, unsaved changes",
     "menu": {
       "copyPath": "Copy path",
