@@ -215,19 +215,3 @@ export function findDescribeLine(content: string): { line: string; index: number
   }
   return null
 }
-
-/**
- * A tag from a free-form name (a folder, an old suite): lower-case, every run of
- * characters outside `[a-z0-9_]` becomes `_`, trimmed of leading and trailing `_`,
- * and a name that does not start with a letter gets `t_` in front. '' when nothing
- * is left, or when the result would be longer than MAX_TAG_LENGTH.
- */
-export function tagFromName(name: string): string {
-  const slug = name
-    .toLowerCase()
-    .replace(/[^a-z0-9_]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-  if (slug === '') return ''
-  const tag = /^[a-z]/.test(slug) ? slug : `t_${slug}`
-  return tag.length <= MAX_TAG_LENGTH ? tag : ''
-}
