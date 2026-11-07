@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useRunStore } from '@foundation/Stores/runStore'
@@ -125,6 +125,8 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
   const origin = useRunStore((s) => s.origin)
   const notReady = useRunStore((s) => s.notReady)
   const collapsed = useRunStore((s) => s.resultsCollapsed)
+  const hiddenRunStartedAt = useRunStore((s) => s.hiddenRunStartedAt)
+  const resultsId = useId()
   const projectPath = useProjectStore((s) => s.projectPath)
   const [filter, setFilter] = useState<Filter>('all')
   const [now, setNow] = useState(() => Date.now())
@@ -158,6 +160,8 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
     )
   }
   if (origin?.route !== routeKey) return null
+  // Record hid this run; it stays hidden until a later run replaces it (V5)
+  if (run.startedAt === hiddenRunStartedAt) return null
 
   const { finished } = run
   const { done, total } = progress(run)
@@ -293,6 +297,7 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
             data-testid="run-collapse"
             aria-label={t(collapsed ? 'run.showResults' : 'run.minimiseResults')}
             aria-expanded={!collapsed}
+            aria-controls={resultsId}
             className="p-1 rounded text-neutral-dk hover:bg-neutral-50 transition-colors"
             onClick={() => useRunStore.getState().setResultsCollapsed(!collapsed)}
           >
@@ -306,14 +311,15 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
         </Tooltip>
       </div>
 
-      {!collapsed && (
-        <>
-          {reason && (
-            <p data-testid="run-error-reason" className="px-3 py-2 text-xs text-neutral-dk">
-              {reason}
-            </p>
-          )}
+      {/* Why a run could not run stays in view even when minimised */}
+      {reason && (
+        <p data-testid="run-error-reason" className="px-3 py-2 text-xs text-neutral-dk">
+          {reason}
+        </p>
+      )}
 
+      {!collapsed && (
+        <div id={resultsId}>
           {!run.liveEvents && (
             <p className="px-3 py-2 text-xs text-neutral-dk bg-neutral-lt">
               {t('run.updateReporter')}
@@ -375,7 +381,7 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
               </pre>
             )}
           </details>
-        </>
+        </div>
       )}
     </div>
   )

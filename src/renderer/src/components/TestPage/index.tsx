@@ -1,4 +1,4 @@
-import React, { SetStateAction, useEffect, useRef, useState } from 'react'
+import React, { SetStateAction, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
@@ -69,15 +69,10 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const ownRun = useRunStore(
     (s) => s.origin?.route === location.pathname || s.notReady?.origin.route === location.pathname
   )
-  // Recording hides the last run's panel; only a run after it shows again
-  const runStartedAt = useRunStore((s) => s.run?.startedAt)
-  const [hiddenRun, setHiddenRun] = useState<string | undefined>(undefined)
+  // Record hides the last run's panel before paint; only a run after it shows again (V5)
   const wasRecording = useRef(recording.isRecording)
-  useEffect(() => {
-    if (recording.isRecording && !wasRecording.current) {
-      const startedAt = useRunStore.getState().run?.startedAt
-      if (startedAt) setHiddenRun(startedAt)
-    }
+  useLayoutEffect(() => {
+    if (recording.isRecording && !wasRecording.current) useRunStore.getState().hideCurrentRun()
     wasRecording.current = recording.isRecording
   }, [recording.isRecording])
   const showCode = useRecorderStore((s) => s.showCode)
@@ -646,7 +641,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             </>
           )}
 
-          {ownRun && (hiddenRun === undefined || runStartedAt !== hiddenRun) && (
+          {ownRun && (
             <RunPanel routeKey={location.pathname} onRunAgain={() => void recording.run()} />
           )}
 
