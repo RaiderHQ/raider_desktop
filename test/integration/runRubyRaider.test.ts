@@ -64,11 +64,10 @@ function mockExecError(msg = 'command not found') {
   })
 }
 
-const validArgs: [any, string, string, string, string, string] = [
+const validArgs: [any, string, string, string, string] = [
   {} as any,
   '/tmp/projects',
   'my_project',
-  'rspec',
   'selenium',
   'ruby'
 ]
@@ -105,7 +104,7 @@ describe('runRubyRaider handler (integration)', () => {
     ['a leading hyphen', '-force']
   ])('refuses to run with a project name that has %s', async (_n, name) => {
     mockExecSuccess()
-    const result = await handler({} as any, '/tmp/projects', name, 'rspec', 'selenium', 'ruby')
+    const result = await handler({} as any, '/tmp/projects', name, 'selenium', 'ruby')
     expect(result.success).toBe(false)
     expect(result.error).toContain('Invalid projectName')
     expect(mockExec).not.toHaveBeenCalled()
@@ -273,31 +272,25 @@ describe('runRubyRaider handler (integration)', () => {
   })
 
   it('returns error when folderPath is empty', async () => {
-    const result = await handler({} as any, '', 'name', 'rspec', 'selenium', 'ruby')
+    const result = await handler({} as any, '', 'name', 'selenium', 'ruby')
     expect(result.success).toBe(false)
     expect(result.error).toContain('Invalid folderPath')
   })
 
   it('returns error when projectName is empty', async () => {
-    const result = await handler({} as any, '/tmp', '', 'rspec', 'selenium', 'ruby')
+    const result = await handler({} as any, '/tmp', '', 'selenium', 'ruby')
     expect(result.success).toBe(false)
     expect(result.error).toContain('Invalid projectName')
   })
 
-  it('returns error when framework is empty', async () => {
-    const result = await handler({} as any, '/tmp', 'proj', '', 'selenium', 'ruby')
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('Invalid framework')
-  })
-
   it('returns error when automation is empty', async () => {
-    const result = await handler({} as any, '/tmp', 'proj', 'rspec', '', 'ruby')
+    const result = await handler({} as any, '/tmp', 'proj', '', 'ruby')
     expect(result.success).toBe(false)
     expect(result.error).toContain('Invalid automation')
   })
 
   it('returns error when rubyCommand is empty', async () => {
-    const result = await handler({} as any, '/tmp', 'proj', 'rspec', 'selenium', '')
+    const result = await handler({} as any, '/tmp', 'proj', 'selenium', '')
     expect(result.success).toBe(false)
     expect(result.error).toContain('Invalid rubyCommand')
   })
@@ -314,7 +307,7 @@ describe('runRubyRaider handler (integration)', () => {
 
   it('uses the mobile platform as automation when mobile param is given', async () => {
     mockExecSuccess()
-    await handler({} as any, '/tmp', 'proj', 'rspec', 'appium', 'ruby', 'android')
+    await handler({} as any, '/tmp', 'proj', 'appium', 'ruby', 'android')
     const call = mockExec.mock.calls[0][0] as string
     expect(call).toContain('automation:android')
   })

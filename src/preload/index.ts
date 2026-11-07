@@ -61,7 +61,6 @@ const api = {
   runRubyRaider: async (
     folderPath: string,
     projectName: string,
-    framework: string,
     automation: string,
     rubyCommand: string,
     mobile: string | null = null,
@@ -71,7 +70,6 @@ const api = {
       'run-ruby-raider',
       folderPath,
       projectName,
-      framework,
       automation,
       rubyCommand,
       mobile,

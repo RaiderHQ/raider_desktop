@@ -57,8 +57,7 @@
     },
     "question": {
       "target": "What are you testing?",
-      "phones": "Which phones?",
-      "test": "Select your test framework"
+      "phones": "Which phones?"
     },
     "ci": {
       "label": "CI provider",
@@ -419,7 +418,6 @@
     "restoreFailed": "Raider couldn't restore this test. Nothing was changed.",
     "empty": "No tests yet — record one",
     "emptyNoRecording": "No tests found in this project yet.",
-    "cucumber": "This project's tests are Cucumber features: find them in the Files tab. Recorded tests become project files when Gherkin support arrives.",
     "actionFailed": "Raider couldn't open this test. Nothing was changed.",
     "listFailed": "Raider couldn't load the tests list. Try again in a moment.",
     "rail": "Tests",
@@ -798,7 +796,7 @@
     },
     "createProject": {
       "title": "About creating a project",
-      "message": "Give your project a name, choose whether you're testing a website or a mobile app, then pick how you want to write tests. RSpec suits people who write code; Cucumber uses plain-English steps.\n\nRuby Raider will generate a ready-to-use folder structure for you."
+      "message": "Give your project a name, choose whether you're testing a website or a mobile app, and Ruby Raider sets up an RSpec project for you.\n\nRuby Raider will generate a ready-to-use folder structure for you."
     },
     "landing": {
       "title": "Welcome to Ruby Raider",
@@ -923,7 +921,6 @@
       "name": "Lowercase letters, numbers and underscores; this is the folder name",
       "target": "What the tests will drive",
       "phones": "Which phones the tests run on",
-      "framework": "How tests are written: RSpec (Ruby) or Cucumber (plain-text steps)",
       "ci": "Which CI service gets a ready-made pipeline file",
       "accessibility": "Adds an accessibility check to every test",
       "examples": "Adds example pages and tests to learn from",
@@ -1266,8 +1263,6 @@
       "findElements": "Looked for matching elements",
       "eventually": "Waited until the check passed",
       "eventuallyFailed": "Waited for a check that didn't pass",
-      "cucumber": "{{name}}",
-      "cucumberSecret": "Ran a step with a hidden value",
       "matchScreenshot": "Compared screenshot \"{{name}}\"",
       "matchScreenshotFailed": "Screenshot \"{{name}}\" did not match",
       "failure": "The test failed here",

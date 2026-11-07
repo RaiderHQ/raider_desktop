@@ -55,7 +55,6 @@ const makeRun = (over: Partial<RunView> = {}, file = 'spec/a_spec.rb'): RunView 
   runId: 'r1',
   projectPath: '/work/shop',
   scope: { kind: 'all' } as RunView['scope'],
-  framework: 'rspec',
   workers: 1,
   liveEvents: true,
   startedAt: '2026-10-31T10:00:00.000Z',

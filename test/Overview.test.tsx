@@ -1015,7 +1015,6 @@ describe('Overview live runs', (): void => {
     runId: 'r0',
     projectPath: '/fake/project',
     scope: { kind: 'all' },
-    framework: 'rspec',
     workers: 1,
     liveEvents: true,
     startedAt: '2026-01-01T00:00:00Z',

@@ -6,10 +6,6 @@ import { getExportExtension, getExportFilters } from '../../src/main/handlers/fr
 // ---------------------------------------------------------------------------
 
 describe('getExportExtension', () => {
-  it('returns "rb" for cucumber until feature generation lands', () => {
-    expect(getExportExtension('cucumber')).toBe('rb')
-  })
-
   it('returns "rb" for rspec', () => {
     expect(getExportExtension('rspec')).toBe('rb')
   })

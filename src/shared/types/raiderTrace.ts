@@ -36,7 +36,7 @@ export interface RaiderTraceStep {
   parentIndex: number | null
   kind: string
   action: string
-  name?: string // Gherkin text, only on cucumber_step groups
+  name?: string // Screenshot name, only on match_screenshot steps
   locator: TraceLocator | null
   element: TraceElement | null
   value: string | null // always null when secret

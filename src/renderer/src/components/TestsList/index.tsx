@@ -60,13 +60,8 @@ const TestsList: React.FC<TestsListProps> = ({
     }
   }
 
-  // "Record one" only where recording is possible; Cucumber tests aren't listed here yet
-  const emptyKey =
-    layout?.framework === 'cucumber'
-      ? 'tests.cucumber'
-      : layout && !layout.recordable
-        ? 'tests.emptyNoRecording'
-        : 'tests.empty'
+  // "Record one" only where recording is possible
+  const emptyKey = layout && !layout.recordable ? 'tests.emptyNoRecording' : 'tests.empty'
 
   return (
     <div className="flex flex-col h-full min-h-0">

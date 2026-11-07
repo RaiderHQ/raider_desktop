@@ -65,11 +65,8 @@ export async function detectProjectLayout(projectPath: string): Promise<ProjectL
     .filter((line) => !line.trimStart().startsWith('#'))
     .join('\n')
   const has = (gem: string): boolean => active.includes(`'${gem}'`) || active.includes(`"${gem}"`)
-  // Cucumber Gemfiles often also list rspec, so cucumber wins
-  const framework = has('cucumber') ? 'cucumber' : 'rspec'
   const unsupported = (reason: NonNullable<ProjectLayout['unsupportedReason']>): ProjectLayout => ({
     ...base,
-    framework,
     recordable: false,
     unsupportedReason: reason
   })
@@ -79,13 +76,12 @@ export async function detectProjectLayout(projectPath: string): Promise<ProjectL
     const mobilePlatform = (caps !== null && detectMobilePlatform(caps)) || undefined
     return { ...unsupported('mobile'), automation: 'appium', mobilePlatform }
   }
-  if (has('minitest') && !has('rspec') && !has('cucumber')) return unsupported('minitest')
+  if (has('minitest') && !has('rspec')) return unsupported('minitest')
   if (has('capybara')) return unsupported('capybara')
   const automation = has('watir') ? 'watir' : 'selenium'
   const waitHelper = await usesWaitHelper(projectPath, {
     automation,
-    framework,
     helperPath: paths.helperPath
   })
-  return { ...base, framework, automation, waitHelper }
+  return { ...base, automation, waitHelper }
 }

@@ -238,7 +238,6 @@ describe('ProjectDashboard after a live run', () => {
     runId: finishedAt,
     projectPath,
     scope: { kind: 'all' },
-    framework: 'rspec',
     workers: 1,
     liveEvents: true,
     startedAt: '2026-01-01T00:00:00Z',

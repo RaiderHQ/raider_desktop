@@ -28,7 +28,6 @@ const makeRun = (over: Partial<RunView> = {}, tests: RunTestView[] = []): RunVie
   runId: 'r1',
   projectPath: '/work/shop',
   scope: { kind: 'all' } as RunView['scope'],
-  framework: 'rspec',
   workers: 1,
   liveEvents: true,
   startedAt: '2026-10-31T10:00:00.000Z',
@@ -395,7 +394,6 @@ describe('RunPanel', () => {
             type: 'run:started',
             runId: restored.runId,
             startedAt: restored.startedAt,
-            framework: 'rspec',
             scope: { kind: 'all' },
             workers: 1,
             liveEvents: true

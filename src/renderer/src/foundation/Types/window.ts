@@ -37,7 +37,6 @@ export interface WindowApi extends RunApi {
   runRubyRaider: (
     folderPath: string,
     projectName: string,
-    framework: string,
     automation: string,
     rubyCommand: string,
     mobile?: string | null,

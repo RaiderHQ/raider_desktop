@@ -298,13 +298,12 @@ app.whenReady().then(() => {
       event,
       folderPath: string,
       projectName: string,
-      framework: string,
       automation: string,
       rubyCommand: string,
       mobile: string | null,
       options?: ProjectCreationOptions
     ) =>
-      runRubyRaider(event, folderPath, projectName, framework, automation, rubyCommand, mobile, options)
+      runRubyRaider(event, folderPath, projectName, automation, rubyCommand, mobile, options)
   )
   ipcMain.handle('create-quick-project', (_event, url: string, rubyCommand: string) =>
     createQuickProject(url, rubyCommand)

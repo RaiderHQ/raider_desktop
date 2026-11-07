@@ -1,7 +1,7 @@
 export type MobilePlatform = 'ios' | 'android' | 'cross_platform'
 
 export interface ProjectLayout {
-  framework: 'rspec' | 'cucumber'
+  framework: 'rspec'
   automation: 'selenium' | 'watir' | 'appium'
   /** Set for appium projects whose capabilities.yml could be read */
   mobilePlatform?: MobilePlatform
