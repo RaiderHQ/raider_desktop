@@ -153,6 +153,8 @@ describe('copy', () => {
   it('names the suite actions control "Suites" (U4)', () => {
     expect(en.tests.suiteFilter.suites).toBe('Suites')
     expect(en.tests.suiteFilter.actions).toBe('Suite actions')
+  })
+
   it('names an empty run filter plainly (U6)', () => {
     expect(en.run.filterEmpty).toEqual({
       all: 'No results yet',
