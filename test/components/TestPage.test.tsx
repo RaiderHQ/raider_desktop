@@ -77,7 +77,8 @@ const row = (test: Test): TestRow => ({
   name: test.name,
   testId: test.id,
   ownership: 'recorded',
-  suiteIds: ['s1'], tags: []
+  suiteIds: ['s1'],
+  tags: []
 })
 
 const listeners = new Map<string, (...args: unknown[]) => unknown>()
@@ -107,7 +108,8 @@ const api = {
   readFile: vi.fn().mockResolvedValue({ success: false }),
   readImage: vi.fn().mockResolvedValue({ success: false }),
   mapFailedStep: vi.fn().mockResolvedValue({ none: 'noMap' }),
-  loadTrace: vi.fn().mockResolvedValue({ success: true, trace: [] })
+  loadTrace: vi.fn().mockResolvedValue({ success: true, trace: [] }),
+  setTestTags: vi.fn()
 }
 
 const page = (test: Test): ReactElement => (
@@ -1597,5 +1599,72 @@ describe('Check something…', () => {
     await recordingNow()
     act(() => useRecorderStore.getState().setIsReplayingToBreakpoint(true))
     expect(screen.getByRole('button', { name: 'testPage.addAssertion' })).toBeDisabled()
+  })
+})
+
+describe('TestPage tags', () => {
+  const tagged = (tags: string[], ownership: TestRow['ownership'] = 'recorded'): TestRow => ({
+    ...row(recorded),
+    file: 'spec/login_spec.rb',
+    ownership,
+    tags
+  })
+  const renderTagged = (r: TestRow): ReturnType<typeof render> =>
+    render(
+      <MemoryRouter initialEntries={['/overview/tests/x']}>
+        <Routes>
+          <Route path="/overview/tests/:testKey" element={<TestPage row={r} />} />
+        </Routes>
+      </MemoryRouter>
+    )
+
+  it('saves a new tag through setTestTags', async () => {
+    api.setTestTags.mockResolvedValue({ success: true })
+    renderTagged(tagged(['smoke']))
+    const input = await screen.findByPlaceholderText('testPage.tags.placeholder')
+    fireEvent.change(input, { target: { value: 'Login' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() =>
+      expect(api.setTestTags).toHaveBeenCalledWith('spec/login_spec.rb', ['login', 'smoke'])
+    )
+  })
+
+  it('drops an invalid entry and says what a tag looks like', async () => {
+    api.setTestTags.mockResolvedValue({ success: true })
+    renderTagged(tagged([]))
+    const input = await screen.findByPlaceholderText('testPage.tags.placeholder')
+    fireEvent.change(input, { target: { value: '9 lives' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(await screen.findByRole('status')).toHaveTextContent('testPage.tags.invalid')
+    await waitFor(() => expect(api.setTestTags).toHaveBeenCalledWith('spec/login_spec.rb', []))
+  })
+
+  it('toasts when saving the tags fails', async () => {
+    api.setTestTags.mockResolvedValue({ success: false, error: 'nope' })
+    renderTagged(tagged([]))
+    const input = await screen.findByPlaceholderText('testPage.tags.placeholder')
+    fireEvent.change(input, { target: { value: 'smoke' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() => expect(mockToast.error).toHaveBeenCalledWith('nope'))
+  })
+
+  it('shows a code test tags as chips, with no field', async () => {
+    renderTagged(tagged(['smoke', 'login'], 'code'))
+    await screen.findByText('smoke')
+    expect(screen.getByText('login')).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('testPage.tags.placeholder')).not.toBeInTheDocument()
+  })
+
+  it('has no tags field for a draft', async () => {
+    useRecorderStore.getState().startDraft('Quick', 'https://x.test')
+    render(
+      <MemoryRouter initialEntries={['/overview/tests/new']}>
+        <Routes>
+          <Route path="/overview/tests/new" element={<TestPage />} />
+        </Routes>
+      </MemoryRouter>
+    )
+    await screen.findByDisplayValue('Quick')
+    expect(screen.queryByPlaceholderText('testPage.tags.placeholder')).not.toBeInTheDocument()
   })
 })

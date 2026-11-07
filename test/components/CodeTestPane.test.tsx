@@ -54,7 +54,8 @@ const codeRow: TestRow = {
   name: 'Login',
   file: 'spec/login_spec.rb',
   ownership: 'code',
-  suiteIds: [], tags: []
+  suiteIds: [],
+  tags: []
 }
 
 const listeners = new Map<string, (...args: unknown[]) => unknown>()
@@ -661,5 +662,23 @@ describe('CodeTestPane', () => {
         expect.objectContaining({ name: 'logs in' })
       )
     })
+  })
+})
+
+describe('CodeTestPane tags', () => {
+  it('shows the tags as read-only chips', async () => {
+    render(
+      <MemoryRouter initialEntries={['/overview/tests/x']}>
+        <Routes>
+          <Route
+            path="/overview/tests/:testKey"
+            element={<CodeTestPane row={{ ...codeRow, tags: ['smoke', 'login'] }} />}
+          />
+        </Routes>
+      </MemoryRouter>
+    )
+    expect(await screen.findByText('smoke')).toBeInTheDocument()
+    expect(screen.getByText('login')).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('testPage.tags.placeholder')).not.toBeInTheDocument()
   })
 })
