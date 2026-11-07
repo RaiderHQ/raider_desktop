@@ -418,6 +418,7 @@
     "suiteFilter": {
       "label": "Suite",
       "actions": "Suite actions",
+      "suites": "Suites",
       "all": "All tests",
       "run": "Run suite",
       "runPassed": "{{suite}} passed",

@@ -148,6 +148,11 @@ describe('copy', () => {
     )
   })
 
+  it('names the suite actions control "Suites" (U4)', () => {
+    expect(en.tests.suiteFilter.suites).toBe('Suites')
+    expect(en.tests.suiteFilter.actions).toBe('Suite actions')
+  })
+
   it('no title case in buttons, labels and titles', () => {
     const names = [
       'title',

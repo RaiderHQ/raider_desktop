@@ -214,6 +214,13 @@ describe('SuiteFilter', () => {
     expect(screen.getByText('Pay')).toBeInTheDocument()
   })
 
+  it('labels the suite actions button "Suites" and keeps its accessible name', () => {
+    render(<Harness />)
+    const button = screen.getByRole('button', { name: 'Suite actions' })
+    expect(button).toHaveTextContent('Suites')
+    expect(button).toHaveAttribute('aria-haspopup', 'menu')
+  })
+
   it('offers the suite actions, with Run suite disabled for All tests', () => {
     render(<Harness />)
     openMenu()
