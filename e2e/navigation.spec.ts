@@ -1,6 +1,6 @@
 import { test, expect } from './electronApp'
-import { goToOverview, navigateTo, mockRubyReady } from './helpers/navigation'
-import { setupProjectContext } from './helpers/ipc-mock'
+import { goToOverview, navigateTo, mockRubyReady, openProjectButton } from './helpers/navigation'
+import { mockSelectFolder, setupProjectContext } from './helpers/ipc-mock'
 
 test.describe('Navigation', () => {
   test.beforeEach(async ({ electronApp, page }) => {
@@ -37,6 +37,29 @@ test.describe('Navigation', () => {
     await goToOverview(page)
     await expect(page).toHaveURL(/#\/start-project/)
     await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
+  })
+
+  test('the project menu goes back to the start screen, and Open project returns (U7)', async ({
+    page
+  }) => {
+    await setupProjectContext(page)
+    await goToOverview(page)
+    await page.getByTestId('project-menu').click()
+    await page.getByRole('menuitem', { name: 'Switch project…' }).click()
+    await expect(page).toHaveURL(/#\/start-project/)
+    await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
+    await mockSelectFolder(page, '/mock/project')
+    await openProjectButton(page).click()
+    await expect(page).toHaveURL(/#\/overview/)
+    await expect(page.getByRole('button', { name: 'Tests', exact: true })).toBeVisible()
+  })
+
+  test('the project menu offers a new project', async ({ page }) => {
+    await setupProjectContext(page)
+    await goToOverview(page)
+    await page.getByTestId('project-menu').click()
+    await page.getByRole('menuitem', { name: 'New project…' }).click()
+    await expect(page).toHaveURL(/#\/new/)
   })
 
   test('can navigate between the Overview tabs', async ({ page }) => {

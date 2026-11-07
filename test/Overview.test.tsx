@@ -245,8 +245,10 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
+    // The project menu comes first in the row; the tabs follow it
     const tabs = screen.getAllByRole('button').map((b) => b.textContent)
-    expect(tabs[0]).toBe('overview.tabs.tests')
+    expect(tabs[0]).toBe('project▾')
+    expect(tabs[1]).toBe('overview.tabs.tests')
     expect(screen.getByText('tests.empty')).toBeInTheDocument()
     expect(screen.queryByTestId('folder')).not.toBeInTheDocument()
   })

@@ -284,6 +284,11 @@
       "saved": "Saved"
     },
     "openTerminal": "Open terminal",
+    "projectMenu": {
+      "switch": "Switch project…",
+      "new": "New project…",
+      "unsaved": "Save or discard your changes first"
+    },
     "paths": {
       "placeholder": {
         "page": "e.g. pages",
@@ -823,6 +828,7 @@
       "tabScaffold": "Generate pages, tests and helpers from templates",
       "tabDashboard": "See the last run's results",
       "openTerminal": "Run commands in this project's folder",
+      "projectMenu": "Switch to another project or start a new one",
       "info": "What this tab is for"
     },
     "testPage": {
