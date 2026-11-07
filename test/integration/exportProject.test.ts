@@ -196,6 +196,27 @@ describe('exportProject handler', () => {
     expect((await exportProject()).success).toBe(true)
   })
 
+  it('never overwrites a record that appears while it writes', async () => {
+    appState.tests.set('t1', test('t1', 'Test'))
+    mockDialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: out })
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const sidecars = await import('../../src/main/handlers/tests/sidecar')
+    const real = sidecars.writeSidecar
+    vi.spyOn(sidecars, 'writeSidecar').mockImplementationOnce(async (root, sidecar, options) => {
+      const mine = join(root, '.raider', 'tests', 'test_spec.rb.json')
+      await mkdir(join(root, '.raider', 'tests'), { recursive: true })
+      await writeFile(mine, 'someone else')
+      return real(root, sidecar, options)
+    })
+
+    const result = await exportProject()
+
+    expect(result.success).toBe(false)
+    expect(await readFile(join(out, '.raider', 'tests', 'test_spec.rb.json'), 'utf-8')).toBe(
+      'someone else'
+    )
+  })
+
   it('never overwrites a file that appears while it writes', async () => {
     appState.tests.set('t1', test('t1', 'Test'))
     mockDialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: out })

@@ -216,7 +216,13 @@ const api = {
     ipcRenderer.invoke('prepare-test-run', projectPath, testId, test),
   exportProject: (): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('export-project'),
-  importProject: (): Promise<{ success: boolean; error?: string }> =>
+  importProject: (): Promise<{
+    success: boolean
+    error?: string
+    imported?: number
+    skipped?: number
+    failed?: number
+  }> =>
     ipcRenderer.invoke('import-project'),
   setTestTags: (
     fileRel: string,
@@ -232,7 +238,10 @@ const api = {
     testData: Test
   ): Promise<{ success: boolean; error?: string; test?: Test }> =>
     ipcRenderer.invoke('save-recording', projectPath, testData),
-  deleteTest: (testId: string): Promise<void> => ipcRenderer.invoke('delete-test', { testId }),
+  deleteTest: (
+    testId: string
+  ): Promise<{ success: boolean; error?: string; codeOwned?: boolean }> =>
+    ipcRenderer.invoke('delete-test', { testId }),
   saveTrace: (
     testId: string,
     trace: TraceStep[],

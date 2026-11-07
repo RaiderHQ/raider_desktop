@@ -654,6 +654,18 @@ describe('TestPage', () => {
     expect(await screen.findByText('tests list route')).toBeInTheDocument()
   })
 
+  it('a delete that fails says so and stays on the page', async () => {
+    api.deleteTest.mockResolvedValue({ success: false, error: 'The test could not be deleted.' })
+    renderPage()
+    await opened()
+    fireEvent.click(screen.getByRole('button', { name: 'testPage.more' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'testPage.deleteTest' }))
+    fireEvent.click(screen.getByRole('button', { name: 'recorder.deleteModal.delete' }))
+    await waitFor(() => expect(mockToast.error).toHaveBeenCalledWith('testPage.deleteFailed'))
+    expect(screen.queryByText('tests list route')).not.toBeInTheDocument()
+    expect(screen.getByDisplayValue('Login works')).toBeInTheDocument()
+  })
+
   it('Last run toggles the output of the last run', async () => {
     useRunOutputStore.setState({ runOutput: 'Running test: Login works...' })
     renderPage()

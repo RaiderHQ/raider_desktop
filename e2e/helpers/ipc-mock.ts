@@ -8,6 +8,11 @@ export async function mockIPC(page: Page, method: string, returnValue: unknown):
   await page.evaluate(
     ([m, v]) => {
       ;(window as any).api[m] = async () => JSON.parse(v)
+      // The list of tests loads once and then follows main (whose project here is a mock):
+      // a new answer for what it loads from means loading again
+      if (m === 'listProjectTests' || m === 'getTests') {
+        ;(window as any).__TEST_STORES__?.testsListStore?.setState({ rows: null, tests: [] })
+      }
     },
     [method, JSON.stringify(returnValue)]
   )
@@ -230,6 +235,16 @@ export async function setProjectPath(page: Page, path: string): Promise<void> {
       stores.projectStore.setState({ projectPath: p })
     }
   }, path)
+  // Main announces the project's tests (none, for a mock folder) when it has opened it.
+  // That announcement is the truth the app follows, so let it land before anything is mocked;
+  // one that arrived later would replace what the mocks give.
+  await page
+    .waitForFunction(
+      () => (window as any).__TEST_STORES__?.projectStore.getState().layout !== null,
+      undefined,
+      { timeout: 3000 }
+    )
+    .catch(() => undefined)
 }
 
 /**
@@ -326,10 +341,6 @@ export async function mockProjectTests(
   }>
 ): Promise<void> {
   await mockIPC(page, 'listProjectTests', entries)
-  // The list loads once and then follows main: have it load again, from the mock
-  await page.evaluate(() => {
-    ;(window as any).__TEST_STORES__?.testsListStore?.setState({ rows: null, tests: [] })
-  })
 }
 
 /**

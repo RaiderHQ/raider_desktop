@@ -73,7 +73,7 @@ export default async (): Promise<{ success: boolean; path?: string; error?: stri
           createdAt: now,
           updatedAt: now
         }
-        await writeSidecar(filePath, sidecar)
+        await writeSidecar(filePath, sidecar, { exclusive: true })
       } catch (error) {
         safeError(`Could not export ${test.name}:`, error)
         failed++
@@ -96,22 +96,22 @@ export default async (): Promise<{ success: boolean; path?: string; error?: stri
 
 /** The real path of `target`, or of its nearest existing parent with the rest appended. */
 async function realPathOf(target: string): Promise<string> {
-  const missing: string[] = []
-  let current = path.resolve(target)
-  for (;;) {
-    try {
-      return path.join(await fs.realpath(current), ...missing.reverse())
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-      const parent = path.dirname(current)
-      if (parent === current) return path.resolve(target)
-      missing.push(path.basename(current))
-      current = parent
-    }
+  const resolved = path.resolve(target)
+  try {
+    return await fs.realpath(resolved)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    const parent = path.dirname(resolved)
+    if (parent === resolved) return resolved
+    return path.join(await realPathOf(parent), path.basename(resolved))
   }
 }
 
-/** Why `target` can't take an export, or null: inside the open project, or not empty of ours. */
+/**
+ * Why `target` can't take an export, or null: inside the open project, or already holding
+ * spec files or a .raider folder. Other files (notes, a README) do not refuse it; every file
+ * written is created exclusively, so nothing that appears later is ever overwritten.
+ */
 async function refuseTarget(target: string, projectPath: string | null): Promise<string | null> {
   if (projectPath) {
     const project = await realPathOf(projectPath)

@@ -379,10 +379,19 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
   const deleteTest = (): void => {
     setConfirmingDelete(false)
     if (!activeTestSaved || !test) return
-    Promise.resolve(window.api.deleteTest(test.id)).catch((error: unknown) =>
-      console.error('Deleting the test failed:', error)
-    )
-    navigate('/overview/tests')
+    // Back to the list only once it is gone: a failed delete leaves the test where it is
+    Promise.resolve(window.api.deleteTest(test.id))
+      .then((result) => {
+        if (result?.success === false) {
+          toast.error(t('testPage.deleteFailed'))
+          return
+        }
+        navigate('/overview/tests')
+      })
+      .catch((error: unknown) => {
+        console.error('Deleting the test failed:', error)
+        toast.error(t('testPage.deleteFailed'))
+      })
   }
 
   const saveAssertion = (expectedText: string): void => {

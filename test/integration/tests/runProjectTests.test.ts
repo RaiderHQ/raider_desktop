@@ -12,7 +12,8 @@ vi.mock('../../../src/main/handlers/project/setActiveProject', () => ({
   activationSettled: vi.fn().mockResolvedValue(undefined)
 }))
 vi.mock('../../../src/main/handlers/tests/recordedStore', () => ({
-  filesStore: (): unknown => (mockMode() === 'files' ? {} : null)
+  filesStore: (): unknown => (mockMode() === 'files' ? {} : null),
+  PROJECT_CHANGED_ERROR: 'The project was closed before this change could be saved.'
 }))
 vi.mock('../../../src/main/handlers/testing/runRecording', () => ({ default: mockRunRecording }))
 
@@ -66,6 +67,26 @@ describe('run-test', () => {
       output: 'Test with ID nope not found.'
     })
     expect(mockRunRecording).not.toHaveBeenCalled()
+  })
+})
+
+describe('run-test, project checks', () => {
+  it('refuses a run asked for another project', async () => {
+    mockMode.mockReturnValue('locked')
+    expect(await runTestHandler('t1', '/other', 'ruby')).toEqual({
+      success: false,
+      output: 'The project was closed before this change could be saved.'
+    })
+    expect(mockRunRecording).not.toHaveBeenCalled()
+  })
+
+  it('has no test to run without an active project', async () => {
+    mockMode.mockReturnValue('locked')
+    appState.projectPath = null
+    expect(await runTestHandler('t1', '/p', 'ruby')).toEqual({
+      success: false,
+      output: 'Test with ID t1 not found.'
+    })
   })
 })
 

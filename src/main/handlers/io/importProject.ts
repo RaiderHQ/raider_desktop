@@ -1,6 +1,6 @@
 import { dialog, BrowserWindow } from 'electron'
 import { lastDialogDirectory, rememberDialogPick } from '../../utils/dialogDirectory'
-import { readdir, readFile } from 'fs/promises'
+import { lstat, readdir, readFile } from 'fs/promises'
 import * as path from 'path'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
@@ -28,6 +28,16 @@ import {
 
 /** The most spec files one import reads. */
 export const MAX_IMPORT_FILES = 500
+/** The largest spec file or record one import reads. */
+export const MAX_IMPORT_BYTES = 1024 * 1024
+
+/** `file` as text, if it is a regular file (no link, no pipe) of at most MAX_IMPORT_BYTES. */
+async function readSmallRegularFile(file: string): Promise<string> {
+  const stat = await lstat(file)
+  if (!stat.isFile()) throw new Error(`Not a regular file: ${path.basename(file)}`)
+  if (stat.size > MAX_IMPORT_BYTES) throw new Error(`Too large to import: ${path.basename(file)}`)
+  return readFile(file, 'utf-8')
+}
 
 export interface ImportProjectResult {
   success: boolean
@@ -41,6 +51,20 @@ export interface ImportProjectResult {
 interface Candidate extends ImportedTest {
   test: Test
   tags: string[]
+}
+
+/** A record beside the spec must be a small regular file before anything reads it. */
+async function checkSidecarFile(root: string, name: string): Promise<void> {
+  const file = path.join(root, '.raider', 'tests', `${name}.json`)
+  let stat
+  try {
+    stat = await lstat(file)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return
+    throw error
+  }
+  if (!stat.isFile()) throw new Error(`Not a regular file: ${name}.json`)
+  if (stat.size > MAX_IMPORT_BYTES) throw new Error(`Too large to import: ${name}.json`)
 }
 
 /**
@@ -85,12 +109,13 @@ export default async function importProject(
     let failed = 0
     for (const name of files) {
       try {
-        const content = await readFile(path.join(root, name), 'utf-8')
+        const content = await readSmallRegularFile(path.join(root, name))
         // Exported files carry their steps as JSON; older files hold Ruby lines
         const header = readExportHeader(content)
         if (header.refusedSecret !== undefined) {
           return { success: false, error: secretRefused(header.refusedSecret) }
         }
+        await checkSidecarFile(root, name)
         const sidecar = await readSidecar(root, name)
         const steps = withUniqueIds(header.steps ?? sidecar?.steps ?? [], stepIds)
         const test: Test = {

@@ -177,6 +177,3 @@ export async function removeRecordedTest(store: FilesStore, testId: string): Pro
   store.tests.delete(testId)
   return { success: true }
 }
-
-/** Whether the active project still has the test. */
-export const isListed = (testId: string): boolean => appState.tests.has(testId)

@@ -170,7 +170,13 @@ export interface WindowApi extends RunApi {
     | { success: false; error: string }
   >
   exportProject: () => Promise<{ success: boolean; path?: string; error?: string }>
-  importProject: () => Promise<{ success: boolean; error?: string }>
+  importProject: () => Promise<{
+    success: boolean
+    error?: string
+    imported?: number
+    skipped?: number
+    failed?: number
+  }>
   setTestTags: (
     fileRel: string,
     tags: string[]
@@ -185,7 +191,9 @@ export interface WindowApi extends RunApi {
   // --- Test Management ---
   /** `test` is the test as saved, with its project file when it has one */
   saveRecording: (projectPath: string, testData: Test) => Promise<{ success: boolean; error?: string; test?: Test }>
-  deleteTest: (testId: string) => Promise<void>
+  deleteTest: (
+    testId: string
+  ) => Promise<{ success: boolean; error?: string; codeOwned?: boolean }>
   exportTest: (
     testName: string,
     steps: Step[]

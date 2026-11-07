@@ -484,6 +484,7 @@
     "startOverConfirm": "Start over? Recording again replaces this test's steps.",
     "exportTest": "Export test",
     "deleteTest": "Delete test",
+    "deleteFailed": "Raider couldn't delete this test. Nothing was changed.",
     "noSteps": "There are no steps to export.",
     "editCode": "View file",
     "examples": "Tests in this file",

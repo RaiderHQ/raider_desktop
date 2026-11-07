@@ -221,7 +221,15 @@ export async function readSidecar(projectPath: string, fileRel: string): Promise
 // Writes and deletes per sidecar path are chained so they can't interleave or reorder
 const sidecarQueues = new Map<string, Promise<unknown>>()
 
-export async function writeSidecar(projectPath: string, sidecar: Sidecar): Promise<void> {
+/**
+ * Writes the sidecar of `sidecar.file`. With `exclusive`, a record that already exists is
+ * never replaced (EEXIST): for folders Raider does not own, like an export target.
+ */
+export async function writeSidecar(
+  projectPath: string,
+  sidecar: Sidecar,
+  { exclusive = false }: { exclusive?: boolean } = {}
+): Promise<void> {
   const file = sidecarPath(projectPath, sidecar.file)
   // Serialize now so later in-memory mutations don't leak into this write
   const { tags, ...rest } = sidecar
@@ -230,7 +238,7 @@ export async function writeSidecar(projectPath: string, sidecar: Sidecar): Promi
   return serialize(sidecarQueues, file, async () => {
     await assertRealInside(projectPath, file)
     await fs.mkdir(dirname(file), { recursive: true })
-    await writeFileAtomic(file, body)
+    await writeFileAtomic(file, body, { exclusive })
   })
 }
 

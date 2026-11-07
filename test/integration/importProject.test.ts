@@ -258,6 +258,33 @@ describe('importProject', () => {
     expect(tests().map((t) => t.name)).toEqual(['Real'])
   })
 
+  it('counts a spec file over 1 MiB as failed and imports the rest', async () => {
+    await setActiveProject(project)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    await writeFile(join(source, 'ok_spec.rb'), exported('Ok'))
+    await writeFile(join(source, 'big_spec.rb'), '# Test: Big\n' + 'x'.repeat(1024 * 1024))
+
+    const result = await importProject(win)
+
+    expect(result).toMatchObject({ success: false, imported: 1, failed: 1 })
+    expect(tests().map((t) => t.name)).toEqual(['Ok'])
+  })
+
+  it('counts an oversized or non-regular sidecar as failed', async () => {
+    await setActiveProject(project)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    await writeFile(join(source, 'big_spec.rb'), exported('Big'))
+    await writeSidecarFile('big_spec.rb', ' '.repeat(1024 * 1024 + 1))
+    await writeFile(join(source, 'link_spec.rb'), exported('Link'))
+    await mkdir(join(source, '.raider', 'tests'), { recursive: true })
+    await symlink(join(project, 'Gemfile'), join(source, '.raider', 'tests', 'link_spec.rb.json'))
+
+    const result = await importProject(win)
+
+    expect(result).toMatchObject({ success: false, imported: 0, failed: 2 })
+    expect(appState.tests.size).toBe(0)
+  })
+
   it('refuses a folder with no spec files', async () => {
     await setActiveProject(project)
     const result = await importProject(win)
