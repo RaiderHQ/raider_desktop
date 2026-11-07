@@ -51,7 +51,7 @@ const field =
   'block w-full px-3 py-1 border border-neutral-bdr rounded text-sm focus:ring-ruby focus:border-ruby transition-colors disabled:bg-neutral-lt disabled:cursor-not-allowed'
 
 const toolbarButton =
-  'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white disabled:text-neutral-mid disabled:cursor-not-allowed'
+  'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white whitespace-nowrap disabled:text-neutral-mid disabled:cursor-not-allowed'
 
 /** A recorded test (or a new one): its name, start URL, steps, and what can be done with it. */
 const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE_ID }) => {
@@ -541,10 +541,6 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
                 </button>
               </Tooltip>
             )}
-            <CodeViewToggle
-              view={showCode ? 'ruby' : 'steps'}
-              onChange={(view) => setShowCode(view === 'ruby')}
-            />
             {hasLegacyOutput && (
               <Tooltip content={t('tooltips.testPage.lastRun')} position="bottom">
                 <button
@@ -566,6 +562,13 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
                 />
               </Tooltip>
             )}
+            {/* Last in the row and pushed right: on a narrow window it takes a row of its own */}
+            <div className="ml-auto">
+              <CodeViewToggle
+                view={showCode ? 'ruby' : 'steps'}
+                onChange={(view) => setShowCode(view === 'ruby')}
+              />
+            </div>
           </div>
 
           {failedStep.status !== 'none' && projectPath && !picking && (
