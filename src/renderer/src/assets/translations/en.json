@@ -96,7 +96,7 @@
     },
     "recorder": {
       "text": "Quick record",
-      "description": "Record a test without a project"
+      "description": "Record without a project"
     },
     "back": {
       "text": "Back",
@@ -285,9 +285,13 @@
       "runMode": {
         "all": "All tests",
         "smoke": "Smoke",
-        "regression": "Regression"
+        "regression": "Regression",
+        "custom": "Custom tag…"
       },
-      "customTagPlaceholder": "Tag name...",
+      "customTagPlaceholder": "Tag name…",
+      "customTagLabel": "Tag to run",
+      "customTagInvalid": "Letters, digits and underscores only, starting with a letter",
+      "customTagEmpty": "Type the tag to run",
       "rerunFailed": "Re-run failed",
       "urlInvalid": "Enter a full address starting with http:// or https://, for example https://example.com.",
       "saved": "Saved"
@@ -902,7 +906,9 @@
       "filterAll": "Show all",
       "filterFailed": "Show only failed",
       "filterRunning": "Show only running",
-      "filterQueued": "Show only queued"
+      "filterQueued": "Show only queued",
+      "minimise": "Hide the results list; the summary stays",
+      "showResults": "Show the results list again"
     },
     "editor": {
       "save": "Save this file"
@@ -958,6 +964,8 @@
     }
   },
   "run": {
+    "minimiseResults": "Minimise results",
+    "showResults": "Show results",
     "phase": {
       "installing": "Installing gems…",
       "booting": "Starting Ruby…",

@@ -1,4 +1,4 @@
-import React, { SetStateAction, useEffect, useRef, useState } from 'react'
+import React, { SetStateAction, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
@@ -70,6 +70,12 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
   const ownRun = useRunStore(
     (s) => s.origin?.route === location.pathname || s.notReady?.origin.route === location.pathname
   )
+  // Record hides the last run's panel before paint; only a run after it shows again (V5)
+  const wasRecording = useRef(recording.isRecording)
+  useLayoutEffect(() => {
+    if (recording.isRecording && !wasRecording.current) useRunStore.getState().hideCurrentRun()
+    wasRecording.current = recording.isRecording
+  }, [recording.isRecording])
   const showCode = useRecorderStore((s) => s.showCode)
   const isOutputVisible = useRecorderStore((s) => s.isOutputVisible)
   const breakpointIndex = useRecorderStore((s) => s.breakpointIndex)

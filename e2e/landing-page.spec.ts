@@ -90,7 +90,7 @@ test.describe('Landing Page', () => {
   })
 
   test('shows Quick record option', async ({ page }) => {
-    await expect(page.getByText('Record a test without a project')).toBeVisible()
+    await expect(page.getByText('Record without a project')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Quick record' })).toBeVisible()
   })
 
