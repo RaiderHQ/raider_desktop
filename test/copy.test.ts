@@ -216,6 +216,7 @@ describe('en.json catalog', () => {
       let s = ''
       i++ // opening quote
       while (json[i] !== '"') {
+        if (i >= json.length) throw new Error('unterminated string in en.json')
         if (json[i] === '\\') {
           s += json[i] + json[i + 1]
           i += 2
@@ -293,12 +294,14 @@ describe('en.json catalog', () => {
   it('has every key the renderer asks for by name', () => {
     const walk = (key: string): unknown =>
       key.split('.').reduce<unknown>((node, part) => {
-        if (node && typeof node === 'object') return (node as Record<string, unknown>)[part]
+        if (node && typeof node === 'object' && Object.hasOwn(node, part))
+          return (node as Record<string, unknown>)[part]
         return undefined
       }, en)
-    // Plurals live under key_one / key_other
+    const isString = (key: string): boolean => typeof walk(key) === 'string'
+    // Plurals live under key_one and key_other, both needed
     const lookup = (key: string): boolean =>
-      walk(key) !== undefined || walk(`${key}_one`) !== undefined
+      isString(key) || (isString(`${key}_one`) && isString(`${key}_other`))
     const sources = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
         const full = join(dir, entry.name)
@@ -307,6 +310,7 @@ describe('en.json catalog', () => {
       })
     const files = sources(resolve(__dirname, '../src'))
     const wanted = new Set<string>()
+    const prefixes = new Set<string>()
     for (const file of files) {
       const src = readFileSync(file, 'utf8')
       // Main's menus define t as englishText(`prefix.${key}`); their keys live under that prefix
@@ -314,17 +318,24 @@ describe('en.json catalog', () => {
         src.match(
           /const t = \(key: string\): string => englishText\(`([A-Za-z.]+)\$\{key\}`\)/
         )?.[1] ?? ''
-      // t('key'), t("key"), t(`key`) with no ${}, and the branches of t(cond ? 'a' : 'b')
+      // t('key'), t("key"), t(`key`) with no ${}, englishText('key'), and both branches of
+      // t(cond ? 'a' : 'b')
       for (const m of src.matchAll(/\bt\(\s*(['"`])([A-Za-z0-9_.-]+)\1/g)) wanted.add(prefix + m[2])
+      for (const m of src.matchAll(/\benglishText\(\s*(['"])([A-Za-z0-9_.-]+)\1/g)) wanted.add(m[2])
       for (const m of src.matchAll(
-        /\bt\(\s*[^,)]*?\?\s*(['"])([A-Za-z0-9_.-]+)\1\s*:\s*(['"])([A-Za-z0-9_.-]+)\3/g
+        /\bt\(\s*[^?)\n]*\?\s*(['"])([A-Za-z0-9_.-]+)\1\s*:\s*(['"])([A-Za-z0-9_.-]+)\3/g
       )) {
         wanted.add(prefix + m[2])
         wanted.add(prefix + m[4])
       }
+      // t(`prefix.${x}`): the branch under the prefix must at least exist
+      for (const m of src.matchAll(/\bt\(\s*`([A-Za-z0-9_.-]+)\.\$\{/g)) prefixes.add(prefix + m[1])
     }
     expect(wanted.size).toBeGreaterThan(200)
     const missing = [...wanted].filter((key) => !lookup(key)).sort()
     expect(missing).toEqual([])
+    expect(prefixes.size).toBeGreaterThan(5)
+    const missingBranches = [...prefixes].filter((p) => typeof walk(p) !== 'object').sort()
+    expect(missingBranches).toEqual([])
   })
 })

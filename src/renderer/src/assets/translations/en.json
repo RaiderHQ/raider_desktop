@@ -109,7 +109,7 @@
     "logoAlt": "Ruby Raider Logo",
     "githubButton": "Go to GitHub",
     "websiteButton": "Go to website",
-    "rubyMissing": "Ruby wasn't found. Install rbenv and Ruby 3.2 or newer, then open the app again."
+    "rubyMissing": "Ruby wasn't found. Install rbenv and Ruby 3.2 or newer, then reopen the app."
   },
   "information": {
     "createProject": {
