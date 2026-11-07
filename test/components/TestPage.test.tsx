@@ -77,7 +77,7 @@ const row = (test: Test): TestRow => ({
   name: test.name,
   testId: test.id,
   ownership: 'recorded',
-  suiteIds: ['s1']
+  suiteIds: ['s1'], tags: []
 })
 
 const listeners = new Map<string, (...args: unknown[]) => unknown>()

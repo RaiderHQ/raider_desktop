@@ -19,4 +19,4 @@ export function recordedTestForFile(suites: Suite[], file: string | undefined): 
 
 /** The test page of a recorded test. */
 export const fixInTestRoute = (testId: string): string =>
-  `/overview/tests/${toRouteParam(testKeyOf({ name: '', testId, ownership: 'recorded', suiteIds: [] }))}`
+  `/overview/tests/${toRouteParam(testKeyOf({ name: '', testId, ownership: 'recorded', suiteIds: [], tags: [] }))}`

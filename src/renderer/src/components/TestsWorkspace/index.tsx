@@ -6,6 +6,7 @@ import TestsList from '@components/TestsList'
 import TestPage from '@components/TestPage'
 import CodeTestPane from '@components/CodeTestPane'
 import SuiteFilter from '@components/SuiteFilter'
+import TagFilter from '@components/TagFilter'
 import { useTestsList } from '../../hooks/useTestsList'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { fromRouteParam, testKeyOf, toRouteParam } from '@foundation/testKey'
@@ -29,6 +30,7 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
   const isRecording = useRecorderStore((s) => s.isRecording)
   // null: all tests. A new test joins the filtered suite, or sits outside any suite
   const [suiteFilter, setSuiteFilter] = useState<string | null>(null)
+  const [tagFilter, setTagFilter] = useState<string | null>(null)
 
   // Duplicates useSuiteSync's setSuites on purpose (it only runs under a test page). Its
   // "new suite appeared, select it" branch compares against the previous suites, so it
@@ -45,7 +47,11 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
   }, [])
 
   const selectedKey: TestKey | null = param ? fromRouteParam(param) || null : null
-  const visibleRows = suiteFilter ? rows?.filter((r) => r.suiteIds.includes(suiteFilter)) : rows
+  const visibleRows = rows?.filter(
+    (r) =>
+      (!suiteFilter || r.suiteIds.includes(suiteFilter)) &&
+      (!tagFilter || r.tags.includes(tagFilter))
+  )
   const selectedRow = rows?.find((r) => testKeyOf(r) === selectedKey) ?? null
 
   const select = (key: TestKey): void => {
@@ -93,7 +99,12 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
           {rows && (
             <TestsList
               rows={visibleRows ?? rows}
-              headerExtra={<SuiteFilter value={suiteFilter} onChange={setSuiteFilter} />}
+              headerExtra={
+                <>
+                  <TagFilter rows={rows} value={tagFilter} onChange={setTagFilter} />
+                  <SuiteFilter value={suiteFilter} onChange={setSuiteFilter} />
+                </>
+              }
               selectedKey={selectedKey}
               onSelect={select}
               onNewTest={

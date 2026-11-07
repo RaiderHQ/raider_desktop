@@ -34,7 +34,8 @@ export const useTestsListStore = create<TestsListStore>(
           testId: e.testId,
           ownership: e.ownership,
           ...(e.missingFile ? { missingFile: true as const } : {}),
-          suiteIds: suiteIdsOf(e.testId)
+          suiteIds: suiteIdsOf(e.testId),
+          tags: e.tags ?? []
         }))
         const seen = new Set(rows.map((r) => r.testId).filter(Boolean))
         for (const suite of suites) {
@@ -45,7 +46,8 @@ export const useTestsListStore = create<TestsListStore>(
               name: test.name,
               testId: test.id,
               ownership: 'legacy',
-              suiteIds: suiteIdsOf(test.id)
+              suiteIds: suiteIdsOf(test.id),
+              tags: []
             })
           }
         }

@@ -54,7 +54,7 @@ const codeRow: TestRow = {
   name: 'Login',
   file: 'spec/login_spec.rb',
   ownership: 'code',
-  suiteIds: []
+  suiteIds: [], tags: []
 }
 
 const listeners = new Map<string, (...args: unknown[]) => unknown>()

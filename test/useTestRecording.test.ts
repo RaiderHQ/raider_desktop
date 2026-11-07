@@ -174,7 +174,7 @@ describe('recorderStore.openTest', () => {
     useRecorderStore.getState().setReadOnlyView({ file: 'spec/x_spec.rb', examples: [] } as never)
     await useRecorderStore
       .getState()
-      .openTest({ name: 'Login works', testId: 't1', ownership: 'recorded', suiteIds: ['s1'] })
+      .openTest({ name: 'Login works', testId: 't1', ownership: 'recorded', suiteIds: ['s1'], tags: [] })
     const s = useRecorderStore.getState()
     expect(s.activeSuiteId).toBe('s1')
     expect(s.activeTest).toEqual(test1)
@@ -186,7 +186,7 @@ describe('recorderStore.openTest', () => {
     await expect(
       useRecorderStore
         .getState()
-        .openTest({ name: 'Gone', testId: 'nope', ownership: 'legacy', suiteIds: [] })
+        .openTest({ name: 'Gone', testId: 'nope', ownership: 'legacy', suiteIds: [], tags: [] })
     ).rejects.toThrow()
   })
 })
