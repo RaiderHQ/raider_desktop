@@ -32,7 +32,7 @@ import { buildAssertionStep, assertionModalType } from '@foundation/assertionSte
 import { handleSaveResult } from '@foundation/saveResult'
 import { testKeyOf } from '@foundation/testKey'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
-import { normalizeTags } from '@shared/tags'
+import { MAX_TAG_LENGTH, MAX_TAGS, TAG_RE, normalizeTags } from '@shared/tags'
 import type { TestRow } from '@foundation/testKey'
 import type { TestResult } from '@foundation/Types/testResult'
 import type { Step } from '@shared/types/step'
@@ -148,24 +148,51 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const target: RecordingTarget = isDraft ? draftTarget : { kind: 'test' }
   const readOnly = !!test?.ownership && test.ownership !== 'recorded'
   const busy = recording.isRecording || isReplaying || picking
-  const [tagsInvalid, setTagsInvalid] = useState(false)
-  const codeOwnedTags = row?.ownership === 'code' || row?.ownership === 'codeOwnedWasRecorded'
+  const [tagsProblem, setTagsProblem] = useState<'invalid' | 'tooLong' | 'tooMany' | null>(null)
+  const [savingTags, setSavingTags] = useState(false)
+  const savingTagsRef = useRef(false)
+  // One page serves every recorded row: a note about the last one doesn't carry over
+  useEffect(() => setTagsProblem(null), [row?.file])
+  const codeOwnedTags =
+    readOnly || row?.ownership === 'code' || row?.ownership === 'codeOwnedWasRecorded'
   const changeTags = (next: string[]): void => {
-    if (!row?.file) return
+    if (!row?.file || savingTagsRef.current) return
     const tags = normalizeTags(next)
-    setTagsInvalid(tags.length < new Set(next.map((x) => x.trim().toLowerCase())).size)
+    const entries = [...new Set(next.map((x) => x.trim().toLowerCase()))]
+    const tooLong = entries.some((x) => x.length > MAX_TAG_LENGTH)
+    const wellFormed = entries.filter((x) => x.length <= MAX_TAG_LENGTH && TAG_RE.test(x))
+    setTagsProblem(
+      entries.some((x) => x.length <= MAX_TAG_LENGTH && !TAG_RE.test(x))
+        ? 'invalid'
+        : tooLong
+          ? 'tooLong'
+          : wellFormed.length > MAX_TAGS
+            ? 'tooMany'
+            : null
+    )
+    // Saving would silently cut the list; leave it as it is
+    if (wellFormed.length > MAX_TAGS) return
+    // An entry that was dropped changes nothing worth writing
+    if (tags.length === row.tags.length && tags.every((x, i) => x === row.tags[i])) return
+    savingTagsRef.current = true
+    setSavingTags(true)
     window.api
       .setTestTags(row.file, tags)
       .then((result) => {
         if (!result.success) {
-          toast.error(result.error ?? t('tests.actionFailed'))
+          console.error('Saving the tags failed:', result.error)
+          toast.error(t('testPage.tags.saveFailed'))
           return
         }
         return useTestsListStore.getState().reload()
       })
       .catch((error: unknown) => {
         console.error('Saving the tags failed:', error)
-        toast.error(String(error))
+        toast.error(t('testPage.tags.saveFailed'))
+      })
+      .finally(() => {
+        savingTagsRef.current = false
+        setSavingTags(false)
       })
   }
   const failedStep = useFailedStep(projectPath, test)
@@ -499,21 +526,25 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             </Tooltip>
           </div>
 
-          {row?.file && !recording.isRecording && (
+          {row?.file && !row.missingFile && !recording.isRecording && (
             <div className="flex flex-col gap-1">
               {codeOwnedTags ? (
                 <TagChips tags={row.tags} />
               ) : (
                 <TagInput
+                  key={row.file}
                   tags={row.tags}
+                  ariaLabel={t('testPage.tags.label')}
+                  removeLabel={(tag) => t('testPage.tags.remove', { tag })}
+                  disabled={busy || savingTags}
                   onChange={changeTags}
                   placeholder={t('testPage.tags.placeholder')}
                   tooltip={t('tooltips.testPage.tags')}
                 />
               )}
-              {tagsInvalid && (
+              {tagsProblem && (
                 <p role="status" className="text-xs text-neutral-md">
-                  {t('testPage.tags.invalid')}
+                  {t(`testPage.tags.${tagsProblem}`)}
                 </p>
               )}
             </div>

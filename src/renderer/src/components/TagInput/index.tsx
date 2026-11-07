@@ -8,6 +8,9 @@ interface TagInputProps {
   disabled?: boolean
   /** Plain-language help, shown on hover and focus of the field */
   tooltip?: string
+  ariaLabel?: string
+  /** The remove button's accessible name for a tag */
+  removeLabel?: (tag: string) => string
 }
 
 const TagInput: React.FC<TagInputProps> = ({
@@ -15,7 +18,9 @@ const TagInput: React.FC<TagInputProps> = ({
   onChange,
   placeholder = 'Add option...',
   disabled = false,
-  tooltip
+  tooltip,
+  ariaLabel,
+  removeLabel
 }) => {
   const [inputValue, setInputValue] = useState('')
 
@@ -40,6 +45,7 @@ const TagInput: React.FC<TagInputProps> = ({
       onChange={(e) => setInputValue(e.target.value)}
       onKeyDown={handleKeyDown}
       placeholder={placeholder}
+      aria-label={ariaLabel}
       disabled={disabled}
       className="w-full px-3 py-2 border border-neutral-bdr rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent disabled:opacity-50"
     />
@@ -63,6 +69,8 @@ const TagInput: React.FC<TagInputProps> = ({
             >
               {tag}
               <button
+                type="button"
+                aria-label={removeLabel?.(tag)}
                 onClick={() => removeTag(tag)}
                 disabled={disabled}
                 className="text-neutral-md hover:text-ruby transition-colors disabled:cursor-not-allowed"

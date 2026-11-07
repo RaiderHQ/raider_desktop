@@ -476,7 +476,11 @@
     "tags": {
       "label": "Tags",
       "placeholder": "Add a tag",
-      "invalid": "Letters, digits and underscores only, starting with a letter"
+      "invalid": "Letters, digits and underscores only, starting with a letter",
+      "tooLong": "Tags have at most 40 characters",
+      "tooMany": "A test has at most 20 tags",
+      "saveFailed": "Raider couldn't save the tags.",
+      "remove": "Remove {{tag}}"
     },
     "url": "Start URL",
     "record": "Record",
