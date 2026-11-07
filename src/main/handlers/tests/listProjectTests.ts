@@ -2,7 +2,7 @@ import fs from 'fs/promises'
 import { posix } from 'path'
 import { isRaiderFile, markCodeOwned } from './recordedTests'
 import { assertRealInside, isSafeRelPath, listSidecars, resolveInside } from './sidecar'
-import { tagsFromDescribeLine } from '../../../shared/tags'
+import { findDescribeLine, tagsFromDescribeLine } from '../../../shared/tags'
 import { safeError } from '../../utils/safeLog'
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
 import type { ProjectTestEntry, Sidecar } from '../../../shared/types/projectTest'
@@ -59,12 +59,10 @@ async function readSpec(projectPath: string, fileRel: string): Promise<string | 
   return fs.readFile(target, 'utf-8')
 }
 
-const DESCRIBE_LINE = /^\s*(?:RSpec\.)?describe\b.*$/m
-
 /** Tags in the metadata of the file's first describe line. */
 const fileTags = (content: string | null): string[] => {
-  const line = content ? DESCRIBE_LINE.exec(content)?.[0] : undefined
-  return line ? tagsFromDescribeLine(line) : []
+  const found = content ? findDescribeLine(content) : null
+  return found ? tagsFromDescribeLine(found.line) : []
 }
 
 const fallbackName = (content: string | null, file: string): string =>

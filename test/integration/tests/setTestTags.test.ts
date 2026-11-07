@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from 'fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, chmod, stat, unlink } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -67,21 +67,88 @@ describe('setTestTags', () => {
     expect((await readSidecar(project, s.file))?.tags).toBeUndefined()
   })
 
-  it('writes only the sidecar of a code-owned test', async () => {
+  it('rewrites the describe line of a code-owned test and mirrors the sidecar', async () => {
     const s = await saveRecordedTest(project, appState.layout!, rec('b', 'Bravo'))
     const edited = (await read(s.file)) + '\nputs 1\n'
     await writeFile(join(project, s.file), edited)
     expect(await setTestTags(s.file, ['smoke'])).toEqual({ success: true })
-    expect(await read(s.file)).toBe(edited)
+    expect(await read(s.file)).toBe(
+      edited.replace("describe 'Bravo' do", "describe 'Bravo', :smoke do")
+    )
     const after = await readSidecar(project, s.file)
     expect(after?.tags).toEqual(['smoke'])
     expect(after?.codeOwned).toBe(true)
     expect(after?.hash).toBe(s.hash)
+    const entry = (await listProjectTestsHandler()).find((e) => e.file === s.file)
+    expect(entry?.tags).toEqual(['smoke'])
+  })
+
+  it('writes nothing for a code-owned test whose describe line cannot be changed', async () => {
+    const s = await saveRecordedTest(project, appState.layout!, rec('b', 'Bravo'))
+    const edited =
+      (await read(s.file)).replace(
+        "describe 'Bravo' do",
+        "describe 'Bravo',\n  type: :feature do"
+      ) + '\nputs 1\n'
+    await writeFile(join(project, s.file), edited)
+    const before = await readSidecar(project, s.file)
+    expect(await setTestTags(s.file, ['smoke'])).toEqual({
+      success: false,
+      error: "This test's describe line could not be changed; edit it in the file."
+    })
+    expect(await read(s.file)).toBe(edited)
+    expect(await readSidecar(project, s.file)).toEqual(before)
+  })
+
+  it('does not re-create a missing spec of a recorded test', async () => {
+    const s = await saveRecordedTest(project, appState.layout!, rec('a', 'Alpha'))
+    await unlink(join(project, s.file))
+    expect(await setTestTags(s.file, ['smoke'])).toEqual({
+      success: false,
+      error: 'This test could not be found.'
+    })
+    await expect(stat(join(project, s.file))).rejects.toThrow()
+    expect((await readSidecar(project, s.file))?.tags).toBeUndefined()
+  })
+
+  it('only tags specs under the spec folder, with fixed errors', async () => {
+    await mkdir(join(project, 'other'))
+    await writeFile(join(project, 'other/a_spec.rb'), "describe 'A' do\nend\n")
+    await writeFile(join(project, 'top_spec.rb'), "describe 'A' do\nend\n")
+    expect(await setTestTags('other/a_spec.rb', ['a'])).toEqual({
+      success: false,
+      error: 'This test could not be found.'
+    })
+    expect((await setTestTags('top_spec.rb', ['a'])).success).toBe(false)
+    expect(await read('other/a_spec.rb')).toBe("describe 'A' do\nend\n")
+    const r = await setTestTags('spec/missing_spec.rb', ['a'])
+    expect(r).toEqual({ success: false, error: 'This test could not be found.' })
+  })
+
+  it('keeps the file mode', async () => {
+    await writeFile(join(project, 'spec/m_spec.rb'), "describe 'M' do\nend\n")
+    await chmod(join(project, 'spec/m_spec.rb'), 0o750)
+    await setTestTags('spec/m_spec.rb', ['a'])
+    expect((await stat(join(project, 'spec/m_spec.rb'))).mode & 0o777).toBe(0o750)
+    const s = await saveRecordedTest(project, appState.layout!, rec('a', 'Alpha'))
+    await chmod(join(project, s.file), 0o750)
+    await setTestTags(s.file, ['a'])
+    expect((await stat(join(project, s.file))).mode & 0o777).toBe(0o750)
+  })
+
+  it('runs concurrent calls one after the other', async () => {
+    await writeFile(join(project, 'spec/c_spec.rb'), "describe 'C' do\nend\n")
+    await Promise.all([
+      setTestTags('spec/c_spec.rb', ['a']),
+      setTestTags('spec/c_spec.rb', ['b']),
+      setTestTags('spec/c_spec.rb', ['c'])
+    ])
+    expect(await read('spec/c_spec.rb')).toBe("describe 'C', :c do\nend\n")
   })
 
   it('rewrites only the first describe line of a file with no sidecar', async () => {
     const body =
-      "RSpec.describe 'Hand', :old, type: :feature do\n  it 'x' do\n  end\n\n  describe 'inner', :keep do\n  end\nend\n"
+      "=begin\ndescribe 'no', :x do\n=end\nRSpec.describe 'Hand', :old, type: :feature do\n  it 'x' do\n  end\n\n  describe 'inner', :keep do\n  end\nend\n"
     await writeFile(join(project, 'spec/hand_spec.rb'), body)
     expect(await setTestTags('spec/hand_spec.rb', ['b', 'a'])).toEqual({
       success: true,

@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 import { listProjectTests } from '../../../src/main/handlers/tests/listProjectTests'
-import { saveRecordedTest } from '../../../src/main/handlers/tests/recordedTests'
+import { saveRecordedTest, setTagsForFile } from '../../../src/main/handlers/tests/recordedTests'
 import { readSidecar } from '../../../src/main/handlers/tests/sidecar'
 import type { ProjectLayout } from '../../../src/shared/types/projectLayout'
 import type { Test } from '../../../src/shared/types/test'
@@ -148,7 +148,8 @@ describe('listProjectTests', () => {
 
   describe('tags', () => {
     it('reads recorded tests from the sidecar', async () => {
-      await saveRecordedTest(project, layout, { ...rec('a', 'Alpha'), tags: ['smoke', 'api'] })
+      const a = await saveRecordedTest(project, layout, rec('a', 'Alpha'))
+      await setTagsForFile(project, layout, a.file, ['smoke', 'api'])
       await saveRecordedTest(project, layout, rec('b', 'Bravo'))
       const by = Object.fromEntries(
         (await listProjectTests(project, layout)).map((e) => [e.name, e])
@@ -160,9 +161,10 @@ describe('listProjectTests', () => {
     it('reads code tests and edited recorded tests from the first describe line', async () => {
       await writeFile(
         join(project, 'spec/hand_spec.rb'),
-        "RSpec.describe 'Hand', :b, 'a', type: :feature do\n  describe 'x', :nope do\n  end\nend\n"
+        "RSpec.describe 'Hand', :b, :a, type: :feature do\n  describe 'x', :nope do\n  end\nend\n"
       )
-      const c = await saveRecordedTest(project, layout, { ...rec('c', 'Charlie'), tags: ['old'] })
+      const c = await saveRecordedTest(project, layout, rec('c', 'Charlie'))
+      await setTagsForFile(project, layout, c.file, ['old'])
       const text = await readFile(join(project, c.file), 'utf-8')
       await writeFile(
         join(project, c.file),
@@ -176,13 +178,28 @@ describe('listProjectTests', () => {
       expect(by.Charlie.tags).toEqual(['edited'])
     })
 
-    it('a save that does not mention tags keeps them', async () => {
-      await saveRecordedTest(project, layout, { ...rec('a', 'Alpha'), tags: ['smoke'] })
-      const saved = await saveRecordedTest(project, layout, rec('a', 'Alpha'))
+    it('a save never takes tags from its caller and keeps the stored ones', async () => {
+      const a = await saveRecordedTest(project, layout, rec('a', 'Alpha'))
+      await setTagsForFile(project, layout, a.file, ['smoke'])
+      const saved = await saveRecordedTest(project, layout, {
+        ...rec('a', 'Alpha'),
+        tags: ['stale']
+      })
       expect(saved.tags).toEqual(['smoke'])
-      expect(await readFile(join(project, saved.file), 'utf-8')).toContain(
-        "describe 'Alpha', :smoke do"
+      const again = await saveRecordedTest(project, layout, {
+        ...rec('a', 'Alpha'),
+        name: 'Alpha 2',
+        tags: ['stale']
+      })
+      expect(again.tags).toEqual(['smoke'])
+      expect(await readFile(join(project, again.file), 'utf-8')).toContain(
+        "describe 'Alpha 2', :smoke do"
       )
+      const fresh = await saveRecordedTest(project, layout, {
+        ...rec('z', 'Zulu'),
+        tags: ['stale']
+      })
+      expect(fresh.tags).toBeUndefined()
     })
   })
 })

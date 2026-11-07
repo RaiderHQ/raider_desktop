@@ -10,7 +10,7 @@ import { hashRuby } from './codeHash'
 import { deriveStepLines, usableStepLines } from './stepLines'
 import { usesWaitHelper } from '../project/waitHelperDetection'
 import { withSecretNames } from '../../../shared/secretSteps'
-import { normalizeTags } from '../../../shared/tags'
+import { describeLineWithTags, findDescribeLine, normalizeTags } from '../../../shared/tags'
 import {
   assertRealInside,
   deleteSidecar,
@@ -85,7 +85,7 @@ export async function findSidecarById(
   return null
 }
 
-const specRoot = (layout: ProjectLayout): string => {
+export const specRoot = (layout: ProjectLayout): string => {
   const root = posix.normalize(layout.specPath.replace(/\\/g, '/')).replace(/\/+$/, '')
   if (!isSafeRelPath(root)) throw new Error(`Unsafe spec folder: ${layout.specPath}`)
   return root
@@ -298,9 +298,8 @@ export function saveRecordedTest(
       options.knownFile !== undefined
         ? await sidecarAt(projectPath, input.id, options.knownFile)
         : await findSidecarById(projectPath, input.id)
-    // A save that doesn't mention tags (the Recorder) keeps the ones the test has
-    const test: Test =
-      input.tags === undefined && existing?.tags ? { ...input, tags: existing.tags } : input
+    // Tags change only through set-test-tags: a save never takes tags from its caller
+    const test: Test = { ...input, tags: existing?.tags }
 
     if (!existing) {
       const { file, content, stepLines, target } = await createNewSpec(projectPath, current, test)
@@ -432,40 +431,79 @@ export function deleteRecordedTest(projectPath: string, testId: string): Promise
   })
 }
 
+export type SetTagsResult =
+  | { kind: 'recorded' | 'codeOwned' | 'fileOnly' }
+  | { kind: 'notFound' }
+  | { kind: 'describeLine' }
+
+/** Rewrites the first describe line of the spec at `target`, keeping its permissions. */
+async function rewriteDescribeLine(
+  projectPath: string,
+  target: string,
+  tags: string[]
+): Promise<'ok' | 'notFound' | 'describeLine'> {
+  await assertRealInside(projectPath, target)
+  const stat = await fs.lstat(target).catch((e: NodeJS.ErrnoException) => {
+    if (e.code === 'ENOENT') return null
+    throw e
+  })
+  if (!stat?.isFile()) return 'notFound'
+  const content = await fs.readFile(target, 'utf-8')
+  const found = findDescribeLine(content)
+  const rewritten = found ? describeLineWithTags(found.line, tags) : null
+  if (!found || rewritten === null) return 'describeLine'
+  if (rewritten !== found.line) {
+    const updated =
+      content.slice(0, found.index) + rewritten + content.slice(found.index + found.line.length)
+    await writeFileAtomic(target, updated, { mode: stat.mode & 0o7777 })
+  }
+  return 'ok'
+}
+
 /**
- * Sets the tags of the recorded test whose spec is `fileRel`. A test Raider
- * still owns gets its spec file and sidecar regenerated (the tags are the
- * describe line's metadata); a test edited in code gets only its sidecar's
- * tags. Null when no sidecar sits at `fileRel`.
+ * Sets the tags of the spec at `fileRel` (under the layout's spec folder).
+ * A test Raider still owns gets its spec file and sidecar regenerated; a test
+ * edited in code gets its describe line rewritten and the sidecar mirrored;
+ * a file with no sidecar gets only its describe line rewritten. Nothing is
+ * written when the file is missing or its describe line can't be changed.
  */
-export async function setRecordedTags(
+export async function setTagsForFile(
   projectPath: string,
   layout: ProjectLayout,
   fileRel: string,
   tags: string[]
-): Promise<{ sidecar: Sidecar; fileRewritten: boolean } | null> {
-  if (!isSpecRel(fileRel)) throw new Error(`Not a spec file: ${fileRel}`)
-  const first = await readSidecar(projectPath, fileRel)
-  if (!first || first.file !== fileRel) return null
+): Promise<SetTagsResult> {
+  const root = specRoot(layout)
+  if (!isSpecRel(fileRel) || !fileRel.startsWith(`${root}/`)) return { kind: 'notFound' }
   const clean = normalizeTags(tags)
-  return serialize(testQueues, testKey(projectPath, first.id), async () => {
-    const existing = await readSidecar(projectPath, fileRel)
-    if (!existing || existing.file !== fileRel) return null
+  const target = resolveInside(projectPath, fileRel)
+  const first = await readSidecar(projectPath, fileRel)
+  const key = first ? first.id : `\0file\0${fileRel}`
+
+  return serialize(testQueues, testKey(projectPath, key), async (): Promise<SetTagsResult> => {
+    const existing = first ? await readSidecar(projectPath, fileRel) : null
+    if (first && (!existing || existing.id !== first.id || existing.file !== fileRel)) {
+      return { kind: 'notFound' }
+    }
+    if (!existing) {
+      const done = await rewriteDescribeLine(projectPath, target, clean)
+      return done === 'ok' ? { kind: 'fileOnly' } : { kind: done }
+    }
+
     const now = new Date().toISOString()
-    const withTags = (sidecar: Sidecar): Sidecar => {
-      const next: Sidecar = { ...sidecar, updatedAt: now }
-      if (clean.length > 0) next.tags = clean
-      else delete next.tags
-      return next
-    }
-    const target = await recordedFilePath(projectPath, existing.file)
+    await assertRealInside(projectPath, target)
     const onDisk = await readIfExists(target)
-    // Raider rewrites a file only when it can prove it wrote it
-    if (existing.codeOwned || (onDisk !== null && !isRaiderFile(onDisk, existing))) {
-      const sidecar = withTags({ ...existing, codeOwned: true })
+    if (onDisk === null) return { kind: 'notFound' }
+    if (existing.codeOwned || !isRaiderFile(onDisk, existing)) {
+      const done = await rewriteDescribeLine(projectPath, target, clean)
+      if (done !== 'ok') return { kind: done }
+      const sidecar: Sidecar = { ...existing, codeOwned: true, updatedAt: now }
+      if (clean.length > 0) sidecar.tags = clean
+      else delete sidecar.tags
       await writeSidecar(projectPath, sidecar)
-      return { sidecar, fileRewritten: false }
+      return { kind: 'codeOwned' }
     }
+
     const current = await withCurrentWaitHelper(projectPath, layout)
     const test: Test = {
       id: existing.id,
@@ -475,22 +513,12 @@ export async function setRecordedTags(
       tags: clean
     }
     const { content, stepLines } = generate(test, current, existing.file)
-    if (onDisk === null) {
-      await fs.mkdir(dirname(target), { recursive: true })
-      await writeFileAtomic(target, content, { exclusive: true })
-    } else {
-      await writeFileAtomic(target, content)
-    }
-    const sidecar = buildSidecar(
-      test,
-      current,
-      existing.file,
-      content,
-      stepLines,
-      existing.createdAt,
-      now
+    const { mode } = await fs.lstat(target)
+    await writeFileAtomic(target, content, { mode: mode & 0o7777 })
+    await writeSidecar(
+      projectPath,
+      buildSidecar(test, current, existing.file, content, stepLines, existing.createdAt, now)
     )
-    await writeSidecar(projectPath, sidecar)
-    return { sidecar, fileRewritten: true }
+    return { kind: 'recorded' }
   })
 }
