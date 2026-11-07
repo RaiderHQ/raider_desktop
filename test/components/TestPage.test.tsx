@@ -13,6 +13,7 @@ import { useRunStore } from '@foundation/Stores/runStore'
 import { dispatchMenuCommand } from '@foundation/menuCommands'
 import useTitleStore from '@foundation/Stores/titleStore'
 import type { RunView } from '@foundation/run/runModel'
+import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import type { TestRow } from '@foundation/testKey'
 import type { Test } from '@foundation/Types/test'
@@ -1637,10 +1638,10 @@ describe('Check something…', () => {
 })
 
 describe('TestPage tags', () => {
-  const tagged = (tags: string[], ownership: TestRow['ownership'] = 'recorded'): TestRow => ({
+  const tagged = (tags: string[]): TestRow => ({
     ...row(recorded),
     file: 'spec/login_spec.rb',
-    ownership,
+    ownership: 'recorded',
     tags
   })
   const renderTagged = (r: TestRow): ReturnType<typeof render> =>
@@ -1651,41 +1652,97 @@ describe('TestPage tags', () => {
         </Routes>
       </MemoryRouter>
     )
-
-  it('saves a new tag through setTestTags', async () => {
-    api.setTestTags.mockResolvedValue({ success: true })
-    renderTagged(tagged(['smoke']))
+  const add = async (value: string): Promise<void> => {
     const input = await screen.findByPlaceholderText('testPage.tags.placeholder')
-    fireEvent.change(input, { target: { value: 'Login' } })
+    fireEvent.change(input, { target: { value } })
     fireEvent.keyDown(input, { key: 'Enter' })
+  }
+
+  it('saves a new tag through setTestTags and reloads the list', async () => {
+    api.setTestTags.mockResolvedValue({ success: true })
+    const reload = vi.spyOn(useTestsListStore.getState(), 'reload').mockResolvedValue()
+    renderTagged(tagged(['smoke']))
+    await add('Login')
     await waitFor(() =>
       expect(api.setTestTags).toHaveBeenCalledWith('spec/login_spec.rb', ['login', 'smoke'])
     )
+    await waitFor(() => expect(reload).toHaveBeenCalled())
+    reload.mockRestore()
   })
 
-  it('drops an invalid entry and says what a tag looks like', async () => {
+  it('removing a chip saves the remaining tags', async () => {
     api.setTestTags.mockResolvedValue({ success: true })
+    renderTagged(tagged(['login', 'smoke']))
+    fireEvent.click((await screen.findAllByRole('button', { name: 'testPage.tags.remove' }))[0])
+    await waitFor(() =>
+      expect(api.setTestTags).toHaveBeenCalledWith('spec/login_spec.rb', ['smoke'])
+    )
+  })
+
+  it('names the tags field', async () => {
     renderTagged(tagged([]))
-    const input = await screen.findByPlaceholderText('testPage.tags.placeholder')
-    fireEvent.change(input, { target: { value: '9 lives' } })
-    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(await screen.findByLabelText('testPage.tags.label')).toBeInTheDocument()
+  })
+
+  it('drops an invalid entry, says why, and writes nothing', async () => {
+    renderTagged(tagged([]))
+    await add('9 lives')
     expect(await screen.findByRole('status')).toHaveTextContent('testPage.tags.invalid')
-    await waitFor(() => expect(api.setTestTags).toHaveBeenCalledWith('spec/login_spec.rb', []))
+    expect(api.setTestTags).not.toHaveBeenCalled()
   })
 
-  it('toasts when saving the tags fails', async () => {
-    api.setTestTags.mockResolvedValue({ success: false, error: 'nope' })
+  it('says when a tag is too long', async () => {
     renderTagged(tagged([]))
-    const input = await screen.findByPlaceholderText('testPage.tags.placeholder')
-    fireEvent.change(input, { target: { value: 'smoke' } })
-    fireEvent.keyDown(input, { key: 'Enter' })
-    await waitFor(() => expect(mockToast.error).toHaveBeenCalledWith('nope'))
+    await add('a'.repeat(41))
+    expect(await screen.findByRole('status')).toHaveTextContent('testPage.tags.tooLong')
+    expect(api.setTestTags).not.toHaveBeenCalled()
   })
 
-  it('shows a code test tags as chips, with no field', async () => {
-    renderTagged(tagged(['smoke', 'login'], 'code'))
+  it('says when a test would have too many tags', async () => {
+    const twenty = Array.from({ length: 20 }, (_, i) => `t${String(i).padStart(2, '0')}`)
+    renderTagged(tagged(twenty))
+    await add('extra')
+    expect(await screen.findByRole('status')).toHaveTextContent('testPage.tags.tooMany')
+    expect(api.setTestTags).not.toHaveBeenCalled()
+  })
+
+  it('toasts when saving fails, and keeps the chips', async () => {
+    api.setTestTags.mockResolvedValue({ success: false, error: 'nope' })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    renderTagged(tagged(['smoke']))
+    await add('login')
+    await waitFor(() => expect(mockToast.error).toHaveBeenCalledWith('testPage.tags.saveFailed'))
+    expect(screen.getByText('smoke')).toBeInTheDocument()
+    expect(screen.queryByText('login')).not.toBeInTheDocument()
+  })
+
+  it('blocks a second edit until the first save resolves', async () => {
+    let resolve: (v: { success: boolean }) => void = () => {}
+    api.setTestTags.mockImplementation(() => new Promise((r) => (resolve = r as typeof resolve)))
+    renderTagged(tagged(['smoke']))
+    await add('login')
+    const input = screen.getByPlaceholderText('testPage.tags.placeholder')
+    await waitFor(() => expect(input).toBeDisabled())
+    fireEvent.change(input, { target: { value: 'other' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(api.setTestTags).toHaveBeenCalledTimes(1)
+    await act(async () => resolve({ success: true }))
+    await waitFor(() => expect(input).not.toBeDisabled())
+  })
+
+  it('shows tags as chips, with no field, when the loaded test is code-owned', async () => {
+    api.getSuites.mockResolvedValue([
+      { id: 's1', name: 'Smoke', tests: [{ ...recorded, ownership: 'code' }] }
+    ])
+    renderTagged(tagged(['smoke', 'login']))
     await screen.findByText('smoke')
     expect(screen.getByText('login')).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('testPage.tags.placeholder')).not.toBeInTheDocument()
+  })
+
+  it('has no tags field for a file that is missing', async () => {
+    renderTagged({ ...tagged([]), missingFile: true })
+    await opened()
     expect(screen.queryByPlaceholderText('testPage.tags.placeholder')).not.toBeInTheDocument()
   })
 

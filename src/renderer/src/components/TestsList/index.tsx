@@ -70,7 +70,7 @@ const TestsList: React.FC<TestsListProps> = ({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center gap-2 p-3 border-b border-neutral-bdr">
+      <div className="flex flex-wrap items-center gap-2 p-3 border-b border-neutral-bdr">
         <Tooltip
           content={t('tooltips.tests.newTest')}
           shortcut="new-test"

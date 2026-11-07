@@ -253,4 +253,19 @@ describe('TestsWorkspace tag filter', () => {
     await screen.findByRole('button', { name: /Search products/ })
     expect(screen.queryByTestId('tag-filter')).not.toBeInTheDocument()
   })
+
+  it('falls back to all tests when the filtered tag disappears', async () => {
+    withTags(['smoke'], [])
+    renderList()
+    await screen.findByRole('button', { name: /Search products/ })
+    fireEvent.change(screen.getByTestId('tag-filter'), { target: { value: 'smoke' } })
+    expect(screen.queryByRole('button', { name: /Checkout/ })).not.toBeInTheDocument()
+    withTags(['regression'], [])
+    await act(async () => {
+      await useTestsListStore.getState().reload()
+    })
+    expect(screen.getByRole('button', { name: /Search products/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Checkout/ })).toBeInTheDocument()
+    expect(screen.getByTestId('tag-filter')).toHaveValue('')
+  })
 })

@@ -47,10 +47,12 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
   }, [])
 
   const selectedKey: TestKey | null = param ? fromRouteParam(param) || null : null
+  // A tag nobody has any more (edited, reloaded, other project) falls back to all tests
+  const activeTag = tagFilter && rows?.some((r) => r.tags.includes(tagFilter)) ? tagFilter : null
   const visibleRows = rows?.filter(
     (r) =>
       (!suiteFilter || r.suiteIds.includes(suiteFilter)) &&
-      (!tagFilter || r.tags.includes(tagFilter))
+      (!activeTag || r.tags.includes(activeTag))
   )
   const selectedRow = rows?.find((r) => testKeyOf(r) === selectedKey) ?? null
 
@@ -107,7 +109,7 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
               rows={visibleRows ?? rows}
               headerExtra={
                 <>
-                  <TagFilter rows={rows} value={tagFilter} onChange={setTagFilter} />
+                  <TagFilter rows={rows} value={activeTag} onChange={setTagFilter} />
                   <SuiteFilter value={suiteFilter} onChange={setSuiteFilter} />
                 </>
               }
