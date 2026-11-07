@@ -265,10 +265,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   return (
     <div
       ref={wrapperRef}
-      // The failed highlight wins over the latest one
-      className={`relative w-full mb-3 group/block ${
-        failed ? 'rounded-lg ring-2 ring-red-400' : latest ? 'rounded-lg ring-2 ring-ruby/40' : ''
-      }`}
+      className="relative w-full mb-3 group/block"
       data-latest={latest ? 'true' : undefined}
       data-testid={failed ? 'step-failed' : undefined}
     >
@@ -296,9 +293,13 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
       )}
 
       <div
+        data-testid="step-card"
         className={`relative bg-white p-3 pl-4 pr-8 rounded-lg border transition-shadow duration-200 z-10 ml-5 ${
           readOnly ? '' : 'cursor-grab active:cursor-grabbing'
-        } ${isBreakpoint ? 'border-amber-300 bg-amber-50/30' : 'border-neutral-bdr/50'}`}
+        } ${isBreakpoint ? 'border-amber-300 bg-amber-50/30' : 'border-neutral-bdr/50'} ${
+          // The failed highlight wins over the latest one; the ring hugs the card itself
+          failed ? 'ring-2 ring-inset ring-red-400' : latest ? 'ring-2 ring-inset ring-ruby/40' : ''
+        }`}
         draggable={!isEditing && !readOnly}
         onDragStart={() => onDragStart(index)}
         onDragEnter={() => onDragEnter(index)}

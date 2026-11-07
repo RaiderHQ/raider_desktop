@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import toast from 'react-hot-toast'
+import Icon from '@components/Icon'
 import Tooltip from '@components/Tooltip'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { anyEditorDirty, recorderBusy } from '@foundation/switchGuards'
@@ -56,27 +57,30 @@ const ProjectMenu: React.FC = () => {
 
   return (
     <div
-      className="relative mr-3"
+      className="relative mr-2 pr-2 border-r border-neutral-bdr"
       ref={ref}
       onKeyDown={(e) => {
         if (e.key === 'Escape' && open) close()
       }}
     >
-      <Tooltip content={t('tooltips.overview.projectMenu')} position="bottom">
+      <Tooltip
+        content={t('tooltips.overview.projectMenu')}
+        detail={projectPath ?? undefined}
+        position="bottom"
+      >
+        {/* The same height, size and weight as the tab labels beside it (V1) */}
         <button
           ref={trigger}
           type="button"
-          title={projectPath ?? undefined}
           aria-haspopup="menu"
           aria-expanded={open}
           onClick={() => setOpen(!open)}
           data-testid="project-menu"
-          className="inline-flex h-7 max-w-[14rem] items-center gap-1.5 px-2.5 text-xs font-medium text-neutral-dk border border-neutral-bdr rounded bg-white hover:bg-neutral-50 transition-colors"
+          className="inline-flex max-w-[16rem] items-center gap-1.5 px-3 py-2 text-sm font-semibold text-neutral-dark rounded hover:bg-neutral-50 transition-colors"
         >
+          <Icon name="folder" size={16} color="currentColor" className="shrink-0 text-neutral-md" />
           <span className="truncate">{name}</span>
-          <span aria-hidden className="text-[0.6rem] leading-none">
-            ▾
-          </span>
+          <Icon name="chevron-down" size={16} color="currentColor" className="shrink-0" />
         </button>
       </Tooltip>
       {open && (
