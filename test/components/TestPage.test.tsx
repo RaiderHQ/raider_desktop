@@ -395,7 +395,7 @@ describe('TestPage', () => {
     expect(api.saveRecording).not.toHaveBeenCalled()
   })
 
-  it('has Record, Run, Steps | Ruby and More', async () => {
+  it('has Record, Run, Show as: Visual steps | Ruby code, and More', async () => {
     renderPage()
     await opened()
     for (const label of [

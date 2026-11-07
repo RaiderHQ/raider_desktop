@@ -475,7 +475,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             </Tooltip>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {recording.isRecording && (
               <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" aria-hidden />
