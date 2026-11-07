@@ -8,6 +8,7 @@ import type { Step } from '@shared/types/step'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
+import type { RecentProjectEntry } from '@shared/types/recentProject'
 import type { PickResult } from '@shared/types/pick'
 import type {
   LegacyRunResult,
@@ -51,6 +52,10 @@ export interface WindowApi extends RunApi {
   isQuickProject: (projectPath: string) => Promise<boolean>
   /** Quick record projects in Raider's own folder, newest first */
   listQuickProjects: () => Promise<QuickProject[]>
+  /** Projects opened with Raider on this computer, newest first (U8) */
+  listRecentProjects: () => Promise<RecentProjectEntry[]>
+  removeRecentProject: (projectPath: string) => Promise<RecentProjectEntry[]>
+  clearRecentProjects: () => Promise<RecentProjectEntry[]>
   saveQuickProjectTo: (
     projectPath: string,
     destFolder: string
@@ -270,6 +275,7 @@ export interface WindowApi extends RunApi {
   closeTrace: (traceId: string) => Promise<void>
   /** Menu bar commands as plain strings; returns an unsubscribe function */
   onMenuCommand: (callback: (command: string) => void) => () => void
+  onOpenRecentProject: (callback: (projectPath: string) => void) => () => void
   /** Traces opened from File → Open trace; returns an unsubscribe function */
   onTraceOpened: (callback: (result: TraceOpenResult) => void) => () => void
 

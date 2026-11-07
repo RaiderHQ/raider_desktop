@@ -138,7 +138,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
     // Leaving a page with unsaved edits would drop them; the editor's own prompt is the way out,
     // so the menu commands stand down silently (the project menu on the Overview says why).
     // The Files tab's inline editor asks about New test itself, so only a project switch waits.
-    return window.api.onMenuCommand((command) => {
+    const offMenu = window.api.onMenuCommand((command) => {
       if (!isMenuCommand(command)) return
       if (command === 'how-it-works' || command === 'shortcuts' || command === 'recording-guide') {
         if (installModalOpen.current) return
@@ -181,6 +181,22 @@ const MainTemplate: React.FC = (): JSX.Element => {
       }
       dispatchMenuCommand(command)
     })
+    // File › Open recent: a path main stored; the same guards as Open project, no folder dialog (U8)
+    const offRecent = window.api.onOpenRecentProject((projectPath) => {
+      if (typeof projectPath !== 'string' || !projectPath) return
+      if (installModalOpen.current || modalOpen.current || pickingFolder.current) return
+      if (anyEditorDirty()) return
+      if (recorderBusy()) {
+        toast.error(t('quickRecord.stopFirst'))
+        return
+      }
+      setProjectPath(projectPath)
+      navigate('/overview')
+    })
+    return (): void => {
+      offMenu()
+      offRecent()
+    }
   }, [])
 
   const { rubyCommand } = useRubyStore()

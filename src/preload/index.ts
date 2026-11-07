@@ -8,6 +8,7 @@ import type { TraceStep } from '@foundation/Types/traceStep'
 import type { Step } from '@shared/types/step'
 import type { AssertionMessage } from '@shared/types/pendingAssertion'
 import type { QuickProject } from '@shared/types/quickProject'
+import type { RecentProjectEntry } from '@shared/types/recentProject'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
@@ -119,6 +120,13 @@ const api = {
   isQuickProject: async (projectPath: string): Promise<boolean> =>
     ipcRenderer.invoke('is-quick-project', projectPath),
   listQuickProjects: async (): Promise<QuickProject[]> => ipcRenderer.invoke('list-quick-projects'),
+  /** Projects opened with Raider on this computer, newest first */
+  listRecentProjects: async (): Promise<RecentProjectEntry[]> =>
+    ipcRenderer.invoke('list-recent-projects'),
+  removeRecentProject: async (projectPath: string): Promise<RecentProjectEntry[]> =>
+    ipcRenderer.invoke('remove-recent-project', projectPath),
+  clearRecentProjects: async (): Promise<RecentProjectEntry[]> =>
+    ipcRenderer.invoke('clear-recent-projects'),
   saveQuickProjectTo: async (
     projectPath: string,
     destFolder: string
@@ -264,6 +272,9 @@ const api = {
   /** Menu bar commands (New project…, Save, Run, …); the renderer checks the value */
   onMenuCommand: (callback: (command: string) => void): (() => void) =>
     subscribe('menu-command', callback),
+  /** File › Open recent: the path of a project main stored; the renderer opens it like a row */
+  onOpenRecentProject: (callback: (projectPath: string) => void): (() => void) =>
+    subscribe('open-recent-project', callback),
   /** Subscribes to traces opened from the menu; the returned function removes only this one */
   onTraceOpened: (callback: (result: TraceOpenResult) => void): (() => void) => {
     const listener = (_event: IpcRendererEvent, result: TraceOpenResult): void => callback(result)

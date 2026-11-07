@@ -49,6 +49,9 @@ describe('IPC Contract', () => {
     'createQuickProject',
     'isQuickProject',
     'listQuickProjects',
+    'listRecentProjects',
+    'removeRecentProject',
+    'clearRecentProjects',
     'saveQuickProjectTo',
     'selectFolder',
     'readDirectory',
@@ -139,6 +142,7 @@ describe('IPC Contract', () => {
 
     // Menu bar
     'onMenuCommand',
+    'onOpenRecentProject',
 
     // Results
     'acceptBaseline',
@@ -260,6 +264,7 @@ describe('IPC Contract', () => {
     const channels: Record<string, string> = {
       onSuiteUpdated: 'suite-updated',
       onMenuCommand: 'menu-command',
+      onOpenRecentProject: 'open-recent-project',
       onSuitesRecovered: 'suites-recovered',
       onRecordingStarted: 'recording-started',
       onRecordingStopped: 'recording-stopped',

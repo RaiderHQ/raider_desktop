@@ -1,4 +1,4 @@
-import { render, screen, act, fireEvent } from '@testing-library/react'
+import { render, screen, act, fireEvent, within } from '@testing-library/react'
 import Landing from '@pages/Landing'
 import '@testing-library/jest-dom'
 import { vi, beforeEach } from 'vitest'
@@ -23,11 +23,17 @@ vi.mock('@foundation/Stores/projectStore', () => ({
   default: vi.fn(() => setProjectPath)
 }))
 
-const api = { listQuickProjects: vi.fn() }
+const api = {
+  listQuickProjects: vi.fn(),
+  listRecentProjects: vi.fn(),
+  removeRecentProject: vi.fn()
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
   api.listQuickProjects.mockResolvedValue([])
+  api.listRecentProjects.mockResolvedValue([])
+  api.removeRecentProject.mockResolvedValue([])
   // @ts-expect-error - Mocking window.api
   window.api = api
 })
@@ -57,6 +63,21 @@ vi.mock('@components/ProjectSelector', () => ({
 vi.mock('@components/QuickRecordDialog', () => ({
   default: (): JSX.Element => <div>quick-record-dialog</div>
 }))
+
+const LocationProbe = (): JSX.Element => <div data-testid="location">{useLocation().pathname}</div>
+
+const renderLanding = async (): Promise<void> => {
+  await act(async () => {
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="*" element={<LocationProbe />} />
+        </Routes>
+      </MemoryRouter>
+    )
+  })
+}
 
 describe('Landing Page', (): void => {
   it('renders correctly', async (): Promise<void> => {
@@ -112,22 +133,6 @@ describe('Landing Page', (): void => {
   })
 
   describe('Quick recordings', () => {
-    const LocationProbe = (): JSX.Element => (
-      <div data-testid="location">{useLocation().pathname}</div>
-    )
-    const renderLanding = async (): Promise<void> => {
-      await act(async () => {
-        render(
-          <MemoryRouter initialEntries={['/']}>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="*" element={<LocationProbe />} />
-            </Routes>
-          </MemoryRouter>
-        )
-      })
-    }
-
     it('are not shown when there are none', async () => {
       await renderLanding()
       expect(api.listQuickProjects).toHaveBeenCalled()
@@ -156,6 +161,66 @@ describe('Landing Page', (): void => {
       await renderLanding()
       expect(screen.queryByText('landing.quickRecordings.title')).not.toBeInTheDocument()
       error.mockRestore()
+    })
+  })
+
+  describe('recent projects (U8)', () => {
+    const shop = { path: '/work/shop', name: 'shop', lastOpened: 2, exists: true, isRaider: true }
+    const gone = { path: '/work/gone', name: 'gone', lastOpened: 1, exists: false, isRaider: false }
+
+    it('are not shown when there are none', async () => {
+      await renderLanding()
+      expect(api.listRecentProjects).toHaveBeenCalled()
+      expect(screen.queryByText('landing.recentProjects.title')).not.toBeInTheDocument()
+    })
+
+    it('lists them newest first and opens one on the Overview with no folder dialog', async () => {
+      api.listRecentProjects.mockResolvedValue([shop, gone])
+      await renderLanding()
+      expect(screen.getByText('landing.recentProjects.title')).toBeInTheDocument()
+      const section = screen.getByRole('region', { name: 'landing.recentProjects.title' })
+      const rows = within(section).getAllByRole('listitem')
+      expect(rows[0]).toHaveTextContent('shop')
+      expect(rows[1]).toHaveTextContent('gone')
+      fireEvent.click(within(rows[0]).getByRole('button', { name: /shop/ }))
+      expect(setProjectPath).toHaveBeenCalledWith('/work/shop')
+      expect(screen.getByTestId('location')).toHaveTextContent('/overview')
+    })
+
+    it('a folder that is gone is greyed, says so, and only offers Remove', async () => {
+      api.listRecentProjects.mockResolvedValue([gone])
+      await renderLanding()
+      const row = screen.getByRole('listitem')
+      expect(row).toHaveTextContent('landing.recentProjects.folderNotFound')
+      expect(within(row).queryByRole('button', { name: /gone/ })).toBeNull()
+      expect(
+        within(row).getByRole('button', { name: /landing.recentProjects.removeLabel/ })
+      ).toBeInTheDocument()
+      expect(setProjectPath).not.toHaveBeenCalled()
+    })
+
+    it('a folder that lost its Raider config is greyed, says so, and only offers Remove', async () => {
+      api.listRecentProjects.mockResolvedValue([{ ...shop, isRaider: false }])
+      await renderLanding()
+      const row = screen.getByRole('listitem')
+      expect(row).toHaveTextContent('landing.recentProjects.notRaider')
+      expect(within(row).queryByRole('button', { name: /shop/ })).toBeNull()
+      expect(setProjectPath).not.toHaveBeenCalled()
+    })
+
+    it('Remove takes the entry out of the list main returns', async () => {
+      api.listRecentProjects.mockResolvedValue([shop, gone])
+      api.removeRecentProject.mockResolvedValue([shop])
+      await renderLanding()
+      const rows = screen.getAllByRole('listitem').filter((li) => li.textContent?.includes('gone'))
+      await act(async () => {
+        fireEvent.click(
+          within(rows[0]).getByRole('button', { name: /landing.recentProjects.removeLabel/ })
+        )
+      })
+      expect(api.removeRecentProject).toHaveBeenCalledWith('/work/gone')
+      expect(screen.queryByText('gone')).not.toBeInTheDocument()
+      expect(screen.getByText('shop')).toBeInTheDocument()
     })
   })
 })

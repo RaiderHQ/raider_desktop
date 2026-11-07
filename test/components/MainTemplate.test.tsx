@@ -66,6 +66,7 @@ beforeAll(() => {
     onSuitesRecovered: vi.fn(() => vi.fn()),
     onSuiteUpdated: vi.fn(() => vi.fn()),
     onMenuCommand: vi.fn(() => vi.fn()),
+    onOpenRecentProject: vi.fn(() => vi.fn()),
     openDocs: vi.fn().mockResolvedValue({ success: true }),
     setDocumentEdited: vi.fn(),
     selectFolder: vi.fn().mockResolvedValue('/picked/project')
@@ -213,6 +214,16 @@ describe('MainTemplate project files toasts', () => {
       renderAt('/overview')
       act(() => menuListener()('new-project'))
       expect(screen.getByTestId('where')).toHaveTextContent('/new')
+    })
+
+    it('a recent project from the File menu opens with no folder dialog (U8)', () => {
+      renderAt('/start-project')
+      const subscribe = api().onOpenRecentProject
+      const listener = subscribe.mock.calls[subscribe.mock.calls.length - 1][0]
+      act(() => listener('/work/shop'))
+      expect(api().selectFolder).not.toHaveBeenCalled()
+      expect(projectState.setProjectPath).toHaveBeenCalledWith('/work/shop')
+      expect(screen.getByTestId('where')).toHaveTextContent('/overview')
     })
 
     it('Open project… picks a folder and opens it', async () => {

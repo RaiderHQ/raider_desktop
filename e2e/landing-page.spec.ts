@@ -51,6 +51,44 @@ test.describe('Landing Page', () => {
     await expect(page).toHaveURL(/#\/overview\/tests$/)
   })
 
+  test('lists recent projects, opens one with no folder dialog, and removes one (U8)', async ({
+    page
+  }) => {
+    await mockIPC(page, 'listRecentProjects', [
+      {
+        path: '/mock/test-project',
+        name: 'test-project',
+        lastOpened: Date.now(),
+        exists: true,
+        isRaider: true
+      },
+      { path: '/mock/gone', name: 'gone', lastOpened: 1, exists: false, isRaider: false }
+    ])
+    await mockIPC(page, 'removeRecentProject', [
+      {
+        path: '/mock/test-project',
+        name: 'test-project',
+        lastOpened: Date.now(),
+        exists: true,
+        isRaider: true
+      }
+    ])
+    await mockIPC(page, 'listProjectTests', [])
+    await mockIPC(page, 'getSuites', [])
+    await mockIPC(page, 'readDirectory', [])
+    // Landing reads the list when it opens
+    await navigateTo(page, '/new')
+    await goToLanding(page)
+
+    const section = page.getByRole('region', { name: 'Recent projects' })
+    await expect(section).toBeVisible()
+    await expect(section.getByText('Folder not found')).toBeVisible()
+    await section.getByRole('button', { name: 'Remove gone from recent projects' }).click()
+    await expect(section.getByText('gone', { exact: true })).toHaveCount(0)
+    await section.getByRole('button', { name: /^test-project/ }).click()
+    await expect(page).toHaveURL(/#\/overview/)
+  })
+
   test('shows Quick record option', async ({ page }) => {
     await expect(page.getByText('Record a test without a project')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Quick record' })).toBeVisible()

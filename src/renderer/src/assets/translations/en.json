@@ -2,6 +2,15 @@
   "landing": {
     "title": "Welcome to Ruby Raider!",
     "subtitle": "Record, run and fix UI tests without leaving the app.",
+    "recentProjects": {
+      "title": "Recent projects",
+      "hint": "Projects you opened with Raider on this computer.",
+      "opened": "Opened {{date}}",
+      "folderNotFound": "Folder not found",
+      "notRaider": "No Raider config in this folder",
+      "remove": "Remove",
+      "removeLabel": "Remove {{name}} from recent projects"
+    },
     "quickRecordings": {
       "title": "Quick recordings",
       "hint": "Recordings Raider keeps in its own folder. Open one to keep going or save it to a folder.",
@@ -909,6 +918,7 @@
       "quickRecord": "Record a website as a test, without creating a project first",
       "create": "Create a new test project in a folder you choose",
       "open": "Open a Ruby Raider project folder",
+      "recentProject": "Open this project",
       "quickRecording": "Reopen this recording"
     },
     "quickRecord": {
@@ -1284,6 +1294,10 @@
     "file": "File",
     "newProject": "New project…",
     "openProject": "Open project…",
+    "openRecent": "Open recent",
+    "noRecentProjects": "No recent projects",
+    "notFound": "not found",
+    "clearRecent": "Clear recent",
     "openTrace": "Open trace…",
     "save": "Save",
     "test": "Test",

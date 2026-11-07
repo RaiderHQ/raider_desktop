@@ -13,6 +13,7 @@ import RecorderIcon from '@assets/icons/bxs_up-arrow_side.svg'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import type { QuickProject } from '@shared/types/quickProject'
+import type { RecentProjectEntry } from '@shared/types/recentProject'
 
 const Landing: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -40,6 +41,34 @@ const Landing: React.FC = (): JSX.Element => {
       current = false
     }
   }, [])
+
+  // Projects opened with Raider on this computer; main keeps the list (U8)
+  const [recentProjects, setRecentProjects] = useState<RecentProjectEntry[]>([])
+  useEffect(() => {
+    let current = true
+    Promise.resolve(window.api.listRecentProjects())
+      .then((projects) => {
+        if (current) setRecentProjects(projects ?? [])
+      })
+      .catch((error: unknown) => console.error('Listing the recent projects failed:', error))
+    return (): void => {
+      current = false
+    }
+  }, [])
+
+  // A remembered folder opens with no folder dialog; main checks it as it does for any open
+  const openRecentProject = (project: RecentProjectEntry): void => {
+    setProjectPath(project.path)
+    navigate('/overview')
+  }
+
+  const removeRecentProject = async (project: RecentProjectEntry): Promise<void> => {
+    try {
+      setRecentProjects(await window.api.removeRecentProject(project.path))
+    } catch (error) {
+      console.error('Removing the recent project failed:', error)
+    }
+  }
 
   // Opens like a new quick recording does: on its tests, with the Save project to… banner
   const openQuickProject = (project: QuickProject): void => {
@@ -128,6 +157,75 @@ const Landing: React.FC = (): JSX.Element => {
             onClick={handleOpenProject}
           />
         </div>
+
+        {recentProjects.length > 0 && (
+          <section aria-labelledby="recent-projects" className="w-full max-w-xl mb-8">
+            <h2 id="recent-projects" className="text-lg font-semibold text-neutral-dark">
+              {t('landing.recentProjects.title')}
+            </h2>
+            <p className="text-sm text-neutral-md mb-3">{t('landing.recentProjects.hint')}</p>
+            <ul className="border border-neutral-bdr rounded-lg bg-white shadow-card divide-y divide-neutral-bdr">
+              {recentProjects.map((project) => (
+                <li
+                  key={project.path}
+                  className={`flex items-center gap-2 pr-2 ${project.exists && project.isRaider ? '' : 'text-neutral-md'}`}
+                >
+                  {project.exists && project.isRaider ? (
+                    <Tooltip
+                      content={t('tooltips.landing.recentProject')}
+                      position="top"
+                      className="flex-1 min-w-0"
+                    >
+                      <button
+                        onClick={() => openRecentProject(project)}
+                        title={project.path}
+                        className="w-full flex items-center justify-between gap-4 px-4 py-2 text-left hover:bg-neutral-50 transition-colors"
+                      >
+                        <span className="min-w-0">
+                          <span className="block font-medium text-neutral-dark truncate">
+                            {project.name}
+                          </span>
+                          <span className="block text-xs text-neutral-md truncate">
+                            {project.path}
+                          </span>
+                        </span>
+                        <span className="text-xs text-neutral-md shrink-0">
+                          {t('landing.recentProjects.opened', {
+                            date: new Date(project.lastOpened).toLocaleString(undefined, {
+                              dateStyle: 'medium',
+                              timeStyle: 'short'
+                            })
+                          })}
+                        </span>
+                      </button>
+                    </Tooltip>
+                  ) : (
+                    <span className="flex-1 min-w-0 flex items-center justify-between gap-4 px-4 py-2">
+                      <span className="min-w-0">
+                        <span className="block font-medium truncate">{project.name}</span>
+                        <span className="block text-xs truncate">{project.path}</span>
+                      </span>
+                      <span className="text-xs shrink-0">
+                        {t(
+                          project.exists
+                            ? 'landing.recentProjects.notRaider'
+                            : 'landing.recentProjects.folderNotFound'
+                        )}
+                      </span>
+                    </span>
+                  )}
+                  <button
+                    onClick={() => void removeRecentProject(project)}
+                    aria-label={t('landing.recentProjects.removeLabel', { name: project.name })}
+                    className="shrink-0 text-xs px-2 py-1 rounded border border-neutral-bdr bg-white text-neutral-dk hover:bg-neutral-50"
+                  >
+                    {t('landing.recentProjects.remove')}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {quickProjects.length > 0 && (
           <section aria-labelledby="quick-recordings" className="w-full max-w-xl mb-8">

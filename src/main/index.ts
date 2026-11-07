@@ -1,4 +1,6 @@
 import { app, BrowserWindow, ipcMain, session } from 'electron'
+import { existsSync } from 'fs'
+import { safeError } from './utils/safeLog'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -53,7 +55,12 @@ import { registerRunIpc } from './handlers/run/runIpc'
 import { openTraceFromDialog, registerTraceIpc } from './handlers/trace/traceIpc'
 import { makeBaselineConfirm } from './handlers/results/baselineConfirm'
 import { acceptBaseline } from './handlers/results/acceptBaseline'
-import { installAppMenu, setRecordingMenuState, withLiveWindow } from './appMenu'
+import {
+  installAppMenu,
+  setRecentProjectsMenu,
+  setRecordingMenuState,
+  withLiveWindow
+} from './appMenu'
 import {
   installRecordingState,
   resetRecordingOnWindowLoss
@@ -86,6 +93,12 @@ import saveTrace from './handlers/trace/saveTrace'
 import loadTrace from './handlers/trace/loadTrace'
 import deleteTrace from './handlers/trace/deleteTrace'
 import setActiveProject, { getRecorderSettings } from './handlers/project/setActiveProject'
+import {
+  clearRecentProjects,
+  listRecentProjects,
+  recordRecentProject,
+  removeRecentProject
+} from './handlers/project/recentProjects'
 import updateRecordingSettings from './handlers/config/updateRecordingSettings'
 import { closeApp } from './handlers/closeApp'
 import {
@@ -109,6 +122,28 @@ import type { Step } from '@shared/types/step'
 import { renderStep } from './codegen/steps'
 import { toAutomation } from './codegen/testFile'
 import { applyUtf8Locale } from './utils/locale'
+
+/** The recents list, or nothing: a bad file in userData must never break the app */
+function safeRecentProjects(): ReturnType<typeof listRecentProjects> {
+  try {
+    return listRecentProjects()
+  } catch (error) {
+    safeError('Reading the recent projects failed:', error)
+    return []
+  }
+}
+
+/** Runs one change to the recents file, then rebuilds File › Open recent; a failure is logged, never thrown */
+function refreshRecentProjects(change: () => void): ReturnType<typeof listRecentProjects> {
+  try {
+    change()
+  } catch (error) {
+    safeError('Updating the recent projects failed:', error)
+  }
+  const projects = safeRecentProjects()
+  setRecentProjectsMenu(projects)
+  return projects
+}
 
 const iconPath = join(
   __dirname,
@@ -226,9 +261,19 @@ app.whenReady().then(() => {
       onCommand: withLiveWindow(
         () => appState.mainWindow,
         (win, command) => win.webContents.send('menu-command', command)
-      )
+      ),
+      // A path main stored itself; the renderer applies its guards and opens it like a row (U8).
+      // The menu is a snapshot, so a folder that went away since is dropped instead of sent.
+      onOpenRecent: withLiveWindow(
+        () => appState.mainWindow,
+        (win, projectPath) => {
+          if (existsSync(projectPath)) win.webContents.send('open-recent-project', projectPath)
+          else refreshRecentProjects(() => removeRecentProject(projectPath))
+        }
+      ),
+      onClearRecent: () => refreshRecentProjects(clearRecentProjects)
     },
-    { isPackaged: app.isPackaged }
+    { isPackaged: app.isPackaged, recentProjects: safeRecentProjects() }
   )
 
   installRecordingState(ipcMain, (recording) => {
@@ -370,9 +415,22 @@ app.whenReady().then(() => {
     if (result.success && !isListed(args.testId)) deleteTrace(args.testId)
     return result
   })
-  ipcMain.handle('set-active-project', (_event, projectPath: string | null) =>
-    setActiveProject(projectPath)
+  ipcMain.handle('set-active-project', async (_event, projectPath: string | null) => {
+    const wasActive = appState.projectPath
+    const result = await setActiveProject(projectPath)
+    // Only a project that opened is worth remembering, and the one already open is not news
+    if (result.success && projectPath && projectPath !== wasActive) {
+      refreshRecentProjects(() => recordRecentProject(projectPath))
+    }
+    return result
+  })
+  ipcMain.handle('list-recent-projects', () => safeRecentProjects())
+  ipcMain.handle('remove-recent-project', (_event, projectPath: unknown) =>
+    refreshRecentProjects(() => {
+      if (typeof projectPath === 'string') removeRecentProject(projectPath)
+    })
   )
+  ipcMain.handle('clear-recent-projects', () => refreshRecentProjects(clearRecentProjects))
   ipcMain.handle('get-recorder-settings', () => getRecorderSettings())
   ipcMain.handle('list-saved-logins', listSavedLoginsHandler)
   ipcMain.handle('forget-saved-login', (_event, name: unknown) => forgetSavedLoginHandler(name))
