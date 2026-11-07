@@ -36,6 +36,7 @@ import { loadRaiderResults } from '@foundation/raiderResults'
 import { FileNode } from '@foundation/Types/fileNode'
 import type { TestResult } from '@foundation/Types/testResult'
 import { getFileLanguage } from '@foundation/helpers'
+import { TAG_RE } from '@shared/tags'
 import type { RunDefaults, RunScope } from '@shared/types/runEvents'
 
 type OverviewTab = 'tests' | 'files' | 'scaffold' | 'dashboard'
@@ -121,7 +122,8 @@ const Overview: React.FC = () => {
     setActiveTab('files')
     focusDevice()
   }, [deviceFocusRequested, focusDevice])
-  const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression'>('all')
+  const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression' | 'custom'>('all')
+  const [customTag, setCustomTag] = useState('')
 
   // Live run state
   const run = useRunStore((state) => state.run)
@@ -521,10 +523,22 @@ const Overview: React.FC = () => {
   }
 
   const runModeScope = (): RunScope =>
-    runMode === 'all' ? { kind: 'all' } : { kind: 'tags', tags: [runMode] }
+    runMode === 'all'
+      ? { kind: 'all' }
+      : { kind: 'tags', tags: [runMode === 'custom' ? customTag : runMode] }
+
+  // A custom tag has to be a valid Playwright-style tag name before Run is allowed
+  const customTagProblem =
+    runMode !== 'custom'
+      ? undefined
+      : customTag === ''
+        ? t('overview.settings.customTagEmpty')
+        : TAG_RE.test(customTag)
+          ? undefined
+          : t('overview.settings.customTagInvalid')
 
   const handleRunRaiderTests = (): void => {
-    if (runBusy) return
+    if (runBusy || customTagProblem) return
     startRun(runModeScope())
   }
 
@@ -918,14 +932,34 @@ const Overview: React.FC = () => {
                   </label>
                   <select
                     value={runMode}
-                    onChange={(e) => setRunMode(e.target.value as 'all' | 'smoke' | 'regression')}
+                    onChange={(e) =>
+                      setRunMode(e.target.value as 'all' | 'smoke' | 'regression' | 'custom')
+                    }
                     className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[140px]"
                     data-testid="overview-run-mode-select"
                   >
                     <option value="all">{t('overview.settings.runMode.all')}</option>
                     <option value="smoke">{t('overview.settings.runMode.smoke')}</option>
                     <option value="regression">{t('overview.settings.runMode.regression')}</option>
+                    <option value="custom">{t('overview.settings.runMode.custom')}</option>
                   </select>
+                  {runMode === 'custom' && (
+                    <input
+                      type="text"
+                      value={customTag}
+                      onChange={(e) => setCustomTag(e.target.value.toLowerCase())}
+                      placeholder={t('overview.settings.customTagPlaceholder')}
+                      aria-label={t('overview.settings.customTagLabel')}
+                      aria-invalid={customTag !== '' && !!customTagProblem}
+                      className="border border-neutral-bdr rounded px-3 py-1 text-sm w-[140px]"
+                      data-testid="overview-run-tag-input"
+                    />
+                  )}
+                  {runMode === 'custom' && customTag !== '' && customTagProblem && (
+                    <span className="text-xs text-red-600" role="alert">
+                      {customTagProblem}
+                    </span>
+                  )}
                 </div>
               </Tooltip>
               <Tooltip
@@ -1139,7 +1173,8 @@ const Overview: React.FC = () => {
                   onFileClick={handleOpenFile}
                   isRoot={true}
                   onRunTests={handleRunRaiderTests}
-                  runDisabled={runBusy}
+                  runDisabled={runBusy || !!customTagProblem}
+                  runDisabledReason={runBusy ? undefined : customTagProblem}
                   onFileContextMenu={handleFileContextMenu}
                   onFolderContextMenu={handleFolderContextMenu}
                 />
