@@ -136,6 +136,16 @@ describe('setTestTags', () => {
     expect((await stat(join(project, s.file))).mode & 0o777).toBe(0o750)
   })
 
+  it('never replaces a symlinked spec of a recorded test', async () => {
+    const s = await saveRecordedTest(project, appState.layout!, rec('a', 'Alpha'))
+    const original = await read(s.file)
+    await writeFile(join(outside, 'real.rb'), original)
+    await unlink(join(project, s.file))
+    await symlink(join(outside, 'real.rb'), join(project, s.file))
+    expect((await setTestTags(s.file, ['x'])).success).toBe(false)
+    expect(await readFile(join(outside, 'real.rb'), 'utf-8')).toBe(original)
+  })
+
   it('runs concurrent calls one after the other', async () => {
     await writeFile(join(project, 'spec/c_spec.rb'), "describe 'C' do\nend\n")
     await Promise.all([

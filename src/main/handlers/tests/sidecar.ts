@@ -96,9 +96,9 @@ export async function writeFileAtomic(
 ): Promise<void> {
   const tmp = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`
   try {
-    await fs.writeFile(tmp, body, 'utf-8')
-    // The replacement keeps the permissions of the file it replaces
-    if (mode !== undefined) await fs.chmod(tmp, mode)
+    // Private until it is complete; the target's mode (without setuid bits) is applied after
+    await fs.writeFile(tmp, body, { encoding: 'utf-8', mode: (mode ?? 0o666) & 0o600 })
+    if (mode !== undefined) await fs.chmod(tmp, mode & 0o777)
     if (!exclusive) await fs.rename(tmp, target)
     else {
       try {

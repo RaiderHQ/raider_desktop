@@ -20,7 +20,11 @@ export function normalizeTags(input: unknown): string[] {
 }
 
 // The first argument must be a string, a constant or a symbol: `describe = x` is not a call
-const DESCRIBE_HEAD = /^(\s*(?:RSpec\.)?describe)(\s*\(\s*|\s+)(?=['"A-Z:])/
+// `describe (x)` with a space is a different parse in Ruby: only `describe(` is the paren form
+const DESCRIBE_HEAD = /^(\s*(?:RSpec\.)?describe)(\(\s*|\s+)(?=['"A-Z:])/
+// Other group heads: a describe nested in one of these is not the test's own
+const OTHER_HEAD =
+  /^\s*(?:RSpec\.)?(?:context|feature|shared_examples|shared_examples_for|shared_context|example_group)\b/
 
 interface DescribeParts {
   /** Everything up to the first argument */
@@ -94,8 +98,26 @@ function parseDescribeLine(line: string): DescribeParts | null {
   return { prefix: head[1] + head[2], args, suffix }
 }
 
-const HASH_ARG = /^(?:[A-Za-z_]\w*[?!]?:(?!:)|(['"]).*\1:|\*\*|.*=>)/
-const isHashArg = (arg: string): boolean => HASH_ARG.test(arg)
+const HASH_KEY = /^(?:[A-Za-z_]\w*[?!]?:(?!:)|(['"]).*\1:|\*\*)/
+
+/** True when `=>` appears outside quotes. */
+function hasArrow(arg: string): boolean {
+  let quote: string | null = null
+  for (let i = 0; i < arg.length; i++) {
+    const c = arg[i]
+    if (quote) {
+      if (c === '\\') i++
+      else if (c === quote) quote = null
+    } else if (c === '"' || c === "'") quote = c
+    else if (c === '=' && arg[i + 1] === '>') return true
+  }
+  return false
+}
+
+const isHashArg = (arg: string): boolean => HASH_KEY.test(arg) || hasArrow(arg)
+
+// Any symbol literal, valid as a tag or not
+const SYMBOL_ARG = /^:(?:[A-Za-z_]\w*[?!=]?|"[^"]*"|'[^']*')$/
 
 const symbolTag = (arg: string): string | null => {
   const name = /^:([a-z][a-z0-9_]*)$/.exec(arg)?.[1]
@@ -103,18 +125,26 @@ const symbolTag = (arg: string): string | null => {
 }
 
 /** Splits arguments after the description as RSpec reads them: positional, trailing :symbols, hash. */
-function splitArgs(args: string[]): { positional: string[]; tags: string[]; hash: string[] } {
+function splitArgs(args: string[]): {
+  positional: string[]
+  tags: string[]
+  hash: string[]
+  /** A trailing symbol that is not a valid tag */
+  foreign: boolean
+} {
   const rest = args.slice(1)
   let hashStart = rest.length
   while (hashStart > 0 && isHashArg(rest[hashStart - 1])) hashStart--
   const hash = rest.slice(hashStart)
   const body = rest.slice(0, hashStart)
   let tagStart = body.length
-  while (tagStart > 0 && symbolTag(body[tagStart - 1]) !== null) tagStart--
+  while (tagStart > 0 && SYMBOL_ARG.test(body[tagStart - 1])) tagStart--
+  const symbols = body.slice(tagStart)
   return {
     positional: body.slice(0, tagStart),
-    tags: body.slice(tagStart).map((a) => symbolTag(a) as string),
-    hash
+    tags: symbols.map(symbolTag).filter((tag): tag is string => tag !== null),
+    hash,
+    foreign: symbols.some((a) => symbolTag(a) === null)
   }
 }
 
@@ -137,21 +167,24 @@ export function tagsFromDescribeLine(line: string): string[] {
 export function describeLineWithTags(line: string, tags: string[]): string | null {
   const parts = parseDescribeLine(line)
   if (!parts) return null
-  const { positional, hash } = splitArgs(parts.args)
+  const { positional, hash, foreign } = splitArgs(parts.args)
+  // A symbol that isn't a valid tag can't be kept in place, and must not be dropped
+  if (foreign) return null
   const args = [parts.args[0], ...positional, ...normalizeTags(tags).map((t) => `:${t}`), ...hash]
   return `${parts.prefix}${args.join(', ')}${parts.suffix}`
 }
 
-const HEREDOC = /<<([~-]?)(['"]?)([A-Za-z_]\w*)\2/
+const HEREDOC = /<<([~-]?)(['"]?)([A-Za-z_]\w*)\2/g
 
 /**
  * The first line that starts a `describe` call, skipping comments, `=begin`
- * blocks and heredoc bodies. `index` is the line's offset in `content`.
+ * blocks and heredoc bodies. `index` is the line's offset in `content`. Null
+ * when the file's first group is something else (`context`, `feature`, ...).
  */
 export function findDescribeLine(content: string): { line: string; index: number } | null {
   let index = 0
   let inBlockComment = false
-  let heredoc: { id: string; indented: boolean } | null = null
+  const heredocs: { id: string; indented: boolean }[] = []
   for (const line of content.split('\n')) {
     const here = index
     index += line.length + 1
@@ -160,17 +193,21 @@ export function findDescribeLine(content: string): { line: string; index: number
       if (bare.startsWith('=end')) inBlockComment = false
       continue
     }
-    if (heredoc) {
-      if ((heredoc.indented ? bare.trim() : bare) === heredoc.id) heredoc = null
+    if (heredocs.length > 0) {
+      const next = heredocs[0]
+      if ((next.indented ? bare.trim() : bare) === next.id) heredocs.shift()
       continue
     }
     if (bare.startsWith('=begin')) {
       inBlockComment = true
       continue
     }
+    if (bare.trimStart().startsWith('#')) continue
+    if (OTHER_HEAD.test(line)) return null
     if (DESCRIBE_HEAD.test(line)) return { line, index: here }
-    const doc = HEREDOC.exec(line)
-    if (doc) heredoc = { id: doc[3], indented: doc[1] !== '' }
+    for (const doc of line.matchAll(HEREDOC)) {
+      heredocs.push({ id: doc[3], indented: doc[1] !== '' })
+    }
   }
   return null
 }
