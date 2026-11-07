@@ -113,8 +113,12 @@ const Tooltip: React.FC<TooltipProps> = ({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const bubbleRef = useRef<HTMLSpanElement>(null)
+  const visibleRef = useRef(false)
+  visibleRef.current = visible
 
   const reveal = (): void => {
+    // Already showing (focused, then hovered): it is placed; resetting would hide it for good
+    if (visibleRef.current) return
     // Hidden until the layout effect has measured the bubble and placed it
     setStyle({
       position: 'fixed',
@@ -132,6 +136,9 @@ const Tooltip: React.FC<TooltipProps> = ({
   useLayoutEffect(() => {
     if (!visible || !triggerRef.current || !bubbleRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
+    // Measured from the corner, so the old spot near the right edge cannot narrow the text
+    bubbleRef.current.style.left = '0px'
+    bubbleRef.current.style.top = '0px'
     const bubble = bubbleRef.current.getBoundingClientRect()
     const at = placeTooltip(
       position,
@@ -147,7 +154,7 @@ const Tooltip: React.FC<TooltipProps> = ({
       left: at.left,
       top: at.top
     })
-  }, [visible, position, content, detail, disabledReason])
+  }, [visible, position, content, detail, disabledReason, shortcut])
 
   const show = (): void => {
     if (timerRef.current) clearTimeout(timerRef.current)

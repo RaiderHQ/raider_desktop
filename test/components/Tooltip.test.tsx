@@ -149,6 +149,19 @@ describe('Tooltip', () => {
 describe('Tooltip placement', () => {
   const margin = 8
   const bubble = { width: 260, height: 40 }
+  const originalViewport = { width: window.innerWidth, height: window.innerHeight }
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    Object.defineProperty(window, 'innerWidth', {
+      value: originalViewport.width,
+      configurable: true
+    })
+    Object.defineProperty(window, 'innerHeight', {
+      value: originalViewport.height,
+      configurable: true
+    })
+  })
 
   // jsdom lays nothing out: the trigger and the bubble get the rects a real window would give
   const layout = (trigger: Partial<DOMRect>, viewport = { width: 1024, height: 700 }): void => {
@@ -185,7 +198,9 @@ describe('Tooltip placement', () => {
     const { button } = setup({ position })
     keyboard()
     fireEvent.focus(button)
-    return screen.getByRole('tooltip')
+    const tip = screen.getByRole('tooltip')
+    expect(tip.style.visibility).not.toBe('hidden')
+    return tip
   }
 
   const box = (tip: HTMLElement): { left: number; top: number; right: number; bottom: number } => {
@@ -227,6 +242,20 @@ describe('Tooltip placement', () => {
     const b = box(shown('bottom'))
     expect(b.bottom).toBeLessThanOrEqual(700 - 30)
     expect(b.bottom).toBeLessThanOrEqual(window.innerHeight - margin)
+  })
+
+  it('stays visible when the mouse arrives on an already focused trigger', () => {
+    layout({ left: 300, top: 100 })
+    const { button, wrapper } = setup()
+    keyboard()
+    fireEvent.focus(button)
+    fireEvent.mouseEnter(wrapper)
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
+    const tip = screen.getByRole('tooltip')
+    expect(tip.style.visibility).not.toBe('hidden')
+    expect(parseFloat(tip.style.left)).toBeGreaterThanOrEqual(margin)
   })
 
   it('shows the detail line under the content', () => {
