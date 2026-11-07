@@ -17,20 +17,14 @@ const entries: Parameters<typeof mockProjectTests>[1] = [
   { file: 'spec/search_spec.rb', name: 'Search products', ownership: 'recorded', testId: 't1' }
 ]
 
-const suites = [
+const savedTests = [
   {
-    id: 's1',
-    name: 'Smoke',
-    tests: [
-      {
-        id: 't1',
-        name: 'Search products',
-        url: 'https://example.com',
-        steps: [{ id: 'a', kind: 'navigate', url: 'https://example.com' }],
-        ownership: 'recorded',
-        file: 'spec/search_spec.rb'
-      }
-    ]
+    id: 't1',
+    name: 'Search products',
+    url: 'https://example.com',
+    steps: [{ id: 'a', kind: 'navigate', url: 'https://example.com' }],
+    ownership: 'recorded',
+    file: 'spec/search_spec.rb'
   }
 ]
 
@@ -73,7 +67,7 @@ const breadcrumb = (page: Page): ReturnType<Page['getByRole']> =>
 async function setUp(page: Page): Promise<void> {
   await setupProjectContext(page)
   await mockProjectTests(page, entries)
-  await mockIPC(page, 'getSuites', suites)
+  await mockIPC(page, 'getTests', savedTests)
   await mockIPC(page, 'openCodeTest', codeView)
   await mockIPC(page, 'loadUrlRequest', undefined)
   // The page in the recording browser doesn't matter: main's events are sent by the test
@@ -146,7 +140,7 @@ test.describe('Test page', () => {
     ).toBeVisible()
     const saves = await getIPCCalls(page, 'saveRecording')
     expect(saves).toHaveLength(1)
-    expect(saves[0][1]).toMatchObject({
+    expect(saves[0][0]).toMatchObject({
       name: 'Checkout',
       url: 'https://example.com/shop',
       steps: [{ kind: 'navigate', url: 'https://example.com/shop' }, { id: 'step-click' }]

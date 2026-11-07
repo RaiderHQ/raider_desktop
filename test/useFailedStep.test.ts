@@ -8,6 +8,7 @@ import {
 } from '../src/renderer/src/hooks/useFailedStep'
 import { useRunStore } from '@foundation/Stores/runStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
+import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import type { RunView } from '@foundation/run/runModel'
 import type { Test } from '@shared/types/test'
 import type { TestResult } from '@foundation/Types/testResult'
@@ -299,7 +300,7 @@ describe('useFailedStep', () => {
 
 describe('useFailedStepFor', () => {
   beforeEach(() => {
-    useRecorderStore.setState({ suites: [] })
+    useTestsListStore.setState({ tests: [] })
   })
 
   it('is pending until main answers, and not once it answered none', async () => {
@@ -318,8 +319,7 @@ describe('useFailedStepFor', () => {
 
   it('asks again only when the saved test or its steps change, not on each edit', async () => {
     mapFailedStep.mockResolvedValue({ stepId: 'c', index: 2 })
-    const suites = (tt: Test) => [{ id: 's1', name: 'Smoke', tests: [tt] }]
-    useRecorderStore.setState({ suites: suites(test) })
+    useTestsListStore.setState({ tests: [test] })
     const { result, rerender } = renderHook(({ tt }) => useFailedStepFor('/p', tt, failed), {
       initialProps: { tt: test }
     })
@@ -338,7 +338,7 @@ describe('useFailedStepFor', () => {
     expect(mapFailedStep).toHaveBeenCalledTimes(1)
 
     // Saved: main's copy of the test changed
-    act(() => useRecorderStore.setState({ suites: suites(edited) }))
+    act(() => useTestsListStore.setState({ tests: [edited] }))
     await waitFor(() => expect(mapFailedStep).toHaveBeenCalledTimes(2))
 
     // A step added or removed

@@ -45,20 +45,14 @@ const steps = [
   }
 ]
 
-const suites = [
+const savedTests = [
   {
-    id: 's1',
-    name: 'Smoke',
-    tests: [
-      {
-        id: 't1',
-        name: 'Checkout',
-        url: 'https://example.com/shop',
-        steps,
-        ownership: 'recorded',
-        file: SPEC
-      }
-    ]
+    id: 't1',
+    name: 'Checkout',
+    url: 'https://example.com/shop',
+    steps,
+    ownership: 'recorded',
+    file: SPEC
   }
 ]
 
@@ -155,7 +149,7 @@ test.describe('Failed step', () => {
     await mockProjectTests(page, [
       { file: SPEC, name: 'Checkout', ownership: 'recorded', testId: 't1' }
     ])
-    await mockIPC(page, 'getSuites', suites)
+    await mockIPC(page, 'getTests', savedTests)
     await mockIPC(page, 'mapFailedStep', map)
     await mockIPC(page, 'loadTrace', { trace: [] })
     await mockIPC(page, 'loadUrlRequest', null)
@@ -210,10 +204,9 @@ test.describe('Failed step', () => {
     await page.getByTestId('edit-value-form').getByRole('button', { name: 'Save' }).click()
 
     await expect.poll(async () => (await getIPCCalls(page, 'saveRecording')).length).toBe(1)
-    const [[suiteId, saved]] = (await getIPCCalls(page, 'saveRecording')) as [
-      [string, { steps: Array<{ expected?: string }> }]
+    const [[saved]] = (await getIPCCalls(page, 'saveRecording')) as [
+      [{ steps: Array<{ expected?: string }> }]
     ]
-    expect(suiteId).toBe('s1')
     expect(saved.steps[3].expected).toBe('Hello')
     await expect(page.getByText('Fixed. Run again to check.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Run again' })).toBeVisible()

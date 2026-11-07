@@ -20,7 +20,6 @@ const row = (name: string, tags: string[]): TestRow => ({
   testId: name,
   ownership: 'recorded',
   file: `${name}.rb`,
-  suiteIds: [],
   tags
 })
 

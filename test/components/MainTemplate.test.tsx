@@ -61,10 +61,9 @@ beforeAll(() => {
     onTestsMigrated: vi.fn(() => vi.fn()),
     onRunEvent: vi.fn(() => vi.fn()),
     getActiveRun: vi.fn().mockResolvedValue(null),
-    onSuitesTooNew: vi.fn(() => vi.fn()),
+    onTestsTooNew: vi.fn(() => vi.fn()),
     onTraceOpened: vi.fn(() => vi.fn()),
-    onSuitesRecovered: vi.fn(() => vi.fn()),
-    onSuiteUpdated: vi.fn(() => vi.fn()),
+    onTestsUpdated: vi.fn(() => vi.fn()),
     onMenuCommand: vi.fn(() => vi.fn()),
     onOpenRecentProject: vi.fn(() => vi.fn()),
     openDocs: vi.fn().mockResolvedValue({ success: true }),
@@ -102,43 +101,6 @@ describe('MainTemplate Navigation', () => {
     )
 
     expect(screen.getByText(/version/)).toBeInTheDocument()
-  })
-})
-
-describe('MainTemplate suites recovered toast', () => {
-  const recoveredListener = (): ((info?: { backupSaved?: boolean }) => void) => {
-    const subscribe = (
-      window as unknown as { api: { onSuitesRecovered: ReturnType<typeof vi.fn> } }
-    ).api.onSuitesRecovered
-    return subscribe.mock.calls[subscribe.mock.calls.length - 1][0]
-  }
-
-  it('says a copy was kept when the backup was saved', async () => {
-    const toast = (await import('react-hot-toast')).default as unknown as {
-      error: ReturnType<typeof vi.fn>
-    }
-    toast.error.mockClear()
-    render(
-      <MemoryRouter initialEntries={['/overview']}>
-        <MainTemplate />
-      </MemoryRouter>
-    )
-    recoveredListener()({ backupSaved: true })
-    expect(toast.error).toHaveBeenCalledWith('suites.recovered.backupSaved', expect.anything())
-  })
-
-  it('says no copy could be kept when the backup failed', async () => {
-    const toast = (await import('react-hot-toast')).default as unknown as {
-      error: ReturnType<typeof vi.fn>
-    }
-    toast.error.mockClear()
-    render(
-      <MemoryRouter initialEntries={['/overview']}>
-        <MainTemplate />
-      </MemoryRouter>
-    )
-    recoveredListener()({ backupSaved: false })
-    expect(toast.error).toHaveBeenCalledWith('suites.recovered.backupFailed', expect.anything())
   })
 })
 
@@ -181,11 +143,11 @@ describe('MainTemplate project files toasts', () => {
     expect(toast).toHaveBeenCalledWith('suites.migrated.postponed', expect.anything())
   })
 
-  it('says suites from a newer Raider are left alone', async () => {
+  it('says tests from a newer Raider are left alone', async () => {
     const toast = await toastMock()
     toast.error.mockClear()
     renderMain()
-    listener('onSuitesTooNew')()
+    listener('onTestsTooNew')()
     expect(toast.error).toHaveBeenCalledWith('suites.tooNew', expect.anything())
   })
 

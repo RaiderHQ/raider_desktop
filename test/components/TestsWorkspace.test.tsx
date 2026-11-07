@@ -8,6 +8,7 @@ import { toRouteParam } from '@foundation/testKey'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import { useRunStore } from '@foundation/Stores/runStore'
 import type { Test } from '@foundation/Types/test'
 import en from '@assets/translations/en.json'
 
@@ -52,7 +53,7 @@ const checkout: Test = {
   steps: [step('c')],
   ownership: 'recorded'
 }
-const suites = [{ id: 's1', name: 'Smoke', tests: [search, checkout] }]
+const savedTests = [search, checkout]
 
 const listeners = new Map<string, (...args: unknown[]) => unknown>()
 const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
@@ -62,7 +63,7 @@ const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
 }
 
 const api = {
-  getSuites: vi.fn(),
+  getTests: vi.fn(),
   listProjectTests: vi.fn(),
   saveRecording: vi.fn(),
   saveTrace: vi.fn(),
@@ -102,7 +103,7 @@ const recording = async (test: Test = search): Promise<void> => {
 beforeEach(() => {
   vi.clearAllMocks()
   listeners.clear()
-  api.getSuites.mockResolvedValue(suites)
+  api.getTests.mockResolvedValue(savedTests)
   api.listProjectTests.mockResolvedValue([
     {
       name: 'Search products',
@@ -112,7 +113,7 @@ beforeEach(() => {
     },
     { name: 'Checkout', file: 'spec/checkout_spec.rb', testId: 't2', ownership: 'recorded' }
   ])
-  api.saveRecording.mockImplementation(async (_suiteId: string, test: Test) => ({
+  api.saveRecording.mockImplementation(async (test: Test) => ({
     success: true,
     test: { ...test, file: 'spec/search_products_spec.rb' }
   }))
@@ -162,7 +163,6 @@ describe('TestsWorkspace recording mode', () => {
     )
     expect(api.saveRecording).toHaveBeenCalledTimes(1)
     expect(api.saveRecording).toHaveBeenCalledWith(
-      's1',
       expect.objectContaining({ id: 't1', steps: [expect.anything(), step('n')] })
     )
     expect(screen.queryByTestId('tests-rail')).not.toBeInTheDocument()
@@ -184,7 +184,6 @@ describe('TestsWorkspace recording mode', () => {
     expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], expect.any(Array))
     expect(api.stopRecordingMain).toHaveBeenCalled()
     expect(api.saveRecording).toHaveBeenCalledWith(
-      's1',
       expect.objectContaining({ id: 't1', steps: [expect.anything(), step('n')] })
     )
     expect(await screen.findByText(en.tests.selectOrCreate)).toBeInTheDocument()
@@ -267,5 +266,20 @@ describe('TestsWorkspace tag filter', () => {
     expect(screen.getByRole('button', { name: /Search products/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Checkout/ })).toBeInTheDocument()
     expect(screen.getByTestId('tag-filter')).toHaveValue('')
+  })
+
+  it('gives Run tagged tests the filtered tag', async () => {
+    withTags(['smoke'], [])
+    const start = vi.fn()
+    useRunStore.setState({ start } as never)
+    renderList()
+    await screen.findByRole('button', { name: /Search products/ })
+    fireEvent.change(screen.getByTestId('tag-filter'), { target: { value: 'smoke' } })
+    fireEvent.click(screen.getByRole('button', { name: 'More test actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Run tagged tests' }))
+    expect(start).toHaveBeenCalledWith(
+      { kind: 'tags', tags: ['smoke'] },
+      { route: '/overview', label: 'Tests tagged smoke' }
+    )
   })
 })

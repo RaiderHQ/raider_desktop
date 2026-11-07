@@ -395,16 +395,11 @@
     "activationFailed": "This project's saved tests and recorder settings couldn't be loaded, so nothing will be recorded or saved for it. Fix the problem and open the project again. Details: {{error}}"
   },
   "suites": {
-    "recovered": {
-      "backupSaved": "Your saved suites couldn't be read, so this project opened with no suites. A copy of the old file was kept in the project's .raider folder.",
-      "backupFailed": "Your saved suites couldn't be read, so this project opened with no suites. The app couldn't keep a copy of the old file."
-    },
     "migrated": {
       "done": "Your recorded tests are now saved as project files.",
       "postponed": "Raider couldn't move your recorded tests into the project yet. They're safe and Raider will try again next time."
     },
-    "tooNew": "This project's suites were saved by a newer version of Raider. Update Raider to see and change them.",
-    "mobileUnavailable": "Suites aren't available for mobile projects yet."
+    "tooNew": "This project's suites were saved by a newer version of Raider. Update Raider to see and change them."
   },
   "errors": {
     "ruby": {
@@ -429,7 +424,6 @@
     "fileMissing": "File missing",
     "restored": "The test was restored.",
     "restoreFailed": "Raider couldn't restore this test. Nothing was changed.",
-    "notInSuite": "Not in a suite",
     "empty": "No tests yet — record one",
     "emptyNoRecording": "No tests found in this project yet.",
     "cucumber": "This project's tests are Cucumber features: find them in the Files tab. Recorded tests become project files when Gherkin support arrives.",
@@ -441,20 +435,12 @@
       "label": "Tag",
       "all": "All tests"
     },
-    "suiteFilter": {
-      "label": "Suite",
-      "actions": "Suite actions",
-      "suites": "Suites",
-      "all": "All tests",
-      "run": "Run suite",
-      "runPassed": "{{suite}} passed",
-      "runFailed": "{{suite}} failed — open a test's Last run for details",
-      "new": "New suite",
-      "delete": "Delete suite",
+    "moreMenu": {
+      "label": "More",
+      "actions": "More test actions",
+      "runTagged": "Run tagged tests",
       "importTest": "Import test",
-      "importSuite": "Import suite",
       "importProject": "Import project",
-      "exportSuite": "Export suite",
       "exportProject": "Export project"
     },
     "importCustomCode": {
@@ -621,12 +607,6 @@
       "stackTrace": "Stack trace:",
       "placeholder": "Test output will appear here..."
     },
-    "testSuitePanel": {
-      "newSuite": "+ New Suite...",
-      "newSuiteName": "New suite name...",
-      "create": "Create",
-      "deleteConfirmation": "Are you sure you want to delete the suite \"{{suiteName}}\"? This cannot be undone."
-    },
     "tabs": {
       "settings": "Settings"
     },
@@ -778,10 +758,6 @@
         "command": "gem install ruby_raider"
       }
     },
-    "suite": {
-      "title": "Test suite",
-      "message": "A suite is a named folder that groups related tests together — for example, all tests for your login page.\n\nYou can run an entire suite at once."
-    },
     "test": {
       "title": "Test",
       "message": "A test is a single script that checks one thing — like 'can a user log in?'.\n\nIt has a name, a starting URL, and a list of recorded steps."
@@ -897,8 +873,10 @@
     },
     "tests": {
       "tagFilter": "Show only the tests with this tag",
-      "suite": "Which group of tests you are looking at",
-      "suiteActions": "Run, add, delete, import or export suites",
+      "moreMenu": "Run the tagged tests, or import and export tests",
+      "runTagged": {
+        "noTag": "Pick a tag first"
+      },
       "newTest": "Start a new test: give it a name and a page, then record",
       "restore": "Put this deleted test back",
       "rail": "Show the tests list again"
@@ -1047,6 +1025,7 @@
     "freshLoginNext": "Log in fresh on the next run",
     "freshLoginHint": "Every worker in a parallel run logs in.",
     "originProject": "This project",
+    "originTagged": "Tests tagged {{tag}}",
     "notifyTitle": "Run finished",
     "notifyBody": "{{passed}} passed, {{failed}} failed",
     "saveToRun": "Save this test to run it",

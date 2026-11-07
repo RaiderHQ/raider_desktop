@@ -1,18 +1,16 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { useMatch, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@components/Tooltip'
 import TestsList from '@components/TestsList'
 import TestPage from '@components/TestPage'
 import CodeTestPane from '@components/CodeTestPane'
-import SuiteFilter from '@components/SuiteFilter'
+import TestsMoreMenu from '@components/TestsMoreMenu'
 import TagFilter from '@components/TagFilter'
 import { useTestsList } from '../../hooks/useTestsList'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { fromRouteParam, testKeyOf, toRouteParam } from '@foundation/testKey'
 import type { TestKey, TestRow } from '@foundation/testKey'
-import type { Suite } from '@foundation/Types/suite'
-import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 
 interface TestsWorkspaceProps {
   /** The right-hand pane for the selected test (null: nothing selected). */
@@ -28,32 +26,12 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
   const isNewTest = useMatch('/overview/tests/new') !== null
   const rows = useTestsList()
   const isRecording = useRecorderStore((s) => s.isRecording)
-  // null: all tests. A new test joins the filtered suite, or sits outside any suite
-  const [suiteFilter, setSuiteFilter] = useState<string | null>(null)
   const [tagFilter, setTagFilter] = useState<string | null>(null)
-
-  // Duplicates useSuiteSync's setSuites on purpose (it only runs under a test page). Its
-  // "new suite appeared, select it" branch compares against the previous suites, so it
-  // depends on listener order: this listener must not run first.
-  // The suite menu needs the suites even before a test page (which syncs them) is open
-  useEffect(() => {
-    const { setSuites } = useRecorderStore.getState()
-    window.api
-      .getSuites()
-      .then(setSuites)
-      .catch((error: unknown) => console.error('Loading the suites failed:', error))
-    const off = window.api.onSuiteUpdated((updated: Suite[]) => setSuites(updated))
-    return (): void => off()
-  }, [])
 
   const selectedKey: TestKey | null = param ? fromRouteParam(param) || null : null
   // A tag nobody has any more (edited, reloaded, other project) falls back to all tests
   const activeTag = tagFilter && rows?.some((r) => r.tags.includes(tagFilter)) ? tagFilter : null
-  const visibleRows = rows?.filter(
-    (r) =>
-      (!suiteFilter || r.suiteIds.includes(suiteFilter)) &&
-      (!activeTag || r.tags.includes(activeTag))
-  )
+  const visibleRows = rows?.filter((r) => !activeTag || r.tags.includes(activeTag))
   const selectedRow = rows?.find((r) => testKeyOf(r) === selectedKey) ?? null
 
   const select = (key: TestKey): void => {
@@ -64,9 +42,9 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
     renderPane(selectedRow)
   ) : isNewTest ? (
     // The same page as a recorded test, so it stays mounted once the new test is saved
-    <TestPage targetSuiteId={suiteFilter ?? UNLISTED_SUITE_ID} />
+    <TestPage />
   ) : selectedRow ? (
-    selectedRow.ownership === 'recorded' || selectedRow.ownership === 'legacy' ? (
+    selectedRow.ownership === 'recorded' ? (
       // One page for every recorded test, so its recording hooks mount once
       <TestPage row={selectedRow} />
     ) : (
@@ -110,7 +88,7 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
               headerExtra={
                 <>
                   <TagFilter rows={rows} value={activeTag} onChange={setTagFilter} />
-                  <SuiteFilter value={suiteFilter} onChange={setSuiteFilter} />
+                  <TestsMoreMenu tag={activeTag} />
                 </>
               }
               selectedKey={selectedKey}

@@ -3,7 +3,6 @@ import { join, basename, resolve } from 'path'
 import { mkdir, copyFile, writeFile, readFile, readdir, realpath, unlink } from 'fs/promises'
 import { existsSync } from 'fs'
 import { appState } from '../appState'
-import { persistActiveSuites } from '../suitePersistence'
 import { serialize } from '../tests/sidecar'
 import { safeError } from '../../utils/safeLog'
 import type { TraceStep } from '@foundation/Types/traceStep'
@@ -121,19 +120,10 @@ async function save(
       }
     }
 
-    // Update in-memory suite: find the test and set hasTrace = true
-    for (const suite of appState.suites.values()) {
-      const test = suite.tests.find((t) => t.id === testId)
-      if (test) {
-        test.hasTrace = true
-        break
-      }
-    }
-
-    await persistActiveSuites()
-
-    // Broadcast updated suites
-    appState.mainWindow?.webContents.send('suite-updated', Array.from(appState.suites.values()))
+    // The tests the renderer holds say whether a trace is saved
+    const known = appState.tests.get(testId)
+    if (known) known.hasTrace = true
+    appState.mainWindow?.webContents.send('tests-updated', Array.from(appState.tests.values()))
 
     return { success: true }
   } catch (error) {

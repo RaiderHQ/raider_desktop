@@ -5,60 +5,34 @@ const mockToast = vi.hoisted(() => Object.assign(vi.fn(), { error: vi.fn() }))
 vi.mock('react-hot-toast', () => ({ default: mockToast, toast: mockToast }))
 vi.mock('i18next', () => ({ default: { t: (key: string): string => key } }))
 
-const api = { listProjectTests: vi.fn(), getSuites: vi.fn() }
-
-const suite = (id: string, tests: object[]): object => ({ id, name: id, tests })
+const api = { listProjectTests: vi.fn(), getTests: vi.fn() }
 
 beforeEach(() => {
   vi.clearAllMocks()
   // @ts-expect-error - Mocking window.api
   window.api = api
-  useTestsListStore.setState({ rows: null })
+  useTestsListStore.setState({ rows: null, tests: [] })
 })
 
 describe('testsListStore.reload', () => {
-  it('lists a suite test with no file once, as legacy, with its suiteIds', async () => {
-    api.listProjectTests.mockResolvedValue([])
-    api.getSuites.mockResolvedValue([
-      suite('s1', [{ id: 't1', name: 'Old', url: '', steps: [] }]),
-      suite('s2', [{ id: 't1', name: 'Old', url: '', steps: [] }])
-    ])
-    await useTestsListStore.getState().reload()
-    expect(useTestsListStore.getState().rows).toEqual([
-      { name: 'Old', testId: 't1', ownership: 'legacy', suiteIds: ['s1', 's2'], tags: [] }
-    ])
-  })
-
-  it('does not duplicate a suite test that has a file', async () => {
-    api.listProjectTests.mockResolvedValue([
-      { file: 'spec/a_spec.rb', name: 'A', ownership: 'recorded', testId: 't1' }
-    ])
-    api.getSuites.mockResolvedValue([
-      suite('s1', [{ id: 't1', name: 'A', url: '', steps: [], file: 'spec/a_spec.rb' }])
-    ])
-    await useTestsListStore.getState().reload()
-    const rows = useTestsListStore.getState().rows
-    expect(rows).toHaveLength(1)
-    expect(rows?.[0].ownership).toBe('recorded')
-  })
-
-  it('fills suiteIds on a file test listed in suites', async () => {
+  it('lists the project files as rows and keeps the recorded tests with their steps', async () => {
     api.listProjectTests.mockResolvedValue([
       { file: 'spec/a_spec.rb', name: 'A', ownership: 'recorded', testId: 't1' },
       { file: 'spec/b_spec.rb', name: 'B', ownership: 'code' }
     ])
-    api.getSuites.mockResolvedValue([suite('s1', [{ id: 't1', name: 'A', url: '', steps: [] }])])
+    const recorded = { id: 't1', name: 'A', url: '', steps: [], file: 'spec/a_spec.rb' }
+    api.getTests.mockResolvedValue([recorded])
     await useTestsListStore.getState().reload()
-    const rows = useTestsListStore.getState().rows
-    expect(rows?.find((r) => r.testId === 't1')?.suiteIds).toEqual(['s1'])
-    expect(rows?.find((r) => r.file === 'spec/b_spec.rb')?.suiteIds).toEqual([])
+    const { rows, tests } = useTestsListStore.getState()
+    expect(rows?.map((r) => r.file)).toEqual(['spec/a_spec.rb', 'spec/b_spec.rb'])
+    expect(tests).toEqual([recorded])
   })
 
   it('fills tags from the listing', async () => {
     api.listProjectTests.mockResolvedValue([
       { file: 'spec/a_spec.rb', name: 'A', ownership: 'recorded', testId: 't1', tags: ['smoke'] }
     ])
-    api.getSuites.mockResolvedValue([])
+    api.getTests.mockResolvedValue([])
     await useTestsListStore.getState().reload()
     expect(useTestsListStore.getState().rows?.[0].tags).toEqual(['smoke'])
   })
@@ -66,7 +40,7 @@ describe('testsListStore.reload', () => {
   it('falls back to an empty list when the first listing rejects, and says so', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     api.listProjectTests.mockRejectedValue(new Error('boom'))
-    api.getSuites.mockResolvedValue([])
+    api.getTests.mockResolvedValue([])
     await useTestsListStore.getState().reload()
     expect(useTestsListStore.getState().rows).toEqual([])
     expect(mockToast.error).toHaveBeenCalledWith('tests.listFailed', { id: 'tests-list-failed' })
@@ -77,7 +51,7 @@ describe('testsListStore.reload', () => {
     api.listProjectTests.mockResolvedValue([
       { file: 'spec/a_spec.rb', name: 'A', ownership: 'code' }
     ])
-    api.getSuites.mockResolvedValue([])
+    api.getTests.mockResolvedValue([])
     await useTestsListStore.getState().reload()
     const rows = useTestsListStore.getState().rows
     api.listProjectTests.mockRejectedValue(new Error('boom'))
@@ -91,7 +65,7 @@ describe('testsListStore.reload', () => {
     api.listProjectTests
       .mockImplementationOnce(() => new Promise((r) => (releaseFirst = r)))
       .mockResolvedValueOnce([{ file: 'spec/new_spec.rb', name: 'New', ownership: 'code' }])
-    api.getSuites.mockResolvedValue([])
+    api.getTests.mockResolvedValue([])
     const first = useTestsListStore.getState().reload()
     await useTestsListStore.getState().reload()
     releaseFirst([{ file: 'spec/old_spec.rb', name: 'Old', ownership: 'code' }])

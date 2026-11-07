@@ -102,14 +102,8 @@ async function setUp(page: Page): Promise<void> {
   await mockProjectTests(page, [
     { file: SPEC, name: 'Checkout', ownership: 'recorded', testId: 't1' }
   ])
-  await mockIPC(page, 'getSuites', [
-    {
-      id: 's1',
-      name: 'Smoke',
-      tests: [
-        { id: 't1', name: 'Checkout', url: `${base}/`, steps, ownership: 'recorded', file: SPEC }
-      ]
-    }
+  await mockIPC(page, 'getTests', [
+    { id: 't1', name: 'Checkout', url: `${base}/`, steps, ownership: 'recorded', file: SPEC }
   ])
   await mockIPC(page, 'mapFailedStep', { stepId: 's3', index: 2 })
   await mockIPC(page, 'loadTrace', { trace: [] })
@@ -169,8 +163,8 @@ test('Re-pick after a step that opens another page picks on that page', async ({
   await userClicks(electronApp, '#pay')
 
   await expect.poll(async () => (await getIPCCalls(page, 'saveRecording')).length).toBe(1)
-  const [[, saved]] = (await getIPCCalls(page, 'saveRecording')) as [
-    [string, { steps: Array<{ element?: { value: string; label?: string } }> }]
+  const [[saved]] = (await getIPCCalls(page, 'saveRecording')) as [
+    [{ steps: Array<{ element?: { value: string; label?: string } }> }]
   ]
   expect(saved.steps[2].element?.value).not.toBe('#pay-old')
   expect(saved.steps[2].element?.label).toBe('Pay now')

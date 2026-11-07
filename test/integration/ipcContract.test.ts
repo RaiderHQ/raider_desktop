@@ -83,25 +83,18 @@ describe('IPC Contract', () => {
     // Test Execution
     'runCommand',
     'runTest',
-    'runSuite',
     'prepareTestRun',
-    'prepareSuiteRun',
 
     // Step Rendering
     'renderStep',
 
-    // Suite Management
-    'getSuites',
+    'getTests',
     'listProjectTests',
     'mapFailedStep',
     'openCodeTest',
     'getProjectLayout',
-    'createSuite',
-    'deleteSuite',
-    'exportSuite',
     'exportProject',
     'importProject',
-    'importSuite',
     'importTest',
     'setTestTags',
 
@@ -149,8 +142,7 @@ describe('IPC Contract', () => {
     'acceptBaseline',
 
     // Main-to-renderer events (payload only, return an unsubscribe)
-    'onSuiteUpdated',
-    'onSuitesRecovered',
+    'onTestsUpdated',
     'onRecordingStarted',
     'onRecordingStopped',
     'onNewRecordedStep',
@@ -160,7 +152,7 @@ describe('IPC Contract', () => {
 
     // Event Listeners
     'onTestsMigrated',
-    'onSuitesTooNew',
+    'onTestsTooNew',
 
     // Scaffolding
     'scaffoldGenerate',
@@ -263,10 +255,9 @@ describe('IPC Contract', () => {
     const on = ipcRenderer.on as ReturnType<typeof vi.fn>
     const off = ipcRenderer.removeListener as ReturnType<typeof vi.fn>
     const channels: Record<string, string> = {
-      onSuiteUpdated: 'suite-updated',
+      onTestsUpdated: 'tests-updated',
       onMenuCommand: 'menu-command',
       onOpenRecentProject: 'open-recent-project',
-      onSuitesRecovered: 'suites-recovered',
       onRecordingStarted: 'recording-started',
       onRecordingStopped: 'recording-stopped',
       onNewRecordedStep: 'new-recorded-step',
@@ -274,7 +265,7 @@ describe('IPC Contract', () => {
       onNewTraceStep: 'new-trace-step',
       onReplayFailed: 'replay-failed',
       onTestsMigrated: 'tests-migrated',
-      onSuitesTooNew: 'suites-too-new',
+      onTestsTooNew: 'tests-too-new',
       onTerminalData: 'terminal-data',
       onTerminalExit: 'terminal-exit'
     }

@@ -9,20 +9,14 @@ import {
 import { mockRunner, getStartRequests, started, phase } from './helpers/run-mock'
 
 // The recorder lives on the Overview's Tests tab: a list of tests, and the selected one
-const suites = [
+const savedTests = [
   {
-    id: 's1',
-    name: 'Smoke',
-    tests: [
-      {
-        id: 't1',
-        name: 'Search products',
-        url: 'https://example.com',
-        steps: [{ id: 'a', kind: 'navigate', url: 'https://example.com' }],
-        ownership: 'recorded',
-        file: 'spec/search_spec.rb'
-      }
-    ]
+    id: 't1',
+    name: 'Search products',
+    url: 'https://example.com',
+    steps: [{ id: 'a', kind: 'navigate', url: 'https://example.com' }],
+    ownership: 'recorded',
+    file: 'spec/search_spec.rb'
   }
 ]
 
@@ -37,7 +31,7 @@ test.describe('Tests tab (recorder)', () => {
     await mockProjectTests(page, [
       { file: 'spec/search_spec.rb', name: 'Search products', ownership: 'recorded', testId: 't1' }
     ])
-    await mockIPC(page, 'getSuites', suites)
+    await mockIPC(page, 'getTests', savedTests)
   })
 
   test('the old recorder route opens the Tests tab', async ({ page }) => {
@@ -86,7 +80,7 @@ test.describe('Tests tab (recorder)', () => {
     for (const name of ['Record', 'Run', 'Visual steps', 'Ruby code', 'More']) {
       await expect(page.getByRole('button', { name, exact: true })).toBeVisible()
     }
-    // A test's runs show in its run panel; Last run is only for projects on the old suite format
+    // A test's runs show in its run panel; Last run is only for projects that can't keep tests as files
     await expect(page.getByRole('button', { name: 'Last run', exact: true })).toHaveCount(0)
   })
 

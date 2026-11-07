@@ -150,9 +150,10 @@ describe('copy', () => {
     )
   })
 
-  it('names the suite actions control "Suites" (U4)', () => {
-    expect(en.tests.suiteFilter.suites).toBe('Suites')
-    expect(en.tests.suiteFilter.actions).toBe('Suite actions')
+  it('names the tests menu "More" with an accessible name (V4)', () => {
+    expect(en.tests.moreMenu.label).toBe('More')
+    expect(en.tests.moreMenu.actions).toBe('More test actions')
+    expect(en.tooltips.tests.runTagged.noTag).toBe('Pick a tag first')
   })
 
   it('says "View file" for the test\'s Ruby file, with no ellipsis (U1)', () => {

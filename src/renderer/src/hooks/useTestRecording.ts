@@ -17,9 +17,8 @@ import type { PendingAssertion } from '@shared/types/pendingAssertion'
 import type { PickResult } from '@shared/types/pick'
 import type { ElementTarget } from '@shared/types/step'
 import { canRePick } from '@shared/stepFixes'
-import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import { MOBILE_NO_LEGACY } from '@shared/types/prepareRun'
-import { useSuiteSync } from './useSuiteSync'
+import { useTestsSync } from './useTestsSync'
 import { traceSavedOnStop, useRecordingIPC } from './useRecordingIPC'
 
 export interface TestRecording {
@@ -35,8 +34,8 @@ export interface TestRecording {
   leave(): Promise<void>
   /** Saves a recording over a code example that its file couldn't take as a new recorded test */
   saveAsNewTest(): Promise<void>
-  /** Saves the open draft's steps into `suiteId` again (after Stop & save failed), then shows it */
-  saveDraft(suiteId: string): Promise<void>
+  /** Saves the open draft's steps again (after Stop & save failed), then shows it */
+  saveDraft(): Promise<void>
   /** Replay up to step `index`, then let the user pick that step's element on the page */
   rePick(index: number): Promise<RePickOutcome>
   /** Ends picking an element (or getting to it) without changing anything */
@@ -45,7 +44,7 @@ export interface TestRecording {
    * Saves the open test, as it is in the store, once and right away after a fix (e.g. an
    * edited value): the autosave leaves that version alone. True when it saved
    */
-  saveFixedTest(suiteId: string, test: Test): Promise<boolean>
+  saveFixedTest(test: Test): Promise<boolean>
   run(): Promise<void>
   cancelReplay(): Promise<void>
   recordingUrl: string | null
@@ -195,10 +194,10 @@ async function openAndPick(
 let savedByFix: Test | null = null
 
 /** Saves a fixed test once, right away; a failed save isn't retried behind the user's back */
-async function saveFix(t: Translate, suiteId: string, test: Test): Promise<boolean> {
+async function saveFix(t: Translate, test: Test): Promise<boolean> {
   savedByFix = test
   try {
-    const saved = await window.api.saveRecording(suiteId, test)
+    const saved = await window.api.saveRecording(test)
     return handleSaveResult(saved, test.id, t)
   } catch (error) {
     console.error('Saving the fix failed:', error)
@@ -243,12 +242,11 @@ interface StopOptions {
 }
 
 /**
- * Saves a stopped recording of `test` (and its trace) into the suite, says where it
+ * Saves a stopped recording of `test` (and its trace) into the project, says where it
  * went, and refreshes the list. Returns true when it saved.
  */
 async function saveStopped(
   t: Translate,
-  suiteId: string,
   test: Test,
   { onSaved, leaving }: StopOptions
 ): Promise<boolean> {
@@ -257,7 +255,7 @@ async function saveStopped(
   traceSavedOnStop()
   let result: Awaited<ReturnType<typeof window.api.saveRecording>>
   try {
-    result = await window.api.saveRecording(suiteId, test)
+    result = await window.api.saveRecording(test)
   } catch (error) {
     console.error('Saving the test failed:', error)
     toast.error(t('recorder.saveFailed'), { id: 'save-failed' })
@@ -277,7 +275,7 @@ async function saveStopped(
   toast.success(file ? t('tests.saved', { name, file }) : t('tests.savedNoFile', { name }))
   // A new file changes the list (and gives the test its row)
   await useTestsListStore.getState().reload()
-  onSaved?.(testKeyOf({ name: test.name, testId: test.id, ownership: 'recorded', suiteIds: [], tags: [] }))
+  onSaved?.(testKeyOf({ name: test.name, testId: test.id, ownership: 'recorded', tags: [] }))
   return true
 }
 
@@ -331,7 +329,7 @@ async function saveOverExample(
   }
   // Leaving: nobody is left to offer Save as a new test, so nothing recorded is lost.
   // Only how that save went is said
-  await saveStopped(t, UNLISTED_SUITE_ID, test, options)
+  await saveStopped(t, test, options)
 }
 
 /**
@@ -350,7 +348,7 @@ async function saveUnsavedExample(t: Translate): Promise<void> {
   savingUnsavedFor = unsaved.testId
   try {
     // Forgotten only once saved: a failed save keeps the steps
-    const saved = await saveStopped(t, UNLISTED_SUITE_ID, test, { leaving: true })
+    const saved = await saveStopped(t, test, { leaving: true })
     if (saved && store().unsavedExample?.testId === unsaved.testId) store().setUnsavedExample(null)
   } finally {
     savingUnsavedFor = null
@@ -362,14 +360,13 @@ function saveOnLeave(t: Translate): Promise<void> {
   return isBusy() ? stopAndSave(t, { leaving: true }) : saveUnsavedExample(t)
 }
 
-/** Writes a draft's steps into `suiteId`; once saved it is a recorded test like any other */
+/** Writes a draft's steps into the project; once saved it is a recorded test like any other */
 async function saveDraftSteps(
   t: Translate,
-  suiteId: string,
   draft: Test,
   options: StopOptions
 ): Promise<void> {
-  if (await saveStopped(t, suiteId, draft, options)) {
+  if (await saveStopped(t, draft, options)) {
     if (store().draftTest?.id === draft.id) store().setDraftTest(null)
   }
 }
@@ -379,7 +376,7 @@ async function saveDraftSteps(
  * from the store when called, so later events can't change what is saved.
  */
 async function stopAndSave(t: Translate, options: StopOptions = {}): Promise<void> {
-  const { recordingTarget: target, activeSuiteId, activeTest: test, draftTest } = store()
+  const { recordingTarget: target, activeTestSaved, activeTest: test, draftTest } = store()
   if (store().isReplayingToBreakpoint) {
     Promise.resolve(window.api.cancelReplay()).catch((error: unknown) =>
       console.error('Cancelling the replay failed:', error)
@@ -397,8 +394,8 @@ async function stopAndSave(t: Translate, options: StopOptions = {}): Promise<voi
   if (!target) return
   switch (target.kind) {
     case 'test': {
-      if (!activeSuiteId || !test) return
-      await saveStopped(t, activeSuiteId, test, options)
+      if (!activeTestSaved || !test) return
+      await saveStopped(t, test, options)
       return
     }
     case 'draft': {
@@ -410,7 +407,7 @@ async function stopAndSave(t: Translate, options: StopOptions = {}): Promise<voi
         options.onDiscarded?.()
         return
       }
-      await saveDraftSteps(t, target.suiteId, draft, options)
+      await saveDraftSteps(t, draft, options)
       return
     }
     case 'example':
@@ -433,7 +430,7 @@ async function stopAndSave(t: Translate, options: StopOptions = {}): Promise<voi
 
 /**
  * Recording, replay and running for the open test. Mount it once per workspace:
- * it also keeps the suites in sync and listens to the recording IPC.
+ * it also keeps the open test in sync and listens to the recording IPC.
  */
 export function useTestRecording(): TestRecording {
   const { t } = useTranslation()
@@ -447,7 +444,7 @@ export function useTestRecording(): TestRecording {
   const activeTest = useRecorderStore((s) => s.activeTest)
   const [assertionInfo, setAssertionInfo] = useState<PendingAssertion | null>(null)
 
-  useSuiteSync()
+  useTestsSync()
   useRecordingIPC({ setAssertionInfo })
 
   const stop = useCallback(
@@ -463,11 +460,11 @@ export function useTestRecording(): TestRecording {
   const leave = useCallback((): Promise<void> => saveOnLeave(t), [t])
 
   const saveDraft = useCallback(
-    async (suiteId: string): Promise<void> => {
+    async (): Promise<void> => {
       const { activeTest: test, draftTest } = store()
       if (isBusy() || !test || !draftTest || test.id !== draftTest.id) return
       if (isEmptyRecording(test)) return
-      await saveDraftSteps(t, suiteId, test, {
+      await saveDraftSteps(t, test, {
         onSaved: (key) => navigate(`/overview/tests/${toRouteParam(key)}`)
       })
     },
@@ -477,7 +474,7 @@ export function useTestRecording(): TestRecording {
   const saveAsNewTest = useCallback(async (): Promise<void> => {
     const { unsavedExample: unsaved, activeTest: test } = store()
     if (!unsaved || !test || test.id !== unsaved.testId) return
-    const saved = await saveStopped(t, UNLISTED_SUITE_ID, test, {
+    const saved = await saveStopped(t, test, {
       onSaved: (key) => navigate(`/overview/tests/${toRouteParam(key)}`)
     })
     if (saved && store().unsavedExample?.testId === unsaved.testId) store().setUnsavedExample(null)
@@ -523,15 +520,15 @@ export function useTestRecording(): TestRecording {
     autosavedTestId.current = activeTest?.id ?? null
     if (opened || isBusy() || activeTest === savedByFix) return
     const handler = setTimeout(() => {
-      const { activeSuiteId: suiteId, activeTest: test, readOnlyView: view, draftTest } = store()
+      const { activeTestSaved, activeTest: test, readOnlyView: view, draftTest } = store()
       if (isBusy()) return
       // Read-only tests are never written back
       if (view || (test?.ownership && test.ownership !== 'recorded')) return
       // A new test is written once, when its recording stops
       if (test && test.id === draftTest?.id) return
-      if (suiteId && test) {
+      if (activeTestSaved && test) {
         window.api
-          .saveRecording(suiteId, test)
+          .saveRecording(test)
           .then((result) => handleSaveResult(result, test.id, t))
           .catch((error: unknown) => console.error('Saving the test failed:', error))
       }
@@ -550,8 +547,8 @@ export function useTestRecording(): TestRecording {
         url: '',
         steps: []
       })
-      // No suite lists it: nothing autosaves it, and suite updates leave it alone
-      store().setActiveSuiteId(null)
+      // Nothing saved holds it: nothing autosaves it, and saved tests' updates leave it alone
+      store().setActiveTestSaved(false)
     }
     const test = store().activeTest
     if (!test) return
@@ -668,22 +665,22 @@ export function useTestRecording(): TestRecording {
             }
           : prev
       )
-      const { activeSuiteId: suiteId, activeTest: fixedTest } = store()
-      if (!suiteId || !fixedTest || fixedTest.id !== test.id) return { kind: 'cancelled' }
-      return (await saveFix(t, suiteId, fixedTest)) ? { kind: 'picked' } : { kind: 'cancelled' }
+      const { activeTestSaved, activeTest: fixedTest } = store()
+      if (!activeTestSaved || !fixedTest || fixedTest.id !== test.id) return { kind: 'cancelled' }
+      return (await saveFix(t, fixedTest)) ? { kind: 'picked' } : { kind: 'cancelled' }
     },
     [t]
   )
 
   const saveFixedTest = useCallback(
-    (suiteId: string, test: Test): Promise<boolean> => saveFix(t, suiteId, test),
+    (test: Test): Promise<boolean> => saveFix(t, test),
     [t]
   )
 
   const cancelPick = useCallback((): Promise<void> => stopAndSave(t), [t])
 
   const run = useCallback(async (): Promise<void> => {
-    const { activeSuiteId: suiteId, activeTest: test, readOnlyView: view, setIsRunning } = store()
+    const { activeTestSaved, activeTest: test, readOnlyView: view, setIsRunning } = store()
     const startLive = (file: string, label: string): void => {
       void useRunStore
         .getState()
@@ -696,10 +693,10 @@ export function useTestRecording(): TestRecording {
       startLive(codeFile, view ? (store().readOnlyTitle ?? '') : (test?.name ?? ''))
       return
     }
-    if (!suiteId || !test?.id) return
+    if (!activeTestSaved || !test?.id) return
     try {
       // The test itself goes along, so a pending autosave can't make the run use older steps
-      const prepared = await window.api.prepareTestRun(suiteId, test.id, test)
+      const prepared = await window.api.prepareTestRun(test.id, test)
       if ('error' in prepared) {
         toast.error(prepared.error)
         return
@@ -713,7 +710,7 @@ export function useTestRecording(): TestRecording {
       toast.error(t('recorder.runFailed'))
       return
     }
-    // Projects still on the old suite format run a temporary copy of the steps
+    // Projects that can't keep recorded tests as files run a temporary copy of the steps
     const cmd = useRubyStore.getState().rubyCommand
     if (!cmd) {
       toast.error(t('recorder.noRuby'))
@@ -724,7 +721,7 @@ export function useTestRecording(): TestRecording {
     setIsRunning(true)
     setRunOutput(`Running test: ${test.name}...`)
     try {
-      const result = await window.api.runTest(suiteId, test.id, path || '.', cmd, test)
+      const result = await window.api.runTest(test.id, path || '.', cmd, test)
       if (result.code === MOBILE_NO_LEGACY) {
         setRunResult(t('run.mobile.noLegacy'), false)
         toast.error(t('run.mobile.noLegacy'))

@@ -1,6 +1,5 @@
 import { appState } from '../appState'
 import runRecording from './runRecording'
-import runSuite from './runSuite'
 import { activeSuiteMode } from '../tests/suiteStore'
 import { detectProjectLayout } from '../project/projectLayout'
 import type { Test } from '../../../shared/types/test'
@@ -28,7 +27,6 @@ async function isMobileProject(projectPath: string): Promise<boolean> {
  * generated temporary file. Files-mode projects run on the live runner.
  */
 export async function runTestHandler(
-  suiteId: string,
   testId: string,
   projectPath: string,
   rubyCommand: string,
@@ -37,7 +35,7 @@ export async function runTestHandler(
   if ((await activeSuiteMode()) === 'files') return { success: false, output: USE_LIVE_RUNNER }
   if (await isMobileProject(projectPath)) return mobileNoLegacyResult()
 
-  const cached = appState.suites.get(suiteId)?.tests.find((t) => t.id === testId)
+  const cached = appState.tests.get(testId)
   if (!cached) return { success: false, output: `Test with ID ${testId} not found.` }
   const { implicitWait, explicitWait, browser, headless } = appState.recorderSettings
   return runRecording({
@@ -51,18 +49,4 @@ export async function runTestHandler(
     projectAutomation: appState.projectAutomation,
     projectFramework: appState.projectFramework
   })
-}
-
-/**
- * 'run-suite', for projects that don't keep recorded tests as files: runs
- * generated temporary files. Files-mode projects run on the live runner.
- */
-export async function runSuiteHandler(
-  suiteId: string,
-  projectPath: string,
-  rubyCommand: string
-): Promise<RunResult> {
-  if ((await activeSuiteMode()) === 'files') return { success: false, output: USE_LIVE_RUNNER }
-  if (await isMobileProject(projectPath)) return mobileNoLegacyResult()
-  return runSuite(suiteId, rubyCommand)
 }

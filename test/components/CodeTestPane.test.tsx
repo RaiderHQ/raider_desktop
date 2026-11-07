@@ -16,7 +16,6 @@ import type { RunView } from '@foundation/run/runModel'
 import { toRouteParam } from '@foundation/testKey'
 import type { TestRow } from '@foundation/testKey'
 import type { Step } from '@shared/types/step'
-import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import en from '@assets/translations/en.json'
 
 vi.mock('react-i18next', () => ({
@@ -54,7 +53,7 @@ const codeRow: TestRow = {
   name: 'Login',
   file: 'spec/login_spec.rb',
   ownership: 'code',
-  suiteIds: [],
+ 
   tags: []
 }
 
@@ -66,7 +65,7 @@ const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
 }
 
 const api = {
-  getSuites: vi.fn(),
+  getTests: vi.fn(),
   listProjectTests: vi.fn(),
   openCodeTest: vi.fn(),
   startRun: vi.fn(),
@@ -128,7 +127,7 @@ const stopAndSave = async (): Promise<void> => {
 beforeEach(() => {
   vi.clearAllMocks()
   listeners.clear()
-  api.getSuites.mockResolvedValue([])
+  api.getTests.mockResolvedValue([])
   api.listProjectTests.mockResolvedValue([])
   api.openCodeTest.mockResolvedValue(view)
   api.startRun.mockResolvedValue({ runId: 'r1' })
@@ -457,7 +456,6 @@ describe('CodeTestPane', () => {
       fireEvent.click(screen.getByRole('button', { name: 'testPage.saveAsNew' }))
     })
     expect(api.saveRecording).toHaveBeenCalledWith(
-      UNLISTED_SUITE_ID,
       expect.objectContaining({ name: 'logs in', steps: expect.arrayContaining([clickStep]) })
     )
     expect(mockToast.success).toHaveBeenCalledWith(expect.stringContaining('tests.saved'))
@@ -507,7 +505,6 @@ describe('CodeTestPane', () => {
     })
     await waitFor(() =>
       expect(api.saveRecording).toHaveBeenCalledWith(
-        UNLISTED_SUITE_ID,
         expect.objectContaining({ steps: expect.arrayContaining([clickStep]) })
       )
     )
@@ -528,7 +525,6 @@ describe('CodeTestPane', () => {
     const savedOnceAsNewTest = async (): Promise<void> => {
       await waitFor(() => expect(api.saveRecording).toHaveBeenCalledTimes(1))
       expect(api.saveRecording).toHaveBeenCalledWith(
-        UNLISTED_SUITE_ID,
         expect.objectContaining({ name: 'logs in', steps: expect.arrayContaining([clickStep]) })
       )
       expect(mockToast.success).toHaveBeenCalledWith(expect.stringContaining('tests.saved'))
@@ -658,7 +654,6 @@ describe('CodeTestPane', () => {
         dispatchMenuCommand('save')
       })
       expect(api.saveRecording).toHaveBeenCalledWith(
-        UNLISTED_SUITE_ID,
         expect.objectContaining({ name: 'logs in' })
       )
     })

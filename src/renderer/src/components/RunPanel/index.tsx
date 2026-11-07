@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useRunStore } from '@foundation/Stores/runStore'
 import useProjectStore from '@foundation/Stores/projectStore'
-import useRecorderStore from '@foundation/Stores/recorderStore'
+import { useRecordedTests } from '../../hooks/useTestsList'
 import { loadRaiderResults } from '@foundation/raiderResults'
 import { fixInTestRoute, recordedTestForFile } from '@foundation/recordedTestForFile'
 import { failedStepLine, resolveFailedStep } from '../../hooks/useFailedStep'
@@ -59,7 +59,7 @@ const formatDuration = (ms: number): string =>
 /** The plain failed-step line for each failed recorded test of a finished run, by run test id. */
 function useFailedStepLines(run: RunView | null, projectPath: string | null): Map<string, string> {
   const { t } = useTranslation()
-  const suites = useRecorderStore((s) => s.suites)
+  const tests = useRecordedTests()
   const finishedAt = run?.finished?.finishedAt
   const startedAt = run?.startedAt
   // Kept with the run it was read for: the next run never paints this one's lines
@@ -77,7 +77,7 @@ function useFailedStepLines(run: RunView | null, projectPath: string | null): Ma
           .map((id) => run.tests[id])
           .filter((x) => x.state === 'failed')
           .flatMap((x) => {
-            const recorded = recordedTestForFile(suites, x.file)
+            const recorded = recordedTestForFile(tests, x.file)
             return recorded ? [{ id: x.id, recorded }] : []
           })
       : []
@@ -113,7 +113,7 @@ function useFailedStepLines(run: RunView | null, projectPath: string | null): Ma
     return (): void => {
       active = false
     }
-    // Once per finished run: a suite edit in between doesn't read the results again
+    // Once per finished run: an edit in between doesn't read the results again
   }, [key, failedKey, startedAt])
 
   return shown.key === key ? shown.lines : new Map()
@@ -132,7 +132,7 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
   const [now, setNow] = useState(() => Date.now())
   const [detailsOpen, setDetailsOpen] = useState(false)
   const stepLines = useFailedStepLines(run, projectPath)
-  const suites = useRecorderStore((s) => s.suites)
+  const recordedTests = useRecordedTests()
 
   const active = run !== null && run.finished === null
   useEffect(() => {
@@ -190,7 +190,7 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
 
   const row = (test: RunTestView): React.ReactElement => {
     const stepLine = stepLines.get(test.id)
-    const recorded = stepLine ? recordedTestForFile(suites, test.file) : undefined
+    const recorded = stepLine ? recordedTestForFile(recordedTests, test.file) : undefined
     return (
       <li
         key={test.id}

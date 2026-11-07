@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import type { CodeTestView } from '@shared/types/projectTest'
 import type { TestRow } from '@foundation/testKey'
@@ -7,7 +6,7 @@ import type { TestRow } from '@foundation/testKey'
 /** What a recording is for, which decides how Stop & save writes it. */
 export type RecordingTarget =
   | { kind: 'test' }
-  | { kind: 'draft'; suiteId: string }
+  | { kind: 'draft' }
   | { kind: 'example'; file: string; exampleName: string }
   /** Picking a new element for one step: nothing is recorded, and the steps stay as they are */
   | { kind: 'pick'; stepId: string }
@@ -20,9 +19,9 @@ export interface UnsavedExample {
 }
 
 interface RecorderStore {
-  suites: Suite[]
-  activeSuiteId: string | null
   activeTest: Test | null
+  /** The active test is a saved one (not a new draft or a scratch recording): edits are saved back */
+  activeTestSaved: boolean
   isRecording: boolean
   isRunning: boolean
   showCode: boolean
@@ -34,8 +33,6 @@ interface RecorderStore {
   readOnlyView: CodeTestView | null
   /** Friendly name of the test in `readOnlyView` */
   readOnlyTitle: string | null
-  /** Test the Tests tab asked the Recorder to open once its suites have loaded */
-  openTarget: { suiteId: string; testId: string } | null
   /** Set while recording: where Stop & save writes the recording */
   recordingTarget: RecordingTarget | null
   /** The embedded browser's page and preload script while recording (null otherwise) */
@@ -52,8 +49,7 @@ interface RecorderStore {
   /** The recording guide was asked for (Show guide, Help menu) */
   guideOpen: boolean
 
-  setSuites: (suites: Suite[]) => void
-  setActiveSuiteId: (id: string | null) => void
+  setActiveTestSaved: (saved: boolean) => void
   setActiveTest: (test: Test | null) => void
   updateActiveTest: (updater: (prev: Test | null) => Test | null) => void
   setIsRecording: (value: boolean) => void
@@ -64,7 +60,6 @@ interface RecorderStore {
   setIsReplayingToBreakpoint: (value: boolean) => void
   setFailedStepId: (id: string | null) => void
   setReadOnlyView: (view: CodeTestView | null, title?: string | null) => void
-  setOpenTarget: (target: { suiteId: string; testId: string } | null) => void
   setRecordingTarget: (target: RecordingTarget | null) => void
   setRecordingBrowser: (browser: { url: string; preloadPath: string } | null) => void
   /** The test page should start the recorder as soon as the draft opens (quick record) */
@@ -77,18 +72,15 @@ interface RecorderStore {
   setPickingStep: (step: number | null) => void
   setAssertPicking: (value: boolean) => void
   setGuideOpen: (value: boolean) => void
-  /** Make the list row's recorded test the active one (throws when no suite lists it) */
+  /** Make the list row's recorded test the active one (throws when the project has no such test) */
   openTest: (row: TestRow) => Promise<void>
   /** Forget everything that belongs to the project that was open */
   resetForProject: () => void
-
-  activeSuite: () => Suite | undefined
 }
 
-const useRecorderStore = create<RecorderStore>((set, get) => ({
-  suites: [],
-  activeSuiteId: null,
+const useRecorderStore = create<RecorderStore>((set) => ({
   activeTest: null,
+  activeTestSaved: false,
   isRecording: false,
   isRunning: false,
   showCode: false,
@@ -98,7 +90,6 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   failedStepId: null,
   readOnlyView: null,
   readOnlyTitle: null,
-  openTarget: null,
   recordingTarget: null,
   recordingUrl: null,
   preloadPath: null,
@@ -109,8 +100,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   assertPicking: false,
   guideOpen: false,
 
-  setSuites: (suites) => set({ suites }),
-  setActiveSuiteId: (id) => set({ activeSuiteId: id }),
+  setActiveTestSaved: (saved) => set({ activeTestSaved: saved }),
   setActiveTest: (test) => set({ activeTest: test }),
   updateActiveTest: (updater) => set((state) => ({ activeTest: updater(state.activeTest) })),
   setIsRecording: (value) => set({ isRecording: value }),
@@ -122,7 +112,6 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   setFailedStepId: (id): void => set({ failedStepId: id }),
   setReadOnlyView: (view, title = null): void =>
     set({ readOnlyView: view, readOnlyTitle: view ? title : null }),
-  setOpenTarget: (target): void => set({ openTarget: target }),
   setRecordingTarget: (target): void => set({ recordingTarget: target }),
   setRecordingBrowser: (browser): void =>
     set({ recordingUrl: browser?.url ?? null, preloadPath: browser?.preloadPath ?? null }),
@@ -132,11 +121,10 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
       draftTest: draft,
       recordOnOpen: options?.recordOnOpen ?? false,
       activeTest: draft,
-      // No suite lists a draft: nothing autosaves it, and suite updates leave it alone
-      activeSuiteId: null,
+      // A draft is saved once, when its recording stops: nothing autosaves it
+      activeTestSaved: false,
       readOnlyView: null,
-      readOnlyTitle: null,
-      openTarget: null
+      readOnlyTitle: null
     })
   },
   setDraftTest: (test): void => set({ draftTest: test }),
@@ -145,31 +133,19 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
   setAssertPicking: (value): void => set({ assertPicking: value }),
   setGuideOpen: (value): void => set({ guideOpen: value }),
   openTest: async (row): Promise<void> => {
-    const suites = await window.api.getSuites()
-    const suite = row.testId
-      ? suites.find((s) => s.tests.some((x) => x.id === row.testId))
-      : undefined
-    const test = suite?.tests.find((x) => x.id === row.testId)
-    if (!suite || !test) throw new Error(`No suite lists test ${row.testId ?? row.file ?? ''}`)
-    set({
-      readOnlyView: null,
-      readOnlyTitle: null,
-      activeSuiteId: suite.id,
-      activeTest: test,
-      // useSuiteSync's first load must keep this test rather than pick the first suite's
-      openTarget: { suiteId: suite.id, testId: test.id }
-    })
+    const tests = await window.api.getTests()
+    const test = row.testId ? tests.find((x) => x.id === row.testId) : undefined
+    if (!test) throw new Error(`No saved test ${row.testId ?? row.file ?? ''}`)
+    set({ readOnlyView: null, readOnlyTitle: null, activeTest: test, activeTestSaved: true })
   },
   setRecordOnOpen: (value): void => set({ recordOnOpen: value }),
   resetForProject: (): void =>
     set({
       recordOnOpen: false,
-      suites: [],
-      activeSuiteId: null,
       activeTest: null,
+      activeTestSaved: false,
       readOnlyView: null,
       readOnlyTitle: null,
-      openTarget: null,
       recordingTarget: null,
       recordingUrl: null,
       preloadPath: null,
@@ -184,12 +160,7 @@ const useRecorderStore = create<RecorderStore>((set, get) => ({
       // The new project's Recorder must not open with Record and Run locked
       isRecording: false,
       isRunning: false
-    }),
-
-  activeSuite: () => {
-    const { suites, activeSuiteId } = get()
-    return suites.find((s) => s.id === activeSuiteId)
-  }
+    })
 }))
 
 export default useRecorderStore

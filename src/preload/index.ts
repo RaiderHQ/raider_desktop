@@ -2,7 +2,6 @@ import { contextBridge, ipcRenderer, IpcRendererEvent, webUtils } from 'electron
 import type { DocsLinkId } from '../shared/docsLinkIds'
 import type { FileNode } from '@foundation/Types/fileNode'
 import type { CommandType } from '@foundation/Types/commandType'
-import type { Suite } from '@foundation/Types/suite'
 import type { Test } from '@foundation/Types/test'
 import type { TraceStep } from '@foundation/Types/traceStep'
 import type { Step } from '@shared/types/step'
@@ -15,7 +14,6 @@ import type { ProjectLayout } from '@shared/types/projectLayout'
 import type { PickResult } from '@shared/types/pick'
 import type {
   LegacyRunResult,
-  PrepareSuiteRunResult,
   PrepareTestRunResult
 } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
@@ -189,10 +187,9 @@ const api = {
   ): Promise<{ path: string } | { cancelled: true } | { error: string }> =>
     ipcRenderer.invoke('choose-app-file', projectPath, platform),
 
-  // --- Recorder and Test Suite APIs ---
+  // --- Recorder and recorded tests APIs ---
 
-  // Suite Management
-  getSuites: async (): Promise<Suite[]> => ipcRenderer.invoke('get-suites'),
+  getTests: async (): Promise<Test[]> => ipcRenderer.invoke('get-tests'),
   listProjectTests: (): Promise<ProjectTestEntry[]> => ipcRenderer.invoke('list-project-tests'),
   openCodeTest: (file: string): Promise<CodeTestView> => ipcRenderer.invoke('open-code-test', file),
   mapFailedStep: (
@@ -211,45 +208,26 @@ const api = {
     | { success: false; error: 'notUnique'; count: number }
     | { success: false; error: string }
   > => ipcRenderer.invoke('record-over-example', file, exampleName, steps, rubyCommand),
-  createSuite: async (
-    suiteName: string
-  ): Promise<{ success: boolean; suite?: Suite; error?: string }> =>
-    ipcRenderer.invoke('create-suite', suiteName),
-  deleteSuite: async (suiteId: string): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke('delete-suite', suiteId),
-  runSuite: async (
-    suiteId: string,
-    projectPath: string,
-    rubyCommand: string
-  ): Promise<LegacyRunResult> => ipcRenderer.invoke('run-suite', suiteId, projectPath, rubyCommand),
-  prepareTestRun: (suiteId: string, testId: string, test?: Test): Promise<PrepareTestRunResult> =>
-    ipcRenderer.invoke('prepare-test-run', suiteId, testId, test),
-  prepareSuiteRun: (suiteId: string): Promise<PrepareSuiteRunResult> =>
-    ipcRenderer.invoke('prepare-suite-run', suiteId),
-  exportSuite: (suiteId: string): Promise<{ success: boolean; path?: string; error?: string }> =>
-    ipcRenderer.invoke('export-suite', suiteId),
+  prepareTestRun: (testId: string, test?: Test): Promise<PrepareTestRunResult> =>
+    ipcRenderer.invoke('prepare-test-run', testId, test),
   exportProject: (): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('export-project'),
   importProject: (): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('import-project'),
-  importSuite: (): Promise<{ success: boolean; suite?: Suite; error?: string }> =>
-    ipcRenderer.invoke('import-suite'),
   setTestTags: (
     fileRel: string,
     tags: string[]
   ): Promise<{ success: boolean; fileOnly?: boolean; error?: string }> =>
     ipcRenderer.invoke('set-test-tags', fileRel, tags),
-  importTest: (suiteId: string): Promise<{ success: boolean; test?: Test; error?: string }> =>
-    ipcRenderer.invoke('import-test', suiteId),
+  importTest: (): Promise<{ success: boolean; test?: Test; error?: string }> =>
+    ipcRenderer.invoke('import-test'),
 
   // Test Management
   saveRecording: async (
-    suiteId: string,
     testData: Test
   ): Promise<{ success: boolean; error?: string; test?: Test }> =>
-    ipcRenderer.invoke('save-recording', suiteId, testData),
-  deleteTest: (suiteId: string, testId: string): Promise<void> =>
-    ipcRenderer.invoke('delete-test', { suiteId, testId }),
+    ipcRenderer.invoke('save-recording', testData),
+  deleteTest: (testId: string): Promise<void> => ipcRenderer.invoke('delete-test', { testId }),
   saveTrace: (
     testId: string,
     trace: TraceStep[],
@@ -373,13 +351,12 @@ const api = {
   ): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('export-test', { testName, steps }),
   runTest: async (
-    suiteId: string,
     testId: string,
     projectPath: string,
     rubyCommand: string,
     test?: Test
   ): Promise<LegacyRunResult> =>
-    ipcRenderer.invoke('run-test', suiteId, testId, projectPath, rubyCommand, test),
+    ipcRenderer.invoke('run-test', testId, projectPath, rubyCommand, test),
   updateRecordingSettings: (
     settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
   ): Promise<{ success: boolean; error?: string }> =>
@@ -397,13 +374,11 @@ const api = {
   onTestsMigrated: (
     callback: (info: { migrated: number; postponed: boolean }) => void
   ): (() => void) => subscribe('tests-migrated', callback),
-  /** Sent when the project's suites were saved by a newer Raider and are left untouched */
-  onSuitesTooNew: (callback: () => void): (() => void) => subscribe('suites-too-new', callback),
+  /** Sent when the project's tests were saved by a newer Raider and are left untouched */
+  onTestsTooNew: (callback: () => void): (() => void) => subscribe('tests-too-new', callback),
   // --- Main-to-renderer events: payload only, never the IpcRendererEvent; each returns an unsubscribe ---
-  onSuiteUpdated: (callback: (suites: Suite[]) => void): (() => void) =>
-    subscribe('suite-updated', callback),
-  onSuitesRecovered: (callback: (info?: { backupSaved?: boolean }) => void): (() => void) =>
-    subscribe('suites-recovered', callback),
+  onTestsUpdated: (callback: (tests: Test[]) => void): (() => void) =>
+    subscribe('tests-updated', callback),
   onRecordingStarted: (callback: (loadedUrl: string) => void): (() => void) =>
     subscribe('recording-started', callback),
   onRecordingStopped: (callback: () => void): (() => void) =>

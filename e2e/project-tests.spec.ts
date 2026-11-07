@@ -30,28 +30,22 @@ const entries: Parameters<typeof mockProjectTests>[1] = [
   }
 ]
 
-const suites = [
+const savedTests = [
   {
-    id: 's1',
-    name: 'Smoke',
-    tests: [
-      {
-        id: 't1',
-        name: 'Search products',
-        url: 'https://example.com',
-        steps: [{ id: 'a', kind: 'navigate', url: 'https://example.com' }],
-        ownership: 'recorded',
-        file: 'spec/search_spec.rb'
-      },
-      {
-        id: 't2',
-        name: 'Add to cart',
-        url: 'https://example.com/shop',
-        steps: [{ id: 'b', kind: 'navigate', url: 'https://example.com/shop' }],
-        ownership: 'codeOwnedWasRecorded',
-        file: 'spec/cart_spec.rb'
-      }
-    ]
+    id: 't1',
+    name: 'Search products',
+    url: 'https://example.com',
+    steps: [{ id: 'a', kind: 'navigate', url: 'https://example.com' }],
+    ownership: 'recorded',
+    file: 'spec/search_spec.rb'
+  },
+  {
+    id: 't2',
+    name: 'Add to cart',
+    url: 'https://example.com/shop',
+    steps: [{ id: 'b', kind: 'navigate', url: 'https://example.com/shop' }],
+    ownership: 'codeOwnedWasRecorded',
+    file: 'spec/cart_spec.rb'
   }
 ]
 
@@ -82,7 +76,7 @@ test.describe('Project Tests tab', () => {
   test.beforeEach(async ({ page }) => {
     await setupProjectContext(page)
     await mockProjectTests(page, entries)
-    await mockIPC(page, 'getSuites', suites)
+    await mockIPC(page, 'getTests', savedTests)
   })
 
   test('opens on the Tests tab', async ({ page }) => {
@@ -261,7 +255,7 @@ test.describe('Project Tests tab', () => {
 
     await page.getByLabel('Start URL').fill('https://example.com/search')
     await expect.poll(saves).toBe(before + 1)
-    expect((await getIPCCalls(page, 'saveRecording')).at(-1)![1]).toMatchObject({
+    expect((await getIPCCalls(page, 'saveRecording')).at(-1)![0]).toMatchObject({
       id: 't1',
       url: 'https://example.com/search'
     })
@@ -305,8 +299,8 @@ test.describe('Migration notices', () => {
     ).toBeVisible()
   })
 
-  test('warns when suites were saved by a newer Raider', async ({ page, electronApp }) => {
-    await sendMainEvent(electronApp, 'suites-too-new')
+  test('warns when tests were saved by a newer Raider', async ({ page, electronApp }) => {
+    await sendMainEvent(electronApp, 'tests-too-new')
     await expect(page.getByText(/saved by a newer version of Raider/)).toBeVisible()
   })
 })

@@ -1,11 +1,11 @@
 import { test, expect } from './electronApp'
 import type { Page } from '@playwright/test'
-import { goToOverview, createSuiteViaUI, mockRubyReady } from './helpers/navigation'
+import { goToOverview, mockRubyReady } from './helpers/navigation'
 import { setupProjectContext, mockIPCCapture, getIPCCalls } from './helpers/ipc-mock'
 
-// Import and export sit in the suite actions menu above the Tests list
+// Import and export sit in the More menu above the Tests list
 const openMenu = (page: Page): Promise<void> =>
-  page.getByRole('button', { name: 'Suite actions' }).click()
+  page.getByRole('button', { name: 'More test actions' }).click()
 
 // The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
 test.beforeEach(async ({ electronApp, page }) => {
@@ -20,48 +20,34 @@ test.describe('Tests list import/export', () => {
 
   test('the menu offers every import and export', async ({ page }) => {
     await openMenu(page)
-    for (const name of [
-      'Import test',
-      'Import suite',
-      'Import project',
-      'Export suite',
-      'Export project'
-    ]) {
+    for (const name of ['Run tagged tests', 'Import test', 'Import project', 'Export project']) {
       await expect(page.getByRole('menuitem', { name })).toBeVisible()
+    }
+    for (const name of ['Import suite', 'Export suite']) {
+      await expect(page.getByRole('menuitem', { name })).toHaveCount(0)
     }
   })
 
-  test('Export suite needs a suite', async ({ page }) => {
+  test('export project says where it went', async ({ page }) => {
+    await mockIPCCapture(page, 'exportProject', { success: true, path: '/mock/export/project' })
     await openMenu(page)
-    await expect(page.getByRole('menuitem', { name: 'Export suite' })).toBeDisabled()
-  })
-
-  test('export suite sends the selected suite and says where it went', async ({ page }) => {
-    await createSuiteViaUI(page, 'IE Suite')
-    await mockIPCCapture(page, 'exportSuite', { success: true, path: '/mock/export/suite.json' })
-    await openMenu(page)
-    await page.getByRole('menuitem', { name: 'Export suite' }).click()
-
-    await expect(page.getByText('Suite exported to /mock/export/suite.json')).toBeVisible()
-    const calls = await getIPCCalls(page, 'exportSuite')
-    expect(calls).toHaveLength(1)
-    const selected = await page.getByRole('combobox', { name: 'Suite', exact: true }).inputValue()
-    expect(calls[0]).toEqual([selected])
+    await page.getByRole('menuitem', { name: 'Export project' }).click()
+    await expect(page.getByText('Project exported to /mock/export/project')).toBeVisible()
+    expect(await getIPCCalls(page, 'exportProject')).toHaveLength(1)
   })
 
   test('a failed export says why', async ({ page }) => {
-    await mockIPCCapture(page, 'exportProject', { success: false, error: 'No suites to export' })
+    await mockIPCCapture(page, 'exportProject', { success: false, error: 'No tests to export' })
     await openMenu(page)
     await page.getByRole('menuitem', { name: 'Export project' }).click()
-    await expect(page.getByText(/No suites to export/)).toBeVisible()
+    await expect(page.getByText(/No tests to export/)).toBeVisible()
   })
 
-  test('import test with all tests listed imports outside any suite', async ({ page }) => {
+  test('import test sends no suite', async ({ page }) => {
     await mockIPCCapture(page, 'importTest', { success: true })
     await openMenu(page)
     await page.getByRole('menuitem', { name: 'Import test' }).click()
     await expect(page.getByText('Test imported successfully!')).toBeVisible()
-    const calls = await getIPCCalls(page, 'importTest')
-    expect(calls).toEqual([['not-in-a-suite']])
+    expect(await getIPCCalls(page, 'importTest')).toEqual([[]])
   })
 })

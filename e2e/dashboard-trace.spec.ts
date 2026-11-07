@@ -25,21 +25,15 @@ const fakeTrace = [
 ]
 
 /** A recorded test, and whether the recorder kept a trace for it. */
-const suitesWith = (hasTrace: boolean): unknown[] => [
+const testsWith = (hasTrace: boolean): unknown[] => [
   {
-    id: 's1',
-    name: 'Smoke',
-    tests: [
-      {
-        id: 't1',
-        name: 'Search products',
-        url: 'https://example.com',
-        steps: [{ id: 'a', kind: 'navigate', url: 'https://example.com' }],
-        ownership: 'recorded',
-        file: 'spec/search_spec.rb',
-        hasTrace
-      }
-    ]
+    id: 't1',
+    name: 'Search products',
+    url: 'https://example.com',
+    steps: [{ id: 'a', kind: 'navigate', url: 'https://example.com' }],
+    ownership: 'recorded',
+    file: 'spec/search_spec.rb',
+    hasTrace
   }
 ]
 
@@ -64,7 +58,7 @@ async function mockRunResults(page: Page, results: Array<{ name: string; status:
 
 async function openDashboard(page: Page): Promise<void> {
   await goToOverview(page)
-  // The Tests tab loads the suites the dashboard looks traces up in
+  // The Tests tab loads the tests the dashboard looks traces up in
   await expect(
     page.locator('li[role="button"]').filter({ hasText: 'Search products' })
   ).toBeVisible()
@@ -81,7 +75,7 @@ test.describe('Dashboard trace viewer', () => {
   })
 
   test('shows the run results', async ({ page }) => {
-    await mockIPC(page, 'getSuites', suitesWith(false))
+    await mockIPC(page, 'getTests', testsWith(false))
     await mockRunResults(page, [
       { name: 'Search products', status: 'passed' },
       { name: 'Checkout', status: 'failed' }
@@ -94,7 +88,7 @@ test.describe('Dashboard trace viewer', () => {
   })
 
   test('a recorded test with a trace can be viewed step by step', async ({ page }) => {
-    await mockIPC(page, 'getSuites', suitesWith(true))
+    await mockIPC(page, 'getTests', testsWith(true))
     await mockIPCCapture(page, 'loadTrace', { success: true, trace: fakeTrace })
     await mockRunResults(page, [{ name: 'Search products', status: 'passed' }])
     await openDashboard(page)
@@ -111,7 +105,7 @@ test.describe('Dashboard trace viewer', () => {
   })
 
   test('a test without a trace offers none', async ({ page }) => {
-    await mockIPC(page, 'getSuites', suitesWith(false))
+    await mockIPC(page, 'getTests', testsWith(false))
     await mockRunResults(page, [{ name: 'Search products', status: 'passed' }])
     await openDashboard(page)
 

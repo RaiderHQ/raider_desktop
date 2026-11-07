@@ -38,18 +38,16 @@ import isRvmRubyInstalled from './handlers/ruby/isRvmRubyInstalled'
 import isSystemRubyInstalled from './handlers/ruby/isSystemRubyInstalled'
 import installRbenvAndRuby from './handlers/ruby/installRbenvAndRuby'
 import installGems from './handlers/ruby/installGems'
-import getSuites from './handlers/getSuites'
-import createSuite from './handlers/createSuite'
-import deleteSuite from './handlers/deleteSuite'
 import {
   getProjectLayoutHandler,
   listProjectTestsHandler,
   openCodeTestHandler,
   recordOverExampleHandler
 } from './handlers/tests/projectTestIpc'
-import { prepareSuiteRun, prepareTestRun } from './handlers/testing/prepareRuns'
+import { prepareTestRun } from './handlers/testing/prepareRuns'
 import { mapFailedStepHandler } from './handlers/tests/mapFailedStep'
-import { runSuiteHandler, runTestHandler } from './handlers/testing/runProjectTests'
+import { runTestHandler } from './handlers/testing/runProjectTests'
+import getTests from './handlers/getTests'
 import { isListed } from './handlers/tests/suiteStore'
 import { registerRunIpc } from './handlers/run/runIpc'
 import { openTraceFromDialog, registerTraceIpc } from './handlers/trace/traceIpc'
@@ -67,10 +65,8 @@ import {
 } from './handlers/recording/recordingState'
 import { killActiveRun } from './handlers/run/runner'
 import exportTest from './handlers/io/exportTest'
-import exportSuite from './handlers/io/exportSuite'
 import exportProject from './handlers/io/exportProject'
 import importProject from './handlers/io/importProject'
-import importSuite from './handlers/io/importSuite'
 import importTest from './handlers/io/importTest'
 import { setTestTags } from './handlers/tests/setTestTags'
 import deleteTest from './handlers/deleteTest'
@@ -349,7 +345,7 @@ app.whenReady().then(() => {
   ipcMain.handle('render-step', (_event, step: Step) =>
     renderStep(step, toAutomation(appState.projectAutomation))
   )
-  ipcMain.handle('get-suites', getSuites)
+  ipcMain.handle('get-tests', getTests)
   ipcMain.handle('list-project-tests', listProjectTestsHandler)
   ipcMain.handle('open-code-test', (_event, file: string) => openCodeTestHandler(file))
   ipcMain.handle('get-project-layout', getProjectLayoutHandler)
@@ -364,22 +360,10 @@ app.whenReady().then(() => {
     (_event, file: string, exampleName: string, steps: Step[], rubyCommand: string) =>
       recordOverExampleHandler(file, exampleName, steps, rubyCommand)
   )
-  ipcMain.handle('create-suite', (_event, suiteName: string) =>
-    createSuite(appState.mainWindow!, suiteName)
-  )
-  ipcMain.handle('delete-suite', (_event, suiteId: string) =>
-    deleteSuite(appState.mainWindow!, suiteId)
-  )
   ipcMain.handle(
     'run-test',
-    (
-      _event,
-      suiteId: string,
-      testId: string,
-      projectPath: string,
-      rubyCommand: string,
-      test?: Test
-    ) => runTestHandler(suiteId, testId, projectPath, rubyCommand, test)
+    (_event, testId: string, projectPath: string, rubyCommand: string, test?: Test) =>
+      runTestHandler(testId, projectPath, rubyCommand, test)
   )
   ipcMain.handle(
     'update-recording-settings',
@@ -395,27 +379,18 @@ app.whenReady().then(() => {
     }
   )
 
-  ipcMain.handle('run-suite', (_event, suiteId: string, projectPath: string, rubyCommand: string) =>
-    runSuiteHandler(suiteId, projectPath, rubyCommand)
+  ipcMain.handle('prepare-test-run', (_event, testId: string, test?: Test) =>
+    prepareTestRun(testId, test)
   )
-  ipcMain.handle('prepare-test-run', (_event, suiteId: string, testId: string, test?: Test) =>
-    prepareTestRun(suiteId, testId, test)
-  )
-  ipcMain.handle('prepare-suite-run', (_event, suiteId: string) => prepareSuiteRun(suiteId))
   ipcMain.handle('export-test', (_event, testData: TestData) => exportTest(testData))
-  ipcMain.handle('export-suite', (_event, suiteId: string) => exportSuite(suiteId))
   ipcMain.handle('export-project', exportProject)
   ipcMain.handle('import-project', () => importProject(appState.mainWindow!))
-  ipcMain.handle('import-suite', () => importSuite(appState.mainWindow!))
-  ipcMain.handle('import-test', (_event, suiteId: string) =>
-    importTest(appState.mainWindow!, suiteId)
-  )
+  ipcMain.handle('import-test', () => importTest(appState.mainWindow!))
   ipcMain.handle('set-test-tags', (_event, fileRel: unknown, tags: unknown) =>
     setTestTags(fileRel, tags)
   )
   ipcMain.handle('delete-test', async (_event, args) => {
     const result = await deleteTest(appState.mainWindow!, args)
-    // A test listed in another suite keeps its trace
     if (result.success && !isListed(args.testId)) deleteTrace(args.testId)
     return result
   })
@@ -473,8 +448,8 @@ app.whenReady().then(() => {
     registerRecorderWebContents(webContentsId)
   )
 
-  ipcMain.handle('save-recording', (_event, suiteId: string, test: Test) =>
-    saveRecording(appState.mainWindow, suiteId, test)
+  ipcMain.handle('save-recording', (_event, test: Test) =>
+    saveRecording(appState.mainWindow, test)
   )
   ipcMain.handle('save-trace', (_event, testId: string, trace: TraceStep[], stepIds?: string[]) =>
     saveTrace(testId, trace, stepIds)
