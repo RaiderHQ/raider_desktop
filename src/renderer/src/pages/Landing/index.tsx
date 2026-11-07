@@ -168,9 +168,9 @@ const Landing: React.FC = (): JSX.Element => {
               {recentProjects.map((project) => (
                 <li
                   key={project.path}
-                  className={`flex items-center gap-2 pr-2 ${project.exists ? '' : 'text-neutral-md'}`}
+                  className={`flex items-center gap-2 pr-2 ${project.exists && project.isRaider ? '' : 'text-neutral-md'}`}
                 >
-                  {project.exists ? (
+                  {project.exists && project.isRaider ? (
                     <Tooltip
                       content={t('tooltips.landing.recentProject')}
                       position="top"
@@ -206,7 +206,11 @@ const Landing: React.FC = (): JSX.Element => {
                         <span className="block text-xs truncate">{project.path}</span>
                       </span>
                       <span className="text-xs shrink-0">
-                        {t('landing.recentProjects.folderNotFound')}
+                        {t(
+                          project.exists
+                            ? 'landing.recentProjects.notRaider'
+                            : 'landing.recentProjects.folderNotFound'
+                        )}
                       </span>
                     </span>
                   )}

@@ -69,12 +69,13 @@ describe('recentProjects', () => {
 
   it('lists whether each folder still exists and looks like a Raider project', () => {
     const shop = folder('shop')
-    const plain = folder('plain', false)
+    const plain = folder('plain')
     const gone = folder('gone')
     recordRecentProject(gone)
     recordRecentProject(plain)
     recordRecentProject(shop)
     fs.rmSync(gone, { recursive: true })
+    fs.rmSync(path.join(plain, 'config', 'config.yml'))
     expect(listRecentProjects().map((p) => [p.name, p.exists, p.isRaider])).toEqual([
       ['shop', true, true],
       ['plain', true, false],
@@ -120,6 +121,36 @@ describe('recentProjects', () => {
     expect(read).toHaveLength(RECENT_PROJECTS_LIMIT)
     expect(read[0]).toEqual({ path: shop, name: 'shop', lastOpened: 5 })
     fs.writeFileSync(file(), '{ not json')
+    expect(readRecentProjects()).toEqual([])
+  })
+
+  it('records only folders with Raider config, and follows symlinks into quick recordings', () => {
+    recordRecentProject(folder('plain', false))
+    const quick = path.join(userData.dir, 'quick-record', 'example_com')
+    fs.mkdirSync(path.join(quick, 'config'), { recursive: true })
+    fs.writeFileSync(path.join(quick, 'config', 'config.yml'), '')
+    const link = path.join(userData.dir, 'projects', 'link-to-quick')
+    fs.mkdirSync(path.dirname(link), { recursive: true })
+    fs.symlinkSync(quick, link)
+    recordRecentProject(link)
+    expect(readRecentProjects()).toEqual([])
+  })
+
+  it('drops relative or oversized paths and names, and treats a huge file as empty', () => {
+    fs.writeFileSync(
+      file(),
+      JSON.stringify({
+        version: 1,
+        projects: [
+          { path: 'relative/shop', name: 'shop', lastOpened: 1 },
+          { path: '/' + 'x'.repeat(5000), name: 'long', lastOpened: 1 },
+          { path: '/work/shop', name: 'n'.repeat(500), lastOpened: 1 },
+          { path: '/work/shop', name: '', lastOpened: 1 }
+        ]
+      })
+    )
+    expect(readRecentProjects()).toEqual([{ path: '/work/shop', name: '', lastOpened: 1 }])
+    fs.writeFileSync(file(), JSON.stringify({ version: 1, projects: [] }) + ' '.repeat(100_000))
     expect(readRecentProjects()).toEqual([])
   })
 

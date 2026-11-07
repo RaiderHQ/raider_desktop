@@ -12,6 +12,10 @@ import type { RecentProject, RecentProjectEntry } from '../../../shared/types/re
 
 export const RECENT_PROJECTS_LIMIT = 8
 const FILE_VERSION = 1
+/** A hand-edited or corrupt file bigger than this is treated as empty, never parsed */
+const MAX_FILE_BYTES = 64 * 1024
+const MAX_PATH_LENGTH = 4096
+const MAX_NAME_LENGTH = 255
 
 const recentFile = (): string => path.join(app.getPath('userData'), 'recent-projects.json')
 
@@ -19,8 +23,10 @@ const recentFile = (): string => path.join(app.getPath('userData'), 'recent-proj
 const asRecentProject = (value: unknown): RecentProject | null => {
   if (!value || typeof value !== 'object') return null
   const { path: projectPath, name, lastOpened } = value as Record<string, unknown>
-  if (typeof projectPath !== 'string' || !projectPath) return null
-  if (typeof name !== 'string') return null
+  if (typeof projectPath !== 'string' || !projectPath || projectPath.length > MAX_PATH_LENGTH)
+    return null
+  if (!path.isAbsolute(projectPath)) return null
+  if (typeof name !== 'string' || name.length > MAX_NAME_LENGTH) return null
   if (typeof lastOpened !== 'number' || !Number.isFinite(lastOpened)) return null
   return { path: projectPath, name, lastOpened }
 }
@@ -28,7 +34,9 @@ const asRecentProject = (value: unknown): RecentProject | null => {
 export function readRecentProjects(): RecentProject[] {
   let parsed: unknown
   try {
-    parsed = JSON.parse(fs.readFileSync(recentFile(), 'utf8'))
+    const target = recentFile()
+    if (fs.statSync(target).size > MAX_FILE_BYTES) return []
+    parsed = JSON.parse(fs.readFileSync(target, 'utf8'))
   } catch {
     return []
   }
@@ -50,14 +58,33 @@ export function readRecentProjects(): RecentProject[] {
 function writeRecentProjects(projects: RecentProject[]): void {
   const target = recentFile()
   const temp = `${target}.${process.pid}.tmp`
-  fs.writeFileSync(temp, JSON.stringify({ version: FILE_VERSION, projects }, null, 2))
-  fs.renameSync(temp, target)
+  try {
+    fs.writeFileSync(temp, JSON.stringify({ version: FILE_VERSION, projects }, null, 2))
+    fs.renameSync(temp, target)
+  } catch (error) {
+    fs.rmSync(temp, { force: true })
+    throw error
+  }
+}
+
+/** The folder as the file system knows it, so a symlink or a case change cannot hide it */
+const realPath = (p: string): string => {
+  try {
+    return fs.realpathSync(p)
+  } catch {
+    return path.resolve(p)
+  }
 }
 
 const isQuickRecording = (projectPath: string): boolean => {
-  const relative = path.relative(quickProjectsDir(), projectPath)
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+  const relative = path.relative(realPath(quickProjectsDir()), realPath(projectPath))
+  if (relative === '') return true
+  if (relative === '..' || relative.startsWith(`..${path.sep}`)) return false
+  return !path.isAbsolute(relative)
 }
+
+const hasRaiderConfig = (projectPath: string): boolean =>
+  fs.existsSync(path.join(projectPath, 'config', 'config.yml'))
 
 const isDirectory = (projectPath: string): boolean => {
   try {
@@ -67,10 +94,13 @@ const isDirectory = (projectPath: string): boolean => {
   }
 }
 
-/** Puts an opened project at the top; quick recordings keep their own list */
+/**
+ * Puts an opened Raider project at the top. Quick recordings keep their own list, and a
+ * folder without Raider's config is not a project worth listing.
+ */
 export function recordRecentProject(projectPath: string): void {
   const resolved = path.resolve(projectPath)
-  if (isQuickRecording(resolved) || !isDirectory(resolved)) return
+  if (isQuickRecording(resolved) || !isDirectory(resolved) || !hasRaiderConfig(resolved)) return
   const rest = readRecentProjects().filter((p) => p.path !== resolved)
   const entry: RecentProject = {
     path: resolved,
@@ -99,7 +129,7 @@ export function listRecentProjects(): RecentProjectEntry[] {
     return {
       ...project,
       exists,
-      isRaider: exists && fs.existsSync(path.join(project.path, 'config', 'config.yml'))
+      isRaider: exists && hasRaiderConfig(project.path)
     }
   })
 }

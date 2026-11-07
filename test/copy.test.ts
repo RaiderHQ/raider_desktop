@@ -235,6 +235,7 @@ describe('copy', () => {
       hint: 'Projects you opened with Raider on this computer.',
       opened: 'Opened {{date}}',
       folderNotFound: 'Folder not found',
+      notRaider: 'No Raider config in this folder',
       remove: 'Remove',
       removeLabel: 'Remove {{name}} from recent projects'
     })

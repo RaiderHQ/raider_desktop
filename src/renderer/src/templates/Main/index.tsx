@@ -184,7 +184,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
     // File › Open recent: a path main stored; the same guards as Open project, no folder dialog (U8)
     const offRecent = window.api.onOpenRecentProject((projectPath) => {
       if (typeof projectPath !== 'string' || !projectPath) return
-      if (installModalOpen.current || modalOpen.current) return
+      if (installModalOpen.current || modalOpen.current || pickingFolder.current) return
       if (anyEditorDirty()) return
       if (recorderBusy()) {
         toast.error(t('quickRecord.stopFirst'))

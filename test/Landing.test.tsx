@@ -199,6 +199,15 @@ describe('Landing Page', (): void => {
       expect(setProjectPath).not.toHaveBeenCalled()
     })
 
+    it('a folder that lost its Raider config is greyed, says so, and only offers Remove', async () => {
+      api.listRecentProjects.mockResolvedValue([{ ...shop, isRaider: false }])
+      await renderLanding()
+      const row = screen.getByRole('listitem')
+      expect(row).toHaveTextContent('landing.recentProjects.notRaider')
+      expect(within(row).queryByRole('button', { name: /shop/ })).toBeNull()
+      expect(setProjectPath).not.toHaveBeenCalled()
+    })
+
     it('Remove takes the entry out of the list main returns', async () => {
       api.listRecentProjects.mockResolvedValue([shop, gone])
       api.removeRecentProject.mockResolvedValue([shop])

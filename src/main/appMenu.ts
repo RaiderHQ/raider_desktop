@@ -40,23 +40,33 @@ export interface MenuOptions {
   recentProjects?: RecentProjectEntry[]
 }
 
-/** Menu labels for the recent projects: the stored names, with the parent folder when two clash */
-export function recentProjectLabels(projects: RecentProjectEntry[]): string[] {
+/**
+ * Menu labels for the recent projects: the folder's own name (never the stored text), the
+ * parent folder when two clash, and & doubled on Windows where a single one hides itself.
+ */
+export function recentProjectLabels(
+  projects: RecentProjectEntry[],
+  platform: NodeJS.Platform
+): string[] {
+  const nameOf = (p: RecentProjectEntry): string => path.basename(p.path) || p.path
   const counts = new Map<string, number>()
-  for (const p of projects) counts.set(p.name, (counts.get(p.name) ?? 0) + 1)
+  for (const p of projects) counts.set(nameOf(p), (counts.get(nameOf(p)) ?? 0) + 1)
   return projects.map((p) => {
+    const name = nameOf(p)
     const parent = path.basename(path.dirname(p.path))
-    const name = (counts.get(p.name) ?? 0) > 1 && parent ? `${p.name} (${parent})` : p.name
-    return p.exists ? name : `${name} (${t('notFound')})`
+    const unique = (counts.get(name) ?? 0) > 1 && parent ? `${name} (${parent})` : name
+    const label = p.exists ? unique : `${unique} (${t('notFound')})`
+    return platform === 'win32' ? label.replace(/&/g, '&&') : label
   })
 }
 
 function openRecentSubmenu(
   actions: MenuActions,
-  projects: RecentProjectEntry[]
+  projects: RecentProjectEntry[],
+  platform: NodeJS.Platform
 ): Electron.MenuItemConstructorOptions[] {
   if (projects.length === 0) return [{ label: t('noRecentProjects'), enabled: false }]
-  const labels = recentProjectLabels(projects)
+  const labels = recentProjectLabels(projects, platform)
   return [
     ...projects.map((project, i) => ({
       label: labels[i],
@@ -99,7 +109,7 @@ export function buildAppMenuTemplate(
       {
         id: 'open-recent',
         label: t('openRecent'),
-        submenu: openRecentSubmenu(actions, options.recentProjects ?? [])
+        submenu: openRecentSubmenu(actions, options.recentProjects ?? [], platform)
       },
       { type: 'separator' },
       { id: 'open-trace', label: t('openTrace'), click: () => actions.onOpenTrace() },

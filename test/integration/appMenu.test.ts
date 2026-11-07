@@ -75,7 +75,10 @@ describe('buildAppMenuTemplate', () => {
 
   it('Open recent lists the stored projects by name, a missing folder disabled, then Clear recent', () => {
     const a = actions()
-    const file = items(buildAppMenuTemplate('darwin', a, { isPackaged: true, recentProjects: recent }), 'File')
+    const file = items(
+      buildAppMenuTemplate('darwin', a, { isPackaged: true, recentProjects: recent }),
+      'File'
+    )
     const submenu = file[2].submenu as Item[]
     expect(submenu.map((item) => item.label ?? item.type)).toEqual([
       'shop',
@@ -96,6 +99,24 @@ describe('buildAppMenuTemplate', () => {
     const submenu = items(build('darwin'), 'File')[2].submenu as Item[]
     expect(submenu.map((item) => item.label)).toEqual(['No recent projects'])
     expect(submenu[0].enabled).toBe(false)
+  })
+
+  it('labels come from the folder itself, with & escaped on Windows and a fallback for a root', () => {
+    const stored = [
+      { path: '/work/A&B', name: 'stale name', lastOpened: 2, exists: true, isRaider: true },
+      { path: '/', name: '', lastOpened: 1, exists: true, isRaider: true }
+    ]
+    const labels = (platform: NodeJS.Platform): string[] =>
+      (
+        items(
+          buildAppMenuTemplate(platform, actions(), { isPackaged: true, recentProjects: stored }),
+          'File'
+        )[2].submenu as Item[]
+      )
+        .slice(0, 2)
+        .map((item) => item.label as string)
+    expect(labels('darwin')).toEqual(['A&B', '/'])
+    expect(labels('win32')).toEqual(['A&&B', '/'])
   })
 
   it('two folders with the same name show their parent folder too', () => {
