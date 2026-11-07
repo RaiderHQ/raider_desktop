@@ -8,6 +8,7 @@ import { toRouteParam } from '@foundation/testKey'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import { useRunStore } from '@foundation/Stores/runStore'
 import type { Test } from '@foundation/Types/test'
 import en from '@assets/translations/en.json'
 
@@ -264,5 +265,20 @@ describe('TestsWorkspace tag filter', () => {
     expect(screen.getByRole('button', { name: /Search products/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Checkout/ })).toBeInTheDocument()
     expect(screen.getByTestId('tag-filter')).toHaveValue('')
+  })
+
+  it('gives Run tagged tests the filtered tag', async () => {
+    withTags(['smoke'], [])
+    const start = vi.fn()
+    useRunStore.setState({ start } as never)
+    renderList()
+    await screen.findByRole('button', { name: /Search products/ })
+    fireEvent.change(screen.getByTestId('tag-filter'), { target: { value: 'smoke' } })
+    fireEvent.click(screen.getByRole('button', { name: 'More test actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Run tagged tests' }))
+    expect(start).toHaveBeenCalledWith(
+      { kind: 'tags', tags: ['smoke'] },
+      { route: '/overview', label: 'Tests tagged smoke' }
+    )
   })
 })
