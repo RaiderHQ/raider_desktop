@@ -151,7 +151,10 @@ describe('copy', () => {
   it('names an empty run filter plainly (U6)', () => {
     expect(en.run.filterEmpty).toEqual({
       all: 'No results yet',
+      noneListed: 'No tests were listed for this run',
       failed: 'No failed tests in this run',
+      failedSoFar: 'No failed tests so far',
+      failedUnlisted: 'This run failed; the details are in the technical details below',
       running: 'Nothing running',
       queued: 'Nothing queued'
     })

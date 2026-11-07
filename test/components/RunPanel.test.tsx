@@ -230,6 +230,41 @@ describe('RunPanel', () => {
     expect(screen.getByTestId('run-filter-empty')).toHaveTextContent('run.filterEmpty.all')
   })
 
+  it('does not give a verdict on failures before the run has started its tests', () => {
+    setRun(makeRun({ phase: 'booting' }, []))
+    render(<RunPanel routeKey="/tests" />)
+    fireEvent.click(within(screen.getByTestId('run-filter')).getByText('run.filter.failed'))
+    expect(screen.getByTestId('run-filter-empty')).toHaveTextContent('run.filterEmpty.failedSoFar')
+  })
+
+  it('points at the technical details when a run failed but lists no rows (old reporter)', () => {
+    const finished = {
+      status: 'failed' as const,
+      finishedAt: '2026-10-31T10:01:00.000Z',
+      counts: { passed: 1, failed: 2, pending: 0, skipped: 0, quarantined: 0 },
+      truncated: false
+    }
+    setRun(makeRun({ liveEvents: false, finished } as Partial<RunView>, []))
+    render(<RunPanel routeKey="/tests" />)
+    expect(screen.getByTestId('run-filter-empty')).toHaveTextContent('run.filterEmpty.noneListed')
+    fireEvent.click(within(screen.getByTestId('run-filter')).getByText('run.filter.failed'))
+    expect(screen.getByTestId('run-filter-empty')).toHaveTextContent(
+      'run.filterEmpty.failedUnlisted'
+    )
+  })
+
+  it('says no tests ran once a run is over with nothing listed', () => {
+    const finished = {
+      status: 'cancelled' as const,
+      finishedAt: '2026-10-31T10:01:00.000Z',
+      counts: { passed: 0, failed: 0, pending: 0, skipped: 0, quarantined: 0 },
+      truncated: false
+    }
+    setRun(makeRun({ finished } as Partial<RunView>, []))
+    render(<RunPanel routeKey="/tests" />)
+    expect(screen.getByTestId('run-filter-empty')).toHaveTextContent('run.filterEmpty.noneListed')
+  })
+
   it('shows worker badges and attempts only when relevant', () => {
     const tests = [test1('a1', 'passed', { worker: 2, attempt: 2, durationMs: 1500 })]
     setRun(makeRun({ workers: 3 }, tests))
