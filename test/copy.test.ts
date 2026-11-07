@@ -161,6 +161,8 @@ describe('copy', () => {
     expect(en.testPage.view).toBe('Show as')
     expect(en.testPage.steps).toBe('Visual steps')
     expect(en.testPage.ruby).toBe('Ruby code')
+  })
+
   it('names an empty run filter plainly (U6)', () => {
     expect(en.run.filterEmpty).toEqual({
       all: 'No results yet',
