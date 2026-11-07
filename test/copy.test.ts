@@ -228,6 +228,16 @@ describe('copy', () => {
     expect(checked).toBeGreaterThan(50)
     expect(offenders).toEqual([])
   })
+
+  it('names the project menu plainly (U7)', () => {
+    expect(en.overview.projectMenu).toEqual({
+      switch: 'Switch project…',
+      new: 'New project…',
+      unsaved: 'Save or discard your changes first',
+      project: 'Project'
+    })
+    expect(en.tooltips.overview.projectMenu).toBe('Switch to another project or start a new one')
+  })
 })
 
 /** JSON keeps the last of two equal keys, so a duplicate silently drops strings (U5). */

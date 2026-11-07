@@ -20,6 +20,7 @@ import Terminal from '@components/Terminal'
 import Tooltip from '@components/Tooltip'
 import TestsWorkspace from '@components/TestsWorkspace'
 import InfoButton from '@components/InfoButton'
+import ProjectMenu from '@components/ProjectMenu'
 import DocsLink from '@components/DocsLink'
 import type { DocsLinkId } from '@shared/docsLinkIds'
 import RunPanel from '@components/RunPanel'
@@ -729,6 +730,7 @@ const Overview: React.FC = () => {
     <div className="flex flex-col w-screen p-8">
       {/* Tabs */}
       <div className="flex items-center border-b border-neutral-bdr mb-4">
+        <ProjectMenu />
         <Tooltip content={t('tooltips.overview.tabTests')} position="bottom">
           <button
             onClick={() => switchTab('tests')}

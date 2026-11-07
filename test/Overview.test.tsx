@@ -245,8 +245,10 @@ describe('Overview Page', (): void => {
         </MemoryRouter>
       )
     })
-    const tabs = screen.getAllByRole('button').map((b) => b.textContent)
-    expect(tabs[0]).toBe('overview.tabs.tests')
+    // The project menu comes first in the row; the tabs follow it
+    const buttons = screen.getAllByRole('button')
+    expect(buttons[0]).toBe(screen.getByTestId('project-menu'))
+    expect(buttons[1]).toHaveTextContent('overview.tabs.tests')
     expect(screen.getByText('tests.empty')).toBeInTheDocument()
     expect(screen.queryByTestId('folder')).not.toBeInTheDocument()
   })

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, Outlet, useNavigate } from 'react-router'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import toast, { Toaster } from 'react-hot-toast'
 import Logo from '@components/Logo'
@@ -14,14 +14,13 @@ import TraceViewerOverlay from '@components/TraceViewerOverlay'
 import useVersionStore from '@foundation/Stores/versionStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useProjectStore from '@foundation/Stores/projectStore'
-import useRecorderStore from '@foundation/Stores/recorderStore'
-import useEditorStore from '@foundation/Stores/editorStore'
 import { installMissingGems } from '@foundation/installGems'
 import { subscribeRunEvents } from '@foundation/Stores/runStore'
 import useTitleStore from '@foundation/Stores/titleStore'
 import { windowTitle } from '@shared/windowTitle'
 import { platformFrom } from '@shared/shortcuts'
 import { dispatchMenuCommand, isMenuCommand } from '@foundation/menuCommands'
+import { anyEditorDirty, pageEditorDirty, recorderBusy } from '@foundation/switchGuards'
 
 const MainTemplate: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
@@ -116,6 +115,10 @@ const MainTemplate: React.FC = (): JSX.Element => {
   const installModalOpen = useRef(false)
   installModalOpen.current = isRubyInstallModalOpen || isGemsInstallModalOpen
   const pickingFolder = useRef(false)
+  // The project stays loaded while the start screen shows, so the page matters as much as the store
+  const location = useLocation()
+  const onOverview = useRef(false)
+  onOverview.current = location.pathname.startsWith('/overview')
   useEffect(() => {
     const openProject = async (): Promise<void> => {
       if (pickingFolder.current) return
@@ -132,15 +135,9 @@ const MainTemplate: React.FC = (): JSX.Element => {
         pickingFolder.current = false
       }
     }
-    // Switching projects mid-recording would save the recording into the wrong project
-    const recorderBusy = (): boolean => {
-      const { recordingTarget, isRecording, isReplayingToBreakpoint } = useRecorderStore.getState()
-      return !!recordingTarget || isRecording || isReplayingToBreakpoint
-    }
-    // Leaving a page with unsaved edits would drop them; the editor's own prompt is the way out.
+    // Leaving a page with unsaved edits would drop them; the editor's own prompt is the way out,
+    // so the menu commands stand down silently (the project menu on the Overview says why).
     // The Files tab's inline editor asks about New test itself, so only a project switch waits.
-    const pageEditorDirty = (): boolean => useEditorStore.getState().pageDirty
-    const anyEditorDirty = (): boolean => pageEditorDirty() || useEditorStore.getState().inlineDirty
     return window.api.onMenuCommand((command) => {
       if (!isMenuCommand(command)) return
       if (command === 'how-it-works' || command === 'shortcuts' || command === 'recording-guide') {
@@ -160,8 +157,10 @@ const MainTemplate: React.FC = (): JSX.Element => {
       }
       if (modalOpen.current) return
       if (command === 'new-test') {
-        // Only a project has a Tests tab; with none open nothing listens
+        // Only a project has a Tests tab; with none open nothing listens. The project stays
+        // loaded while the start screen shows, so the page matters as much as the store
         if (!useProjectStore.getState().projectPath) return
+        if (!onOverview.current) return
         if (pageEditorDirty()) return
         if (recorderBusy()) {
           toast.error(t('quickRecord.stopFirst'))
