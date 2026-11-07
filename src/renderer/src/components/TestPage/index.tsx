@@ -51,7 +51,7 @@ const field =
   'block w-full px-3 py-1 border border-neutral-bdr rounded text-sm focus:ring-ruby focus:border-ruby transition-colors disabled:bg-neutral-lt disabled:cursor-not-allowed'
 
 const toolbarButton =
-  'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white disabled:text-neutral-mid disabled:cursor-not-allowed'
+  'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white whitespace-nowrap disabled:text-neutral-mid disabled:cursor-not-allowed'
 
 /** A recorded test (or a new one): its name, start URL, steps, and what can be done with it. */
 const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE_ID }) => {
@@ -268,7 +268,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       onMenuCommand((command) => {
         if (command === 'record' && canRecord) record()
         if (command === 'run' && canRun) void recording.run()
-        // Stop & save is the Stop button; Open file… is the toolbar's, which the recording blocks
+        // Stop & save is the Stop button; View file is the toolbar's, which the recording blocks
         if (command === 'stop' && recording.isRecording && !isReplaying) void recording.stop()
         if (command === 'open-file' && !busy && !starting && !confirming && !!test?.file) {
           editCode()
@@ -475,7 +475,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
             </Tooltip>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {recording.isRecording && (
               <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" aria-hidden />
@@ -541,10 +541,6 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
                 </button>
               </Tooltip>
             )}
-            <CodeViewToggle
-              view={showCode ? 'ruby' : 'steps'}
-              onChange={(view) => setShowCode(view === 'ruby')}
-            />
             {hasLegacyOutput && (
               <Tooltip content={t('tooltips.testPage.lastRun')} position="bottom">
                 <button
@@ -566,6 +562,13 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
                 />
               </Tooltip>
             )}
+            {/* Last in the row and pushed right: on a narrow window it takes a row of its own */}
+            <div className="ml-auto">
+              <CodeViewToggle
+                view={showCode ? 'ruby' : 'steps'}
+                onChange={(view) => setShowCode(view === 'ruby')}
+              />
+            </div>
           </div>
 
           {failedStep.status !== 'none' && projectPath && !picking && (

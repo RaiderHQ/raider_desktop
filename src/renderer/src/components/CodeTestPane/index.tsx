@@ -32,7 +32,7 @@ interface CodeTestPaneProps {
 }
 
 const toolbarButton =
-  'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white disabled:text-neutral-mid disabled:cursor-not-allowed'
+  'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white whitespace-nowrap disabled:text-neutral-mid disabled:cursor-not-allowed'
 
 /**
  * A test file edited in code: its tests (examples), one shown at a time as steps or
@@ -132,7 +132,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
     if (!useRecorderStore.getState().unsavedExample) load()
   }
 
-  // The menu bar's Stop & save and Open file… act like the toolbar buttons
+  // The menu bar's Stop & save and View file act like the toolbar buttons
   useEffect(
     () =>
       onMenuCommand((command) => {
@@ -218,7 +218,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
         <p className="text-sm text-neutral-md">{t('tests.actionFailed')}</p>
       ) : (
         <>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {recording.isRecording && (
               <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" aria-hidden />
@@ -277,14 +277,16 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
                 {t('testPage.editCode')}
               </button>
             </Tooltip>
-            <CodeViewToggle
-              view={codePressed ? 'ruby' : 'steps'}
-              onChange={toggleCode}
-              // No steps view for code Raider can't show as steps: the segment says why (D9)
-              stepsUnavailableReason={
-                !showingRecording && !stepsMatchFile ? t('testPage.stepsUnavailable') : undefined
-              }
-            />
+            <div className="ml-auto">
+              <CodeViewToggle
+                view={codePressed ? 'ruby' : 'steps'}
+                onChange={toggleCode}
+                // No steps view for code Raider can't show as steps: the segment says why (D9)
+                stepsUnavailableReason={
+                  !showingRecording && !stepsMatchFile ? t('testPage.stepsUnavailable') : undefined
+                }
+              />
+            </div>
           </div>
 
           <AssertPickBanner />

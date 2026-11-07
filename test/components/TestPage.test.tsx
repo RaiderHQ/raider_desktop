@@ -395,7 +395,7 @@ describe('TestPage', () => {
     expect(api.saveRecording).not.toHaveBeenCalled()
   })
 
-  it('has Record, Run, Steps | Ruby and More', async () => {
+  it('has Record, Run, Show as: Visual steps | Ruby code, and More', async () => {
     renderPage()
     await opened()
     for (const label of [
@@ -658,11 +658,11 @@ describe('TestPage', () => {
       breadcrumbRoot: 'Tests',
       record: 'Record',
       run: 'Run',
-      steps: 'Steps',
-      ruby: 'Ruby',
-      view: 'View',
+      steps: 'Visual steps',
+      ruby: 'Ruby code',
+      view: 'Show as',
       stepsUnavailable: "Steps aren't available: Raider couldn't read every line of this test.",
-      editCode: 'Open file…',
+      editCode: 'View file',
       lastRun: 'Last run',
       more: 'More',
       stop: 'Stop & save',
