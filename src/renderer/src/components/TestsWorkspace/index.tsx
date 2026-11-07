@@ -11,7 +11,6 @@ import { useTestsList } from '../../hooks/useTestsList'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { fromRouteParam, testKeyOf, toRouteParam } from '@foundation/testKey'
 import type { TestKey, TestRow } from '@foundation/testKey'
-import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 
 interface TestsWorkspaceProps {
   /** The right-hand pane for the selected test (null: nothing selected). */
@@ -43,9 +42,9 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
     renderPane(selectedRow)
   ) : isNewTest ? (
     // The same page as a recorded test, so it stays mounted once the new test is saved
-    <TestPage targetSuiteId={UNLISTED_SUITE_ID} />
+    <TestPage />
   ) : selectedRow ? (
-    selectedRow.ownership === 'recorded' || selectedRow.ownership === 'legacy' ? (
+    selectedRow.ownership === 'recorded' ? (
       // One page for every recorded test, so its recording hooks mount once
       <TestPage row={selectedRow} />
     ) : (

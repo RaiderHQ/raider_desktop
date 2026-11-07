@@ -2,14 +2,13 @@ import type { Ownership } from '@shared/types/projectTest'
 
 export type TestKey = string
 
-/** One line of the Tests list: a project file test, or a suite-only ('legacy') test. */
+/** One line of the Tests list: a spec file of the project, recorded or hand-written. */
 export interface TestRow {
   name: string
   file?: string
   testId?: string
-  ownership: Ownership | 'legacy'
+  ownership: Ownership
   missingFile?: true
-  suiteIds: string[]
   /** From the sidecar or the describe line; [] when none */
   tags: string[]
 }

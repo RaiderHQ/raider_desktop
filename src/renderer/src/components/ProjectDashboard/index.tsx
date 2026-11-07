@@ -5,14 +5,14 @@ import DocsLink from '@components/DocsLink'
 import toast from 'react-hot-toast'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { useRunStore } from '@foundation/Stores/runStore'
-import useRecorderStore from '@foundation/Stores/recorderStore'
+import { useRecordedTests } from '../../hooks/useTestsList'
 import PieChartWidget from '@components/PieChartWidget'
 import TestResultCard from '@components/TestResultCard'
 import SavedLogins from '@components/SavedLogins'
 import NoProjectLoadedMessage from '@components/NoProjectLoadedMessage'
 import { loadRaiderResults } from '@foundation/raiderResults'
 import { recordedTestForFile } from '@foundation/recordedTestForFile'
-import type { Suite } from '@foundation/Types/suite'
+import type { Test } from '@foundation/Types/test'
 import type { TestResult } from '@foundation/Types/testResult'
 
 const EmptyState: React.FC = () => {
@@ -72,7 +72,7 @@ interface ResultSectionProps {
   keyPrefix: string
   testByName: Map<string, { id: string; hasTrace?: boolean }>
   projectPath?: string
-  suites: Suite[]
+  tests: Test[]
 }
 
 const ResultSection: React.FC<ResultSectionProps> = ({
@@ -81,7 +81,7 @@ const ResultSection: React.FC<ResultSectionProps> = ({
   keyPrefix,
   testByName,
   projectPath,
-  suites
+  tests
 }) => {
   const { t } = useTranslation()
   if (results.length === 0) return null
@@ -107,7 +107,7 @@ const ResultSection: React.FC<ResultSectionProps> = ({
               browser={result.browser}
               projectPath={projectPath}
               result={result}
-              recordedTest={recordedTestForFile(suites, result.file)}
+              recordedTest={recordedTestForFile(tests, result.file)}
               traces={result.traces}
             />
           )
@@ -122,17 +122,15 @@ const Index: React.FC = (): JSX.Element => {
   const [results, setResults] = useState<TestResult[]>([])
   const [hasReport, setHasReport] = useState(false)
   const projectPath: string | null = useProjectStore((state) => state.projectPath)
-  const suites = useRecorderStore((s) => s.suites)
+  const tests = useRecordedTests()
   // A finished run of this project rewrites raider-results, so the dashboard reloads
   const lastRunFinishedAt = useRunStore((s) =>
     s.run && s.run.projectPath === projectPath ? (s.run.finished?.finishedAt ?? null) : null
   )
 
   const testByName = new Map<string, { id: string; hasTrace?: boolean }>()
-  for (const suite of suites) {
-    for (const test of suite.tests) {
-      testByName.set(test.name, { id: test.id, hasTrace: test.hasTrace })
-    }
+  for (const test of tests) {
+    testByName.set(test.name, { id: test.id, hasTrace: test.hasTrace })
   }
 
   useEffect(() => {
@@ -265,7 +263,7 @@ const Index: React.FC = (): JSX.Element => {
                 keyPrefix="passed"
                 testByName={testByName}
                 projectPath={projectPath}
-                suites={suites}
+                tests={tests}
               />
               <ResultSection
                 titleKey="dashboard.failed"
@@ -273,7 +271,7 @@ const Index: React.FC = (): JSX.Element => {
                 keyPrefix="failed"
                 testByName={testByName}
                 projectPath={projectPath}
-                suites={suites}
+                tests={tests}
               />
               <ResultSection
                 titleKey="dashboard.quarantined"
@@ -281,7 +279,7 @@ const Index: React.FC = (): JSX.Element => {
                 keyPrefix="quarantined"
                 testByName={testByName}
                 projectPath={projectPath}
-                suites={suites}
+                tests={tests}
               />
               <ResultSection
                 titleKey="dashboard.skipped"
@@ -289,7 +287,7 @@ const Index: React.FC = (): JSX.Element => {
                 keyPrefix="skipped"
                 testByName={testByName}
                 projectPath={projectPath}
-                suites={suites}
+                tests={tests}
               />
             </div>
           </div>

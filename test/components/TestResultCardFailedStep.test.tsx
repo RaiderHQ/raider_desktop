@@ -86,7 +86,7 @@ describe('TestResultCard for a recorded test', () => {
   it('goes to the test page with Fix in test', async () => {
     renderCard()
     fireEvent.click(await screen.findByText('Fix in test'))
-    const key = testKeyOf({ name: 'Checkout', testId: 't1', ownership: 'recorded', suiteIds: [], tags: [] })
+    const key = testKeyOf({ name: 'Checkout', testId: 't1', ownership: 'recorded', tags: [] })
     expect(navigate).toHaveBeenCalledWith(`/overview/tests/${toRouteParam(key)}`)
   })
 

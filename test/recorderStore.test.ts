@@ -2,9 +2,8 @@ import useRecorderStore from '@foundation/Stores/recorderStore'
 
 beforeEach(() => {
   useRecorderStore.setState({
-    suites: [],
-    activeSuiteId: null,
     activeTest: null,
+    activeTestSaved: false,
     isRecording: false,
     isRunning: false,
     showCode: false,
@@ -15,8 +14,7 @@ beforeEach(() => {
 describe('recorderStore', () => {
   it('has correct initial state', () => {
     const state = useRecorderStore.getState()
-    expect(state.suites).toEqual([])
-    expect(state.activeSuiteId).toBeNull()
+    expect(state.activeTestSaved).toBe(false)
     expect(state.activeTest).toBeNull()
     expect(state.isRecording).toBe(false)
     expect(state.isRunning).toBe(false)
@@ -24,21 +22,11 @@ describe('recorderStore', () => {
     expect(state.isOutputVisible).toBe(false)
   })
 
-  it('setSuites updates suites', () => {
-    const suites = [{ id: 's1', name: 'Suite 1', tests: [] }]
-    useRecorderStore.getState().setSuites(suites)
-    expect(useRecorderStore.getState().suites).toEqual(suites)
-  })
-
-  it('setActiveSuiteId updates the active suite', () => {
-    useRecorderStore.getState().setActiveSuiteId('s1')
-    expect(useRecorderStore.getState().activeSuiteId).toBe('s1')
-  })
-
-  it('setActiveSuiteId can be set to null', () => {
-    useRecorderStore.getState().setActiveSuiteId('s1')
-    useRecorderStore.getState().setActiveSuiteId(null)
-    expect(useRecorderStore.getState().activeSuiteId).toBeNull()
+  it('setActiveTestSaved says whether the open test is a saved one', () => {
+    useRecorderStore.getState().setActiveTestSaved(true)
+    expect(useRecorderStore.getState().activeTestSaved).toBe(true)
+    useRecorderStore.getState().setActiveTestSaved(false)
+    expect(useRecorderStore.getState().activeTestSaved).toBe(false)
   })
 
   it('setActiveTest sets the active test', () => {
@@ -86,39 +74,6 @@ describe('recorderStore', () => {
   it('setIsOutputVisible toggles output visibility', () => {
     useRecorderStore.getState().setIsOutputVisible(true)
     expect(useRecorderStore.getState().isOutputVisible).toBe(true)
-  })
-
-  describe('activeSuite', () => {
-    it('returns undefined when no suites', () => {
-      expect(useRecorderStore.getState().activeSuite()).toBeUndefined()
-    })
-
-    it('returns undefined when activeSuiteId does not match', () => {
-      useRecorderStore.setState({
-        suites: [{ id: 's1', name: 'Suite', tests: [] }],
-        activeSuiteId: 's2'
-      })
-      expect(useRecorderStore.getState().activeSuite()).toBeUndefined()
-    })
-
-    it('returns the matching suite', () => {
-      const suite = { id: 's1', name: 'My Suite', tests: [] }
-      useRecorderStore.setState({
-        suites: [suite],
-        activeSuiteId: 's1'
-      })
-      expect(useRecorderStore.getState().activeSuite()).toEqual(suite)
-    })
-
-    it('returns correct suite when multiple suites exist', () => {
-      const suite1 = { id: 's1', name: 'Suite 1', tests: [] }
-      const suite2 = { id: 's2', name: 'Suite 2', tests: [] }
-      useRecorderStore.setState({
-        suites: [suite1, suite2],
-        activeSuiteId: 's2'
-      })
-      expect(useRecorderStore.getState().activeSuite()?.name).toBe('Suite 2')
-    })
   })
 
   describe('resetForProject', () => {

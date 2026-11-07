@@ -22,19 +22,16 @@ vi.mock('react-hot-toast', () => ({
 }))
 
 const rows: TestRow[] = [
-  { name: 'Login works', file: 'spec/login_spec.rb', testId: 't1', ownership: 'recorded', suiteIds: ['s1'], tags: [] },
-  { name: 'Cart totals', file: 'spec/cart_spec.rb', testId: 't2', ownership: 'codeOwnedWasRecorded', suiteIds: [], tags: [] },
-  { name: 'API health', file: 'spec/api_spec.rb', ownership: 'code', suiteIds: [], tags: [] },
-  { name: 'Old one', testId: 't9', ownership: 'legacy', suiteIds: ['s1'], tags: [] }
+  { name: 'Login works', file: 'spec/login_spec.rb', testId: 't1', ownership: 'recorded', tags: [] },
+  { name: 'Cart totals', file: 'spec/cart_spec.rb', testId: 't2', ownership: 'codeOwnedWasRecorded', tags: [] },
+  { name: 'API health', file: 'spec/api_spec.rb', ownership: 'code', tags: [] }
 ]
 
-const suites = [
-  { id: 's1', name: 'Smoke', tests: [{ id: 't1', name: 'Login works', url: '', steps: [] }] }
-]
+const savedTests = [{ id: 't1', name: 'Login works', url: '', steps: [] }]
 
 const api = {
   saveRecording: vi.fn(),
-  getSuites: vi.fn(),
+  getTests: vi.fn(),
   listProjectTests: vi.fn(),
   setActiveProject: vi.fn().mockResolvedValue({ success: true }),
   readDirectory: vi.fn().mockResolvedValue([])
@@ -54,7 +51,7 @@ const setup = (over: Partial<React.ComponentProps<typeof TestsList>> = {}) => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  api.getSuites.mockResolvedValue(suites)
+  api.getTests.mockResolvedValue(savedTests)
   api.listProjectTests.mockResolvedValue([])
   api.saveRecording.mockResolvedValue({ success: true })
   // @ts-expect-error - Mocking window.api
@@ -124,14 +121,6 @@ describe('TestsList', () => {
     expect(screen.getAllByText('tests.editedInCode')).toHaveLength(2)
     const login = screen.getByText('Login works').closest('[role=button]') as HTMLElement
     expect(login).not.toHaveTextContent('tests.editedInCode')
-    const legacy = screen.getByText('Old one').closest('[role=button]') as HTMLElement
-    expect(legacy).not.toHaveTextContent('tests.editedInCode')
-  })
-
-  it('lists and selects a legacy row', () => {
-    const p = setup()
-    fireEvent.click(screen.getByText('Old one'))
-    expect(p.onSelect).toHaveBeenCalledWith('id:t9')
   })
 
   it('gives every row an empty status slot', () => {
@@ -154,7 +143,6 @@ describe('TestsList', () => {
     expect(slots[0]).toHaveTextContent('run.state.failed')
     expect(slots[1]).toHaveTextContent('run.state.started')
     expect(slots[2]).toBeEmptyDOMElement()
-    expect(slots[3]).toBeEmptyDOMElement()
   })
 
   it('shows no status from a run in another project', () => {
@@ -178,13 +166,13 @@ describe('TestsList', () => {
 
   it('a missing-file row keeps Restore, which does not select the row', async () => {
     const p = setup({
-      rows: [{ name: 'Login works', file: 'spec/login_spec.rb', testId: 't1', ownership: 'recorded', missingFile: true, suiteIds: ['s1'], tags: [] }]
+      rows: [{ name: 'Login works', file: 'spec/login_spec.rb', testId: 't1', ownership: 'recorded', missingFile: true, tags: [] }]
     })
     expect(screen.getByText('tests.fileMissing')).toBeInTheDocument()
     await act(async () => {
       fireEvent.click(screen.getByText('tests.restore'))
     })
-    expect(api.saveRecording).toHaveBeenCalledWith('s1', suites[0].tests[0])
+    expect(api.saveRecording).toHaveBeenCalledWith(savedTests[0])
     expect(p.onSelect).not.toHaveBeenCalled()
   })
 

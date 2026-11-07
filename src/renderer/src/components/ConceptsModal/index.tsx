@@ -15,7 +15,6 @@ interface Concept {
 type OS = 'mac' | 'linux' | 'windows'
 
 const concepts: Concept[] = [
-  { icon: '🗂️', titleKey: 'concepts.suite.title', messageKey: 'concepts.suite.message' },
   { icon: '🧪', titleKey: 'concepts.test.title', messageKey: 'concepts.test.message' },
   { icon: '⏺️', titleKey: 'concepts.recording.title', messageKey: 'concepts.recording.message' },
   { icon: '▶️', titleKey: 'concepts.running.title', messageKey: 'concepts.running.message' },

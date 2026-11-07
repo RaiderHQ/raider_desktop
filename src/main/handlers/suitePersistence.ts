@@ -1,6 +1,5 @@
 import fs from 'fs/promises'
 import { join } from 'path'
-import { appState } from './appState'
 import { safeError } from '../utils/safeLog'
 import type { Suite } from '@foundation/Types/suite'
 import { migrateLegacyTest } from '../codegen/legacy'
@@ -100,46 +99,10 @@ async function recoverCorrupt(
   }
 }
 
-export async function loadSuites(
-  projectPath: string
-): Promise<{ suites: Suite[]; recoveredFromCorrupt: boolean; backupSaved?: boolean }> {
-  const file = suitesFile(projectPath)
-  const raw = await readRaw(file)
-  if (raw === null) return { suites: [], recoveredFromCorrupt: false }
-
-  const extracted = extractSuites(parseJson(raw))
-  if (extracted === null) return recoverCorrupt(file)
-
-  if (extracted.version >= WRITE_VERSION) {
-    return { suites: extracted.suites, recoveredFromCorrupt: false }
-  }
-
-  // Older files hold Ruby string steps: convert once and rewrite in the current format.
-  // Both writes are best-effort, so a read-only project still opens with the migrated suites.
-  const suites = migrateSuites(extracted.suites)
-  try {
-    await fs.copyFile(file, `${file}.v1.bak`)
-  } catch (error) {
-    safeError('Failed to back up version 1 suites file:', error)
-  }
-  try {
-    await saveSuites(projectPath, suites)
-  } catch (error) {
-    safeError('Failed to rewrite migrated suites file:', error)
-  }
-  return { suites, recoveredFromCorrupt: false }
-}
-
 // Writes per project are chained so two quick saves can't interleave tmp/rename
 const writeQueues = new Map<string, Promise<unknown>>()
 
-export function saveSuites(projectPath: string, suites: Suite[]): Promise<void> {
-  // Serialize now so later in-memory mutations don't leak into this write
-  const body = JSON.stringify({ version: WRITE_VERSION, suites } satisfies SuitesFile, null, 2)
-  return writeSuitesFile(projectPath, body)
-}
-
-// Every suites.json write (version 2 or 3) goes through here, so they share one queue.
+// Every suites.json write goes through here, so they share one queue.
 // With `ifUnchanged`, the write only happens while the file still holds exactly that text.
 function writeSuitesFile(projectPath: string, body: string, ifUnchanged?: string): Promise<void> {
   const file = suitesFile(projectPath)
@@ -254,7 +217,7 @@ export async function readSuitesFile(projectPath: string): Promise<SuitesFileSta
 }
 
 /**
- * Loads the version 3 index. A corrupt file is moved aside like in loadSuites;
+ * Loads the version 3 index. A corrupt file is moved aside;
  * a version 1/2 file throws LegacySuitesFileError and is left untouched.
  */
 export async function loadSuiteIndex(
@@ -281,18 +244,4 @@ export function saveSuiteIndex(
 ): Promise<void> {
   const body = JSON.stringify({ version: INDEX_VERSION, suites } satisfies SuiteIndexFile, null, 2)
   return writeSuitesFile(projectPath, body, ifUnchanged)
-}
-
-/**
- * Saves appState.suites to the active project as version 2. No-op without one, and
- * for a project that keeps its tests as files (it would overwrite the index); never rejects.
- */
-export async function persistActiveSuites(): Promise<void> {
-  const projectPath = appState.projectPath
-  if (!projectPath || appState.suiteMode !== 'legacy') return
-  try {
-    await saveSuites(projectPath, Array.from(appState.suites.values()))
-  } catch (error) {
-    safeError('Failed to save suites:', error)
-  }
 }

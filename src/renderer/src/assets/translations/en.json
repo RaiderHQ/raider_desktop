@@ -391,16 +391,11 @@
     "activationFailed": "This project's saved tests and recorder settings couldn't be loaded, so nothing will be recorded or saved for it. Fix the problem and open the project again. Details: {{error}}"
   },
   "suites": {
-    "recovered": {
-      "backupSaved": "Your saved suites couldn't be read, so this project opened with no suites. A copy of the old file was kept in the project's .raider folder.",
-      "backupFailed": "Your saved suites couldn't be read, so this project opened with no suites. The app couldn't keep a copy of the old file."
-    },
     "migrated": {
       "done": "Your recorded tests are now saved as project files.",
       "postponed": "Raider couldn't move your recorded tests into the project yet. They're safe and Raider will try again next time."
     },
-    "tooNew": "This project's suites were saved by a newer version of Raider. Update Raider to see and change them.",
-    "mobileUnavailable": "Suites aren't available for mobile projects yet."
+    "tooNew": "This project's suites were saved by a newer version of Raider. Update Raider to see and change them."
   },
   "errors": {
     "ruby": {
@@ -425,7 +420,6 @@
     "fileMissing": "File missing",
     "restored": "The test was restored.",
     "restoreFailed": "Raider couldn't restore this test. Nothing was changed.",
-    "notInSuite": "Not in a suite",
     "empty": "No tests yet — record one",
     "emptyNoRecording": "No tests found in this project yet.",
     "cucumber": "This project's tests are Cucumber features: find them in the Files tab. Recorded tests become project files when Gherkin support arrives.",
@@ -609,12 +603,6 @@
       "stackTrace": "Stack trace:",
       "placeholder": "Test output will appear here..."
     },
-    "testSuitePanel": {
-      "newSuite": "+ New Suite...",
-      "newSuiteName": "New suite name...",
-      "create": "Create",
-      "deleteConfirmation": "Are you sure you want to delete the suite \"{{suiteName}}\"? This cannot be undone."
-    },
     "tabs": {
       "settings": "Settings"
     },
@@ -765,10 +753,6 @@
         "message": "Install the Ruby Raider gem using the terminal:",
         "command": "gem install ruby_raider"
       }
-    },
-    "suite": {
-      "title": "Test suite",
-      "message": "A suite is a named folder that groups related tests together — for example, all tests for your login page.\n\nYou can run an entire suite at once."
     },
     "test": {
       "title": "Test",

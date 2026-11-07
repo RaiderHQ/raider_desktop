@@ -1,36 +1,34 @@
 import { dialog, BrowserWindow } from 'electron'
 import { lastDialogDirectory, rememberDialogPick } from '../../utils/dialogDirectory'
 import * as fs from 'fs'
-import { appState } from '../appState'
-import { persistActiveSuites } from '../suitePersistence'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
 import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
 import { confirmCustomCode, importCancelled, secretRefused } from './confirmCustomCode'
+import { findDescribeLine, tagsFromDescribeLine } from '../../../shared/tags'
 import {
   activeSuiteMode,
   broadcast,
   filesStore,
   isCurrent,
   lockedError,
+  NO_PROJECT_ERROR,
   PROJECT_CHANGED_ERROR,
-  saveTestInSuite
+  saveRecordedTestInProject,
+  tagSavedTest
 } from '../tests/suiteStore'
 
 export default async function importTest(
-  mainWindow: BrowserWindow,
-  suiteId: string
+  mainWindow: BrowserWindow
 ): Promise<{ success: boolean; test?: Test; error?: string }> {
   if (!mainWindow) {
     return { success: false, error: 'Main window not found' }
   }
   try {
-    if (!suiteId) {
-      return { success: false, error: 'No suite selected' }
-    }
     if ((await activeSuiteMode()) === 'locked') return { success: false, error: lockedError() }
     // Taken before the dialog: the import goes to the project that was open when it started
     const store = filesStore()
+    if (!store) return { success: false, error: NO_PROJECT_ERROR }
 
     const result = await dialog.showOpenDialog(mainWindow, {
       defaultPath: lastDialogDirectory(),
@@ -46,18 +44,15 @@ export default async function importTest(
     const filePath = result.filePaths[0]
     const fileContent = fs.readFileSync(filePath, 'utf-8')
 
-    if (store && !isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
-    const suite = (store?.suites ?? appState.suites).get(suiteId)
-    if (!suite) {
-      return { success: false, error: 'Suite not found' }
-    }
+    if (!isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
 
     // Exported files carry their steps as JSON; older files hold Ruby lines
     const header = readExportHeader(fileContent)
     if (header.refusedSecret !== undefined) {
       return { success: false, error: secretRefused(header.refusedSecret) }
     }
-    const stepIds = new Set(suite.tests.flatMap((t) => t.steps.map((step) => step.id)))
+    const tests = Array.from(store.tests.values())
+    const stepIds = new Set(tests.flatMap((t) => t.steps.map((step) => step.id)))
     const steps = withUniqueIds(header.steps ?? [], stepIds)
     const newTest: Test = {
       id: randomUUID(),
@@ -66,29 +61,27 @@ export default async function importTest(
       steps
     }
 
-    if (suite.tests.some((t) => t.name === newTest.name)) {
-      return { success: false, error: 'A test with this name already exists in the suite.' }
+    if (tests.some((t) => t.name === newTest.name)) {
+      return { success: false, error: 'A test with this name already exists in the project.' }
     }
 
     if (!(await confirmCustomCode(mainWindow, [newTest]))) {
       return { success: false, error: importCancelled() }
     }
-    if (store && !isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
+    if (!isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
 
-    if (store) {
-      // A fresh id always gets a new file: an import never replaces one
-      const saved = await saveTestInSuite(store, suiteId, newTest)
-      if (!saved.success) return saved
-      broadcast(store)
-      return { success: true, test: saved.test }
-    }
-
-    suite.tests.push(newTest)
-    appState.suites.set(suiteId, suite)
-    await persistActiveSuites()
-    mainWindow.webContents.send('suite-updated', Array.from(appState.suites.values()))
-
-    return { success: true, test: newTest }
+    // A fresh id always gets a new file: an import never replaces one
+    const saved = await saveRecordedTestInProject(store, newTest)
+    if (!saved.success) return saved
+    // Its tags come from its describe line
+    const found = findDescribeLine(fileContent)
+    const test = await tagSavedTest(
+      store,
+      saved.test,
+      found ? tagsFromDescribeLine(found.line) : []
+    )
+    broadcast(store)
+    return { success: true, test }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     return { success: false, error: errorMessage }

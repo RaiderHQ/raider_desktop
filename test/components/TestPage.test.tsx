@@ -17,7 +17,6 @@ import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import type { TestRow } from '@foundation/testKey'
 import type { Test } from '@foundation/Types/test'
-import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import en from '@assets/translations/en.json'
 
 vi.mock('react-i18next', () => ({
@@ -33,7 +32,7 @@ vi.mock('react-hot-toast', () => ({
   Toaster: (): null => null
 }))
 
-// The real hook (autosave, suite sync), with the recording entry points observed
+// The real hook (autosave, test sync), with the recording entry points observed
 const spies = vi.hoisted(() => ({
   start: vi.fn().mockResolvedValue(undefined),
   continueRecording: vi.fn().mockResolvedValue(undefined),
@@ -72,13 +71,12 @@ const recorded: Test = {
 }
 const empty: Test = { id: 't2', name: 'Empty one', url: '', steps: [] }
 
-const suites = [{ id: 's1', name: 'Smoke', tests: [recorded, empty] }]
+const savedTests = [recorded, empty]
 
 const row = (test: Test): TestRow => ({
   name: test.name,
   testId: test.id,
   ownership: 'recorded',
-  suiteIds: ['s1'],
   tags: []
 })
 
@@ -90,7 +88,7 @@ const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
 }
 
 const api = {
-  getSuites: vi.fn(),
+  getTests: vi.fn(),
   listProjectTests: vi.fn(),
   openCodeTest: vi.fn(),
   saveRecording: vi.fn(),
@@ -143,7 +141,7 @@ const opened = async (name = 'Login works'): Promise<void> => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  api.getSuites.mockResolvedValue(suites)
+  api.getTests.mockResolvedValue(savedTests)
   api.listProjectTests.mockResolvedValue([
     { name: 'API health', file: 'spec/api_spec.rb', ownership: 'code' }
   ])
@@ -334,7 +332,7 @@ describe('TestPage', () => {
     renderPage()
     await opened()
     const s = useRecorderStore.getState()
-    expect(s.activeSuiteId).toBe('s1')
+    expect(s.activeTestSaved).toBe(true)
     expect(s.activeTest?.id).toBe('t1')
     expect(s.readOnlyView).toBeNull()
   })
@@ -356,7 +354,6 @@ describe('TestPage', () => {
       await vi.advanceTimersByTimeAsync(1)
     })
     expect(api.saveRecording).toHaveBeenCalledWith(
-      's1',
       expect.objectContaining({ id: 't1', url: 'https://x.test/new' })
     )
   })
@@ -376,15 +373,12 @@ describe('TestPage', () => {
       await vi.advanceTimersByTimeAsync(500)
     })
     expect(api.saveRecording).toHaveBeenCalledWith(
-      's1',
       expect.objectContaining({ id: 't1', name: 'Login still works' })
     )
   })
 
   it('never autosaves a test edited in code', async () => {
-    api.getSuites.mockResolvedValue([
-      { id: 's1', name: 'Smoke', tests: [{ ...recorded, ownership: 'codeOwnedWasRecorded' }] }
-    ])
+    api.getTests.mockResolvedValue([{ ...recorded, ownership: 'codeOwnedWasRecorded' }])
     renderPage()
     await opened()
     vi.useFakeTimers()
@@ -470,7 +464,7 @@ describe('TestPage', () => {
       <div data-testid="editor-state">{JSON.stringify(useLocation().state)}</div>
     )
     const renderWithEditor = (test: Test): void => {
-      api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [test, empty] }])
+      api.getTests.mockResolvedValue([test, empty])
       render(
         <MemoryRouter initialEntries={['/overview/tests/x']}>
           <Routes>
@@ -619,7 +613,7 @@ describe('TestPage', () => {
     expect(api.deleteTest).not.toHaveBeenCalled()
     expect(screen.getByText('recorder.deleteModal.title')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'recorder.deleteModal.delete' }))
-    expect(api.deleteTest).toHaveBeenCalledWith('s1', 't1')
+    expect(api.deleteTest).toHaveBeenCalledWith('t1')
     expect(await screen.findByText('tests list route')).toBeInTheDocument()
   })
 
@@ -649,7 +643,7 @@ describe('TestPage', () => {
   })
 
   it('says so when the test cannot be opened', async () => {
-    api.getSuites.mockResolvedValue([])
+    api.getTests.mockResolvedValue([])
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     renderPage()
     expect(await screen.findByText('tests.actionFailed')).toBeInTheDocument()
@@ -698,7 +692,6 @@ describe('TestPage', () => {
     await waitFor(() => expect(api.saveTrace).toHaveBeenCalledTimes(1))
     expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], expect.any(Array))
     expect(api.saveRecording).toHaveBeenCalledWith(
-      's1',
       expect.objectContaining({ id: 't1', steps: [step('a'), step('b'), step('n')] })
     )
     expect(api.setRecordingState).toHaveBeenLastCalledWith(false)
@@ -722,7 +715,6 @@ describe('TestPage', () => {
     expect(api.saveTrace).toHaveBeenCalledTimes(1)
     expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], expect.any(Array))
     expect(api.saveRecording).toHaveBeenCalledWith(
-      's1',
       expect.objectContaining({ id: 't1', steps: [step('a'), step('b'), step('n')] })
     )
     expect(useRecorderStore.getState().activeTest?.id).toBe('t2')
@@ -757,7 +749,7 @@ describe('TestPage', () => {
     await opened('Empty one')
 
     expect(api.cancelReplay).toHaveBeenCalled()
-    expect(api.saveRecording).toHaveBeenCalledWith('s1', expect.objectContaining({ id: 't1' }))
+    expect(api.saveRecording).toHaveBeenCalledWith(expect.objectContaining({ id: 't1' }))
     expect(useRecorderStore.getState().isReplayingToBreakpoint).toBe(false)
     expect(useRecorderStore.getState().breakpointIndex).toBeNull()
   })
@@ -774,7 +766,10 @@ describe('TestsWorkspace pane', () => {
     )
   }
 
-  it('shows the test page for a recorded (here: suite-only) test', async () => {
+  it('shows the test page for a recorded test', async () => {
+    api.listProjectTests.mockResolvedValue([
+      { name: 'Login works', file: 'spec/login_works_spec.rb', testId: 't1', ownership: 'recorded' }
+    ])
     renderWorkspace(testKeyOf(row(recorded)))
     expect(await screen.findByDisplayValue('Login works')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'testPage.record' })).toBeInTheDocument()
@@ -817,7 +812,7 @@ describe('TestPage after a failed run', () => {
   beforeEach(() => {
     status = 'failed'
     useProjectStore.setState({ projectPath: '/p' })
-    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [withFile, empty] }])
+    api.getTests.mockResolvedValue([withFile, empty])
     api.readDirectory.mockImplementation(async (dir: string) =>
       dir === '/p/raider-results'
         ? [{ name: 'run.json', type: 'file', path: '/p/raider-results/run.json' }]
@@ -932,7 +927,7 @@ describe('TestPage fixing a failed value', () => {
 
   beforeEach(() => {
     useProjectStore.setState({ projectPath: '/p' })
-    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [typed, empty] }])
+    api.getTests.mockResolvedValue([typed, empty])
     api.readDirectory.mockImplementation(async (dir: string) =>
       dir === '/p/raider-results'
         ? [{ name: 'run.json', type: 'file', path: '/p/raider-results/run.json' }]
@@ -956,7 +951,6 @@ describe('TestPage fixing a failed value', () => {
     fireEvent.click(screen.getByRole('button', { name: 'failedStep.save' }))
     expect(await screen.findByText('failedStep.fixed')).toBeInTheDocument()
     expect(api.saveRecording).toHaveBeenCalledWith(
-      's1',
       expect.objectContaining({
         id: 't1',
         steps: [step('a'), { ...typed.steps[1], text: 'new' }]
@@ -1024,7 +1018,7 @@ describe('TestPage fixing a failed value', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'failedStep.save' }))
     await waitFor(() => expect(api.saveRecording).toHaveBeenCalled())
-    expect(api.saveRecording.mock.calls[0][1].steps).toEqual([
+    expect(api.saveRecording.mock.calls[0][0].steps).toEqual([
       step('a'),
       { ...typed.steps[1], text: 'new' },
       step('z')
@@ -1047,7 +1041,7 @@ describe('TestPage fixing a failed value', () => {
       ...typed,
       steps: [step('a'), { ...typed.steps[1], text: '', secret: true } as Test['steps'][number]]
     }
-    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [secretTest, empty] }])
+    api.getTests.mockResolvedValue([secretTest, empty])
     renderPage(secretTest)
     await opened()
     await screen.findByTestId('failed-step-panel')
@@ -1082,7 +1076,7 @@ describe('TestPage re-record from the failed step', () => {
     spies.start.mockClear()
     spies.recordFromHere.mockClear()
     useProjectStore.setState({ projectPath: '/p' })
-    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [five, empty] }])
+    api.getTests.mockResolvedValue([five, empty])
     api.readDirectory.mockImplementation(async (dir: string) =>
       dir === '/p/raider-results'
         ? [{ name: 'run.json', type: 'file', path: '/p/raider-results/run.json' }]
@@ -1168,7 +1162,7 @@ describe('TestPage re-picking the failed element', () => {
     spies.rePick.mockReset()
     spies.recordFromHere.mockClear()
     useProjectStore.setState({ projectPath: '/p' })
-    api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [clicks, empty] }])
+    api.getTests.mockResolvedValue([clicks, empty])
     api.readDirectory.mockImplementation(async (dir: string) =>
       dir === '/p/raider-results'
         ? [{ name: 'run.json', type: 'file', path: '/p/raider-results/run.json' }]
@@ -1420,7 +1414,6 @@ describe('TestPage re-picking the failed element', () => {
         dispatchMenuCommand('save')
       })
       expect(api.saveRecording).toHaveBeenCalledWith(
-        UNLISTED_SUITE_ID,
         expect.objectContaining({ id: draftId, steps: [step('a'), step('b')] })
       )
       await waitFor(() => expect(useRecorderStore.getState().draftTest).toBeNull())
@@ -1697,9 +1690,7 @@ describe('TestPage tags', () => {
   })
 
   it('shows tags as chips, with no field, when the loaded test is code-owned', async () => {
-    api.getSuites.mockResolvedValue([
-      { id: 's1', name: 'Smoke', tests: [{ ...recorded, ownership: 'code' }] }
-    ])
+    api.getTests.mockResolvedValue([{ ...recorded, ownership: 'code' }])
     renderTagged(tagged(['smoke', 'login']))
     await screen.findByText('smoke')
     expect(screen.getByText('login')).toBeInTheDocument()

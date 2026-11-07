@@ -6,7 +6,6 @@ import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { useRunStore } from '@foundation/Stores/runStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
-import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 
 interface TestsMoreMenuProps {
   /** The tag the list is filtered by; null means all tests. */
@@ -118,7 +117,7 @@ const TestsMoreMenu: React.FC<TestsMoreMenuProps> = ({ tag }) => {
             className={menuItem}
             disabled={mobileProject}
             title={mobileProject ? t('tests.mobileNoImport') : undefined}
-            onClick={() => act('import', 'Test', () => window.api.importTest(UNLISTED_SUITE_ID))}
+            onClick={() => act('import', 'Test', () => window.api.importTest())}
           >
             {t('tests.moreMenu.importTest')}
           </button>

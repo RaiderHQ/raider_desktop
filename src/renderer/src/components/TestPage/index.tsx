@@ -36,7 +36,6 @@ import { MAX_TAG_LENGTH, MAX_TAGS, TAG_RE, normalizeTags } from '@shared/tags'
 import type { TestRow } from '@foundation/testKey'
 import type { TestResult } from '@foundation/Types/testResult'
 import type { Step } from '@shared/types/step'
-import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import { onMenuCommand } from '@foundation/menuCommands'
 import { dropEmptyDraft, isEmptyRecording, useTestRecording } from '../../hooks/useTestRecording'
 import { useFailedStep } from '../../hooks/useFailedStep'
@@ -47,8 +46,6 @@ import RecordingLayout from './RecordingLayout'
 interface TestPageProps {
   /** The recorded test to show; without one, a new test is named, then recorded */
   row?: TestRow
-  /** The suite a new test is saved into (the list's filter); outside any suite by default */
-  targetSuiteId?: string
 }
 
 const field =
@@ -58,13 +55,13 @@ const toolbarButton =
   'text-xs px-2.5 py-1 rounded border border-neutral-bdr font-medium transition-colors bg-white whitespace-nowrap disabled:text-neutral-mid disabled:cursor-not-allowed'
 
 /** A recorded test (or a new one): its name, start URL, steps, and what can be done with it. */
-const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE_ID }) => {
+const TestPage: React.FC<TestPageProps> = ({ row }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const recording = useTestRecording()
   const activeTest = useRecorderStore((s) => s.activeTest)
-  const activeSuiteId = useRecorderStore((s) => s.activeSuiteId)
+  const activeTestSaved = useRecorderStore((s) => s.activeTestSaved)
   const draftTest = useRecorderStore((s) => s.draftTest)
   const runActive = useRunStore((s) => s.isActive || s.checking)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
@@ -90,7 +87,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const mobileProject = useProjectStore((s) => s.layout?.unsupportedReason === 'mobile')
   const recordingDisabledReason = mobileProject ? t('recorder.unsupported.mobile') : undefined
   const runOutput = useRunOutputStore((s) => s.runOutput)
-  // Output of a run on the old suite format; live runs show in the run panel instead
+  // Output of a run on a project that can't keep tests as files; live runs show in the run panel instead
   const hasLegacyOutput = runOutput !== ''
   const projectPath = useProjectStore((s) => s.projectPath)
   const { updateActiveTest, setShowCode, setIsOutputVisible, setBreakpointIndex } =
@@ -109,7 +106,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
     }
   }, [])
 
-  const draftTarget: RecordingTarget = { kind: 'draft', suiteId: targetSuiteId }
+  const draftTarget: RecordingTarget = { kind: 'draft' }
   const key = row ? testKeyOf(row) : null
   const [openFailed, setOpenFailed] = useState(false)
   useEffect(() => {
@@ -217,8 +214,8 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
     if (isDraft) return
     // Saved right away, not left to the debounce: opening another test cancels that timer
     const renamed = { ...test, name }
-    if (activeSuiteId) {
-      Promise.resolve(window.api.saveRecording(activeSuiteId, renamed))
+    if (activeTestSaved) {
+      Promise.resolve(window.api.saveRecording(renamed))
         .then((result) => handleSaveResult(result, renamed.id, t))
         .catch((error: unknown) => console.error('Saving the new name failed:', error))
     }
@@ -237,7 +234,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
   const fixed = failedStep.status !== 'none' && failedStep.result === fixedFor
 
   const saveFixedStep = (updated: Step, result: TestResult): void => {
-    if (!test || !activeSuiteId) return
+    if (!test || !activeTestSaved) return
     updateActiveTest((p) =>
       p ? { ...p, steps: p.steps.map((s) => (s.id === updated.id ? updated : s)) } : null
     )
@@ -247,7 +244,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
     if (!fixedTest || fixedTest.id !== test.id) return
     // Saved once, right away, as a re-pick is: the next run reads the file
     recording
-      .saveFixedTest(activeSuiteId, fixedTest)
+      .saveFixedTest(fixedTest)
       .then((saved) => {
         if (saved) setFixedFor(result)
       })
@@ -328,7 +325,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
         // and a draft whose Stop & save failed is written again (the close dialog's Save)
         if (command !== 'save' || isReplaying) return
         if (recording.isRecording) void recording.stop()
-        else if (draftHasSteps) void recording.saveDraft(targetSuiteId)
+        else if (draftHasSteps) void recording.saveDraft()
       }),
     [
       canRecord,
@@ -344,8 +341,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       confirming,
       test?.file,
       editCode,
-      draftHasSteps,
-      targetSuiteId
+      draftHasSteps
     ]
   )
 
@@ -375,8 +371,8 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
 
   const deleteTest = (): void => {
     setConfirmingDelete(false)
-    if (!activeSuiteId || !test) return
-    Promise.resolve(window.api.deleteTest(activeSuiteId, test.id)).catch((error: unknown) =>
+    if (!activeTestSaved || !test) return
+    Promise.resolve(window.api.deleteTest(test.id)).catch((error: unknown) =>
       console.error('Deleting the test failed:', error)
     )
     navigate('/overview/tests')

@@ -122,7 +122,7 @@ const openFilesTab = async (): Promise<void> => {
 const mockApi = {
   openDocs: vi.fn().mockResolvedValue({ success: true }),
   listProjectTests: vi.fn().mockResolvedValue([]),
-  getSuites: vi.fn().mockResolvedValue([]),
+  getTests: vi.fn().mockResolvedValue([]),
   readDirectory: vi.fn().mockResolvedValue([]),
   setActiveProject: vi.fn().mockResolvedValue({ success: true }),
   scaffoldGenerate: vi.fn().mockResolvedValue({ success: true, output: '' }),
@@ -146,10 +146,9 @@ const mockApi = {
   duplicateFile: vi.fn().mockResolvedValue({ success: true, newPath: '' }),
   startRun: vi.fn().mockResolvedValue({ runId: 'r1' }),
   getRunDefaults: vi.fn().mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 }),
-  prepareSuiteRun: vi.fn().mockResolvedValue({ mode: 'legacy' }),
   checkMobileReady: vi.fn().mockResolvedValue({ ok: true }),
   getDeviceSettings: vi.fn(),
-  onSuiteUpdated: vi.fn(() => vi.fn())
+  onTestsUpdated: vi.fn(() => vi.fn())
 }
 
 // Web controls only show once the layout says the project isn't mobile

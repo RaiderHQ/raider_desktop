@@ -13,7 +13,6 @@ import { useRunStore } from '@foundation/Stores/runStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { toRouteParam } from '@foundation/testKey'
 import type { Test } from '@foundation/Types/test'
-import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import type { ElementTarget } from '@shared/types/step'
 import type { PickResult } from '@shared/types/pick'
 
@@ -41,7 +40,7 @@ const test1: Test = {
   steps: [step('a'), step('b'), step('c')],
   ownership: 'recorded'
 }
-const suites = [{ id: 's1', name: 'Smoke', tests: [test1] }]
+const savedTests = [test1]
 
 const listeners = new Map<string, (...args: unknown[]) => unknown>()
 const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
@@ -51,7 +50,7 @@ const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
 }
 
 const api = {
-  getSuites: vi.fn(),
+  getTests: vi.fn(),
   saveRecording: vi.fn(),
   saveTrace: vi.fn(),
   loadUrlRequest: vi.fn(),
@@ -100,7 +99,7 @@ const mountHook = async (): Promise<{
     },
     { wrapper }
   )
-  // Let useSuiteSync's first load settle
+  // Let the hook's subscriptions settle
   await act(async () => {})
   return hook
 }
@@ -118,7 +117,7 @@ const recordingTest = async (rec: ReturnType<typeof useTestRecording>): Promise<
 beforeEach(() => {
   vi.clearAllMocks()
   listeners.clear()
-  api.getSuites.mockResolvedValue(suites)
+  api.getTests.mockResolvedValue(savedTests)
   api.saveRecording.mockResolvedValue({ success: true })
   api.loadUrlRequest.mockResolvedValue({ success: true })
   api.startRecordingMain.mockResolvedValue({
@@ -158,7 +157,7 @@ beforeEach(() => {
   delete subscriptions.onRecorderPicked
   Object.assign(window.api, subscriptions)
   useRecorderStore.getState().resetForProject()
-  useRecorderStore.setState({ activeSuiteId: 's1', activeTest: test1 })
+  useRecorderStore.setState({ activeTestSaved: true, activeTest: test1 })
   useTestsListStore.setState({ rows: null })
   useProjectStore.setState({ layout: null, projectPath: '/p' })
   useRunStore.setState({ run: null, origin: null, isActive: false })
@@ -169,24 +168,23 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 describe('recorderStore.openTest', () => {
-  it('opens the row’s test from its suite and keeps it through the first suite load', async () => {
-    useRecorderStore.setState({ activeSuiteId: null, activeTest: null })
+  it('opens the row’s test with its steps and marks it as saved', async () => {
+    useRecorderStore.setState({ activeTestSaved: false, activeTest: null })
     useRecorderStore.getState().setReadOnlyView({ file: 'spec/x_spec.rb', examples: [] } as never)
     await useRecorderStore
       .getState()
-      .openTest({ name: 'Login works', testId: 't1', ownership: 'recorded', suiteIds: ['s1'], tags: [] })
+      .openTest({ name: 'Login works', testId: 't1', ownership: 'recorded', tags: [] })
     const s = useRecorderStore.getState()
-    expect(s.activeSuiteId).toBe('s1')
+    expect(s.activeTestSaved).toBe(true)
     expect(s.activeTest).toEqual(test1)
     expect(s.readOnlyView).toBeNull()
-    expect(s.openTarget).toEqual({ suiteId: 's1', testId: 't1' })
   })
 
-  it('throws when no suite lists the test', async () => {
+  it('throws when the project has no such test', async () => {
     await expect(
       useRecorderStore
         .getState()
-        .openTest({ name: 'Gone', testId: 'nope', ownership: 'legacy', suiteIds: [], tags: [] })
+        .openTest({ name: 'Gone', testId: 'nope', ownership: 'recorded', tags: [] })
     ).rejects.toThrow()
   })
 })
@@ -216,8 +214,8 @@ describe('useTestRecording', () => {
       exampleName: 'logs in'
     })
     expect(api.loadUrlRequest).toHaveBeenCalledWith('')
-    // No suite lists it: autosave and suite updates must leave it alone
-    expect(s.activeSuiteId).toBeNull()
+    // No saved test holds it: autosave and updates of saved tests must leave it alone
+    expect(s.activeTestSaved).toBe(false)
     act(() => useRecorderStore.getState().setRecordingTarget(null))
   })
 
@@ -248,13 +246,13 @@ describe('useTestRecording', () => {
       expect(api.saveRecording).not.toHaveBeenCalled()
     })
 
-    it('is never autosaved, even after a suite update', async () => {
+    it('is never autosaved, even after the tests are updated', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       const rec = await mount()
       await recordExample(rec)
       const recordingId = useRecorderStore.getState().activeTest?.id
-      await emit('suite-updated', suites)
-      // The suite update must not swap the recording for a suite's test
+      await emit('tests-updated', savedTests)
+      // The update must not swap the recording for a saved test
       expect(useRecorderStore.getState().activeTest?.id).toBe(recordingId)
       act(() =>
         useRecorderStore
@@ -285,7 +283,6 @@ describe('useTestRecording', () => {
       })
       await vi.waitFor(() => expect(api.flushRecordingDone).toHaveBeenCalled())
       expect(api.saveRecording).toHaveBeenCalledWith(
-        UNLISTED_SUITE_ID,
         expect.objectContaining({ name: 'logs in', steps: expect.arrayContaining([click]) })
       )
     })
@@ -343,7 +340,7 @@ describe('useTestRecording', () => {
     expect(useRecorderStore.getState().isRecording).toBe(true)
   })
 
-  it('stop for a test closes the browser and saves the test to its suite', async () => {
+  it('stop for a test closes the browser and saves the test to the project', async () => {
     const rec = await mount()
     await act(() => rec.start({ kind: 'test' }))
     await emit('recording-started', 'https://x.test/login')
@@ -352,7 +349,6 @@ describe('useTestRecording', () => {
     await act(() => rec.stop())
     expect(api.stopRecordingMain).toHaveBeenCalled()
     expect(api.saveRecording).toHaveBeenCalledWith(
-      's1',
       expect.objectContaining({ id: 't1', steps: [expect.anything(), step('n')] })
     )
     const s = useRecorderStore.getState()
@@ -402,11 +398,11 @@ describe('useTestRecording', () => {
   describe('a new test (draft)', () => {
     const recordingDraft = async (rec: ReturnType<typeof useTestRecording>): Promise<void> => {
       act(() => useRecorderStore.getState().startDraft('Add to cart', 'https://x.test'))
-      await act(() => rec.start({ kind: 'draft', suiteId: 'not-in-a-suite' }))
+      await act(() => rec.start({ kind: 'draft' }))
       await emit('recording-started', 'https://x.test/login')
     }
 
-    it('stop saves a recorded draft into its suite once, then forgets the draft', async () => {
+    it('stop saves a recorded draft into the project once, then forgets the draft', async () => {
       const rec = await mount()
       await recordingDraft(rec)
       await emit('new-recorded-step', step('c'))
@@ -416,7 +412,6 @@ describe('useTestRecording', () => {
 
       expect(api.saveRecording).toHaveBeenCalledTimes(1)
       expect(api.saveRecording).toHaveBeenCalledWith(
-        'not-in-a-suite',
         expect.objectContaining({ id, name: 'Add to cart', url: 'https://x.test' })
       )
       expect(useRecorderStore.getState().draftTest).toBeNull()
@@ -445,16 +440,16 @@ describe('useTestRecording', () => {
       expect(location).toBe('/overview/tests/x')
     })
 
-    it('is never autosaved, even with a suite open', async () => {
+    it('is never autosaved, even with a saved test marked open', async () => {
       const rec = await mount()
       await recordingDraft(rec)
       await emit('new-recorded-step', step('c'))
       vi.useFakeTimers()
       try {
         act(() => {
-          // Recording failed to save, say: the draft is open, not recording, with a suite set
+          // Recording failed to save, say: the draft is open, not recording, with the saved flag set
           useRecorderStore.setState({ recordingTarget: null, isRecording: false })
-          useRecorderStore.getState().setActiveSuiteId('s1')
+          useRecorderStore.getState().setActiveTestSaved(true)
           useRecorderStore
             .getState()
             .updateActiveTest((p) => (p ? { ...p, name: 'Add to basket' } : p))
@@ -483,7 +478,7 @@ describe('useTestRecording', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(500)
       })
-      expect(api.saveRecording).toHaveBeenCalledWith('s1', expect.objectContaining({ id: 't1' }))
+      expect(api.saveRecording).toHaveBeenCalledWith(expect.objectContaining({ id: 't1' }))
     } finally {
       vi.useRealTimers()
     }
@@ -512,8 +507,8 @@ describe('useTestRecording', () => {
     it('runs a recorded test in legacy mode with its current steps', async () => {
       const rec = await mount()
       await act(() => rec.run())
-      expect(api.prepareTestRun).toHaveBeenCalledWith('s1', 't1', test1)
-      expect(api.runTest).toHaveBeenCalledWith('s1', 't1', '/p', '/usr/bin/ruby', test1)
+      expect(api.prepareTestRun).toHaveBeenCalledWith('t1', test1)
+      expect(api.runTest).toHaveBeenCalledWith('t1', '/p', '/usr/bin/ruby', test1)
       expect(useRunOutputStore.getState().runOutput).toBe('ok')
       expect(api.startRun).not.toHaveBeenCalled()
     })
@@ -531,7 +526,7 @@ describe('useTestRecording', () => {
       api.prepareTestRun.mockResolvedValue({ mode: 'files', file: 'spec/login_works_spec.rb' })
       const rec = await mount()
       await act(() => rec.run())
-      expect(api.prepareTestRun).toHaveBeenCalledWith('s1', 't1', test1)
+      expect(api.prepareTestRun).toHaveBeenCalledWith('t1', test1)
       expect(scopeSent()).toEqual({ kind: 'files', files: ['spec/login_works_spec.rb'] })
       expect(useRunStore.getState().origin).toEqual({ route: location, label: 'Login works' })
       expect(location).toBe('/overview/tests/x')
@@ -549,7 +544,7 @@ describe('useTestRecording', () => {
 
     it('runs a test edited in code live from its file', async () => {
       const edited: Test = { ...test1, ownership: 'codeOwnedWasRecorded', file: 'spec/a_spec.rb' }
-      api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [edited] }])
+      api.getTests.mockResolvedValue([edited])
       useRecorderStore.setState({ activeTest: edited })
       const rec = await mount()
       await act(() => rec.run())
@@ -574,7 +569,6 @@ describe('useTestRecording', () => {
     })
     expect(api.saveRecording).toHaveBeenCalledTimes(1)
     expect(api.saveRecording).toHaveBeenCalledWith(
-      's1',
       expect.objectContaining({ url: 'https://y' })
     )
   })
@@ -636,7 +630,7 @@ describe('useTestRecording', () => {
     await emit('recording-stopped')
     expect(api.saveTrace).toHaveBeenCalledTimes(1)
     expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], stepIds)
-    expect(api.saveRecording).toHaveBeenCalledWith('s1', expect.objectContaining({ id: 't1' }))
+    expect(api.saveRecording).toHaveBeenCalledWith(expect.objectContaining({ id: 't1' }))
     // The test first: the trace save may delete pictures of steps the file no longer has
     expect(api.saveRecording.mock.invocationCallOrder[0]).toBeLessThan(
       api.saveTrace.mock.invocationCallOrder[0]
@@ -712,7 +706,6 @@ describe('useTestRecording', () => {
       flushRecording?.()
     })
     expect(api.saveRecording).toHaveBeenCalledWith(
-      's1',
       expect.objectContaining({ steps: [...test1.steps, step('n')] })
     )
     expect(api.flushRecordingDone).toHaveBeenCalledTimes(1)
@@ -735,7 +728,7 @@ describe('useTestRecording', () => {
     unmount()
     expect(api.stopRecordingMain).toHaveBeenCalled()
     await act(async () => {})
-    expect(api.saveRecording).toHaveBeenCalledWith('s1', expect.objectContaining({ id: 't1' }))
+    expect(api.saveRecording).toHaveBeenCalledWith(expect.objectContaining({ id: 't1' }))
     expect(api.setRecordingState).toHaveBeenLastCalledWith(false)
   })
 
@@ -833,11 +826,10 @@ describe('useTestRecording', () => {
       const error = vi.spyOn(console, 'error').mockImplementation(() => {})
       api.saveRecording.mockRejectedValue(new Error('disk full'))
       const { unmount } = await mountHook()
-      act(() => useRecorderStore.setState({ activeSuiteId: null, unsavedExample: unsaved }))
+      act(() => useRecorderStore.setState({ activeTestSaved: false, unsavedExample: unsaved }))
       unmount()
       await act(async () => {})
       expect(api.saveRecording).toHaveBeenCalledWith(
-        UNLISTED_SUITE_ID,
         expect.objectContaining({ id: 't1' })
       )
       expect(mockToast.error).toHaveBeenCalledWith('recorder.saveFailed', { id: 'save-failed' })
@@ -847,7 +839,7 @@ describe('useTestRecording', () => {
 
     it('forgets them once saved, and saves them once when asked twice', async () => {
       const { unmount } = await mountHook()
-      act(() => useRecorderStore.setState({ activeSuiteId: null, unsavedExample: unsaved }))
+      act(() => useRecorderStore.setState({ activeTestSaved: false, unsavedExample: unsaved }))
       await act(async () => {
         flushRecording?.()
         unmount()
@@ -874,9 +866,9 @@ describe('useTestRecording', () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       useRecorderStore.setState({
         activeTest: picks,
-        suites: [{ id: 's1', name: 'Smoke', tests: [picks] }]
+        activeTestSaved: true
       })
-      api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [picks] }])
+      api.getTests.mockResolvedValue([picks])
     })
 
     /** Starts re-picking step `index`, up to the point the user is asked to click */
@@ -911,8 +903,8 @@ describe('useTestRecording', () => {
         await outcome
       })
       await expect(outcome).resolves.toEqual({ kind: 'picked' })
-      const saved = api.saveRecording.mock.calls[0][1] as Test
-      expect(api.saveRecording).toHaveBeenCalledWith('s1', saved)
+      const saved = api.saveRecording.mock.calls[0][0] as Test
+      expect(api.saveRecording).toHaveBeenCalledWith(saved)
       expect(saved.steps[2].element).toBe(E)
       expect(saved.steps).toEqual(
         picks.steps.map((s, i) => (i === 2 ? { ...s, element: E } : s))
@@ -999,7 +991,7 @@ describe('useTestRecording', () => {
     it('replays nothing for the first step', async () => {
       const first: Test = { ...picks, steps: picks.steps.slice(1) }
       useRecorderStore.setState({ activeTest: first })
-      api.getSuites.mockResolvedValue([{ id: 's1', name: 'Smoke', tests: [first] }])
+      api.getTests.mockResolvedValue([first])
       const rec = await mount()
       const { outcome } = await pickUpTo(rec, 0)
       expect(api.replayInWebview).not.toHaveBeenCalled()

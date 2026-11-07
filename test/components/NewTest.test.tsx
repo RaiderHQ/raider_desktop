@@ -10,7 +10,6 @@ import useProjectStore from '@foundation/Stores/projectStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import type { Test } from '@foundation/Types/test'
-import { UNLISTED_SUITE_ID } from '@shared/types/suite'
 import en from '@assets/translations/en.json'
 
 // The real copy, so labels and the toast can be checked word for word
@@ -55,11 +54,11 @@ const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
   })
 }
 
-// What main has saved so far, so the list and the suites follow the saves
+// What main has saved so far, so the list and the tests follow the saves
 let saved: Test[] = []
 
 const api = {
-  getSuites: vi.fn(),
+  getTests: vi.fn(),
   listProjectTests: vi.fn(),
   saveRecording: vi.fn(),
   saveTrace: vi.fn(),
@@ -114,15 +113,12 @@ beforeEach(() => {
   vi.clearAllMocks()
   listeners.clear()
   saved = []
-  api.getSuites.mockImplementation(async () => [
-    { id: 's1', name: 'Smoke', tests: [search] },
-    ...(saved.length ? [{ id: UNLISTED_SUITE_ID, name: 'Not in a suite', tests: saved }] : [])
-  ])
+  api.getTests.mockImplementation(async () => [search, ...saved])
   api.listProjectTests.mockImplementation(async () => [
     { name: search.name, file: 'spec/search_spec.rb', testId: 't1', ownership: 'recorded' },
     ...saved.map((s) => ({ name: s.name, file: s.file, testId: s.id, ownership: 'recorded' }))
   ])
-  api.saveRecording.mockImplementation(async (_suiteId: string, test: Test) => {
+  api.saveRecording.mockImplementation(async (test: Test) => {
     const file = 'spec/add_to_cart_spec.rb'
     saved = [{ ...test, file, ownership: 'recorded' }]
     return { success: true, test: { ...test, file } }
@@ -201,7 +197,6 @@ describe('New test', () => {
     )
     expect(api.saveRecording).toHaveBeenCalledTimes(1)
     expect(api.saveRecording).toHaveBeenCalledWith(
-      UNLISTED_SUITE_ID,
       expect.objectContaining({
         name: 'Add to cart',
         url: 'https://shop.test',
@@ -276,7 +271,6 @@ describe('New test', () => {
 
     await waitFor(() => expect(api.saveRecording).toHaveBeenCalledTimes(1))
     expect(api.saveRecording).toHaveBeenCalledWith(
-      UNLISTED_SUITE_ID,
       expect.objectContaining({ name: 'Add to cart' })
     )
   })
@@ -286,7 +280,7 @@ describe('New test', () => {
     await emit('new-recorded-step', step('c1'))
     fireEvent.click(screen.getByRole('button', { name: 'Stop & save' }))
     await waitFor(() => expect(api.saveRecording).toHaveBeenCalled())
-    for (const [, test] of api.saveRecording.mock.calls) {
+    for (const [test] of api.saveRecording.mock.calls) {
       expect((test as Test).name).not.toBe('Untitled Test')
     }
     expect(screen.queryByText('Untitled Test')).not.toBeInTheDocument()

@@ -47,11 +47,10 @@ const TestsList: React.FC<TestsListProps> = ({
       toast.error(t('tests.restoreFailed'))
     }
     try {
-      const suites = await window.api.getSuites()
-      const suite = suites.find((s) => s.tests.some((x) => x.id === row.testId))
-      const test = suite?.tests.find((x) => x.id === row.testId)
-      if (!suite || !test) return fail(`No suite lists test ${row.testId}`)
-      const result = await window.api.saveRecording(suite.id, test)
+      const tests = await window.api.getTests()
+      const test = tests.find((x) => x.id === row.testId)
+      if (!test) return fail(`No saved test ${row.testId}`)
+      const result = await window.api.saveRecording(test)
       if (!result.success) return fail(result.error)
       toast.success(t('tests.restored'))
       await useTestsListStore.getState().reload()
