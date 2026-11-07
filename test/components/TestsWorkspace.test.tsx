@@ -135,6 +135,8 @@ describe('TestsWorkspace recording mode', () => {
     expect(screen.queryByRole('button', { name: /Search products/ })).not.toBeInTheDocument()
     const rail = screen.getByTestId('tests-rail')
     expect(rail).toHaveTextContent('Tests')
+    expect(rail).toHaveClass('w-10')
+    expect(rail).not.toHaveClass('w-24')
     expect(screen.getByText('Recording')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Stop & save' })).toBeInTheDocument()
     expect(document.querySelector('.w-\\[40\\%\\]')).toBeInTheDocument()

@@ -161,8 +161,26 @@ describe('CommandList', () => {
       />
     )
     const block = screen.getByTestId('step-failed')
-    expect(block).toHaveClass('ring-red-400')
-    expect(block).not.toHaveClass('ring-ruby/40')
+    const card = block.querySelector('.bg-white') as HTMLElement
+    expect(card).toHaveClass('ring-2', 'ring-inset', 'ring-red-400')
+    expect(card).not.toHaveClass('ring-ruby/40')
+    expect(block).not.toHaveClass('ring-2')
+  })
+
+  it('puts the latest highlight on the step card, not the wrapper with the gutter', () => {
+    render(
+      <CommandList
+        steps={steps}
+        setSteps={vi.fn()}
+        onDeleteStep={vi.fn()}
+        showCode={false}
+        markLatest
+      />
+    )
+    const wrapper = document.querySelector('[data-latest="true"]') as HTMLElement
+    const card = wrapper.querySelector('.bg-white') as HTMLElement
+    expect(card).toHaveClass('ring-2', 'ring-inset', 'ring-ruby/40')
+    expect(wrapper).not.toHaveClass('ring-2')
   })
 
   it('offers Show guide while recording, which reopens the guide', () => {
