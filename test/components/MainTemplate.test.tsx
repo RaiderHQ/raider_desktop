@@ -240,6 +240,12 @@ describe('MainTemplate project files toasts', () => {
       expect(screen.getByTestId('where')).toHaveTextContent('/overview/tests/new')
     })
 
+    it('New test is ignored on the start screen while a project stays loaded (U7)', () => {
+      renderAt('/start-project')
+      act(() => menuListener()('new-test'))
+      expect(screen.getByTestId('where')).toHaveTextContent('/start-project')
+    })
+
     it('New test is ignored when no project is open', async () => {
       const toast = (await import('react-hot-toast')).default as unknown as {
         error: ReturnType<typeof vi.fn>

@@ -60,6 +60,7 @@ const isWebAddress = (value: string): boolean => {
   }
 }
 
+
 const Overview: React.FC = () => {
   const { t } = useTranslation()
   const projectPath: string | null = useProjectStore((state) => state.projectPath)
@@ -159,12 +160,9 @@ const Overview: React.FC = () => {
     if (savedTimer.current) clearTimeout(savedTimer.current)
     savedTimer.current = setTimeout(() => setSettingsSaved(false), 2500)
   }
-  useEffect(
-    () => (): void => {
-      if (savedTimer.current) clearTimeout(savedTimer.current)
-    },
-    []
-  )
+  useEffect(() => (): void => {
+    if (savedTimer.current) clearTimeout(savedTimer.current)
+  }, [])
   const [selectedBrowser, setSelectedBrowser] = useState('chrome')
   const [headless, setHeadless] = useState(false)
 
@@ -187,13 +185,9 @@ const Overview: React.FC = () => {
     filePath: string
     fileName: string
   } | null>(null)
-  const [renameTarget, setRenameTarget] = useState<{ filePath: string; fileName: string } | null>(
-    null
-  )
+  const [renameTarget, setRenameTarget] = useState<{ filePath: string; fileName: string } | null>(null)
   const [renameValue, setRenameValue] = useState('')
-  const [deleteConfirm, setDeleteConfirm] = useState<{ filePath: string; fileName: string } | null>(
-    null
-  )
+  const [deleteConfirm, setDeleteConfirm] = useState<{ filePath: string; fileName: string } | null>(null)
 
   // Terminal state
   const [terminalOpen, setTerminalOpen] = useState(false)
@@ -430,8 +424,7 @@ const Overview: React.FC = () => {
         setHeadless(!enabled)
         let errorMsg = response.error || t('overview.settings.headlessUpdateFailed')
         if (errorMsg.includes('is not installed') || errorMsg.includes('rbenv')) {
-          errorMsg =
-            'Ruby version not found. Please set a valid Ruby version with rbenv (e.g. rbenv local 3.4.1) in your project directory.'
+          errorMsg = 'Ruby version not found. Please set a valid Ruby version with rbenv (e.g. rbenv local 3.4.1) in your project directory.'
         }
         toast.error(errorMsg)
         return
@@ -666,11 +659,7 @@ const Overview: React.FC = () => {
     setFileContextMenu({ x: e.clientX, y: e.clientY, filePath, fileName })
   }
 
-  const handleFolderContextMenu = (
-    e: React.MouseEvent,
-    folderPath: string,
-    folderName: string
-  ): void => {
+  const handleFolderContextMenu = (e: React.MouseEvent, folderPath: string, folderName: string): void => {
     e.preventDefault()
     // Reuse the same fileContextMenu state — folders support the same operations
     setFileContextMenu({ x: e.clientX, y: e.clientY, filePath: folderPath, fileName: folderName })
@@ -854,11 +843,7 @@ const Overview: React.FC = () => {
               />
             )}
             {showWebSettings && (
-              <Tooltip
-                content={t('tooltips.overview.urlInput')}
-                position="right"
-                className="w-full"
-              >
+              <Tooltip content={t('tooltips.overview.urlInput')} position="right" className="w-full">
                 <div className="flex items-center gap-2 w-full">
                   <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                     {t('overview.settings.urlLabel')}:
@@ -981,10 +966,7 @@ const Overview: React.FC = () => {
               {showWebSettings && (
                 <Tooltip content={t('tooltips.overview.timeout')} position="right">
                   <div className="flex items-center gap-2">
-                    <label
-                      htmlFor="timeout-input"
-                      className="text-sm font-medium text-neutral-dk whitespace-nowrap"
-                    >
+                    <label htmlFor="timeout-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                       {t('settings.timeout.label')}
                     </label>
                     <input
@@ -1003,16 +985,10 @@ const Overview: React.FC = () => {
               )}
             </div>
             {moreOptionsOpen && (
-              <div
-                className="flex items-center gap-4 flex-wrap"
-                data-testid="overview-more-options-panel"
-              >
+              <div className="flex items-center gap-4 flex-wrap" data-testid="overview-more-options-panel">
                 {!isMobileProject && (
                   <div className="flex items-center gap-2">
-                    <label
-                      htmlFor="workers-input"
-                      className="text-sm font-medium text-neutral-dk whitespace-nowrap"
-                    >
+                    <label htmlFor="workers-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                       {t('run.workers')}
                     </label>
                     <Tooltip content={t('tooltips.files.workers')} position="right">
@@ -1028,9 +1004,7 @@ const Overview: React.FC = () => {
                         }}
                         min={1}
                         max={runDefaults?.maxWorkers}
-                        placeholder={
-                          runDefaults ? String(runDefaults.recommendedWorkers) : undefined
-                        }
+                      placeholder={runDefaults ? String(runDefaults.recommendedWorkers) : undefined}
                         className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
                         data-testid="overview-workers-input"
                       />
@@ -1090,8 +1064,7 @@ const Overview: React.FC = () => {
                     onChange={(tags) => {
                       setBrowserOptions(tags)
                       if (projectPath) {
-                        window.api
-                          .updateBrowserOptions(projectPath, tags)
+                        window.api.updateBrowserOptions(projectPath, tags)
                           .then((result) => {
                             if (!result.success) {
                               toast.error(result.error || t('settings.error.unexpected'))
@@ -1112,10 +1085,7 @@ const Overview: React.FC = () => {
               <div className="flex items-center gap-4 flex-wrap">
                 <Tooltip content={t('tooltips.overview.implicitWait')} position="right">
                   <div className="flex items-center gap-2">
-                    <label
-                      htmlFor="implicit-wait"
-                      className="text-sm font-medium text-neutral-dk whitespace-nowrap"
-                    >
+                    <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                       {t('settings.recording.implicitWait.label')}
                     </label>
                     <input
@@ -1134,10 +1104,7 @@ const Overview: React.FC = () => {
                 </Tooltip>
                 <Tooltip content={t('tooltips.overview.explicitWait')} position="right">
                   <div className="flex items-center gap-2">
-                    <label
-                      htmlFor="explicit-wait"
-                      className="text-sm font-medium text-neutral-dk whitespace-nowrap"
-                    >
+                    <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
                       {t('settings.recording.explicitWait.label')}
                     </label>
                     <input
@@ -1159,9 +1126,7 @@ const Overview: React.FC = () => {
           </div>
           <div className="relative h-[62vh] border border-t-0 border-neutral-bdr rounded-b-lg shadow-card flex flex-col bg-white">
             {/* Split: file tree left + editor preview right */}
-            <div
-              className={`${terminalOpen ? 'h-1/3' : 'flex-1'} flex flex-row min-h-0 overflow-hidden`}
-            >
+            <div className={`${terminalOpen ? 'h-1/3' : 'flex-1'} flex flex-row min-h-0 overflow-hidden`}>
               {/* File tree - always visible */}
               <div className="w-[28%] border-r border-neutral-bdr overflow-y-auto shrink-0">
                 <Folder
@@ -1219,7 +1184,10 @@ const Overview: React.FC = () => {
               <>
                 <div className="border-t border-neutral-bdr shrink-0" />
                 <div className="flex-1 min-h-0">
-                  <Terminal cwd={projectPath} onClose={() => setTerminalOpen(false)} />
+                  <Terminal
+                    cwd={projectPath}
+                    onClose={() => setTerminalOpen(false)}
+                  />
                 </div>
               </>
             )}
@@ -1234,14 +1202,10 @@ const Overview: React.FC = () => {
               <ScaffoldPanel />
             </div>
             <div className="w-64 shrink-0 border-l border-neutral-bdr pl-8">
-              <h3 className="text-sm font-semibold text-neutral-dark mb-3">
-                {t('settings.section.paths')}
-              </h3>
+              <h3 className="text-sm font-semibold text-neutral-dark mb-3">{t('settings.section.paths')}</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-medium text-neutral-dk block mb-1">
-                    {t('settings.paths.page')}
-                  </label>
+                  <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.page')}</label>
                   <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
                     <input
                       type="text"
@@ -1254,9 +1218,7 @@ const Overview: React.FC = () => {
                   </Tooltip>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-neutral-dk block mb-1">
-                    {t('settings.paths.feature')}
-                  </label>
+                  <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.feature')}</label>
                   <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
                     <input
                       type="text"
@@ -1269,9 +1231,7 @@ const Overview: React.FC = () => {
                   </Tooltip>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-neutral-dk block mb-1">
-                    {t('settings.paths.spec')}
-                  </label>
+                  <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.spec')}</label>
                   <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
                     <input
                       type="text"
@@ -1284,9 +1244,7 @@ const Overview: React.FC = () => {
                   </Tooltip>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-neutral-dk block mb-1">
-                    {t('settings.paths.helper')}
-                  </label>
+                  <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.helper')}</label>
                   <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
                     <input
                       type="text"
@@ -1303,6 +1261,7 @@ const Overview: React.FC = () => {
           </div>
         </div>
       )}
+
 
       {activeTab === 'dashboard' && (
         <div className="relative w-full">

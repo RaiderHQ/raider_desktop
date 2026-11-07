@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, Outlet, useNavigate } from 'react-router'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import toast, { Toaster } from 'react-hot-toast'
 import Logo from '@components/Logo'
@@ -115,6 +115,10 @@ const MainTemplate: React.FC = (): JSX.Element => {
   const installModalOpen = useRef(false)
   installModalOpen.current = isRubyInstallModalOpen || isGemsInstallModalOpen
   const pickingFolder = useRef(false)
+  // The project stays loaded while the start screen shows, so the page matters as much as the store
+  const location = useLocation()
+  const onOverview = useRef(false)
+  onOverview.current = location.pathname.startsWith('/overview')
   useEffect(() => {
     const openProject = async (): Promise<void> => {
       if (pickingFolder.current) return
@@ -153,8 +157,10 @@ const MainTemplate: React.FC = (): JSX.Element => {
       }
       if (modalOpen.current) return
       if (command === 'new-test') {
-        // Only a project has a Tests tab; with none open nothing listens
+        // Only a project has a Tests tab; with none open nothing listens. The project stays
+        // loaded while the start screen shows, so the page matters as much as the store
         if (!useProjectStore.getState().projectPath) return
+        if (!onOverview.current) return
         if (pageEditorDirty()) return
         if (recorderBusy()) {
           toast.error(t('quickRecord.stopFirst'))

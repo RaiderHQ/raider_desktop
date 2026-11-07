@@ -116,6 +116,21 @@ describe('ProjectMenu', () => {
     expect(mockToast.error).toHaveBeenCalledWith(en.overview.projectMenu.unsaved)
   })
 
+  it('falls back to a plain label for a root folder, and names the path in its title', () => {
+    useProjectStore.setState({ projectPath: '/' })
+    renderMenu()
+    const button = screen.getByTestId('project-menu')
+    expect(button).toHaveTextContent('Project')
+    expect(button).toHaveAttribute('title', '/')
+  })
+
+  it('puts focus back on the trigger after Escape', () => {
+    renderMenu()
+    open()
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
+    expect(screen.getByTestId('project-menu')).toHaveFocus()
+  })
+
   it('closes on Escape', () => {
     renderMenu()
     open()

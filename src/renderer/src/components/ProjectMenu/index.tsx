@@ -20,6 +20,7 @@ const ProjectMenu: React.FC = () => {
   const projectPath = useProjectStore((s) => s.projectPath)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -30,10 +31,18 @@ const ProjectMenu: React.FC = () => {
     return (): void => document.removeEventListener('mousedown', close)
   }, [open])
 
-  const name = projectPath?.split(/[\\/]/).filter(Boolean).pop() ?? ''
+  // A root folder has no name of its own
+  const name =
+    projectPath?.split(/[\\/]/).filter(Boolean).pop() ?? t('overview.projectMenu.project')
+
+  // Closing from the keyboard or an item: focus goes back to the trigger, not to the body
+  const close = (): void => {
+    setOpen(false)
+    trigger.current?.focus()
+  }
 
   const go = (route: string): void => {
-    setOpen(false)
+    close()
     if (recorderBusy()) {
       toast.error(t('quickRecord.stopFirst'))
       return
@@ -50,12 +59,14 @@ const ProjectMenu: React.FC = () => {
       className="relative mr-3"
       ref={ref}
       onKeyDown={(e) => {
-        if (e.key === 'Escape') setOpen(false)
+        if (e.key === 'Escape' && open) close()
       }}
     >
       <Tooltip content={t('tooltips.overview.projectMenu')} position="bottom">
         <button
+          ref={trigger}
           type="button"
+          title={projectPath ?? undefined}
           aria-haspopup="menu"
           aria-expanded={open}
           onClick={() => setOpen(!open)}

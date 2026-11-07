@@ -233,7 +233,8 @@ describe('copy', () => {
     expect(en.overview.projectMenu).toEqual({
       switch: 'Switch project…',
       new: 'New project…',
-      unsaved: 'Save or discard your changes first'
+      unsaved: 'Save or discard your changes first',
+      project: 'Project'
     })
     expect(en.tooltips.overview.projectMenu).toBe('Switch to another project or start a new one')
   })

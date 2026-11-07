@@ -287,7 +287,8 @@
     "projectMenu": {
       "switch": "Switch project…",
       "new": "New project…",
-      "unsaved": "Save or discard your changes first"
+      "unsaved": "Save or discard your changes first",
+      "project": "Project"
     },
     "paths": {
       "placeholder": {

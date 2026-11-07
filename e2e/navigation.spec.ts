@@ -45,10 +45,12 @@ test.describe('Navigation', () => {
     await setupProjectContext(page)
     await goToOverview(page)
     await page.getByTestId('project-menu').click()
+    await page.mouse.move(0, 0)
     await page.getByRole('menuitem', { name: 'Switch project…' }).click()
     await expect(page).toHaveURL(/#\/start-project/)
     await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
-    await mockSelectFolder(page, '/mock/project')
+    // The same folder setupProjectContext mocked, so no unmocked IPC runs on the way back
+    await mockSelectFolder(page, '/mock/test-project')
     await openProjectButton(page).click()
     await expect(page).toHaveURL(/#\/overview/)
     await expect(page.getByRole('button', { name: 'Tests', exact: true })).toBeVisible()

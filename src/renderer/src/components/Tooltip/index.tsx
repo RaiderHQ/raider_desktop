@@ -152,7 +152,7 @@ const Tooltip: React.FC<TooltipProps> = ({
             id={id}
             role="tooltip"
             style={style}
-            className="bg-neutral-dark text-white text-xs px-2.5 py-1.5 rounded shadow-elevated leading-snug whitespace-normal text-center"
+            className="pointer-events-none bg-neutral-dark text-white text-xs px-2.5 py-1.5 rounded shadow-elevated leading-snug whitespace-normal text-center"
           >
             {disabledReason || content}
             {shortcut && !disabledReason && (
