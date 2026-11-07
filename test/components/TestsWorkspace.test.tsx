@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
+import { render, screen, within, fireEvent, act, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { ipcSubscriptions } from '../helpers/ipcSubscriptions'
@@ -137,6 +137,7 @@ describe('TestsWorkspace recording mode', () => {
     expect(rail).toHaveTextContent('Tests')
     expect(rail).toHaveClass('w-10')
     expect(rail).not.toHaveClass('w-24')
+    expect(within(rail).getByRole('button', { name: 'Tests' })).toBeInTheDocument()
     expect(screen.getByText('Recording')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Stop & save' })).toBeInTheDocument()
     expect(document.querySelector('.w-\\[40\\%\\]')).toBeInTheDocument()

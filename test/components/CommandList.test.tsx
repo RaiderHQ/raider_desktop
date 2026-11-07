@@ -161,7 +161,7 @@ describe('CommandList', () => {
       />
     )
     const block = screen.getByTestId('step-failed')
-    const card = block.querySelector('.bg-white') as HTMLElement
+    const card = block.querySelector('[data-testid="step-card"]') as HTMLElement
     expect(card).toHaveClass('ring-2', 'ring-inset', 'ring-red-400')
     expect(card).not.toHaveClass('ring-ruby/40')
     expect(block).not.toHaveClass('ring-2')
@@ -178,7 +178,7 @@ describe('CommandList', () => {
       />
     )
     const wrapper = document.querySelector('[data-latest="true"]') as HTMLElement
-    const card = wrapper.querySelector('.bg-white') as HTMLElement
+    const card = wrapper.querySelector('[data-testid="step-card"]') as HTMLElement
     expect(card).toHaveClass('ring-2', 'ring-inset', 'ring-ruby/40')
     expect(wrapper).not.toHaveClass('ring-2')
   })

@@ -80,11 +80,17 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
           className="w-10 shrink-0 border-r border-neutral-bdr py-2 bg-neutral-50 flex justify-center"
         >
           <Tooltip content={t('tooltips.tests.rail')} position="right" className="flex">
+            {/* A 40 px strip (V6): the label reads upward; the chevron stays upright, toward the list */}
             <button
               onClick={() => navigate('/overview/tests')}
-              className="[writing-mode:vertical-rl] rotate-180 whitespace-nowrap text-sm font-medium text-neutral-dark hover:text-ruby px-2 py-1 rounded transition-colors"
+              className="flex flex-col items-center gap-1 text-sm font-medium text-neutral-dark hover:text-ruby px-1.5 py-1 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ruby"
             >
-              {t('tests.rail')} <span aria-hidden>›</span>
+              <span aria-hidden className="leading-none">
+                ‹
+              </span>
+              <span className="[writing-mode:vertical-rl] rotate-180 whitespace-nowrap">
+                {t('tests.rail')}
+              </span>
             </button>
           </Tooltip>
         </div>

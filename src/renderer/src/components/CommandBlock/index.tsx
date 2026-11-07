@@ -293,6 +293,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
       )}
 
       <div
+        data-testid="step-card"
         className={`relative bg-white p-3 pl-4 pr-8 rounded-lg border transition-shadow duration-200 z-10 ml-5 ${
           readOnly ? '' : 'cursor-grab active:cursor-grabbing'
         } ${isBreakpoint ? 'border-amber-300 bg-amber-50/30' : 'border-neutral-bdr/50'} ${
