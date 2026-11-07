@@ -397,7 +397,7 @@ describe('CodeTestPane', () => {
     )
   })
 
-  it('Open file from the menu opens the test file in the editor', async () => {
+  it('View file from the menu opens the test file in the editor', async () => {
     useProjectStore.setState({ projectPath: '/Users/me/project' })
     renderPane()
     await screen.findByRole('button', { name: 'logs in' })
@@ -418,7 +418,7 @@ describe('CodeTestPane', () => {
     await waitFor(() => expect(api.recordOverExample).toHaveBeenCalled())
   })
 
-  it('Open file from the menu waits while the overwrite warning is up', async () => {
+  it('View file from the menu waits while the overwrite warning is up', async () => {
     useProjectStore.setState({ projectPath: '/Users/me/project' })
     renderPane()
     fireEvent.click(await screen.findByRole('button', { name: 'testPage.record' }))
@@ -602,7 +602,7 @@ describe('CodeTestPane', () => {
       overwriteTarget: '“{{name}}” in {{file}}',
       exampleNotUnique: 'Raider couldn\'t find exactly one test named "{{name}}" in this file.',
       saveAsNew: 'Save as a new test',
-      editCode: 'Open file…',
+      editCode: 'View file',
       run: 'Run',
       record: 'Record'
     })

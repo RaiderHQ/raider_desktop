@@ -11,6 +11,8 @@ describe('CodeViewToggle', () => {
   it('is a two-segment group with the pressed segment marked', () => {
     render(<CodeViewToggle view="steps" onChange={vi.fn()} />)
     expect(screen.getByRole('group', { name: 'testPage.view' })).toBeInTheDocument()
+    // The group's name is the visible "Show as" text, so the label explains itself
+    expect(screen.getByText('testPage.view')).toBeVisible()
     expect(screen.getByRole('button', { name: 'testPage.steps' })).toHaveAttribute(
       'aria-pressed',
       'true'

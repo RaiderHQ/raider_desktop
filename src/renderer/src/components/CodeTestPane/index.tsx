@@ -132,7 +132,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
     if (!useRecorderStore.getState().unsavedExample) load()
   }
 
-  // The menu bar's Stop & save and Open file… act like the toolbar buttons
+  // The menu bar's Stop & save and View file act like the toolbar buttons
   useEffect(
     () =>
       onMenuCommand((command) => {

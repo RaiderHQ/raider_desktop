@@ -268,7 +268,7 @@ const TestPage: React.FC<TestPageProps> = ({ row, targetSuiteId = UNLISTED_SUITE
       onMenuCommand((command) => {
         if (command === 'record' && canRecord) record()
         if (command === 'run' && canRun) void recording.run()
-        // Stop & save is the Stop button; Open file… is the toolbar's, which the recording blocks
+        // Stop & save is the Stop button; View file is the toolbar's, which the recording blocks
         if (command === 'stop' && recording.isRecording && !isReplaying) void recording.stop()
         if (command === 'open-file' && !busy && !starting && !confirming && !!test?.file) {
           editCode()
