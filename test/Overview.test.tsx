@@ -1099,8 +1099,8 @@ describe('Overview live runs', (): void => {
     fireEvent.change(screen.getByTestId('overview-run-tag-input'), {
       target: { value: '9Bad-Tag' }
     })
-    // Lower-cased as typed
-    expect(screen.getByTestId('overview-run-tag-input')).toHaveValue('9bad-tag')
+    // The raw value is kept; CSS shows it lower-case
+    expect(screen.getByTestId('overview-run-tag-input')).toHaveValue('9Bad-Tag')
     expect(screen.getByText('overview.settings.customTagInvalid')).toBeInTheDocument()
     expect(screen.getByTestId('run-tests')).toBeDisabled()
     expect(screen.getByTestId('run-tests')).toHaveAttribute(
@@ -1115,7 +1115,7 @@ describe('Overview live runs', (): void => {
     fireEvent.change(screen.getByTestId('overview-run-mode-select'), {
       target: { value: 'custom' }
     })
-    fireEvent.change(screen.getByTestId('overview-run-tag-input'), { target: { value: 'nightly' } })
+    fireEvent.change(screen.getByTestId('overview-run-tag-input'), { target: { value: 'Nightly' } })
     expect(screen.queryByText('overview.settings.customTagInvalid')).not.toBeInTheDocument()
     await act(async () => {
       fireEvent.click(screen.getByTestId('run-tests'))

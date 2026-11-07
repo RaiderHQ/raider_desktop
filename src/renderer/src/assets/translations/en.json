@@ -288,7 +288,7 @@
         "regression": "Regression",
         "custom": "Custom tag…"
       },
-      "customTagPlaceholder": "Tag name...",
+      "customTagPlaceholder": "Tag name…",
       "customTagLabel": "Tag to run",
       "customTagInvalid": "Letters, digits and underscores only, starting with a letter",
       "customTagEmpty": "Type the tag to run",

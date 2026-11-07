@@ -96,7 +96,8 @@ test.describe('Overview settings toolbar - functional', () => {
     const tagInput = page.getByTestId('overview-run-tag-input')
     await expect(tagInput).toBeVisible()
     await tagInput.fill('Nightly')
-    await expect(tagInput).toHaveValue('nightly')
+    await expect(tagInput).toHaveValue('Nightly')
+    await expect(tagInput).toHaveClass(/lowercase/)
     await expect(page.getByRole('button', { name: 'Run tests' })).toBeEnabled()
   })
   test('paths on the Scaffolding tab trigger update-paths on blur', async ({
