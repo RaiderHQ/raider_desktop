@@ -826,7 +826,8 @@ const Overview: React.FC = () => {
 
       {activeTab === 'tests' && (
         <div className="relative w-full">
-          <TestsWorkspace />
+          {/* A project switched in place (the project menu, File › Open recent) gets a fresh list */}
+          <TestsWorkspace key={projectPath ?? ''} />
         </div>
       )}
 
