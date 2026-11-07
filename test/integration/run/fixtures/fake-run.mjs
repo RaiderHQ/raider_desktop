@@ -1,4 +1,4 @@
-// Stands in for rspec/cucumber in runner tests, so no Ruby is needed.
+// Stands in for rspec in runner tests, so no Ruby is needed.
 // FAKE_SCRIPT (JSON):
 //   steps: [{ delay?, event?, worker?, stdout?, stderr?, runJson? }]
 //     event   - an object (JSON-encoded) or a raw string, appended to $RAIDER_EVENTS_DIR/worker-<worker|1>.ndjson

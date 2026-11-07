@@ -75,8 +75,7 @@ interface LoadedTests {
   migration?: { migrated: number; postponed: boolean }
 }
 
-const canRecordFiles = (layout: ProjectLayout): boolean =>
-  layout.framework === 'rspec' && layout.recordable
+const canRecordFiles = (layout: ProjectLayout): boolean => layout.recordable
 
 /**
  * The recorded tests are the project's spec files + sidecars. Tests an older Raider kept in a

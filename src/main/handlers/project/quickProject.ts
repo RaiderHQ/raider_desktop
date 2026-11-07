@@ -58,7 +58,7 @@ export async function createQuickProject(
     fs.mkdirSync(dir, { recursive: true })
     const name = freeName(dir, quickProjectName(url))
     projectPath = path.join(dir, name)
-    const created = await runRubyRaider(null as never, dir, name, 'rspec', 'selenium', rubyCommand)
+    const created = await runRubyRaider(null as never, dir, name, 'selenium', rubyCommand)
     if (!created.success) {
       fs.rmSync(projectPath, { recursive: true, force: true })
       return { success: false, error: created.error ?? 'Could not create the project.' }

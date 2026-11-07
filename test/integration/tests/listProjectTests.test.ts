@@ -132,11 +132,6 @@ describe('listProjectTests', () => {
     await rm(outside, { recursive: true, force: true })
   })
 
-  it('cucumber layout lists nothing', async () => {
-    await writeFile(join(project, 'spec/h_spec.rb'), "describe 'H' do\nend\n")
-    expect(await listProjectTests(project, { ...layout, framework: 'cucumber' })).toEqual([])
-  })
-
   it('skips vendored and tool folders', async () => {
     for (const d of ['node_modules/x', '.git/x', 'vendor/x', '.raider/x']) {
       await mkdir(join(project, 'spec', d), { recursive: true })

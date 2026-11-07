@@ -135,15 +135,6 @@ describe('migrateToProjectFiles', () => {
     expect(await readFile(suitesPath(), 'utf-8')).toBe('{not json')
   })
 
-  it('cucumber project keeps version 2', async () => {
-    const raw = await writeSuites(v2)
-    const result = await migrateToProjectFiles(project, { ...layout, framework: 'cucumber' })
-    expect(result).toEqual({ migrated: 0, backup: null })
-    expect(await readFile(suitesPath(), 'utf-8')).toBe(raw)
-    expect(await specs()).toEqual([])
-    expect(await backups()).toEqual([])
-  })
-
   it('a non-recordable project keeps version 2', async () => {
     const raw = await writeSuites(v2)
     await migrateToProjectFiles(project, { ...layout, recordable: false })

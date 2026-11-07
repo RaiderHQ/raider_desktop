@@ -38,7 +38,6 @@ const handler = async (
   _event: IpcMainInvokeEvent,
   folderPath: string,
   projectName: string,
-  framework: string,
   automation: string,
   rubyCommand: string,
   mobile: string | null = null,
@@ -60,9 +59,6 @@ const handler = async (
         'Invalid projectName: Use letters, numbers, underscores and hyphens, starting with a letter or number'
       )
     }
-    if (typeof framework !== 'string' || framework.trim() === '') {
-      throw new Error('Invalid framework: Must be a non-empty string')
-    }
     if (typeof automation !== 'string' || automation.trim() === '') {
       throw new Error('Invalid automation: Must be a non-empty string')
     }
@@ -83,14 +79,13 @@ const handler = async (
         error: `A folder named "${projectName}" already exists in ${normalizedFolderPath}.`
       }
     }
-    const formattedFramework = framework.toLowerCase()
     let formattedAutomation = automation.toLowerCase()
 
     if (typeof mobile === 'string' && mobile.trim() !== '') {
       formattedAutomation = mobile.toLowerCase()
     }
 
-    let raiderCommand = `raider new ${quoteShellArg(projectName)} -p framework:${formattedFramework} automation:${formattedAutomation}`
+    let raiderCommand = `raider new ${quoteShellArg(projectName)} -p framework:rspec automation:${formattedAutomation}`
 
     // Azure Pipelines is web-only for now; github is ruby_raider's default so nothing is passed.
     const isMobile = typeof mobile === 'string' && mobile.trim() !== ''

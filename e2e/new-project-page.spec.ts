@@ -44,19 +44,6 @@ test.describe('New Project Page', () => {
     await expect(page.getByText('Watir')).toHaveCount(0)
   })
 
-  test('shows test framework dropdown', async ({ page }) => {
-    await expect(page.getByText('Select your test framework')).toBeVisible()
-  })
-
-  test('test framework dropdown has correct options', async ({ page }) => {
-    const testSelect = page.locator('select').first()
-    const options = testSelect.locator('option')
-    const optionTexts = await options.allTextContents()
-    expect(optionTexts).toContain('Rspec')
-    expect(optionTexts).toContain('Cucumber')
-    expect(optionTexts).not.toContain('Minitest')
-  })
-
   test('shows Back and Create buttons', async ({ page }) => {
     await expect(page.getByRole('button', { name: 'Back' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Create' })).toBeVisible()
@@ -114,16 +101,6 @@ test.describe('New Project Page', () => {
     await expect(page).toHaveURL(/#\/overview/)
   })
 
-  test('all test framework options can be selected', async ({ page }) => {
-    const testSelect = page.locator('select').first()
-    const frameworks = ['Rspec', 'Cucumber']
-
-    for (const fw of frameworks) {
-      await testSelect.selectOption(fw)
-      await expect(testSelect).toHaveValue(fw)
-    }
-  })
-
   test('Mobile app creation sends the chosen phone platform', async ({ electronApp, page }) => {
     await electronApp.evaluate(async ({ ipcMain }) => {
       ipcMain.removeHandler('select-folder')
@@ -144,8 +121,8 @@ test.describe('New Project Page', () => {
     const args = await electronApp.evaluate(
       () => (globalThis as Record<string, unknown>).__raiderArgs as unknown[]
     )
-    expect(args[5]).toBe('android')
-    expect(args[6]).toEqual({ accessibility: false, ci: 'github', examples: true })
+    expect(args[4]).toBe('android')
+    expect(args[5]).toEqual({ accessibility: false, ci: 'github', examples: true })
   })
 
   test('says the name rule inline and keeps Create off for a name with spaces (D13)', async ({

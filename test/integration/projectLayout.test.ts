@@ -41,15 +41,6 @@ describe('detectProjectLayout', () => {
     })
   })
 
-  it('watir cucumber', async () => {
-    await project("gem \"watir\"\ngem 'cucumber'\ngem 'rspec'\n")
-    expect(await detectProjectLayout(dir)).toMatchObject({
-      framework: 'cucumber',
-      automation: 'watir',
-      recordable: true
-    })
-  })
-
   it('custom spec_path', async () => {
     await project("gem 'rspec'\n", 'spec_path: tests/ui\n')
     expect((await detectProjectLayout(dir)).specPath).toBe('tests/ui')
@@ -157,7 +148,6 @@ describe('waitHelper', () => {
 
   it.each([
     ['watir', "gem 'watir'\ngem 'rspec'\n"],
-    ['cucumber', "gem 'cucumber'\ngem 'rspec'\n"],
     ['appium', "gem 'appium_lib'\ngem 'rspec'\n"]
   ])('false for a %s project even with the helper', async (_name, gemfile) => {
     await withHelper(gemfile)

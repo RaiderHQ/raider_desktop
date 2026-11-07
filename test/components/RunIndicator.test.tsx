@@ -18,7 +18,6 @@ const makeRun = (overrides: Partial<RunView> = {}): RunView => ({
   runId: 'r1',
   projectPath: '/p',
   scope: { kind: 'all' },
-  framework: 'rspec',
   workers: 1,
   liveEvents: true,
   startedAt: '2026-01-01T00:00:00Z',

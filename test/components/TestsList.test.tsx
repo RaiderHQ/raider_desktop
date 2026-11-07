@@ -76,7 +76,6 @@ const runWith = (tests: RunTestView[], over: Partial<RunView> = {}): RunView => 
   runId: 'r1',
   projectPath: '/p',
   scope: { kind: 'all' },
-  framework: 'rspec',
   workers: 1,
   liveEvents: true,
   startedAt: '2026-10-31T10:00:00Z',
@@ -179,15 +178,6 @@ describe('TestsList', () => {
   it('shows the empty state', () => {
     setup({ rows: [] })
     expect(screen.getByText('tests.empty')).toBeInTheDocument()
-  })
-
-  it('a Cucumber project explains where its tests are', () => {
-    useProjectStore.setState({
-      layout: { framework: 'cucumber', automation: 'selenium', recordable: true } as never
-    })
-    setup({ rows: [] })
-    expect(screen.getByText('tests.cucumber')).toBeInTheDocument()
-    expect(screen.queryByText('tests.empty')).not.toBeInTheDocument()
   })
 
   it('a project Raider cannot record into does not offer to record one', () => {

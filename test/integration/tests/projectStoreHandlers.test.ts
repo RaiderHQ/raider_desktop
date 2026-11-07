@@ -261,7 +261,7 @@ describe('activation', () => {
   })
 
   it('a project that cannot record is locked and shows no tests', async () => {
-    await writeFile(join(project, 'Gemfile'), "gem 'cucumber'\ngem 'rspec'\n")
+    await writeFile(join(project, 'Gemfile'), "gem 'capybara'\ngem 'rspec'\n")
     await setActiveProject(project)
 
     const result = await saveRecording(win, checkout())

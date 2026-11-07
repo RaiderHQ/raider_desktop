@@ -130,14 +130,6 @@ test.describe('Project Tests tab', () => {
     await expect(page.getByText('No tests yet — record one')).toHaveCount(0)
   })
 
-  test('a Cucumber project explains where its tests are', async ({ page }) => {
-    await mockProjectTests(page, [])
-    await setProjectLayout(page, { ...recordable, framework: 'cucumber' })
-    await goToOverview(page)
-    await expect(page.getByText(/tests are Cucumber features/)).toBeVisible()
-    await expect(page.getByText('No tests yet — record one')).toHaveCount(0)
-  })
-
   test('a recorded test opens on its own page', async ({ page }) => {
     await goToOverview(page)
     await row(page, 'Search products').click()

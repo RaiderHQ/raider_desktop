@@ -420,7 +420,6 @@ describe('TestPage', () => {
       runId: 'r1',
       projectPath: '/p',
       scope: { kind: 'files', files: ['spec/login_works_spec.rb'] },
-      framework: 'rspec',
       workers: 1,
       liveEvents: true,
       startedAt: new Date().toISOString(),

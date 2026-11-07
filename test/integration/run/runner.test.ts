@@ -158,7 +158,7 @@ describe('runner', () => {
       'run:finished'
     ])
     const startedEvent = ofRun(runId)[0] as Extract<RunEvent, { type: 'run:started' }>
-    expect(startedEvent).toMatchObject({ framework: 'rspec', workers: 1, liveEvents: true })
+    expect(startedEvent).toMatchObject({ workers: 1, liveEvents: true })
     expect(done).toMatchObject({ status: 'passed', exitCode: 0 })
     expect(done.counts).toMatchObject({ total: 1, passed: 1 })
     const stdout = ofRun(runId)
@@ -397,19 +397,6 @@ describe('runner', () => {
     await finishedEvent(locations)
     expect(listedFiles).toHaveBeenCalledTimes(1)
     expect(listedFiles).toHaveBeenCalledWith(['spec/a_spec.rb', 'spec/b_spec.rb'])
-  })
-
-  it('runs a cucumber locations scope features/a.feature:12', async () => {
-    fs.rmSync(path.join(project, 'spec'), { recursive: true })
-    fs.mkdirSync(path.join(project, 'features'))
-    fs.writeFileSync(path.join(project, 'features', 'a.feature'), 'Feature: a\n')
-    const runId = await run({
-      scope: { kind: 'locations', locations: ['features/a.feature:12'] },
-      rubyCommand: 'ruby'
-    })
-    await finishedEvent(runId)
-    expect(ofRun(runId)[0]).toMatchObject({ type: 'run:started', framework: 'cucumber' })
-    expect(deps.spawnCommand.mock.calls[0][0]).toContain('features/a.feature:12')
   })
 
   it('degraded mode: liveEvents false, no plan, finishes by exit code', async () => {

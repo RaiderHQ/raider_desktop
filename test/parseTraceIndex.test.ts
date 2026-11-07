@@ -125,17 +125,6 @@ describe('parseTraceIndex', () => {
     expect(ok.steps[0].snapshot).toBe('steps/0002.html')
   })
 
-  it('keeps cucumber_step names', () => {
-    const index = parseOk(
-      withSteps([
-        step(1, { kind: 'group', action: 'cucumber_step', name: 'When I log in as admin' }),
-        step(2, { name: 'nope' })
-      ])
-    )
-    expect(index.steps[0].name).toBe('When I log in as admin')
-    expect('name' in index.steps[1]).toBe(false)
-  })
-
   it('keeps locator.within, outermost first', () => {
     const within = [
       { strategy: 'css', selector: '.outer' },

@@ -75,7 +75,7 @@ async function sidecarFiles(projectPath: string): Promise<Map<string, string>> {
 /**
  * Moves the tests of a version 1/2 suites.json into spec files + sidecars and
  * rewrites suites.json as a version 3 index of test ids. Only for recordable
- * RSpec projects; anything else (Cucumber, version 3 or newer, missing or
+ * RSpec projects; anything else (version 3 or newer, missing or
  * corrupt file) is left untouched.
  *
  * No test is dropped: unreadable steps become comments, a missing or reused id
@@ -89,7 +89,7 @@ export async function migrateToProjectFiles(
   projectPath: string,
   layout: ProjectLayout
 ): Promise<MigrationResult> {
-  if (layout.framework !== 'rspec' || !layout.recordable) return NOTHING
+  if (!layout.recordable) return NOTHING
   const state = await readSuitesFile(projectPath)
   if (state.kind !== 'legacy') return NOTHING
 
