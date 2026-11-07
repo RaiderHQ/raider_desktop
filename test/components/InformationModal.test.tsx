@@ -50,7 +50,7 @@ describe('InformationModal', () => {
   it('calls onClose when the × button is clicked', () => {
     const onClose = vi.fn()
     render(<InformationModal title="T" message="M" onClose={onClose} />)
-    fireEvent.click(screen.getByLabelText('Close'))
+    fireEvent.click(screen.getByLabelText('common.close'))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 

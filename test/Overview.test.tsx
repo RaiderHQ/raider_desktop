@@ -211,7 +211,7 @@ describe('Overview Page', (): void => {
     const tabs: [string, string][] = [
       ['overview.tabs.tests', 'tooltips.overview.tabTests'],
       ['overview.tabs.files', 'tooltips.overview.tabFiles'],
-      ['Scaffolding', 'tooltips.overview.tabScaffold'],
+      ['overview.tabs.scaffold', 'tooltips.overview.tabScaffold'],
       ['overview.tabs.dashboard', 'tooltips.overview.tabDashboard']
     ]
     for (const [name, key] of tabs) {
@@ -276,7 +276,7 @@ describe('Overview Page', (): void => {
     await openFilesTab()
 
     expect(screen.getByText('overview.tabs.files')).toBeInTheDocument()
-    expect(screen.getByText('Scaffolding')).toBeInTheDocument()
+    expect(screen.getByText('overview.tabs.scaffold')).toBeInTheDocument()
     expect(screen.getByText('overview.tabs.dashboard')).toBeInTheDocument()
   })
 
@@ -306,7 +306,7 @@ describe('Overview Page', (): void => {
     })
     await openFilesTab()
 
-    fireEvent.click(screen.getByText('Scaffolding'))
+    fireEvent.click(screen.getByText('overview.tabs.scaffold'))
 
     expect(screen.getByTestId('scaffold-panel')).toBeInTheDocument()
     expect(screen.queryByTestId('folder')).not.toBeInTheDocument()
@@ -323,7 +323,7 @@ describe('Overview Page', (): void => {
     })
     await openFilesTab()
 
-    fireEvent.click(screen.getByText('Scaffolding'))
+    fireEvent.click(screen.getByText('overview.tabs.scaffold'))
     expect(screen.getByTestId('scaffold-panel')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('overview.tabs.files'))
@@ -565,7 +565,7 @@ describe('Overview Settings Toolbar', (): void => {
   it('settings toolbar is not visible on Scaffolding tab', async () => {
     await renderOverview()
 
-    fireEvent.click(screen.getByText('Scaffolding'))
+    fireEvent.click(screen.getByText('overview.tabs.scaffold'))
 
     expect(screen.queryByTestId('overview-url-input')).not.toBeInTheDocument()
     expect(screen.queryByTestId('overview-browser-select')).not.toBeInTheDocument()

@@ -37,7 +37,7 @@ const RubyGemsInstallModal: React.FC<RubyGemsInstallModalProps> = ({
         <div className="px-6 py-4 space-y-4">
           {/* Missing gems list */}
           <div>
-            <p className="text-xs font-semibold text-neutral-dk mb-2 uppercase tracking-wide">Missing gems</p>
+            <p className="text-xs font-semibold text-neutral-dk mb-2 uppercase tracking-wide">{t('recorder.rubyGemsInstallModal.title')}</p>
             <div className="flex flex-wrap gap-2">
               {missingGems.map((gem) => (
                 <span

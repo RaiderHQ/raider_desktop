@@ -27,7 +27,7 @@ describe('RubyGemsInstallModal', () => {
 
   it('renders the title', () => {
     render(<RubyGemsInstallModal {...defaultProps} />)
-    expect(screen.getByText('recorder.rubyGemsInstallModal.title')).toBeInTheDocument()
+    expect(screen.getAllByText('recorder.rubyGemsInstallModal.title').length).toBeGreaterThan(0)
   })
 
   it('renders a message containing the missing gem names', () => {

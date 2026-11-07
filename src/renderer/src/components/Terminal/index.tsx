@@ -3,6 +3,7 @@ import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { FaTimes } from 'react-icons/fa'
+import { useTranslation } from 'react-i18next'
 
 interface TerminalProps {
   cwd: string
@@ -10,6 +11,7 @@ interface TerminalProps {
 }
 
 const Terminal: React.FC<TerminalProps> = ({ cwd, onClose }) => {
+  const { t } = useTranslation()
   const terminalRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -95,7 +97,7 @@ const Terminal: React.FC<TerminalProps> = ({ cwd, onClose }) => {
         <button
           onClick={onClose}
           className="text-[#cccccc] hover:text-white transition-colors p-1"
-          title="Close terminal"
+          title={t('terminal.close')}
         >
           <FaTimes size={12} />
         </button>

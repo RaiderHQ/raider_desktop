@@ -37,7 +37,7 @@ const TraceDetailPanel: React.FC<TraceDetailPanelProps> = ({ step }): JSX.Elemen
       {screenshotSrc ? (
         <img
           src={screenshotSrc}
-          alt="Step screenshot"
+          alt={t('traceViewer.stepScreenshotAlt')}
           className="w-full rounded-lg border border-neutral-bdr shadow-sm"
         />
       ) : step.screenshotPath ? (

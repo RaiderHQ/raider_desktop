@@ -86,7 +86,7 @@ test.describe('User Workflows', () => {
     await expect(infoIcons).toHaveCount(3)
 
     await infoIcons.nth(1).click()
-    await expect(page.getByRole('heading', { name: 'Creating a New Project' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Creating a new project' })).toBeVisible()
     await expect(
       page.getByText('Here you can create a new project and start automating your tests.')
     ).toBeVisible()

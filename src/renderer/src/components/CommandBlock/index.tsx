@@ -193,7 +193,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
             onKeyDown={handleEditKeyDown}
             className="font-mono text-sm text-ruby w-full bg-ruby-sub border border-ruby rounded p-1 resize-none focus:outline-none focus:ring-1 focus:ring-ruby"
             rows={Math.max(1, editValue.split('\n').length)}
-            aria-label="Edit command"
+            aria-label={t('recorder.step.editCommand')}
           />
         )
       }

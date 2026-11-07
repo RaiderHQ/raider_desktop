@@ -129,13 +129,13 @@ describe('TraceDetailPanel', () => {
     })
 
     expect(mockApi.readImage).toHaveBeenCalledWith('/path/shot.jpg')
-    const img = screen.getByAltText('Step screenshot')
+    const img = screen.getByAltText('traceViewer.stepScreenshotAlt')
     expect(img.getAttribute('src')).toContain('data:image/jpeg;base64,imgdata')
   })
 
   it('does not render screenshot section when no screenshotPath', () => {
     render(<TraceDetailPanel step={makeStep()} />)
-    expect(screen.queryByAltText('Step screenshot')).not.toBeInTheDocument()
+    expect(screen.queryByAltText('traceViewer.stepScreenshotAlt')).not.toBeInTheDocument()
     expect(screen.queryByText('Loading screenshot...')).not.toBeInTheDocument()
   })
 })
