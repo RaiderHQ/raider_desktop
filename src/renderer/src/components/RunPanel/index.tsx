@@ -171,6 +171,16 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
   const reason = finished?.status === 'errored' ? errorReason(run) : null
   const hasFailures =
     Object.values(run.tests).some((x) => x.state === 'failed') || (finished?.counts.failed ?? 0) > 0
+  // What an empty list means depends on where the run is: a verdict only once it is over,
+  // and a run the old reporter counted as failed without listing its tests says so
+  const emptyLine = (): string => {
+    if (filter === 'failed') {
+      if (hasFailures) return 'failedUnlisted'
+      return finished ? 'failed' : 'failedSoFar'
+    }
+    if (filter === 'all') return finished ? 'noneListed' : 'all'
+    return filter
+  }
 
   const row = (test: RunTestView): React.ReactElement => {
     const stepLine = stepLines.get(test.id)
@@ -302,6 +312,11 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
       </div>
 
       <div className="max-h-80 overflow-y-auto">
+        {tests.length === 0 && (
+          <p data-testid="run-filter-empty" className="px-3 py-3 text-xs text-neutral-md">
+            {t(`run.filterEmpty.${emptyLine()}`)}
+          </p>
+        )}
         {files.map((file) => (
           <div key={file}>
             <div className="px-3 pt-3 text-xs font-medium text-neutral-md truncate">{file}</div>
