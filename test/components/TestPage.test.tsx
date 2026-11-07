@@ -449,6 +449,40 @@ describe('TestPage', () => {
       expect(screen.queryByRole('button', { name: 'run.rerunFailed' })).not.toBeInTheDocument()
     })
 
+    it('hides the last run when Record starts, until a new run', async () => {
+      const done: RunView = {
+        ...run,
+        phase: null,
+        finished: {
+          status: 'passed',
+          counts: { total: 1, passed: 1, failed: 0, quarantined: 0, pending: 0, skipped: 0 },
+          exitCode: 0,
+          finishedAt: new Date().toISOString()
+        }
+      }
+      useRunStore.setState({
+        run: done,
+        origin: { route: '/overview/tests/x', label: 'Login works' },
+        isActive: false
+      })
+      renderPage()
+      await opened()
+      expect(screen.getByTestId('run-panel')).toBeInTheDocument()
+
+      act(() => useRecorderStore.setState({ isRecording: true }))
+      expect(screen.queryByTestId('run-panel')).not.toBeInTheDocument()
+      act(() => useRecorderStore.setState({ isRecording: false }))
+      expect(screen.queryByTestId('run-panel')).not.toBeInTheDocument()
+
+      act(() =>
+        useRunStore.setState({
+          run: { ...run, runId: 'r2', startedAt: new Date(Date.now() + 1000).toISOString() },
+          isActive: true
+        })
+      )
+      expect(screen.getByTestId('run-panel')).toBeInTheDocument()
+    })
+
     it('shows no run panel for a run started elsewhere', async () => {
       useRunStore.setState({
         run,
