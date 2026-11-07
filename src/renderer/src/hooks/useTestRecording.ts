@@ -277,7 +277,7 @@ async function saveStopped(
   toast.success(file ? t('tests.saved', { name, file }) : t('tests.savedNoFile', { name }))
   // A new file changes the list (and gives the test its row)
   await useTestsListStore.getState().reload()
-  onSaved?.(testKeyOf({ name: test.name, testId: test.id, ownership: 'recorded', suiteIds: [] }))
+  onSaved?.(testKeyOf({ name: test.name, testId: test.id, ownership: 'recorded', suiteIds: [], tags: [] }))
   return true
 }
 

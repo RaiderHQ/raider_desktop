@@ -10,6 +10,8 @@ export interface TestRow {
   ownership: Ownership | 'legacy'
   missingFile?: true
   suiteIds: string[]
+  /** From the sidecar or the describe line; [] when none */
+  tags: string[]
 }
 
 export const testKeyOf = (row: TestRow): TestKey =>

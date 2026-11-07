@@ -437,6 +437,10 @@
     "listFailed": "Raider couldn't load the tests list. Try again in a moment.",
     "mobileNoImport": "Mobile projects can't import recorded tests yet.",
     "rail": "Tests",
+    "tagFilter": {
+      "label": "Tag",
+      "all": "All tests"
+    },
     "suiteFilter": {
       "label": "Suite",
       "actions": "Suite actions",
@@ -881,6 +885,7 @@
       "save": "Save the new value to this step"
     },
     "tests": {
+      "tagFilter": "Show only the tests with this tag",
       "suite": "Which group of tests you are looking at",
       "suiteActions": "Run, add, delete, import or export suites",
       "newTest": "Start a new test: give it a name and a page, then record",

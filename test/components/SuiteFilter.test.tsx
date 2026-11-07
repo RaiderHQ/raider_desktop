@@ -67,7 +67,8 @@ const row = (name: string, suiteIds: string[]): TestRow => ({
   testId: name,
   ownership: 'recorded',
   file: `${name}.rb`,
-  suiteIds
+  suiteIds,
+  tags: []
 })
 const rows = [row('Login', ['s1']), row('Pay', ['s2']), row('Both', ['s1', 's2'])]
 

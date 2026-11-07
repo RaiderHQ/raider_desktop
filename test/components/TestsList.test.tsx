@@ -22,10 +22,10 @@ vi.mock('react-hot-toast', () => ({
 }))
 
 const rows: TestRow[] = [
-  { name: 'Login works', file: 'spec/login_spec.rb', testId: 't1', ownership: 'recorded', suiteIds: ['s1'] },
-  { name: 'Cart totals', file: 'spec/cart_spec.rb', testId: 't2', ownership: 'codeOwnedWasRecorded', suiteIds: [] },
-  { name: 'API health', file: 'spec/api_spec.rb', ownership: 'code', suiteIds: [] },
-  { name: 'Old one', testId: 't9', ownership: 'legacy', suiteIds: ['s1'] }
+  { name: 'Login works', file: 'spec/login_spec.rb', testId: 't1', ownership: 'recorded', suiteIds: ['s1'], tags: [] },
+  { name: 'Cart totals', file: 'spec/cart_spec.rb', testId: 't2', ownership: 'codeOwnedWasRecorded', suiteIds: [], tags: [] },
+  { name: 'API health', file: 'spec/api_spec.rb', ownership: 'code', suiteIds: [], tags: [] },
+  { name: 'Old one', testId: 't9', ownership: 'legacy', suiteIds: ['s1'], tags: [] }
 ]
 
 const suites = [
@@ -178,7 +178,7 @@ describe('TestsList', () => {
 
   it('a missing-file row keeps Restore, which does not select the row', async () => {
     const p = setup({
-      rows: [{ name: 'Login works', file: 'spec/login_spec.rb', testId: 't1', ownership: 'recorded', missingFile: true, suiteIds: ['s1'] }]
+      rows: [{ name: 'Login works', file: 'spec/login_spec.rb', testId: 't1', ownership: 'recorded', missingFile: true, suiteIds: ['s1'], tags: [] }]
     })
     expect(screen.getByText('tests.fileMissing')).toBeInTheDocument()
     await act(async () => {

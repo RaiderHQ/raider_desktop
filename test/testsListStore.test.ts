@@ -25,7 +25,7 @@ describe('testsListStore.reload', () => {
     ])
     await useTestsListStore.getState().reload()
     expect(useTestsListStore.getState().rows).toEqual([
-      { name: 'Old', testId: 't1', ownership: 'legacy', suiteIds: ['s1', 's2'] }
+      { name: 'Old', testId: 't1', ownership: 'legacy', suiteIds: ['s1', 's2'], tags: [] }
     ])
   })
 
@@ -52,6 +52,15 @@ describe('testsListStore.reload', () => {
     const rows = useTestsListStore.getState().rows
     expect(rows?.find((r) => r.testId === 't1')?.suiteIds).toEqual(['s1'])
     expect(rows?.find((r) => r.file === 'spec/b_spec.rb')?.suiteIds).toEqual([])
+  })
+
+  it('fills tags from the listing', async () => {
+    api.listProjectTests.mockResolvedValue([
+      { file: 'spec/a_spec.rb', name: 'A', ownership: 'recorded', testId: 't1', tags: ['smoke'] }
+    ])
+    api.getSuites.mockResolvedValue([])
+    await useTestsListStore.getState().reload()
+    expect(useTestsListStore.getState().rows?.[0].tags).toEqual(['smoke'])
   })
 
   it('falls back to an empty list when the first listing rejects, and says so', async () => {

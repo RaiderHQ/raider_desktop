@@ -206,3 +206,51 @@ describe('TestsWorkspace recording mode', () => {
     }
   })
 })
+
+describe('TestsWorkspace tag filter', () => {
+  const withTags = (searchTags: string[], checkoutTags: string[]): void => {
+    api.listProjectTests.mockResolvedValue([
+      {
+        name: 'Search products',
+        file: 'spec/search_products_spec.rb',
+        testId: 't1',
+        ownership: 'recorded',
+        tags: searchTags
+      },
+      {
+        name: 'Checkout',
+        file: 'spec/checkout_spec.rb',
+        testId: 't2',
+        ownership: 'recorded',
+        tags: checkoutTags
+      }
+    ])
+  }
+  const renderList = (): void => {
+    render(
+      <MemoryRouter initialEntries={['/overview/tests']}>
+        <Routes>
+          <Route path="/overview/tests" element={<TestsWorkspace />} />
+        </Routes>
+      </MemoryRouter>
+    )
+  }
+
+  it('shows only the tests with the chosen tag', async () => {
+    withTags(['smoke'], [])
+    renderList()
+    await screen.findByRole('button', { name: /Search products/ })
+    fireEvent.change(screen.getByTestId('tag-filter'), { target: { value: 'smoke' } })
+    expect(screen.getByRole('button', { name: /Search products/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Checkout/ })).not.toBeInTheDocument()
+    fireEvent.change(screen.getByTestId('tag-filter'), { target: { value: '' } })
+    expect(screen.getByRole('button', { name: /Checkout/ })).toBeInTheDocument()
+  })
+
+  it('hides the filter when no test has a tag', async () => {
+    withTags([], [])
+    renderList()
+    await screen.findByRole('button', { name: /Search products/ })
+    expect(screen.queryByTestId('tag-filter')).not.toBeInTheDocument()
+  })
+})
