@@ -16,6 +16,8 @@ interface FolderProps {
   isRoot?: boolean
   onRunTests?: () => void
   runDisabled?: boolean
+  /** Why Run is off, when it is not simply because a run is in progress */
+  runDisabledReason?: string
   onFileContextMenu?: (e: React.MouseEvent, filePath: string, fileName: string) => void
   onFolderContextMenu?: (e: React.MouseEvent, folderPath: string, folderName: string) => void
 }
@@ -30,6 +32,7 @@ const Folder: React.FC<FolderProps> = ({
   isRoot = false,
   onRunTests,
   runDisabled = false,
+  runDisabledReason,
   onFileContextMenu,
   onFolderContextMenu
 }) => {
@@ -65,7 +68,7 @@ const Folder: React.FC<FolderProps> = ({
         {isRoot && onRunTests && (
           <Tooltip
             content={t('tooltips.files.runTests')}
-            disabledReason={runDisabled ? t('tooltips.files.runBusy') : undefined}
+            disabledReason={runDisabled ? (runDisabledReason ?? t('tooltips.files.runBusy')) : undefined}
             position="bottom"
             className="ml-auto"
           >

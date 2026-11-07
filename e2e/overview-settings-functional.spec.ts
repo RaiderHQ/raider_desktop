@@ -91,6 +91,15 @@ test.describe('Overview settings toolbar - functional', () => {
     const calls = await getMainIPCCalls(electronApp, 'update-browser-options')
     expect(calls[0]).toEqual([PROJECT, ['no-sandbox', 'disable-gpu']])
   })
+  test('Custom run mode takes a tag and keeps Run enabled', async ({ page }) => {
+    await page.getByTestId('overview-run-mode-select').selectOption('custom')
+    const tagInput = page.getByTestId('overview-run-tag-input')
+    await expect(tagInput).toBeVisible()
+    await tagInput.fill('Nightly')
+    await expect(tagInput).toHaveValue('Nightly')
+    await expect(tagInput).toHaveClass(/lowercase/)
+    await expect(page.getByRole('button', { name: 'Run tests' })).toBeEnabled()
+  })
   test('paths on the Scaffolding tab trigger update-paths on blur', async ({
     electronApp,
     page

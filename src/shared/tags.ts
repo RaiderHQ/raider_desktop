@@ -1,4 +1,8 @@
-/** A tag is a lower-case Ruby-symbol-safe word, so it can sit in `describe 'x', :tag`. */
+/**
+ * The tag names the UI accepts: bare Ruby symbols, starting with a letter, so one can sit in
+ * `describe 'x', :tag`. A subset of what main's validateTags in runCommand.ts allows, which stays
+ * wider on purpose (shell safety for tags typed elsewhere).
+ */
 export const TAG_RE = /^[a-z][a-z0-9_]*$/
 
 export const MAX_TAGS = 20

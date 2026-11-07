@@ -285,9 +285,13 @@
       "runMode": {
         "all": "All tests",
         "smoke": "Smoke",
-        "regression": "Regression"
+        "regression": "Regression",
+        "custom": "Custom tag…"
       },
-      "customTagPlaceholder": "Tag name...",
+      "customTagPlaceholder": "Tag name…",
+      "customTagLabel": "Tag to run",
+      "customTagInvalid": "Letters, digits and underscores only, starting with a letter",
+      "customTagEmpty": "Type the tag to run",
       "rerunFailed": "Re-run failed",
       "urlInvalid": "Enter a full address starting with http:// or https://, for example https://example.com.",
       "saved": "Saved"
