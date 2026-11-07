@@ -106,7 +106,7 @@ describe('CommandList', () => {
     await act(async () => {
       fireEvent.doubleClick((await screen.findByText('goto b')).closest('.cursor-text')!)
     })
-    const textarea = screen.getByLabelText('Edit command')
+    const textarea = screen.getByLabelText('recorder.step.editCommand')
     fireEvent.change(textarea, { target: { value: 'puts 2' } })
     fireEvent.keyDown(textarea, { key: 'Enter' })
     expect(onEditStep).toHaveBeenCalledWith(1, { id: 'b', kind: 'custom', code: 'puts 2' })

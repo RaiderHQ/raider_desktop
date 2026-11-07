@@ -75,7 +75,7 @@ const Landing: React.FC = (): JSX.Element => {
             <button
               onClick={() => setHelpOpen(true)}
               className="relative group focus:outline-none"
-              aria-label="Learn how Ruby Raider works"
+              aria-label={t('landing.logoLabel')}
             >
               <Logo size={120} />
               {/* Pulse ring to draw attention */}
@@ -88,7 +88,7 @@ const Landing: React.FC = (): JSX.Element => {
             {/* Bubble tail pointing up */}
             <span className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[8px] border-b-neutral-bdr" />
             <span className="absolute -top-[7px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[7px] border-b-white" />
-            Click me to learn how Raider works
+            {t('landing.bubble')}
           </div>
         </div>
 

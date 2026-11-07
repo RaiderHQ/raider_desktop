@@ -49,7 +49,7 @@ const startEditing = async (text: string): Promise<HTMLElement> => {
   await act(async () => {
     fireEvent.doubleClick(screen.getByText(text).closest('.cursor-text')!)
   })
-  return screen.getByLabelText('Edit command')
+  return screen.getByLabelText('recorder.step.editCommand')
 }
 
 describe('CommandBlock', () => {
@@ -182,7 +182,7 @@ describe('CommandBlock', () => {
       fireEvent.doubleClick(
         screen.getByText('recorder.commandParser.clickElement {"element":"Log in"}')
       )
-      expect(screen.queryByLabelText('Edit command')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('recorder.step.editCommand')).not.toBeInTheDocument()
     })
   })
 
@@ -199,7 +199,7 @@ describe('CommandBlock', () => {
       await renderBlock({ step: watirClick, showCode: true, onDelete, onEdit: vi.fn() })
       expect(await screen.findByText('recorder.step.renderFailed')).toBeInTheDocument()
       fireEvent.doubleClick(screen.getByText('recorder.step.renderFailed'))
-      expect(screen.queryByLabelText('Edit command')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('recorder.step.editCommand')).not.toBeInTheDocument()
       fireEvent.click(screen.getByLabelText('recorder.step.delete'))
       expect(onDelete).toHaveBeenCalledWith(0)
     })
@@ -280,7 +280,7 @@ describe('CommandBlock', () => {
       })
 
       expect(onEdit).not.toHaveBeenCalled()
-      expect(screen.queryByLabelText('Edit command')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('recorder.step.editCommand')).not.toBeInTheDocument()
       expect(screen.getByText('ruby for n1')).toBeInTheDocument()
     })
 
@@ -288,14 +288,14 @@ describe('CommandBlock', () => {
       await renderBlock({ showCode: true })
       await screen.findByText('ruby for n1')
       fireEvent.doubleClick(screen.getByText('ruby for n1'))
-      expect(screen.queryByLabelText('Edit command')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('recorder.step.editCommand')).not.toBeInTheDocument()
     })
 
     it('does not enter edit mode before the Ruby has loaded', async () => {
       renderStep.mockReturnValue(new Promise(() => {}))
       await renderBlock({ showCode: true, onEdit: vi.fn() })
       fireEvent.doubleClick(document.querySelector('.cursor-text')!)
-      expect(screen.queryByLabelText('Edit command')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('recorder.step.editCommand')).not.toBeInTheDocument()
     })
 
     it('disables drag while editing', async () => {

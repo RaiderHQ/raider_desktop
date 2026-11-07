@@ -51,7 +51,7 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
             <button
               className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-md hover:text-ruby hover:bg-ruby-sub transition-colors"
               onClick={() => setModalOpen(true)}
-              aria-label="Help"
+              aria-label={t('common.help')}
             >
               <svg
                 width="16"

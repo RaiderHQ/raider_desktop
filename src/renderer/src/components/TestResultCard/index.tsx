@@ -299,7 +299,7 @@ const TestResultCard: React.FC<TestResultCardProps> = ({
           <div className="relative">
             <img
               src={imageData}
-              alt="Screenshot"
+              alt={t('testResults.cardScreenshotAlt')}
               className="max-w-full max-h-full"
               onError={(e) => console.error('Error loading image:', e)}
             />

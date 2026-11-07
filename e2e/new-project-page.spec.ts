@@ -73,7 +73,7 @@ test.describe('New Project Page', () => {
 
     await helpIcon.click()
     await expect(
-      page.getByRole('heading', { name: 'Create a New Project', exact: true })
+      page.getByRole('heading', { name: 'About creating a project', exact: true })
     ).toBeVisible()
     await expect(
       page.getByText(
@@ -85,7 +85,7 @@ test.describe('New Project Page', () => {
   test('help modal can be closed', async ({ page }) => {
     const helpIcon = page.locator('button[aria-label="Help information"]')
     await helpIcon.click()
-    const modalTitle = page.getByRole('heading', { name: 'Create a New Project', exact: true })
+    const modalTitle = page.getByRole('heading', { name: 'About creating a project', exact: true })
     await expect(modalTitle).toBeVisible()
 
     await page.getByRole('button', { name: 'Close' }).click()

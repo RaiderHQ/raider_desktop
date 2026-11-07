@@ -42,7 +42,7 @@ const InstallGuide: React.FC<InstallGuideProps> = ({ rubyMissing, rubyError }): 
           position="right"
           className="absolute top-4 left-4"
         >
-          <button onClick={() => navigate('/')} aria-label="Go Back">
+          <button onClick={() => navigate('/')} aria-label={t('common.back')}>
             <FaArrowLeft size={24} />
           </button>
         </Tooltip>
