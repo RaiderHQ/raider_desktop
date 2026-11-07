@@ -210,6 +210,26 @@ describe('RunPanel', () => {
     expect(rows[0]).toHaveTextContent('desc a2')
   })
 
+  it('says so when the chosen filter matches nothing, instead of an empty list', () => {
+    setRun(makeRun({}, [test1('a1', 'passed'), test1('a2', 'passed')]))
+    render(<RunPanel routeKey="/tests" />)
+    const filter = within(screen.getByTestId('run-filter'))
+    expect(screen.queryByTestId('run-filter-empty')).toBeNull()
+    fireEvent.click(filter.getByText('run.filter.failed'))
+    expect(screen.queryAllByTestId('run-test-row')).toHaveLength(0)
+    expect(screen.getByTestId('run-filter-empty')).toHaveTextContent('run.filterEmpty.failed')
+    fireEvent.click(filter.getByText('run.filter.running'))
+    expect(screen.getByTestId('run-filter-empty')).toHaveTextContent('run.filterEmpty.running')
+    fireEvent.click(filter.getByText('run.filter.queued'))
+    expect(screen.getByTestId('run-filter-empty')).toHaveTextContent('run.filterEmpty.queued')
+  })
+
+  it('says "no results yet" under All while a run has no tests listed', () => {
+    setRun(makeRun({}, []))
+    render(<RunPanel routeKey="/tests" />)
+    expect(screen.getByTestId('run-filter-empty')).toHaveTextContent('run.filterEmpty.all')
+  })
+
   it('shows worker badges and attempts only when relevant', () => {
     const tests = [test1('a1', 'passed', { worker: 2, attempt: 2, durationMs: 1500 })]
     setRun(makeRun({ workers: 3 }, tests))

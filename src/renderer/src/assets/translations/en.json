@@ -987,6 +987,12 @@
       "running": "Running",
       "queued": "Queued"
     },
+    "filterEmpty": {
+      "all": "No results yet",
+      "failed": "No failed tests in this run",
+      "running": "Nothing running",
+      "queued": "Nothing queued"
+    },
     "parallel": "Run in parallel",
     "moreOptions": "More options",
     "workers": "Workers",

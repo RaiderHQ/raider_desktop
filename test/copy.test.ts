@@ -148,6 +148,15 @@ describe('copy', () => {
     )
   })
 
+  it('names an empty run filter plainly (U6)', () => {
+    expect(en.run.filterEmpty).toEqual({
+      all: 'No results yet',
+      failed: 'No failed tests in this run',
+      running: 'Nothing running',
+      queued: 'Nothing queued'
+    })
+  })
+
   it('no title case in buttons, labels and titles', () => {
     const names = [
       'title',

@@ -302,6 +302,11 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
       </div>
 
       <div className="max-h-80 overflow-y-auto">
+        {tests.length === 0 && (
+          <p data-testid="run-filter-empty" className="px-3 py-3 text-xs text-neutral-md">
+            {t(`run.filterEmpty.${filter}`)}
+          </p>
+        )}
         {files.map((file) => (
           <div key={file}>
             <div className="px-3 pt-3 text-xs font-medium text-neutral-md truncate">{file}</div>
