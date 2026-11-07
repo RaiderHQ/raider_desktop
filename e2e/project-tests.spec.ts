@@ -7,7 +7,6 @@ import {
   mockIPCCapture,
   mockProjectTests,
   getIPCCalls,
-  sendMainEvent,
   setProjectLayout
 } from './helpers/ipc-mock'
 import { mockRunner, getStartRequests, started, phase, output, finished } from './helpers/run-mock'
@@ -255,7 +254,7 @@ test.describe('Project Tests tab', () => {
 
     await page.getByLabel('Start URL').fill('https://example.com/search')
     await expect.poll(saves).toBe(before + 1)
-    expect((await getIPCCalls(page, 'saveRecording')).at(-1)![0]).toMatchObject({
+    expect((await getIPCCalls(page, 'saveRecording')).at(-1)![1]).toMatchObject({
       id: 't1',
       url: 'https://example.com/search'
     })
@@ -281,26 +280,5 @@ test.describe('Project Tests tab', () => {
     await expect(page.getByLabel('Start URL')).toHaveCount(0)
     await page.waitForTimeout(1500)
     expect(await getIPCCalls(page, 'saveRecording')).toEqual([])
-  })
-})
-
-test.describe('Migration notices', () => {
-  test('tells the user when recorded tests became project files', async ({ page, electronApp }) => {
-    await sendMainEvent(electronApp, 'tests-migrated', { migrated: 3, postponed: false })
-    await expect(
-      page.getByText('Your recorded tests are now saved as project files.')
-    ).toBeVisible()
-  })
-
-  test('reassures the user when the move is postponed', async ({ page, electronApp }) => {
-    await sendMainEvent(electronApp, 'tests-migrated', { migrated: 0, postponed: true })
-    await expect(
-      page.getByText(/couldn't move your recorded tests into the project yet/)
-    ).toBeVisible()
-  })
-
-  test('warns when tests were saved by a newer Raider', async ({ page, electronApp }) => {
-    await sendMainEvent(electronApp, 'tests-too-new')
-    await expect(page.getByText(/saved by a newer version of Raider/)).toBeVisible()
   })
 })

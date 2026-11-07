@@ -326,6 +326,10 @@ export async function mockProjectTests(
   }>
 ): Promise<void> {
   await mockIPC(page, 'listProjectTests', entries)
+  // The list loads once and then follows main: have it load again, from the mock
+  await page.evaluate(() => {
+    ;(window as any).__TEST_STORES__?.testsListStore?.setState({ rows: null, tests: [] })
+  })
 }
 
 /**
@@ -363,8 +367,8 @@ interface TestStoresWindow {
 }
 
 /**
- * Send an event from the main process to the window, e.g. 'tests-migrated'
- * or 'tests-too-new', as project activation does.
+ * Send an event from the main process to the window, e.g. 'tests-updated',
+ * as project activation does.
  */
 export async function sendMainEvent(
   electronApp: ElectronApplication,
