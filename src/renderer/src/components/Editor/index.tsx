@@ -38,11 +38,10 @@ const MonacoEditor = ({ value, language, onChange, revealLine }: EditorProps): J
   loader.config({ monaco })
   const providersRegistered = useRef(false)
   const projectAutomation = useProjectStore((state) => state.projectAutomation)
-  const projectFramework = useProjectStore((state) => state.projectFramework)
 
   useEffect(() => {
     if (language === 'ruby' && !providersRegistered.current) {
-      registerRubyProviders(monaco, projectAutomation, projectFramework)
+      registerRubyProviders(monaco, projectAutomation)
       providersRegistered.current = true
     }
 
@@ -52,7 +51,7 @@ const MonacoEditor = ({ value, language, onChange, revealLine }: EditorProps): J
         providersRegistered.current = false
       }
     }
-  }, [language, projectAutomation, projectFramework])
+  }, [language, projectAutomation])
 
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const decorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)

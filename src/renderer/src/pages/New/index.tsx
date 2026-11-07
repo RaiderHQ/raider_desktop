@@ -18,10 +18,6 @@ import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import { isValidProjectName } from '@shared/projectName'
 import { showErrorToast } from '@foundation/errorToast'
 
-const options = {
-  test: ['Rspec', 'Cucumber']
-}
-
 type Target = 'web' | 'mobile'
 type Phones = 'ios' | 'android' | 'cross_platform'
 
@@ -46,7 +42,6 @@ const CreateProject: React.FC = () => {
 
   const [target, setTarget] = useState<Target>('web')
   const [phones, setPhones] = useState<Phones>('ios')
-  const [testFramework, setTestFramework] = useState('Rspec')
   const [projectName, setProjectName] = useState('')
   const [ciProvider, setCiProvider] = useState<'github' | 'azure'>('github')
 
@@ -79,7 +74,6 @@ const CreateProject: React.FC = () => {
       const raiderResult = await window.api.runRubyRaider(
         folder,
         projectName,
-        testFramework.toLowerCase(),
         'selenium',
         rubyCommand || '',
         isMobile ? phones : null,
@@ -102,13 +96,6 @@ const CreateProject: React.FC = () => {
       setLoading(false)
       showErrorToast(t('newProject.alerts.creationFailed'), String(error))
     }
-  }
-
-  const handleOptionChange = (
-    setter: React.Dispatch<React.SetStateAction<string>>,
-    value: string
-  ): void => {
-    setter(value)
   }
 
   if (loading) {
@@ -182,15 +169,6 @@ const CreateProject: React.FC = () => {
                 ]}
               />
             )}
-            <SelectInput
-              label={t('newProject.question.test')}
-              options={options.test}
-              selected={testFramework}
-              tooltip={t('tooltips.newProject.framework')}
-              onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
-                handleOptionChange(setTestFramework, target.value)
-              }
-            />
             <div>
               <SelectInput
                 label={t('newProject.ci.label')}

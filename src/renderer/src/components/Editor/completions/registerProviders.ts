@@ -2,17 +2,13 @@ import * as monaco from 'monaco-editor'
 import { registerRubyCompletions } from './rubyCompletions'
 import { registerSeleniumCompletions } from './seleniumCompletions'
 import { registerWatirCompletions } from './watirCompletions'
-import {
-  registerRspecCompletions,
-  registerCucumberCompletions
-} from './testFrameworkCompletions'
+import { registerRspecCompletions } from './testFrameworkCompletions'
 
 let disposables: monaco.IDisposable[] = []
 
 export function registerRubyProviders(
   monacoInstance: typeof monaco,
-  automation: string | null,
-  framework: string | null
+  automation: string | null
 ): void {
   // Dispose previous registrations
   disposables.forEach((d) => d.dispose())
@@ -30,14 +26,7 @@ export function registerRubyProviders(
     disposables.push(registerWatirCompletions(monacoInstance))
   }
 
-  // Register test framework-specific completions
-  const frameworkLower = (framework || '').toLowerCase()
-  if (frameworkLower === 'rspec' || frameworkLower === '') {
-    disposables.push(registerRspecCompletions(monacoInstance))
-  }
-  if (frameworkLower === 'cucumber') {
-    disposables.push(registerCucumberCompletions(monacoInstance))
-  }
+  disposables.push(registerRspecCompletions(monacoInstance))
 }
 
 export function disposeRubyProviders(): void {

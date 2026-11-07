@@ -8,7 +8,6 @@ const PROPER_NOUNS = [
   'Ruby',
   'Raider',
   'RSpec',
-  'Cucumber',
   'Selenium',
   'Appium',
   'Chrome',

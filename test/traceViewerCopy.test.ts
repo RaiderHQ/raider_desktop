@@ -25,11 +25,6 @@ describe('trace viewer copy', () => {
     }
   })
 
-  it('titles a hidden cucumber step in the past tense', async () => {
-    const tr = await t()
-    expect(tr('traceViewer.step.cucumberSecret')).toBe('Ran a step with a hidden value')
-  })
-
   it('words the match_screenshot step', async () => {
     const tr = await t()
     expect(tr('traceViewer.step.matchScreenshot', { name: 'home' })).toBe(

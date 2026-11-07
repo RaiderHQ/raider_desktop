@@ -19,7 +19,6 @@ const runWith = (
   runId: 'r',
   projectPath: '/p',
   scope: { kind: 'all' },
-  framework: 'rspec',
   workers: 1,
   liveEvents: true,
   startedAt: 't',

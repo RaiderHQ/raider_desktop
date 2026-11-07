@@ -25,11 +25,9 @@ export async function detectWaitHelper(projectPath: string, helperPath: string):
 /** Whether specs for this project are written with the wait helper: Selenium + RSpec + helper detected. */
 export async function usesWaitHelper(
   projectPath: string,
-  layout: Pick<ProjectLayout, 'automation' | 'framework' | 'helperPath'>
+  layout: Pick<ProjectLayout, 'automation' | 'helperPath'>
 ): Promise<boolean> {
   return (
-    layout.automation === 'selenium' &&
-    layout.framework === 'rspec' &&
-    (await detectWaitHelper(projectPath, layout.helperPath))
+    layout.automation === 'selenium' && (await detectWaitHelper(projectPath, layout.helperPath))
   )
 }

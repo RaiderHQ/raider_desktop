@@ -116,7 +116,6 @@ export const started = (
   type: 'run:started',
   runId: RUN_ID,
   startedAt: new Date().toISOString(),
-  framework: 'rspec',
   scope: { kind: 'all' },
   workers: 1,
   liveEvents: true,

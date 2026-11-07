@@ -4,7 +4,6 @@ export interface RaiderConfig {
   createdAt: string
   framework: {
     automation: 'Selenium' | 'Watir' | 'Appium'
-    test: 'Rspec' | 'Cucumber'
     mobile: 'Android' | 'iOS'
   }
   settings: {

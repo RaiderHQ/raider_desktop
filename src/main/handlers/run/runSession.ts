@@ -7,7 +7,6 @@ import type {
   RunPhase,
   RunRequest
 } from '@shared/types/runEvents'
-import type { Framework } from './runCommand'
 
 /** Retained run:output is capped at this many chars (counted on chunk length). */
 const OUTPUT_CAP = 2 * 1024 * 1024
@@ -40,7 +39,6 @@ export interface RunSessionOptions {
   runId: string
   request: RunRequest
   projectPath: string
-  framework: Framework
   workers: number
   liveEvents: boolean
   emit: (event: RunEvent) => void
@@ -66,12 +64,11 @@ export class RunSession {
   }
 
   start(): void {
-    const { runId, request, framework, workers, liveEvents } = this.opts
+    const { runId, request, workers, liveEvents } = this.opts
     this.push({
       type: 'run:started',
       runId,
       startedAt: this.now().toISOString(),
-      framework,
       scope: request.scope,
       workers,
       liveEvents

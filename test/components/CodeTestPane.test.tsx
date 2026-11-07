@@ -305,7 +305,6 @@ describe('CodeTestPane', () => {
       runId: 'r1',
       projectPath: '/Users/me/project',
       scope: { kind: 'files', files: ['spec/login_spec.rb'] },
-      framework: 'rspec',
       workers: 1,
       liveEvents: true,
       startedAt: new Date().toISOString(),

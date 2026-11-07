@@ -28,7 +28,7 @@ export async function setTestTags(fileRel: unknown, tags: unknown): Promise<SetT
 
     await activationSettled()
     const { projectPath, layout } = appState
-    if (!projectPath || !layout || layout.framework !== 'rspec') return fail(NOT_FOUND)
+    if (!projectPath || !layout) return fail(NOT_FOUND)
 
     const saved = await setTagsForFile(projectPath, layout, fileRel, clean)
     if (saved.kind === 'notFound') return fail(NOT_FOUND)
