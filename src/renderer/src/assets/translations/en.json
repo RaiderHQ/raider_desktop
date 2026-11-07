@@ -96,7 +96,7 @@
     },
     "recorder": {
       "text": "Quick record",
-      "description": "Record a test without a project"
+      "description": "Record without a project"
     },
     "back": {
       "text": "Back",
