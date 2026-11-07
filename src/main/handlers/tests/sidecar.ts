@@ -92,11 +92,13 @@ async function createExclusive(target: string, body: string): Promise<void> {
 export async function writeFileAtomic(
   target: string,
   body: string,
-  { exclusive = false }: { exclusive?: boolean } = {}
+  { exclusive = false, mode }: { exclusive?: boolean; mode?: number } = {}
 ): Promise<void> {
   const tmp = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`
   try {
     await fs.writeFile(tmp, body, 'utf-8')
+    // The replacement keeps the permissions of the file it replaces
+    if (mode !== undefined) await fs.chmod(tmp, mode)
     if (!exclusive) await fs.rename(tmp, target)
     else {
       try {
