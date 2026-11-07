@@ -40,7 +40,7 @@ test.describe('Landing Page', () => {
       { path: '/mock/quick-record/shop_test', name: 'shop_test', modifiedAt: Date.now() }
     ])
     await mockIPC(page, 'listProjectTests', [])
-    await mockIPC(page, 'getSuites', [])
+    await mockIPC(page, 'getTests', [])
     await mockIPC(page, 'readDirectory', [])
     // Landing reads the list when it opens
     await navigateTo(page, '/new')
@@ -74,7 +74,7 @@ test.describe('Landing Page', () => {
       }
     ])
     await mockIPC(page, 'listProjectTests', [])
-    await mockIPC(page, 'getSuites', [])
+    await mockIPC(page, 'getTests', [])
     await mockIPC(page, 'readDirectory', [])
     // Landing reads the list when it opens
     await navigateTo(page, '/new')

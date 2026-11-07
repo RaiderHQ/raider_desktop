@@ -125,6 +125,14 @@ describe('TestsMoreMenu', () => {
     await waitFor(() => expect(mockToast.error).toHaveBeenCalled())
   })
 
+  it('leaves the mobile check of a tagged run to the live runner', () => {
+    // runStore.start asks main whether the device is ready and shows what is missing
+    useProjectStore.setState({ layout: { automation: 'appium' } as never })
+    render(<TestsMoreMenu tag="smoke" />)
+    open()
+    expect(screen.getByRole('menuitem', { name: 'Run tagged tests' })).toBeEnabled()
+  })
+
   it('disables Import test in a mobile project', () => {
     useProjectStore.setState({ layout: { automation: 'appium' } as never })
     render(<TestsMoreMenu tag={null} />)

@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'http'
 import type { AddressInfo } from 'net'
 import { test, expect } from './electronApp'
-import { goToOverview, createSuiteViaUI, mockRubyReady } from './helpers/navigation'
+import { goToOverview, mockRubyReady } from './helpers/navigation'
 import {
   setupProjectContext,
   mockIPC,
@@ -10,52 +10,27 @@ import {
   setProjectLayout
 } from './helpers/ipc-mock'
 
-// Suites are managed above the Tests list. Creating one goes through the real main
-// process, which broadcasts the new suites back to the window.
-
 // The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
 test.beforeEach(async ({ electronApp, page }) => {
   await mockRubyReady(electronApp, page)
 })
 
-test.describe('Suites on the Tests list', () => {
+test.describe('More menu on the Tests list', () => {
   test.beforeEach(async ({ page }) => {
     await setupProjectContext(page)
     await goToOverview(page)
   })
 
-  const suiteSelect = (page: import('@playwright/test').Page) =>
-    page.getByRole('combobox', { name: 'Suite', exact: true })
-
-  test('lists all tests until a suite is picked', async ({ page }) => {
-    await expect(suiteSelect(page).locator('option:checked')).toHaveText('All tests')
+  test('Run tagged tests needs a tag', async ({ page }) => {
+    await page.getByRole('button', { name: 'More test actions' }).click()
+    const item = page.getByRole('menuitem', { name: 'Run tagged tests' })
+    await expect(item).toBeDisabled()
+    await expect(item).toHaveAttribute('title', 'Pick a tag first')
   })
 
-  test('creating a suite selects it', async ({ page }) => {
-    await createSuiteViaUI(page, 'Control Suite')
-    await expect(suiteSelect(page).locator('option:checked')).toHaveText('Control Suite')
-  })
-
-  test('multiple suites can be created and are all offered', async ({ page }) => {
-    await createSuiteViaUI(page, 'Suite One')
-    await createSuiteViaUI(page, 'Suite Two')
-    await createSuiteViaUI(page, 'Suite Three')
-
-    await expect(suiteSelect(page).locator('option:checked')).toHaveText('Suite Three')
-    const options = suiteSelect(page).locator('option')
-    await expect(options.filter({ hasText: 'Suite One' })).toHaveCount(1)
-    await expect(options.filter({ hasText: 'Suite Two' })).toHaveCount(1)
-  })
-
-  test('Run suite needs a suite', async ({ page }) => {
-    await page.getByRole('button', { name: 'Suite actions' }).click()
-    await expect(page.getByRole('menuitem', { name: 'Run suite' })).toBeDisabled()
-    // The menu button toggles the menu closed again
-    await page.getByRole('button', { name: 'Suite actions' }).click()
-
-    await createSuiteViaUI(page, 'Runnable Suite')
-    await page.getByRole('button', { name: 'Suite actions' }).click()
-    await expect(page.getByRole('menuitem', { name: 'Run suite' })).toBeEnabled()
+  test('has no suite controls', async ({ page }) => {
+    await expect(page.getByRole('combobox', { name: 'Suite', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Suite actions' })).toHaveCount(0)
   })
 })
 
@@ -85,7 +60,7 @@ test.describe('Check something… while recording', () => {
   }) => {
     await setupProjectContext(page)
     await mockProjectTests(page, [])
-    await mockIPC(page, 'getSuites', [])
+    await mockIPC(page, 'getTests', [])
     await mockIPCCapture(page, 'saveRecording', {
       success: true,
       test: { id: 'new', name: 'Check heading', file: 'spec/check_heading_spec.rb' }

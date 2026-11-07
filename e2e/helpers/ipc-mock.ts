@@ -94,13 +94,10 @@ export async function mockGemsMissing(page: Page, gems: string[]): Promise<void>
 }
 
 /**
- * Mock getSuites to return a set of test suites.
+ * Mock getTests to return the project's recorded tests (with their steps).
  */
-export async function mockSuites(
-  page: Page,
-  suites: Array<{ id: string; name: string; tests: unknown[] }>
-): Promise<void> {
-  await mockIPC(page, 'getSuites', suites)
+export async function mockTests(page: Page, tests: unknown[]): Promise<void> {
+  await mockIPC(page, 'getTests', tests)
 }
 
 /**
@@ -367,7 +364,7 @@ interface TestStoresWindow {
 
 /**
  * Send an event from the main process to the window, e.g. 'tests-migrated'
- * or 'suites-too-new', as project activation does.
+ * or 'tests-too-new', as project activation does.
  */
 export async function sendMainEvent(
   electronApp: ElectronApplication,
