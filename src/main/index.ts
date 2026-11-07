@@ -72,6 +72,7 @@ import exportProject from './handlers/io/exportProject'
 import importProject from './handlers/io/importProject'
 import importSuite from './handlers/io/importSuite'
 import importTest from './handlers/io/importTest'
+import { setTestTags } from './handlers/tests/setTestTags'
 import deleteTest from './handlers/deleteTest'
 import recorderEvent, { RecorderEventData } from './handlers/recording/recorderEvent'
 import {
@@ -408,6 +409,9 @@ app.whenReady().then(() => {
   ipcMain.handle('import-suite', () => importSuite(appState.mainWindow!))
   ipcMain.handle('import-test', (_event, suiteId: string) =>
     importTest(appState.mainWindow!, suiteId)
+  )
+  ipcMain.handle('set-test-tags', (_event, fileRel: unknown, tags: unknown) =>
+    setTestTags(fileRel, tags)
   )
   ipcMain.handle('delete-test', async (_event, args) => {
     const result = await deleteTest(appState.mainWindow!, args)

@@ -103,6 +103,7 @@ describe('IPC Contract', () => {
     'importProject',
     'importSuite',
     'importTest',
+    'setTestTags',
 
     // Test Management
     'saveRecording',
