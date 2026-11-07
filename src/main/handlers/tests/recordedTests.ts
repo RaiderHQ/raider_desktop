@@ -453,8 +453,10 @@ export async function setRecordedTags(
     if (!existing || existing.file !== fileRel) return null
     const now = new Date().toISOString()
     const withTags = (sidecar: Sidecar): Sidecar => {
-      const { tags: _old, ...rest } = sidecar
-      return { ...rest, ...(clean.length > 0 && { tags: clean }), updatedAt: now }
+      const next: Sidecar = { ...sidecar, updatedAt: now }
+      if (clean.length > 0) next.tags = clean
+      else delete next.tags
+      return next
     }
     const target = await recordedFilePath(projectPath, existing.file)
     const onDisk = await readIfExists(target)
