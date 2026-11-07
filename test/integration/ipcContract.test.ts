@@ -151,8 +151,6 @@ describe('IPC Contract', () => {
     'onReplayFailed',
 
     // Event Listeners
-    'onTestsMigrated',
-    'onTestsTooNew',
 
     // Scaffolding
     'scaffoldGenerate',
@@ -264,8 +262,6 @@ describe('IPC Contract', () => {
       onAddAssertionStep: 'add-assertion-step',
       onNewTraceStep: 'new-trace-step',
       onReplayFailed: 'replay-failed',
-      onTestsMigrated: 'tests-migrated',
-      onTestsTooNew: 'tests-too-new',
       onTerminalData: 'terminal-data',
       onTerminalExit: 'terminal-exit'
     }

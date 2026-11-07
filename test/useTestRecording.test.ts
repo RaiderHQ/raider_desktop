@@ -283,6 +283,7 @@ describe('useTestRecording', () => {
       })
       await vi.waitFor(() => expect(api.flushRecordingDone).toHaveBeenCalled())
       expect(api.saveRecording).toHaveBeenCalledWith(
+        expect.any(String),
         expect.objectContaining({ name: 'logs in', steps: expect.arrayContaining([click]) })
       )
     })
@@ -349,6 +350,7 @@ describe('useTestRecording', () => {
     await act(() => rec.stop())
     expect(api.stopRecordingMain).toHaveBeenCalled()
     expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
       expect.objectContaining({ id: 't1', steps: [expect.anything(), step('n')] })
     )
     const s = useRecorderStore.getState()
@@ -412,6 +414,7 @@ describe('useTestRecording', () => {
 
       expect(api.saveRecording).toHaveBeenCalledTimes(1)
       expect(api.saveRecording).toHaveBeenCalledWith(
+        expect.any(String),
         expect.objectContaining({ id, name: 'Add to cart', url: 'https://x.test' })
       )
       expect(useRecorderStore.getState().draftTest).toBeNull()
@@ -478,7 +481,10 @@ describe('useTestRecording', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(500)
       })
-      expect(api.saveRecording).toHaveBeenCalledWith(expect.objectContaining({ id: 't1' }))
+      expect(api.saveRecording).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ id: 't1' })
+      )
     } finally {
       vi.useRealTimers()
     }
@@ -507,7 +513,7 @@ describe('useTestRecording', () => {
     it('runs a recorded test in legacy mode with its current steps', async () => {
       const rec = await mount()
       await act(() => rec.run())
-      expect(api.prepareTestRun).toHaveBeenCalledWith('t1', test1)
+      expect(api.prepareTestRun).toHaveBeenCalledWith('/p', 't1', test1)
       expect(api.runTest).toHaveBeenCalledWith('t1', '/p', '/usr/bin/ruby', test1)
       expect(useRunOutputStore.getState().runOutput).toBe('ok')
       expect(api.startRun).not.toHaveBeenCalled()
@@ -526,7 +532,7 @@ describe('useTestRecording', () => {
       api.prepareTestRun.mockResolvedValue({ mode: 'files', file: 'spec/login_works_spec.rb' })
       const rec = await mount()
       await act(() => rec.run())
-      expect(api.prepareTestRun).toHaveBeenCalledWith('t1', test1)
+      expect(api.prepareTestRun).toHaveBeenCalledWith('/p', 't1', test1)
       expect(scopeSent()).toEqual({ kind: 'files', files: ['spec/login_works_spec.rb'] })
       expect(useRunStore.getState().origin).toEqual({ route: location, label: 'Login works' })
       expect(location).toBe('/overview/tests/x')
@@ -569,6 +575,7 @@ describe('useTestRecording', () => {
     })
     expect(api.saveRecording).toHaveBeenCalledTimes(1)
     expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
       expect.objectContaining({ url: 'https://y' })
     )
   })
@@ -630,7 +637,10 @@ describe('useTestRecording', () => {
     await emit('recording-stopped')
     expect(api.saveTrace).toHaveBeenCalledTimes(1)
     expect(api.saveTrace).toHaveBeenCalledWith('t1', [traceStep], stepIds)
-    expect(api.saveRecording).toHaveBeenCalledWith(expect.objectContaining({ id: 't1' }))
+    expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ id: 't1' })
+    )
     // The test first: the trace save may delete pictures of steps the file no longer has
     expect(api.saveRecording.mock.invocationCallOrder[0]).toBeLessThan(
       api.saveTrace.mock.invocationCallOrder[0]
@@ -706,6 +716,7 @@ describe('useTestRecording', () => {
       flushRecording?.()
     })
     expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
       expect.objectContaining({ steps: [...test1.steps, step('n')] })
     )
     expect(api.flushRecordingDone).toHaveBeenCalledTimes(1)
@@ -728,7 +739,10 @@ describe('useTestRecording', () => {
     unmount()
     expect(api.stopRecordingMain).toHaveBeenCalled()
     await act(async () => {})
-    expect(api.saveRecording).toHaveBeenCalledWith(expect.objectContaining({ id: 't1' }))
+    expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ id: 't1' })
+    )
     expect(api.setRecordingState).toHaveBeenLastCalledWith(false)
   })
 
@@ -830,6 +844,7 @@ describe('useTestRecording', () => {
       unmount()
       await act(async () => {})
       expect(api.saveRecording).toHaveBeenCalledWith(
+        expect.any(String),
         expect.objectContaining({ id: 't1' })
       )
       expect(mockToast.error).toHaveBeenCalledWith('recorder.saveFailed', { id: 'save-failed' })
@@ -850,7 +865,7 @@ describe('useTestRecording', () => {
     })
   })
 
-  describe('re-picking a step\'s element', () => {
+  describe("re-picking a step's element", () => {
     const button = (id: string, value: string): Test['steps'][number] => ({
       id,
       kind: 'click',
@@ -903,12 +918,10 @@ describe('useTestRecording', () => {
         await outcome
       })
       await expect(outcome).resolves.toEqual({ kind: 'picked' })
-      const saved = api.saveRecording.mock.calls[0][0] as Test
-      expect(api.saveRecording).toHaveBeenCalledWith(saved)
+      const saved = api.saveRecording.mock.calls[0][1] as Test
+      expect(api.saveRecording).toHaveBeenCalledWith(expect.any(String), saved)
       expect(saved.steps[2].element).toBe(E)
-      expect(saved.steps).toEqual(
-        picks.steps.map((s, i) => (i === 2 ? { ...s, element: E } : s))
-      )
+      expect(saved.steps).toEqual(picks.steps.map((s, i) => (i === 2 ? { ...s, element: E } : s)))
       const s = useRecorderStore.getState()
       expect(s.recordingTarget).toBeNull()
       expect(s.pickingStep).toBeNull()
@@ -1086,7 +1099,7 @@ describe('useTestRecording', () => {
       expect(api.saveRecording).toHaveBeenCalledTimes(1)
     })
 
-    it('does not retry a failed save behind the user\'s back', async () => {
+    it("does not retry a failed save behind the user's back", async () => {
       const rec = await mount()
       api.saveRecording.mockClear()
       api.saveRecording.mockResolvedValue({ success: false, error: 'boom' })

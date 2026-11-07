@@ -101,7 +101,7 @@ describe('export then import round trips', () => {
     await openProject()
     appState.tests = new Map()
     mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [out] })
-    expect(await importProject(win)).toEqual({ success: true })
+    expect(await importProject(win)).toMatchObject({ success: true, imported: 2 })
     const withoutIds = (list: Step[]): unknown[] =>
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       list.map(({ id: _id, ...rest }) => rest)
@@ -129,12 +129,12 @@ describe('export then import round trips', () => {
     const legacyDir = join(dir, 'legacy')
     await mkdir(legacyDir)
     await writeFile(
-      join(legacyDir, 'old.rb'),
+      join(legacyDir, 'old_spec.rb'),
       '# Test: Old\nbegin\n  @driver.get("https://x.test")\n  puts "Test \'Old\' passed successfully!"\n'
     )
     await openProject()
     mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [legacyDir] })
-    expect(await importProject(win)).toEqual({ success: true })
+    expect(await importProject(win)).toMatchObject({ success: true })
     expect(Array.from(appState.tests.values())[0]).toMatchObject({
       name: 'Old',
       steps: [{ kind: 'navigate', url: 'https://x.test' }]
@@ -240,16 +240,22 @@ describe('importing custom Ruby code', () => {
   })
 
   it('asks once for a project folder, listing each test that runs custom code', async () => {
-    const suiteDir = join(dir, 'shared-suite')
-    await mkdir(suiteDir)
-    await writeFile(join(suiteDir, 'a.rb'), writeExportHeader({ testName: 'A', steps: [custom] }))
-    await writeFile(join(suiteDir, 'b.rb'), writeExportHeader({ testName: 'B', steps: plain }))
+    const importDir = join(dir, 'shared-project')
+    await mkdir(importDir)
     await writeFile(
-      join(suiteDir, 'c.rb'),
+      join(importDir, 'a_spec.rb'),
+      writeExportHeader({ testName: 'A', steps: [custom] })
+    )
+    await writeFile(
+      join(importDir, 'b_spec.rb'),
+      writeExportHeader({ testName: 'B', steps: plain })
+    )
+    await writeFile(
+      join(importDir, 'c_spec.rb'),
       writeExportHeader({ testName: 'C', steps: [{ id: 'c2', kind: 'custom', code: 'puts 2' }] })
     )
     mockDialog.showMessageBox.mockResolvedValue({ response: 1 })
-    mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [suiteDir] })
+    mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [importDir] })
 
     await openProject()
     const res = await importProject(win)

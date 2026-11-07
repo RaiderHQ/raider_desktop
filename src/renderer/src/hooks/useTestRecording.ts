@@ -12,6 +12,7 @@ import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { handleSaveResult } from '@foundation/saveResult'
 import { testKeyOf, toRouteParam } from '@foundation/testKey'
 import type { TestKey } from '@foundation/testKey'
+import { activeProjectPath } from '@foundation/activeProject'
 import type { Test } from '@foundation/Types/test'
 import type { PendingAssertion } from '@shared/types/pendingAssertion'
 import type { PickResult } from '@shared/types/pick'
@@ -197,7 +198,7 @@ let savedByFix: Test | null = null
 async function saveFix(t: Translate, test: Test): Promise<boolean> {
   savedByFix = test
   try {
-    const saved = await window.api.saveRecording(test)
+    const saved = await window.api.saveRecording(activeProjectPath(), test)
     return handleSaveResult(saved, test.id, t)
   } catch (error) {
     console.error('Saving the fix failed:', error)
@@ -255,7 +256,7 @@ async function saveStopped(
   traceSavedOnStop()
   let result: Awaited<ReturnType<typeof window.api.saveRecording>>
   try {
-    result = await window.api.saveRecording(test)
+    result = await window.api.saveRecording(activeProjectPath(), test)
   } catch (error) {
     console.error('Saving the test failed:', error)
     toast.error(t('recorder.saveFailed'), { id: 'save-failed' })
@@ -528,7 +529,7 @@ export function useTestRecording(): TestRecording {
       if (test && test.id === draftTest?.id) return
       if (activeTestSaved && test) {
         window.api
-          .saveRecording(test)
+          .saveRecording(activeProjectPath(), test)
           .then((result) => handleSaveResult(result, test.id, t))
           .catch((error: unknown) => console.error('Saving the test failed:', error))
       }
@@ -696,7 +697,7 @@ export function useTestRecording(): TestRecording {
     if (!activeTestSaved || !test?.id) return
     try {
       // The test itself goes along, so a pending autosave can't make the run use older steps
-      const prepared = await window.api.prepareTestRun(test.id, test)
+      const prepared = await window.api.prepareTestRun(activeProjectPath(), test.id, test)
       if ('error' in prepared) {
         toast.error(prepared.error)
         return

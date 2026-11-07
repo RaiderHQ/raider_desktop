@@ -118,7 +118,7 @@ beforeEach(() => {
     { name: search.name, file: 'spec/search_spec.rb', testId: 't1', ownership: 'recorded' },
     ...saved.map((s) => ({ name: s.name, file: s.file, testId: s.id, ownership: 'recorded' }))
   ])
-  api.saveRecording.mockImplementation(async (test: Test) => {
+  api.saveRecording.mockImplementation(async (_path: string, test: Test) => {
     const file = 'spec/add_to_cart_spec.rb'
     saved = [{ ...test, file, ownership: 'recorded' }]
     return { success: true, test: { ...test, file } }
@@ -197,6 +197,7 @@ describe('New test', () => {
     )
     expect(api.saveRecording).toHaveBeenCalledTimes(1)
     expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
       expect.objectContaining({
         name: 'Add to cart',
         url: 'https://shop.test',
@@ -271,6 +272,7 @@ describe('New test', () => {
 
     await waitFor(() => expect(api.saveRecording).toHaveBeenCalledTimes(1))
     expect(api.saveRecording).toHaveBeenCalledWith(
+      expect.any(String),
       expect.objectContaining({ name: 'Add to cart' })
     )
   })
@@ -280,7 +282,7 @@ describe('New test', () => {
     await emit('new-recorded-step', step('c1'))
     fireEvent.click(screen.getByRole('button', { name: 'Stop & save' }))
     await waitFor(() => expect(api.saveRecording).toHaveBeenCalled())
-    for (const [test] of api.saveRecording.mock.calls) {
+    for (const [, test] of api.saveRecording.mock.calls) {
       expect((test as Test).name).not.toBe('Untitled Test')
     }
     expect(screen.queryByText('Untitled Test')).not.toBeInTheDocument()

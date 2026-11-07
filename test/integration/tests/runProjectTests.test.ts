@@ -8,7 +8,12 @@ const { mockMode, mockRunRecording } = vi.hoisted(() => ({
   mockRunRecording: vi.fn()
 }))
 vi.mock('electron', () => ({ app: { getPath: () => '/' }, BrowserWindow: class {} }))
-vi.mock('../../../src/main/handlers/tests/suiteStore', () => ({ activeSuiteMode: mockMode }))
+vi.mock('../../../src/main/handlers/project/setActiveProject', () => ({
+  activationSettled: vi.fn().mockResolvedValue(undefined)
+}))
+vi.mock('../../../src/main/handlers/tests/recordedStore', () => ({
+  filesStore: (): unknown => (mockMode() === 'files' ? {} : null)
+}))
 vi.mock('../../../src/main/handlers/testing/runRecording', () => ({ default: mockRunRecording }))
 
 import { appState } from '../../../src/main/handlers/appState'
@@ -30,13 +35,13 @@ beforeEach(() => {
 
 describe('run-test', () => {
   it('points to the live runner in a files-mode project', async () => {
-    mockMode.mockResolvedValue('files')
+    mockMode.mockReturnValue('files')
     expect(await runTestHandler('t1', '/p', 'ruby')).toEqual(live)
     expect(mockRunRecording).not.toHaveBeenCalled()
   })
 
   it('run-test runs the cached test through runRecording in a project that is not on files', async () => {
-    mockMode.mockResolvedValue('locked')
+    mockMode.mockReturnValue('locked')
     const { implicitWait, explicitWait, browser, headless } = appState.recorderSettings
 
     expect(await runTestHandler('t1', '/p', 'ruby')).toEqual({ success: true, output: 'rec' })
@@ -55,7 +60,7 @@ describe('run-test', () => {
   })
 
   it('run-test reports an unknown test in a project that is not on files', async () => {
-    mockMode.mockResolvedValue('locked')
+    mockMode.mockReturnValue('locked')
     expect(await runTestHandler('nope', '/p', 'ruby')).toEqual({
       success: false,
       output: 'Test with ID nope not found.'
@@ -73,7 +78,7 @@ describe('run-test, mobile projects', () => {
   let dir: string
 
   beforeEach(() => {
-    mockMode.mockResolvedValue('locked')
+    mockMode.mockReturnValue('locked')
     dir = mkdtempSync(join(tmpdir(), 'raider-mobile-'))
   })
   afterEach(() => rmSync(dir, { recursive: true, force: true }))

@@ -5,17 +5,6 @@ import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import { DEFAULT_RECORDER_SETTINGS } from './config/projectSettings'
 
-/**
- * Whether the active project's recorded tests can change:
- * - files: recorded tests are spec files + sidecars
- * - locked: nothing is shown or written (suites.json written by a newer Raider, or a project
- *   that can't record). A version 2 suites.json that was not moved to files yet is not read
- *   either, until the migration of PR C gives its tests a home.
- */
-export type SuiteMode = 'files' | 'locked'
-/** Why a project is locked: a newer suites file, or recorded files in a project that can't record */
-export type SuiteLock = 'tooNew' | 'cannotRecord'
-
 interface AppState {
   mainWindow: BrowserWindow | null
   recorderWindow: BrowserWindow | null
@@ -28,8 +17,6 @@ interface AppState {
   rubyVersion: string | null
   /** The recorded tests as the renderer sees them, by id (read from the sidecars) */
   tests: Map<string, Test>
-  suiteMode: SuiteMode
-  suiteLock: SuiteLock | null
   recorderSettings: RecorderSettings
   activeTraceDir: string | null
   activeReplayProcess: ChildProcess | null
@@ -55,8 +42,6 @@ export const appState: AppState = {
   layout: null,
   rubyVersion: null,
   tests: new Map(),
-  suiteMode: 'files',
-  suiteLock: null,
   recorderSettings: { ...DEFAULT_RECORDER_SETTINGS },
   activeTraceDir: null,
   activeReplayProcess: null,

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtemp, readFile, readdir, rm, access } from 'fs/promises'
+import { mkdtemp, mkdir, readFile, readdir, rm, access, symlink, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -39,6 +39,7 @@ beforeEach(async () => {
   vi.clearAllMocks()
   mockGetFocusedWindow.mockReturnValue(fakeWindow)
   appState.tests = new Map()
+  appState.projectPath = null
   appState.projectFramework = 'rspec'
   appState.projectAutomation = 'selenium'
   appState.recorderSettings = { ...DEFAULT_RECORDER_SETTINGS }
@@ -146,15 +147,72 @@ describe('exportProject handler', () => {
 
   it('returns the error when the folder cannot be written', async () => {
     appState.tests.set('t1', test('t1', 'Test'))
+    await writeFile(join(dir, 'a-file'), 'x')
     mockDialog.showSaveDialog.mockResolvedValue({
       canceled: false,
-      filePath: join(dir, 'missing', 'deeper')
+      filePath: join(dir, 'a-file', 'deeper')
     })
 
     const result = await exportProject()
 
     expect(result.success).toBe(false)
-    expect(result.error).toContain('ENOENT')
+  })
+
+  it('refuses a folder inside the open project, by real path', async () => {
+    const project = join(dir, 'project')
+    await mkdir(project)
+    await symlink(project, join(dir, 'alias'))
+    appState.projectPath = project
+    appState.tests.set('t1', test('t1', 'Test'))
+    for (const target of [project, join(project, 'out'), join(dir, 'alias', 'out')]) {
+      mockDialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: target })
+      const result = await exportProject()
+      expect(result).toEqual({ success: false, error: 'Choose a folder outside the open project.' })
+    }
+    expect(await readdir(project)).toEqual([])
+    appState.projectPath = null
+  })
+
+  it('refuses a folder that already holds spec files or a .raider folder', async () => {
+    appState.tests.set('t1', test('t1', 'Test'))
+    mockDialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: out })
+    await mkdir(out)
+    await writeFile(join(out, 'test_spec.rb'), 'mine')
+
+    expect(await exportProject()).toEqual({ success: false, error: 'Choose an empty folder.' })
+    expect(await readFile(join(out, 'test_spec.rb'), 'utf-8')).toBe('mine')
+
+    await rm(join(out, 'test_spec.rb'))
+    await mkdir(join(out, '.raider'))
+    expect(await exportProject()).toEqual({ success: false, error: 'Choose an empty folder.' })
+    expect(await readdir(out)).toEqual(['.raider'])
+  })
+
+  it('accepts a folder that holds other things', async () => {
+    appState.tests.set('t1', test('t1', 'Test'))
+    await mkdir(out)
+    await writeFile(join(out, 'notes.txt'), 'x')
+    mockDialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: out })
+    expect((await exportProject()).success).toBe(true)
+  })
+
+  it('never overwrites a file that appears while it writes', async () => {
+    appState.tests.set('t1', test('t1', 'Test'))
+    mockDialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: out })
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    // The file shows up after the folder was checked
+    const promises = await import('fs/promises')
+    const real = promises.default.writeFile
+    vi.spyOn(promises.default, 'writeFile').mockImplementationOnce(async (...args) => {
+      await real(args[0] as string, 'someone else', 'utf8')
+      return real(...(args as Parameters<typeof real>))
+    })
+
+    const result = await exportProject()
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('1 test could not be exported.')
+    expect(await readFile(join(out, 'test_spec.rb'), 'utf-8')).toBe('someone else')
   })
 
   it('calls showSaveDialog with the right default path', async () => {

@@ -139,7 +139,7 @@ export interface WindowApi extends RunApi {
     test?: Test
   ) => Promise<LegacyRunResult>
   /** Saves `test` when needed and returns the spec file to run live; runs nothing */
-  prepareTestRun: (testId: string, test?: Test) => Promise<PrepareTestRunResult>
+  prepareTestRun: (projectPath: string, testId: string, test?: Test) => Promise<PrepareTestRunResult>
 
   // --- Step Rendering ---
   /** Ruby for one step, in the active project's automation (Selenium or Watir). */
@@ -184,7 +184,7 @@ export interface WindowApi extends RunApi {
 
   // --- Test Management ---
   /** `test` is the test as saved, with its project file when it has one */
-  saveRecording: (testData: Test) => Promise<{ success: boolean; error?: string; test?: Test }>
+  saveRecording: (projectPath: string, testData: Test) => Promise<{ success: boolean; error?: string; test?: Test }>
   deleteTest: (testId: string) => Promise<void>
   exportTest: (
     testName: string,
@@ -279,14 +279,6 @@ export interface WindowApi extends RunApi {
   onAddAssertionStep: (callback: (message: AssertionMessage) => void) => () => void
   onNewTraceStep: (callback: (traceStep: TraceStep) => void) => () => void
   onReplayFailed: (callback: (errorMsg: string) => void) => () => void
-
-  // --- Event Listeners ---
-  /** Sent once when opening a project moved (or could not yet move) its recorded tests into project files */
-  onTestsMigrated: (
-    callback: (info: { migrated: number; postponed: boolean }) => void
-  ) => () => void
-  /** Sent when the project's tests were saved by a newer Raider and are left untouched */
-  onTestsTooNew: (callback: () => void) => () => void
 
   // --- Scaffolding ---
   scaffoldGenerate: (

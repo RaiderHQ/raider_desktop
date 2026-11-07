@@ -7,6 +7,7 @@ import useProjectStore from '@foundation/Stores/projectStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { useRunStore } from '@foundation/Stores/runStore'
 import { fileStatus } from '@foundation/run/runModel'
+import { activeProjectPath } from '@foundation/activeProject'
 import { testKeyOf } from '@foundation/testKey'
 import type { TestKey, TestRow } from '@foundation/testKey'
 
@@ -50,7 +51,7 @@ const TestsList: React.FC<TestsListProps> = ({
       const tests = await window.api.getTests()
       const test = tests.find((x) => x.id === row.testId)
       if (!test) return fail(`No saved test ${row.testId}`)
-      const result = await window.api.saveRecording(test)
+      const result = await window.api.saveRecording(activeProjectPath(), test)
       if (!result.success) return fail(result.error)
       toast.success(t('tests.restored'))
       await useTestsListStore.getState().reload()

@@ -208,8 +208,12 @@ const api = {
     | { success: false; error: 'notUnique'; count: number }
     | { success: false; error: string }
   > => ipcRenderer.invoke('record-over-example', file, exampleName, steps, rubyCommand),
-  prepareTestRun: (testId: string, test?: Test): Promise<PrepareTestRunResult> =>
-    ipcRenderer.invoke('prepare-test-run', testId, test),
+  prepareTestRun: (
+    projectPath: string,
+    testId: string,
+    test?: Test
+  ): Promise<PrepareTestRunResult> =>
+    ipcRenderer.invoke('prepare-test-run', projectPath, testId, test),
   exportProject: (): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('export-project'),
   importProject: (): Promise<{ success: boolean; error?: string }> =>
@@ -224,9 +228,10 @@ const api = {
 
   // Test Management
   saveRecording: async (
+    projectPath: string,
     testData: Test
   ): Promise<{ success: boolean; error?: string; test?: Test }> =>
-    ipcRenderer.invoke('save-recording', testData),
+    ipcRenderer.invoke('save-recording', projectPath, testData),
   deleteTest: (testId: string): Promise<void> => ipcRenderer.invoke('delete-test', { testId }),
   saveTrace: (
     testId: string,
@@ -370,12 +375,6 @@ const api = {
     error?: string
   }> => ipcRenderer.invoke('set-active-project', projectPath),
   getRecorderSettings: (): Promise<RecorderSettings> => ipcRenderer.invoke('get-recorder-settings'),
-  /** Sent once when opening a project moved (or could not yet move) its recorded tests into project files */
-  onTestsMigrated: (
-    callback: (info: { migrated: number; postponed: boolean }) => void
-  ): (() => void) => subscribe('tests-migrated', callback),
-  /** Sent when the project's tests were saved by a newer Raider and are left untouched */
-  onTestsTooNew: (callback: () => void): (() => void) => subscribe('tests-too-new', callback),
   // --- Main-to-renderer events: payload only, never the IpcRendererEvent; each returns an unsubscribe ---
   onTestsUpdated: (callback: (tests: Test[]) => void): (() => void) =>
     subscribe('tests-updated', callback),

@@ -5,6 +5,7 @@ import { dispatchMenuCommand } from '@foundation/menuCommands'
 import '@testing-library/jest-dom'
 import useTitleStore from '@foundation/Stores/titleStore'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
+import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { Link, MemoryRouter } from 'react-router'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
@@ -172,6 +173,7 @@ const webLayout = {
 } as const
 
 beforeEach(async () => {
+  useTestsListStore.setState({ rows: null, tests: [] })
   vi.clearAllMocks()
   localStorage.clear()
   // @ts-expect-error - Mocking window.api

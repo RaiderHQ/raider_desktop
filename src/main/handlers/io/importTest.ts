@@ -1,22 +1,21 @@
 import { dialog, BrowserWindow } from 'electron'
 import { lastDialogDirectory, rememberDialogPick } from '../../utils/dialogDirectory'
 import * as fs from 'fs'
+import { activationSettled } from '../project/setActiveProject'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
 import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
 import { confirmCustomCode, importCancelled, secretRefused } from './confirmCustomCode'
 import { findDescribeLine, tagsFromDescribeLine } from '../../../shared/tags'
 import {
-  activeSuiteMode,
   broadcast,
   filesStore,
   isCurrent,
-  lockedError,
-  NO_PROJECT_ERROR,
+  noStoreError,
   PROJECT_CHANGED_ERROR,
   saveRecordedTestInProject,
   tagSavedTest
-} from '../tests/suiteStore'
+} from '../tests/recordedStore'
 
 export default async function importTest(
   mainWindow: BrowserWindow
@@ -25,10 +24,10 @@ export default async function importTest(
     return { success: false, error: 'Main window not found' }
   }
   try {
-    if ((await activeSuiteMode()) === 'locked') return { success: false, error: lockedError() }
+    await activationSettled()
     // Taken before the dialog: the import goes to the project that was open when it started
     const store = filesStore()
-    if (!store) return { success: false, error: NO_PROJECT_ERROR }
+    if (!store) return { success: false, error: noStoreError() }
 
     const result = await dialog.showOpenDialog(mainWindow, {
       defaultPath: lastDialogDirectory(),
