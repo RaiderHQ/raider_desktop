@@ -481,7 +481,9 @@ export async function setTagsForFile(
   const key = first ? first.id : `\0file\0${fileRel}`
 
   return serialize(testQueues, testKey(projectPath, key), async (): Promise<SetTagsResult> => {
-    const existing = first ? await readSidecar(projectPath, fileRel) : null
+    const existing = await readSidecar(projectPath, fileRel)
+    // A sidecar that appeared while this call waited means Raider owns the file now
+    if (!first && existing) return { kind: 'notFound' }
     if (first && (!existing || existing.id !== first.id || existing.file !== fileRel)) {
       return { kind: 'notFound' }
     }
@@ -492,6 +494,11 @@ export async function setTagsForFile(
 
     const now = new Date().toISOString()
     await assertRealInside(projectPath, target)
+    const stat = await fs.lstat(target).catch((e: NodeJS.ErrnoException) => {
+      if (e.code === 'ENOENT') return null
+      throw e
+    })
+    if (!stat?.isFile()) return { kind: 'notFound' }
     const onDisk = await readIfExists(target)
     if (onDisk === null) return { kind: 'notFound' }
     if (existing.codeOwned || !isRaiderFile(onDisk, existing)) {
@@ -513,8 +520,7 @@ export async function setTagsForFile(
       tags: clean
     }
     const { content, stepLines } = generate(test, current, existing.file)
-    const { mode } = await fs.lstat(target)
-    await writeFileAtomic(target, content, { mode: mode & 0o7777 })
+    await writeFileAtomic(target, content, { mode: stat.mode & 0o7777 })
     await writeSidecar(
       projectPath,
       buildSidecar(test, current, existing.file, content, stepLines, existing.createdAt, now)

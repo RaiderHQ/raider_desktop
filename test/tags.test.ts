@@ -78,9 +78,17 @@ describe('describeLineWithTags', () => {
       'describe User, "validations", :a do'
     )
   })
-  it('never rewrites a symbol that is not a tag', () => {
-    expect(describeLineWithTags("describe 'A', :Smoke, :old do", ['a'])).toBe(
-      "describe 'A', :Smoke, :a do"
+  it('refuses to rewrite when a trailing symbol is not a valid tag, and still reads the others', () => {
+    for (const odd of [':Smoke', ':foo?', `:${'a'.repeat(41)}`]) {
+      const line = `describe 'A', ${odd}, :old do`
+      expect(describeLineWithTags(line, ['a'])).toBeNull()
+      expect(tagsFromDescribeLine(line)).toEqual(['old'])
+    }
+    expect(describeLineWithTags("describe 'A', :Smoke, 'str', :old do", ['a'])).toBe(
+      "describe 'A', :Smoke, 'str', :a do"
+    )
+    expect(describeLineWithTags("describe 'A', 'a=>b' do", ['t'])).toBe(
+      "describe 'A', 'a=>b', :t do"
     )
     expect(describeLineWithTags("describe 'A', :x, 'str' do", ['a'])).toBe(
       "describe 'A', :x, 'str', :a do"
@@ -132,6 +140,23 @@ describe('findDescribeLine', () => {
     const found = findDescribeLine(text)
     expect(found?.line).toBe("  RSpec.describe 'A' do")
     expect(text.slice(found!.index, found!.index + found!.line.length)).toBe(found!.line)
+  })
+  it('is null when the first group is another kind', () => {
+    expect(findDescribeLine("RSpec.feature 'x' do\n  describe 'y', :a do\n  end\nend\n")).toBeNull()
+    expect(findDescribeLine("context 'x' do\nend\n")).toBeNull()
+    expect(findDescribeLine("shared_examples 'x' do\nend\ndescribe 'y' do\nend\n")).toBeNull()
+  })
+  it('consumes several heredocs on one line in order and skips comment lines', () => {
+    const text = [
+      'foo(<<~A, <<~B)',
+      "  describe 'a', :no do",
+      'A',
+      "  describe 'b', :no do",
+      'B',
+      "  # describe 'c' do",
+      "describe 'real' do"
+    ].join('\n')
+    expect(findDescribeLine(text)?.line).toBe("describe 'real' do")
   })
   it('is null without one', () => {
     expect(findDescribeLine("it 'x' do\nend\n")).toBeNull()
