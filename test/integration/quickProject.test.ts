@@ -66,6 +66,11 @@ describe('createQuickProject', () => {
     )
   })
 
+  it('creates the project without example specs', async () => {
+    await createQuickProject('https://shop.test', 'ruby')
+    expect(mockRun.mock.calls[0][5]).toEqual({ examples: false })
+  })
+
   it('counts a dangling symlink as a taken name', async () => {
     fs.mkdirSync(quickProjectsDir(), { recursive: true })
     fs.symlinkSync(path.join(tmp, 'gone'), path.join(quickProjectsDir(), 'shop_test'))
