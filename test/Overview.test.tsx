@@ -129,9 +129,9 @@ const mockApi = {
   updatePaths: vi.fn().mockResolvedValue({ success: true }),
   readFile: vi.fn().mockResolvedValue({ success: true, data: '' }),
   editFile: vi.fn().mockResolvedValue({ success: true }),
-  deleteFile: vi.fn().mockResolvedValue({ success: true }),
-  renameFile: vi.fn().mockResolvedValue({ success: true, newPath: '' }),
-  duplicateFile: vi.fn().mockResolvedValue({ success: true, newPath: '' }),
+  trashProjectEntry: vi.fn().mockResolvedValue({ success: true }),
+  renameProjectEntry: vi.fn().mockResolvedValue({ success: true, path: '' }),
+  duplicateProjectEntry: vi.fn().mockResolvedValue({ success: true, path: '' }),
   startRun: vi.fn().mockResolvedValue({ runId: 'r1' }),
   getRunDefaults: vi.fn().mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 }),
   onTestsUpdated: vi.fn(() => vi.fn())

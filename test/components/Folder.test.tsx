@@ -56,4 +56,46 @@ describe('Folder', () => {
     render(<Folder name="root" files={files} onFileClick={vi.fn()} isRoot />)
     expect(screen.getByText('helpers')).toBeInTheDocument()
   })
+
+  it('right-clicking a nested folder reports its path and name', () => {
+    const onFolderContextMenu = vi.fn()
+    render(
+      <Folder
+        name="root"
+        files={files}
+        onFileClick={vi.fn()}
+        isRoot
+        onFolderContextMenu={onFolderContextMenu}
+      />
+    )
+    fireEvent.contextMenu(screen.getByText('helpers'))
+    expect(onFolderContextMenu).toHaveBeenCalledWith(
+      expect.anything(),
+      '/project/helpers',
+      'helpers'
+    )
+  })
+
+  it('leaves a right-click on the root row to the tree around it', () => {
+    const onFolderContextMenu = vi.fn()
+    const onTree = vi.fn()
+    render(
+      <div onContextMenu={(e) => onTree(e.defaultPrevented)}>
+        <Folder
+          name="root"
+          path="/project"
+          files={files}
+          onFileClick={vi.fn()}
+          isRoot
+          onFolderContextMenu={onFolderContextMenu}
+        />
+      </div>
+    )
+    fireEvent.contextMenu(screen.getByText('root'))
+    expect(onFolderContextMenu).not.toHaveBeenCalled()
+    expect(onTree).toHaveBeenCalledWith(false)
+    // A row's right-click is handled there: the tree sees it already prevented
+    fireEvent.contextMenu(screen.getByText('helpers'))
+    expect(onTree).toHaveBeenLastCalledWith(true)
+  })
 })

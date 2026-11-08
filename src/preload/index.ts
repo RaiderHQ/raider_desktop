@@ -18,6 +18,7 @@ import type {
   PrepareTestRunResult
 } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
+import type { ProjectFileResult } from '@shared/types/projectFiles'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type { AcceptBaselineResult } from '@shared/types/acceptBaseline'
@@ -87,17 +88,19 @@ const api = {
     newContent: string
   ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('edit-file', filePath, newContent),
-  deleteFile: async (filePath: string): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke('delete-file', filePath),
-  renameFile: async (
-    filePath: string,
-    newName: string
-  ): Promise<{ success: boolean; newPath?: string; error?: string }> =>
-    ipcRenderer.invoke('rename-file', filePath, newName),
-  duplicateFile: async (
-    filePath: string
-  ): Promise<{ success: boolean; newPath?: string; error?: string }> =>
-    ipcRenderer.invoke('duplicate-file', filePath),
+  createProjectEntry: async (
+    parentRel: string,
+    name: string,
+    kind: 'file' | 'folder'
+  ): Promise<ProjectFileResult> => ipcRenderer.invoke('project-file-create', parentRel, name, kind),
+  copyProjectEntry: async (srcRel: string, destParentRel: string): Promise<ProjectFileResult> =>
+    ipcRenderer.invoke('project-file-copy', srcRel, destParentRel),
+  duplicateProjectEntry: async (rel: string): Promise<ProjectFileResult> =>
+    ipcRenderer.invoke('project-file-duplicate', rel),
+  renameProjectEntry: async (rel: string, name: string): Promise<ProjectFileResult> =>
+    ipcRenderer.invoke('project-file-rename', rel, name),
+  trashProjectEntry: async (rel: string): Promise<ProjectFileResult> =>
+    ipcRenderer.invoke('project-file-trash', rel),
   openReport: async (projectPath: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('open-report', projectPath),
   reportExists: async (projectPath: string): Promise<boolean> =>

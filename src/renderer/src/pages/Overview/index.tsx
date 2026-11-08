@@ -7,6 +7,16 @@ import { FaChevronDown, FaChevronRight, FaTerminal } from 'react-icons/fa'
 import Folder from '@components/Library/Folder'
 import ScaffoldPanel from '@components/ScaffoldPanel'
 import ContextMenu from '@components/ContextMenu'
+import FileNameDialog from '@components/FileNameDialog'
+import useFileClipboardStore, { copiedIn } from '@foundation/Stores/fileClipboardStore'
+import {
+  isUnder,
+  namesAt,
+  parentRel,
+  toProjectAbs,
+  toProjectRel
+} from '@foundation/projectFilePaths'
+import { successWithUndo } from '@foundation/undoToast'
 import ToggleSwitch from '@components/ToggleSwitch'
 import TagInput from '@components/TagInput'
 import ProjectDashboard from '@components/ProjectDashboard'
@@ -159,16 +169,23 @@ const Overview: React.FC = () => {
   const [featurePath, setFeaturePath] = useState('')
   const [helperPath, setHelperPath] = useState('')
 
-  // File context menu state
+  // File context menu state: a file or folder row, or the root (its row and empty tree space)
   const [fileContextMenu, setFileContextMenu] = useState<{
     x: number
     y: number
     filePath: string
     fileName: string
+    kind: 'file' | 'folder' | 'root'
   } | null>(null)
-  const [renameTarget, setRenameTarget] = useState<{ filePath: string; fileName: string } | null>(null)
-  const [renameValue, setRenameValue] = useState('')
-  const [deleteConfirm, setDeleteConfirm] = useState<{ filePath: string; fileName: string } | null>(null)
+  // The name dialog of New file, New folder and Rename; paths are project-relative
+  const [nameDialog, setNameDialog] = useState<
+    | { mode: 'file' | 'folder'; folderRel: string }
+    | { mode: 'rename'; folderRel: string; rel: string; name: string }
+    | null
+  >(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ filePath: string; fileName: string } | null>(
+    null
+  )
 
   // Terminal state
   const [terminalOpen, setTerminalOpen] = useState(false)
@@ -653,15 +670,51 @@ const Overview: React.FC = () => {
     [activeTab, editingFile, fileDirty, handleRunRaiderTests, handleSaveFile]
   )
 
-  const handleFileContextMenu = (e: React.MouseEvent, filePath: string, fileName: string): void => {
-    e.preventDefault()
-    setFileContextMenu({ x: e.clientX, y: e.clientY, filePath, fileName })
+  const reloadFiles = (): void => {
+    if (projectPath) void useProjectStore.getState().loadFiles(projectPath)
   }
 
-  const handleFolderContextMenu = (e: React.MouseEvent, folderPath: string, folderName: string): void => {
+  // Right-clicks on rows prevent the default first; the tree's own handler only takes the rest
+  const handleFileContextMenu = (e: React.MouseEvent, filePath: string, fileName: string): void => {
     e.preventDefault()
-    // Reuse the same fileContextMenu state — folders support the same operations
-    setFileContextMenu({ x: e.clientX, y: e.clientY, filePath: folderPath, fileName: folderName })
+    setFileContextMenu({ x: e.clientX, y: e.clientY, filePath, fileName, kind: 'file' })
+  }
+
+  const handleFolderContextMenu = (
+    e: React.MouseEvent,
+    folderPath: string,
+    folderName: string
+  ): void => {
+    e.preventDefault()
+    setFileContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      filePath: folderPath,
+      fileName: folderName,
+      kind: 'folder'
+    })
+  }
+
+  // The root row and the empty space under the tree: New file, New folder and Paste at the root
+  const handleTreeContextMenu = (e: React.MouseEvent): void => {
+    if (e.defaultPrevented || !projectPath) return
+    e.preventDefault()
+    setFileContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      filePath: projectPath,
+      fileName: '',
+      kind: 'root'
+    })
+  }
+
+  /** The menu's entry as a project-relative path, and the folder that New and Paste target. */
+  const menuTarget = (): { rel: string; folderRel: string } | null => {
+    if (!fileContextMenu || !projectPath) return null
+    if (fileContextMenu.kind === 'root') return { rel: '', folderRel: '' }
+    const rel = toProjectRel(projectPath, fileContextMenu.filePath)
+    if (!rel) return null
+    return { rel, folderRel: fileContextMenu.kind === 'folder' ? rel : parentRel(rel) }
   }
 
   const handleCopyPath = (): void => {
@@ -670,8 +723,48 @@ const Overview: React.FC = () => {
     toast.success(t('files.toast.pathCopied'))
   }
 
+  // Undo runs from a toast after later renders, so it reads the open file from here
+  const editingFileRef = useRef(editingFile)
+  editingFileRef.current = editingFile
+
+  /** The editor closes when the open file is gone (a dirty one was warned about first). */
+  const closeEditorIfUnder = (abs: string): void => {
+    const open = editingFileRef.current
+    if (!open || !isUnder(open.path, abs)) return
+    setEditingFile(null)
+    setFileContent('')
+    setSavedContent('')
+  }
+
+  /** Moves `rel` to the Trash; true when it went. */
+  const trashEntry = async (rel: string, name: string): Promise<boolean> => {
+    if (!projectPath) return false
+    const res = await window.api.trashProjectEntry(rel)
+    if (!res.success) {
+      toast.error(t('files.toast.trashFailed', { error: res.error }))
+      return false
+    }
+    closeEditorIfUnder(toProjectAbs(projectPath, rel))
+    useFileClipboardStore.getState().forget(projectPath, rel)
+    toast.success(t('files.toast.trashed', { name }))
+    reloadFiles()
+    return true
+  }
+
+  /** Success toast for something new, with Undo that sends it to the Trash. */
+  const announceCreated = (message: string, rel: string, skipped = 0): void => {
+    const name = rel.split('/').pop() ?? rel
+    const full =
+      skipped > 0 ? `${message} ${t('files.toast.linksSkipped', { count: skipped })}` : message
+    const project = projectPath
+    successWithUndo(full, () => {
+      // Paths are relative to the open project: never undo into another one
+      if (useProjectStore.getState().projectPath === project) void trashEntry(rel, name)
+    })
+  }
+
   const handleDeleteFile = async (): Promise<void> => {
-    if (!fileContextMenu || !projectPath) return
+    if (!fileContextMenu || !projectPath || fileContextMenu.kind === 'root') return
     setDeleteConfirm({ filePath: fileContextMenu.filePath, fileName: fileContextMenu.fileName })
   }
 
@@ -679,51 +772,122 @@ const Overview: React.FC = () => {
     if (!deleteConfirm || !projectPath) return
     const { filePath, fileName } = deleteConfirm
     setDeleteConfirm(null)
-    const res = await window.api.deleteFile(filePath)
-    if (res.success) {
-      toast.success(t('files.toast.deleted', { name: fileName }))
-      useProjectStore.getState().loadFiles(projectPath)
-    } else {
-      toast.error(t('files.toast.deleteFailed', { error: res.error }))
+    const rel = toProjectRel(projectPath, filePath)
+    if (rel) await trashEntry(rel, fileName)
+  }
+
+  const handleCopyEntry = (): void => {
+    const target = menuTarget()
+    if (!target || !projectPath || !fileContextMenu || fileContextMenu.kind === 'root') return
+    useFileClipboardStore.getState().copy({
+      projectPath,
+      rel: target.rel,
+      name: fileContextMenu.fileName,
+      kind: fileContextMenu.kind
+    })
+    toast.success(t('files.toast.copied', { name: fileContextMenu.fileName }))
+  }
+
+  const handlePaste = async (): Promise<void> => {
+    const target = menuTarget()
+    const copied = copiedIn(useFileClipboardStore.getState(), projectPath)
+    if (!target || !copied) return
+    const res = await window.api.copyProjectEntry(copied.rel, target.folderRel)
+    if (!res.success) {
+      toast.error(
+        res.code === 'intoItself'
+          ? t('files.toast.pasteIntoItself')
+          : t('files.toast.pasteFailed', { error: res.error })
+      )
+      return
     }
+    reloadFiles()
+    if (res.path)
+      announceCreated(t('files.toast.pasted', { name: copied.name }), res.path, res.skipped)
   }
 
   const handleDuplicateFile = async (): Promise<void> => {
-    if (!fileContextMenu || !projectPath) return
-    const res = await window.api.duplicateFile(fileContextMenu.filePath)
-    if (res.success) {
-      toast.success(t('files.toast.duplicated', { name: fileContextMenu.fileName }))
-      useProjectStore.getState().loadFiles(projectPath)
-    } else {
+    const target = menuTarget()
+    if (!target || !fileContextMenu || fileContextMenu.kind === 'root') return
+    const res = await window.api.duplicateProjectEntry(target.rel)
+    if (!res.success) {
       toast.error(t('files.toast.duplicateFailed', { error: res.error }))
+      return
     }
+    reloadFiles()
+    if (res.path)
+      announceCreated(
+        t('files.toast.duplicated', { name: fileContextMenu.fileName }),
+        res.path,
+        res.skipped
+      )
+  }
+
+  const handleStartNew = (kind: 'file' | 'folder'): void => {
+    const target = menuTarget()
+    if (target) setNameDialog({ mode: kind, folderRel: target.folderRel })
   }
 
   const handleStartRename = (): void => {
-    if (!fileContextMenu) return
-    setRenameTarget({ filePath: fileContextMenu.filePath, fileName: fileContextMenu.fileName })
-    setRenameValue(fileContextMenu.fileName)
+    const target = menuTarget()
+    if (!target || !fileContextMenu || fileContextMenu.kind === 'root') return
+    setNameDialog({
+      mode: 'rename',
+      folderRel: parentRel(target.rel),
+      rel: target.rel,
+      name: fileContextMenu.fileName
+    })
   }
 
-  const handleRenameSubmit = async (): Promise<void> => {
-    if (!renameTarget || !projectPath || !renameValue.trim()) {
-      setRenameTarget(null)
-      return
-    }
-    if (renameValue.trim() === renameTarget.fileName) {
-      setRenameTarget(null)
-      return
-    }
+  /** The error a refused name dialog shows; null closes the dialog. */
+  const nameError = (
+    res: { success: false; error: string; code?: string },
+    name: string
+  ): string =>
+    res.code === 'exists'
+      ? t('files.name.taken', { name })
+      : res.code === 'invalidName'
+        ? t('files.name.invalid')
+        : res.error
 
-    const res = await window.api.renameFile(renameTarget.filePath, renameValue.trim())
-    if (res.success) {
-      toast.success(t('files.toast.renamed', { name: renameValue.trim() }))
-      useProjectStore.getState().loadFiles(projectPath)
-    } else {
-      toast.error(t('files.toast.renameFailed', { error: res.error }))
+  const handleNameSubmit = async (name: string): Promise<string | null> => {
+    if (!nameDialog || !projectPath) return null
+    if (nameDialog.mode === 'rename') {
+      if (name === nameDialog.name) {
+        setNameDialog(null)
+        return null
+      }
+      const res = await window.api.renameProjectEntry(nameDialog.rel, name)
+      if (!res.success) return nameError(res, name)
+      setNameDialog(null)
+      // The open file keeps its edits under its new path
+      const oldAbs = toProjectAbs(projectPath, nameDialog.rel)
+      if (res.path && editingFile && isUnder(editingFile.path, oldAbs)) {
+        const path = toProjectAbs(projectPath, res.path) + editingFile.path.slice(oldAbs.length)
+        setEditingFile({ path, name: path.split(/[\\/]/).pop() || '' })
+      }
+      toast.success(t('files.toast.renamed', { name }))
+      reloadFiles()
+      return null
     }
-    setRenameTarget(null)
+    const res = await window.api.createProjectEntry(nameDialog.folderRel, name, nameDialog.mode)
+    if (!res.success) return nameError(res, name)
+    setNameDialog(null)
+    reloadFiles()
+    if (res.path) {
+      announceCreated(t('files.toast.created', { name }), res.path)
+      if (nameDialog.mode === 'file') handleOpenFile(toProjectAbs(projectPath, res.path))
+    }
+    return null
   }
+
+  const copiedEntry = useFileClipboardStore((state) => copiedIn(state, projectPath))
+  // Delete asks first; it also warns when the open file has unsaved edits that will go with it
+  const deleteLosesEdits =
+    !!deleteConfirm &&
+    fileDirty &&
+    !!editingFile &&
+    isUnder(editingFile.path, deleteConfirm.filePath)
 
   if (mobileProject) return <MobileProjectUnsupported />
 
@@ -1141,7 +1305,11 @@ const Overview: React.FC = () => {
             {/* Split: file tree left + editor preview right */}
             <div className={`${terminalOpen ? 'h-1/3' : 'flex-1'} flex flex-row min-h-0 overflow-hidden`}>
               {/* File tree - always visible */}
-              <div className="w-[28%] border-r border-neutral-bdr overflow-y-auto shrink-0">
+              <div
+                className="w-[28%] border-r border-neutral-bdr overflow-y-auto shrink-0"
+                data-testid="file-tree"
+                onContextMenu={handleTreeContextMenu}
+              >
                 <Folder
                   name={projectPath ? projectPath.split('/').pop() : ''}
                   path={projectPath || ''}
@@ -1285,31 +1453,55 @@ const Overview: React.FC = () => {
         </div>
       )}
 
-      {/* Context menu for all files (copy/rename/delete) */}
+      {/* Context menu of the file tree: a file, a folder, or the root and empty space */}
       {fileContextMenu && (
         <ContextMenu
           x={fileContextMenu.x}
           y={fileContextMenu.y}
           items={[
-            { label: t('files.menu.copyPath'), onClick: handleCopyPath },
-            { label: t('files.menu.rename'), onClick: handleStartRename },
-            { label: t('files.menu.duplicate'), onClick: handleDuplicateFile },
-            { label: t('files.menu.delete'), onClick: handleDeleteFile }
+            { label: t('files.menu.newFile'), onClick: () => handleStartNew('file') },
+            { label: t('files.menu.newFolder'), onClick: () => handleStartNew('folder') },
+            ...(fileContextMenu.kind === 'root'
+              ? []
+              : [{ label: t('files.menu.copy'), onClick: handleCopyEntry }]),
+            {
+              label: t('files.menu.paste'),
+              onClick: () => void handlePaste(),
+              disabled: !copiedEntry
+            },
+            ...(fileContextMenu.kind === 'root'
+              ? []
+              : [
+                  { label: t('files.menu.duplicate'), onClick: () => void handleDuplicateFile() },
+                  { label: t('files.menu.rename'), onClick: handleStartRename },
+                  { label: t('files.menu.copyPath'), onClick: handleCopyPath },
+                  { label: t('files.menu.delete'), onClick: () => void handleDeleteFile() }
+                ])
           ]}
           onClose={() => setFileContextMenu(null)}
         />
       )}
 
-      {/* Delete confirmation dialog */}
+      {/* Delete confirmation: the entry goes to the OS Trash */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-96">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('files.delete.title')}
+            className="bg-white rounded-lg shadow-lg p-6 w-96"
+          >
             <h3 className="text-sm font-semibold text-neutral-dark mb-3">
               {t('files.delete.title')}
             </h3>
             <p className="text-sm text-neutral-dk mb-4">
               {t('files.delete.message', { name: deleteConfirm.fileName })}
             </p>
+            {deleteLosesEdits && editingFile && (
+              <p role="alert" className="text-sm text-red-600 mb-4">
+                {t('files.delete.unsaved', { name: editingFile.name })}
+              </p>
+            )}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setDeleteConfirm(null)}
@@ -1328,40 +1520,25 @@ const Overview: React.FC = () => {
         </div>
       )}
 
-      {/* Rename dialog */}
-      {renameTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-96">
-            <h3 className="text-sm font-semibold text-neutral-dark mb-3">
-              {t('files.rename.title')}
-            </h3>
-            <input
-              type="text"
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleRenameSubmit()
-                if (e.key === 'Escape') setRenameTarget(null)
-              }}
-              autoFocus
-              className="w-full px-3 py-2 border border-neutral-bdr rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
-            />
-            <div className="flex justify-end gap-2 mt-4">
-              <button
-                onClick={() => setRenameTarget(null)}
-                className="px-3 py-1.5 text-sm text-neutral-dk hover:text-neutral-dark"
-              >
-                {t('files.rename.cancel')}
-              </button>
-              <button
-                onClick={handleRenameSubmit}
-                className="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700"
-              >
-                {t('files.rename.confirm')}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* New file, New folder and Rename */}
+      {nameDialog && (
+        <FileNameDialog
+          key={nameDialog.mode}
+          title={t(
+            nameDialog.mode === 'rename'
+              ? 'files.rename.title'
+              : nameDialog.mode === 'file'
+                ? 'files.newFile.title'
+                : 'files.newFolder.title'
+          )}
+          confirmLabel={t(
+            nameDialog.mode === 'rename' ? 'files.rename.confirm' : 'files.name.create'
+          )}
+          initialValue={nameDialog.mode === 'rename' ? nameDialog.name : ''}
+          taken={namesAt(files, nameDialog.folderRel)}
+          onSubmit={handleNameSubmit}
+          onCancel={() => setNameDialog(null)}
+        />
       )}
       {pendingLeave && editingFile && (
         <UnsavedChangesModal

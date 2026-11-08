@@ -15,6 +15,7 @@ import type {
   PrepareTestRunResult
 } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
+import type { ProjectFileResult } from '@shared/types/projectFiles'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { RunApi } from '@shared/types/runEvents'
 import type { AssertionMessage } from '@shared/types/pendingAssertion'
@@ -61,14 +62,16 @@ export interface WindowApi extends RunApi {
     filePath: string
   ) => Promise<{ success: boolean; data?: string; fileExt?: string; error?: string }>
   editFile: (filePath: string, newContent: string) => Promise<{ success: boolean; error?: string }>
-  deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
-  renameFile: (
-    filePath: string,
-    newName: string
-  ) => Promise<{ success: boolean; newPath?: string; error?: string }>
-  duplicateFile: (
-    filePath: string
-  ) => Promise<{ success: boolean; newPath?: string; error?: string }>
+  /** Files tab context menu: paths are project-relative POSIX, '' is the project root */
+  createProjectEntry: (
+    parentRel: string,
+    name: string,
+    kind: 'file' | 'folder'
+  ) => Promise<ProjectFileResult>
+  copyProjectEntry: (srcRel: string, destParentRel: string) => Promise<ProjectFileResult>
+  duplicateProjectEntry: (rel: string) => Promise<ProjectFileResult>
+  renameProjectEntry: (rel: string, name: string) => Promise<ProjectFileResult>
+  trashProjectEntry: (rel: string) => Promise<ProjectFileResult>
   openReport: (projectPath: string) => Promise<{ success: boolean; error?: string }>
   reportExists: (projectPath: string) => Promise<boolean>
 
