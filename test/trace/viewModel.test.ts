@@ -11,7 +11,7 @@ import {
 } from '../../src/renderer/src/foundation/trace/viewModel'
 import type { RaiderTraceIndex, TraceEntryResult } from '../../src/shared/types/raiderTrace'
 import type { TraceStep } from '../../src/shared/types/traceStep'
-import { fixtureIndex } from '../helpers/traceFixture'
+import { fixtureIndex, runtimeFixtureIndex } from '../helpers/traceFixture'
 
 const image = (name: string): TraceEntryResult => ({
   ok: true,
@@ -387,5 +387,22 @@ describe('fromRecorderTrace', () => {
     expect(await ok[0].loadScreenshot!()).toMatchObject({ dataUrl: 'data:image/jpeg;base64,QUJD' })
     const bad = fromRecorderTrace(recorded, async () => ({ success: false, error: 'gone' }))
     expect(await bad[0].loadScreenshot!()).toBeNull()
+  })
+})
+
+describe('fromRaiderTrace on a 4.0.0 runtime trace', () => {
+  it('is a flat list of actions with their waits and locators', () => {
+    const v = view(runtimeFixtureIndex())
+    expect(v.steps.map((s) => s.number)).toEqual([1, 2, 3, 4, 5, 6])
+    expect(v.steps.every((s) => !s.isGroup && s.children.length === 0)).toBe(true)
+    expect(v.steps.every((s) => s.status === 'passed')).toBe(true)
+    expect(v.steps[0].foundBy).toBeNull()
+    expect(v.steps[1].foundBy?.key).toBe('traceViewer.foundBy.label')
+    expect(v.steps[5].foundBy?.key).toBe('traceViewer.foundBy.role')
+    expect(v.steps[5].waitedMs).toBeGreaterThan(0)
+    expect(v.steps[5].title?.key).toBe('traceViewer.step.click')
+    expect(v.steps.every((s) => s.hasScreenshot && s.hasSnapshot)).toBe(true)
+    // A passing trace selects its last step
+    expect(v.defaultSelectedId).toBe('step-6')
   })
 })

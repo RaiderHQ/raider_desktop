@@ -1,0 +1,205 @@
+<html lang="en" data-raider-skipped-sheets="0"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raider Test Store</title>
+  
+<style>*, ::before, ::after { box-sizing: border-box; margin: 0px; padding: 0px; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: rgb(51, 51, 51); background: rgb(245, 245, 245); line-height: 1.6; }
+a { color: rgb(42, 122, 226); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.container { max-width: 1200px; margin: 0px auto; padding: 0px 20px; }
+.site-header { background: rgb(26, 26, 46); color: rgb(255, 255, 255); }
+.header-top { padding: 12px 0px; border-bottom: 1px solid rgb(22, 33, 62); }
+.header-top .container { display: flex; justify-content: space-between; align-items: center; }
+.header-top-right { display: flex; align-items: center; gap: 24px; }
+.logo { font-size: 1.5rem; font-weight: 700; color: rgb(255, 255, 255); letter-spacing: -0.5px; }
+.logo:hover { text-decoration: none; color: rgb(233, 69, 96); }
+.customer-menu { display: flex; align-items: center; gap: 12px; font-size: 0.9rem; }
+.customer-menu a { color: rgb(204, 204, 204); }
+.customer-menu a:hover { color: rgb(255, 255, 255); }
+.welcome-msg { color: rgb(233, 69, 96); font-weight: 500; }
+.cart-summary { font-size: 0.9rem; }
+.cart-link { color: rgb(204, 204, 204); }
+.cart-link:hover { color: rgb(255, 255, 255); }
+.main-nav { background: rgb(22, 33, 62); padding: 0px; }
+.nav-list { display: flex; list-style: none; gap: 0px; }
+.nav-list li a { display: block; padding: 10px 16px; color: rgb(204, 204, 204); font-size: 0.85rem; transition: background 0.2s; }
+.nav-list li a:hover { background: rgb(15, 52, 96); color: rgb(255, 255, 255); text-decoration: none; }
+.main-content { padding: 30px 20px; min-height: 60vh; }
+.page-title { font-size: 1.6rem; margin-bottom: 24px; color: rgb(26, 26, 46); }
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 24px; }
+.product-card { background: rgb(255, 255, 255); border-radius: 8px; overflow: hidden; box-shadow: rgba(0, 0, 0, 0.08) 0px 2px 8px; transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; }
+.product-card:hover { transform: translateY(-2px); box-shadow: rgba(0, 0, 0, 0.12) 0px 4px 16px; }
+.product-link { color: inherit; display: flex; flex-direction: column; flex: 1 1 0%; }
+.product-link:hover { text-decoration: none; }
+.product-image { background: rgb(240, 240, 245); padding: 20px; display: flex; align-items: center; justify-content: center; height: 200px; }
+.product-image img { max-width: 100%; max-height: 160px; object-fit: contain; }
+.product-info { padding: 16px; flex: 1 1 0%; }
+.product-name { font-size: 0.95rem; margin-bottom: 6px; color: rgb(26, 26, 46); }
+.product-category { display: inline-block; font-size: 0.75rem; color: rgb(136, 136, 136); background: rgb(240, 240, 245); padding: 2px 8px; border-radius: 10px; margin-bottom: 8px; }
+.product-price { display: block; font-size: 1.1rem; font-weight: 700; color: rgb(233, 69, 96); }
+.product-card .add-to-cart-btn { margin-top: auto; }
+.add-to-cart-btn { display: block; width: 100%; padding: 10px; background: rgb(233, 69, 96); color: rgb(255, 255, 255); border-width: medium; border-style: none; border-color: currentcolor; border-image: none; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+.add-to-cart-btn:hover { background: rgb(199, 62, 84); }
+.add-to-cart-btn:disabled { background: rgb(204, 204, 204); cursor: not-allowed; }
+.cart-page { max-width: 800px; }
+.cart-empty { text-align: center; padding: 40px 20px; background: rgb(255, 255, 255); border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.08) 0px 2px 8px; }
+.cart-empty p { margin: 12px 0px 24px; color: rgb(102, 102, 102); }
+.cart-table { width: 100%; border-collapse: collapse; background: rgb(255, 255, 255); border-radius: 8px; overflow: hidden; box-shadow: rgba(0, 0, 0, 0.08) 0px 2px 8px; }
+.cart-table th { background: rgb(26, 26, 46); color: rgb(255, 255, 255); padding: 12px 16px; text-align: left; font-size: 0.85rem; text-transform: uppercase; }
+.cart-table td { padding: 16px; border-bottom: 1px solid rgb(238, 238, 238); vertical-align: middle; }
+.cart-table tr:last-child td { border-bottom-width: medium; border-bottom-style: none; border-bottom-color: currentcolor; }
+.cart-item-name { font-weight: 600; color: rgb(26, 26, 46); }
+.cart-item-price { color: rgb(233, 69, 96); font-weight: 600; }
+.cart-remove-btn { background: none; border: 1px solid rgb(233, 69, 96); color: rgb(233, 69, 96); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; transition: 0.2s; }
+.cart-remove-btn:hover { background: rgb(233, 69, 96); color: rgb(255, 255, 255); }
+.cart-total { display: flex; justify-content: flex-end; margin-top: 20px; }
+.cart-total-box { background: rgb(255, 255, 255); padding: 20px 30px; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.08) 0px 2px 8px; text-align: right; }
+.cart-total-box .total-label { font-size: 1rem; color: rgb(102, 102, 102); }
+.cart-total-box .total-price { font-size: 1.5rem; font-weight: 700; color: rgb(233, 69, 96); margin-left: 16px; }
+.cart-actions { display: flex; justify-content: space-between; margin-top: 20px; }
+.alert-success { background: rgb(232, 245, 233); color: rgb(46, 125, 50); border: 1px solid rgb(200, 230, 201); padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; font-size: 0.9rem; }
+.login-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+.login-section { background: rgb(255, 255, 255); padding: 30px; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.08) 0px 2px 8px; }
+.login-section h2 { margin-bottom: 16px; color: rgb(26, 26, 46); }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.9rem; color: rgb(85, 85, 85); }
+.form-group input { width: 100%; padding: 10px 12px; border: 1px solid rgb(221, 221, 221); border-radius: 4px; font-size: 0.95rem; transition: border-color 0.2s; }
+.form-group input:focus { outline: none; border-color: rgb(42, 122, 226); box-shadow: rgba(42, 122, 226, 0.1) 0px 0px 0px 3px; }
+.form-actions { margin-top: 20px; }
+.form-links { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; }
+.form-links a { font-size: 0.85rem; }
+.alert { padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; font-size: 0.9rem; }
+.alert-error { background: rgb(253, 234, 234); color: rgb(192, 57, 43); border: 1px solid rgb(245, 198, 203); }
+.register-section { max-width: 500px; margin: 0px auto; background: rgb(255, 255, 255); padding: 30px; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.08) 0px 2px 8px; }
+.register-section p { margin-bottom: 20px; color: rgb(102, 102, 102); }
+.btn { display: inline-block; padding: 10px 24px; border-radius: 4px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; transition: background 0.2s; }
+.btn:hover { text-decoration: none; }
+.btn-primary { background: rgb(233, 69, 96); color: rgb(255, 255, 255); }
+.btn-primary:hover { background: rgb(199, 62, 84); }
+.btn-secondary { background: rgb(22, 33, 62); color: rgb(255, 255, 255); }
+.btn-secondary:hover { background: rgb(15, 52, 96); }
+.account-welcome { background: rgb(232, 245, 233); padding: 16px 20px; border-radius: 4px; margin-bottom: 24px; }
+.account-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+.account-card { background: rgb(255, 255, 255); padding: 24px; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.08) 0px 2px 8px; }
+.account-card h3 { margin-bottom: 12px; color: rgb(26, 26, 46); }
+.back-link { display: inline-block; margin-bottom: 20px; font-size: 0.9rem; }
+.product-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; background: rgb(255, 255, 255); padding: 30px; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.08) 0px 2px 8px; }
+.product-detail-image { background: rgb(240, 240, 245); border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 40px; min-height: 300px; }
+.product-detail-image img { max-width: 100%; max-height: 280px; object-fit: contain; }
+.product-detail-name { font-size: 1.5rem; margin-bottom: 8px; }
+.product-category-badge { display: inline-block; background: rgb(240, 240, 245); padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; color: rgb(136, 136, 136); margin-bottom: 16px; }
+.product-detail-price { font-size: 1.6rem; font-weight: 700; color: rgb(233, 69, 96); margin-bottom: 16px; }
+.product-detail-description { color: rgb(102, 102, 102); margin-bottom: 24px; line-height: 1.7; }
+.product-actions { display: flex; align-items: center; gap: 16px; }
+.quantity-selector { display: flex; align-items: center; gap: 8px; }
+.quantity-selector input { width: 60px; padding: 8px; border: 1px solid rgb(221, 221, 221); border-radius: 4px; text-align: center; }
+.error-page { text-align: center; padding: 60px 20px; }
+.error-page h1 { margin-bottom: 16px; }
+.error-page p { margin-bottom: 24px; color: rgb(102, 102, 102); }
+.site-footer { background: rgb(26, 26, 46); color: rgb(204, 204, 204); padding: 40px 0px 20px; margin-top: 40px; }
+.footer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-bottom: 30px; }
+.footer-col h4 { color: rgb(255, 255, 255); margin-bottom: 12px; }
+.footer-col ul { list-style: none; }
+.footer-col ul li { margin-bottom: 6px; }
+.footer-col ul a { color: rgb(204, 204, 204); font-size: 0.9rem; }
+.footer-col ul a:hover { color: rgb(233, 69, 96); }
+.footer-bottom { border-top: 1px solid rgb(22, 33, 62); padding-top: 16px; text-align: center; font-size: 0.85rem; }
+@media (max-width: 768px) {
+  .login-grid, .product-detail { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr; }
+  .nav-list { flex-wrap: wrap; }
+  .header-top .container { flex-direction: column; gap: 12px; }
+}</style></head>
+<body>
+  <header class="site-header">
+    <div class="header-top">
+      <div class="container">
+        <div class="header-top-left">
+          <a href="/" class="logo">Raider Test Store</a>
+        </div>
+        <div class="header-top-right">
+          <div id="customer_menu_top" class="customer-menu">
+            
+              <span class="welcome-msg">Welcome back Agustin</span>
+              <a href="/index.php?rt=account/account">Account</a>
+              <a href="/index.php?rt=account/logout">Logout</a>
+            
+          </div>
+          <div class="cart-summary">
+            <a href="/cart" class="cart-link">Cart: 0 item(s)</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <nav class="main-nav">
+      <div class="container">
+        <ul class="nav-list">
+          <li><a href="/">Home</a></li>
+          <li><a href="/?category=Apparel">Apparel &amp; Accessories</a></li>
+          <li><a href="/?category=Makeup">Makeup</a></li>
+          <li><a href="/?category=Skincare">Skincare</a></li>
+          <li><a href="/?category=Fragrance">Fragrance</a></li>
+          <li><a href="/?category=Men">Men</a></li>
+          <li><a href="/?category=Hair Care">Hair Care</a></li>
+          <li><a href="/?category=Books">Books</a></li>
+        </ul>
+      </div>
+    </nav>
+  </header>
+  <main class="container main-content">
+
+
+<div class="account-page">
+  <h1 class="page-title">My Account</h1>
+
+  <div class="account-welcome">
+    <p>Welcome to your account dashboard. From here you can manage your orders and account details.</p>
+  </div>
+
+  <div class="account-grid">
+    <div class="account-card">
+      <h3>Order History</h3>
+      <p>You have no recent orders.</p>
+    </div>
+    <div class="account-card">
+      <h3>Account Details</h3>
+      <p><strong>Name:</strong> Agustin</p>
+      <p><strong>Username:</strong> aguspe</p>
+    </div>
+    <div class="account-card">
+      <h3>Wishlist</h3>
+      <p>Your wishlist is empty.</p>
+    </div>
+  </div>
+</div>
+
+  </main>
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4>About Us</h4>
+          <p>Raider Test Store is a practice automation testing site built for the Ruby Raider and Raider Desktop projects.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Quick Links</h4>
+          <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/index.php?rt=account/login">Login</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Contact</h4>
+          <p>This is a test site for automation practice.</p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 Raider Test Store. Built for test automation.</p>
+      </div>
+    </div>
+  </footer>
+
+
+
+</body></html>

@@ -3,79 +3,75 @@ import { describeTraceStep, plainUrl, traceFoundBy } from '../src/shared/trace/d
 import { THIS_ELEMENT } from '../src/shared/describeStep'
 import { englishText } from '@shared/describeStepEnglish'
 import type { RaiderTraceStep } from '../src/shared/types/raiderTrace'
-import { fixtureIndex } from './helpers/traceFixture'
+import { fixtureIndex, runtimeFixtureIndex } from './helpers/traceFixture'
 
-const stepAt = (n: number): RaiderTraceStep => fixtureIndex().steps.find((s) => s.index === n)!
+// The 4.0.0 runtime trace: navigate, clear, send_keys (one secret), click
+const stepAt = (n: number): RaiderTraceStep =>
+  runtimeFixtureIndex().steps.find((s) => s.index === n)!
 const make = (over: Partial<RaiderTraceStep>): RaiderTraceStep => ({
   ...stepAt(6),
   ...over
 })
 
 describe('describeTraceStep', () => {
-  it('describes the fixture steps', () => {
+  it('describes the runtime fixture steps', () => {
     expect(describeTraceStep(stepAt(1))).toEqual({
       key: 'traceViewer.step.navigate',
-      values: { url: 'http://127.0.0.1:55539/' }
+      values: { url: 'https://raider-test-site.onrender.com/index.php' }
     })
-    expect(describeTraceStep(stepAt(5))).toMatchObject({
+    // The runtime stamps no label on a field found by label or id: the role still names it
+    expect(describeTraceStep(stepAt(2))).toMatchObject({
+      key: 'traceViewer.step.clear',
+      element: { key: 'traceViewer.element.unnamed' }
+    })
+    expect(describeTraceStep(stepAt(3))).toMatchObject({
       key: 'traceViewer.step.typeText',
-      values: { text: 'plain-trace-name' },
-      element: { values: { label: 'Name', role: 'text box' } }
+      values: { text: 'aguspe' },
+      element: { key: 'traceViewer.element.unnamed' }
     })
     expect(describeTraceStep(stepAt(6))).toMatchObject({
       key: 'traceViewer.step.click',
-      element: { key: 'traceViewer.element.withRole', values: { label: 'Go', role: 'button' } }
+      element: { key: 'traceViewer.element.withRole', values: { label: 'Login', role: 'button' } }
     })
-    expect(describeTraceStep(stepAt(4))).toMatchObject({
-      key: 'traceViewer.step.findElement',
-      element: { key: 'traceViewer.element.unnamed' }
-    })
-    expect(describeTraceStep(stepAt(8)).key).toBe('traceViewer.step.readText')
-    expect(describeTraceStep(stepAt(7)).key).toBe('traceViewer.step.eventually')
-    expect(describeTraceStep(stepAt(9)).key).toBe('traceViewer.step.eventuallyFailed')
   })
 
-  it('never says a failed wait passed', () => {
-    const failed = englishText(describeTraceStep(stepAt(9)).key)
-    expect(failed).not.toMatch(/passed/i)
-    expect(englishText(describeTraceStep(stepAt(7)).key)).toBe('Waited until the check passed')
-    expect(describeTraceStep(make({ action: 'eventually', status: 'failed' })).key).toBe(
-      'traceViewer.step.eventuallyFailed'
-    )
+  it('the runtime fixture has no group, wait or read steps', () => {
+    const index = runtimeFixtureIndex()
+    expect(index.steps.map((s) => s.action)).toEqual([
+      'navigate',
+      'clear',
+      'send_keys',
+      'clear',
+      'send_keys',
+      'click'
+    ])
+    expect(index.steps.every((s) => s.kind !== 'group' && s.parentIndex === null)).toBe(true)
+    expect(index.steps.find((s) => s.index === 6)!.locator).toEqual({
+      strategy: 'role',
+      selector: 'button, name: Login, exact: true',
+      within: []
+    })
+    expect(index.steps.find((s) => s.index === 2)!.locator).toMatchObject({
+      strategy: 'label',
+      selector: 'Login name'
+    })
+    expect(index.steps.find((s) => s.index === 6)!.waitedMs).toBeGreaterThan(0)
   })
 
   it('never reveals a secret step', () => {
-    for (const n of [2, 3]) {
-      const result = describeTraceStep(stepAt(n))
-      expect(result.key).toBe('traceViewer.step.typeSecret')
-      const text = JSON.stringify(result)
-      expect(text).not.toContain('send_keys')
-      expect(text).not.toContain('pw')
-    }
-    expect(describeTraceStep(stepAt(2)).element).toEqual({
-      key: 'traceViewer.element.withRole',
-      values: { label: 'Password', role: 'text box' }
-    })
-    const result = describeTraceStep(make({ action: 'send_keys', value: 'hunter2', secret: true }))
+    const result = describeTraceStep(stepAt(5))
     expect(result.key).toBe('traceViewer.step.typeSecret')
-    expect(JSON.stringify(result)).not.toContain('hunter2')
+    const text = JSON.stringify(result)
+    expect(text).not.toContain('send_keys')
+    expect(text).not.toContain('12341234')
+    const forced = describeTraceStep(make({ action: 'send_keys', value: 'hunter2', secret: true }))
+    expect(forced.key).toBe('traceViewer.step.typeSecret')
+    expect(JSON.stringify(forced)).not.toContain('hunter2')
   })
 
-  it('describes a secret select without the value', () => {
-    const result = describeTraceStep(make({ action: 'select_by', secret: true, value: null }))
-    expect(result.key).toBe('traceViewer.step.selectSecret')
-    expect(describeTraceStep(make({ action: 'select_by', value: 'Red' }))).toMatchObject({
-      key: 'traceViewer.step.selectOption',
-      values: { text: 'Red' }
-    })
-  })
-
-  it('handles typing and choosing with no value', () => {
+  it('handles typing with no value', () => {
     expect(describeTraceStep(make({ action: 'send_keys', value: null })).key).toBe(
       'traceViewer.step.typeEmpty'
-    )
-    expect(describeTraceStep(make({ action: 'select_by', value: null })).key).toBe(
-      'traceViewer.step.selectSecret'
     )
   })
 
@@ -100,6 +96,23 @@ describe('describeTraceStep', () => {
     expect(describeTraceStep(make({ action: 'tap' })).key).toBe('traceViewer.step.other')
   })
 
+  // A 3.x trace still opens: its read steps and eventually groups are plain steps now
+  it('describes the 3.13 fixture without its old vocabulary', () => {
+    const old = fixtureIndex('trace-v1')
+    const at = (n: number): RaiderTraceStep => old.steps.find((s) => s.index === n)!
+    expect(describeTraceStep(at(4)).key).toBe('traceViewer.step.other') // find_element
+    expect(describeTraceStep(at(7)).key).toBe('traceViewer.step.other') // eventually group
+    expect(describeTraceStep(at(8)).key).toBe('traceViewer.step.other') // text
+    expect(describeTraceStep(at(9)).key).toBe('traceViewer.step.other') // failed eventually
+    expect(englishText(describeTraceStep(at(9)).key)).not.toMatch(/passed/i)
+    expect(describeTraceStep(at(6))).toMatchObject({
+      key: 'traceViewer.step.click',
+      element: { key: 'traceViewer.element.withRole', values: { label: 'Go', role: 'button' } }
+    })
+    for (const action of ['select_by', 'hover', 'drag_and_drop', 'scroll_into_view', 'displayed?'])
+      expect(describeTraceStep(make({ action })).key).toBe('traceViewer.step.other')
+  })
+
   it('names an element with a label but no known role', () => {
     expect(describeTraceStep(make({ element: { label: 'Menu', role: 'weird' } })).element).toEqual({
       key: 'traceViewer.element.named',
@@ -110,38 +123,20 @@ describe('describeTraceStep', () => {
   it('never puts a selector or error text into the description', () => {
     const result = describeTraceStep(
       make({
-        locator: { strategy: 'css', selector: '#secret-sel', within: [] },
-        error: { className: 'Selenium::WebDriver::Error::NoSuchElementError', message: 'boom-msg' }
+        locator: { strategy: 'role', selector: 'button, name: secret-sel', within: [] },
+        error: { className: 'Raider::NotActionable', message: 'boom-msg' }
       })
     )
     const text = JSON.stringify(result)
-    for (const leak of ['secret-sel', 'boom-msg', 'NoSuchElement']) expect(text).not.toContain(leak)
+    for (const leak of ['secret-sel', 'boom-msg', 'NotActionable']) expect(text).not.toContain(leak)
   })
 
   it('only produces keys that exist in en.json', () => {
-    const actions = [
-      'navigate',
-      'click',
-      'send_keys',
-      'clear',
-      'submit',
-      'select_by',
-      'hover',
-      'drag_and_drop',
-      'scroll_into_view',
-      'text',
-      'attribute',
-      'displayed?',
-      'enabled?',
-      'selected?',
-      'find_element',
-      'find_elements',
-      'eventually',
-      'tap'
-    ]
+    const actions = ['navigate', 'click', 'send_keys', 'clear', 'submit', 'match_screenshot', 'tap']
     const steps = [
       ...actions.map((action) => make({ action, name: 'x', value: 'v' })),
-      ...fixtureIndex().steps,
+      ...runtimeFixtureIndex().steps,
+      ...fixtureIndex('trace-v1').steps,
       make({ kind: 'failure' })
     ]
     for (const step of steps) {
@@ -180,18 +175,21 @@ describe('describeTraceStep hardening', () => {
     const locators = [
       { strategy: 'xpath', selector: '//div[@id="leak-x"]', within: [] },
       { strategy: 'id', selector: 'leak-id', within: [] },
-      { strategy: 'css', selector: '[data-testid="leak-tid"]', within: [] },
+      { strategy: 'role', selector: 'button, name: leak-name, exact: true', within: [] },
+      { strategy: 'label', selector: 'leak-label', within: [] },
+      { strategy: 'text', selector: 'leak-text', within: [] },
+      { strategy: 'test_id', selector: 'leak-tid', within: [] },
       {
         strategy: 'css',
         selector: 'leak-inner',
         within: [
           { strategy: 'xpath', selector: '//leak-outer' },
-          { strategy: 'id', selector: 'leak-mid' }
+          { strategy: 'role', selector: 'dialog, name: leak-mid' }
         ]
       }
     ]
     for (const locator of locators) {
-      for (const action of ['click', 'send_keys', 'find_element', 'text']) {
+      for (const action of ['click', 'send_keys', 'clear', 'submit']) {
         const text = JSON.stringify(describeTraceStep(make({ action, locator, value: 'v' })))
         expect(text).not.toContain('leak')
       }
@@ -200,9 +198,23 @@ describe('describeTraceStep hardening', () => {
 })
 
 describe('traceFoundBy', () => {
-  const loc = (strategy: string) => ({ strategy, selector: 'sel-value', within: [] })
+  const loc = (strategy: string): { strategy: string; selector: string; within: never[] } => ({
+    strategy,
+    selector: 'sel-value',
+    within: []
+  })
 
-  it('maps known strategies', () => {
+  it('maps the runtime strategies', () => {
+    expect(traceFoundBy(loc('role'))).toEqual({ key: 'traceViewer.foundBy.role', values: {} })
+    expect(traceFoundBy(loc('label'))).toEqual({ key: 'traceViewer.foundBy.label', values: {} })
+    expect(traceFoundBy(loc('text'))?.key).toBe('traceViewer.foundBy.text')
+    expect(traceFoundBy(loc('test_id'))?.key).toBe('traceViewer.foundBy.test_id')
+    expect(traceFoundBy(loc('placeholder'))?.key).toBe('traceViewer.foundBy.placeholder')
+    expect(traceFoundBy(loc('alt'))?.key).toBe('traceViewer.foundBy.alt')
+    expect(traceFoundBy(loc('title'))?.key).toBe('traceViewer.foundBy.title')
+  })
+
+  it('maps Selenium strategies', () => {
     expect(traceFoundBy(loc('id'))).toEqual({ key: 'traceViewer.foundBy.id', values: {} })
     expect(traceFoundBy(loc('link_text'))).toEqual({
       key: 'traceViewer.foundBy.link_text',
@@ -216,6 +228,13 @@ describe('traceFoundBy', () => {
     expect(traceFoundBy(null)).toBeNull()
   })
 
+  it('reads the runtime fixture', () => {
+    const steps = runtimeFixtureIndex().steps
+    expect(traceFoundBy(steps[5].locator)?.key).toBe('traceViewer.foundBy.role')
+    expect(traceFoundBy(steps[1].locator)?.key).toBe('traceViewer.foundBy.label')
+    expect(traceFoundBy(steps[0].locator)).toBeNull()
+  })
+
   it('only produces keys that exist in en.json', () => {
     for (const s of [
       'id',
@@ -226,6 +245,13 @@ describe('traceFoundBy', () => {
       'partial_link_text',
       'class_name',
       'tag_name',
+      'role',
+      'label',
+      'text',
+      'test_id',
+      'placeholder',
+      'alt',
+      'title',
       'relative'
     ]) {
       const key = traceFoundBy(loc(s))!.key
