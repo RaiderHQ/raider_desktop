@@ -41,8 +41,9 @@ test.describe('Landing Page', () => {
   })
 
   test('shows the setup line once Ruby is checked', async ({ page }) => {
-    // The mocked check answers Ruby 3.2.0; the gem version comes from raider version
-    await expect(page.getByTestId('setup-line')).toContainText('Ruby 3.2.0')
+    // mockRubyReady answers Ruby 3.2.0 and raider version 4.0.1, whatever the host has
+    await expect(page.getByTestId('setup-line')).toHaveText('Ruby 3.2.0 · Ruby Raider 4.0.1 ✓')
+    await expect(page.getByRole('button', { name: 'Record a test' })).toBeEnabled()
   })
 
   test('shows New project… and Open project… with their shortcuts', async ({ page }) => {
@@ -147,6 +148,16 @@ test.describe('Landing Page', () => {
     await expect(page.getByRole('button', { name: 'Record a test' })).toBeDisabled()
     await page.getByRole('button', { name: 'Fix…' }).click()
     await expect(page.getByRole('heading', { name: 'Missing gems' })).toBeVisible()
+
+    // While it is open, File › Open project… and Help › How it works stand down
+    await electronApp.evaluate(({ BrowserWindow }) => {
+      const contents = BrowserWindow.getAllWindows()[0].webContents
+      contents.send('menu-command', 'new-project')
+      contents.send('menu-command', 'how-it-works')
+    })
+    await page.waitForTimeout(500)
+    expect(page.url()).toContain('#/start-project')
+    await expect(page.getByRole('heading', { name: 'How Ruby Raider works' })).toHaveCount(0)
   })
 
   test('Quick record opens its dialog and Cancel closes it', async ({ page }) => {

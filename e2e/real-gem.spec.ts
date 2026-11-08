@@ -82,7 +82,8 @@ test.describe('Real gem', () => {
   }
 
   test('create, record, run and open the trace on ruby_raider 4', async ({ electronApp, page }) => {
-    await mockRubyReady(electronApp, page)
+    // The real gem answers raider version here
+    await mockRubyReady(electronApp, page, { gemVersion: null })
     const projectPath = await createProject(electronApp, page)
 
     // Record the login against the gem's test site

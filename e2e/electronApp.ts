@@ -1,6 +1,8 @@
 import { test as base, type ElectronApplication, type Page } from '@playwright/test'
 import { _electron } from 'playwright'
 import path from 'path'
+import fs from 'fs'
+import os from 'os'
 
 type ElectronFixtures = {
   electronApp: ElectronApplication
@@ -40,8 +42,11 @@ export const test = base.extend<ElectronFixtures>({
   // eslint-disable-next-line no-empty-pattern
   electronApp: async ({}, use) => {
     const mainPath = path.resolve(__dirname, '../out/main/index.js')
+    // Each test gets its own userData: recent projects, quick recordings and traces it writes
+    // must not land in the profile of the app someone is using on this machine
+    const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'raider-e2e-'))
     const app = await _electron.launch({
-      args: [mainPath],
+      args: [mainPath, `--user-data-dir=${userData}`],
       env: {
         ...process.env,
         NODE_ENV: 'test'
@@ -53,6 +58,7 @@ export const test = base.extend<ElectronFixtures>({
       .evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().forEach((w) => w.destroy()))
       .catch(() => undefined)
     await app.close()
+    fs.rmSync(userData, { recursive: true, force: true })
   },
   page: async ({ electronApp }, use) => {
     const window = await getMainWindow(electronApp)
