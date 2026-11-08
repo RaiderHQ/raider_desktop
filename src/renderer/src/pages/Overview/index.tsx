@@ -36,6 +36,7 @@ import { loadRaiderResults } from '@foundation/raiderResults'
 import { FileNode } from '@foundation/Types/fileNode'
 import type { TestResult } from '@foundation/Types/testResult'
 import { getFileLanguage } from '@foundation/helpers'
+import { loadSettingsCollapsed, saveSettingsCollapsed } from '@foundation/filesSettingsCollapsed'
 import { TAG_RE } from '@shared/tags'
 import type { RunDefaults, RunScope } from '@shared/types/runEvents'
 
@@ -116,6 +117,14 @@ const Overview: React.FC = () => {
   )
   const [runDefaults, setRunDefaults] = useState<RunDefaults | null>(null)
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false)
+  // The Files tab's settings fold to their header so the files get the room (kept per user)
+  const [settingsCollapsed, setSettingsCollapsed] = useState(loadSettingsCollapsed)
+  const toggleSettings = (): void => {
+    setSettingsCollapsed((collapsed) => {
+      saveSettingsCollapsed(!collapsed)
+      return !collapsed
+    })
+  }
   const [lastResults, setLastResults] = useState<TestResult[] | null>(null)
   // A run of another project says nothing about this one's failures
   const projectRun = run && run.projectPath === projectPath ? run : null
@@ -836,6 +845,23 @@ const Overview: React.FC = () => {
         <div className="relative w-full">
           {/* Test settings toolbar */}
           <div className="border border-neutral-bdr rounded-t-lg bg-neutral-50 px-4 py-3 space-y-2">
+            <Tooltip
+              content={t(settingsCollapsed ? 'tooltips.overview.settingsExpand' : 'tooltips.overview.settingsCollapse')}
+              position="right"
+            >
+              <button
+                onClick={toggleSettings}
+                aria-expanded={!settingsCollapsed}
+                aria-controls="overview-settings-body"
+                className="flex items-center gap-1 text-sm font-semibold text-neutral-dark hover:text-ruby transition-colors"
+                data-testid="overview-settings-toggle"
+              >
+                {settingsCollapsed ? <FaChevronRight size={10} /> : <FaChevronDown size={10} />}
+                {t('overview.settings.title')}
+              </button>
+            </Tooltip>
+            {!settingsCollapsed && (
+            <div id="overview-settings-body" className="space-y-2">
             {showWebSettings && (
               <Tooltip content={t('tooltips.overview.urlInput')} position="right" className="w-full">
                 <div className="flex items-center gap-2 w-full">
@@ -1136,8 +1162,10 @@ const Overview: React.FC = () => {
                 </div>
               </Tooltip>
             </div>
+            </div>
+            )}
           </div>
-          <div className="relative h-[62vh] border border-t-0 border-neutral-bdr rounded-b-lg shadow-card flex flex-col bg-white">
+          <div className={`relative ${settingsCollapsed ? 'h-[calc(100vh-15rem)] min-h-[62vh]' : 'h-[62vh]'} border border-t-0 border-neutral-bdr rounded-b-lg shadow-card flex flex-col bg-white`}>
             {/* Split: file tree left + editor preview right */}
             <div className={`${terminalOpen ? 'h-1/3' : 'flex-1'} flex flex-row min-h-0 overflow-hidden`}>
               {/* File tree - always visible */}
