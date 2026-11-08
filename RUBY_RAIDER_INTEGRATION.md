@@ -4,6 +4,8 @@ Reference for how Raider Desktop should invoke every ruby_raider gem feature.
 All commands go through `safeExec()` + `buildShellCommand()` as subprocess calls.
 The gem manages `config/config.yml` internally — the desktop app should never write to it directly.
 
+**Gem version:** the desktop targets ruby_raider **4.0.0 or later** (its runtime: `require 'ruby_raider/runtime'`, no WaitHelper, no Watir, no Cucumber) and raider_reporter **1.0.0 or later**. A project whose `Gemfile.lock` (or Gemfile pin) names an older ruby_raider is neither recordable nor runnable; the Tests tab offers the update (section 10).
+
 ---
 
 ## Table of Contents
@@ -17,6 +19,7 @@ The gem manages `config/config.yml` internally — the desktop app should never 
 7. [Failure Video](#7-failure-video)
 8. [Config File Schema](#8-config-file-schema)
 9. [Common Pitfalls](#9-common-pitfalls)
+10. [The 4.0 Runtime and Generated Specs](#10-the-40-runtime-and-generated-specs)
 
 ---
 
@@ -37,6 +40,7 @@ const result = await safeExec(command, { timeout: 30_000 })
 ```
 
 **Platform behavior:**
+
 - macOS/Linux: `eval "$(rbenv init - 2>/dev/null || true)" && export RBENV_VERSION=X.Y.Z && cd "/path" && raider ...`
 - Windows: `cd /d "/path" && raider ...`
 
@@ -55,32 +59,36 @@ const result = await safeExec(command, { timeout: 30_000 })
 **IPC Channel:** `run-ruby-raider`
 
 **Command:**
+
 ```bash
 raider new "PROJECT_NAME" -p framework:FRAMEWORK automation:AUTOMATION [flags]
 ```
 
 **Parameters:**
 
-| Parameter | Values | Flag |
-|-----------|--------|------|
-| framework | `rspec`, `cucumber` | `-p framework:VALUE` |
-| automation | `selenium`, `watir` | `-p automation:VALUE` |
-| mobile | `ios`, `android`, `cross_platform` | `-p automation:VALUE` (overrides automation) |
-| ci | `github` (default), `azure` | `-p ci:VALUE` |
-| accessibility | boolean | `--accessibility` |
+| Parameter     | Values                             | Flag                                         |
+| ------------- | ---------------------------------- | -------------------------------------------- |
+| framework     | `rspec` (4.0 removed `cucumber`)   | `-p framework:VALUE`                         |
+| automation    | `selenium` (4.0 removed `watir`)   | `-p automation:VALUE`                        |
+| mobile        | `ios`, `android`, `cross_platform` | `-p automation:VALUE` (overrides automation) |
+| ci            | `github` (default), `azure`        | `-p ci:VALUE`                                |
+| accessibility | boolean                            | `--accessibility`                            |
 
 **Example:**
+
 ```bash
 raider new "my_project" -p framework:rspec automation:selenium --accessibility
 ```
 
 **Important:**
+
 - `--accessibility` only works when `-p` (parameters hash) is provided. Without `-p`, the gem enters interactive TTY mode and ignores other flags.
 - With `-p`, the gem does not run `bundle install`. Only the interactive menu path (`MenuGenerator#set_up_framework`) runs `cd PROJECT_NAME && gem install bundler && bundle install`. The desktop should verify the project directory exists after the command completes.
-- `accessibility` is only supported for web automation types (selenium, watir). It is silently ignored for mobile.
+- `accessibility` is only supported for web projects (selenium). It is silently ignored for mobile.
 - Invalid `framework`, `automation` or `ci` values make the gem exit non-zero with an error listing the allowed values.
 
 **Verify success:**
+
 ```typescript
 const expectedPath = path.join(folderPath, projectName)
 fs.existsSync(expectedPath) // true = project created
@@ -108,29 +116,30 @@ const config = yaml.load(content) as Record<string, unknown>
 
 ```typescript
 interface FullProjectConfig {
-  browser?: string          // 'chrome', 'firefox' (safari and edge also work once `raider u browser` seeds an empty `browser_arguments` entry)
-  url?: string              // base URL for tests
-  timeout?: number          // seconds (default 10)
-  headless?: boolean        // true/false
+  browser?: string // 'chrome', 'firefox' (safari and edge also work once `raider u browser` seeds an empty `browser_arguments` entry)
+  url?: string // base URL for tests
+  timeout?: number // seconds (default 10)
+  headless?: boolean // true/false
   viewport?: {
-    width: number           // default 1920
-    height: number          // default 1080
+    width: number // default 1920
+    height: number // default 1080
   }
-  browser_arguments?: Record<string, string[]>  // per-browser args
+  browser_arguments?: Record<string, string[]> // per-browser args
   video?: {
     enabled: boolean
     fps: number
     max_width: number
   }
-  platform?: string         // 'ios', 'android' (mobile only)
-  page_path?: string        // custom page path override
-  spec_path?: string        // custom spec path override
-  feature_path?: string     // custom feature path override
-  helper_path?: string      // custom helper path override
+  platform?: string // 'ios', 'android' (mobile only)
+  page_path?: string // custom page path override
+  spec_path?: string // custom spec path override
+  feature_path?: string // custom feature path override
+  helper_path?: string // custom helper path override
 }
 ```
 
 **Important:**
+
 - The `browser` value is always stored WITHOUT a colon prefix (e.g. `chrome`, not `:chrome`). This was fixed in gem v3.0.1+.
 - `browser_arguments` keys also have no colon prefix (e.g. `chrome`, `firefox`).
 - Missing `config/config.yml` is not an error — it means no config exists yet.
@@ -187,6 +196,7 @@ Accepted "on" values: `on`, `true`, `1`, `yes`
 Everything else is treated as off.
 
 At runtime, tests also check `ENV['HEADLESS']`. Setting the env var overrides the config value. The desktop can use either approach:
+
 - **Persistent:** `raider u headless on` (writes to config)
 - **Per-run:** Pass `HEADLESS=true` as environment variable to test execution
 
@@ -227,7 +237,7 @@ raider u timeout 60
 
 **Config key affected:** `timeout` (integer, in seconds)
 
-Used for implicit waits and max wait time.
+The one wait of the 4.0 runtime: how long `find_element`, the actions (`click`, `send_keys`, `clear`, `submit`) and the retrying matchers wait. The runtime asks for **no implicit wait** on the driver. `raider u strict on|off` and `raider u actionability on|off` set the two other runtime keys; `RAIDER_TIMEOUT`, `RAIDER_STRICT`, `RAIDER_ACTIONABILITY` override them per run.
 
 ---
 
@@ -276,6 +286,7 @@ raider u path /custom/helpers -h         # helper_path
 **Config keys affected:** `page_path`, `spec_path`, `feature_path`, `helper_path`
 
 These override where scaffolding generates files. When not set, defaults are:
+
 - Pages: `page_objects/pages/`
 - Specs: `spec/`
 - Features: `features/`
@@ -305,19 +316,18 @@ Only relevant for cross-platform mobile projects.
 ```bash
 raider g page LOGIN_PAGE                        # page object
 raider g spec LOGIN_SPEC                        # spec/test file
-raider g feature LOGIN                          # cucumber feature
-raider g steps LOGIN_STEPS                      # step definitions
 raider g helper AUTH_HELPER                     # helper module
 raider g component HEADER                       # reusable component
 ```
 
-**Flag (page, spec, feature, steps, helper, component):**
+**Flag (page, spec, helper, component):**
 
-| Flag | Alias | Description |
-|------|-------|-------------|
-| `--path PATH` | `-p` | Custom output directory |
+| Flag          | Alias | Description             |
+| ------------- | ----- | ----------------------- |
+| `--path PATH` | `-p`  | Custom output directory |
 
 **Example:**
+
 ```bash
 raider g page checkout -p custom/pages
 ```
@@ -325,11 +335,11 @@ raider g page checkout -p custom/pages
 ### 5.2 Batch Scaffold
 
 ```bash
-raider g scaffold users                          # page + spec (or feature + steps)
+raider g scaffold users                          # page + spec
 raider g scaffold users accounts products        # multiple resources
 ```
 
-`scaffold` takes only names and has no flags. For an RSpec project (a `spec/` directory and no `features/`) it generates a spec and a page object. Otherwise it generates a feature, steps and a page object. Missing or unrecognised Gemfile entries produce a warning and default to selenium + rspec.
+`scaffold` takes only names and has no flags. It generates a spec and a page object (4.0 removed `raider g feature`, `raider g steps` and `raider u path --feature`). Missing or unrecognised Gemfile entries produce a warning and default to selenium + rspec.
 
 ---
 
@@ -340,10 +350,13 @@ raider g scaffold users accounts products        # multiple resources
 ### Pre-execution Check
 
 Before running tests, verify gems are installed:
+
 ```bash
 bundle check
 ```
+
 If exit code != 0, run:
+
 ```bash
 bundle install
 ```
@@ -356,11 +369,9 @@ bundle exec raider u raid -p                # run in parallel
 bundle exec raider u raid -o --seed 42      # with custom options
 ```
 
-**Framework detection is automatic:**
-- `spec/` directory exists → `rspec spec/`
-- `features/` directory exists → `cucumber features`
+Projects are RSpec only (4.0 removed Cucumber): `raid` runs `rspec spec/`. The desktop's live runner runs `bundle exec rspec` / `parallel_rspec` itself (`src/main/handlers/run/runCommand.ts`) and reads raider_reporter's `raider-results/run.json` and events.
 
-**Parallel execution requires** `parallel_tests` gem in the project's Gemfile (`raid -p` runs `parallel_rspec spec/` or `parallel_cucumber features`).
+**Parallel execution requires** `parallel_tests` gem in the project's Gemfile (`raid -p` runs `parallel_rspec spec/`).
 
 ---
 
@@ -382,7 +393,9 @@ Raider records a video of each test. The desktop shows it for failed tests: open
 ```yaml
 browser: chrome
 url: 'https://example.com'
-timeout: 10
+timeout: 10 # seconds that finds, actions and assertions wait before failing
+strict: true # find_element fails when a locator matches more than one element
+actionability: true # actions wait until the element is ready; force: true skips it
 headless: false
 
 viewport:
@@ -413,7 +426,7 @@ helper_path: 'custom/helpers'
 
 ### Mobile Project (`config/config.yml` and `config/capabilities.yml`)
 
-`config/config.yml` holds `platform` and `video`. 
+`config/config.yml` holds `platform` and `video`.
 
 Appium capabilities are stored separately in `config/capabilities.yml`. The desktop app can read/write this file directly for mobile projects (this is the one exception to the "never write config directly" rule).
 
@@ -426,6 +439,7 @@ Appium capabilities are stored separately in `config/capabilities.yml`. The desk
 The gem stores browser names **without colon prefix**: `chrome`, `firefox`, `edge`, `safari`.
 
 The desktop should:
+
 - When reading config: use the value as-is (`config['browser']` → `'chrome'`)
 - When displaying: show as-is (no need to add/remove colons)
 - When setting: `raider u browser firefox` (no colon needed, gem strips it anyway)
@@ -439,6 +453,7 @@ All project configuration lives at **`config/config.yml`** inside the project ro
 ### Config Memoization
 
 The gem's `Utilities` module reloads `config/config.yml` from disk before every write operation. This means:
+
 - Multiple sequential updates from the desktop are safe
 - External changes to the file are picked up on the next write
 - No stale cache between calls, even in long-running processes
@@ -447,13 +462,14 @@ The gem's `Utilities` module reloads `config/config.yml` from disk before every 
 
 These env vars override config values at test execution time without modifying files:
 
-| Env Var | Overrides | Example |
-|---------|-----------|---------|
-| `HEADLESS` | `headless` config key | `HEADLESS=true bundle exec rspec` |
-| `VIDEO` | `video.enabled` config key (`off` disables recording) | `VIDEO=off bundle exec rspec` |
-| `RAIDER_FFMPEG_PATH` | Which ffmpeg binary recording uses | `RAIDER_FFMPEG_PATH=/opt/homebrew/bin/ffmpeg bundle exec rspec` |
+| Env Var              | Overrides                                             | Example                                                         |
+| -------------------- | ----------------------------------------------------- | --------------------------------------------------------------- |
+| `HEADLESS`           | `headless` config key                                 | `HEADLESS=true bundle exec rspec`                               |
+| `VIDEO`              | `video.enabled` config key (`off` disables recording) | `VIDEO=off bundle exec rspec`                                   |
+| `RAIDER_FFMPEG_PATH` | Which ffmpeg binary recording uses                    | `RAIDER_FFMPEG_PATH=/opt/homebrew/bin/ffmpeg bundle exec rspec` |
 
 Pass these when spawning test processes:
+
 ```typescript
 const command = buildShellCommand(projectPath, 'HEADLESS=true bundle exec raider u raid')
 ```
@@ -465,6 +481,7 @@ This flag only works when the `-p` (parameters) flag is also provided. Without `
 ### Name Normalization
 
 The gem's `NameNormalizer` strips common suffixes from scaffold names:
+
 - `_page` → stripped (e.g. `login_page` → `login`)
 - `_spec` → stripped
 - `_test` → stripped
@@ -477,10 +494,51 @@ The desktop should pass clean resource names (e.g. `login`, not `login_page`). T
 ### Project Detection
 
 The gem auto-detects the project's automation type and framework by reading the Gemfile when scaffolding:
+
 - `selenium-webdriver` gem → selenium
-- `watir` gem → watir
 - `rspec` gem → rspec
-- `cucumber` gem → cucumber
 - `appium_lib`, `eyes_selenium` and `axe-core-*` gems are also mapped (`project_detector.rb`)
 
-If nothing matches, it warns and defaults to selenium + rspec. The desktop can read the Gemfile directly and match against these gem names.
+If nothing matches, it warns and defaults to selenium + rspec. The desktop reads the Gemfile directly (`src/main/handlers/project/projectLayout.ts`): `appium_lib` → mobile (not recordable), `minitest` without `rspec` or `capybara` → not recordable, and the ruby_raider version from `Gemfile.lock` (`    ruby_raider (x.y.z)`) or the Gemfile pin → below 4 is not recordable or runnable (`unsupportedReason: 'gemTooOld'`).
+
+---
+
+## 10. The 4.0 Runtime and Generated Specs
+
+What the desktop writes into a project (`src/main/codegen/steps.ts`, `testFile.ts`) and what the gem must provide for it.
+
+**Every recorded spec** (in a project or exported standalone):
+
+```ruby
+require_relative '../helpers/spec_helper'   # standalone: require 'selenium-webdriver' and 'rspec'
+require 'ruby_raider/runtime/rspec'
+
+describe 'Login' do
+  include Raider::Matchers
+  include Raider::Helpers
+  it 'Login' do
+    driver.navigate.to('https://example.com/login')
+    driver.find_element(label: ['Login name', { exact: true }]).clear
+    driver.find_element(label: ['Login name', { exact: true }]).send_keys('aguspe')
+    driver.find_element(id: 'loginFrm_password').send_keys(ENV.fetch('RAIDER_SECRET_1'))
+    driver.find_element(by_role('button', name: 'Login', exact: true)).click
+    expect { driver.find_element(text: ['Welcome back', { exact: true }]) }.to be_visible
+    expect(driver).to have_title('My account')
+    expect { driver.current_url }.to include('account/account')
+  end
+end
+```
+
+The require and the two includes are in the spec itself, so it also runs in a project whose `helpers/spec_helper.rb` predates 4.0 (pin bumped to `~> 4.0`, `bundle update ruby_raider`). Standalone files set `Raider.timeout = <explicit wait>` and no implicit wait.
+
+**Locators** (`src/shared/types/step.ts` `Locator` → Ruby): `role` → `by_role('button', name: 'Save', exact: true)`; `label` → `label: ['Email', { exact: true }]`; `text` → `text: ['Sign in', { exact: true }]`; `testId` → `test_id: 'x'` (the attribute name is the project's `test_id_attribute`, the key both sides read); `id` → `id: 'x'`; `css` / `xpath` as the weak fallback. `exact: true` because the recorder proves uniqueness by exact text and the runtime's substring default under `strict` would raise `Raider::AmbiguousMatch`.
+
+**Checks** (the `assert` and `wait` steps): element matchers in the block form, `expect { driver.find_element(loc) }.to be_visible | be_hidden | be_enabled | be_checked | have_text('x', exact: true) | have_text('x') | have_value('x')`; the block re-finds the element on every poll and lets `be_hidden` pass once the element is gone. Page checks: `expect(driver).to have_title('x')` and `expect { driver.current_url }.to include('x')` (`have_url` compares the whole URL).
+
+**Actions**: `find_element(loc).click`, `.clear` + `.send_keys('x')`, `.send_keys(:enter)`, `driver.switch_to.frame(driver.find_element(loc))`. No `eventually`, no `WaitHelper`, no `displayed?` / `enabled?` / `selected?` / `attribute(loc, 'value')` / `find_elements(loc, timeout: 0)`: all removed in 4.0.
+
+**Sidecars** (`.raider/tests/<spec>.json`) carry `codegen: 2`; on project open, `migrateRecordedTests` rewrites Raider-owned specs written in an older shape (hand-edited ones are left alone and marked code-owned).
+
+**Traces** written by the runtime (`raider-trace` v1): action steps `click`, `send_keys`, `clear`, `submit` with `locator` (`strategy` one of Selenium's keys or `role` with selector text `button, name: Login, exact: true`, `label`, `text`, `test_id`, `placeholder`, `alt`, `title`), `within` and `waited_ms`, plus `navigate`, `match_screenshot` and `failure`. No `group` steps, no read steps. A passing test keeps its trace only with `TRACE=on`.
+
+**Upgrade** (`upgrade-ruby-raider` IPC, after the user confirms): the active `gem 'ruby_raider', '…'` line of the Gemfile is set to `'~> 4.0'`, then `<rubyCommand> -S bundle update ruby_raider` runs in the project and the project is activated again.
