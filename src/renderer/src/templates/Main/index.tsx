@@ -26,7 +26,7 @@ import { anyEditorDirty, pageEditorDirty, recorderBusy } from '@foundation/switc
 const MainTemplate: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const raiderVersion = useVersionStore((state) => state.version)
-  const { setRubyCommand, setRubyVersion, setVersionWarning } = useRubyStore()
+  const applyRubyCheck = useRubyStore((state) => state.applyCheck)
   const [isRubyInstallModalOpen, setIsRubyInstallModalOpen] = useState(false)
   const [isGemsInstallModalOpen, setIsGemsInstallModalOpen] = useState(false)
   const [missingGems, setMissingGems] = useState<string[] | undefined>(undefined)
@@ -47,9 +47,8 @@ const MainTemplate: React.FC = (): JSX.Element => {
     const checkRuby = async (): Promise<void> => {
       try {
         const result = await window.api.isRubyInstalled()
-        setRubyCommand(result.rubyCommand || null)
-        setRubyVersion(result.rubyVersion || null)
-        setVersionWarning(result.versionWarning || null)
+        // The home page's setup line reads the same answer
+        applyRubyCheck(result)
 
         if (result.versionWarning) {
           toast(result.versionWarning, { icon: '\u26A0\uFE0F', duration: 8000 })
@@ -65,6 +64,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
         }
       } catch (error) {
         console.error('Ruby check failed:', error)
+        applyRubyCheck(null)
       }
     }
     checkRuby()

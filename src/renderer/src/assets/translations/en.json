@@ -22,8 +22,23 @@
       "noFolderSelected": "No folder selected.",
       "openProject": "An error occurred while opening the project. Please try again."
     },
-    "logoLabel": "Learn how Ruby Raider works",
-    "bubble": "New here? Click me."
+    "start": {
+      "record": "Record a test",
+      "recordHint": "Raider keeps it in its own folder until you save it somewhere.",
+      "newProject": "New project…",
+      "openProject": "Open project…",
+      "checking": "Raider is checking Ruby first.",
+      "notReady": "Fix the setup above to record a test."
+    },
+    "setup": {
+      "checking": "Checking Ruby and Ruby Raider…",
+      "ready": "Ruby {{ruby}} · Ruby Raider {{raider}} ✓",
+      "noRuby": "Ruby isn't installed, or Raider can't find it.",
+      "missingGems": "Gems Raider needs are missing: {{gems}}.",
+      "noRaider": "Raider can't find Ruby Raider.",
+      "tooOld": "Ruby Raider {{version}} is installed; Raider needs 4.0.",
+      "fix": "Fix…"
+    }
   },
   "quickRecord": {
     "title": "Quick record",
@@ -32,7 +47,7 @@
     "nameLabel": "Test name",
     "namePlaceholder": "Checkout works",
     "start": "Start",
-    "starting": "Setting up…",
+    "starting": "Creating the project…",
     "cancel": "Cancel",
     "error": "Raider couldn't set up a quick recording.",
     "banner": "This project lives in Raider's own folder.",
@@ -72,16 +87,7 @@
   },
   "button": {
     "create": {
-      "text": "Create",
-      "description": "Create a new project"
-    },
-    "open": {
-      "text": "Open",
-      "description": "Open existing project"
-    },
-    "recorder": {
-      "text": "Quick record",
-      "description": "Record without a project"
+      "text": "Create"
     },
     "back": {
       "text": "Back",
@@ -106,18 +112,6 @@
     "rubyMissing": "Ruby wasn't found. Install rbenv and Ruby 3.2 or newer, then reopen the app."
   },
   "information": {
-    "createProject": {
-      "title": "Creating a new project",
-      "message": "Here you can create a new project and start automating your tests."
-    },
-    "openProject": {
-      "title": "Opening an existing project",
-      "message": "Here you can open an existing project and continue automating your tests."
-    },
-    "quickRecord": {
-      "title": "Quick record",
-      "message": "Quick record lets you record a website as a test without creating a project first.\n\nRaider keeps it in a temporary project, which you can save to a folder later.\n\nNo coding needed."
-    },
     "new": {
       "title": "Start a new project",
       "message": "Choose the different options in the selectors and create an automation framework."
@@ -806,10 +800,6 @@
     "createProject": {
       "title": "About creating a project",
       "message": "Give your project a name, choose a CI provider and add-ons, and Ruby Raider sets up a web project (Selenium + RSpec) for you.\n\nRuby Raider will generate a ready-to-use folder structure for you."
-    },
-    "landing": {
-      "title": "Welcome to Ruby Raider",
-      "message": "Ruby Raider is a visual test automation tool.\n\nUse Quick record to record a website as a test without a project, the Overview's Tests tab to record, browse and run your project's tests, or Create Project to start a brand new test suite from scratch.\n\nFor installation help and a full guide, click the Ruby Raider logo in the top-left corner of the app."
     }
   },
   "tooltips": {
@@ -920,7 +910,6 @@
       "save": "Save this file"
     },
     "landing": {
-      "logo": "Learn how Ruby Raider works",
       "quickRecord": "Record a website as a test, without creating a project first",
       "create": "Create a new test project in a folder you choose",
       "open": "Open a Ruby Raider project folder",
@@ -970,6 +959,7 @@
     "minimiseResults": "Minimise results",
     "close": "Close run",
     "showResults": "Show results",
+    "installingHint": "The first run installs the project's gems. Later runs start straight away.",
     "phase": {
       "installing": "Installing gems…",
       "booting": "Starting Ruby…",

@@ -317,6 +317,11 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
         )}
       </div>
 
+      {/* Only a project's first run installs its gems, so this shows once per project */}
+      {!finished && run.phase === 'installing' && (
+        <p className="px-3 py-2 text-xs text-neutral-dk">{t('run.installingHint')}</p>
+      )}
+
       {/* Why a run could not run stays in view even when minimised */}
       {reason && (
         <p data-testid="run-error-reason" className="px-3 py-2 text-xs text-neutral-dk">

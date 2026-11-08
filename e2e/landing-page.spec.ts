@@ -1,6 +1,22 @@
 import { test, expect } from './electronApp'
-import { goToLanding, mockRubyReady, navigateTo, openProjectButton } from './helpers/navigation'
+import type { Page } from '@playwright/test'
+import {
+  goToLanding,
+  mockRubyReady,
+  navigateTo,
+  newProjectButton,
+  openProjectButton
+} from './helpers/navigation'
 import { mockIPC, setRubyCommand } from './helpers/ipc-mock'
+
+/** The home page as a first launch shows it: no recent projects, no quick recordings */
+async function showFirstLaunch(page: Page): Promise<void> {
+  await mockIPC(page, 'listRecentProjects', [])
+  await mockIPC(page, 'listQuickProjects', [])
+  // Landing reads the lists when it opens
+  await navigateTo(page, '/new')
+  await goToLanding(page)
+}
 
 test.describe('Landing Page', () => {
   test.beforeEach(async ({ electronApp, page }) => {
@@ -13,6 +29,7 @@ test.describe('Landing Page', () => {
   })
 
   test('shows subtitle description', async ({ page }) => {
+    await showFirstLaunch(page)
     await expect(
       page.getByText('Record, run and fix UI tests without leaving the app.')
     ).toBeVisible()
@@ -23,14 +40,21 @@ test.describe('Landing Page', () => {
     await expect(logo).toBeVisible()
   })
 
-  test('shows Create project option', async ({ page }) => {
-    await expect(page.getByText('Create a new project')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Create', exact: true })).toBeVisible()
+  test('shows the setup line once Ruby is checked', async ({ page }) => {
+    // The mocked check answers Ruby 3.2.0; the gem version comes from raider version
+    await expect(page.getByTestId('setup-line')).toContainText('Ruby 3.2.0')
   })
 
-  test('shows Open project option', async ({ page }) => {
-    await expect(page.getByText('Open existing project')).toBeVisible()
+  test('shows New project… and Open project… with their shortcuts', async ({ page }) => {
+    await expect(newProjectButton(page)).toBeVisible()
+    await expect(newProjectButton(page)).toContainText(/⌘⇧N|Ctrl\+Shift\+N/)
     await expect(openProjectButton(page)).toBeVisible()
+    await expect(openProjectButton(page)).toContainText(/⌘O|Ctrl\+O/)
+  })
+
+  test('How Ruby Raider works opens the concepts', async ({ page }) => {
+    await page.getByRole('button', { name: 'How Ruby Raider works' }).last().click()
+    await expect(page.getByRole('heading', { name: 'How Ruby Raider works' })).toBeVisible()
   })
 
   test('lists quick recordings not saved to a folder, and opens one on its tests', async ({
@@ -47,6 +71,11 @@ test.describe('Landing Page', () => {
     await goToLanding(page)
 
     await expect(page.getByRole('heading', { name: 'Quick recordings' })).toBeVisible()
+    // A returning user: the start buttons become one row above the lists
+    await expect(page.getByTestId('landing')).toHaveAttribute('data-layout', 'recents')
+    await expect(
+      page.getByTestId('start-row').getByRole('button', { name: 'Record a test' })
+    ).toBeVisible()
     await page.getByRole('button', { name: /shop_test/ }).click()
     await expect(page).toHaveURL(/#\/overview\/tests$/)
   })
@@ -89,14 +118,40 @@ test.describe('Landing Page', () => {
     await expect(page).toHaveURL(/#\/overview/)
   })
 
-  test('shows Quick record option', async ({ page }) => {
-    await expect(page.getByText('Record without a project')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Quick record' })).toBeVisible()
+  test('shows Record a test as the primary start', async ({ page }) => {
+    await showFirstLaunch(page)
+    await expect(page.getByTestId('landing')).toHaveAttribute('data-layout', 'start')
+    await expect(page.getByRole('button', { name: 'Record a test' })).toBeVisible()
+    await expect(
+      page.getByText('Raider keeps it in its own folder until you save it somewhere.')
+    ).toBeVisible()
+  })
+
+  test('without the gems, Record a test is disabled and Fix… opens the gems help', async ({
+    electronApp,
+    page
+  }) => {
+    await electronApp.evaluate(async ({ ipcMain }) => {
+      ipcMain.removeHandler('is-ruby-installed')
+      ipcMain.handle('is-ruby-installed', async () => ({
+        success: false,
+        rubyVersion: '3.2.0',
+        rubyCommand: 'ruby',
+        missingGems: ['ruby_raider']
+      }))
+    })
+    await page.reload()
+    await goToLanding(page)
+    await page.getByRole('button', { name: 'Skip' }).click()
+    await expect(page.getByTestId('setup-line')).toContainText('ruby_raider')
+    await expect(page.getByRole('button', { name: 'Record a test' })).toBeDisabled()
+    await page.getByRole('button', { name: 'Fix…' }).click()
+    await expect(page.getByRole('heading', { name: 'Missing gems' })).toBeVisible()
   })
 
   test('Quick record opens its dialog and Cancel closes it', async ({ page }) => {
     await setRubyCommand(page, 'ruby')
-    await page.getByRole('button', { name: 'Quick record' }).click()
+    await page.getByRole('button', { name: 'Record a test' }).click()
     const dialog = page.getByRole('dialog', { name: 'Quick record' })
     await expect(dialog).toBeVisible()
     // Both the address and a name are needed
@@ -111,70 +166,9 @@ test.describe('Landing Page', () => {
     expect(page.url()).toContain('#/start-project')
   })
 
-  test('the Quick record card help explains Quick record', async ({ page }) => {
-    // The Quick record card comes first, so its help icon is the first one
-    await page.locator('button[aria-label="Help"]').first().click()
-    await expect(
-      page.getByText('Quick record lets you record a website as a test', { exact: false })
-    ).toBeVisible()
-    await expect(page.getByText('Open Recorder')).toHaveCount(0)
-  })
-
-  test('clicking Create navigates to new project page', async ({ page }) => {
-    await page.getByRole('button', { name: 'Create', exact: true }).click()
-    await page.waitForTimeout(1000)
-    const url = page.url()
-    expect(url).toContain('#/new')
-  })
-
-  test('each project card has an info icon', async ({ page }) => {
-    const infoIcons = page.locator('button[aria-label="Help"]')
-    const count = await infoIcons.count()
-    expect(count).toBeGreaterThanOrEqual(2)
-  })
-
-  test('info icon on Create card opens modal', async ({ page }) => {
-    // Quick record's card comes first; Create's help icon is the second
-    const infoIcons = page.locator('button[aria-label="Help"]')
-    await infoIcons.nth(1).click()
-    // Modal should appear with project creation info
-    await expect(page.getByRole('heading', { name: 'Creating a new project' })).toBeVisible()
-  })
-
-  test('Learn more in a card help opens the documentation page through the main process', async ({
-    electronApp,
-    page
-  }) => {
-    // Record instead of opening a real browser
-    await electronApp.evaluate(async ({ shell }) => {
-      const opened: string[] = []
-      ;(globalThis as unknown as { __openedUrls: string[] }).__openedUrls = opened
-      shell.openExternal = async (url: string): Promise<void> => {
-        opened.push(url)
-      }
-    })
-    await page.locator('button[aria-label="Help"]').nth(1).click()
-    await expect(page.getByRole('heading', { name: 'Creating a New Project' })).toBeVisible()
-    await page.getByRole('button', { name: /Learn more about .* in the documentation/ }).click()
-    await expect
-      .poll(() =>
-        electronApp.evaluate(
-          () => (globalThis as unknown as { __openedUrls: string[] }).__openedUrls
-        )
-      )
-      .toEqual(['https://ruby-raider.onrender.com/docs/projects.html'])
-  })
-
-  test('info modal can be closed', async ({ page }) => {
-    // Quick record's card comes first; Create's help icon is the second
-    const infoIcons = page.locator('button[aria-label="Help"]')
-    await infoIcons.nth(1).click()
-    const modalTitle = page.getByRole('heading', { name: 'Creating a new project' })
-    await expect(modalTitle).toBeVisible()
-
-    // Close the modal via the close button (aria-label="Close")
-    await page.getByRole('button', { name: 'Close' }).click()
-    await expect(modalTitle).not.toBeVisible({ timeout: 3000 })
+  test('New project… navigates to new project page', async ({ page }) => {
+    await newProjectButton(page).click()
+    await expect(page).toHaveURL(/#\/new/)
   })
 
   test('Open button triggers folder selection', async ({ electronApp, page }) => {

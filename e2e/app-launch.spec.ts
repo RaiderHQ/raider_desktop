@@ -41,7 +41,7 @@ test.describe('App Launch', () => {
 
   test('default route loads the Landing page', async ({ page }) => {
     await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Quick record' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Record a test' })).toBeVisible()
   })
 
   test('without a project the header title is not a link', async ({ page }) => {

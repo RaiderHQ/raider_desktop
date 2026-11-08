@@ -143,6 +143,14 @@ describe('RunPanel', () => {
     setRun(makeRun({ phase: 'installing' }))
     render(<RunPanel routeKey="/tests" />)
     expect(screen.getByTestId('run-phase')).toHaveTextContent('run.phase.installing')
+    // Only the first run of a project installs its gems, so the panel says why it waits
+    expect(screen.getByText('run.installingHint')).toBeInTheDocument()
+  })
+
+  it('says nothing about installing once the run boots', () => {
+    setRun(makeRun({ phase: 'booting' }))
+    render(<RunPanel routeKey="/tests" />)
+    expect(screen.queryByText('run.installingHint')).not.toBeInTheDocument()
   })
 
   it('shows booting with an indeterminate bar', () => {
