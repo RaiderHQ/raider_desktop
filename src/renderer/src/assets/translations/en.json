@@ -466,6 +466,7 @@
       "pasted": "Test pasted.",
       "duplicated": "Test duplicated.",
       "trashed": "Moved to the Trash.",
+      "trashedRecordLeft": "Moved to the Trash, but Raider couldn't remove its recording record. It may show as a missing file.",
       "undo": "Undo",
       "copyFailed": "Raider couldn't copy this test.",
       "pasteFailed": "Raider couldn't paste the test. Nothing was changed.",

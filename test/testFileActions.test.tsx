@@ -264,6 +264,26 @@ describe('trashTestRow', () => {
     expect(api.listProjectTests).toHaveBeenCalled()
   })
 
+  it('a file trashed without its record still counts, with a warning', async () => {
+    const trashed = vi.fn()
+    const off = onTestTrashed(trashed)
+    api.trashTest.mockResolvedValue({ success: true, testId: 't1', recordLeft: true })
+    expect(await trashTestRow(recorded)).toBe(true)
+    off()
+    expect(trashed).toHaveBeenCalledWith(['file:spec/login_spec.rb', 'id:t1'])
+    expect(mockToast).toHaveBeenCalledWith(en.tests.menu.trashedRecordLeft, expect.anything())
+    expect(mockToast.success).not.toHaveBeenCalled()
+    expect(api.listProjectTests).toHaveBeenCalled()
+  })
+
+  it('an Undo that leaves the record behind warns too', async () => {
+    await copyTest(code)
+    await pasteTest(null)
+    api.trashTest.mockResolvedValue({ success: true, recordLeft: true })
+    await clickUndo()
+    expect(mockToast).toHaveBeenCalledWith(en.tests.menu.trashedRecordLeft, expect.anything())
+  })
+
   it('a failure is reported and returns false', async () => {
     api.trashTest.mockResolvedValue({ success: false, error: 'no' })
     expect(await trashTestRow(code)).toBe(false)

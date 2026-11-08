@@ -236,8 +236,9 @@ const api = {
   trashTest: (
     projectPath: string,
     fileRel: string
-  ): Promise<{ success: true; testId?: string } | { success: false; error: string }> =>
-    ipcRenderer.invoke('trash-test', projectPath, fileRel),
+  ): Promise<
+    { success: true; testId?: string; recordLeft?: true } | { success: false; error: string }
+  > => ipcRenderer.invoke('trash-test', projectPath, fileRel),
   saveTrace: (
     testId: string,
     trace: TraceStep[],

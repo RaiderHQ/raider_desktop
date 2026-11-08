@@ -195,7 +195,9 @@ export interface WindowApi extends RunApi {
   trashTest: (
     projectPath: string,
     fileRel: string
-  ) => Promise<{ success: true; testId?: string } | { success: false; error: string }>
+  ) => Promise<
+    { success: true; testId?: string; recordLeft?: true } | { success: false; error: string }
+  >
   exportTest: (
     testName: string,
     steps: Step[]

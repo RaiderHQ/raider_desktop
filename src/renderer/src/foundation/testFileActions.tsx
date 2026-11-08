@@ -83,6 +83,11 @@ export function onTestTrashed(handler: TrashedHandler): () => void {
   }
 }
 
+// The file went to the Trash but Raider's record of it could not: it lists as a missing file
+const warnRecordLeft = (): void => {
+  toast(i18n.t('tests.menu.trashedRecordLeft'), { icon: '⚠️' })
+}
+
 function announceTrashed(file: string, testId?: string): void {
   const keys: TestKey[] = [`file:${file}`, ...(testId ? [`id:${testId}`] : [])]
   for (const handler of Array.from(trashedHandlers)) handler(keys)
@@ -127,6 +132,7 @@ function offerUndo(projectPath: string, file: string, message: string): void {
     try {
       const result = await window.api.trashTest(projectPath, file)
       if (!result.success) return fail('tests.menu.undoFailed', result.error)
+      if (result.recordLeft) warnRecordLeft()
       announceTrashed(file, result.testId)
       await reload()
     } catch (error) {
@@ -238,7 +244,8 @@ export async function trashTestRow(row: TestRow): Promise<boolean> {
       fail('tests.menu.deleteFailed', result.error)
       return false
     }
-    toast.success(i18n.t('tests.menu.trashed'))
+    if (result.recordLeft) warnRecordLeft()
+    else toast.success(i18n.t('tests.menu.trashed'))
     announceTrashed(row.file, result.testId ?? row.testId)
     await reload()
     return true

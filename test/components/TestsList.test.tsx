@@ -344,17 +344,23 @@ describe('TestsList copy, paste, duplicate and delete', () => {
       })
     })
 
-    it('matches the physical key, whatever letter the layout types', async () => {
+    it('reads the typed Latin letter, and the key position on a non-Latin layout', async () => {
       setup()
       await act(async () => {
-        // A Cyrillic layout types с on the C key
+        // Dvorak types c on the I key: the letter wins
+        fireEvent.keyDown(row('API health'), { key: 'c', code: 'KeyI', metaKey: true })
+      })
+      expect(useTestClipboardStore.getState().item).toEqual(codeClip)
+      useTestClipboardStore.setState({ item: null })
+      await act(async () => {
+        // A Russian layout types с (Cyrillic) on the C key: the position is used
         fireEvent.keyDown(row('API health'), { key: 'с', code: 'KeyC', metaKey: true })
       })
       expect(useTestClipboardStore.getState().item).toEqual(codeClip)
       useTestClipboardStore.setState({ item: null })
       await act(async () => {
-        // Dvorak's C is not on the KeyC position
-        fireEvent.keyDown(row('API health'), { key: 'c', code: 'KeyI', metaKey: true })
+        // Dvorak types j on the C key: not a copy
+        fireEvent.keyDown(row('API health'), { key: 'j', code: 'KeyC', metaKey: true })
       })
       expect(useTestClipboardStore.getState().item).toBeNull()
     })

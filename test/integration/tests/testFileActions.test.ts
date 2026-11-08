@@ -318,6 +318,13 @@ describe('trashTest', () => {
     expect(deleteTrace).toHaveBeenCalledWith('r1')
   })
 
+  it('never hands a record id that is not a plain name to deleteTrace', async () => {
+    const saved = await saveRecordedTest(project, appState.layout!, rec('..', 'Dots'))
+    expect(await trashTest(project, saved.file)).toEqual({ success: true, testId: '..' })
+    expect(trashed.paths).toHaveLength(2)
+    expect(deleteTrace).not.toHaveBeenCalled()
+  })
+
   it("a code file's trash deletes no trace", async () => {
     await writeFile(join(project, 'spec/api_spec.rb'), CODE)
     await trashTest(project, 'spec/api_spec.rb')
@@ -363,7 +370,7 @@ describe('trashTest', () => {
     expect(await exists(join(project, saved.file))).toBe(true)
   })
 
-  it('a folder swapped for a link after the check is refused; the gone spec is still pruned', async () => {
+  it('a folder swapped for a link after the check is refused; the gone spec is still pruned, with a warning', async () => {
     const saved = await saveRecordedTest(project, appState.layout!, rec('r5', 'Swap'))
     appState.tests.set('r5', { ...rec('r5', 'Swap'), file: saved.file, ownership: 'recorded' })
     const recordDir = join(project, '.raider/tests/spec')
@@ -380,7 +387,11 @@ describe('trashTest', () => {
       await symlink(join(outside, 'decoy'), recordDir)
     })
     deletions.length = 0
-    expect(await trashTest(project, saved.file)).toMatchObject({ success: false })
+    expect(await trashTest(project, saved.file)).toEqual({
+      success: true,
+      testId: 'r5',
+      recordLeft: true
+    })
     // Only the stand-in's own removal of the record folder; the handler deleted nothing
     expect(deletions.filter((p) => p.startsWith(project) && !p.endsWith('.tmp'))).toEqual([
       recordDir
@@ -389,7 +400,7 @@ describe('trashTest', () => {
     expect(trashed.paths).toEqual([join(project, saved.file)])
     expect(await exists(join(outside, 'decoy', `${basename(saved.file)}.json`))).toBe(true)
     expect(appState.tests.has('r5')).toBe(false)
-    expect(deleteTrace).not.toHaveBeenCalled()
+    expect(deleteTrace).toHaveBeenCalledWith('r5')
   })
 
   it('a recorded test whose file is missing still has its record trashed', async () => {

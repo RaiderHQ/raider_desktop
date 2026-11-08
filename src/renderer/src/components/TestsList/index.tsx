@@ -106,18 +106,20 @@ const TestsList: React.FC<TestsListProps> = ({
     const focused = (e.target as HTMLElement).closest?.('[data-test-key]')
     const key = focused?.getAttribute('data-test-key')
     const row = (key && allRows.find((r) => testKeyOf(r) === key)) || selectedRow
-    // The physical key, so Cmd+C stays Copy on any keyboard layout
-    const letter = mod && !e.shiftKey && !e.altKey ? e.code : null
-    if (letter === 'KeyV') {
+    // The letter typed when it is a Latin one (Dvorak's C is C); on a non-Latin layout, the
+    // letter of the key position (KeyC), so Cmd+C still copies
+    const typed = /^[a-z]$/i.test(e.key) ? e.key.toLowerCase() : /^Key([A-Z])$/.exec(e.code)?.[1]
+    const letter = mod && !e.shiftKey && !e.altKey ? typed?.toLowerCase() : undefined
+    if (letter === 'v') {
       e.preventDefault()
       void pasteTest(row, { activeTag })
       return
     }
     if (!row) return
-    if (letter === 'KeyC') {
+    if (letter === 'c') {
       e.preventDefault()
       void copyTest(row)
-    } else if (letter === 'KeyD') {
+    } else if (letter === 'd') {
       e.preventDefault()
       void duplicateTest(row, { activeTag })
     } else if ((e.key === 'Delete' && !mod) || (e.key === 'Backspace' && mod)) {

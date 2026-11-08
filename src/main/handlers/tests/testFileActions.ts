@@ -28,6 +28,8 @@ import type { Sidecar } from '../../../shared/types/projectTest'
 export const MAX_TEST_FILE_BYTES = 1024 * 1024
 const MAX_SUFFIX = 1000
 const MAX_NAME_LENGTH = 300
+// The trace ids saveTrace accepts (its SAFE_TEST_ID)
+const SAFE_TEST_ID = /^[A-Za-z0-9_-]+$/
 
 const NOT_FOUND = 'This test could not be found.'
 const NOT_READ = 'This test could not be read.'
@@ -261,13 +263,13 @@ async function trashChecked(checked: Checked): Promise<void> {
 /**
  * 'trash-test': moves a spec file of the open project, and its record when it was recorded,
  * to the OS Trash (never a deletion). Both are checked before either moves. Then the
- * recorded test is forgotten (even when only its file went), the renderer is told, and its
- * trace is deleted like delete-test does.
+ * recorded test is forgotten, the renderer is told, and its trace is deleted like delete-test
+ * does. When the file went but its record could not, it is still a success, with `recordLeft`.
  */
 export async function trashTest(
   projectPath: unknown,
   fileRel: unknown
-): Promise<{ success: true; testId?: string } | Fail> {
+): Promise<{ success: true; testId?: string; recordLeft?: true } | Fail> {
   try {
     const project = await openProject(projectPath)
     if ('error' in project) return project
@@ -300,10 +302,13 @@ export async function trashTest(
       for (const [id, test] of tests) if (id === testId || test.file === fileRel) tests.delete(id)
       appState.mainWindow?.webContents.send('tests-updated', Array.from(tests.values()))
     }
-    if (outcome === 'specOnly') return fail(NOT_TRASHED)
-    if (!testId) return { success: true }
-    void deleteTrace(testId)
-    return { success: true, testId }
+    if (!testId)
+      return outcome === 'specOnly' ? { success: true, recordLeft: true } : { success: true }
+    // A record's id is user data: only a plain name may become part of a trace path
+    if (SAFE_TEST_ID.test(testId)) void deleteTrace(testId)
+    return outcome === 'specOnly'
+      ? { success: true, testId, recordLeft: true }
+      : { success: true, testId }
   } catch (error) {
     safeError('Could not move the test to the Trash:', error)
     return fail(NOT_TRASHED)
