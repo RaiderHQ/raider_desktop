@@ -1,3 +1,4 @@
+import { entryNameIssue } from '@shared/entryName'
 import type { FileNode } from '@foundation/Types/fileNode'
 
 // Tree paths come from path.join in main, so they use the OS separator
@@ -17,6 +18,9 @@ export const toProjectAbs = (projectPath: string, rel: string): string =>
 /** The folder holding `rel`; '' is the project root. */
 export const parentRel = (rel: string): string =>
   rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : ''
+
+/** The same path, whichever separator the OS used. */
+export const samePath = (a: string, b: string): boolean => posix(a) === posix(b)
 
 /** True when `path` is `entry` itself or lies inside it. */
 export function isUnder(path: string, entry: string): boolean {
@@ -39,8 +43,9 @@ export function namesAt(files: FileNode[], rel: string): string[] {
 /** The i18n key of what's wrong with a new entry name, or null when it can be used. */
 export function entryNameProblem(name: string, taken: string[]): string | null {
   const trimmed = name.trim()
-  if (trimmed === '') return 'files.name.empty'
-  if (trimmed === '.' || trimmed === '..' || /[/\\\0]/.test(trimmed)) return 'files.name.invalid'
-  if (taken.includes(trimmed)) return 'files.name.taken'
+  const issue = entryNameIssue(trimmed)
+  if (issue) return `files.name.${issue}`
+  // The disks of macOS and Windows ignore case, so `Login.rb` would clash with `login.rb`
+  if (taken.some((n) => n.toLowerCase() === trimmed.toLowerCase())) return 'files.name.taken'
   return null
 }

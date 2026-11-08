@@ -288,15 +288,21 @@ app.whenReady().then(() => {
   ipcMain.handle('read-image', readImage)
   ipcMain.handle('edit-file', editFile)
   // The Files tab's context menu: project-relative paths only, confined to the active project
-  ipcMain.handle('project-file-create', (_event, parentRel, name, kind) =>
-    createProjectEntry(parentRel, name, kind)
+  ipcMain.handle('project-file-create', (_event, projectPath, parentRel, name, kind) =>
+    createProjectEntry(projectPath, parentRel, name, kind)
   )
-  ipcMain.handle('project-file-copy', (_event, srcRel, destParentRel) =>
-    copyProjectEntry(srcRel, destParentRel)
+  ipcMain.handle('project-file-copy', (_event, projectPath, srcRel, destParentRel) =>
+    copyProjectEntry(projectPath, srcRel, destParentRel)
   )
-  ipcMain.handle('project-file-duplicate', (_event, rel) => duplicateProjectEntry(rel))
-  ipcMain.handle('project-file-rename', (_event, rel, name) => renameProjectEntry(rel, name))
-  ipcMain.handle('project-file-trash', (_event, rel) => trashProjectEntry(rel))
+  ipcMain.handle('project-file-duplicate', (_event, projectPath, rel) =>
+    duplicateProjectEntry(projectPath, rel)
+  )
+  ipcMain.handle('project-file-rename', (_event, projectPath, rel, name) =>
+    renameProjectEntry(projectPath, rel, name)
+  )
+  ipcMain.handle('project-file-trash', (_event, projectPath, rel) =>
+    trashProjectEntry(projectPath, rel)
+  )
   ipcMain.handle(
     'run-ruby-raider',
     (

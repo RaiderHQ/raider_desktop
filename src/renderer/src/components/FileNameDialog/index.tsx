@@ -1,4 +1,4 @@
-import React, { useId, useState } from 'react'
+import React, { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { entryNameProblem } from '@foundation/projectFilePaths'
 
@@ -7,6 +7,8 @@ interface FileNameDialogProps {
   confirmLabel: string
   /** The name to start from (Rename); empty for a new entry */
   initialValue?: string
+  /** Where the first selection ends (Rename selects the name without its extension) */
+  selectEnd?: number
   /** Names already in the target folder */
   taken: string[]
   /** Does the work; resolves to an error to show, or null when done */
@@ -23,6 +25,7 @@ const FileNameDialog: React.FC<FileNameDialogProps> = ({
   title,
   confirmLabel,
   initialValue = '',
+  selectEnd,
   taken,
   onSubmit,
   onCancel
@@ -31,8 +34,16 @@ const FileNameDialog: React.FC<FileNameDialogProps> = ({
   const [value, setValue] = useState(initialValue)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
   const titleId = useId()
   const errorId = useId()
+
+  useEffect(() => {
+    const input = inputRef.current
+    if (!input) return
+    input.focus()
+    input.setSelectionRange(0, selectEnd ?? input.value.length)
+  }, [])
 
   const submit = async (): Promise<void> => {
     if (busy) return
@@ -60,11 +71,18 @@ const FileNameDialog: React.FC<FileNameDialogProps> = ({
         aria-modal="true"
         aria-labelledby={titleId}
         className="bg-white rounded-lg shadow-lg p-6 w-96"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault()
+            onCancel()
+          }
+        }}
       >
         <h3 id={titleId} className="text-sm font-semibold text-neutral-dark mb-3">
           {title}
         </h3>
         <input
+          ref={inputRef}
           type="text"
           aria-labelledby={titleId}
           aria-invalid={error ? true : undefined}
@@ -76,9 +94,7 @@ const FileNameDialog: React.FC<FileNameDialogProps> = ({
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') void submit()
-            if (e.key === 'Escape') onCancel()
           }}
-          autoFocus
           className="w-full px-3 py-2 border border-neutral-bdr rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
         />
         {error && (

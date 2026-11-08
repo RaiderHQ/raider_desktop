@@ -89,18 +89,28 @@ const api = {
   ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('edit-file', filePath, newContent),
   createProjectEntry: async (
+    projectPath: string,
     parentRel: string,
     name: string,
     kind: 'file' | 'folder'
-  ): Promise<ProjectFileResult> => ipcRenderer.invoke('project-file-create', parentRel, name, kind),
-  copyProjectEntry: async (srcRel: string, destParentRel: string): Promise<ProjectFileResult> =>
-    ipcRenderer.invoke('project-file-copy', srcRel, destParentRel),
-  duplicateProjectEntry: async (rel: string): Promise<ProjectFileResult> =>
-    ipcRenderer.invoke('project-file-duplicate', rel),
-  renameProjectEntry: async (rel: string, name: string): Promise<ProjectFileResult> =>
-    ipcRenderer.invoke('project-file-rename', rel, name),
-  trashProjectEntry: async (rel: string): Promise<ProjectFileResult> =>
-    ipcRenderer.invoke('project-file-trash', rel),
+  ): Promise<ProjectFileResult> =>
+    ipcRenderer.invoke('project-file-create', projectPath, parentRel, name, kind),
+  copyProjectEntry: async (
+    projectPath: string,
+    srcRel: string,
+    destParentRel: string
+  ): Promise<ProjectFileResult> =>
+    ipcRenderer.invoke('project-file-copy', projectPath, srcRel, destParentRel),
+  duplicateProjectEntry: async (projectPath: string, rel: string): Promise<ProjectFileResult> =>
+    ipcRenderer.invoke('project-file-duplicate', projectPath, rel),
+  renameProjectEntry: async (
+    projectPath: string,
+    rel: string,
+    name: string
+  ): Promise<ProjectFileResult> =>
+    ipcRenderer.invoke('project-file-rename', projectPath, rel, name),
+  trashProjectEntry: async (projectPath: string, rel: string): Promise<ProjectFileResult> =>
+    ipcRenderer.invoke('project-file-trash', projectPath, rel),
   openReport: async (projectPath: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('open-report', projectPath),
   reportExists: async (projectPath: string): Promise<boolean> =>

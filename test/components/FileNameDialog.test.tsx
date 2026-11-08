@@ -90,4 +90,36 @@ describe('FileNameDialog', () => {
     })
     expect(onSubmit).toHaveBeenCalledWith('Gemfile')
   })
+
+  it('closes with Escape wherever the focus is in the dialog', () => {
+    const { onCancel } = setup()
+    fireEvent.keyDown(screen.getByRole('button', { name: 'files.newFile.confirm' }), {
+      key: 'Escape'
+    })
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('selects the part of the name to change first', () => {
+    setup({ initialValue: 'login_spec.rb', selectEnd: 10 })
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    expect(input).toHaveFocus()
+    expect([input.selectionStart, input.selectionEnd]).toEqual([0, 10])
+  })
+
+  it('says why Windows-hostile and protected names are refused', async () => {
+    const { onSubmit } = setup()
+    for (const [name, key] of [
+      ['a:b', 'files.name.characters'],
+      ['CON', 'files.name.reserved'],
+      ['x.', 'files.name.trailing'],
+      ['.git', 'files.name.protected']
+    ]) {
+      type(name)
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'files.newFile.confirm' }))
+      })
+      expect(screen.getByRole('alert')).toHaveTextContent(key)
+    }
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
 })

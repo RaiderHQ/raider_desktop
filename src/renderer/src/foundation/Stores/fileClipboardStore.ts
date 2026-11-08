@@ -14,6 +14,8 @@ interface FileClipboardStore {
   clear: () => void
   /** Drops the copied entry when `rel` (or a folder holding it) is gone from `projectPath` */
   forget: (projectPath: string, rel: string) => void
+  /** Follows a rename of the copied entry, or of a folder holding it */
+  renamed: (projectPath: string, fromRel: string, toRel: string) => void
 }
 
 /** The app's own clipboard for files and folders; the system clipboard is left alone. */
@@ -29,6 +31,14 @@ const useFileClipboardStore = create<FileClipboardStore>((set, get) => ({
       (copied.rel === rel || copied.rel.startsWith(rel + '/'))
     )
       set({ copied: null })
+  },
+  renamed: (projectPath, fromRel, toRel): void => {
+    const copied = get().copied
+    if (!copied || copied.projectPath !== projectPath) return
+    if (copied.rel === fromRel)
+      set({ copied: { ...copied, rel: toRel, name: toRel.split('/').pop() ?? copied.name } })
+    else if (copied.rel.startsWith(fromRel + '/'))
+      set({ copied: { ...copied, rel: toRel + copied.rel.slice(fromRel.length) } })
   }
 }))
 

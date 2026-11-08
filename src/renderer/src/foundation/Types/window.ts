@@ -62,16 +62,24 @@ export interface WindowApi extends RunApi {
     filePath: string
   ) => Promise<{ success: boolean; data?: string; fileExt?: string; error?: string }>
   editFile: (filePath: string, newContent: string) => Promise<{ success: boolean; error?: string }>
-  /** Files tab context menu: paths are project-relative POSIX, '' is the project root */
+  /**
+   * Files tab context menu: `projectPath` is the project the renderer works on (refused when
+   * another one is open); paths are project-relative POSIX, '' is the project root
+   */
   createProjectEntry: (
+    projectPath: string,
     parentRel: string,
     name: string,
     kind: 'file' | 'folder'
   ) => Promise<ProjectFileResult>
-  copyProjectEntry: (srcRel: string, destParentRel: string) => Promise<ProjectFileResult>
-  duplicateProjectEntry: (rel: string) => Promise<ProjectFileResult>
-  renameProjectEntry: (rel: string, name: string) => Promise<ProjectFileResult>
-  trashProjectEntry: (rel: string) => Promise<ProjectFileResult>
+  copyProjectEntry: (
+    projectPath: string,
+    srcRel: string,
+    destParentRel: string
+  ) => Promise<ProjectFileResult>
+  duplicateProjectEntry: (projectPath: string, rel: string) => Promise<ProjectFileResult>
+  renameProjectEntry: (projectPath: string, rel: string, name: string) => Promise<ProjectFileResult>
+  trashProjectEntry: (projectPath: string, rel: string) => Promise<ProjectFileResult>
   openReport: (projectPath: string) => Promise<{ success: boolean; error?: string }>
   reportExists: (projectPath: string) => Promise<boolean>
 

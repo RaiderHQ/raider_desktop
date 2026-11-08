@@ -26,4 +26,23 @@ describe('fileClipboardStore', () => {
     store.forget('/p', 'spec')
     expect(useFileClipboardStore.getState().copied).toBeNull()
   })
+
+  it('follows a rename of the entry, or of a folder holding it', () => {
+    const store = useFileClipboardStore.getState()
+    store.copy({ projectPath: '/p', rel: 'spec/a.rb', name: 'a.rb', kind: 'file' })
+    store.renamed('/p', 'specs', 'x')
+    expect(useFileClipboardStore.getState().copied?.rel).toBe('spec/a.rb')
+    store.renamed('/p', 'spec', 'tests')
+    expect(useFileClipboardStore.getState().copied).toMatchObject({
+      rel: 'tests/a.rb',
+      name: 'a.rb'
+    })
+    store.renamed('/p', 'tests/a.rb', 'tests/b.rb')
+    expect(useFileClipboardStore.getState().copied).toMatchObject({
+      rel: 'tests/b.rb',
+      name: 'b.rb'
+    })
+    store.renamed('/q', 'tests/b.rb', 'tests/c.rb')
+    expect(useFileClipboardStore.getState().copied?.rel).toBe('tests/b.rb')
+  })
 })

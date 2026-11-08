@@ -5,7 +5,8 @@ import {
   parentRel,
   isUnder,
   namesAt,
-  entryNameProblem
+  entryNameProblem,
+  samePath
 } from '@foundation/projectFilePaths'
 import type { FileNode } from '@foundation/Types/fileNode'
 
@@ -34,6 +35,11 @@ describe('projectFilePaths', () => {
     expect(toProjectAbs('/p', '')).toBe('/p')
   })
 
+  it('compares paths whatever the separator', () => {
+    expect(samePath('C:\\p\\a.rb', 'C:/p/a.rb')).toBe(true)
+    expect(samePath('/p/a.rb', '/p/b.rb')).toBe(false)
+  })
+
   it('finds the parent folder of an entry', () => {
     expect(parentRel('spec/pages/home.rb')).toBe('spec/pages')
     expect(parentRel('Gemfile')).toBe('')
@@ -60,6 +66,11 @@ describe('projectFilePaths', () => {
       expect(entryNameProblem(bad, [])).toBe('files.name.invalid')
     }
     expect(entryNameProblem('Gemfile', ['Gemfile'])).toBe('files.name.taken')
+    expect(entryNameProblem('gemfile', ['Gemfile'])).toBe('files.name.taken')
+    expect(entryNameProblem('a:b', [])).toBe('files.name.characters')
+    expect(entryNameProblem('x.', [])).toBe('files.name.trailing')
+    expect(entryNameProblem('CON.rb', [])).toBe('files.name.reserved')
+    expect(entryNameProblem('.git', [])).toBe('files.name.protected')
     expect(entryNameProblem('new.rb', ['Gemfile'])).toBeNull()
   })
 })

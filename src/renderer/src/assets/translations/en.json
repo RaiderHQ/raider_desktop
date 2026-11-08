@@ -1347,7 +1347,6 @@
       "duplicated": "Duplicated {{name}}",
       "duplicateFailed": "Failed to duplicate: {{error}}",
       "renamed": "Renamed to {{name}}",
-      "renameFailed": "Failed to rename: {{error}}",
       "readFailed": "Failed to read file",
       "readError": "Error reading file"
     },
@@ -1364,7 +1363,17 @@
       "invalid": "A name cannot be . or .. or contain / or \\.",
       "taken": "“{{name}}” already exists here.",
       "create": "Create",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "characters": "A name cannot contain : < > \" | ? * or control characters.",
+      "trailing": "A name cannot end with a dot or a space.",
+      "reserved": "Windows keeps this name for itself. Pick another one.",
+      "protected": "Git and Raider keep this name for their own files. Pick another one.",
+      "saving": "Wait for the save to finish, then rename."
+    },
+    "error": {
+      "recorded": "This is a recorded test. Rename or delete it from the Tests tab.",
+      "tooLarge": "Too big to copy here. Copy it in Finder or Explorer instead.",
+      "projectChanged": "The project changed before this could be done. Try again."
     }
   },
   "closeGuard": {

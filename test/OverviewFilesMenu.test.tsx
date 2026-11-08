@@ -24,13 +24,15 @@ vi.mock('@components/Library/Folder', () => ({
   default: ({
     onFileClick,
     onFileContextMenu,
-    onFolderContextMenu
+    onFolderContextMenu,
+    revealPath
   }: {
+    revealPath?: string
     onFileClick: (path: string) => void
     onFileContextMenu: (e: React.MouseEvent, path: string, name: string) => void
     onFolderContextMenu: (e: React.MouseEvent, path: string, name: string) => void
   }): JSX.Element => (
-    <div data-testid="folder">
+    <div data-testid="folder" data-reveal={revealPath ?? ''}>
       <div data-testid="root-row">project</div>
       <div
         data-testid="spec-folder"
@@ -187,14 +189,12 @@ const rightClick = (el: HTMLElement): void => {
 }
 
 const menuLabels = (): string[] =>
-  screen
-    .getAllByRole('button')
-    .filter((b) => (b.textContent ?? '').startsWith('files.menu.'))
-    .map((b) => b.textContent as string)
+  screen.getAllByRole('menuitem').map((b) => b.textContent as string)
 
 const click = async (name: string): Promise<void> => {
   await act(async () => {
-    fireEvent.click(screen.getByRole('button', { name }))
+    const item = name.startsWith('files.menu.') ? 'menuitem' : 'button'
+    fireEvent.click(screen.getByRole(item, { name }))
   })
 }
 
@@ -247,7 +247,7 @@ describe('Files tab context menu', () => {
   it('disables Paste until something is copied', async () => {
     await renderFiles()
     rightClick(screen.getByTestId('spec-file'))
-    expect(screen.getByRole('button', { name: 'files.menu.paste' })).toBeDisabled()
+    expect(screen.getByRole('menuitem', { name: 'files.menu.paste' })).toBeDisabled()
   })
 
   it('disables Paste for an entry copied in another project', async () => {
@@ -256,7 +256,7 @@ describe('Files tab context menu', () => {
       .copy({ projectPath: '/other', rel: 'x.rb', name: 'x.rb', kind: 'file' })
     await renderFiles()
     rightClick(screen.getByTestId('root-row'))
-    expect(screen.getByRole('button', { name: 'files.menu.paste' })).toBeDisabled()
+    expect(screen.getByRole('menuitem', { name: 'files.menu.paste' })).toBeDisabled()
   })
 
   it("creates a file in the file's folder, reloads the tree and opens it", async () => {
@@ -266,7 +266,12 @@ describe('Files tab context menu', () => {
     expect(screen.getByRole('dialog', { name: 'files.newFile.title' })).toBeInTheDocument()
     api.readDirectory.mockClear()
     await typeName('new_spec.rb')
-    expect(api.createProjectEntry).toHaveBeenCalledWith('spec', 'new_spec.rb', 'file')
+    expect(api.createProjectEntry).toHaveBeenCalledWith(
+      '/fake/project',
+      'spec',
+      'new_spec.rb',
+      'file'
+    )
     expect(api.readDirectory).toHaveBeenCalledWith('/fake/project')
     expect(api.readFile).toHaveBeenCalledWith('/fake/project/spec/new_spec.rb')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -278,13 +283,18 @@ describe('Files tab context menu', () => {
     rightClick(screen.getByTestId('spec-folder'))
     await click('files.menu.newFolder')
     await typeName('support')
-    expect(api.createProjectEntry).toHaveBeenCalledWith('spec', 'support', 'folder')
+    expect(api.createProjectEntry).toHaveBeenCalledWith(
+      '/fake/project',
+      'spec',
+      'support',
+      'folder'
+    )
     expect(api.readFile).not.toHaveBeenCalled()
 
     rightClick(screen.getByTestId('file-tree'))
     await click('files.menu.newFolder')
     await typeName('lib')
-    expect(api.createProjectEntry).toHaveBeenLastCalledWith('', 'lib', 'folder')
+    expect(api.createProjectEntry).toHaveBeenLastCalledWith('/fake/project', '', 'lib', 'folder')
   })
 
   it('refuses a taken or invalid name in place, keeping the dialog open', async () => {
@@ -316,7 +326,7 @@ describe('Files tab context menu', () => {
     await typeName('new_spec.rb')
     expect(screen.getByTestId('editor')).toBeInTheDocument()
     await click('Undo')
-    expect(api.trashProjectEntry).toHaveBeenCalledWith('spec/new_spec.rb')
+    expect(api.trashProjectEntry).toHaveBeenCalledWith('/fake/project', 'spec/new_spec.rb')
     expect(screen.queryByTestId('editor')).not.toBeInTheDocument()
   })
 
@@ -330,18 +340,18 @@ describe('Files tab context menu', () => {
     })
     rightClick(screen.getByTestId('spec-folder'))
     await click('files.menu.paste')
-    expect(api.copyProjectEntry).toHaveBeenCalledWith('spec/a_spec.rb', 'spec')
+    expect(api.copyProjectEntry).toHaveBeenCalledWith('/fake/project', 'spec/a_spec.rb', 'spec')
     rightClick(screen.getByTestId('spec-file'))
     await click('files.menu.paste')
-    expect(api.copyProjectEntry).toHaveBeenLastCalledWith('spec/a_spec.rb', 'spec')
+    expect(api.copyProjectEntry).toHaveBeenLastCalledWith('/fake/project', 'spec/a_spec.rb', 'spec')
     rightClick(screen.getByTestId('file-tree'))
     await click('files.menu.paste')
-    expect(api.copyProjectEntry).toHaveBeenLastCalledWith('spec/a_spec.rb', '')
+    expect(api.copyProjectEntry).toHaveBeenLastCalledWith('/fake/project', 'spec/a_spec.rb', '')
     // Undo of the last paste trashes what it made
     await act(async () => {
       fireEvent.click(screen.getAllByRole('button', { name: 'Undo' }).at(-1)!)
     })
-    expect(api.trashProjectEntry).toHaveBeenCalledWith('spec/pages/a_spec.rb')
+    expect(api.trashProjectEntry).toHaveBeenCalledWith('/fake/project', 'spec/pages/a_spec.rb')
   })
 
   it('says so when a folder is pasted into itself', async () => {
@@ -352,7 +362,7 @@ describe('Files tab context menu', () => {
     await click('files.menu.copy')
     rightClick(screen.getByTestId('spec-folder'))
     await click('files.menu.paste')
-    expect(api.copyProjectEntry).toHaveBeenCalledWith('spec', 'spec')
+    expect(api.copyProjectEntry).toHaveBeenCalledWith('/fake/project', 'spec', 'spec')
     expect(error).toHaveBeenCalledWith('files.toast.pasteIntoItself')
   })
 
@@ -360,9 +370,9 @@ describe('Files tab context menu', () => {
     await renderFiles()
     rightClick(screen.getByTestId('spec-file'))
     await click('files.menu.duplicate')
-    expect(api.duplicateProjectEntry).toHaveBeenCalledWith('spec/a_spec.rb')
+    expect(api.duplicateProjectEntry).toHaveBeenCalledWith('/fake/project', 'spec/a_spec.rb')
     await click('Undo')
-    expect(api.trashProjectEntry).toHaveBeenCalledWith('spec/a_spec_copy.rb')
+    expect(api.trashProjectEntry).toHaveBeenCalledWith('/fake/project', 'spec/a_spec_copy.rb')
   })
 
   it('asks before moving to the Trash, then trashes and closes the open file', async () => {
@@ -373,7 +383,7 @@ describe('Files tab context menu', () => {
     expect(screen.getByRole('dialog', { name: 'files.delete.title' })).toBeInTheDocument()
     expect(api.trashProjectEntry).not.toHaveBeenCalled()
     await click('files.delete.confirm')
-    expect(api.trashProjectEntry).toHaveBeenCalledWith('spec/a_spec.rb')
+    expect(api.trashProjectEntry).toHaveBeenCalledWith('/fake/project', 'spec/a_spec.rb')
     expect(screen.queryByTestId('editor')).not.toBeInTheDocument()
   })
 
@@ -387,7 +397,7 @@ describe('Files tab context menu', () => {
       'files.delete.unsaved'
     )
     await click('files.delete.confirm')
-    expect(api.trashProjectEntry).toHaveBeenCalledWith('spec')
+    expect(api.trashProjectEntry).toHaveBeenCalledWith('/fake/project', 'spec')
     expect(screen.queryByTestId('editor')).not.toBeInTheDocument()
   })
 
@@ -409,9 +419,89 @@ describe('Files tab context menu', () => {
     await click('files.menu.rename')
     expect(within(screen.getByRole('dialog')).getByRole('textbox')).toHaveValue('a_spec.rb')
     await typeName('b_spec.rb')
-    expect(api.renameProjectEntry).toHaveBeenCalledWith('spec/a_spec.rb', 'b_spec.rb')
+    expect(api.renameProjectEntry).toHaveBeenCalledWith(
+      '/fake/project',
+      'spec/a_spec.rb',
+      'b_spec.rb'
+    )
     // Saving the kept edit writes to the new path
     await click('editor.saveButton')
     expect(api.editFile).toHaveBeenCalledWith('/fake/project/spec/b_spec.rb', 'edited')
+  })
+
+  it('reloads the Tests list and reveals the new entry after a change', async () => {
+    await renderFiles()
+    api.listProjectTests.mockClear()
+    rightClick(screen.getByTestId('spec-file'))
+    await click('files.menu.duplicate')
+    expect(api.listProjectTests).toHaveBeenCalled()
+    expect(screen.getByTestId('folder')).toHaveAttribute(
+      'data-reveal',
+      '/fake/project/spec/a_spec_copy.rb'
+    )
+  })
+
+  it('asks about unsaved edits before Undo trashes the open new file', async () => {
+    await renderFiles()
+    rightClick(screen.getByTestId('root-row'))
+    await click('files.menu.newFile')
+    await typeName('new_spec.rb')
+    fireEvent.change(screen.getByTestId('editor'), { target: { value: 'typed' } })
+    await click('Undo')
+    expect(api.trashProjectEntry).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    await click('editor.unsaved.discard')
+    expect(api.trashProjectEntry).toHaveBeenCalledWith('/fake/project', 'spec/new_spec.rb')
+    expect(screen.queryByTestId('editor')).not.toBeInTheDocument()
+  })
+
+  it('says a recorded test is renamed from the Tests tab', async () => {
+    api.renameProjectEntry.mockResolvedValue({ success: false, error: 'x', code: 'recorded' })
+    await renderFiles()
+    rightClick(screen.getByTestId('spec-file'))
+    await click('files.menu.rename')
+    await typeName('b_spec.rb')
+    expect(screen.getByRole('alert')).toHaveTextContent('files.error.recorded')
+  })
+
+  it('selects the name without its extension when renaming a file', async () => {
+    await renderFiles()
+    rightClick(screen.getByTestId('spec-file'))
+    await click('files.menu.rename')
+    const input = within(screen.getByRole('dialog')).getByRole('textbox') as HTMLInputElement
+    expect([input.selectionStart, input.selectionEnd]).toEqual([0, 6])
+  })
+
+  it('refuses to rename the open file while it is being saved', async () => {
+    api.editFile.mockReturnValue(new Promise(() => {}))
+    await renderFiles()
+    await openEditorOn('spec-file')
+    fireEvent.change(screen.getByTestId('editor'), { target: { value: 'edited' } })
+    await click('editor.saveButton')
+    rightClick(screen.getByTestId('spec-file'))
+    await click('files.menu.rename')
+    await typeName('b_spec.rb')
+    expect(screen.getByRole('alert')).toHaveTextContent('files.name.saving')
+    expect(api.renameProjectEntry).not.toHaveBeenCalled()
+  })
+
+  it('moves the copied entry along when it is renamed', async () => {
+    await renderFiles()
+    rightClick(screen.getByTestId('spec-file'))
+    await click('files.menu.copy')
+    rightClick(screen.getByTestId('spec-file'))
+    await click('files.menu.rename')
+    await typeName('b_spec.rb')
+    expect(useFileClipboardStore.getState().copied?.rel).toBe('spec/b_spec.rb')
+  })
+
+  it('cancels Delete with Escape', async () => {
+    await renderFiles()
+    rightClick(screen.getByTestId('spec-file'))
+    await click('files.menu.delete')
+    const confirm = screen.getByRole('button', { name: 'files.delete.confirm' })
+    expect(confirm).toHaveFocus()
+    fireEvent.keyDown(confirm, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

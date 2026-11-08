@@ -2,6 +2,7 @@ import React from 'react'
 import { FaFileAlt } from 'react-icons/fa'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@components/Tooltip'
+import { samePath } from '@foundation/projectFilePaths'
 
 interface FileProps {
   name: string
@@ -14,7 +15,8 @@ interface FileProps {
 
 const File: React.FC<FileProps> = ({ name, path, dirtyPath, onFileClick, onContextMenu }) => {
   const { t } = useTranslation()
-  const dirty = dirtyPath !== undefined && path === dirtyPath
+  // The open file's path may use / where the tree's uses \\ (Windows)
+  const dirty = dirtyPath !== undefined && samePath(path, dirtyPath)
   const handleContextMenu = (e: React.MouseEvent): void => {
     e.preventDefault()
 
