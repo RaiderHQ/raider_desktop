@@ -531,6 +531,7 @@ const Overview: React.FC = () => {
     if (customTagProblem) {
       // Say why nothing ran: show the toolbar and put the cursor in the tag field
       setActiveTab('files')
+      setSettingsCollapsed(false)
       setTimeout(() => tagInputRef.current?.focus(), 0)
       return
     }
@@ -867,8 +868,14 @@ const Overview: React.FC = () => {
                 {t('overview.settings.title')}
               </button>
             </Tooltip>
-            {!settingsCollapsed && (
-            <div id="overview-settings-body" className="space-y-2">
+            {/* Folded, a bad address still says so: its field is hidden, not gone */}
+            {settingsCollapsed && urlError && (
+              <p className="text-xs text-status-err" data-testid="overview-settings-folded-error">
+                {urlError}
+              </p>
+            )}
+            {/* Hidden rather than unmounted: the fields keep their state, refs and focus */}
+            <div id="overview-settings-body" className="space-y-2" hidden={settingsCollapsed}>
             {showWebSettings && (
               <Tooltip content={t('tooltips.overview.urlInput')} position="right" className="w-full">
                 <div className="flex items-center gap-2 w-full">
@@ -1170,7 +1177,6 @@ const Overview: React.FC = () => {
               </Tooltip>
             </div>
             </div>
-            )}
           </div>
           <div className={`relative ${settingsCollapsed ? 'h-[calc(100vh-15rem)] min-h-[62vh]' : 'h-[62vh]'} border border-t-0 border-neutral-bdr rounded-b-lg shadow-card flex flex-col bg-white`}>
             {/* Split: file tree left + editor preview right */}
