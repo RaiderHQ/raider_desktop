@@ -294,7 +294,11 @@ export function saveRecordedTest(
   projectPath: string,
   layout: ProjectLayout,
   input: Test,
-  options: { knownFile?: string | null } = {}
+  options: {
+    knownFile?: string | null
+    /** Write the file even when the record is unchanged (a setting changed the generated code) */
+    rewrite?: boolean
+  } = {}
 ): Promise<Sidecar> {
   return serialize(testQueues, testKey(projectPath, input.id), async () => {
     const now = new Date().toISOString()
@@ -336,6 +340,7 @@ export function saveRecordedTest(
     // The file is already known to match its recorded hash (isRaiderFile above). The
     // require line must still be the one generated now, so a moved helper_path rewrites.
     if (
+      !options.rewrite &&
       onDisk !== null &&
       sameRecord(existing, test) &&
       requireLine(onDisk) === requireLine(content)

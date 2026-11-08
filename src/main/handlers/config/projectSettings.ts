@@ -42,7 +42,7 @@ export const DEFAULT_RECORDER_SETTINGS: RecorderSettings = {
 }
 
 type WritableSettings = Partial<
-  Pick<RecorderSettings, 'implicitWait' | 'explicitWait' | 'selectorPriority'>
+  Pick<RecorderSettings, 'implicitWait' | 'explicitWait' | 'selectorPriority' | 'testIdAttribute'>
 >
 
 const configPathFor = (projectPath: string): string => join(projectPath, 'config', 'config.yml')
@@ -103,8 +103,9 @@ const YAML_WORD = /^(true|false|null|yes|no|on|off|y|n)$/i
 const yamlName = (name: string): string =>
   PLAIN_NAME.test(name) && !YAML_WORD.test(name) ? name : JSON.stringify(name)
 
-function formatValue(value: number | string[]): string {
-  return Array.isArray(value) ? `[${value.map(yamlName).join(', ')}]` : String(value)
+function formatValue(value: number | string | string[]): string {
+  if (Array.isArray(value)) return `[${value.map(yamlName).join(', ')}]`
+  return typeof value === 'string' ? yamlName(value) : String(value)
 }
 
 // One write at a time per config file: each reads the file, so two at once would drop one
@@ -123,11 +124,13 @@ export function writeRecorderSettings(projectPath: string, patch: WritableSettin
 }
 
 async function writeNow(path: string, patch: WritableSettings): Promise<void> {
-  const entries: Array<[string, number | string[]]> = []
+  const entries: Array<[string, number | string | string[]]> = []
   if (patch.implicitWait !== undefined) entries.push(['implicit_wait', patch.implicitWait])
   if (patch.explicitWait !== undefined) entries.push(['explicit_wait', patch.explicitWait])
   if (patch.selectorPriority !== undefined)
     entries.push(['selector_priority', patch.selectorPriority])
+  if (patch.testIdAttribute !== undefined)
+    entries.push(['test_id_attribute', patch.testIdAttribute])
   if (entries.length === 0) return
 
   let text = (await readRaw(path)) ?? ''

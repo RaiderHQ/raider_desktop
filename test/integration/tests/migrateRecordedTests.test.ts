@@ -202,3 +202,40 @@ describe('migrateRecordedTests leaves alone', () => {
     expect(await snapshot()).toEqual(before)
   })
 })
+
+describe('migrateRecordedTests with force (the test id attribute changed)', () => {
+  const testIdSteps: Step[] = [
+    { id: 'n', kind: 'navigate', url: 'https://x.test' },
+    {
+      id: 'c',
+      kind: 'click',
+      element: {
+        strategy: 'css',
+        value: '[data-testid="go"]',
+        locator: { by: 'testId', attribute: 'data-testid', value: 'go' }
+      }
+    } as Step
+  ]
+
+  beforeEach(async () => {
+    project = await mkdtemp(join(tmpdir(), 'migrate-force-'))
+  })
+  afterEach(async () => {
+    await rm(project, { recursive: true, force: true })
+  })
+
+  it('rewrites current recorded specs so an old test id still finds its element', async () => {
+    const test = { id: 't2', name: 'Go', url: 'https://x.test', steps: testIdSteps }
+    await saveRecordedTest(project, { ...layout, testIdAttribute: 'data-testid' }, test)
+    const before = await readFile(join(project, 'spec', 'go_spec.rb'), 'utf-8')
+    expect(before).toContain("test_id: 'go'")
+
+    const next = { ...layout, testIdAttribute: 'data-qa' }
+    expect(await migrateRecordedTests(project, next)).toBe(0)
+    expect(await migrateRecordedTests(project, next, { force: true })).toBe(1)
+    const after = await readFile(join(project, 'spec', 'go_spec.rb'), 'utf-8')
+    expect(after).not.toContain("test_id: 'go'")
+    expect(after).toContain('data-testid')
+  })
+})
+

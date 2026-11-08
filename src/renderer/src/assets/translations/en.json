@@ -184,6 +184,10 @@
         "label": "Explicit wait",
         "unit": "seconds"
       },
+      "testId": {
+        "label": "Test id attribute",
+        "invalid": "Use letters, digits, _ and -, starting with a letter or _"
+      },
       "priority": {
         "label": "Locator priority",
         "reset": "Reset to default",
@@ -917,7 +921,8 @@
       "expand": "Show the recording settings",
       "collapse": "Hide the recording settings",
       "wait": "Longest a recorded wait step waits; finding elements uses the test timeout",
-      "priority": "Which locator the recorder picks first when an element has several"
+      "priority": "Which locator the recorder picks first when an element has several",
+      "testId": "The attribute a test id locator reads, for example data-testid or data-qa"
     },
     "runPanel": {
       "cancel": "Stop the run",

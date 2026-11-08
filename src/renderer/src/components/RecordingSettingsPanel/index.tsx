@@ -6,6 +6,7 @@ import Tooltip from '@components/Tooltip'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { DEFAULT_SELECTOR_PRIORITY } from '@shared/selectorPriority'
+import { TEST_ID_ATTRIBUTE_NAME } from '@shared/testIdAttribute'
 
 const KEY = 'recordingSettingsCollapsed'
 
@@ -66,6 +67,10 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
   // A save that finishes after the project changed must not touch the new project's list
   const generation = useRef(0)
   const [announcement, setAnnouncement] = useState('')
+  // The attribute a test id locator reads (config.yml test_id_attribute)
+  const [attribute, setAttribute] = useState('')
+  const savedAttribute = useRef<string | null>(null)
+  const [attributeError, setAttributeError] = useState<string | null>(null)
   const listRef = useRef<HTMLOListElement>(null)
 
   useEffect(() => {
@@ -73,6 +78,9 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
     generation.current += 1
     setPriority(null)
     saved.current = null
+    setAttribute('')
+    savedAttribute.current = null
+    setAttributeError(null)
     window.api
       .getRecorderSettings()
       .then((settings) => {
@@ -82,6 +90,10 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
         const clean = Array.isArray(list) && list.length > 0 ? [...new Set(list)] : null
         saved.current = clean
         setPriority(clean)
+        if (typeof settings?.testIdAttribute === 'string') {
+          savedAttribute.current = settings.testIdAttribute
+          setAttribute(settings.testIdAttribute)
+        }
       })
       .catch((error: unknown) => console.error('Loading the locator order failed:', error))
     return (): void => {
@@ -117,6 +129,38 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
     // Another project now, or a later save (built on this order) still to come: that one decides
     if (generation.current !== mine || seq !== latest.current) return
     setPriority(saved.current)
+    toast.error(`${t('settings.recording.error.recordingUpdateFailed')} ${failure}`)
+  }
+
+  const saveAttribute = async (): Promise<void> => {
+    const previous = savedAttribute.current
+    if (previous === null) return
+    const next = attribute.trim()
+    if (next === previous) {
+      setAttribute(previous)
+      setAttributeError(null)
+      return
+    }
+    if (!TEST_ID_ATTRIBUTE_NAME.test(next)) {
+      setAttributeError(t('settings.recording.testId.invalid'))
+      return
+    }
+    setAttributeError(null)
+    setAttribute(next)
+    const mine = generation.current
+    let failure: string | null = null
+    try {
+      const result = await window.api.updateRecordingSettings({ testIdAttribute: next })
+      if (result.success) {
+        if (generation.current === mine) savedAttribute.current = next
+        return
+      }
+      failure = result.error ?? ''
+    } catch (error) {
+      failure = String(error)
+    }
+    if (generation.current !== mine) return
+    setAttribute(previous)
     toast.error(`${t('settings.recording.error.recordingUpdateFailed')} ${failure}`)
   }
 
@@ -198,6 +242,42 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
               <span className="text-xs text-neutral-md">{t('settings.recording.wait.unit')}</span>
             </div>
           </Tooltip>
+          <div className="flex flex-col gap-1">
+            <Tooltip content={t('tooltips.recordingSettings.testId')} position="right">
+              <div className="flex items-center gap-2">
+                <label
+                  htmlFor="recording-test-id-attribute"
+                  className="text-sm font-medium text-neutral-dk whitespace-nowrap"
+                >
+                  {t('settings.recording.testId.label')}
+                </label>
+                <input
+                  type="text"
+                  id="recording-test-id-attribute"
+                  value={attribute}
+                  onChange={(e) => {
+                    setAttribute(e.target.value)
+                    setAttributeError(null)
+                  }}
+                  onBlur={() => void saveAttribute()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void saveAttribute()
+                  }}
+                  disabled={savedAttribute.current === null || recording}
+                  spellCheck={false}
+                  aria-invalid={attributeError ? true : undefined}
+                  aria-describedby={attributeError ? 'recording-test-id-error' : undefined}
+                  className={`border rounded px-2 py-1 w-36 text-sm ${attributeError ? 'border-status-err' : 'border-neutral-bdr'}`}
+                  data-testid="recording-test-id-attribute"
+                />
+              </div>
+            </Tooltip>
+            {attributeError && (
+              <p id="recording-test-id-error" role="alert" className="text-xs text-status-err">
+                {attributeError}
+              </p>
+            )}
+          </div>
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-3">
               <Tooltip content={t('tooltips.recordingSettings.priority')} position="right">
