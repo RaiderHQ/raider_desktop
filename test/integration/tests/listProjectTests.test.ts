@@ -17,7 +17,6 @@ const layout: ProjectLayout = {
   specPath: 'spec',
   featurePath: 'features',
   helperPath: 'helpers',
-  waitHelper: false,
   recordable: true
 }
 

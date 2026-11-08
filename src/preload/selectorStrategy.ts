@@ -1,13 +1,24 @@
 import type { Locator, Strategy } from '../shared/types/step'
 import {
   NAME_MAX,
-  TEXT_INPUT_TYPES,
   accessibleNameSource,
   labelText,
   looksGenerated,
   normalizedText,
   roleOf
 } from './accessibleName'
+import {
+  cssEscape,
+  labelXPath,
+  roleXPath,
+  testIdCss,
+  textXPath,
+  xpathLiteral
+} from '../shared/locatorSelectors'
+
+// The string builders moved to shared (the legacy parser synthesises the same fallbacks);
+// re-exported so the preload and tests keep importing them from here
+export { cssEscape, xpathLiteral }
 
 // Mirrors DEFAULT_SELECTOR_PRIORITY in main; used until the project's config arrives.
 export const DEFAULT_PRIORITIES: string[] = [
@@ -20,45 +31,6 @@ export const DEFAULT_PRIORITIES: string[] = [
   'xpath'
 ]
 export const DEFAULT_TEST_ID_ATTRIBUTE = 'data-testid'
-
-// CSSOM "serialize an identifier" algorithm, used when CSS.escape is unavailable.
-function cssEscapeFallback(value: string): string {
-  const length = value.length
-  const first = value.charCodeAt(0)
-  let result = ''
-  for (let i = 0; i < length; i++) {
-    const code = value.charCodeAt(i)
-    if (code === 0) {
-      result += '�'
-    } else if (
-      (code >= 0x1 && code <= 0x1f) ||
-      code === 0x7f ||
-      (i === 0 && code >= 0x30 && code <= 0x39) ||
-      (i === 1 && code >= 0x30 && code <= 0x39 && first === 0x2d)
-    ) {
-      result += '\\' + code.toString(16) + ' '
-    } else if (i === 0 && length === 1 && code === 0x2d) {
-      result += '\\' + value.charAt(i)
-    } else if (
-      code >= 0x80 ||
-      code === 0x2d ||
-      code === 0x5f ||
-      (code >= 0x30 && code <= 0x39) ||
-      (code >= 0x41 && code <= 0x5a) ||
-      (code >= 0x61 && code <= 0x7a)
-    ) {
-      result += value.charAt(i)
-    } else {
-      result += '\\' + value.charAt(i)
-    }
-  }
-  return result
-}
-
-export function cssEscape(value: string): string {
-  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') return CSS.escape(value)
-  return cssEscapeFallback(value)
-}
 
 export function getCssPath(el: Element): string {
   if (!(el instanceof Element)) return ''
@@ -87,15 +59,6 @@ export function getCssPath(el: Element): string {
     el = el.parentNode as Element
   }
   return path.join(' > ')
-}
-
-// XPath 1.0 string literals have no escape character, so a value holding both
-// quote types has to be stitched together with concat().
-export function xpathLiteral(value: string): string {
-  if (!value.includes('"')) return `"${value}"`
-  if (!value.includes("'")) return `'${value}'`
-  const parts = value.split("'").map((part) => `'${part}'`)
-  return `concat(${parts.join(`,"'",`)})`
 }
 
 export function getXPath(element: Element): string {
@@ -185,66 +148,18 @@ function findsOnly(el: Element, strategy: Strategy, selector: string): boolean {
 const checked = (el: Element, pick: Candidate): Candidate | null =>
   pick.selector && findsOnly(el, pick.strategy, pick.selector) ? pick : null
 
-const BUTTON_INPUT = "input[@type='submit' or @type='button' or @type='reset']"
-const IMAGE_INPUT = "input[@type='image']"
-const TEXT_INPUT = `input[not(@type) or ${TEXT_INPUT_TYPES.map((t) => `@type='${t}'`).join(' or ')}]`
-const HEADING = '*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6]'
-
-// Node tests per role; buttons, links and headings are also named by their content.
-const ROLE_KINDS: Record<string, { kinds: string[]; byContent: boolean }> = {
-  button: { kinds: ['button'], byContent: true },
-  link: { kinds: ['a[@href]'], byContent: true },
-  heading: { kinds: [HEADING], byContent: true },
-  textbox: { kinds: ['textarea', TEXT_INPUT], byContent: false },
-  checkbox: { kinds: ["input[@type='checkbox']"], byContent: false },
-  radio: { kinds: ["input[@type='radio']"], byContent: false },
-  combobox: { kinds: ['select'], byContent: false }
-}
-
-// A union over every way the name can be given, so it finds the element whichever
-// source named it; the uniqueness check rejects it if it also finds anything else.
-// aria-labelledby is matched by its literal ids, and only when the target uses it, and a
-// label's field is reached through id(), so the expression never scans the whole document
-// per candidate node.
-function roleXPath(role: string, name: string, labelledBy: string | null): string {
-  const n = xpathLiteral(name)
-  const { kinds, byContent } = ROLE_KINDS[role]
-  const named = `[normalize-space()=${n} or @aria-label=${n}]`
-  const parts = kinds.flatMap((kind) =>
-    byContent
-      ? [`//${kind}${named}`]
-      : [
-          `id(//label[normalize-space()=${n}]/@for)/self::${kind}`,
-          `//label[normalize-space()=${n}]//${kind}`,
-          `//${kind}[@aria-label=${n}]`,
-          `//${kind}[@placeholder=${n}]`
-        ]
-  )
-  if (role === 'button') {
-    parts.push(
-      `//${BUTTON_INPUT}[@value=${n} or @aria-label=${n}]`,
-      `//${IMAGE_INPUT}[@alt=${n} or @aria-label=${n}]`
-    )
-  }
-  const explicit = `*[@role=${xpathLiteral(role)}]`
-  parts.push(`//${explicit}${named}`)
-  if (labelledBy) {
-    const ids = xpathLiteral(labelledBy)
-    parts.push(...[...kinds, explicit].map((kind) => `//${kind}[@aria-labelledby=${ids}]`))
-  }
-  return parts.join(' | ')
-}
-
 function byRole(el: Element): Candidate | null {
   const role = roleOf(el)
   const named = accessibleNameSource(el)
-  if (!role || !(role in ROLE_KINDS) || !named) return null
+  if (!role || !named) return null
   const { name } = named
   // Kept for future readable forms (no consumer today): 'aria-label' only when the name is the raw attribute
   const nameFrom =
     named.from === 'aria-label' && el.getAttribute('aria-label') !== name ? 'other' : named.from
+  const selector = roleXPath(role, name, el.getAttribute('aria-labelledby'))
+  if (!selector) return null
   return checked(el, {
-    selector: roleXPath(role, name, el.getAttribute('aria-labelledby')),
+    selector,
     strategy: 'xpath',
     locator: { by: 'role', role, name, nameFrom, tag: el.tagName.toLowerCase() }
   })
@@ -253,19 +168,18 @@ function byRole(el: Element): Candidate | null {
 function byLabel(el: Element): Candidate | null {
   const text = labelText(el)
   if (!text) return null
-  const t = xpathLiteral(text)
-  const selector =
-    `id(//label[normalize-space()=${t}]/@for)[self::input or self::textarea or self::select]` +
-    ` | //label[normalize-space()=${t}]//*[self::input or self::textarea or self::select]` +
-    ` | //*[@aria-label=${t}]`
-  return checked(el, { selector, strategy: 'xpath', locator: { by: 'label', text } })
+  return checked(el, {
+    selector: labelXPath(text),
+    strategy: 'xpath',
+    locator: { by: 'label', text }
+  })
 }
 
 function byTestId(el: Element, attribute: string): Candidate | null {
   const value = el.getAttribute(attribute)
   if (!value) return null
   return checked(el, {
-    selector: `[${attribute}="${cssEscape(value)}"]`,
+    selector: testIdCss(attribute, value),
     strategy: 'css',
     locator: { by: 'testId', attribute, value }
   })
@@ -324,9 +238,8 @@ function byText(el: Element): Candidate | null {
   if (!text || text.length > NAME_MAX) return null
   if (Array.from(el.children).some((child) => normalizedText(child) === text)) return null
   if (isRegion(el)) return null
-  const t = xpathLiteral(text)
   return checked(el, {
-    selector: `//*[normalize-space()=${t}][not(*[normalize-space()=${t}])]`,
+    selector: textXPath(text),
     strategy: 'xpath',
     locator: { by: 'text', text }
   })

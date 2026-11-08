@@ -13,27 +13,17 @@ import {
 } from '../../../src/main/handlers/tests/replaceExample'
 import { readSidecar, writeSidecar } from '../../../src/main/handlers/tests/sidecar'
 import { renderStep } from '../../../src/main/codegen/steps'
-import type { ProjectLayout } from '../../../src/shared/types/projectLayout'
 import type { Step } from '../../../src/shared/types/step'
 
 const hasRuby = spawnSync('ruby', ['-v']).status === 0
 
-const layout: ProjectLayout = {
-  framework: 'rspec',
-  automation: 'selenium',
-  specPath: 'spec',
-  featurePath: 'features',
-  helperPath: 'helpers',
-  waitHelper: false,
-  recordable: true
-}
 const steps: Step[] = [
   { id: 's1', kind: 'navigate', url: 'https://x.test' },
   { id: 's2', kind: 'click', element: { strategy: 'css', value: '#go' } }
 ]
 const rendered = (list: Step[], indent: string): string[] =>
   list.flatMap((s) =>
-    renderStep(s, layout.automation, { receiver: 'helper' })
+    renderStep(s, { receiver: 'helper' })
       .split('\n')
       .map((l) => indent + l)
   )
@@ -110,26 +100,24 @@ describe.skipIf(!hasRuby)('replaceExample', () => {
       ''
     ]
     await write(file)
-    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
+    await replaceExample(project, FILE, 'B', steps, 'ruby')
     const out = (await read()).split('\n')
     const body = steps.flatMap((s) =>
-      renderStep(s, layout.automation, { receiver: 'ivar' })
+      renderStep(s, { receiver: 'ivar' })
         .split('\n')
         .map((l) => '    ' + l)
     )
-    // The file has no @wait of its own, so one is set up first
-    expect(out[6]).toBe(
-      "    @wait = Selenium::WebDriver::Wait.new(timeout: YAML.load_file('config/config.yml').fetch('explicit_wait', 10))"
-    )
-    expect(out.slice(7, 7 + body.length)).toEqual(body)
+    // Recorded steps never read a wait object, so none is set up
+    expect(out.slice(6, 6 + body.length)).toEqual(body)
+    expect(out.some((l) => l.includes('@wait'))).toBe(false)
     expect(body.every((l) => !/(^|[^@\w])driver\./.test(l))).toBe(true)
     expect(body.some((l) => l.includes('@driver.'))).toBe(true)
   })
 
-  it('reuses a @wait the file already sets', async () => {
-    const file = [
+  it('a custom step that reads @wait gets one set up first, unless the file already sets it', async () => {
+    const custom: Step[] = [{ id: 'w', kind: 'custom', code: '@wait.until { true }' }]
+    const withoutWait = [
       "describe 'Shop' do",
-      '  before { @wait = Selenium::WebDriver::Wait.new(timeout: 5) }',
       "  it 'A' do",
       "    @driver.find_element(id: 'a').click",
       '  end',
@@ -139,10 +127,22 @@ describe.skipIf(!hasRuby)('replaceExample', () => {
       'end',
       ''
     ]
-    await write(file)
-    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
-    const out = (await read()).split('\n')
-    expect(out[6]).toBe('    ' + renderStep(steps[0], layout.automation, { receiver: 'ivar' }))
+    await write(withoutWait)
+    await replaceExample(project, FILE, 'B', custom, 'ruby')
+    let out = (await read()).split('\n')
+    expect(out[5]).toBe(
+      "    @wait = Selenium::WebDriver::Wait.new(timeout: YAML.load_file('config/config.yml').fetch('explicit_wait', 10))"
+    )
+    expect(out[6]).toBe('    @wait.until { true }')
+
+    await write([
+      "describe 'Shop' do",
+      '  before { @wait = Selenium::WebDriver::Wait.new(timeout: 5) }',
+      ...withoutWait.slice(1)
+    ])
+    await replaceExample(project, FILE, 'B', custom, 'ruby')
+    out = (await read()).split('\n')
+    expect(out[6]).toBe('    @wait.until { true }')
     expect(out.filter((l) => l.includes('@wait =')).length).toBe(1)
   })
 
@@ -160,16 +160,15 @@ describe.skipIf(!hasRuby)('replaceExample', () => {
       ''
     ]
     await write(file)
-    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
+    await replaceExample(project, FILE, 'B', steps, 'ruby')
     const out = (await read()).split('\n')
-    expect(out[6]).toMatch(/^    wait = Selenium::WebDriver::Wait\.new/)
-    expect(out.slice(7, 7 + rendered(steps, '').length)).toEqual(rendered(steps, '    '))
-    expect(out.slice(6).some((l) => l.includes('@driver') || l.includes('@wait'))).toBe(false)
+    expect(out.slice(6, 6 + rendered(steps, '').length)).toEqual(rendered(steps, '    '))
+    expect(out.slice(6).some((l) => l.includes('@driver') || /\bwait\b/.test(l))).toBe(false)
   })
 
   it('replaces only the matching block', async () => {
     await write(ABC)
-    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
+    await replaceExample(project, FILE, 'B', steps, 'ruby')
     const out = (await read()).split('\n')
     const start = ABC.indexOf("  it 'B' do")
     const end = start + 3
@@ -189,7 +188,7 @@ describe.skipIf(!hasRuby)('replaceExample', () => {
       'end',
       ''
     ])
-    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
+    await replaceExample(project, FILE, 'B', steps, 'ruby')
     expect((await read()).split('\n')).toEqual([
       "describe 'Shop' do",
       '  let(:wait) { 1 }',
@@ -203,7 +202,7 @@ describe.skipIf(!hasRuby)('replaceExample', () => {
 
   it('throws ExampleNotUniqueError(0) when nothing matches', async () => {
     await write(ABC)
-    const error = await replaceExample(project, layout, FILE, 'Z', steps, 'ruby').catch((e) => e)
+    const error = await replaceExample(project, FILE, 'Z', steps, 'ruby').catch((e) => e)
     expect(error).toBeInstanceOf(ExampleNotUniqueError)
     expect(error.count).toBe(0)
     expect(await read()).toBe(ABC.join('\n'))
@@ -222,21 +221,22 @@ describe.skipIf(!hasRuby)('replaceExample', () => {
       ''
     ]
     await write(dup)
-    const error = await replaceExample(project, layout, FILE, 'dup', steps, 'ruby').catch((e) => e)
+    const error = await replaceExample(project, FILE, 'dup', steps, 'ruby').catch((e) => e)
     expect(error).toBeInstanceOf(ExampleNotUniqueError)
     expect(error.count).toBe(2)
     expect(await read()).toBe(dup.join('\n'))
   })
 
-  it('adds a local wait', async () => {
+  it('adds a local wait for a custom step that reads one', async () => {
+    const custom: Step[] = [{ id: 'w', kind: 'custom', code: 'wait.until { true }' }]
     const file = ["describe 'Shop' do", "  it 'B' do", '    b', '  end', 'end', '']
     await write(file)
-    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
+    await replaceExample(project, FILE, 'B', custom, 'ruby')
     const out = (await read()).split('\n')
     expect(out[2]).toBe(
       "    wait = Selenium::WebDriver::Wait.new(timeout: YAML.load_file('config/config.yml').fetch('explicit_wait', 10))"
     )
-    expect(out.slice(3, 3 + rendered(steps, '').length)).toEqual(rendered(steps, '    '))
+    expect(out[3]).toBe('    wait.until { true }')
   })
 
   it('updates a code-owned sidecar', async () => {
@@ -249,13 +249,12 @@ describe.skipIf(!hasRuby)('replaceExample', () => {
       url: 'https://x.test',
       steps: [{ id: 'o', kind: 'navigate', url: 'https://old.test' }],
       file: FILE,
-      automation: 'selenium',
       hash: 'abc',
       codeOwned: true,
       createdAt: old,
       updatedAt: old
     })
-    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
+    await replaceExample(project, FILE, 'B', steps, 'ruby')
     const sidecar = await readSidecar(project, FILE)
     expect(sidecar?.steps).toEqual(steps)
     expect(sidecar?.codeOwned).toBe(true)
@@ -265,19 +264,15 @@ describe.skipIf(!hasRuby)('replaceExample', () => {
   it('refuses unlisted files', async () => {
     await write(ABC)
     await writeFile(join(project, 'spec', 'helper.rb'), "it 'B' do\nend\n")
-    await expect(
-      replaceExample(project, layout, 'spec/helper.rb', 'B', steps, 'ruby')
-    ).rejects.toThrow()
-    await expect(
-      replaceExample(project, layout, '../shop_spec.rb', 'B', steps, 'ruby')
-    ).rejects.toThrow()
+    await expect(replaceExample(project, 'spec/helper.rb', 'B', steps, 'ruby')).rejects.toThrow()
+    await expect(replaceExample(project, '../shop_spec.rb', 'B', steps, 'ruby')).rejects.toThrow()
     expect(await readFile(join(project, 'spec', 'helper.rb'), 'utf-8')).toBe("it 'B' do\nend\n")
     expect(await read()).toBe(ABC.join('\n'))
   })
 
   it('keeps CRLF line endings', async () => {
     await writeFile(join(project, FILE), ABC.join('\r\n'))
-    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
+    await replaceExample(project, FILE, 'B', steps, 'ruby')
     const start = ABC.indexOf("  it 'B' do")
     const expected = [
       ...ABC.slice(0, start + 1),
@@ -293,68 +288,12 @@ describe.skipIf(!hasRuby)('replaceExample', () => {
       join(project, FILE),
       "describe 'S' do\r\n  it 'a' do\n    x\r\n  end\r\n  it 'b' do\n    y\n  end\nend\r\n"
     )
-    await replaceExample(project, layout, FILE, 'a', navigate, 'ruby')
+    await replaceExample(project, FILE, 'a', navigate, 'ruby')
     expect(await read()).toBe(
       "describe 'S' do\r\n  it 'a' do\n" +
         rendered(navigate, '    ').join('\n') +
         "\n  end\r\n  it 'b' do\n    y\n  end\nend\r\n"
     )
     expect(spawnSync('ruby', ['-c', join(project, FILE)]).status).toBe(0)
-  })
-})
-
-describe.skipIf(!hasRuby)('replaceExample in a project with the wait helper', () => {
-  beforeEach(async () => {
-    await mkdir(join(project, 'helpers'))
-    await writeFile(join(project, 'helpers', 'wait_helper.rb'), 'module WaitHelper; end\n')
-    await writeFile(
-      join(project, 'helpers', 'spec_helper.rb'),
-      'RSpec.configure do |config|\n  config.include WaitHelper\nend\n'
-    )
-  })
-
-  it('writes the helper form into a file that uses the driver helper', async () => {
-    await write([
-      "describe 'Shop' do",
-      "  it 'A' do",
-      "    driver.find_element(id: 'a').click",
-      '  end',
-      "  it 'B' do",
-      '    b',
-      '  end',
-      'end',
-      ''
-    ])
-    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
-    const out = (await read()).split('\n')
-    expect(out.slice(5, 7)).toEqual([
-      "    driver.navigate.to('https://x.test')",
-      "    click({ css: '#go' })"
-    ])
-    // The helper form never reads `wait`, so none is added
-    expect(out.some((l) => /\bwait\b/.test(l))).toBe(false)
-  })
-
-  it('keeps the old form in a file that drives @driver', async () => {
-    await write([
-      "describe 'Shop' do",
-      "  it 'A' do",
-      "    @driver.find_element(id: 'a').click",
-      '  end',
-      "  it 'B' do",
-      '    b',
-      '  end',
-      'end',
-      ''
-    ])
-    await replaceExample(project, layout, FILE, 'B', steps, 'ruby')
-    const body = steps.flatMap((s) =>
-      renderStep(s, layout.automation, { receiver: 'ivar' })
-        .split('\n')
-        .map((l) => '    ' + l)
-    )
-    const out = (await read()).split('\n')
-    expect(out[5]).toMatch(/^    @wait = Selenium::WebDriver::Wait\.new/)
-    expect(out.slice(6, 6 + body.length)).toEqual(body)
   })
 })

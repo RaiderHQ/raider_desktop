@@ -3,25 +3,34 @@ import { isStep } from '../../shared/types/step'
 import { withSecretNames } from '../../shared/secretSteps'
 import type { AssertKind, ElementTarget, Step } from '../../shared/types/step'
 import type { Test } from '../../shared/types/test'
+import { labelXPath, roleXPath, testIdCss, textXPath } from '../../shared/locatorSelectors'
 
 /**
- * One-time converter from legacy recorded Ruby strings to structured Steps.
+ * One-time converter from recorded Ruby strings to structured Steps.
  * Recognises the forms produced by the old recorder (frameworkTemplates,
- * xpathConverter) and the patterns of the old commandParser/xpathParser.
+ * xpathConverter), the patterns of the old commandParser/xpathParser, and the
+ * ruby_raider 4.0 lines steps.ts renders today (semantic locators, block matchers).
  * Anything it cannot map losslessly becomes a `custom` step.
  */
 
 /** Kept as an alias: a migrated test is a plain Test now that steps are Step[]. */
 export type MigratedTest = Test
 
-// find_element(:strategy, <ruby string>) — capture groups: strategy, %q(), "…", '…'
-const FE = String.raw`@?driver\.find_element\(:?(\w+)[,:]\s*(?:%q\((.+?)\)|"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)')\)`
-const STR = String.raw`"((?:\\.|[^"\\])*)"`
+// A Ruby string literal — capture groups: "…", '…'
+const S = String.raw`(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)')`
+// find_element(<anything>) — capture group: the locator argument, parsed by `target`. Lazy, so
+// a trailing comment or the matcher after the block never ends up inside the argument.
+const FIND = String.raw`@?driver\.find_element\((.+?)\)`
 const TAIL = String.raw`(?:\s+#.*)?\s*$`
+const DRIVER = String.raw`@?driver`
 
 // Ruby single-quoted strings only treat \\ and \' as escapes
 const unescapeSingle = (s: string): string => s.replace(/\\([\\'])/g, '$1')
 const unescape = (s: string): string => s.replace(/\\(["\\])/g, '$1')
+
+/** The string literal matched by S whose two groups start at `at`. */
+const str = (m: RegExpMatchArray, at: number): string =>
+  m[at] !== undefined ? unescape(m[at]) : unescapeSingle(m[at + 1] ?? '')
 
 const KEYS: Record<string, string> = {
   enter: 'Enter',
@@ -43,19 +52,76 @@ const KEYS: Record<string, string> = {
 for (let i = 1; i <= 12; i++) KEYS[`f${i}`] = `F${i}`
 
 const rx = (body: string): RegExp => new RegExp(`^\\s*${body}${TAIL}`)
+const whole = (body: string): RegExp => new RegExp(`^\\s*${body}\\s*$`)
 
-/** Reads the element target from 4 capture groups starting at `at`. */
-function target(m: RegExpMatchArray, at: number): ElementTarget | null {
-  const strategy = m[at]
-  if (strategy !== 'id' && strategy !== 'css' && strategy !== 'xpath') return null
-  const value =
-    m[at + 1] ?? (m[at + 2] !== undefined ? unescape(m[at + 2]) : unescapeSingle(m[at + 3]))
-  return value === undefined ? null : { strategy, value }
+// The locator argument forms. The 3.x pair (:css, "x") is kept as the plain fallback the
+// recorder stored; the 4.0 keyword forms carry the semantic locator steps.ts rendered.
+const PAIR = whole(String.raw`:?(\w+)\s*,\s*(?:%q\((.+)\)|${S})`) // 1 strategy, 2 %q, 3-4 string
+const KEYWORD = whole(String.raw`(\w+):\s*${S}`) // 1 key, 2-3 string
+const EXACT = whole(String.raw`(label|text):\s*\[\s*${S}\s*,\s*\{\s*exact:\s*true\s*\}\s*\]`) // 1 key, 2-3 string
+const ROLE = whole(String.raw`by_role\(\s*${S}\s*,\s*name:\s*${S}\s*(?:,\s*exact:\s*true\s*)?\)`) // 1-2 role, 3-4 name
+
+const isStrategy = (s: string): s is ElementTarget['strategy'] =>
+  s === 'id' || s === 'css' || s === 'xpath'
+
+// The recorder reads the attribute from config.yml; the parser has only the default to go on
+const TEST_ID_ATTRIBUTE = 'data-testid'
+
+function semantic(key: string, text: string): ElementTarget | null {
+  // isLocator refuses an empty name, so an empty value has no locator to carry
+  if (text === '') return null
+  switch (key) {
+    case 'label':
+      return { strategy: 'xpath', value: labelXPath(text), locator: { by: 'label', text } }
+    case 'text':
+      return { strategy: 'xpath', value: textXPath(text), locator: { by: 'text', text } }
+    case 'test_id':
+      return {
+        strategy: 'css',
+        value: testIdCss(TEST_ID_ATTRIBUTE, text),
+        locator: { by: 'testId', attribute: TEST_ID_ATTRIBUTE, value: text }
+      }
+    default:
+      return null
+  }
 }
 
-const CLEAR = rx(`${FE}\\.clear`)
-const SEND_TEXT = rx(`${FE}\\.send_keys\\(${STR}\\)`)
-const SEND_KEY = rx(`${FE}\\.send_keys\\(:(\\w+)\\)`)
+function plain(strategy: ElementTarget['strategy'], value: string): ElementTarget {
+  if (value === '') return { strategy, value }
+  switch (strategy) {
+    case 'id':
+      return { strategy, value, locator: { by: 'id', value } }
+    case 'css':
+      return { strategy, value, locator: { by: 'css', value, positional: false } }
+    case 'xpath':
+      return { strategy, value, locator: { by: 'xpath', value } }
+  }
+}
+
+/** Reads the element target from the find_element argument; null when it has no Step form. */
+function target(arg: string | undefined): ElementTarget | null {
+  if (arg === undefined) return null
+  let m = arg.match(PAIR)
+  if (m) {
+    if (!isStrategy(m[1])) return null
+    return { strategy: m[1], value: m[2] !== undefined ? m[2] : str(m, 3) }
+  }
+  m = arg.match(ROLE)
+  if (m) {
+    const role = str(m, 1)
+    const name = str(m, 3)
+    const value = name === '' ? null : roleXPath(role, name, null)
+    return value ? { strategy: 'xpath', value, locator: { by: 'role', role, name } } : null
+  }
+  m = arg.match(EXACT) ?? arg.match(KEYWORD)
+  if (!m) return null
+  const value = str(m, 2)
+  return isStrategy(m[1]) ? plain(m[1], value) : semantic(m[1], value)
+}
+
+const CLEAR = rx(`${FIND}\\.clear`)
+const SEND_TEXT = rx(`${FIND}\\.send_keys\\(${S}\\)`)
+const SEND_KEY = rx(`${FIND}\\.send_keys\\(:(\\w+)\\)`)
 const sameTarget = (a: ElementTarget, b: ElementTarget): boolean =>
   a.strategy === b.strategy && a.value === b.value
 
@@ -63,84 +129,80 @@ const sameTarget = (a: ElementTarget, b: ElementTarget): boolean =>
 type Built = (Step extends infer S ? (S extends Step ? Omit<S, 'id'> : never) : never) | null
 type Builder = (m: RegExpMatchArray) => Built
 
-const el = (m: RegExpMatchArray, kind: 'assert', check: AssertKind, expectedAt?: number): Built => {
-  const element = target(m, 1)
-  if (!element) return null
-  return expectedAt === undefined
-    ? { kind, check, element }
-    : { kind, check, element, expected: unescape(m[expectedAt]) }
+const withElement = (m: RegExpMatchArray, build: (element: ElementTarget) => Built): Built => {
+  const element = target(m[1])
+  return element ? build(element) : null
 }
 
+// An element assertion whose expected string, if any, is the literal at `expectedAt`
+const assert =
+  (check: AssertKind, expectedAt?: number): Builder =>
+  (m) =>
+    withElement(m, (element) =>
+      expectedAt === undefined
+        ? { kind: 'assert', check, element }
+        : { kind: 'assert', check, element, expected: str(m, expectedAt) }
+    )
+
+const navigate: Builder = (m) => ({ kind: 'navigate', url: str(m, 1) })
+const title: Builder = (m) => ({ kind: 'assert', check: 'titleEquals', expected: str(m, 1) })
+const url: Builder = (m) => ({ kind: 'assert', check: 'urlIncludes', expected: str(m, 1) })
+
+// Element matchers on the 4.0 runtime take the find in a block
+const block = (matcher: string): RegExp => rx(`expect\\s*\\{\\s*${FIND}\\s*\\}\\.to ${matcher}`)
+
 const PATTERNS: Array<[RegExp, Builder]> = [
-  [rx(`@?driver\\.get\\(${STR}\\)`), (m): Built => ({ kind: 'navigate', url: unescape(m[1]) })],
+  [rx(`${DRIVER}\\.get\\(${S}\\)`), navigate],
+  [rx(`${DRIVER}\\.navigate\\.to\\(${S}\\)`), navigate],
   [
-    rx(`@?wait\\.until\\s*\\{\\s*(!?)${FE}\\.displayed\\?\\s*\\}`),
+    rx(`@?wait\\.until\\s*\\{\\s*(!?)${FIND}\\.displayed\\?\\s*\\}`),
     (m): Built => {
-      const element = target(m, 2)
+      const element = target(m[2])
       return element ? { kind: 'wait', element, until: m[1] ? 'hidden' : 'visible' } : null
     }
   ],
   [
-    rx(`@?wait\\.until\\s*\\{\\s*${FE}\\.enabled\\?\\s*\\}`),
-    (m): Built => {
-      const element = target(m, 1)
-      return element ? { kind: 'wait', element, until: 'enabled' } : null
-    }
+    rx(`@?wait\\.until\\s*\\{\\s*${FIND}\\.enabled\\?\\s*\\}`),
+    (m): Built => withElement(m, (element) => ({ kind: 'wait', element, until: 'enabled' }))
   ],
-  [
-    rx(`${FE}\\.click`),
-    (m): Built => {
-      const element = target(m, 1)
-      return element ? { kind: 'click', element } : null
-    }
-  ],
+  [rx(`${FIND}\\.click`), (m): Built => withElement(m, (element) => ({ kind: 'click', element }))],
   [
     SEND_KEY,
-    (m): Built => {
-      const element = target(m, 1)
-      const key = Object.hasOwn(KEYS, m[5]) ? KEYS[m[5]] : undefined
-      return element && key ? { kind: 'pressKey', element, key } : null
-    }
+    (m): Built =>
+      withElement(m, (element) => {
+        const key = Object.hasOwn(KEYS, m[2]) ? KEYS[m[2]] : undefined
+        return key ? { kind: 'pressKey', element, key } : null
+      })
   ],
   [
     SEND_TEXT,
-    (m): Built => {
-      const element = target(m, 1)
-      return element ? { kind: 'type', element, text: unescape(m[5]) } : null
-    }
+    (m): Built => withElement(m, (element) => ({ kind: 'type', element, text: str(m, 2) }))
   ],
-  [rx(String.raw`@?driver\.switch_to\.default_content`), (): Built => ({ kind: 'switchFrame' })],
+  [rx(`${DRIVER}\\.switch_to\\.default_content`), (): Built => ({ kind: 'switchFrame' })],
   [
-    rx(`@?driver\\.switch_to\\.frame\\(\\s*${FE}\\s*\\)`),
-    (m): Built => {
-      const element = target(m, 1)
-      return element ? { kind: 'switchFrame', element } : null
-    }
+    rx(`${DRIVER}\\.switch_to\\.frame\\(\\s*${FIND}\\s*\\)`),
+    (m): Built => withElement(m, (element) => ({ kind: 'switchFrame', element }))
   ],
-  [rx(`expect\\(${FE}\\)\\.to be_displayed`), (m): Built => el(m, 'assert', 'displayed')],
-  [rx(`expect\\(${FE}\\)\\.not_to be_displayed`), (m): Built => el(m, 'assert', 'notDisplayed')],
-  [rx(`expect\\(${FE}\\)\\.to be_enabled`), (m): Built => el(m, 'assert', 'enabled')],
-  [rx(`expect\\(${FE}\\)\\.to be_selected`), (m): Built => el(m, 'assert', 'checked')],
-  [
-    rx(`expect\\(${FE}\\.text\\)\\.to eq\\(${STR}\\)`),
-    (m): Built => el(m, 'assert', 'textEquals', 5)
-  ],
-  [
-    rx(`expect\\(${FE}\\.text\\)\\.to include\\(${STR}\\)`),
-    (m): Built => el(m, 'assert', 'textIncludes', 5)
-  ],
-  [
-    rx(`expect\\(${FE}\\.attribute\\("value"\\)\\)\\.to eq\\(${STR}\\)`),
-    (m): Built => el(m, 'assert', 'valueEquals', 5)
-  ],
-  [
-    rx(`expect\\(@?driver\\.title\\)\\.to eq\\(${STR}\\)`),
-    (m): Built => ({ kind: 'assert', check: 'titleEquals', expected: unescape(m[1]) })
-  ],
-  [
-    rx(`expect\\(@?driver\\.current_url\\)\\.to include\\(${STR}\\)`),
-    (m): Built => ({ kind: 'assert', check: 'urlIncludes', expected: unescape(m[1]) })
-  ]
+  // 3.x assertions on the found element
+  [rx(`expect\\(${FIND}\\)\\.to be_displayed`), assert('displayed')],
+  [rx(`expect\\(${FIND}\\)\\.not_to be_displayed`), assert('notDisplayed')],
+  [rx(`expect\\(${FIND}\\)\\.to be_enabled`), assert('enabled')],
+  [rx(`expect\\(${FIND}\\)\\.to be_selected`), assert('checked')],
+  [rx(`expect\\(${FIND}\\.text\\)\\.to eq\\(${S}\\)`), assert('textEquals', 2)],
+  [rx(`expect\\(${FIND}\\.text\\)\\.to include\\(${S}\\)`), assert('textIncludes', 2)],
+  [rx(`expect\\(${FIND}\\.attribute\\("value"\\)\\)\\.to eq\\(${S}\\)`), assert('valueEquals', 2)],
+  [rx(`expect\\(${DRIVER}\\.title\\)\\.to eq\\(${S}\\)`), title],
+  [rx(`expect\\(${DRIVER}\\.current_url\\)\\.to include\\(${S}\\)`), url],
+  // 4.0 retrying matchers
+  [block('be_visible'), assert('displayed')],
+  [block('be_hidden'), assert('notDisplayed')],
+  [block('be_enabled'), assert('enabled')],
+  [block('be_checked'), assert('checked')],
+  [block(`have_text\\(${S},\\s*exact:\\s*true\\s*\\)`), assert('textEquals', 2)],
+  [block(`have_text\\(${S}\\)`), assert('textIncludes', 2)],
+  [block(`have_value\\(${S}\\)`), assert('valueEquals', 2)],
+  [rx(`expect\\(${DRIVER}\\)\\.to have_title\\(${S}\\)`), title],
+  [rx(`expect\\s*\\{\\s*${DRIVER}\\.current_url\\s*\\}\\.to include\\(${S}\\)`), url]
 ]
 
 const custom = (code: string): Step => ({ id: randomUUID(), kind: 'custom', code })
@@ -160,10 +222,10 @@ function collapseType(clearLine: string, sendLine: string): Step | null {
   const c = clearLine.match(CLEAR)
   const s = sendLine.match(SEND_TEXT)
   if (!c || !s) return null
-  const ce = target(c, 1)
-  const se = target(s, 1)
+  const ce = target(c[1])
+  const se = target(s[1])
   if (!ce || !se || !sameTarget(ce, se)) return null
-  return { id: randomUUID(), kind: 'type', element: se, text: unescape(s[5]) }
+  return { id: randomUUID(), kind: 'type', element: se, text: str(s, 2) }
 }
 
 export function migrateLegacyStep(code: string): Step {

@@ -21,19 +21,17 @@ const sidecar = (over: Partial<Sidecar> = {}): Sidecar => ({
   url: 'https://x.test',
   steps,
   file: 'spec/checkout_spec.rb',
-  automation: 'selenium',
   hash: 'h',
   createdAt: '2026-11-01T00:00:00.000Z',
   updatedAt: '2026-11-01T00:00:00.000Z',
   ...over
 })
 
-const generated = (waitHelper: boolean): ReturnType<typeof generateProjectSpecFileWithMap> =>
-  generateProjectSpecFileWithMap({ name: 'Checkout', steps }, 'selenium', {
-    fileRelPath: 'spec/checkout_spec.rb',
-    helperPath: 'helpers',
-    waitHelper
-  })
+const generated = (): ReturnType<typeof generateProjectSpecFileWithMap> =>
+  generateProjectSpecFileWithMap(
+    { name: 'Checkout', steps },
+    { fileRelPath: 'spec/checkout_spec.rb', helperPath: 'helpers' }
+  )
 
 describe('sha256Bytes', () => {
   it('hashes the utf-8 bytes', () => {
@@ -45,32 +43,26 @@ describe('sha256Bytes', () => {
 })
 
 describe('deriveStepLines', () => {
-  it('an old-style file gets the map of the variant without the wait helper', () => {
-    const old = generated(false)
-    expect(deriveStepLines(sidecar(), old.content, 'helpers')).toEqual(old.stepLines)
-  })
-
-  it('a wait-helper file gets the map of the helper variant', () => {
-    const helper = generated(true)
-    expect(helper.content).not.toBe(generated(false).content)
-    expect(deriveStepLines(sidecar(), helper.content, 'helpers')).toEqual(helper.stepLines)
+  it('a file that matches the render byte for byte gets its map', () => {
+    const current = generated()
+    expect(deriveStepLines(sidecar(), current.content, 'helpers')).toEqual(current.stepLines)
   })
 
   it('a file with CRLF line endings has no map', () => {
-    const crlf = generated(false).content.replace(/\n/g, '\r\n')
+    const crlf = generated().content.replace(/\n/g, '\r\n')
     expect(deriveStepLines(sidecar(), crlf, 'helpers')).toBeNull()
-    expect(usableStepLines(sidecar({ stepLines: generated(false).stepLines }), crlf)).toBeNull()
+    expect(usableStepLines(sidecar({ stepLines: generated().stepLines }), crlf)).toBeNull()
   })
 
   it('a file with an extra comment line has no map', () => {
-    const edited = generated(false).content.replace('  it ', '  # note\n  it ')
+    const edited = generated().content.replace('  it ', '  # note\n  it ')
     expect(deriveStepLines(sidecar(), edited, 'helpers')).toBeNull()
   })
 })
 
 describe('usableStepLines', () => {
   it('uses the stored map only while the bytes match', () => {
-    const { content, stepLines } = generated(false)
+    const { content, stepLines } = generated()
     expect(usableStepLines(sidecar({ stepLines }), content)).toEqual(stepLines)
     expect(usableStepLines(sidecar({ stepLines }), `${content}\n`)).toBeNull()
     expect(usableStepLines(sidecar(), content)).toBeNull()

@@ -187,25 +187,7 @@ describe('recorderEvent trace capture', () => {
     expect(getTraceStepCall()).toBeUndefined()
   })
 
-  it('links the trace step to the recorded step and renders it for Watir', async () => {
-    state.projectAutomation = 'watir'
-    state.activeTraceDir = '/tmp/trace-test'
-    state.recorderWebContentsId = 42
-    mockCapturePage.mockResolvedValue({ toJPEG: (): Buffer => Buffer.from('jpeg') })
-
-    recorderEvent({ action: 'click', selector: 'go', strategy: 'id', tagName: 'BUTTON' })
-
-    await vi.waitFor(() => {
-      expect(getTraceStepCall()).toBeDefined()
-    })
-
-    const step = mockSend.mock.calls.find((c) => c[0] === 'new-recorded-step')![1]
-    const traceStep = getTraceStepCall()![1] as Record<string, unknown>
-    expect(traceStep.stepId).toBe(step.id)
-    expect(traceStep.command).toBe("@browser.element(id: 'go').click")
-  })
-
-  it('renders Selenium Ruby for the trace command by default', async () => {
+  it('links the trace step to the recorded step and renders its Ruby', async () => {
     state.activeTraceDir = '/tmp/trace-test'
     state.recorderWebContentsId = 42
     mockCapturePage.mockRejectedValue(new Error('no capture'))

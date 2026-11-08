@@ -1,8 +1,6 @@
 import fs from 'fs/promises'
 import { STRING_LITERAL } from '../../codegen/ruby'
 import { renderStep } from '../../codegen/steps'
-import { toAutomation } from '../../codegen/testFile'
-import { usesWaitHelper } from '../project/waitHelperDetection'
 import { withSecretNames } from '../../../shared/secretSteps'
 import type { Receiver } from '../../codegen/steps'
 import { locateExamples } from './exampleLocator'
@@ -15,7 +13,6 @@ import {
   writeSidecar
 } from './sidecar'
 import type { Sidecar } from '../../../shared/types/projectTest'
-import type { ProjectLayout } from '../../../shared/types/projectLayout'
 import type { Step } from '../../../shared/types/step'
 
 /** The example name matched `count` blocks instead of exactly one. */
@@ -81,7 +78,6 @@ const fileQueues = new Map<string, Promise<unknown>>()
  */
 export async function replaceExample(
   projectPath: string,
-  layout: ProjectLayout,
   fileRel: string,
   exampleName: string,
   steps: Step[],
@@ -111,13 +107,12 @@ export async function replaceExample(
 
     const receiver = receiverFor(source)
     // Checked now, not from the cached layout: the helper may have been added or removed
-    const waitHelper = receiver === 'helper' && (await usesWaitHelper(projectPath, layout))
     const body = withSecretNames(steps).flatMap((step) =>
-      renderStep(step, toAutomation(layout.automation), { receiver, waitHelper }).split('\n')
+      renderStep(step, { receiver }).split('\n')
     )
     const wait = WAIT[receiver]
     const usesWait = body.some((line) => wait.uses.test(line.replace(STRING_LITERAL, "''")))
-    if (layout.automation === 'selenium' && usesWait && !wait.defined.test(source))
+    if (usesWait && !wait.defined.test(source))
       body.unshift(wait.line)
     const inner = body.map((line) => (line === '' ? cr : `${indent}  ${line}${cr}`))
 

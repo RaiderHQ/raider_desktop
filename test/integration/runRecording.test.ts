@@ -58,6 +58,19 @@ describe('runRecording', () => {
     expect(mockExec).not.toHaveBeenCalled()
   })
 
+  it('refuses a ruby command with shell syntax and spawns nothing', async () => {
+    const result = await runRecording({
+      savedTest: { id: 't', name: 'Login', url: '', steps: [] },
+      implicitWait: 5,
+      explicitWait: 10,
+      projectPath: '/project',
+      rubyCommand: 'ruby; rm -rf /'
+    })
+    expect(result).toEqual({ success: false, output: 'Invalid Ruby command.' })
+    expect(mockWriteFile).not.toHaveBeenCalled()
+    expect(mockExec).not.toHaveBeenCalled()
+  })
+
   it('generates and executes rspec test by default', async () => {
     mockExec.mockImplementation((_cmd: string, _opts: object, cb: Function) => {
       cb(null, '{"examples": []}', '')
@@ -96,14 +109,13 @@ describe('runRecording', () => {
       headless: true,
       projectPath: '/project',
       rubyCommand: 'ruby',
-      projectAutomation: 'watir',
+      projectAutomation: 'selenium',
       projectFramework: 'minitest'
     })
 
-    const expected = generateRspecFile(migrateLegacyTest(savedTest), 'watir', {
+    const expected = generateRspecFile(migrateLegacyTest(savedTest), {
       browser: 'firefox',
       headless: true,
-      implicitWait: 5,
       explicitWait: 10
     })
     expect(mockWriteFile.mock.calls[0][1]).toBe(expected)

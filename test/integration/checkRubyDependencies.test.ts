@@ -31,16 +31,16 @@ describe('checkRubyDependencies handler (integration)', () => {
     expect(result.missingGems).toContain('selenium-webdriver')
   })
 
-  it('reports watir as missing when it is not installed', async () => {
+  it('reports ruby_raider as missing when it is not installed', async () => {
     mockSafeExec.mockImplementation((cmd: string) => {
-      if (cmd.includes('watir')) {
+      if (cmd.includes('ruby_raider')) {
         return Promise.resolve({ stdout: 'false', stderr: '', exitCode: 0 })
       }
       return Promise.resolve({ stdout: 'true', stderr: '', exitCode: 0 })
     })
     const result = await handler('ruby')
     expect(result.success).toBe(false)
-    expect(result.missingGems).toEqual(['watir'])
+    expect(result.missingGems).toEqual(['ruby_raider'])
   })
 
   it('reports gem as missing when exec returns an error', async () => {
@@ -59,7 +59,7 @@ describe('checkRubyDependencies handler (integration)', () => {
     mockSafeExec.mockResolvedValue({ stdout: '', stderr: 'no ruby', exitCode: 1 })
     const result = await handler('ruby')
     expect(result.success).toBe(false)
-    expect(result.missingGems.length).toBe(4)
+    expect(result.missingGems.length).toBe(3)
   })
 
   it('uses the provided rubyCommandPrefix in the gem check command', async () => {

@@ -3,6 +3,7 @@ import { DEFAULT_RECORDER_SETTINGS, readRecorderSettings } from '../config/proje
 import { detectProjectLayout } from './projectLayout'
 import { loadRecordedTests } from '../tests/loadTests'
 import { safeError } from '../../utils/safeLog'
+import { migrateRecordedTests } from '../tests/migrateRecordedTests'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 
@@ -69,6 +70,10 @@ async function activate(projectPath: string | null): Promise<ActivationResult> {
       // Load everything before swapping, so the tests and projectPath always change together
       const settings = await readRecorderSettings(projectPath)
       const layout = await detectProjectLayout(projectPath)
+      // Specs written in an older codegen shape are rewritten first, so the tests load current
+      await migrateRecordedTests(projectPath, layout).catch((error: unknown) => {
+        safeError('Could not update the recorded tests:', error)
+      })
       // Runs before projectPath is published, so no handler writes tests meanwhile
       const tests = await loadRecordedTests(projectPath).catch((error: unknown) => {
         // The project can't open, but nothing is lost: the tests are spec files and sidecars

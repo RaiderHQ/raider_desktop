@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { generateProjectSpecFile, generateRspecFile } from '../../../src/main/codegen/testFile'
 import type { Step } from '../../../src/shared/types/step'
 
-// Steps without a semantic locator must keep producing exactly the Ruby they always did
+// The Ruby written for steps without a semantic locator, pinned so a change to the shape is deliberate
 const css = { strategy: 'css' as const, value: '#a' }
 const xp = { strategy: 'xpath' as const, value: "//a[text()='Go']", label: 'Go' }
 const steps: Step[] = [
@@ -16,16 +16,14 @@ const steps: Step[] = [
   { id: '8', kind: 'switchFrame', element: css }
 ]
 const test = { name: 'Checkout', steps }
-const settings = { browser: 'chrome', headless: false, implicitWait: 0, explicitWait: 10 }
+const settings = { browser: 'chrome', headless: false, explicitWait: 10 }
 const opts = { fileRelPath: 'spec/checkout_spec.rb', helperPath: 'helpers' }
 
-describe('codegen without locators is unchanged', () => {
-  for (const a of ['selenium', 'watir'] as const) {
-    it(`${a} project spec`, () => {
-      expect(generateProjectSpecFile(test, a, opts)).toMatchSnapshot()
-    })
-    it(`${a} standalone spec`, () => {
-      expect(generateRspecFile(test, a, settings)).toMatchSnapshot()
-    })
-  }
+describe('codegen without locators', () => {
+  it('project spec', () => {
+    expect(generateProjectSpecFile(test, opts)).toMatchSnapshot()
+  })
+  it('standalone spec', () => {
+    expect(generateRspecFile(test, settings)).toMatchSnapshot()
+  })
 })

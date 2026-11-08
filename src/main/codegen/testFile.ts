@@ -7,12 +7,17 @@ import { renderStep } from './steps'
 import { describeStepEnglish } from '../../shared/describeStepEnglish'
 import { withSecretNames } from '../../shared/secretSteps'
 import { normalizeTags } from '../../shared/tags'
-import type { Automation } from './steps'
 import type { StepLines } from '../../shared/types/projectTest'
 
-export type { Automation }
+/**
+ * The shape of the Ruby this module writes. Stored in each sidecar, so a project
+ * opened after the shape changed regenerates its recorded specs once (see
+ * migrateRecordedTests). 2: the ruby_raider 4.0 runtime (by_role / label / text /
+ * test_id locators, block-form matchers, no WaitHelper, no eventually).
+ */
+export const CODEGEN_VERSION = 2
 
-type FileSettings = Pick<RecorderSettings, 'browser' | 'headless' | 'implicitWait' | 'explicitWait'>
+type FileSettings = Pick<RecorderSettings, 'browser' | 'headless' | 'explicitWait'>
 
 const BROWSERS = ['chrome', 'firefox', 'safari', 'edge']
 
@@ -24,18 +29,15 @@ function stepTitle(step: Step): string {
   return text.length > MAX_TITLE ? `${text.slice(0, MAX_TITLE - 1)}…` : text
 }
 
-export function toAutomation(projectAutomation: string | null): Automation {
-  return projectAutomation && /watir/i.test(projectAutomation) ? 'watir' : 'selenium'
-}
-
 function browserSymbol(browser: string): string {
   const name = browser.toLowerCase()
   return BROWSERS.includes(name) ? name : 'chrome'
 }
 
-function seleniumSetup(settings: FileSettings): string[] {
+// The runtime's own waits replace the implicit wait, which the gem's README asks to leave unset
+function seleniumSetup(settings: FileSettings, needsWait: boolean): string[] {
   const browser = browserSymbol(settings.browser)
-  const lines: string[] = []
+  const lines: string[] = [`Raider.timeout = ${settings.explicitWait}`]
   if (settings.headless && (browser === 'chrome' || browser === 'edge')) {
     const klass = browser === 'chrome' ? 'Chrome' : 'Edge'
     lines.push(
@@ -46,22 +48,8 @@ function seleniumSetup(settings: FileSettings): string[] {
   } else {
     lines.push(`@driver = Selenium::WebDriver.for :${browser}`)
   }
-  lines.push(
-    `@driver.manage.timeouts.implicit_wait = ${settings.implicitWait}`,
-    `@wait = Selenium::WebDriver::Wait.new(timeout: ${settings.explicitWait})`
-  )
-  return lines
-}
-
-function watirSetup(settings: FileSettings): string[] {
-  const browser = browserSymbol(settings.browser)
-  const lines = [`Watir.default_timeout = ${settings.explicitWait}`]
-  if (settings.headless && (browser === 'chrome' || browser === 'edge')) {
-    lines.push(`@browser = Watir::Browser.new :${browser}, options: { args: ['--headless=new'] }`)
-  } else {
-    lines.push(`@browser = Watir::Browser.new :${browser}`)
-  }
-  lines.push(`@browser.driver.manage.timeouts.implicit_wait = ${settings.implicitWait}`)
+  if (needsWait)
+    lines.push(`@wait = Selenium::WebDriver::Wait.new(timeout: ${settings.explicitWait})`)
   return lines
 }
 
@@ -77,30 +65,43 @@ const tagMetadata = (tags: string[] | undefined): string =>
     .map((tag) => `, :${tag}`)
     .join('')
 
+// The runtime's matchers and by_role, included in the describe so the spec runs the same
+// in a project whose spec_helper predates 4.0 (pin bumped, helpers not regenerated)
+const RUNTIME_REQUIRE = "require 'ruby_raider/runtime/rspec'"
+const RUNTIME_INCLUDES = ['  include Raider::Matchers', '  include Raider::Helpers']
+
+// Ruby string literals and trailing comments, so recorded values like 'expect delays' don't count
+const TRAILING_COMMENT = /#.*$/
+const WAIT_WORD = /\bwait\b/
+
+// Recorded steps never use a wait object; custom code may still mention one
+const mentionsWait = (body: string[]): boolean =>
+  body.some((line) => WAIT_WORD.test(line.replace(STRING_LITERAL, "''")))
+
 /** Builds a standalone RSpec file (run and export share it) from structured steps. */
 export function generateRspecFile(
   test: { name: string; steps: Step[]; tags?: string[] },
-  automation: Automation,
   settings: FileSettings
 ): string {
-  const watir = automation === 'watir'
-  const setup = watir ? watirSetup(settings) : seleniumSetup(settings)
-  const teardown = watir ? '@browser.close' : '@driver.quit'
   const name = rubyString(test.name)
   // Steps loaded through migrateLegacyTest are named already; this covers any caller that isn't
-  const body = withSecretNames(test.steps).map((step) => indent(renderStep(step, automation), 4))
+  const body = withSecretNames(test.steps).map((step) => indent(renderStep(step), 4))
+  const setup = seleniumSetup(settings, mentionsWait(body))
 
   return [
-    `require '${watir ? 'watir' : 'selenium-webdriver'}'`,
+    "require 'selenium-webdriver'",
     "require 'rspec'",
+    RUNTIME_REQUIRE,
     '',
     `describe ${name}${tagMetadata(test.tags)} do`,
+    ...RUNTIME_INCLUDES,
+    '',
     '  before(:each) do',
     ...setup.map((l) => `    ${l}`),
     '  end',
     '',
     '  after(:each) do',
-    `    ${teardown}`,
+    '    @driver.quit',
     '  end',
     '',
     `  it ${name} do`,
@@ -117,9 +118,6 @@ const CONFIG_WAIT = "config.fetch('explicit_wait', config.fetch('timeout', 10))"
 // rubocop-rspec's DescribeClass accepts a describe string only when it reads like a constant
 const CONSTANT_LIKE = /^(?:(?:::)?[A-Z]\w*)+$/
 const EXPECTATION = /\b(?:expect|is_expected|are_expected|expect_any_instance_of)\b/g
-// Ruby string literals and trailing comments, so recorded values like 'expect delays' don't count
-const TRAILING_COMMENT = /#.*$/
-const WAIT_WORD = /\bwait\b/
 
 /**
  * The cops (at rubocop-rspec defaults) a recorded test would trip. The file is
@@ -142,6 +140,8 @@ function copsToDisable(name: string, body: string[]): string[] {
   if (!CONSTANT_LIKE.test(name)) cops.push('RSpec/DescribeClass')
   if (code.length > 5) cops.push('RSpec/ExampleLength')
   if (expectations > 1) cops.push('RSpec/MultipleExpectations')
+  // A recording with no check is still a test the user wants to run
+  if (expectations === 0) cops.push('RSpec/NoExpectationExample')
   return cops
 }
 
@@ -152,28 +152,25 @@ export const RECORDED_MARKER = '# Recorded with Raider.'
 export const sha256Bytes = (content: string): string =>
   createHash('sha256').update(Buffer.from(content, 'utf-8')).digest('hex')
 
-type ProjectSpecOptions = { fileRelPath: string; helperPath: string; waitHelper?: boolean }
+type ProjectSpecOptions = { fileRelPath: string; helperPath: string }
 
 /**
  * Builds a recorded spec that lives inside a Ruby Raider project and uses the
- * project's spec_helper (driver / browser) instead of creating its own session.
+ * project's spec_helper (driver) instead of creating its own session.
  * `fileRelPath` and `helperPath` are relative to the project root.
  */
 export function generateProjectSpecFile(
   test: { name: string; steps: Step[]; tags?: string[] },
-  automation: Automation,
   opts: ProjectSpecOptions
 ): string {
-  return generateProjectSpecFileWithMap(test, automation, opts).content
+  return generateProjectSpecFileWithMap(test, opts).content
 }
 
 /** The project spec file plus the lines each step was written to. */
 export function generateProjectSpecFileWithMap(
   test: { name: string; steps: Step[]; tags?: string[] },
-  automation: Automation,
   opts: ProjectSpecOptions
 ): { content: string; stepLines: StepLines } {
-  const watir = automation === 'watir'
   const name = rubyString(test.name)
   const fileRel = opts.fileRelPath.replace(/\\/g, '/')
   const helperRel = opts.helperPath.replace(/\\/g, '/')
@@ -184,31 +181,17 @@ export function generateProjectSpecFileWithMap(
   )
     throw new Error('Project spec paths must be relative to the project root')
   const toHelper = posix.relative(posix.dirname(fileRel), posix.join(helperRel, 'spec_helper'))
-  const waitHelper = !watir && opts.waitHelper === true
   const named = withSecretNames(test.steps)
-  const body = named.map((step) =>
-    indent(renderStep(step, automation, { receiver: 'helper', waitHelper }), 4)
-  )
-  // The helper form needs no `wait`; keep it only for custom code that still calls it
-  const needsWait =
-    !waitHelper || body.some((line) => WAIT_WORD.test(line.replace(STRING_LITERAL, "''")))
-  const setup = watir
+  const body = named.map((step) => indent(renderStep(step, { receiver: 'helper' }), 4))
+  const setup = mentionsWait(body)
     ? [
-        '  before do',
-        '    # touch browser first: the helper resets the timeout when it creates the browser',
-        '    browser',
+        '  let(:wait) do',
         "    config = YAML.load_file('config/config.yml')",
-        `    Watir.default_timeout = ${CONFIG_WAIT}`,
-        '  end'
+        `    Selenium::WebDriver::Wait.new(timeout: ${CONFIG_WAIT})`,
+        '  end',
+        ''
       ]
-    : needsWait
-      ? [
-          '  let(:wait) do',
-          "    config = YAML.load_file('config/config.yml')",
-          `    Selenium::WebDriver::Wait.new(timeout: ${CONFIG_WAIT})`,
-          '  end'
-        ]
-      : []
+    : []
   const cops = copsToDisable(test.name, body).join(', ')
 
   const lines = [
@@ -217,10 +200,12 @@ export function generateProjectSpecFileWithMap(
     `${RECORDED_MARKER} Edit in Raider; editing here makes the test code-owned.`,
     ...(cops ? [`# rubocop:disable ${cops}`] : []),
     `require_relative ${rubyString(toHelper)}`,
+    RUNTIME_REQUIRE,
     '',
     `describe ${name}${tagMetadata(test.tags)} do`,
+    ...RUNTIME_INCLUDES,
+    '',
     ...setup,
-    ...(setup.length ? [''] : []),
     `  it ${name} do`
   ]
   const ranges = body.map((chunk, i) => {

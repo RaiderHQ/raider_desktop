@@ -49,7 +49,7 @@ let dir: string
 const openProject = async (): Promise<void> => {
   const project = join(dir, 'project')
   await mkdir(project, { recursive: true })
-  await writeFile(join(project, 'Gemfile'), "gem 'rspec'\ngem 'watir'\n")
+  await writeFile(join(project, 'Gemfile'), "gem 'rspec'\ngem 'selenium-webdriver'\n")
   const keep = new Map(appState.tests)
   await setActiveProject(project)
   for (const [id, test] of keep) appState.tests.set(id, test)
@@ -58,7 +58,7 @@ const openProject = async (): Promise<void> => {
 beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), 'roundtrip-'))
   appState.tests = new Map()
-  appState.projectAutomation = 'watir'
+  appState.projectAutomation = 'selenium'
   appState.projectFramework = 'rspec'
   appState.recorderSettings = { ...DEFAULT_RECORDER_SETTINGS }
   mockDialog.showMessageBox.mockReset().mockResolvedValue({ response: 0 })
@@ -77,7 +77,7 @@ describe('export then import round trips', () => {
 
     const text = await readFile(file, 'utf-8')
     expect(text.startsWith('# Test: Search\n# raider-steps: ')).toBe(true)
-    expect(text).toContain("require 'watir'")
+    expect(text).toContain("require 'ruby_raider/runtime/rspec'")
 
     await openProject()
     mockDialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [file] })
@@ -97,6 +97,12 @@ describe('export then import round trips', () => {
     expect((await exportProject()).success).toBe(true)
     expect((await readdir(out)).sort()).toEqual(['.raider', 'cancel_spec.rb', 'pay_spec.rb'])
     expect(await readFile(join(out, 'pay_spec.rb'), 'utf-8')).not.toContain('# Suite:')
+    // The exported sidecar carries the codegen shape it was written in, and no automation
+    const exported = JSON.parse(
+      await readFile(join(out, '.raider', 'tests', 'pay_spec.rb.json'), 'utf-8')
+    )
+    expect(exported.codegen).toBe(2)
+    expect(exported).not.toHaveProperty('automation')
 
     await openProject()
     appState.tests = new Map()

@@ -3,7 +3,8 @@ import os from 'os'
 import path from 'path'
 import { safeExec } from '../../utils/safeExec'
 import { quoteShellArg } from '../../utils/shellQuote'
-import { generateRspecFile, toAutomation } from '../../codegen/testFile'
+import { isValidRubyCommand } from '../../utils/rubyCommand'
+import { generateRspecFile } from '../../codegen/testFile'
 import { migrateLegacyTest } from '../../codegen/legacy'
 import { mobileNoLegacyResult, type LegacyRunResult } from '../../../shared/types/prepareRun'
 
@@ -30,6 +31,10 @@ const runRecording = async (
     return { success: false, output: 'No test has been saved to run.' }
   }
   if (appState.projectAutomation === 'appium') return mobileNoLegacyResult()
+  // The command reaches a shell as is, so only the forms the app itself builds are run
+  if (!isValidRubyCommand(appState.rubyCommand)) {
+    return { success: false, output: 'Invalid Ruby command.' }
+  }
 
   const tempFilePath = path.join(os.tmpdir(), `test_${Date.now()}.rb`)
 
@@ -41,13 +46,12 @@ const runRecording = async (
 
     const executionEnv = { ...process.env, PATH: newPath }
 
-    const { implicitWait, explicitWait, rubyCommand, browser, headless } = appState
+    const { explicitWait, rubyCommand, browser, headless } = appState
     const test = migrateLegacyTest(appState.savedTest)
 
-    const testCode = generateRspecFile(test, toAutomation(appState.projectAutomation ?? null), {
+    const testCode = generateRspecFile(test, {
       browser: browser ?? 'chrome',
       headless: headless ?? false,
-      implicitWait,
       explicitWait
     })
 

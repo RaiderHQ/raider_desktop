@@ -4,7 +4,6 @@ import { writeFileSync } from 'fs'
 import { webContents } from 'electron'
 import { appState } from '../appState'
 import { renderStep } from '../../codegen/steps'
-import { toAutomation } from '../../codegen/testFile'
 import { isLocator, type ElementTarget, type Step } from '../../../shared/types/step'
 import type { TraceStep } from '../../../shared/types/traceStep'
 import { PICK_GRACE_MS } from '../../../shared/types/pick'
@@ -132,8 +131,7 @@ function recorderEvent(data: RecorderEventData): void {
     stepId: step.id,
     // The app names a secret step when it adds it, after this; the trace shows a placeholder
     command: renderStep(
-      step.kind === 'type' && step.secret ? { ...step, secretName: 'RAIDER_SECRET_N' } : step,
-      toAutomation(appState.projectAutomation)
+      step.kind === 'type' && step.secret ? { ...step, secretName: 'RAIDER_SECRET_N' } : step
     ),
     timestamp: Date.now(),
     url: data.pageUrl || '',

@@ -4,7 +4,7 @@ import os from 'os'
 import path from 'path'
 import { appState } from '../appState'
 import startRecordingMain from './startRecordingMain'
-import { generateRspecFile, toAutomation } from '../../codegen/testFile'
+import { generateRspecFile } from '../../codegen/testFile'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
 import { quoteShellArg } from '../../utils/shellQuote'
 import type { Step } from '../../../shared/types/step'
@@ -45,22 +45,19 @@ async function replayStepsAndRecord(
   if (missing) {
     return { success: false, error: englishText('recorder.step.secretMissing', { name: missing }) }
   }
-  const { implicitWait, explicitWait } = appState.recorderSettings
+  const { explicitWait } = appState.recorderSettings
   const tempFilePath = path.join(os.tmpdir(), `replay_${Date.now()}_spec.rb`)
 
   // Replay headlessly in Chrome, then print the final URL for the recorder to resume from.
-  const automation = toAutomation(appState.projectAutomation)
-  const currentUrl = automation === 'watir' ? '@browser.url' : '@driver.current_url'
   const script = generateRspecFile(
     {
       name: 'replay',
       steps: [
         ...stepsToReplay,
-        { id: 'replay-final-url', kind: 'custom', code: `puts "RAIDER_FINAL_URL:#{${currentUrl}}"` }
+        { id: 'replay-final-url', kind: 'custom', code: 'puts "RAIDER_FINAL_URL:#{@driver.current_url}"' }
       ]
     },
-    automation,
-    { browser: 'chrome', headless: true, implicitWait, explicitWait }
+    { browser: 'chrome', headless: true, explicitWait }
   )
 
   try {

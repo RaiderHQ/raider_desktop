@@ -117,6 +117,13 @@ describe('detectProjectLayout', () => {
     })
   })
 
+  it('a Gemfile with watir is a plain selenium layout', async () => {
+    await project("gem 'watir'\ngem 'rspec'\n")
+    const layout = await detectProjectLayout(dir)
+    expect(layout).toMatchObject({ automation: 'selenium', recordable: true })
+    expect(layout).not.toHaveProperty('waitHelper')
+  })
+
   it('no Gemfile', async () => {
     expect(await detectProjectLayout(dir)).toMatchObject({
       recordable: false,
@@ -125,51 +132,21 @@ describe('detectProjectLayout', () => {
   })
 })
 
-describe('waitHelper', () => {
-  async function withHelper(gemfile: string): Promise<void> {
-    await project(gemfile)
-    await mkdir(join(dir, 'helpers'), { recursive: true })
-    await writeFile(join(dir, 'helpers', 'wait_helper.rb'), 'module WaitHelper\nend\n')
-    await writeFile(
-      join(dir, 'helpers', 'spec_helper.rb'),
-      'RSpec.configure do |config|\n    config.include(WaitHelper)\nend\n'
-    )
-  }
-
-  it('true for a selenium rspec project with the helper', async () => {
-    await withHelper("gem 'selenium-webdriver'\ngem 'rspec'\n")
-    expect((await detectProjectLayout(dir)).waitHelper).toBe(true)
-  })
-
-  it('false without the helper files', async () => {
-    await project("gem 'selenium-webdriver'\ngem 'rspec'\n")
-    expect((await detectProjectLayout(dir)).waitHelper).toBe(false)
-  })
-
-  it.each([
-    ['watir', "gem 'watir'\ngem 'rspec'\n"],
-    ['appium', "gem 'appium_lib'\ngem 'rspec'\n"]
-  ])('false for a %s project even with the helper', async (_name, gemfile) => {
-    await withHelper(gemfile)
-    expect((await detectProjectLayout(dir)).waitHelper).toBe(false)
-  })
-})
-
 describe('setActiveProject layout', () => {
   it('activation sets automation', async () => {
-    await project("gem 'watir'\ngem 'rspec'\n")
+    await project("gem 'selenium-webdriver'\ngem 'rspec'\n")
     const result = await setActiveProject(dir)
-    expect(appState.projectAutomation).toBe('watir')
+    expect(appState.projectAutomation).toBe('selenium')
     expect(appState.projectFramework).toBe('rspec')
     expect(appState.layout?.framework).toBe('rspec')
-    expect(result.layout?.automation).toBe('watir')
+    expect(result.layout?.automation).toBe('selenium')
     await setActiveProject(null)
     expect(appState.layout).toBeNull()
     expect(appState.projectAutomation).toBeNull()
   })
 
   it('failed activation clears layout, automation and framework', async () => {
-    await project("gem 'watir'\ngem 'rspec'\n")
+    await project("gem 'selenium-webdriver'\ngem 'rspec'\n")
     await setActiveProject(dir)
     expect(appState.layout).not.toBeNull()
     // A Gemfile that is a directory makes reading it fail with something other than ENOENT
