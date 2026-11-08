@@ -15,6 +15,11 @@ const RunIndicator: React.FC = (): JSX.Element | null => {
   const run = useRunStore((state) => state.run)
   const origin = useRunStore((state) => state.origin)
   const isActive = useRunStore((state) => state.isActive)
+  // A finished run the user closed stays closed here too
+  const closed = useRunStore(
+    (state) =>
+      state.hiddenRunStartedAt !== null && state.run?.startedAt === state.hiddenRunStartedAt
+  )
   const [showResult, setShowResult] = useState(false)
   const sawActive = useRef(false)
 
@@ -51,7 +56,7 @@ const RunIndicator: React.FC = (): JSX.Element | null => {
     } else {
       label = t(`run.phase.${run.phase ?? 'booting'}`)
     }
-  } else if (showResult && finished) {
+  } else if (showResult && finished && !closed) {
     label =
       finished.counts.failed > 0
         ? t('run.indicator.failed', { count: finished.counts.failed })

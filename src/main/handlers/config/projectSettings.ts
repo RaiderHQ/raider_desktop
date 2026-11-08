@@ -5,15 +5,9 @@ import type { RecorderSettings } from '@shared/types/recorderSettings'
 
 export type { RecorderSettings }
 
-export const DEFAULT_SELECTOR_PRIORITY: string[] = [
-  'role',
-  'label',
-  'testId',
-  'text',
-  'id',
-  'css',
-  'xpath'
-]
+import { DEFAULT_SELECTOR_PRIORITY } from '@shared/selectorPriority'
+
+export { DEFAULT_SELECTOR_PRIORITY }
 import { DEFAULT_TEST_ID_ATTRIBUTE, testIdAttributeFrom } from '../../../shared/testIdAttribute'
 
 export { DEFAULT_TEST_ID_ATTRIBUTE }
@@ -102,15 +96,30 @@ export async function readRecorderSettings(projectPath: string): Promise<Recorde
   }
 }
 
+// A plain name stays bare (as the gem's own config writes it); anything else is quoted
+const PLAIN_NAME = /^[A-Za-z_][A-Za-z0-9_-]*$/
+const yamlName = (name: string): string => (PLAIN_NAME.test(name) ? name : JSON.stringify(name))
+
 function formatValue(value: number | string[]): string {
-  return Array.isArray(value) ? `[${value.join(', ')}]` : String(value)
+  return Array.isArray(value) ? `[${value.map(yamlName).join(', ')}]` : String(value)
 }
 
-export async function writeRecorderSettings(
-  projectPath: string,
-  patch: WritableSettings
-): Promise<void> {
+// One write at a time per config file: each reads the file, so two at once would drop one
+const writeQueues = new Map<string, Promise<unknown>>()
+
+export function writeRecorderSettings(projectPath: string, patch: WritableSettings): Promise<void> {
   const path = configPathFor(projectPath)
+  const previous = writeQueues.get(path) ?? Promise.resolve()
+  const run = previous.then(() => writeNow(path, patch))
+  const settled = run.catch(() => undefined)
+  writeQueues.set(path, settled)
+  void settled.then(() => {
+    if (writeQueues.get(path) === settled) writeQueues.delete(path)
+  })
+  return run
+}
+
+async function writeNow(path: string, patch: WritableSettings): Promise<void> {
   const entries: Array<[string, number | string[]]> = []
   if (patch.implicitWait !== undefined) entries.push(['implicit_wait', patch.implicitWait])
   if (patch.explicitWait !== undefined) entries.push(['explicit_wait', patch.explicitWait])
