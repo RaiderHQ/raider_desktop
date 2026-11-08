@@ -40,7 +40,10 @@ beforeEach(() => {
   localStorage.clear()
   vi.clearAllMocks()
   useRecorderStore.setState({ isRecording: false })
-  getRecorderSettings.mockResolvedValue({ selectorPriority: ['role', 'label', 'testId', 'css'] })
+  getRecorderSettings.mockResolvedValue({
+    selectorPriority: ['role', 'label', 'testId', 'css'],
+    testIdAttribute: 'data-testid'
+  })
   updateRecordingSettings.mockResolvedValue({ success: true })
   ;(window as unknown as { api: unknown }).api = {
     getRecorderSettings,
@@ -224,6 +227,58 @@ describe('RecordingSettingsPanel', () => {
     expect(waits.setExplicitWait).not.toHaveBeenCalled()
   })
 
+  it("shows the project's test id attribute and saves a new one on blur", async () => {
+    await renderPanel()
+    expand()
+    const input = await screen.findByTestId('recording-test-id-attribute')
+    await waitFor(() => expect(input).toHaveValue('data-testid'))
+    fireEvent.change(input, { target: { value: ' data-qa ' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(updateRecordingSettings).toHaveBeenCalledWith({ testIdAttribute: 'data-qa' })
+    expect(input).toHaveValue('data-qa')
+  })
+
+  it('does not save an unchanged attribute', async () => {
+    await renderPanel()
+    expand()
+    const input = await screen.findByTestId('recording-test-id-attribute')
+    await waitFor(() => expect(input).toHaveValue('data-testid'))
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(updateRecordingSettings).not.toHaveBeenCalled()
+  })
+
+  it('says why an attribute name is refused, without saving it', async () => {
+    await renderPanel()
+    expand()
+    const input = await screen.findByTestId('recording-test-id-attribute')
+    await waitFor(() => expect(input).toHaveValue('data-testid'))
+    fireEvent.change(input, { target: { value: 'data qa' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(updateRecordingSettings).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('settings.recording.testId.invalid')
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('puts the attribute back when saving it fails', async () => {
+    updateRecordingSettings.mockResolvedValue({ success: false, error: 'disk full' })
+    await renderPanel()
+    expand()
+    const input = await screen.findByTestId('recording-test-id-attribute')
+    await waitFor(() => expect(input).toHaveValue('data-testid'))
+    fireEvent.change(input, { target: { value: 'data-qa' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(input).toHaveValue('data-testid')
+    expect(toastError).toHaveBeenCalled()
+  })
+
   it('locks the settings while recording', async () => {
     useRecorderStore.setState({ isRecording: true })
     await renderPanel()
@@ -234,6 +289,7 @@ describe('RecordingSettingsPanel', () => {
       screen.getByRole('button', { name: 'settings.recording.priority.down settings.recording.priority.kind.role' })
     ).toBeDisabled()
     expect(screen.getByTestId('recording-priority-reset')).toBeDisabled()
+    expect(screen.getByTestId('recording-test-id-attribute')).toBeDisabled()
   })
 
   it('has every string it uses in en.json', () => {

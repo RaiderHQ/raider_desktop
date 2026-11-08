@@ -258,7 +258,7 @@ export interface WindowApi extends RunApi {
   onRecorderPicked: (callback: (result: PickResult) => void) => () => void
   loadUrlRequest: (url: string) => Promise<CommandType>
   updateRecordingSettings: (
-    settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
+    settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[]; testIdAttribute: string }>
   ) => Promise<{ success: boolean; error?: string }>
   setActiveProject: (projectPath: string | null) => Promise<{
     success: boolean

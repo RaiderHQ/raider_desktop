@@ -27,6 +27,14 @@ import type { ProjectLayout } from '../../../shared/types/projectLayout'
 import type { Sidecar, StepLines } from '../../../shared/types/projectTest'
 import type { Test } from '../../../shared/types/test'
 
+/** A regenerate found no record any more: the test was deleted meanwhile. */
+export class TestGoneError extends Error {
+  constructor(id: string) {
+    super(`The recorded test ${id} is gone`)
+    this.name = 'TestGoneError'
+  }
+}
+
 /** The spec file was edited outside Raider, so Raider must not rewrite or delete it. */
 export class CodeOwnedError extends Error {
   constructor(file: string) {
@@ -294,7 +302,15 @@ export function saveRecordedTest(
   projectPath: string,
   layout: ProjectLayout,
   input: Test,
-  options: { knownFile?: string | null } = {}
+  options: {
+    knownFile?: string | null
+    /**
+     * Write the spec again from the record as it is now (a setting changed the generated code).
+     * The steps come from the sidecar read inside the queue, never from `input`, so a save that
+     * landed meanwhile is kept; a test deleted meanwhile is not recreated; nothing is renamed.
+     */
+    regenerate?: boolean
+  } = {}
 ): Promise<Sidecar> {
   return serialize(testQueues, testKey(projectPath, input.id), async () => {
     const now = new Date().toISOString()
@@ -303,8 +319,18 @@ export function saveRecordedTest(
       options.knownFile !== undefined
         ? await sidecarAt(projectPath, input.id, options.knownFile)
         : await findSidecarById(projectPath, input.id)
+    if (options.regenerate && !existing) throw new TestGoneError(input.id)
     // Tags change only through set-test-tags: a save never takes tags from its caller
-    const test: Test = { ...input, tags: existing?.tags }
+    const test: Test =
+      options.regenerate && existing
+        ? {
+            id: existing.id,
+            name: existing.name,
+            url: existing.url,
+            steps: existing.steps,
+            tags: existing.tags
+          }
+        : { ...input, tags: existing?.tags }
 
     if (!existing) {
       const { file, content, stepLines, target } = await createNewSpec(projectPath, current, test)
@@ -326,7 +352,7 @@ export function saveRecordedTest(
       return refuseAsCodeOwned(projectPath, existing)
     }
 
-    if (isUntitledFile(existing.file) && hasRealName(test)) {
+    if (!options.regenerate && isUntitledFile(existing.file) && hasRealName(test)) {
       return moveToRealName(projectPath, current, test, existing, target, onDisk !== null, now)
     }
 
@@ -337,8 +363,9 @@ export function saveRecordedTest(
     // require line must still be the one generated now, so a moved helper_path rewrites.
     if (
       onDisk !== null &&
-      sameRecord(existing, test) &&
-      requireLine(onDisk) === requireLine(content)
+      (options.regenerate
+        ? onDisk === content
+        : sameRecord(existing, test) && requireLine(onDisk) === requireLine(content))
     ) {
       if (existing.stepLines) return existing
       // Recorded before maps were stored: map the kept file, without touching it

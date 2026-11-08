@@ -368,7 +368,7 @@ app.whenReady().then(() => {
     'update-recording-settings',
     async (
       _event,
-      settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
+      settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[]; testIdAttribute: string }>
     ) => {
       try {
         return await updateRecordingSettings(settings)

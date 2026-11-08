@@ -211,6 +211,19 @@ describe('projectSettings', () => {
     })
   })
 
+  it('writes test_id_attribute and reads it back', async () => {
+    await seed(FIXTURE)
+    await writeRecorderSettings(dir, { testIdAttribute: 'data-qa' })
+    expect(await readFile(configPath(), 'utf-8')).toContain('test_id_attribute: data-qa\n')
+    expect((await readRecorderSettings(dir)).testIdAttribute).toBe('data-qa')
+  })
+
+  it('quotes a test id attribute YAML would read as a boolean', async () => {
+    await seed(FIXTURE)
+    await writeRecorderSettings(dir, { testIdAttribute: 'on' })
+    expect((await readRecorderSettings(dir)).testIdAttribute).toBe('on')
+  })
+
   it('rejects and leaves config untouched on a non-ENOENT read error', async () => {
     await seed(FIXTURE)
     failRead.code = 'EACCES'

@@ -382,7 +382,7 @@ const api = {
   ): Promise<LegacyRunResult> =>
     ipcRenderer.invoke('run-test', testId, projectPath, rubyCommand, test),
   updateRecordingSettings: (
-    settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[] }>
+    settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[]; testIdAttribute: string }>
   ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('update-recording-settings', settings),
   setActiveProject: (
