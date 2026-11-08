@@ -11,7 +11,9 @@ export interface ProjectLayout {
   featurePath: string
   /** Config `helper_path`, default 'helpers' */
   helperPath: string
-  /** False for appium / minitest / capybara / no Gemfile */
+  /** The ruby_raider the project locks (Gemfile.lock) or pins (Gemfile); absent when unknown */
+  rubyRaiderVersion?: string
+  /** False for appium / minitest / capybara / no Gemfile / a ruby_raider below 4.0 */
   recordable: boolean
-  unsupportedReason?: 'mobile' | 'minitest' | 'capybara' | 'noGemfile'
+  unsupportedReason?: 'mobile' | 'minitest' | 'capybara' | 'noGemfile' | 'gemTooOld'
 }

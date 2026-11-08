@@ -3,6 +3,8 @@ import runRecording from './runRecording'
 import { activationSettled } from '../project/setActiveProject'
 import { filesStore, PROJECT_CHANGED_ERROR } from '../tests/recordedStore'
 import { detectProjectLayout } from '../project/projectLayout'
+import { GEM_TOO_OLD } from '../run/runner'
+import { supportsRuntime } from '../logins/rubyRaiderVersion'
 import type { Test } from '../../../shared/types/test'
 import { mobileNoLegacyResult, type LegacyRunResult } from '../../../shared/types/prepareRun'
 
@@ -40,6 +42,9 @@ export async function runTestHandler(
     return { success: false, output: PROJECT_CHANGED_ERROR }
   }
   if (filesStore()) return { success: false, output: USE_LIVE_RUNNER }
+  if (!supportsRuntime(appState.layout?.rubyRaiderVersion ?? null)) {
+    return { success: false, output: GEM_TOO_OLD }
+  }
   if (await isMobileProject()) return mobileNoLegacyResult()
 
   const cached = appState.tests.get(testId)

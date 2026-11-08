@@ -7,6 +7,7 @@ import type { Step } from '@shared/types/step'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
+import type { UpgradeResult } from '@shared/types/upgradeResult'
 import type { RecentProjectEntry } from '@shared/types/recentProject'
 import type { PickResult } from '@shared/types/pick'
 import type {
@@ -157,6 +158,7 @@ export interface WindowApi extends RunApi {
     failure: FailedStepQuery
   ) => Promise<FailedStepMap>
   getProjectLayout: () => Promise<ProjectLayout | null>
+  upgradeRubyRaider: (projectPath: string, rubyCommand: string) => Promise<UpgradeResult>
   /** Replaces the one example named `exampleName` in a listed spec file with `steps` */
   recordOverExample: (
     file: string,

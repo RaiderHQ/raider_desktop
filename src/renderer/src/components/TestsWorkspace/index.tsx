@@ -6,6 +6,8 @@ import TestsList from '@components/TestsList'
 import TestPage from '@components/TestPage'
 import CodeTestPane from '@components/CodeTestPane'
 import TestsMoreMenu from '@components/TestsMoreMenu'
+import ProjectNeedsUpdate from '@components/ProjectNeedsUpdate'
+import useProjectStore from '@foundation/Stores/projectStore'
 import TagFilter from '@components/TagFilter'
 import { useTestsList } from '../../hooks/useTestsList'
 import useRecorderStore from '@foundation/Stores/recorderStore'
@@ -26,6 +28,8 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
   const isNewTest = useMatch('/overview/tests/new') !== null
   const rows = useTestsList()
   const isRecording = useRecorderStore((s) => s.isRecording)
+  // A project on a ruby_raider below 4.0 can neither record nor run: the pane says how to fix it
+  const gemTooOld = useProjectStore((s) => s.layout?.unsupportedReason === 'gemTooOld')
   const [tagFilter, setTagFilter] = useState<string | null>(null)
 
   const selectedKey: TestKey | null = param ? fromRouteParam(param) || null : null
@@ -38,7 +42,9 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
     void navigate(`/overview/tests/${toRouteParam(key)}`)
   }
 
-  const pane = renderPane ? (
+  const pane = gemTooOld ? (
+    <ProjectNeedsUpdate />
+  ) : renderPane ? (
     renderPane(selectedRow)
   ) : isNewTest ? (
     // The same page as a recorded test, so it stays mounted once the new test is saved

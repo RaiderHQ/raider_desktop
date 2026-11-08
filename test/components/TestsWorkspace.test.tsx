@@ -8,6 +8,7 @@ import { toRouteParam } from '@foundation/testKey'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
+import useProjectStore from '@foundation/Stores/projectStore'
 import { useRunStore } from '@foundation/Stores/runStore'
 import type { Test } from '@foundation/Types/test'
 import en from '@assets/translations/en.json'
@@ -126,6 +127,37 @@ beforeEach(() => {
   useRecorderStore.setState({ showCode: false, isOutputVisible: false })
   useTestsListStore.setState({ rows: null })
   useRunOutputStore.setState({ runOutput: '' })
+  useProjectStore.setState({ layout: null })
+})
+
+describe('TestsWorkspace on a ruby_raider below 4.0', () => {
+  it('replaces the right pane with the update notice and keeps the tests list', async () => {
+    useProjectStore.setState({
+      layout: {
+        framework: 'rspec',
+        automation: 'selenium',
+        specPath: 'spec',
+        featurePath: 'features',
+        helperPath: 'helpers',
+        recordable: false,
+        unsupportedReason: 'gemTooOld',
+        rubyRaiderVersion: '3.15.2'
+      }
+    })
+    render(
+      <MemoryRouter initialEntries={['/overview/tests']}>
+        <Routes>
+          <Route path="/overview/tests" element={<TestsWorkspace />} />
+        </Routes>
+      </MemoryRouter>
+    )
+
+    expect(await screen.findByRole('button', { name: /Search products/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Checkout/ })).toBeInTheDocument()
+    expect(screen.getByTestId('project-needs-update')).toBeInTheDocument()
+    expect(screen.queryByText(en.tests.selectOrCreate)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: en.testPage.record })).not.toBeInTheDocument()
+  })
 })
 
 describe('TestsWorkspace recording mode', () => {

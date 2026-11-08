@@ -1,0 +1,95 @@
+import { readFile, stat } from 'fs/promises'
+import { join } from 'path'
+import { appState } from '../appState'
+import { isValidRubyCommand } from '../../utils/rubyCommand'
+import { safeExec } from '../../utils/safeExec'
+import { writeFileAtomic } from '../tests/sidecar'
+import setActiveProject, { activationSettled } from './setActiveProject'
+import type { UpgradeResult } from '../../../shared/types/upgradeResult'
+
+/** The active `gem 'ruby_raider', '<requirement>'` line of a Gemfile, requirement captured. */
+export const PIN_LINE = /^([ \t]*gem[ \t]+(['"])ruby_raider\2[ \t]*,[ \t]*)(['"])[^'"\n]*\3/m
+/** A `gem 'ruby_raider'` line with no requirement at all. */
+const BARE_LINE = /^([ \t]*gem[ \t]+(['"])ruby_raider\2)(?=[ \t]*(?:,|#|$))/m
+
+export const RUNTIME_PIN = '~> 4.0'
+
+const GEMFILE_LIMIT = 1024 * 1024
+
+/** The Gemfile with its ruby_raider pin set to the 4.0 runtime, or null when it has no pin line. */
+export function repinGemfile(text: string): string | null {
+  const lines = text.split('\n')
+  const active = (line: string): boolean => !line.trimStart().startsWith('#')
+  const pinned = lines.findIndex((line) => active(line) && PIN_LINE.test(line))
+  if (pinned !== -1) {
+    lines[pinned] = lines[pinned].replace(PIN_LINE, (_m, head: string, _q, quote: string) => {
+      return `${head}${quote}${RUNTIME_PIN}${quote}`
+    })
+    return lines.join('\n')
+  }
+  // No requirement: the lock alone held it back, so the line gets one
+  const bare = lines.findIndex((line) => active(line) && BARE_LINE.test(line))
+  if (bare === -1) return null
+  lines[bare] = lines[bare].replace(BARE_LINE, (_m, head: string, quote: string) => {
+    return `${head}, ${quote}${RUNTIME_PIN}${quote}`
+  })
+  return lines.join('\n')
+}
+
+/**
+ * Moves the open project to ruby_raider 4.0: the Gemfile pin becomes `~> 4.0` and
+ * `bundle update ruby_raider` runs in the project, with the Ruby the app itself chose.
+ * Only the open project can be updated, and only after the user confirmed in the renderer.
+ * On success the project is activated again, so its layout and recorded tests are current.
+ */
+export async function upgradeRubyRaider(
+  projectPath: unknown,
+  rubyCommand: unknown
+): Promise<UpgradeResult> {
+  await activationSettled()
+  if (typeof projectPath !== 'string' || projectPath !== appState.projectPath) {
+    return { success: false, error: 'Only the open project can be updated.' }
+  }
+  if (!isValidRubyCommand(rubyCommand)) return { success: false, error: 'Invalid Ruby command.' }
+  const gemfilePath = join(projectPath, 'Gemfile')
+  let gemfile: string
+  try {
+    gemfile = await readFile(gemfilePath, 'utf-8')
+  } catch {
+    return { success: false, error: 'The project has no Gemfile.' }
+  }
+  if (gemfile.length > GEMFILE_LIMIT) return { success: false, error: 'The Gemfile is too large.' }
+  const repinned = repinGemfile(gemfile)
+  if (repinned === null) {
+    return { success: false, error: "The Gemfile has no gem 'ruby_raider' line to update." }
+  }
+  if (repinned !== gemfile) {
+    // Keep the file's own permissions: writeFileAtomic writes a private temp file otherwise
+    const mode = (await stat(gemfilePath)).mode & 0o7777
+    await writeFileAtomic(gemfilePath, repinned, { mode })
+  }
+
+  const result = await safeExec(`${rubyCommand} -S bundle update ruby_raider`, {
+    cwd: projectPath,
+    timeout: 300_000
+  })
+  if (result.exitCode !== 0) {
+    const detail = result.stderr.trim() || result.stdout.trim()
+    return {
+      success: false,
+      error:
+        result.exitCode === null
+          ? 'bundle update ruby_raider timed out. Run it in the project folder.'
+          : detail || `bundle update ruby_raider failed (exit code ${result.exitCode}).`,
+      output: result.stdout
+    }
+  }
+  // Whoever is in the project now: the reload rewrites the recorded tests for 4.0
+  if (appState.projectPath !== projectPath) {
+    return { success: true, output: result.stdout }
+  }
+  const activated = await setActiveProject(projectPath)
+  return activated.success
+    ? { success: true, layout: activated.layout, output: result.stdout }
+    : { success: false, error: activated.error, output: result.stdout }
+}

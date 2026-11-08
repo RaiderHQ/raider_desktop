@@ -1,11 +1,13 @@
 import { create } from 'zustand'
 
 export interface VersionStore {
-  version: string
+  /** The installed ruby_raider gem's version; null until read, or when `raider version` fails */
+  version: string | null
   loadVersion: () => Promise<void>
 }
 
-const MIN_VERSION = '2.0.0'
+/** New projects need the 4.0 runtime: `raider new` on an older gem writes 3.x helpers. */
+export const RUNTIME_MIN_VERSION = '4.0.0'
 
 export const isVersionAtLeast = (version: string, minimum: string): boolean => {
   const [vMajor, vMinor, vPatch] = version.split('.').map(Number)
@@ -15,23 +17,20 @@ export const isVersionAtLeast = (version: string, minimum: string): boolean => {
   return vPatch >= mPatch
 }
 
+/** True once the installed gem is known and is the 4.0 runtime or later. */
+export const supportsRuntime = (version: string | null): boolean =>
+  version !== null && isVersionAtLeast(version, RUNTIME_MIN_VERSION)
+
 const useVersionStore = create<VersionStore>((set) => {
-  const extractVersion = (input: string): string => {
-    const match = input.match(/(\d+\.\d+\.\d+)/)
-    if (!match) return MIN_VERSION
-    return isVersionAtLeast(match[0], MIN_VERSION) ? match[0] : MIN_VERSION
-  }
+  const extractVersion = (input: string): string | null =>
+    input.match(/(\d+\.\d+\.\d+)/)?.[1] ?? null
 
   const loadVersion = async (): Promise<void> => {
     try {
       const result = await window.api.runCommand('raider version')
-      if (result.success) {
-        set({ version: extractVersion(result.output) })
-      } else {
-        set({ version: MIN_VERSION })
-      }
-    } catch (error) {
-      set({ version: MIN_VERSION })
+      set({ version: result.success ? extractVersion(result.output) : null })
+    } catch {
+      set({ version: null })
     }
   }
 
@@ -51,7 +50,7 @@ const useVersionStore = create<VersionStore>((set) => {
   }, 0)
 
   return {
-    version: MIN_VERSION,
+    version: null,
     loadVersion
   }
 })
