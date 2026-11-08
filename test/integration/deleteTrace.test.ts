@@ -4,7 +4,10 @@ import { mkdirSync, writeFileSync, existsSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { randomUUID } from 'crypto'
 
-const testTracesDir = join(tmpdir(), 'raider-test-delete-' + randomUUID())
+// userData sits two levels inside its own sandbox, so even a broken guard with an id of
+// '..' or '../..' could only reach folders this test made
+const sandbox = join(tmpdir(), 'raider-test-delete-' + randomUUID())
+const testTracesDir = join(sandbox, 'a', 'userData')
 
 vi.mock('electron', () => ({
   app: {
@@ -16,9 +19,29 @@ import deleteTrace from '../../src/main/handlers/trace/deleteTrace'
 
 describe('deleteTrace handler', () => {
   afterEach(() => {
-    if (existsSync(testTracesDir)) {
-      rmSync(testTracesDir, { recursive: true, force: true })
+    if (existsSync(sandbox)) {
+      rmSync(sandbox, { recursive: true, force: true })
     }
+  })
+
+  // A test id can come from a sidecar in the project, which a cloned repo controls
+  it.each(['..', '../..', '', '.', 'a/b', 'a\\b', '../outside'])(
+    'refuses the unsafe test id %j and deletes nothing',
+    async (testId) => {
+      const tracesDir = join(testTracesDir, 'traces')
+      mkdirSync(join(tracesDir, 'keep'), { recursive: true })
+      writeFileSync(join(testTracesDir, 'other.json'), '{}')
+      mkdirSync(join(testTracesDir, 'outside'), { recursive: true })
+      await deleteTrace(testId)
+      expect(existsSync(join(tracesDir, 'keep'))).toBe(true)
+      expect(existsSync(join(testTracesDir, 'other.json'))).toBe(true)
+      expect(existsSync(join(testTracesDir, 'outside'))).toBe(true)
+      expect(existsSync(join(sandbox, 'a'))).toBe(true)
+    }
+  )
+
+  it('refuses a test id that is not a string', async () => {
+    await expect(deleteTrace(3 as unknown as string)).resolves.toBeUndefined()
   })
 
   it('deletes trace JSON file', async () => {
