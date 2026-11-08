@@ -179,6 +179,21 @@ export interface WindowApi extends RunApi {
   deleteTest: (
     testId: string
   ) => Promise<{ success: boolean; error?: string; codeOwned?: boolean }>
+  /** The text of a spec file of the open project (`fileRel` is project-relative), for Copy */
+  readTestFile: (
+    projectPath: string,
+    fileRel: string
+  ) => Promise<{ success: true; text: string } | { success: false; error: string }>
+  /** Writes `text` as a new `<base>_copy[_n]_spec.rb`; returns its project-relative path */
+  pasteTestFile: (
+    projectPath: string,
+    payload: { text: string; sourceFile: string; nearFile?: string }
+  ) => Promise<{ success: true; file: string } | { success: false; error: string }>
+  /** Moves a spec file (and its record, if recorded) to the OS Trash */
+  trashTest: (
+    projectPath: string,
+    fileRel: string
+  ) => Promise<{ success: true; testId?: string } | { success: false; error: string }>
   exportTest: (
     testName: string,
     steps: Step[]

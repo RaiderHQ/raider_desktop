@@ -257,6 +257,18 @@ function testKey(projectPath: string, testId: string): string {
 }
 
 /**
+ * Runs `task` in the queue of the test `key` (a test id, or `\0file\0<file>` for a file
+ * without a record), so it can't interleave a save, tag change or delete of that test.
+ */
+export function inTestQueue<T>(
+  projectPath: string,
+  key: string,
+  task: () => Promise<T>
+): Promise<T> {
+  return serialize(testQueues, testKey(projectPath, key), task)
+}
+
+/**
  * The sidecar for `testId` when the caller already knows where it is (`null`: none),
  * read fresh from that one place; falls back to a full scan if it isn't there.
  */

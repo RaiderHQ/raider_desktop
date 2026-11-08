@@ -222,6 +222,21 @@ const api = {
     testId: string
   ): Promise<{ success: boolean; error?: string; codeOwned?: boolean }> =>
     ipcRenderer.invoke('delete-test', { testId }),
+  readTestFile: (
+    projectPath: string,
+    fileRel: string
+  ): Promise<{ success: true; text: string } | { success: false; error: string }> =>
+    ipcRenderer.invoke('read-test-file', projectPath, fileRel),
+  pasteTestFile: (
+    projectPath: string,
+    payload: { text: string; sourceFile: string; nearFile?: string }
+  ): Promise<{ success: true; file: string } | { success: false; error: string }> =>
+    ipcRenderer.invoke('paste-test-file', projectPath, payload),
+  trashTest: (
+    projectPath: string,
+    fileRel: string
+  ): Promise<{ success: true; testId?: string } | { success: false; error: string }> =>
+    ipcRenderer.invoke('trash-test', projectPath, fileRel),
   saveTrace: (
     testId: string,
     trace: TraceStep[],
