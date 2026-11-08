@@ -10,14 +10,14 @@
 import fs from 'fs/promises'
 import { constants } from 'fs'
 import type { Stats } from 'fs'
-import { basename, dirname, extname, join, relative, sep } from 'path'
+import { basename, dirname, extname, join, posix, relative, sep } from 'path'
 import { shell } from 'electron'
 import { appState } from '../appState'
 import { activationSettled } from '../project/setActiveProject'
 import { assertRealInside, listSidecars, resolveInside } from '../tests/sidecar'
 import { PROJECT_CHANGED_ERROR } from '../tests/recordedStore'
 import { RECORDED_MARKER } from '../../codegen/testFile'
-import { entryNameIssue } from '../../../shared/entryName'
+import { entryNameIssue, isProtectedName, isReachableSegment } from '../../../shared/entryName'
 import { safeError } from '../../utils/safeLog'
 import type { ProjectFileErrorCode, ProjectFileResult } from '../../../shared/types/projectFiles'
 
@@ -60,43 +60,90 @@ async function openProject(projectPath: unknown): Promise<string> {
 
 const toRel = (root: string, abs: string): string => relative(root, abs).split(sep).join('/')
 
-/** Joins `rel` onto the project; every segment must pass the name rule (no .git, .raider…). */
+/**
+ * Joins an existing `rel` onto the project. Its segments only have to be reachable (odd
+ * names made elsewhere stay renamable); new names go through the full rule instead.
+ */
 function resolveRel(root: string, rel: string): string {
-  if (!rel.split('/').every(isSafeName)) throw new Error(`Not a usable project path: ${rel}`)
+  if (!rel.split('/').every(isReachableSegment))
+    throw new Error(`Not a usable project path: ${rel}`)
   return resolveInside(root, rel)
 }
 
+/**
+ * Where `abs` really is, relative to the project's real folder, in POSIX form: links on the
+ * way are followed, the last segment only with `followLeaf`.
+ */
+async function realRelOf(root: string, abs: string, followLeaf: boolean): Promise<string> {
+  const realRoot = await fs.realpath(root)
+  const real = followLeaf
+    ? await fs.realpath(abs)
+    : join(await fs.realpath(dirname(abs)), basename(abs))
+  return relative(realRoot, real).split(sep).join('/')
+}
+
+/** Git's and Raider's folders are off limits, also when a link with another name leads there. */
+function assertNotProtected(realRel: string): void {
+  if (realRel !== '' && realRel.split('/').some(isProtectedName))
+    throw new Error('Git and Raider folders cannot be changed from Files')
+}
+
 /** A folder to write into: the project root for '', else a real folder inside the project. */
-async function folderAt(root: string, rel: unknown): Promise<string> {
+async function folderAt(root: string, rel: unknown): Promise<{ dir: string; realRel: string }> {
   if (typeof rel !== 'string') throw new Error('Not a folder path')
   const dir = rel === '' ? root : resolveRel(root, rel)
   await assertRealInside(root, dir)
   if (!(await fs.stat(dir)).isDirectory()) throw new Error(`Not a folder: ${rel}`)
-  return dir
+  const realRel = await realRelOf(root, dir, true)
+  assertNotProtected(realRel)
+  return { dir, realRel }
 }
 
 /**
  * An existing entry inside the project, never the root itself. Its folder must really be
  * inside the project; the entry itself is not followed (a link is the link).
  */
-async function entryAt(root: string, rel: unknown): Promise<{ abs: string; stat: Stats }> {
+async function entryAt(
+  root: string,
+  rel: unknown
+): Promise<{ abs: string; stat: Stats; realRel: string }> {
   if (typeof rel !== 'string') throw new Error('Not a project path')
   const abs = resolveRel(root, rel)
   await assertRealInside(root, dirname(abs))
-  return { abs, stat: await fs.lstat(abs) }
+  const stat = await fs.lstat(abs)
+  const realRel = await realRelOf(root, abs, false)
+  assertNotProtected(realRel)
+  return { abs, stat, realRel }
+}
+
+const childRel = (dirRel: string, name: string): string => (dirRel ? `${dirRel}/${name}` : name)
+
+/** The recorded tests' spec paths, lower case (macOS and Windows disks ignore case). */
+const recordedRels = async (root: string): Promise<string[]> =>
+  (await listSidecars(root)).map(({ fileRel }) => fileRel.toLowerCase())
+
+/** True when `realRel` is a recorded spec or a folder holding one. */
+const holdsRecorded = (recorded: string[], realRel: string): boolean => {
+  const entry = realRel.toLowerCase()
+  return recorded.some((file) => file === entry || file.startsWith(entry + '/'))
 }
 
 /**
  * Refuses a recorded spec, or a folder holding one: moving it from Files would leave its
- * record in .raider/tests behind. Compared without case, as macOS and Windows disks do.
+ * record in .raider/tests behind. Compared on the entry's real place in the project.
  */
-async function assertNotRecorded(root: string, rel: string): Promise<void> {
-  const entry = rel.toLowerCase()
-  for (const { fileRel } of await listSidecars(root)) {
-    const file = fileRel.toLowerCase()
-    if (file === entry || file.startsWith(entry + '/'))
-      throw new FileOpError(RECORDED_ERROR, 'recorded')
-  }
+async function assertNotRecorded(root: string, realRel: string): Promise<void> {
+  if (holdsRecorded(await recordedRels(root), realRel))
+    throw new FileOpError(RECORDED_ERROR, 'recorded')
+}
+
+/**
+ * A new entry must not land where a recorded test's file is missing (or inside a folder
+ * whose recorded files are missing): it would quietly become that test.
+ */
+async function assertFreeOfRecords(root: string, realRel: string): Promise<void> {
+  if (holdsRecorded(await recordedRels(root), realRel))
+    throw new FileOpError('A recorded test uses that name', 'exists')
 }
 
 const isExists = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'EEXIST'
@@ -117,16 +164,28 @@ function copyName(name: string, isFolder: boolean, n: number): string {
   return `${base}_copy${n === 1 ? '' : n}${ext}`
 }
 
+/** The line of Raider's recorded marker in the spec's header (its leading comments), or -1. */
+function headerMarkerLine(lines: string[]): number {
+  for (const [i, line] of lines.entries()) {
+    const text = line.trim()
+    if (text.startsWith(RECORDED_MARKER)) return i
+    if (text !== '' && !text.startsWith('#')) return -1
+  }
+  return -1
+}
+
 /**
  * Copies one file exclusively (EEXIST when `dest` is taken). A copied spec loses Raider's
- * recorded marker: without its record the copy is a plain code test, and says so.
+ * recorded marker: without its record the copy is a plain code test, and says so. Only
+ * the header's marker goes; the same words further down are the test's own text.
  */
 async function copyFileTo(src: string, stat: Stats, dest: string): Promise<void> {
   if (isSpecName(basename(src))) {
     const text = await fs.readFile(src, 'utf-8')
     const lines = text.split('\n')
-    const kept = lines.filter((line) => !line.trimStart().startsWith(RECORDED_MARKER))
-    if (kept.length !== lines.length) {
+    const marker = headerMarkerLine(lines)
+    if (marker >= 0) {
+      const kept = lines.filter((_, i) => i !== marker)
       const handle = await fs.open(dest, 'wx', stat.mode & 0o777)
       try {
         await handle.writeFile(kept.join('\n'), 'utf-8')
@@ -147,6 +206,7 @@ async function assertCopySize(src: string, stat: Stats, limits: CopyLimits): Pro
   let bytes = 0
   const visit = async (path: string, info: Stats): Promise<void> => {
     if (!info.isFile() && !info.isDirectory()) return
+    if (path !== src && !isSafeName(basename(path))) return
     entries++
     bytes += info.isFile() ? info.size : 0
     if (entries > maxEntries || bytes > maxBytes)
@@ -174,13 +234,19 @@ async function copyInto(
   root: string,
   src: string,
   stat: Stats,
-  destDir: string,
+  destDir: { dir: string; realRel: string },
   tryOwnName: boolean
 ): Promise<{ dest: string; skipped: number }> {
   const name = basename(src)
+  // The copy's own name follows the rule for new names
+  if (!isSafeName(name)) throw new FileOpError('That name cannot be used', 'invalidName')
   const isFolder = stat.isDirectory()
+  const recorded = await recordedRels(root)
   for (let n = tryOwnName ? 0 : 1; n <= MAX_COPY_NAMES; n++) {
-    const dest = join(destDir, n === 0 ? name : copyName(name, isFolder, n))
+    const leaf = n === 0 ? name : copyName(name, isFolder, n)
+    // A recorded test's path (its file missing) counts as taken
+    if (holdsRecorded(recorded, childRel(destDir.realRel, leaf))) continue
+    const dest = join(destDir.dir, leaf)
     try {
       if (isFolder) await fs.mkdir(dest)
       else await copyFileTo(src, stat, dest)
@@ -207,7 +273,8 @@ async function copyFolderContents(root: string, srcDir: string, destDir: string)
     const src = join(srcDir, entry)
     const dest = join(destDir, entry)
     const stat = await fs.lstat(src)
-    if (!stat.isFile() && !stat.isDirectory()) {
+    // Links, special files and names other systems refuse (macOS's `Icon\r`) stay behind
+    if ((!stat.isFile() && !stat.isDirectory()) || !isSafeName(entry)) {
       skipped++
       continue
     }
@@ -228,7 +295,7 @@ async function copySource(
   root: string,
   rel: unknown,
   limits: CopyLimits
-): Promise<{ abs: string; stat: Stats }> {
+): Promise<{ abs: string; stat: Stats; realRel: string }> {
   const entry = await entryAt(root, rel)
   if (entry.stat.isSymbolicLink()) throw new Error('Links cannot be copied')
   if (!entry.stat.isFile() && !entry.stat.isDirectory())
@@ -273,8 +340,9 @@ export function createProjectEntry(
     if (kind !== 'file' && kind !== 'folder') throw new Error('Unknown kind')
     if (!isSafeName(name)) return invalidName()
     const root = await openProject(projectPath)
-    const dir = await folderAt(root, parentRel)
+    const { dir, realRel } = await folderAt(root, parentRel)
     const target = join(dir, name)
+    await assertFreeOfRecords(root, childRel(realRel, name))
     // Both create only the leaf and fail with EEXIST on anything there, a link included
     if (kind === 'folder') await fs.mkdir(target)
     else await (await fs.open(target, 'wx')).close()
@@ -294,7 +362,10 @@ export function copyProjectEntry(
     const src = await copySource(root, srcRel, limits)
     const destDir = await folderAt(root, destParentRel)
     if (src.stat.isDirectory()) {
-      const [realSrc, realDest] = await Promise.all([fs.realpath(src.abs), fs.realpath(destDir)])
+      const [realSrc, realDest] = await Promise.all([
+        fs.realpath(src.abs),
+        fs.realpath(destDir.dir)
+      ])
       if (realDest === realSrc || realDest.startsWith(realSrc + sep))
         throw new FileOpError('A folder cannot be pasted into itself', 'intoItself')
     }
@@ -312,7 +383,9 @@ export function duplicateProjectEntry(
   return run('duplicate', async () => {
     const root = await openProject(projectPath)
     const src = await copySource(root, rel, limits)
-    const { dest, skipped } = await copyInto(root, src.abs, src.stat, dirname(src.abs), false)
+    const parent = { dir: dirname(src.abs), realRel: posix.dirname(src.realRel) }
+    if (parent.realRel === '.') parent.realRel = ''
+    const { dest, skipped } = await copyInto(root, src.abs, src.stat, parent, false)
     return { success: true, path: toRel(root, dest), skipped }
   })
 }
@@ -326,10 +399,15 @@ export function renameProjectEntry(
   return run('rename', async () => {
     if (!isSafeName(name)) return invalidName()
     const root = await openProject(projectPath)
-    const { abs, stat } = await entryAt(root, rel)
-    await assertNotRecorded(root, rel)
+    const { abs, stat, realRel } = await entryAt(root, rel)
+    await assertNotRecorded(root, realRel)
     const target = join(dirname(abs), name)
     if (target === abs) return { success: true, path: toRel(root, abs) }
+    const parentRel = posix.dirname(realRel)
+    const targetRel = childRel(parentRel === '.' ? '' : parentRel, name)
+    // A case-only rename stays on the entry's own record path, which it doesn't hold
+    if (targetRel.toLowerCase() !== realRel.toLowerCase())
+      await assertFreeOfRecords(root, targetRel)
     // Looked up right before the rename. rename() itself replaces an existing file and there
     // is no portable no-replace rename (linking then unlinking would delete), so an entry
     // created at `target` in the instant between the two calls could still be replaced.
@@ -346,8 +424,8 @@ export function renameProjectEntry(
 export function trashProjectEntry(projectPath: string, rel: string): Promise<ProjectFileResult> {
   return run('trash', async () => {
     const root = await openProject(projectPath)
-    const { abs } = await entryAt(root, rel)
-    await assertNotRecorded(root, rel)
+    const { abs, realRel } = await entryAt(root, rel)
+    await assertNotRecorded(root, realRel)
     await shell.trashItem(abs)
     return { success: true }
   })

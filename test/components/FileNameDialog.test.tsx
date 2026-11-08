@@ -122,4 +122,13 @@ describe('FileNameDialog', () => {
     }
     expect(onSubmit).not.toHaveBeenCalled()
   })
+
+  it('lets a rename change only the case of the name', async () => {
+    const { onSubmit } = setup({ initialValue: 'login.rb', taken: ['login.rb', 'Gemfile'] })
+    type('Login.rb')
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'files.newFile.confirm' }))
+    })
+    expect(onSubmit).toHaveBeenCalledWith('Login.rb')
+  })
 })

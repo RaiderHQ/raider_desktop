@@ -32,7 +32,7 @@ vi.mock('@components/Library/Folder', () => ({
     onFileContextMenu: (e: React.MouseEvent, path: string, name: string) => void
     onFolderContextMenu: (e: React.MouseEvent, path: string, name: string) => void
   }): JSX.Element => (
-    <div data-testid="folder" data-reveal={revealPath ?? ''}>
+    <div data-testid="folder" ref={() => revealPath && reveals.push(revealPath)}>
       <div data-testid="root-row">project</div>
       <div
         data-testid="spec-folder"
@@ -87,6 +87,9 @@ vi.mock('@foundation/Stores/rubyStore', () => ({
   )
 }))
 
+// Every revealPath the tree was given
+const reveals: string[] = []
+
 const tree: FileNode[] = [
   {
     name: 'spec',
@@ -130,6 +133,7 @@ beforeAll(() => {
 beforeEach(async () => {
   vi.clearAllMocks()
   toast.remove()
+  reveals.length = 0
   api.listProjectTests.mockResolvedValue([])
   api.getTests.mockResolvedValue([])
   api.readDirectory.mockResolvedValue(tree)
@@ -435,10 +439,11 @@ describe('Files tab context menu', () => {
     rightClick(screen.getByTestId('spec-file'))
     await click('files.menu.duplicate')
     expect(api.listProjectTests).toHaveBeenCalled()
-    expect(screen.getByTestId('folder')).toHaveAttribute(
-      'data-reveal',
-      '/fake/project/spec/a_spec_copy.rb'
-    )
+    expect(reveals).toContain('/fake/project/spec/a_spec_copy.rb')
+    // Used once: a later render does not reveal it again
+    reveals.length = 0
+    rightClick(screen.getByTestId('spec-file'))
+    expect(reveals).toEqual([])
   })
 
   it('asks about unsaved edits before Undo trashes the open new file', async () => {
@@ -503,5 +508,27 @@ describe('Files tab context menu', () => {
     expect(confirm).toHaveFocus()
     fireEvent.keyDown(confirm, { key: 'Escape' })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('holds back a save while a rename is on its way', async () => {
+    let finish: (value: unknown) => void = () => {}
+    api.renameProjectEntry.mockReturnValue(new Promise((resolve) => (finish = resolve)))
+    await renderFiles()
+    await openEditorOn('spec-file')
+    fireEvent.change(screen.getByTestId('editor'), { target: { value: 'edited' } })
+    rightClick(screen.getByTestId('spec-file'))
+    await click('files.menu.rename')
+    const dialog = screen.getByRole('dialog')
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'b_spec.rb' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'files.rename.confirm' }))
+    await act(async () => {
+      fireEvent.keyDown(window, { key: 's', metaKey: true })
+    })
+    expect(api.editFile).not.toHaveBeenCalled()
+    await act(async () => finish({ success: true, path: 'spec/b_spec.rb' }))
+    await act(async () => {
+      fireEvent.keyDown(window, { key: 's', metaKey: true })
+    })
+    expect(api.editFile).toHaveBeenCalledWith('/fake/project/spec/b_spec.rb', 'edited')
   })
 })

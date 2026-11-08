@@ -50,7 +50,13 @@ const FileNameDialog: React.FC<FileNameDialogProps> = ({
     const name = value.trim()
     // Keeping the current name is always fine (Rename does nothing then)
     const problem =
-      initialValue !== '' && name === initialValue ? null : entryNameProblem(name, taken)
+      initialValue !== '' && name === initialValue
+        ? null
+        : // The entry's own name is not taken by someone else: Login.rb may become login.rb
+          entryNameProblem(
+            name,
+            taken.filter((n) => n !== initialValue)
+          )
     if (problem) {
       setError(t(problem, { name }))
       return

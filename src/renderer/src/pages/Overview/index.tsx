@@ -199,6 +199,10 @@ const Overview: React.FC = () => {
   )
   // The entry last created or pasted: the tree opens the folders holding it
   const [revealPath, setRevealPath] = useState<string | undefined>(undefined)
+  // Used once: the tree opens its folders when it sees it (children's effects run first)
+  useEffect(() => {
+    if (revealPath) setRevealPath(undefined)
+  }, [revealPath])
 
   // Terminal state
   const [terminalOpen, setTerminalOpen] = useState(false)
@@ -619,11 +623,13 @@ const Overview: React.FC = () => {
 
   // One write at a time; a ref so a repeat in the same tick can't start a second one
   const savingFileRef = useRef(false)
+  // A rename in flight: a save now would write to the old path
+  const renamingRef = useRef(false)
 
   /** Writes the file; true when it is on disk afterwards. */
   const handleSaveFile = useCallback(async (): Promise<boolean> => {
     if (!editingFile) return false
-    if (savingFileRef.current) return false
+    if (savingFileRef.current || renamingRef.current) return false
     savingFileRef.current = true
     const loadingTypes = ['stashing', 'securing', 'engraving', 'prize', 'ruby']
     const toastId = toast.loading(t(`editor.save.${sample(loadingTypes)}`))
@@ -900,8 +906,14 @@ const Overview: React.FC = () => {
       const oldAbs = toProjectAbs(projectPath, nameDialog.rel)
       const holdsOpenFile = !!editingFile && isUnder(editingFile.path, oldAbs)
       // A save in flight would write to the old path after the rename
-      if (holdsOpenFile && isSavingFile) return t('files.name.saving')
-      const res = await window.api.renameProjectEntry(projectPath, nameDialog.rel, name)
+      if (holdsOpenFile && (isSavingFile || savingFileRef.current)) return t('files.name.saving')
+      renamingRef.current = true
+      let res: Awaited<ReturnType<typeof window.api.renameProjectEntry>>
+      try {
+        res = await window.api.renameProjectEntry(projectPath, nameDialog.rel, name)
+      } finally {
+        renamingRef.current = false
+      }
       if (!res.success) return nameError(res, name)
       setNameDialog(null)
       if (res.path) {

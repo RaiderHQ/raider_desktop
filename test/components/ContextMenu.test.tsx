@@ -84,4 +84,50 @@ describe('ContextMenu', () => {
     expect(screen.getByRole('menu').style.left).toBe('10px')
     expect(screen.getByRole('menu').style.top).toBe('20px')
   })
+
+  it('gives focus back to where it was when it closes', () => {
+    const { rerender } = render(
+      <>
+        <button>row</button>
+        <ContextMenu x={10} y={20} items={[]} onClose={vi.fn()} />
+      </>
+    )
+    rerender(<button>row</button>)
+    // Empty menu: nothing took focus, and closing leaves the page as it was
+    screen.getByRole('button', { name: 'row' }).focus()
+    rerender(
+      <>
+        <button>row</button>
+        <ContextMenu x={10} y={20} items={items()} onClose={vi.fn()} />
+      </>
+    )
+    expect(screen.getAllByRole('menuitem')[0]).toHaveFocus()
+    rerender(<button>row</button>)
+    expect(screen.getByRole('button', { name: 'row' })).toHaveFocus()
+  })
+
+  it('leaves focus where an item moved it', () => {
+    const { rerender } = render(
+      <>
+        <button>row</button>
+        <input aria-label="field" />
+      </>
+    )
+    screen.getByRole('button', { name: 'row' }).focus()
+    rerender(
+      <>
+        <button>row</button>
+        <input aria-label="field" />
+        <ContextMenu x={10} y={20} items={items()} onClose={vi.fn()} />
+      </>
+    )
+    screen.getByRole('textbox', { name: 'field' }).focus()
+    rerender(
+      <>
+        <button>row</button>
+        <input aria-label="field" />
+      </>
+    )
+    expect(screen.getByRole('textbox', { name: 'field' })).toHaveFocus()
+  })
 })

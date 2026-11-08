@@ -155,10 +155,16 @@ describe('duplicateProjectEntry', () => {
     const copy = await read('spec/login_copy_spec.rb')
     expect(copy).not.toContain(RECORDED_MARKER)
     expect(copy).toBe("# frozen_string_literal: true\n\ndescribe 'Login' do\nend\n")
+    // Only the header's first marker goes: a marker further down is the test's own text
+    const later = `${RECORDED_MARKER} header\nputs 1\n${RECORDED_MARKER} body\n`
+    await writeFile(join(project, 'spec', 'later_spec.rb'), later)
+    await duplicateProjectEntry(project, 'spec/later_spec.rb')
+    expect(await read('spec/later_copy_spec.rb')).toBe(`puts 1\n${RECORDED_MARKER} body\n`)
     // Inside a copied folder too; a non-spec file keeps its text as it is
     await writeFile(join(project, 'spec', 'pages', 'notes.rb'), `${RECORDED_MARKER}\n`)
     await copyProjectEntry(project, 'spec', '')
     expect(await read('spec_copy/login_spec.rb')).not.toContain(RECORDED_MARKER)
+    expect(await read('spec_copy/later_spec.rb')).toBe(`puts 1\n${RECORDED_MARKER} body\n`)
     expect(await read('spec_copy/pages/notes.rb')).toBe(`${RECORDED_MARKER}\n`)
     // The original is untouched
     expect(await read('spec/login_spec.rb')).toBe(recorded)
@@ -473,7 +479,7 @@ describe('every handler', () => {
     expect(await read('.git/config')).toBe('c')
   })
 
-  it('refuses Windows-hostile names, and paths through such segments', async () => {
+  it('refuses Windows-hostile new names', async () => {
     for (const name of ['CON', 'nul.rb', 'a:b', 'a?', 'trailing.', 'trailing ', 'tab\there']) {
       expect(await createProjectEntry(project, '', name, 'file')).toMatchObject({
         success: false,
@@ -484,8 +490,45 @@ describe('every handler', () => {
         code: 'invalidName'
       })
     }
-    for (const res of await Promise.all(all('spec/a:b'))) expect(res.success).toBe(false)
     expect(await read('Gemfile')).toBe('gems')
+  })
+
+  it('still reaches existing entries with odd names, so they can be renamed or trashed', async () => {
+    for (const [i, odd] of ['foo?.rb', 'bar.', 'aux.rb', 'Icon\r'].entries()) {
+      await writeFile(join(project, 'spec', odd), 'odd')
+      expect(await renameProjectEntry(project, `spec/${odd}`, `fixed${i}.rb`)).toMatchObject({
+        success: true,
+        path: `spec/fixed${i}.rb`
+      })
+      await writeFile(join(project, 'spec', odd), 'odd')
+      expect((await trashProjectEntry(project, `spec/${odd}`)).success).toBe(true)
+    }
+    // An odd folder can be written into; a copy may not take an odd name of its own
+    await mkdir(join(project, 'odd?'))
+    expect((await createProjectEntry(project, 'odd?', 'a.rb', 'file')).success).toBe(true)
+    await writeFile(join(project, 'what?.rb'), 'w')
+    expect(await copyProjectEntry(project, 'what?.rb', 'spec')).toMatchObject({
+      success: false,
+      code: 'invalidName'
+    })
+  })
+
+  it('skips entries with names other systems refuse inside a copied folder', async () => {
+    await writeFile(join(project, 'spec', 'Icon\r'), 'icon')
+    const res = await copyProjectEntry(project, 'spec', '')
+    expect(res).toMatchObject({ success: true, path: 'spec_copy', skipped: 1 })
+    expect(existsSync(join(project, 'spec_copy', 'Icon\r'))).toBe(false)
+    expect(await read('spec_copy/login_spec.rb')).toBe('login')
+  })
+
+  it('refuses .git and .raider reached through a link with another name', async () => {
+    await mkdir(join(project, '.git'))
+    await writeFile(join(project, '.git', 'config'), 'c')
+    await symlink(join(project, '.git'), join(project, 'gitlink'))
+    for (const res of await Promise.all(all('gitlink/config'))) expect(res.success).toBe(false)
+    expect((await createProjectEntry(project, 'gitlink', 'hook', 'file')).success).toBe(false)
+    expect(existsSync(join(project, '.git', 'hook'))).toBe(false)
+    expect(await read('.git/config')).toBe('c')
   })
 })
 
@@ -519,6 +562,41 @@ describe('recorded tests', () => {
     // A folder whose name only starts like the recorded one's is not holding it
     await mkdir(join(project, 'spec2'))
     expect((await trashProjectEntry(project, 'spec2')).success).toBe(true)
+  })
+
+  it('refuses a recorded spec reached through a link to its folder', async () => {
+    await recordSidecar('spec/login_spec.rb')
+    await symlink(join(project, 'spec'), join(project, 'speclink'))
+    expect(await trashProjectEntry(project, 'speclink/login_spec.rb')).toMatchObject({
+      success: false,
+      code: 'recorded'
+    })
+    expect(trashItem).not.toHaveBeenCalled()
+  })
+
+  it('never lands a new entry on the path of a recorded test whose file is missing', async () => {
+    await recordSidecar('spec/gone_spec.rb')
+    await recordSidecar('lost/x_spec.rb')
+    expect(await createProjectEntry(project, 'spec', 'gone_spec.rb', 'file')).toMatchObject({
+      success: false,
+      code: 'exists'
+    })
+    expect(await createProjectEntry(project, '', 'lost', 'folder')).toMatchObject({
+      success: false,
+      code: 'exists'
+    })
+    expect(await renameProjectEntry(project, 'spec/login_spec.rb', 'gone_spec.rb')).toMatchObject({
+      success: false,
+      code: 'exists'
+    })
+    // A paste moves on to the next free name
+    await mkdir(join(project, 'other'))
+    await writeFile(join(project, 'other', 'gone_spec.rb'), 'g')
+    expect(await copyProjectEntry(project, 'other/gone_spec.rb', 'spec')).toMatchObject({
+      success: true,
+      path: 'spec/gone_copy_spec.rb'
+    })
+    expect(existsSync(join(project, 'spec', 'gone_spec.rb'))).toBe(false)
   })
 
   it('still copies and duplicates a recorded spec', async () => {

@@ -41,8 +41,16 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
         []
     )
 
+  // Focus moves into the menu and goes back where it was (a list row, say) when the menu
+  // closes, unless an item moved it somewhere else on purpose (a dialog's field)
   useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
+    const menu = menuRef.current
     enabledItems()[0]?.focus()
+    return (): void => {
+      const active = document.activeElement
+      if (!active || active === document.body || menu?.contains(active)) previous?.focus?.()
+    }
   }, [])
 
   useEffect(() => {
