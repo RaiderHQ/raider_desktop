@@ -1392,7 +1392,7 @@
   },
   "assertions": {
     "menu": {
-      "header": "Add a check",
+      "header": "Add a validation",
       "wait": "Wait until it…",
       "waitAppears": "appears",
       "waitDisappears": "disappears",

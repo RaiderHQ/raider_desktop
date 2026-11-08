@@ -134,7 +134,7 @@ describe('copy', () => {
       'Check the address'
     ])
     expect(m.save).toBe('Add check')
-    expect(en.assertions.menu.header).toBe('Add a check')
+    expect(en.assertions.menu.header).toBe('Add a validation')
   })
 
   it('words the recording guide plainly', () => {

@@ -64,7 +64,7 @@ export function useEscEndsAssertPick(): void {
   }, [assertPicking])
 }
 
-export function CheckSomethingButton({ disabled }: { disabled: boolean }): React.JSX.Element {
+export function AddValidationButton({ disabled }: { disabled: boolean }): React.JSX.Element {
   const { t } = useTranslation()
   const assertPicking = useRecorderStore((s) => s.assertPicking)
   return (
