@@ -40,6 +40,7 @@ const oldLayout: ProjectLayout = {
   helperPath: 'helpers',
   recordable: false,
   unsupportedReason: 'gemTooOld',
+  runtimeSupported: false,
   rubyRaiderVersion: '3.15.2'
 }
 const updatedLayout: ProjectLayout = {

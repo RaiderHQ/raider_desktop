@@ -29,7 +29,7 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
   const rows = useTestsList()
   const isRecording = useRecorderStore((s) => s.isRecording)
   // A project on a ruby_raider below 4.0 can neither record nor run: the pane says how to fix it
-  const gemTooOld = useProjectStore((s) => s.layout?.unsupportedReason === 'gemTooOld')
+  const gemTooOld = useProjectStore((s) => s.layout?.runtimeSupported === false)
   const [tagFilter, setTagFilter] = useState<string | null>(null)
 
   const selectedKey: TestKey | null = param ? fromRouteParam(param) || null : null

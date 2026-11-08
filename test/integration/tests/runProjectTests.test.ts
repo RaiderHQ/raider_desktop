@@ -107,7 +107,8 @@ describe('run-test, ruby_raider version', () => {
       ...web,
       recordable: false,
       unsupportedReason: 'gemTooOld',
-      rubyRaiderVersion: '3.15.2'
+      rubyRaiderVersion: '3.15.2',
+      runtimeSupported: false
     }
     expect(await runTestHandler('t1', '/p', 'ruby')).toEqual({
       success: false,
@@ -130,7 +131,8 @@ describe('run-test, ruby_raider version', () => {
       ...web,
       recordable: false,
       unsupportedReason: 'gemTooOld',
-      rubyRaiderVersion: '3.15.2'
+      rubyRaiderVersion: '3.15.2',
+      runtimeSupported: false
     }
     expect(await runTestHandler('t1', '/p', 'ruby')).toEqual(live)
   })

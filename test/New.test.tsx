@@ -272,7 +272,7 @@ describe('CreateProject Page', (): void => {
       expect(screen.getByRole('alert')).toHaveTextContent('newProject.gemNeedsUpdate')
       const mobile = screen.getByRole('radio', { name: 'newProject.target.mobile' })
       expect(mobile).toHaveAttribute('aria-disabled', 'true')
-      expect(mobile).toHaveAccessibleDescription('newProject.target.mobileNeedsUpdate')
+      expect(mobile).toHaveAccessibleDescription('newProject.gemNeedsUpdate')
       fireEvent.click(mobile)
       expect(screen.queryByText('newProject.question.phones')).not.toBeInTheDocument()
       expect(
@@ -393,7 +393,7 @@ describe('CreateProject Page', (): void => {
       expect(web()).toHaveAttribute('aria-checked', 'true')
       expect(mobile()).toHaveAttribute('tabindex', '-1')
       expect(screen.getByRole('radiogroup')).toHaveAccessibleDescription(
-        expect.stringContaining('newProject.target.mobileNeedsUpdate')
+        expect.stringContaining('newProject.gemNeedsUpdate')
       )
     })
   })
