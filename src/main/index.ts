@@ -26,9 +26,13 @@ import { installPermissionHandlers, installWindowGuards } from './windowGuards'
 import { RECORDER_PARTITION } from '../shared/recorderSession'
 import { RECORDER_PRELOAD } from './handlers/recording/startRecordingMain'
 import editFile from './handlers/io/editFile'
-import deleteFile from './handlers/io/deleteFile'
-import renameFile from './handlers/io/renameFile'
-import duplicateFile from './handlers/io/duplicateFile'
+import {
+  copyProjectEntry,
+  createProjectEntry,
+  duplicateProjectEntry,
+  renameProjectEntry,
+  trashProjectEntry
+} from './handlers/io/projectFiles'
 import updateBrowserUrl from './handlers/config/updateBrowserUrl'
 import updateBrowserType from './handlers/config/updateBrowserType'
 import runCommand from './handlers/testing/runCommand'
@@ -283,9 +287,22 @@ app.whenReady().then(() => {
   ipcMain.handle('read-file', readFile)
   ipcMain.handle('read-image', readImage)
   ipcMain.handle('edit-file', editFile)
-  ipcMain.handle('delete-file', deleteFile)
-  ipcMain.handle('rename-file', renameFile)
-  ipcMain.handle('duplicate-file', duplicateFile)
+  // The Files tab's context menu: project-relative paths only, confined to the active project
+  ipcMain.handle('project-file-create', (_event, projectPath, parentRel, name, kind) =>
+    createProjectEntry(projectPath, parentRel, name, kind)
+  )
+  ipcMain.handle('project-file-copy', (_event, projectPath, srcRel, destParentRel) =>
+    copyProjectEntry(projectPath, srcRel, destParentRel)
+  )
+  ipcMain.handle('project-file-duplicate', (_event, projectPath, rel) =>
+    duplicateProjectEntry(projectPath, rel)
+  )
+  ipcMain.handle('project-file-rename', (_event, projectPath, rel, name) =>
+    renameProjectEntry(projectPath, rel, name)
+  )
+  ipcMain.handle('project-file-trash', (_event, projectPath, rel) =>
+    trashProjectEntry(projectPath, rel)
+  )
   ipcMain.handle(
     'run-ruby-raider',
     (

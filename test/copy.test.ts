@@ -32,7 +32,9 @@ const PROPER_NOUNS = [
   'Homebrew',
   'WSL',
   'LLM',
-  'AI'
+  'AI',
+  // The OS Trash, where Delete in the Files tab moves things (F3)
+  'Trash'
 ]
 
 /** Copy decisions from the 2026-11-06 hand test (D10, D12, sentence case, jargon). */
@@ -97,13 +99,17 @@ describe('copy', () => {
     expect(en.overview.tabs.scaffold).toBe('Scaffolding')
     expect(en.overview.openTerminal).toBe('Open terminal')
     expect(en.files.menu.copyPath).toBe('Copy path')
-    expect(en.files.menu.rename).toBe('Rename')
+    expect(en.files.menu.rename).toBe('Rename…')
+    expect(en.files.menu.newFile).toBe('New file…')
+    expect(en.files.menu.newFolder).toBe('New folder…')
     expect(en.files.menu.duplicate).toBe('Duplicate')
     expect(en.files.menu.delete).toBe('Delete')
-    expect(en.files.delete.title).toBe('Delete file?')
+    // Delete moves to the OS Trash, and says so (F3)
+    expect(en.files.delete.title).toBe('Move to Trash?')
     expect(en.files.delete.cancel).toBe('Cancel')
-    expect(en.files.delete.confirm).toBe('Delete')
-    expect(en.files.rename.title).toBe('Rename file')
+    expect(en.files.delete.confirm).toBe('Move to Trash')
+    expect(en.files.toast.trashed).toBe('Moved {{name}} to the Trash')
+    expect(en.files.rename.title).toBe('Rename')
     expect(en.common.back).toBe('Go back')
     expect(en.header.howItWorks).toBe('How Ruby Raider works')
     expect(en.recorder.step.editCommand).toBe('Edit command')

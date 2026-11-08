@@ -47,7 +47,9 @@ describe('readDirectory handler', () => {
       expect.objectContaining({
         name: 'src',
         isDirectory: true,
-        type: 'folder'
+        type: 'folder',
+        // Folders carry their path too, for their context menu
+        path: '/tmp/project/src'
       })
     )
     expect(result[1]).toEqual(

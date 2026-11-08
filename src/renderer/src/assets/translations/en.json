@@ -1301,35 +1301,68 @@
     "selectToPreview": "Select a file to preview",
     "unsavedSuffix": "{{name}}, unsaved changes",
     "menu": {
-      "copyPath": "Copy path",
-      "rename": "Rename",
+      "newFile": "New file…",
+      "newFolder": "New folder…",
+      "copy": "Copy",
+      "paste": "Paste",
       "duplicate": "Duplicate",
+      "rename": "Rename…",
+      "copyPath": "Copy path",
       "delete": "Delete"
     },
     "delete": {
-      "title": "Delete file?",
-      "message": "Are you sure you want to delete “{{name}}”? This cannot be undone.",
+      "title": "Move to Trash?",
+      "message": "Move “{{name}}” to the Trash? You can restore it from there.",
+      "unsaved": "{{name}} has unsaved changes. They will be lost and the editor will close.",
       "cancel": "Cancel",
-      "confirm": "Delete"
+      "confirm": "Move to Trash"
     },
     "rename": {
-      "title": "Rename file",
-      "cancel": "Cancel",
+      "title": "Rename",
       "confirm": "Rename"
     },
     "toast": {
       "pathCopied": "Path copied to clipboard",
-      "deleted": "Deleted {{name}}",
-      "deleteFailed": "Failed to delete: {{error}}",
+      "copied": "Copied {{name}}",
+      "pasted": "Pasted {{name}}",
+      "pasteFailed": "Failed to paste: {{error}}",
+      "pasteIntoItself": "A folder cannot be pasted into itself.",
+      "linksSkipped": "Links inside were left out ({{count}}).",
+      "created": "Created {{name}}",
+      "trashed": "Moved {{name}} to the Trash",
+      "trashFailed": "Failed to move to the Trash: {{error}}",
+      "undo": "Undo",
       "duplicated": "Duplicated {{name}}",
       "duplicateFailed": "Failed to duplicate: {{error}}",
       "renamed": "Renamed to {{name}}",
-      "renameFailed": "Failed to rename: {{error}}",
       "readFailed": "Failed to read file",
       "readError": "Error reading file"
     },
     "runTests": "Run tests",
-    "emptyFolder": "Empty folder"
+    "emptyFolder": "Empty folder",
+    "newFile": {
+      "title": "New file"
+    },
+    "newFolder": {
+      "title": "New folder"
+    },
+    "name": {
+      "empty": "Type a name.",
+      "invalid": "A name cannot be . or .. or contain / or \\.",
+      "taken": "“{{name}}” already exists here.",
+      "create": "Create",
+      "cancel": "Cancel",
+      "characters": "A name cannot contain : < > \" | ? * or control characters.",
+      "trailing": "A name cannot end with a dot or a space.",
+      "reserved": "Windows keeps this name for itself. Pick another one.",
+      "protected": "Git and Raider keep this name for their own files. Pick another one.",
+      "saving": "Wait for the save to finish, then rename."
+    },
+    "error": {
+      "recorded": "This is a recorded test. Rename or delete it from the Tests tab.",
+      "tooLarge": "Too big to copy here. Copy it in Finder or Explorer instead.",
+      "projectChanged": "The project changed before this could be done. Try again."
+    }
   },
   "closeGuard": {
     "message": "Save changes to {{name}}?",

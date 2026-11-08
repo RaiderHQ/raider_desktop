@@ -18,6 +18,7 @@ import type {
   PrepareTestRunResult
 } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
+import type { ProjectFileResult } from '@shared/types/projectFiles'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type { AcceptBaselineResult } from '@shared/types/acceptBaseline'
@@ -87,17 +88,29 @@ const api = {
     newContent: string
   ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('edit-file', filePath, newContent),
-  deleteFile: async (filePath: string): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke('delete-file', filePath),
-  renameFile: async (
-    filePath: string,
-    newName: string
-  ): Promise<{ success: boolean; newPath?: string; error?: string }> =>
-    ipcRenderer.invoke('rename-file', filePath, newName),
-  duplicateFile: async (
-    filePath: string
-  ): Promise<{ success: boolean; newPath?: string; error?: string }> =>
-    ipcRenderer.invoke('duplicate-file', filePath),
+  createProjectEntry: async (
+    projectPath: string,
+    parentRel: string,
+    name: string,
+    kind: 'file' | 'folder'
+  ): Promise<ProjectFileResult> =>
+    ipcRenderer.invoke('project-file-create', projectPath, parentRel, name, kind),
+  copyProjectEntry: async (
+    projectPath: string,
+    srcRel: string,
+    destParentRel: string
+  ): Promise<ProjectFileResult> =>
+    ipcRenderer.invoke('project-file-copy', projectPath, srcRel, destParentRel),
+  duplicateProjectEntry: async (projectPath: string, rel: string): Promise<ProjectFileResult> =>
+    ipcRenderer.invoke('project-file-duplicate', projectPath, rel),
+  renameProjectEntry: async (
+    projectPath: string,
+    rel: string,
+    name: string
+  ): Promise<ProjectFileResult> =>
+    ipcRenderer.invoke('project-file-rename', projectPath, rel, name),
+  trashProjectEntry: async (projectPath: string, rel: string): Promise<ProjectFileResult> =>
+    ipcRenderer.invoke('project-file-trash', projectPath, rel),
   openReport: async (projectPath: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('open-report', projectPath),
   reportExists: async (projectPath: string): Promise<boolean> =>

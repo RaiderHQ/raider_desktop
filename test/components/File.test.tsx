@@ -15,6 +15,18 @@ describe('File', () => {
     expect(onFileClick).toHaveBeenCalledWith('/some/path/test_spec.rb')
   })
 
+  it('marks the dirty file whichever separator its path was written with', () => {
+    render(
+      <File
+        name="a_spec.rb"
+        path={'C:\\p\\a_spec.rb'}
+        dirtyPath="C:/p/a_spec.rb"
+        onFileClick={vi.fn()}
+      />
+    )
+    expect(screen.getByText('•')).toBeInTheDocument()
+  })
+
   it('marks only the dirty file', () => {
     render(
       <>

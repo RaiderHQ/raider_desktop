@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { FaFolder, FaChevronDown, FaChevronRight } from 'react-icons/fa'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@components/Tooltip'
 import File from '@components/Library/File'
 import { FileNode } from '@foundation/Types/fileNode'
+import { isUnder, samePath } from '@foundation/projectFilePaths'
 
 interface FolderProps {
   name?: string
@@ -20,6 +21,8 @@ interface FolderProps {
   runDisabledReason?: string
   onFileContextMenu?: (e: React.MouseEvent, filePath: string, fileName: string) => void
   onFolderContextMenu?: (e: React.MouseEvent, folderPath: string, folderName: string) => void
+  /** A path just created or pasted: the folders holding it open to show it */
+  revealPath?: string
 }
 
 const Folder: React.FC<FolderProps> = ({
@@ -34,11 +37,22 @@ const Folder: React.FC<FolderProps> = ({
   runDisabled = false,
   runDisabledReason,
   onFileContextMenu,
-  onFolderContextMenu
+  onFolderContextMenu,
+  revealPath
 }) => {
   const { t } = useTranslation()
   // If root, force the folder to always be open.
   const [isOpen, setOpen] = useState(isRoot ? true : defaultOpen)
+
+  useEffect(() => {
+    if (
+      revealPath &&
+      folderPath &&
+      isUnder(revealPath, folderPath) &&
+      !samePath(revealPath, folderPath)
+    )
+      setOpen(true)
+  }, [revealPath, folderPath])
 
   const handleToggle = (): void => {
     if (!isRoot) {
@@ -93,7 +107,9 @@ const Folder: React.FC<FolderProps> = ({
               if (a.type === 'folder' && b.type !== 'folder') return -1
               if (a.type !== 'folder' && b.type === 'folder') return 1
               return 0
-            }).map((file, key) => {
+            }).map((file) => {
+              // Keyed by path, so a folder keeps its open state when entries come and go
+              const key = file.path ?? file.name
               if (file.type === 'folder') {
                 return (
                   <Folder
@@ -105,6 +121,7 @@ const Folder: React.FC<FolderProps> = ({
                     onFileClick={onFileClick}
                     onFileContextMenu={onFileContextMenu}
                     onFolderContextMenu={onFolderContextMenu}
+                    revealPath={revealPath}
                   />
                 )
               }
