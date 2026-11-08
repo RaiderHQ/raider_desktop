@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor, act, within } from '@testing-librar
 import '@testing-library/jest-dom'
 import RecordingSettingsPanel from '@components/RecordingSettingsPanel'
 import useRecorderStore from '@foundation/Stores/recorderStore'
+import useProjectStore from '@foundation/Stores/projectStore'
 import { DEFAULT_SELECTOR_PRIORITY } from '@shared/selectorPriority'
 import en from '../../src/renderer/src/assets/translations/en.json'
 
@@ -39,10 +40,19 @@ beforeEach(() => {
   localStorage.clear()
   vi.clearAllMocks()
   useRecorderStore.setState({ isRecording: false })
+  useProjectStore.setState({ projectPath: '/p' })
   getRecorderSettings.mockResolvedValue({ selectorPriority: ['role', 'label', 'testId', 'css'] })
   updateRecordingSettings.mockResolvedValue({ success: true })
-  ;(window as unknown as { api: unknown }).api = { getRecorderSettings, updateRecordingSettings }
+  ;(window as unknown as { api: unknown }).api = {
+    getRecorderSettings,
+    updateRecordingSettings,
+    readDirectory: vi.fn().mockResolvedValue([]),
+    setActiveProject: vi.fn().mockResolvedValue({ success: true })
+  }
 })
+
+const down = (kind: string): string =>
+  `settings.recording.priority.down settings.recording.priority.kind.${kind}`
 
 const expand = (): void => {
   fireEvent.click(screen.getByTestId('recording-settings-toggle'))
@@ -88,7 +98,7 @@ describe('RecordingSettingsPanel', () => {
     expand()
     await waitFor(() => expect(items()).toEqual(['role', 'label', 'testId', 'css']))
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'settings.recording.priority.up testId' }))
+      fireEvent.click(screen.getByRole('button', { name: 'settings.recording.priority.up settings.recording.priority.kind.testId' }))
     })
     expect(items()).toEqual(['role', 'testId', 'label', 'css'])
     expect(updateRecordingSettings).toHaveBeenCalledWith({
@@ -101,13 +111,13 @@ describe('RecordingSettingsPanel', () => {
     expand()
     await waitFor(() => expect(items()).toHaveLength(4))
     expect(
-      screen.getByRole('button', { name: 'settings.recording.priority.up role' })
+      screen.getByRole('button', { name: 'settings.recording.priority.up settings.recording.priority.kind.role' })
     ).toBeDisabled()
     expect(
-      screen.getByRole('button', { name: 'settings.recording.priority.down css' })
+      screen.getByRole('button', { name: 'settings.recording.priority.down settings.recording.priority.kind.css' })
     ).toBeDisabled()
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'settings.recording.priority.down role' }))
+      fireEvent.click(screen.getByRole('button', { name: 'settings.recording.priority.down settings.recording.priority.kind.role' }))
     })
     expect(items()).toEqual(['label', 'role', 'testId', 'css'])
   })
@@ -131,10 +141,64 @@ describe('RecordingSettingsPanel', () => {
     expand()
     await waitFor(() => expect(items()).toHaveLength(4))
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'settings.recording.priority.down role' }))
+      fireEvent.click(screen.getByRole('button', { name: 'settings.recording.priority.down settings.recording.priority.kind.role' }))
     })
     expect(items()).toEqual(['role', 'label', 'testId', 'css'])
     expect(toastError).toHaveBeenCalled()
+  })
+
+  it('rolls a failed save back to the last saved order, not the one before both moves', async () => {
+    let failFirst: (v: unknown) => void = () => {}
+    updateRecordingSettings
+      .mockReturnValueOnce(new Promise((r) => (failFirst = r)))
+      .mockResolvedValueOnce({ success: true })
+    await renderPanel()
+    expand()
+    await waitFor(() => expect(items()).toHaveLength(4))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: down('role') }))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: down('testId') }))
+    })
+    expect(items()).toEqual(['label', 'role', 'css', 'testId'])
+    await act(async () => failFirst({ success: false, error: 'busy' }))
+    expect(items()).toEqual(['label', 'role', 'css', 'testId'])
+    expect(toastError).toHaveBeenCalled()
+  })
+
+  it('ignores a save that finishes after the project changed', async () => {
+    let fail: (v: unknown) => void = () => {}
+    updateRecordingSettings.mockReturnValueOnce(new Promise((r) => (fail = r)))
+    await renderPanel()
+    expand()
+    await waitFor(() => expect(items()).toHaveLength(4))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: down('role') }))
+    })
+    getRecorderSettings.mockResolvedValue({ selectorPriority: ['css', 'xpath'] })
+    await act(async () => useProjectStore.setState({ projectPath: '/other' }))
+    await waitFor(() => expect(items()).toEqual(['css', 'xpath']))
+    await act(async () => fail({ success: false, error: 'gone' }))
+    expect(items()).toEqual(['css', 'xpath'])
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('shows a name listed twice once, and an unknown one as an attribute', async () => {
+    getRecorderSettings.mockResolvedValue({ selectorPriority: ['role', 'data-qa', 'role'] })
+    await renderPanel()
+    expand()
+    await waitFor(() => expect(items()).toEqual(['role', 'data-qa']))
+    expect(screen.getByTestId('recording-priority-list')).toHaveTextContent(
+      'settings.recording.priority.kind.attribute'
+    )
+  })
+
+  it('does not take an emptied wait field as 0', async () => {
+    await renderPanel()
+    expand()
+    fireEvent.change(screen.getByTestId('recording-explicit-wait'), { target: { value: '' } })
+    expect(waits.setExplicitWait).not.toHaveBeenCalled()
   })
 
   it('locks the settings while recording', async () => {
@@ -144,7 +208,7 @@ describe('RecordingSettingsPanel', () => {
     await waitFor(() => expect(items()).toHaveLength(4))
     expect(screen.getByTestId('recording-explicit-wait')).toBeDisabled()
     expect(
-      screen.getByRole('button', { name: 'settings.recording.priority.down role' })
+      screen.getByRole('button', { name: 'settings.recording.priority.down settings.recording.priority.kind.role' })
     ).toBeDisabled()
     expect(screen.getByTestId('recording-priority-reset')).toBeDisabled()
   })

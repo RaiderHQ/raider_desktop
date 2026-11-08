@@ -64,7 +64,7 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
   )
 
   return (
-    <div className="flex h-[calc(100vh-11rem)] min-h-[24rem] border border-neutral-bdr rounded-lg shadow-card bg-white overflow-hidden">
+    <div className="flex flex-1 min-h-[24rem] border border-neutral-bdr rounded-lg shadow-card bg-white overflow-hidden">
       {isRecording ? (
         // Recording folds the list away; going back to it leaves the test page, which saves
         <div

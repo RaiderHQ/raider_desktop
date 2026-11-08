@@ -56,6 +56,18 @@ describe('update-recording-settings handler', () => {
     expect(appState.recorderSettings.explicitWait).toBe(20)
   })
 
+  it('does not apply a patch to a project opened while it was being written', async () => {
+    let finish: () => void = () => {}
+    writeRecorderSettings.mockReturnValue(new Promise<void>((r) => (finish = r)))
+    const pending = handler({ explicitWait: 20 })
+    appState.projectPath = '/other'
+    appState.recorderSettings = { ...appState.recorderSettings, explicitWait: 5 }
+    finish()
+    expect(await pending).toEqual({ success: true })
+    expect(writeRecorderSettings).toHaveBeenCalledWith('/p', { explicitWait: 20 })
+    expect(appState.recorderSettings.explicitWait).toBe(5)
+  })
+
   it('refuses an invalid patch without writing or applying it', async () => {
     const result = await handler({ explicitWait: "10; system('id')" } as never)
     expect(result).toEqual({ success: false, error: 'The settings are not valid.' })

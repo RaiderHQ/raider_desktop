@@ -837,7 +837,8 @@ const Overview: React.FC = () => {
       )}
 
       {activeTab === 'tests' && (
-        <div className="relative w-full">
+        // The settings take their height; the tests fill the rest of the screen
+        <div className="relative w-full flex flex-col h-[calc(100vh-11rem)]">
           <RecordingSettingsPanel
             explicitWait={explicitWait}
             setExplicitWait={setExplicitWait}
