@@ -35,7 +35,7 @@ const stepOf = (n: number, from: TraceView = view): TraceViewStep => from.byId.g
 const show = (n: number) =>
   render(<TraceStepDetail traceKey="a" step={stepOf(n)} devicePixelRatio={view.devicePixelRatio} />)
 
-// Drops the keys (traceViewer.step.eventually would trip the checks) and
+// Drops the keys (a raw key such as traceViewer.step.click would trip the checks) and
 // keeps the interpolated values and everything else.
 const plainText = (container: HTMLElement): string =>
   (container.textContent ?? '').replace(/⟦[^⟧]*⟧/g, '')

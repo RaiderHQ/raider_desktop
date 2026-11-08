@@ -16,6 +16,7 @@ expect { driver.find_element(text: ['Welcome back Agustin', { exact: true }]) }.
 ```
 
 What it contains, as the runtime records it:
+
 - a `navigate` step;
 - `clear`, `send_keys` and `click` action steps with `locator`, `waited_ms` and `element`; the password `send_keys` has `value: null, secret: true`;
 - locator strategies `label` (selector `Login name`), `id`, and `role` (selector `button, name: Login, exact: true`);

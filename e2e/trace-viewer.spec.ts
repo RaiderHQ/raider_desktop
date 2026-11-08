@@ -219,8 +219,9 @@ test.describe('Trace viewer on the real fixture', () => {
       overlay.getByRole('option', { name: /Typed "plain-trace-name" into the "Name" text box/ })
     ).toBeVisible()
 
-    // A 3.13 trace's eventually groups and read steps are plain steps now (the 4.0 runtime
-    // writes neither); the failed group still reads as failed and never says it passed.
+    // A 3.13 trace's eventually groups and read steps read as plain "Ran a step" rows now (the
+    // 4.0 runtime writes neither); a group still nests its steps, and the failed one still
+    // reads as failed and never says it passed.
     const failed = overlay.locator('[role="option"][data-status="failed"]')
     await expect(failed).toHaveCount(1)
     await expect(failed).toContainText('Ran a step')

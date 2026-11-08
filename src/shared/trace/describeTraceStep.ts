@@ -18,11 +18,17 @@ const ELEMENT_ACTIONS: Record<string, string> = {
   submit: 'submit'
 }
 
+// The runtime stamps a label only where it computed a name (a button's text); a field found
+// by id or label has a role and no label, so the role alone names it ("the text box").
 function elementText(step: RaiderTraceStep): TraceText {
   const label = step.element?.label
-  if (!label) return { key: `${E}.unnamed`, values: {} }
   const role = step.element?.role
   const roleWord = role !== undefined && Object.hasOwn(ROLE_WORDS, role) ? ROLE_WORDS[role] : null
+  if (!label) {
+    return roleWord
+      ? { key: `${E}.role`, values: { role: roleWord } }
+      : { key: `${E}.unnamed`, values: {} }
+  }
   return roleWord
     ? { key: `${E}.withRole`, values: { label, role: roleWord } }
     : { key: `${E}.named`, values: { label } }
