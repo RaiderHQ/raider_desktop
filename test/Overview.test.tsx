@@ -871,6 +871,16 @@ describe('Overview wait settings', (): void => {
     expect(screen.getByLabelText('settings.recording.explicitWait.label')).toHaveValue(15)
   })
 
+  it('does not save an emptied wait field as 0', async (): Promise<void> => {
+    await renderFiles()
+    const input = screen.getByLabelText('settings.recording.implicitWait.label')
+    fireEvent.change(input, { target: { value: '' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(mockApi.updateRecordingSettings).not.toHaveBeenCalledWith({ implicitWait: 0 })
+  })
+
   it('saves a wait on blur once the settings have loaded', async (): Promise<void> => {
     await renderFiles()
     const input = screen.getByLabelText('settings.recording.implicitWait.label')

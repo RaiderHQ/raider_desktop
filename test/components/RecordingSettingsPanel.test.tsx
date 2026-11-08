@@ -40,7 +40,6 @@ beforeEach(() => {
   localStorage.clear()
   vi.clearAllMocks()
   useRecorderStore.setState({ isRecording: false })
-  useProjectStore.setState({ projectPath: '/p' })
   getRecorderSettings.mockResolvedValue({ selectorPriority: ['role', 'label', 'testId', 'css'] })
   updateRecordingSettings.mockResolvedValue({ success: true })
   ;(window as unknown as { api: unknown }).api = {
@@ -49,6 +48,8 @@ beforeEach(() => {
     readDirectory: vi.fn().mockResolvedValue([]),
     setActiveProject: vi.fn().mockResolvedValue({ success: true })
   }
+  // After window.api exists: the store's project subscription calls it
+  useProjectStore.setState({ projectPath: '/p' })
 })
 
 const down = (kind: string): string =>
@@ -147,7 +148,7 @@ describe('RecordingSettingsPanel', () => {
     expect(toastError).toHaveBeenCalled()
   })
 
-  it('rolls a failed save back to the last saved order, not the one before both moves', async () => {
+  it('ignores an earlier failed save once a later one, which carries its change, is saved', async () => {
     let failFirst: (v: unknown) => void = () => {}
     updateRecordingSettings
       .mockReturnValueOnce(new Promise((r) => (failFirst = r)))
@@ -164,7 +165,29 @@ describe('RecordingSettingsPanel', () => {
     expect(items()).toEqual(['label', 'role', 'css', 'testId'])
     await act(async () => failFirst({ success: false, error: 'busy' }))
     expect(items()).toEqual(['label', 'role', 'css', 'testId'])
-    expect(toastError).toHaveBeenCalled()
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('keeps a later move when an earlier save fails while it is still pending', async () => {
+    let failFirst: (v: unknown) => void = () => {}
+    let passSecond: (v: unknown) => void = () => {}
+    updateRecordingSettings
+      .mockReturnValueOnce(new Promise((r) => (failFirst = r)))
+      .mockReturnValueOnce(new Promise((r) => (passSecond = r)))
+    await renderPanel()
+    expand()
+    await waitFor(() => expect(items()).toHaveLength(4))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: down('role') }))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: down('testId') }))
+    })
+    await act(async () => failFirst({ success: false, error: 'busy' }))
+    expect(items()).toEqual(['label', 'role', 'css', 'testId'])
+    await act(async () => passSecond({ success: true }))
+    expect(items()).toEqual(['label', 'role', 'css', 'testId'])
+    expect(toastError).not.toHaveBeenCalled()
   })
 
   it('ignores a save that finishes after the project changed', async () => {

@@ -98,7 +98,10 @@ export async function readRecorderSettings(projectPath: string): Promise<Recorde
 
 // A plain name stays bare (as the gem's own config writes it); anything else is quoted
 const PLAIN_NAME = /^[A-Za-z_][A-Za-z0-9_-]*$/
-const yamlName = (name: string): string => (PLAIN_NAME.test(name) ? name : JSON.stringify(name))
+// Words YAML (Psych's 1.1 too) reads as a boolean or null rather than a string
+const YAML_WORD = /^(true|false|null|yes|no|on|off|y|n)$/i
+const yamlName = (name: string): string =>
+  PLAIN_NAME.test(name) && !YAML_WORD.test(name) ? name : JSON.stringify(name)
 
 function formatValue(value: number | string[]): string {
   return Array.isArray(value) ? `[${value.map(yamlName).join(', ')}]` : String(value)
