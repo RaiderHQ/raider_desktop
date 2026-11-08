@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { RunEvent, RunRequest } from '../../../src/shared/types/runEvents'
+import type { ProjectLayout } from '../../../src/shared/types/projectLayout'
 
 vi.mock('electron', () => ({ app: { getPath: vi.fn(() => os.tmpdir()) } }))
 vi.mock('../../../src/main/handlers/longship/pushToLongship', () => ({
@@ -29,6 +30,7 @@ import { listedFiles } from '../../../src/main/handlers/tests/projectTestIpc'
 import {
   cancelRun,
   getActiveRun,
+  GEM_TOO_OLD,
   killActiveRun,
   startRun,
   type RunnerDeps
@@ -50,6 +52,14 @@ const started = (id: string): object => ({ v: 1, type: 'started', ...test(id) })
 const finished = (id: string, status: string): object => ({ v: 1, type: 'finished', id, status })
 
 const ALL: RunRequest = { scope: { kind: 'all' }, rubyCommand: 'ruby' }
+const LAYOUT: ProjectLayout = {
+  framework: 'rspec',
+  automation: 'selenium',
+  specPath: 'spec',
+  featurePath: 'features',
+  helperPath: 'helpers',
+  recordable: true
+}
 
 describe('runner', () => {
   let project: string
@@ -102,6 +112,7 @@ describe('runner', () => {
     fs.mkdirSync(path.join(project, 'spec'))
     fs.writeFileSync(path.join(project, 'Gemfile.lock'), LIVE_LOCK)
     appState.projectPath = project
+    appState.layout = null
     events = []
     script = { steps: [] }
     deps = {
@@ -126,6 +137,35 @@ describe('runner', () => {
     fs.rmSync(project, { recursive: true, force: true })
     fs.rmSync(tempRoot, { recursive: true, force: true })
   })
+
+  it('refuses to run a project on a ruby_raider below 4.0 and spawns nothing', async () => {
+    appState.layout = { ...LAYOUT, recordable: false, rubyRaiderVersion: '3.15.2' }
+    expect(await startRun(ALL, deps)).toEqual({ error: GEM_TOO_OLD })
+    expect(deps.spawnCommand).not.toHaveBeenCalled()
+    expect(events).toEqual([])
+    expect(getActiveRun()).toBeNull()
+    // The refusal does not leave the runner busy
+    appState.layout = { ...LAYOUT, rubyRaiderVersion: '4.0.0' }
+    script = { steps: [{ event: plan('t1') }, { event: finished('t1', 'passed') }], exitCode: 0 }
+    const runId = await run()
+    await finishedEvent(runId)
+    expect(deps.spawnCommand).toHaveBeenCalledTimes(1)
+  })
+
+  for (const [label, layout] of [
+    ['a 4.0 lock', { ...LAYOUT, rubyRaiderVersion: '4.0.0' }],
+    ['an unknown version', LAYOUT],
+    ['no layout', null]
+  ] as const) {
+    it(`runs with ${label}`, async () => {
+      appState.layout = layout
+      script = { steps: [{ event: plan('t1') }, { event: finished('t1', 'passed') }], exitCode: 0 }
+      const runId = await run()
+      const done = await finishedEvent(runId)
+      expect(done).toMatchObject({ status: 'passed', exitCode: 0 })
+      expect(deps.spawnCommand).toHaveBeenCalledTimes(1)
+    })
+  }
 
   it('streams started, phase booting→running, examples and finished passed', async () => {
     script = {

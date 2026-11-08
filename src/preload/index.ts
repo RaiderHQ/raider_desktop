@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent, webUtils } from 'electron'
 import type { DocsLinkId } from '../shared/docsLinkIds'
+import type { UpgradeResult } from '../shared/types/upgradeResult'
 import type { FileNode } from '@foundation/Types/fileNode'
 import type { CommandType } from '@foundation/Types/commandType'
 import type { Test } from '@foundation/Types/test'
@@ -196,6 +197,8 @@ const api = {
     failure: FailedStepQuery
   ): Promise<FailedStepMap> => ipcRenderer.invoke('map-failed-step', projectPath, testId, failure),
   getProjectLayout: (): Promise<ProjectLayout | null> => ipcRenderer.invoke('get-project-layout'),
+  upgradeRubyRaider: (projectPath: string, rubyCommand: string): Promise<UpgradeResult> =>
+    ipcRenderer.invoke('upgrade-ruby-raider', projectPath, rubyCommand),
   recordOverExample: (
     file: string,
     exampleName: string,

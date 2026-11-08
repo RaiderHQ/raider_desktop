@@ -89,6 +89,7 @@ import saveTrace from './handlers/trace/saveTrace'
 import loadTrace from './handlers/trace/loadTrace'
 import deleteTrace from './handlers/trace/deleteTrace'
 import setActiveProject, { getRecorderSettings } from './handlers/project/setActiveProject'
+import { upgradeRubyRaider } from './handlers/project/upgradeRubyRaider'
 import {
   clearRecentProjects,
   listRecentProjects,
@@ -344,6 +345,9 @@ app.whenReady().then(() => {
   ipcMain.handle('list-project-tests', listProjectTestsHandler)
   ipcMain.handle('open-code-test', (_event, file: string) => openCodeTestHandler(file))
   ipcMain.handle('get-project-layout', getProjectLayoutHandler)
+  ipcMain.handle('upgrade-ruby-raider', (_event, projectPath: unknown, rubyCommand: unknown) =>
+    upgradeRubyRaider(projectPath, rubyCommand)
+  )
   ipcMain.handle('map-failed-step', (_e, p, id, f) => mapFailedStepHandler(p, id, f))
   registerRunIpc(ipcMain)
   registerTraceIpc(ipcMain)

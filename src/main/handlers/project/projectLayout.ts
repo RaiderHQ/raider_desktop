@@ -3,12 +3,17 @@ import { isAbsolute, join, normalize } from 'path'
 import yaml from 'js-yaml'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import { detectMobilePlatform } from '../mobile/capabilitiesFile'
+import { rubyRaiderPin, rubyRaiderVersion, supportsRuntime } from '../logins/rubyRaiderVersion'
 
 const DEFAULT_PATHS = { specPath: 'spec', featurePath: 'features', helperPath: 'helpers' }
 
+// Project files are read as text to look for a few lines; anything larger is not one of ours
+const FILE_LIMIT = 1024 * 1024
+
 async function readOptional(path: string): Promise<string | null> {
   try {
-    return await readFile(path, 'utf-8')
+    const text = await readFile(path, 'utf-8')
+    return text.length > FILE_LIMIT ? text.slice(0, FILE_LIMIT) : text
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
     throw error
@@ -69,6 +74,12 @@ export async function detectProjectLayout(projectPath: string): Promise<ProjectL
     unsupportedReason: reason
   })
 
+  // The lock says what is installed; a project never bundled yet only has its pin, and a
+  // project naming no version at all is given the benefit of the doubt (the run installs it)
+  const lock = await readOptional(join(projectPath, 'Gemfile.lock'))
+  const version = (lock !== null ? rubyRaiderVersion(lock) : null) ?? rubyRaiderPin(gemfile)
+  if (version !== null) base.rubyRaiderVersion = version
+
   if (has('appium_lib')) {
     const caps = await readOptional(join(projectPath, 'config', 'capabilities.yml'))
     const mobilePlatform = (caps !== null && detectMobilePlatform(caps)) || undefined
@@ -76,5 +87,6 @@ export async function detectProjectLayout(projectPath: string): Promise<ProjectL
   }
   if (has('minitest') && !has('rspec')) return unsupported('minitest')
   if (has('capybara')) return unsupported('capybara')
+  if (!supportsRuntime(version)) return unsupported('gemTooOld')
   return base
 }

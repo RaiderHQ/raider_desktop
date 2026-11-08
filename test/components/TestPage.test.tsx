@@ -242,6 +242,25 @@ describe('TestPage', () => {
     expect(en.recorder.unsupported.mobile).toBe("Mobile projects can't be recorded yet.")
   })
 
+  it('says why Record is off in a project on a ruby_raider below 4.0', async () => {
+    useProjectStore.setState({
+      layout: {
+        ...mobileLayout,
+        automation: 'selenium',
+        unsupportedReason: 'gemTooOld',
+        rubyRaiderVersion: '3.15.2'
+      }
+    })
+    renderPage()
+    await opened()
+    const record = screen.getByRole('button', { name: 'testPage.record' })
+    expect(record).toBeDisabled()
+    expect(record).toHaveAttribute('title', 'recorder.unsupported.gemTooOld')
+    expect(en.recorder.unsupported.gemTooOld).toBe(
+      "This project uses a ruby_raider older than 4.0, so Raider can't record into it or run it. Update ruby_raider from the Tests tab."
+    )
+  })
+
   it('shows a tooltip on focus for Record, with its shortcut', async () => {
     renderPage()
     await opened()

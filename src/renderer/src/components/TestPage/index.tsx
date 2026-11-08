@@ -90,9 +90,12 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
   const assertPicking = useRecorderStore((s) => s.assertPicking)
   useEscEndsAssertPick()
   const recordingDisabled = useProjectStore((s) => s.layout?.recordable === false)
-  // Only a mobile project says why Record is off, for now
-  const mobileProject = useProjectStore((s) => s.layout?.unsupportedReason === 'mobile')
-  const recordingDisabledReason = mobileProject ? t('recorder.unsupported.mobile') : undefined
+  // A mobile project or an old ruby_raider says why Record is off
+  const unsupportedReason = useProjectStore((s) => s.layout?.unsupportedReason)
+  const recordingDisabledReason =
+    unsupportedReason === 'mobile' || unsupportedReason === 'gemTooOld'
+      ? t(`recorder.unsupported.${unsupportedReason}`)
+      : undefined
   const runOutput = useRunOutputStore((s) => s.runOutput)
   // Output of a run on a project that can't keep tests as files; live runs show in the run panel instead
   const hasLegacyOutput = runOutput !== ''

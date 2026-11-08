@@ -13,16 +13,13 @@ import Tooltip from '@components/Tooltip'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
-import useVersionStore, { isVersionAtLeast } from '@foundation/Stores/versionStore'
+import useVersionStore, { supportsRuntime } from '@foundation/Stores/versionStore'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import { isValidProjectName } from '@shared/projectName'
 import { showErrorToast } from '@foundation/errorToast'
 
 type Target = 'web' | 'mobile'
 type Phones = 'ios' | 'android' | 'cross_platform'
-
-// Mobile projects and the examples option arrive together in this gem version.
-const MOBILE_MIN_VERSION = '3.12.0'
 
 const CreateProject: React.FC = () => {
   const navigate = useNavigate()
@@ -32,8 +29,10 @@ const CreateProject: React.FC = () => {
   const setProjectPath = useProjectStore((state) => state.setProjectPath)
   const { rubyCommand } = useRubyStore()
 
+  // Every project is generated on the 4.0 runtime: an older or missing gem cannot create one
   const gemVersion = useVersionStore((state) => state.version)
-  const mobileSupported = isVersionAtLeast(gemVersion, MOBILE_MIN_VERSION)
+  const gemSupported = supportsRuntime(gemVersion)
+  const mobileSupported = gemSupported
 
   // The page tells users to update Ruby Raider and come back, so it reads the version again
   useEffect(() => {
@@ -55,7 +54,7 @@ const CreateProject: React.FC = () => {
   const nameError = projectName !== '' && !nameIsValid ? t('newProject.input.invalid') : undefined
 
   const handleCreateProject = async (): Promise<void> => {
-    if (!nameIsValid) return
+    if (!nameIsValid || !gemSupported) return
 
     const folder = await window.api.selectFolder(t('newProject.alerts.selectFolder'))
     if (!folder) {
@@ -69,7 +68,7 @@ const CreateProject: React.FC = () => {
       const projectOptions: ProjectCreationOptions = isMobile
         ? { accessibility: false, ci: 'github' }
         : { accessibility, ci: ciProvider }
-      if (mobileSupported) projectOptions.examples = examples
+      projectOptions.examples = examples
 
       const raiderResult = await window.api.runRubyRaider(
         folder,
@@ -208,7 +207,7 @@ const CreateProject: React.FC = () => {
                   tooltip={t('tooltips.newProject.accessibility')}
                 />
               )}
-              {mobileSupported && (
+              {gemSupported && (
                 <Checkbox
                   label={t('newProject.addons.examples')}
                   checked={examples}
@@ -230,12 +229,21 @@ const CreateProject: React.FC = () => {
             </div>
             <div className="pl-4">
               <Tooltip content={t('tooltips.newProject.create')} position="top">
-                <Button onClick={handleCreateProject} type="primary" disabled={!nameIsValid}>
+                <Button
+                  onClick={handleCreateProject}
+                  type="primary"
+                  disabled={!nameIsValid || !gemSupported}
+                >
                   {t('button.create.text')}
                 </Button>
               </Tooltip>
             </div>
           </div>
+          {!gemSupported && (
+            <p role="alert" className="mt-3 text-xs text-neutral-md">
+              {t('newProject.gemNeedsUpdate')}
+            </p>
+          )}
         </div>
       </ContentArea>
 

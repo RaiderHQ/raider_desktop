@@ -14,9 +14,12 @@ vi.mock('react-i18next', () => ({
   })
 }))
 
+const versionState = vi.hoisted(() => ({ version: '2.0.0' as string | null }))
 vi.mock('@foundation/Stores/versionStore', () => ({
   __esModule: true,
-  default: vi.fn(() => '2.0.0')
+  default: vi.fn((selector?: (s: { version: string | null }) => unknown) =>
+    selector ? selector(versionState) : versionState
+  )
 }))
 
 const projectState = vi.hoisted(() => ({
@@ -98,7 +101,23 @@ describe('MainTemplate Navigation', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByText(/version/)).toBeInTheDocument()
+    expect(screen.getByText('version {"version":"2.0.0"}')).toBeInTheDocument()
+  })
+
+  it('says the version was not found when the gem could not be read', () => {
+    versionState.version = null
+    try {
+      render(
+        <MemoryRouter initialEntries={['/overview']}>
+          <MainTemplate />
+        </MemoryRouter>
+      )
+
+      expect(screen.getByText('versionUnknown')).toBeInTheDocument()
+      expect(screen.queryByText(/^version /)).not.toBeInTheDocument()
+    } finally {
+      versionState.version = '2.0.0'
+    }
   })
 })
 

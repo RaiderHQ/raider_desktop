@@ -1,143 +1,91 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-describe('versionStore', () => {
-  const EXPECTED_VERSION = '2.0.0'
+type VersionModule = typeof import('@foundation/Stores/versionStore')
 
+const loadStore = async (): Promise<VersionModule> => import('@foundation/Stores/versionStore')
+
+const mockRaider = (runCommand: ReturnType<typeof vi.fn>): void => {
+  window.api = { runCommand } as unknown as typeof window.api
+}
+
+describe('versionStore', () => {
   beforeEach(() => {
     vi.resetModules()
   })
 
-  it('has the correct default version', async () => {
-    // Mock window.api so the store doesn't make real IPC calls
-    window.api = {
-      runCommand: vi.fn().mockResolvedValue({
-        success: true,
-        output: `The version is ${EXPECTED_VERSION}, happy testing!`
-      })
-    } as unknown as typeof window.api
-
-    const { default: useVersionStore } = await import(
-      '@foundation/Stores/versionStore'
+  it('has no version before the gem has been read', async () => {
+    mockRaider(
+      vi.fn().mockResolvedValue({ success: true, output: 'The version is 4.0.0, happy testing!' })
     )
 
-    const state = useVersionStore.getState()
-    expect(state.version).toBe(EXPECTED_VERSION)
+    const { default: useVersionStore } = await loadStore()
+
+    expect(useVersionStore.getState().version).toBeNull()
   })
 
-  it('extracts version from raider CLI output', async () => {
-    window.api = {
-      runCommand: vi.fn().mockResolvedValue({
-        success: true,
-        output: `The version is ${EXPECTED_VERSION}, happy testing!`
-      })
-    } as unknown as typeof window.api
-
-    const { default: useVersionStore } = await import(
-      '@foundation/Stores/versionStore'
+  it('extracts the version from the raider CLI output', async () => {
+    mockRaider(
+      vi.fn().mockResolvedValue({ success: true, output: 'The version is 4.0.0, happy testing!' })
     )
 
+    const { default: useVersionStore } = await loadStore()
     await useVersionStore.getState().loadVersion()
-    const state = useVersionStore.getState()
-    expect(state.version).toBe(EXPECTED_VERSION)
+
+    expect(useVersionStore.getState().version).toBe('4.0.0')
   })
 
-  it('falls back to expected version on CLI failure', async () => {
-    window.api = {
-      runCommand: vi.fn().mockResolvedValue({
-        success: false,
-        output: 'command not found'
-      })
-    } as unknown as typeof window.api
+  it('has no version when the CLI fails', async () => {
+    mockRaider(vi.fn().mockResolvedValue({ success: false, output: 'command not found' }))
 
-    const { default: useVersionStore } = await import(
-      '@foundation/Stores/versionStore'
-    )
-
+    const { default: useVersionStore } = await loadStore()
     await useVersionStore.getState().loadVersion()
-    const state = useVersionStore.getState()
-    expect(state.version).toBe(EXPECTED_VERSION)
+
+    expect(useVersionStore.getState().version).toBeNull()
   })
 
-  it('falls back to expected version on exception', async () => {
-    window.api = {
-      runCommand: vi.fn().mockRejectedValue(new Error('IPC failed'))
-    } as unknown as typeof window.api
+  it('has no version when the IPC call throws', async () => {
+    mockRaider(vi.fn().mockRejectedValue(new Error('IPC failed')))
 
-    const { default: useVersionStore } = await import(
-      '@foundation/Stores/versionStore'
-    )
-
+    const { default: useVersionStore } = await loadStore()
     await useVersionStore.getState().loadVersion()
-    const state = useVersionStore.getState()
-    expect(state.version).toBe(EXPECTED_VERSION)
+
+    expect(useVersionStore.getState().version).toBeNull()
   })
 
-  it('rejects version below 2.0.0 and falls back to minimum', async () => {
-    window.api = {
-      runCommand: vi.fn().mockResolvedValue({
-        success: true,
-        output: 'The version is 1.1.4, happy testing!'
-      })
-    } as unknown as typeof window.api
+  it('has no version when the output holds no x.y.z', async () => {
+    mockRaider(vi.fn().mockResolvedValue({ success: true, output: 'happy testing!' }))
 
-    const { default: useVersionStore } = await import(
-      '@foundation/Stores/versionStore'
-    )
-
+    const { default: useVersionStore } = await loadStore()
     await useVersionStore.getState().loadVersion()
-    const state = useVersionStore.getState()
-    // Old versions below 2.0.0 should be rejected and overridden to minimum
-    expect(state.version).toBe(EXPECTED_VERSION)
+
+    expect(useVersionStore.getState().version).toBeNull()
   })
 
-  it('accepts version equal to 2.0.0', async () => {
-    window.api = {
-      runCommand: vi.fn().mockResolvedValue({
-        success: true,
-        output: 'The version is 2.0.0, happy testing!'
-      })
-    } as unknown as typeof window.api
+  it('forgets a version the next read cannot confirm', async () => {
+    const runCommand = vi
+      .fn()
+      .mockResolvedValueOnce({ success: true, output: 'The version is 4.0.0' })
+      .mockResolvedValueOnce({ success: false, output: '' })
+    mockRaider(runCommand)
 
-    const { default: useVersionStore } = await import(
-      '@foundation/Stores/versionStore'
-    )
-
+    const { default: useVersionStore } = await loadStore()
     await useVersionStore.getState().loadVersion()
-    const state = useVersionStore.getState()
-    expect(state.version).toBe('2.0.0')
+    expect(useVersionStore.getState().version).toBe('4.0.0')
+    await useVersionStore.getState().loadVersion()
+    expect(useVersionStore.getState().version).toBeNull()
   })
 
-  it('accepts version above 2.0.0', async () => {
-    window.api = {
-      runCommand: vi.fn().mockResolvedValue({
-        success: true,
-        output: 'The version is 2.1.0, happy testing!'
-      })
-    } as unknown as typeof window.api
-
-    const { default: useVersionStore } = await import(
-      '@foundation/Stores/versionStore'
-    )
-
-    await useVersionStore.getState().loadVersion()
-    const state = useVersionStore.getState()
-    expect(state.version).toBe('2.1.0')
-  })
-
-  it('rejects version 1.9.9 as below minimum', async () => {
-    window.api = {
-      runCommand: vi.fn().mockResolvedValue({
-        success: true,
-        output: 'The version is 1.9.9, happy testing!'
-      })
-    } as unknown as typeof window.api
-
-    const { default: useVersionStore } = await import(
-      '@foundation/Stores/versionStore'
-    )
-
-    await useVersionStore.getState().loadVersion()
-    const state = useVersionStore.getState()
-    expect(state.version).toBe(EXPECTED_VERSION)
+  describe('supportsRuntime', () => {
+    it.each([
+      [null, false],
+      ['3.15.2', false],
+      ['4.0.0', true],
+      ['4.1.0', true],
+      ['10.0.0', true]
+    ])('gem %s → %s', async (version, expected) => {
+      const { supportsRuntime, RUNTIME_MIN_VERSION } = await loadStore()
+      expect(RUNTIME_MIN_VERSION).toBe('4.0.0')
+      expect(supportsRuntime(version)).toBe(expected)
+    })
   })
 })
