@@ -1,4 +1,5 @@
 import type { Locator, Strategy } from '../shared/types/step'
+import { DEFAULT_TEST_ID_ATTRIBUTE } from '../shared/testIdAttribute'
 import {
   NAME_MAX,
   accessibleNameSource,
@@ -30,7 +31,7 @@ export const DEFAULT_PRIORITIES: string[] = [
   'css',
   'xpath'
 ]
-export const DEFAULT_TEST_ID_ATTRIBUTE = 'data-testid'
+export { DEFAULT_TEST_ID_ATTRIBUTE }
 
 export function getCssPath(el: Element): string {
   if (!(el instanceof Element)) return ''
