@@ -1334,6 +1334,10 @@
     "menu": {
       "newFile": "New file…",
       "newFolder": "New folder…",
+      "newPage": "New page object…",
+      "newSpec": "New spec…",
+      "newComponent": "New component…",
+      "newHelper": "New helper…",
       "copy": "Copy",
       "paste": "Paste",
       "duplicate": "Duplicate",
@@ -1367,7 +1371,8 @@
       "duplicateFailed": "Failed to duplicate: {{error}}",
       "renamed": "Renamed to {{name}}",
       "readFailed": "Failed to read file",
-      "readError": "Error reading file"
+      "readError": "Error reading file",
+      "scaffoldFailed": "Could not create {{name}}: {{error}}"
     },
     "runTests": "Run tests",
     "emptyFolder": "Empty folder",
@@ -1376,6 +1381,22 @@
     },
     "newFolder": {
       "title": "New folder"
+    },
+    "scaffold": {
+      "page": {
+        "title": "New page object"
+      },
+      "spec": {
+        "title": "New spec"
+      },
+      "component": {
+        "title": "New component"
+      },
+      "helper": {
+        "title": "New helper"
+      },
+      "preview": "Creates {{folder}}/{{file}}",
+      "invalidName": "Start with a letter; use only letters, digits and underscores."
     },
     "name": {
       "empty": "Type a name.",

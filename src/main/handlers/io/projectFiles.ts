@@ -350,6 +350,32 @@ export function createProjectEntry(
   })
 }
 
+/**
+ * For `raider g <type> <name> --path <folderRel>`: checks the folder as New file does (a real
+ * folder inside the open project, not the root, not Git's or Raider's) and that nothing is at
+ * `fileName` in it yet, since the gem overwrites without asking when no one can answer.
+ * Returns the file's project-relative path; creates nothing.
+ */
+export function scaffoldTarget(
+  projectPath: string,
+  folderRel: string,
+  fileName: string
+): Promise<ProjectFileResult> {
+  return run('scaffold', async () => {
+    if (!isSafeName(fileName)) return invalidName()
+    const root = await openProject(projectPath)
+    if (folderRel === '') throw new Error('Pick a folder inside the project')
+    const { dir, realRel } = await folderAt(root, folderRel)
+    const target = join(dir, fileName)
+    const rel = toRel(root, target)
+    // Anything there counts, a dangling link included
+    if (await fs.lstat(target).catch(() => null))
+      throw new FileOpError(`${rel} already exists`, 'exists')
+    await assertFreeOfRecords(root, childRel(realRel, fileName))
+    return { success: true, path: rel }
+  })
+}
+
 /** 'project-file-copy': pastes `srcRel` into `destParentRel` ('' = root), recursively. */
 export function copyProjectEntry(
   projectPath: string,

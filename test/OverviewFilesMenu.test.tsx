@@ -121,7 +121,8 @@ const api = {
   copyProjectEntry: vi.fn(),
   duplicateProjectEntry: vi.fn(),
   renameProjectEntry: vi.fn(),
-  trashProjectEntry: vi.fn()
+  trashProjectEntry: vi.fn(),
+  scaffoldGenerate: vi.fn()
 }
 
 beforeAll(() => {
@@ -154,6 +155,11 @@ beforeEach(async () => {
   api.duplicateProjectEntry.mockResolvedValue({ success: true, path: 'spec/a_spec_copy.rb' })
   api.renameProjectEntry.mockResolvedValue({ success: true, path: 'spec/b_spec.rb' })
   api.trashProjectEntry.mockResolvedValue({ success: true })
+  api.scaffoldGenerate.mockResolvedValue({
+    success: true,
+    output: 'create  spec/checkout_page.rb',
+    files: ['spec/checkout_page.rb']
+  })
   // @ts-expect-error - a partial window.api
   window.api = api
   useTestsListStore.setState({ rows: null, tests: [] })
@@ -220,7 +226,7 @@ const openEditorOn = async (testId: string): Promise<void> => {
 }
 
 describe('Files tab context menu', () => {
-  it('offers the full menu on a file and on a folder', async () => {
+  it('offers the full menu on a file, and on a folder with the scaffolding group', async () => {
     await renderFiles()
     const full = [
       'files.menu.newFile',
@@ -236,7 +242,17 @@ describe('Files tab context menu', () => {
     expect(menuLabels()).toEqual(full)
     fireEvent.keyDown(document, { key: 'Escape' })
     rightClick(screen.getByTestId('spec-folder'))
-    expect(menuLabels()).toEqual(full)
+    expect(menuLabels()).toEqual([
+      'files.menu.newFile',
+      'files.menu.newFolder',
+      'files.menu.newPage',
+      'files.menu.newSpec',
+      'files.menu.newComponent',
+      'files.menu.newHelper',
+      ...full.slice(2)
+    ])
+    // The group is set apart from New file / New folder and from the rest
+    expect(within(screen.getByRole('menu')).getAllByRole('separator')).toHaveLength(2)
   })
 
   it('offers New and Paste only on the root row and on empty tree space', async () => {
@@ -530,5 +546,104 @@ describe('Files tab context menu', () => {
       fireEvent.keyDown(window, { key: 's', metaKey: true })
     })
     expect(api.editFile).toHaveBeenCalledWith('/fake/project/spec/b_spec.rb', 'edited')
+  })
+})
+
+// New page object… / New spec… / New component… / New helper… on a folder: raider g … --path
+describe('Files tab scaffolding', () => {
+  const startScaffold = async (item: string): Promise<void> => {
+    await renderFiles()
+    rightClick(screen.getByTestId('spec-folder'))
+    await click(item)
+  }
+
+  it.each([
+    ['files.menu.newPage', 'page'],
+    ['files.menu.newSpec', 'spec'],
+    ['files.menu.newComponent', 'component'],
+    ['files.menu.newHelper', 'helper']
+  ])('%s asks for a name, then generates a %s into the folder', async (item, type) => {
+    await startScaffold(item)
+    expect(screen.getByRole('dialog', { name: `files.scaffold.${type}.title` })).toBeInTheDocument()
+    await typeName('checkout')
+    expect(api.scaffoldGenerate).toHaveBeenCalledWith(
+      { operation: 'generate', type, name: 'checkout', path: 'spec' },
+      '/fake/project',
+      '/usr/bin/ruby'
+    )
+  })
+
+  it('reloads the tree and the Tests list, reveals the new file and opens it', async () => {
+    await startScaffold('files.menu.newPage')
+    api.readDirectory.mockClear()
+    api.listProjectTests.mockClear()
+    await typeName('checkout')
+    expect(api.readDirectory).toHaveBeenCalledWith('/fake/project')
+    expect(api.listProjectTests).toHaveBeenCalled()
+    expect(reveals).toContain('/fake/project/spec/checkout_page.rb')
+    expect(api.readFile).toHaveBeenCalledWith('/fake/project/spec/checkout_page.rb')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('shows the file the name will make', async () => {
+    await startScaffold('files.menu.newPage')
+    fireEvent.change(within(screen.getByRole('dialog')).getByRole('textbox'), {
+      target: { value: 'CheckoutPage' }
+    })
+    expect(screen.getByRole('dialog')).toHaveTextContent('files.scaffold.preview')
+  })
+
+  it.each(['', 'check out', 'admin/users', '../x', '2fa', 'login.rb', '--force'])(
+    'refuses the name %j in place',
+    async (name) => {
+      await startScaffold('files.menu.newPage')
+      await typeName(name)
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        name === '' ? 'files.name.empty' : 'files.scaffold.invalidName'
+      )
+      expect(api.scaffoldGenerate).not.toHaveBeenCalled()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    }
+  )
+
+  it('refuses in place a name whose file is already in the folder', async () => {
+    // spec/a_spec.rb is in the tree
+    await startScaffold('files.menu.newSpec')
+    await typeName('a')
+    expect(screen.getByRole('alert')).toHaveTextContent('files.name.taken')
+    expect(api.scaffoldGenerate).not.toHaveBeenCalled()
+  })
+
+  it('keeps the dialog open when main finds the file there after all', async () => {
+    api.scaffoldGenerate.mockResolvedValue({
+      success: false,
+      output: '',
+      error: 'spec/checkout_page.rb already exists',
+      code: 'exists'
+    })
+    await startScaffold('files.menu.newPage')
+    await typeName('checkout')
+    expect(screen.getByRole('alert')).toHaveTextContent('files.name.taken')
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(api.readFile).not.toHaveBeenCalled()
+  })
+
+  it('closes and says why when Ruby Raider fails', async () => {
+    api.scaffoldGenerate.mockResolvedValue({ success: false, output: 'boom', error: 'boom' })
+    const error = vi.spyOn(toast, 'error')
+    await startScaffold('files.menu.newHelper')
+    await typeName('session')
+    expect(error).toHaveBeenCalledWith('files.toast.scaffoldFailed')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(api.readFile).not.toHaveBeenCalled()
+  })
+
+  it('closes and says why when the call itself throws', async () => {
+    api.scaffoldGenerate.mockRejectedValue(new Error('ipc down'))
+    const error = vi.spyOn(toast, 'error')
+    await startScaffold('files.menu.newHelper')
+    await typeName('session')
+    expect(error).toHaveBeenCalledWith('files.toast.scaffoldFailed')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

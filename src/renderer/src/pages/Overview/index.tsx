@@ -38,6 +38,13 @@ import type { DocsLinkId } from '@shared/docsLinkIds'
 import RunPanel from '@components/RunPanel'
 import MobileProjectUnsupported from '@components/MobileProjectUnsupported'
 import useProjectStore from '@foundation/Stores/projectStore'
+import useRubyStore from '@foundation/Stores/rubyStore'
+import {
+  FOLDER_SCAFFOLD_TYPES,
+  isScaffoldName,
+  scaffoldFileName,
+  type FolderScaffoldType
+} from '@shared/scaffoldName'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { isEmptyRecording } from '../../hooks/useTestRecording'
 import { useRecorderSettings } from '../../hooks/useRecorderSettings'
@@ -74,6 +81,14 @@ const isWebAddress = (value: string): boolean => {
   }
 }
 
+
+// The Files menu's items for generated files, in menu order
+const SCAFFOLD_MENU_LABEL: Record<FolderScaffoldType, string> = {
+  page: 'files.menu.newPage',
+  spec: 'files.menu.newSpec',
+  component: 'files.menu.newComponent',
+  helper: 'files.menu.newHelper'
+}
 
 const Overview: React.FC = () => {
   const { t } = useTranslation()
@@ -187,10 +202,12 @@ const Overview: React.FC = () => {
     fileName: string
     kind: 'file' | 'folder' | 'root'
   } | null>(null)
-  // The name dialog of New file, New folder and Rename; paths are project-relative
+  // The name dialog of New file, New folder, Rename and New page object… (and the other
+  // generated files); paths are project-relative
   const [nameDialog, setNameDialog] = useState<
     | { mode: 'file' | 'folder'; folderRel: string }
     | { mode: 'rename'; folderRel: string; rel: string; name: string; isFolder: boolean }
+    | { mode: 'scaffold'; folderRel: string; type: FolderScaffoldType }
     | null
   >(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ filePath: string; fileName: string } | null>(
@@ -871,6 +888,73 @@ const Overview: React.FC = () => {
     if (target) setNameDialog({ mode: kind, folderRel: target.folderRel })
   }
 
+  // New page object… / New spec… / New component… / New helper…: a folder only, not the root
+  const handleStartScaffold = (type: FolderScaffoldType): void => {
+    const target = menuTarget()
+    if (target && fileContextMenu?.kind === 'folder')
+      setNameDialog({ mode: 'scaffold', type, folderRel: target.rel })
+  }
+
+  /** The name rule of a generated file, and its file already in the folder (any case). */
+  const scaffoldNameError = (
+    type: FolderScaffoldType,
+    folderRel: string,
+    name: string
+  ): string | null => {
+    if (name === '') return t('files.name.empty')
+    if (!isScaffoldName(name)) return t('files.scaffold.invalidName')
+    const file = scaffoldFileName(type, name).toLowerCase()
+    return namesAt(files, folderRel).some((n) => n.toLowerCase() === file)
+      ? t('files.name.taken', { name: scaffoldFileName(type, name) })
+      : null
+  }
+
+  /**
+   * Runs `raider g <type> <name> --path <folder>`; main refuses a file that is already there.
+   * The new file is revealed in the tree and opened; Undo sends it to the Trash.
+   */
+  const submitScaffold = async (
+    type: FolderScaffoldType,
+    folderRel: string,
+    name: string
+  ): Promise<string | null> => {
+    if (!projectPath) return null
+    const fileName = scaffoldFileName(type, name)
+    let res: Awaited<ReturnType<typeof window.api.scaffoldGenerate>>
+    try {
+      res = await window.api.scaffoldGenerate(
+        { operation: 'generate', type, name, path: folderRel },
+        projectPath,
+        useRubyStore.getState().rubyCommand ?? ''
+      )
+    } catch (error) {
+      res = { success: false, output: '', error: String(error) }
+    }
+    if (!res.success) {
+      if (res.code === 'exists') return t('files.name.taken', { name: fileName })
+      if (res.code === 'invalidName') return t('files.scaffold.invalidName')
+      setNameDialog(null)
+      toast.error(
+        t('files.toast.scaffoldFailed', {
+          name: fileName,
+          error:
+            res.code === 'projectChanged'
+              ? t('files.error.projectChanged')
+              : res.error || res.output
+        })
+      )
+      return null
+    }
+    setNameDialog(null)
+    reloadFiles()
+    const rel = res.files?.[0]
+    if (rel) {
+      announceCreated(t('files.toast.created', { name: fileName }), rel)
+      handleOpenFile(toProjectAbs(projectPath, rel))
+    }
+    return null
+  }
+
   const handleStartRename = (): void => {
     const target = menuTarget()
     if (!target || !fileContextMenu || fileContextMenu.kind === 'root') return
@@ -896,6 +980,8 @@ const Overview: React.FC = () => {
 
   const handleNameSubmit = async (name: string): Promise<string | null> => {
     if (!nameDialog || !projectPath) return null
+    if (nameDialog.mode === 'scaffold')
+      return submitScaffold(nameDialog.type, nameDialog.folderRel, name)
     if (nameDialog.mode === 'rename') {
       if (name === nameDialog.name) {
         setNameDialog(null)
@@ -1545,9 +1631,23 @@ const Overview: React.FC = () => {
           items={[
             { label: t('files.menu.newFile'), onClick: () => handleStartNew('file') },
             { label: t('files.menu.newFolder'), onClick: () => handleStartNew('folder') },
+            // Generated files go into a folder: raider g <type> <name> --path <folder>
+            ...(fileContextMenu.kind === 'folder'
+              ? FOLDER_SCAFFOLD_TYPES.map((type, i) => ({
+                  label: t(SCAFFOLD_MENU_LABEL[type]),
+                  onClick: () => handleStartScaffold(type),
+                  separatorBefore: i === 0
+                }))
+              : []),
             ...(fileContextMenu.kind === 'root'
               ? []
-              : [{ label: t('files.menu.copy'), onClick: handleCopyEntry }]),
+              : [
+                  {
+                    label: t('files.menu.copy'),
+                    onClick: handleCopyEntry,
+                    separatorBefore: fileContextMenu.kind === 'folder'
+                  }
+                ]),
             {
               label: t('files.menu.paste'),
               onClick: () => void handlePaste(),
@@ -1612,8 +1712,26 @@ const Overview: React.FC = () => {
         </div>
       )}
 
-      {/* New file, New folder and Rename */}
-      {nameDialog && (
+      {/* New file, New folder, Rename and the generated files */}
+      {nameDialog?.mode === 'scaffold' && (
+        <FileNameDialog
+          key={`scaffold-${nameDialog.type}`}
+          title={t(`files.scaffold.${nameDialog.type}.title`)}
+          confirmLabel={t('files.name.create')}
+          validate={(name) => scaffoldNameError(nameDialog.type, nameDialog.folderRel, name)}
+          preview={(name) =>
+            isScaffoldName(name)
+              ? t('files.scaffold.preview', {
+                  file: scaffoldFileName(nameDialog.type, name),
+                  folder: nameDialog.folderRel
+                })
+              : null
+          }
+          onSubmit={handleNameSubmit}
+          onCancel={() => setNameDialog(null)}
+        />
+      )}
+      {nameDialog && nameDialog.mode !== 'scaffold' && (
         <FileNameDialog
           key={nameDialog.mode}
           title={t(

@@ -130,4 +130,25 @@ describe('ContextMenu', () => {
     )
     expect(screen.getByRole('textbox', { name: 'field' })).toHaveFocus()
   })
+
+  it('draws a line above an item that starts a group, never above the first', () => {
+    render(
+      <ContextMenu
+        x={10}
+        y={20}
+        items={[
+          { label: 'New file…', onClick: vi.fn(), separatorBefore: true },
+          { label: 'New page object…', onClick: vi.fn(), separatorBefore: true },
+          { label: 'Copy', onClick: vi.fn() }
+        ]}
+        onClose={vi.fn()}
+      />
+    )
+    const separators = screen.getAllByRole('separator')
+    expect(separators).toHaveLength(1)
+    expect(separators[0].nextElementSibling).toHaveTextContent('New page object…')
+    // Arrow keys still move between the items only
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'ArrowDown' })
+    expect(screen.getByRole('menuitem', { name: 'New page object…' })).toHaveFocus()
+  })
 })
