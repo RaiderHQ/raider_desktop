@@ -144,15 +144,10 @@ const CreateProject: React.FC = () => {
                     value: 'mobile',
                     label: t('newProject.target.mobile'),
                     disabled: !mobileSupported,
-                    describedBy: mobileSupported ? undefined : 'mobile-needs-update'
+                    describedBy: mobileSupported ? undefined : 'gem-needs-update'
                   }
                 ]}
               />
-              {!mobileSupported && (
-                <p id="mobile-needs-update" className="mt-1 text-xs text-neutral-md">
-                  {t('newProject.target.mobileNeedsUpdate')}
-                </p>
-              )}
             </div>
             {isMobile && (
               <SegmentedControl<Phones>
@@ -240,7 +235,7 @@ const CreateProject: React.FC = () => {
             </div>
           </div>
           {!gemSupported && (
-            <p role="alert" className="mt-3 text-xs text-neutral-md">
+            <p id="gem-needs-update" role="alert" className="mt-3 text-xs text-neutral-md">
               {t('newProject.gemNeedsUpdate')}
             </p>
           )}

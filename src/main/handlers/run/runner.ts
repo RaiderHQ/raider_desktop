@@ -22,7 +22,6 @@ import { buildRunCommand, validateTags } from './runCommand'
 import { listedFiles } from '../tests/projectTestIpc'
 import { clampWorkers, runDefaults } from './runDefaults'
 import { reporterVersion, supportsLiveEvents } from './reporterVersion'
-import { supportsRuntime } from '../logins/rubyRaiderVersion'
 import { EventTail } from './eventTail'
 import { Translator } from './translate'
 import { RunSession } from './runSession'
@@ -223,9 +222,7 @@ export async function startRun(
   try {
     const projectPath = appState.projectPath
     if (!projectPath) throw new Error('No project is open.')
-    if (!supportsRuntime(appState.layout?.rubyRaiderVersion ?? null)) {
-      throw new Error(GEM_TOO_OLD)
-    }
+    if (appState.layout?.runtimeSupported === false) throw new Error(GEM_TOO_OLD)
     const valid = await validate(request)
     // The files were checked against the project open now; run only if it's still the same one
     if (appState.projectPath !== projectPath)

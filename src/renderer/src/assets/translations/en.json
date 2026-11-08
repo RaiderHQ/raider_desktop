@@ -67,8 +67,7 @@
     },
     "target": {
       "web": "Website",
-      "mobile": "Mobile app",
-      "mobileNeedsUpdate": "Mobile apps need Ruby Raider 4.0 or later. Update Ruby Raider, then come back to this page."
+      "mobile": "Mobile app"
     },
     "phones": {
       "ios": "iPhone (iOS)",
@@ -513,7 +512,7 @@
       "capybara": "This project uses a test style Raider can't record into yet.",
       "noGemfile": "Raider couldn't find the files it needs to set up this project.",
       "generic": "Raider can't record into this project yet.",
-      "gemTooOld": "This project uses a ruby_raider older than 4.0, so Raider can't record into it or run it. Update ruby_raider from the Tests tab."
+      "gemTooOld": "This project uses a ruby_raider older than 4.0, so Raider can't record into it or run it. Use Update ruby_raider beside the tests list."
     },
     "saveFailed": "Raider couldn't save this test. Your work is still here.",
     "runFailed": "Raider couldn't run this test.",
@@ -1432,6 +1431,7 @@
     "confirmMessage": "Raider will change the Gemfile pin to ~> 4.0 and run bundle update ruby_raider in {{project}}. Tests recorded with Raider are rewritten for 4.0 when the project reloads; specs edited by hand are left alone. Page objects and helpers written for 3.x may need changes of their own.",
     "updating": "Updating ruby_raider…",
     "done": "ruby_raider is on 4.0. The project reloaded.",
-    "failed": "Raider couldn't update ruby_raider."
+    "failed": "Raider couldn't update ruby_raider.",
+    "failedRepinned": "Raider couldn't finish the update. The Gemfile already pins ruby_raider ~> 4.0: run bundle update ruby_raider in the project to finish."
   }
 }

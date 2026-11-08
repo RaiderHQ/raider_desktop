@@ -10,6 +10,7 @@ import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
 import { showErrorToast } from '@foundation/errorToast'
 import { installMissingGems } from '@foundation/installGems'
 import useProjectStore from '@foundation/Stores/projectStore'
+import useVersionStore, { supportsRuntime } from '@foundation/Stores/versionStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { withScheme } from '@shared/recordUrl'
@@ -24,6 +25,8 @@ const QuickRecordDialog: React.FC<QuickRecordDialogProps> = ({ onClose }) => {
   const navigate = useNavigate()
   const { rubyCommand } = useRubyStore()
   const setProjectPath = useProjectStore((s) => s.setProjectPath)
+  // raider new on an older gem writes a 3.x project the desktop can neither record into nor run
+  const gemSupported = useVersionStore((s) => supportsRuntime(s.version))
   const [url, setUrl] = useState('')
   const [name, setName] = useState('')
   const [creating, setCreating] = useState(false)
@@ -58,7 +61,7 @@ const QuickRecordDialog: React.FC<QuickRecordDialogProps> = ({ onClose }) => {
     }
   }
 
-  const canStart = url.trim() !== '' && name.trim() !== '' && !creating
+  const canStart = url.trim() !== '' && name.trim() !== '' && !creating && gemSupported
 
   // Main only accepts http(s), so a bare address like example.com gets https://
   const normalizedUrl = withScheme(url)
@@ -113,6 +116,11 @@ const QuickRecordDialog: React.FC<QuickRecordDialogProps> = ({ onClose }) => {
           onKeyDown={(e) => e.key === 'Enter' && void start()}
           disabled={creating}
         />
+        {!gemSupported && (
+          <p role="alert" className="text-xs text-neutral-md">
+            {t('newProject.gemNeedsUpdate')}
+          </p>
+        )}
         <div className="flex justify-end gap-2">
           <Button type="secondary" onClick={onClose} disabled={creating}>
             {t('quickRecord.cancel')}
