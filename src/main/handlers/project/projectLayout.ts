@@ -4,16 +4,14 @@ import yaml from 'js-yaml'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import { detectMobilePlatform } from '../mobile/capabilitiesFile'
 import { rubyRaiderPin, rubyRaiderVersion, supportsRuntime } from '../logins/rubyRaiderVersion'
+import { DEFAULT_TEST_ID_ATTRIBUTE, testIdAttributeFrom } from '../../../shared/testIdAttribute'
 
 const DEFAULT_PATHS = {
   specPath: 'spec',
   featurePath: 'features',
   helperPath: 'helpers',
-  testIdAttribute: 'data-testid'
+  testIdAttribute: DEFAULT_TEST_ID_ATTRIBUTE
 }
-
-// An attribute name as the recorder and the runtime accept it
-const ATTRIBUTE_NAME = /^[A-Za-z_][\w-]*$/
 
 // Project files are read as text to look for a few lines; anything larger is not one of ours
 const FILE_LIMIT = 1024 * 1024
@@ -52,10 +50,7 @@ async function readPaths(projectPath: string): Promise<typeof DEFAULT_PATHS> {
     specPath: safeRelativePath(values.spec_path, DEFAULT_PATHS.specPath),
     featurePath: safeRelativePath(values.feature_path, DEFAULT_PATHS.featurePath),
     helperPath: safeRelativePath(values.helper_path, DEFAULT_PATHS.helperPath),
-    testIdAttribute:
-      typeof values.test_id_attribute === 'string' && ATTRIBUTE_NAME.test(values.test_id_attribute)
-        ? values.test_id_attribute
-        : DEFAULT_PATHS.testIdAttribute
+    testIdAttribute: testIdAttributeFrom(values.test_id_attribute)
   }
 }
 

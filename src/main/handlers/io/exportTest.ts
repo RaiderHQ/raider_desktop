@@ -32,7 +32,7 @@ export default async ({
     return { success: false, error: 'Export cancelled by user.' }
   }
 
-  const migrated = migrateLegacySteps(steps)
+  const migrated = migrateLegacySteps(steps, appState.recorderSettings.testIdAttribute)
   const scriptContent =
     writeExportHeader({ testName, steps: migrated }) +
     generateRspecFile({ name: testName, steps: migrated }, appState.recorderSettings)

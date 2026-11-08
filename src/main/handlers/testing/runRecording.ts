@@ -48,7 +48,7 @@ const runRecording = async (
     const executionEnv = { ...process.env, PATH: newPath }
 
     const { explicitWait, testIdAttribute, rubyCommand, browser, headless } = appState
-    const test = migrateLegacyTest(appState.savedTest)
+    const test = migrateLegacyTest(appState.savedTest, testIdAttribute)
 
     const testCode = generateRspecFile(test, {
       browser: browser ?? 'chrome',

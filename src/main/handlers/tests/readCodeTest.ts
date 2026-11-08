@@ -28,7 +28,11 @@ export async function assertSpecFile(projectPath: string, fileRel: string): Prom
  * Best-effort, read-only view of a hand-written spec: each `it` block becomes
  * an example whose lines are shown as friendly steps (unknown lines as custom).
  */
-export async function readCodeTest(projectPath: string, fileRel: string): Promise<CodeTestView> {
+export async function readCodeTest(
+  projectPath: string,
+  fileRel: string,
+  testIdAttribute?: string
+): Promise<CodeTestView> {
   const target = await assertSpecFile(projectPath, fileRel)
   const lines = (await fs.readFile(target, 'utf-8')).split(/\r?\n/)
 
@@ -48,7 +52,10 @@ export async function readCodeTest(projectPath: string, fileRel: string): Promis
     }
     examples.push({
       name: m[3],
-      steps: migrateLegacySteps(body.filter(isCode).map((l) => l.trim()))
+      steps: migrateLegacySteps(
+        body.filter(isCode).map((l) => l.trim()),
+        testIdAttribute
+      )
     })
     i = j
   }

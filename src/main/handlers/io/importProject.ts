@@ -4,6 +4,7 @@ import { lstat, readdir, readFile } from 'fs/promises'
 import * as path from 'path'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
+import { appState } from '../appState'
 import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
 import {
   confirmCustomCode,
@@ -111,7 +112,7 @@ export default async function importProject(
       try {
         const content = await readSmallRegularFile(path.join(root, name))
         // Exported files carry their steps as JSON; older files hold Ruby lines
-        const header = readExportHeader(content)
+        const header = readExportHeader(content, appState.recorderSettings.testIdAttribute)
         if (header.refusedSecret !== undefined) {
           return { success: false, error: secretRefused(header.refusedSecret) }
         }

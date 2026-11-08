@@ -49,7 +49,7 @@ export async function listedFiles(
 /** 'open-code-test': the read-only view of a listed spec file. */
 export async function openCodeTestHandler(file: string): Promise<CodeTestView> {
   const target = await listedFile(file)
-  return readCodeTest(target.projectPath, target.file)
+  return readCodeTest(target.projectPath, target.file, target.layout.testIdAttribute)
 }
 
 type RecordOverResult =

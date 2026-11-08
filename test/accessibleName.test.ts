@@ -229,6 +229,18 @@ describe('labelText', () => {
   })
 })
 
+describe('labels skip hidden markup like the runtime does', () => {
+  it('a required-field asterisk hidden from assistive tech is not part of the name', () => {
+    document.body.innerHTML =
+      '<label for="e">Email <span aria-hidden="true">*</span></label><input id="e">' +
+      '<label>Phone <span hidden>(optional)</span><input id="p"></label>'
+    expect(accessibleName(document.getElementById('e')!)).toBe('Email')
+    expect(labelText(document.getElementById('e')!)).toBe('Email')
+    expect(accessibleName(document.getElementById('p')!)).toBe('Phone')
+    expect(labelText(document.getElementById('p')!)).toBe('Phone')
+  })
+})
+
 describe('looksGenerated', () => {
   it.each([
     ':r1:',

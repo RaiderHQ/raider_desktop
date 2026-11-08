@@ -49,7 +49,7 @@ export default async (): Promise<{ success: boolean; path?: string; error?: stri
       for (let n = 2; used.has(name); n++) name = `${slug}_${n}_spec.rb`
       used.add(name)
       try {
-        const migrated = migrateLegacyTest(test)
+        const migrated = migrateLegacyTest(test, appState.recorderSettings.testIdAttribute)
         const tags = normalizeTags(test.tags)
         const scriptContent =
           writeExportHeader({ testName: test.name, steps: migrated.steps }) +

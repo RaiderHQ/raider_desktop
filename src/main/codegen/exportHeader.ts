@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { isStep } from '../../shared/types/step'
 import type { Step } from '../../shared/types/step'
 import { migrateLegacySteps } from './legacy'
+import { DEFAULT_TEST_ID_ATTRIBUTE } from '../../shared/testIdAttribute'
 import { refusedSecretName, withSecretNames } from '../../shared/secretSteps'
 
 /**
@@ -37,18 +38,22 @@ function parseStepsLine(json: string): { steps?: Step[]; refusedSecret?: string 
 }
 
 // The format written by the original exporter: steps between `begin` and the success `puts`
-function legacySteps(text: string): Step[] | undefined {
+function legacySteps(text: string, testIdAttribute: string): Step[] | undefined {
   const match = text.match(/begin\n([\s\S]*?)\n {2}puts "Test '.*' passed successfully!"/)
   if (!match) return undefined
   return migrateLegacySteps(
     match[1]
       .trim()
       .split('\n')
-      .map((line) => line.trim())
+      .map((line) => line.trim()),
+    testIdAttribute
   )
 }
 
-export function readExportHeader(text: string): {
+export function readExportHeader(
+  text: string,
+  testIdAttribute = DEFAULT_TEST_ID_ATTRIBUTE
+): {
   testName?: string
   steps?: Step[]
   /** A secret step in the JSON line reads this variable, which isn't a RAIDER_SECRET_ one */
@@ -60,7 +65,7 @@ export function readExportHeader(text: string): {
 
   const stepsJson = value(STEPS)
   const json = stepsJson !== undefined ? parseStepsLine(stepsJson) : {}
-  const steps = json.steps ?? legacySteps(text)
+  const steps = json.steps ?? legacySteps(text, testIdAttribute)
   // Legacy files may have the test comment anywhere, so fall back to a loose match
   const testName = value(TEST) ?? text.match(/# Test: (.*)/)?.[1]
   return json.refusedSecret === undefined

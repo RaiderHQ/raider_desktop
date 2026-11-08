@@ -14,11 +14,12 @@ export const DEFAULT_SELECTOR_PRIORITY: string[] = [
   'css',
   'xpath'
 ]
-export const DEFAULT_TEST_ID_ATTRIBUTE = 'data-testid'
+import { DEFAULT_TEST_ID_ATTRIBUTE, testIdAttributeFrom } from '../../../shared/testIdAttribute'
+
+export { DEFAULT_TEST_ID_ATTRIBUTE }
 
 // The default before stable locators; a project still carrying it gets the new order.
 const OLD_DEFAULT_PRIORITY = ['id', 'data-testid', 'css', 'xpath']
-const ATTRIBUTE_NAME = /^[A-Za-z_][\w.:-]*$/
 
 /**
  * Maps a configured selector_priority to the recorder's names. data-testid becomes
@@ -83,8 +84,7 @@ export async function readRecorderSettings(projectPath: string): Promise<Recorde
       : undefined
   )
   const testId = config['test_id_attribute']
-  const testIdAttribute =
-    typeof testId === 'string' && ATTRIBUTE_NAME.test(testId) ? testId : DEFAULT_TEST_ID_ATTRIBUTE
+  const testIdAttribute = testIdAttributeFrom(testId)
 
   return {
     baseUrl:

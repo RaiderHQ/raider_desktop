@@ -83,7 +83,7 @@ const isFormControl = (el: Element): boolean => ['INPUT', 'TEXTAREA', 'SELECT'].
 function ownLabelText(label: Element): string {
   const copy = label.cloneNode(true) as Element
   copy.querySelectorAll('input, textarea, select, button').forEach((c) => c.remove())
-  return normalizedText(copy)
+  return visibleText(copy)
 }
 
 function forLabel(el: Element): string {
@@ -91,7 +91,7 @@ function forLabel(el: Element): string {
   const label = Array.from(el.ownerDocument.querySelectorAll('label')).find(
     (l) => l.getAttribute('for') === el.id
   )
-  return label ? normalizedText(label) : ''
+  return label ? visibleText(label) : ''
 }
 
 function wrappingLabel(el: Element): string {

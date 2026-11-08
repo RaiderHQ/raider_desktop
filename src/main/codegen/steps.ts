@@ -34,8 +34,9 @@ const keyArg = (key: string): string =>
 // also shows 'Login or register'.
 const exact = (value: string): string => `[${rubyString(value)}, { exact: true }]`
 
-/** The attribute the runtime reads for test_id: unless config.yml names another. */
-export const DEFAULT_TEST_ID_ATTRIBUTE = 'data-testid'
+import { DEFAULT_TEST_ID_ATTRIBUTE } from '../../shared/testIdAttribute'
+
+export { DEFAULT_TEST_ID_ATTRIBUTE }
 
 /**
  * The locator argument of find_element, from the semantic locator when the recorder captured

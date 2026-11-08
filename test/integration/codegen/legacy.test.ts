@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { renderStep } from '../../../src/main/codegen/steps'
-import { migrateLegacyStep, migrateLegacyTest } from '../../../src/main/codegen/legacy'
+import {
+  migrateLegacyStep,
+  migrateLegacySteps,
+  migrateLegacyTest
+} from '../../../src/main/codegen/legacy'
 import { isStep } from '../../../src/shared/types/step'
 import type { ElementTarget, Locator, Step } from '../../../src/shared/types/step'
 import { labelXPath, roleXPath, testIdCss, textXPath } from '../../../src/shared/locatorSelectors'
@@ -525,8 +529,43 @@ describe('migrateLegacyStep: 4.0 shapes', () => {
 
   it('does not collapse clear + send_keys on different semantic locators', () => {
     const code =
-      "driver.find_element(label: 'a').clear\ndriver.find_element(label: 'b').send_keys('x')"
+      "driver.find_element(label: ['a', { exact: true }]).clear\ndriver.find_element(label: ['b', { exact: true }]).send_keys('x')"
     expect(strip(migrateLegacyStep(code))).toEqual({ kind: 'custom', code })
+  })
+
+  // The runtime resolves test_id: through the project's attribute, so the parsed locator and
+  // its CSS fallback carry that attribute, not the default
+  it('reads a test_id line with the project attribute it was given', () => {
+    const step = migrateLegacyStep("driver.find_element(test_id: 'save').click", 'data-cy')
+    expect(strip(step)).toEqual({
+      kind: 'click',
+      element: {
+        strategy: 'css',
+        value: '[data-cy="save"]',
+        locator: { by: 'testId', attribute: 'data-cy', value: 'save' }
+      }
+    })
+    const steps = migrateLegacySteps(["driver.find_element(test_id: 'q').clear"], 'data-qa')
+    expect(steps[0]).toMatchObject({
+      kind: 'custom',
+      code: "driver.find_element(test_id: 'q').clear"
+    })
+    const typed = migrateLegacySteps(
+      [
+        "driver.find_element(test_id: 'q').clear",
+        "driver.find_element(test_id: 'q').send_keys('x')"
+      ],
+      'data-qa'
+    )
+    expect(typed).toHaveLength(1)
+    expect(typed[0]).toMatchObject({
+      kind: 'type',
+      element: { value: '[data-qa="q"]', locator: { attribute: 'data-qa' } }
+    })
+    // Without an attribute the default applies again
+    expect(migrateLegacyStep("driver.find_element(test_id: 'save').click")).toMatchObject({
+      element: { locator: { attribute: 'data-testid' } }
+    })
   })
 })
 
