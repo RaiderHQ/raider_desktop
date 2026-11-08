@@ -1,4 +1,6 @@
-# raider-trace v1 fixture
+# raider-trace v1 fixture (ruby_raider 3.13)
+
+Kept for the parser's tolerance of the 3.x vocabulary (`group` steps, `eventually`, read steps). The shape the 4.0 runtime writes is in `../trace-v1-runtime`.
 
 `trace.zip` is a real trace, from a failing RSpec example in a generated Selenium project on headless Chrome. `unzipped/` holds the same entries, extracted.
 

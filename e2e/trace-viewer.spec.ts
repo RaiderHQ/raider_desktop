@@ -219,13 +219,12 @@ test.describe('Trace viewer on the real fixture', () => {
       overlay.getByRole('option', { name: /Typed "plain-trace-name" into the "Name" text box/ })
     ).toBeVisible()
 
-    // The failed eventually group is marked as failed and never says it passed.
-    const passed = overlay.getByRole('option', { name: /Waited until the check passed/ })
-    const failed = overlay.getByRole('option', { name: /Waited for a check that didn't pass/ })
-    await expect(passed).toHaveCount(1)
+    // A 3.13 trace's eventually groups and read steps are plain steps now (the 4.0 runtime
+    // writes neither); the failed group still reads as failed and never says it passed.
+    const failed = overlay.locator('[role="option"][data-status="failed"]')
     await expect(failed).toHaveCount(1)
-    await expect(passed).toHaveAttribute('data-status', 'passed')
-    await expect(failed).toHaveAttribute('data-status', 'failed')
+    await expect(failed).toContainText('Ran a step')
+    await expect(overlay.getByRole('option', { name: /Waited (until|for) / })).toHaveCount(0)
 
     // Plain words only until Technical details is opened.
     const text = await overlay.innerText()

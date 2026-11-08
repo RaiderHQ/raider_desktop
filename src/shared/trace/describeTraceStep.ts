@@ -10,26 +10,12 @@ export interface TraceText {
 const S = 'traceViewer.step'
 const E = 'traceViewer.element'
 
-// Steps that name an element; the key is the one the action maps to.
+// The element actions the 4.0 runtime reports (send_keys is worded by its value below).
+// Reads such as text or displayed? are no longer steps, and nothing groups steps.
 const ELEMENT_ACTIONS: Record<string, string> = {
   click: 'click',
   clear: 'clear',
-  submit: 'submit',
-  hover: 'hover',
-  drag_and_drop: 'dragAndDrop',
-  scroll_into_view: 'scrollIntoView',
-  text: 'readText',
-  attribute: 'readAttribute',
-  'displayed?': 'checkVisible',
-  'enabled?': 'checkEnabled',
-  'selected?': 'checkSelected',
-  find_element: 'findElement'
-}
-
-// Steps that never name an element.
-const PLAIN_ACTIONS: Record<string, string> = {
-  find_elements: 'findElements',
-  eventually: 'eventually'
+  submit: 'submit'
 }
 
 function elementText(step: RaiderTraceStep): TraceText {
@@ -71,13 +57,6 @@ export function describeTraceStep(step: RaiderTraceStep): TraceText & { element?
   }
   if (action === 'navigate') return { key: `${S}.navigate`, values: { url: plainUrl(step.url) } }
 
-  // A failed wait must not read as one that passed.
-  if (action === 'eventually' && step.status === 'failed') {
-    return { key: `${S}.eventuallyFailed`, values: {} }
-  }
-  const plain = Object.hasOwn(PLAIN_ACTIONS, action) ? PLAIN_ACTIONS[action] : undefined
-  if (plain) return { key: `${S}.${plain}`, values: {} }
-
   const element = elementText(step)
   const text = step.secret ? null : step.value
   if (action === 'send_keys') {
@@ -86,16 +65,13 @@ export function describeTraceStep(step: RaiderTraceStep): TraceText & { element?
       ? { key: `${S}.typeText`, values: { text }, element }
       : { key: `${S}.typeEmpty`, values: {}, element }
   }
-  if (action === 'select_by') {
-    return text
-      ? { key: `${S}.selectOption`, values: { text }, element }
-      : { key: `${S}.selectSecret`, values: {}, element }
-  }
   const named = Object.hasOwn(ELEMENT_ACTIONS, action) ? ELEMENT_ACTIONS[action] : undefined
   if (named) return { key: `${S}.${named}`, values: {}, element }
   return { key: `${S}.other`, values: {} }
 }
 
+// Selenium's own strategies plus the runtime's keys (role, label, text, test_id,
+// placeholder, alt, title); the selector itself is never shown here.
 const STRATEGIES = new Set([
   'id',
   'css',
@@ -104,7 +80,14 @@ const STRATEGIES = new Set([
   'link_text',
   'partial_link_text',
   'class_name',
-  'tag_name'
+  'tag_name',
+  'role',
+  'label',
+  'text',
+  'test_id',
+  'placeholder',
+  'alt',
+  'title'
 ])
 
 /** How the element was found, in plain words; never carries the selector. */
