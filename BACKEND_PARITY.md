@@ -62,9 +62,7 @@ raider new project_name -p framework:rspec automation:selenium --accessibility
 |---------|-----|---------------|
 | `raider g page NAME` | Generate page object | Supported via `scaffoldGenerate.ts` |
 | `raider g spec NAME` | Generate spec file | Supported |
-| `raider g feature NAME` | Generate feature file | Supported |
-| `raider g steps NAME` | Generate step definitions | Supported |
-| `raider g scaffold NAME...` | Generate page + spec (or feature + steps) for one or more names | Handler accepts it, but the Scaffold panel has no `scaffold` option (no UI) |
+| `raider g scaffold NAME...` | Generate page + spec for one or more names | Handler accepts it, but the Scaffold panel has no `scaffold` option (no UI) |
 
 ### Other Scaffolding Commands
 
@@ -72,9 +70,9 @@ raider new project_name -p framework:rspec automation:selenium --accessibility
 |---------|-----------|---------------|----------|-------|
 | `raider g component NAME` | Generates a component class | Supported (Scaffold panel) | — | Inherits from `Component` base class |
 | `raider g helper NAME` | Generates a helper file | Supported (Scaffold panel) | — | |
-| `--path` / `-p` on page, spec, feature, steps, helper, component | Custom output directory, e.g. `raider g page Foo -p custom/pages` | **MISSING** | LOW | Desktop has its own path config |
+| `--path` / `-p` on page, spec, helper, component | Custom output directory, e.g. `raider g page Foo -p custom/pages` | **MISSING** | LOW | Desktop has its own path config |
 
-`raider g scaffold` takes only names. It has no flags; it picks spec or feature + steps from the project layout, plus a page object.
+`raider g scaffold` takes only names. It has no flags; it generates a spec and a page object. Ruby Raider 4.0 has no `raider g feature` or `raider g steps` (`Could not find command`), so the desktop offers neither.
 
 ---
 
@@ -88,7 +86,6 @@ raider new project_name -p framework:rspec automation:selenium --accessibility
 | `raider u url URL` | Set project URL | Supported | — | |
 | `raider u headless on/off` | Toggle headless mode | Supported (Overview toolbar) | — | |
 | `raider u path PATH` | Set default page path | Supported (Overview toolbar) | — | |
-| `raider u path PATH -f` | Set default feature path | Supported | — | |
 | `raider u path PATH -s` | Set default spec path | Supported | — | |
 | `raider u path PATH -h` | Set default helper path | Supported | — | |
 | `raider u timeout SECONDS` | Set test timeout | Supported (Overview toolbar) | — | Sets `timeout` in config.yml |

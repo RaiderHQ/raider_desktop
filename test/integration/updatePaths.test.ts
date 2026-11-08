@@ -32,8 +32,21 @@ describe('updatePaths handler', () => {
     ['spaces', 'my pages', "'my pages'"],
     ['single quote', "it's", "'it'\\''s'"]
   ])('quotes a path with %s', async (_n, input, quoted) => {
-    await handler({} as IpcMainInvokeEvent, '/project', input, 'feature')
+    await handler({} as IpcMainInvokeEvent, '/project', input, 'helper')
     const call = mockExec.mock.calls[0][0] as string
-    expect(call).toContain(`raider u path ${quoted} -f`)
+    expect(call).toContain(`raider u path ${quoted} -h`)
+  })
+
+  it('sets the page path with no flag', async () => {
+    await handler({} as IpcMainInvokeEvent, '/project', 'pages')
+    const call = mockExec.mock.calls[0][0] as string
+    expect(call).toMatch(/raider u path pages$/)
+  })
+
+  // The gem's `u path` has no -f; an unknown type must not fall through and rewrite page_path
+  it.each(['feature', 'steps', 'page'])('refuses the %s path type without running anything', async (type) => {
+    const result = await handler({} as IpcMainInvokeEvent, '/project', 'features', type)
+    expect(result).toEqual({ success: false, output: '', error: `Unsupported path type: ${type}` })
+    expect(mockExec).not.toHaveBeenCalled()
   })
 })

@@ -1,10 +1,8 @@
 // Mirrors `raider generate <type> <name> [--path]`; the gem accepts nothing more.
 export const SCAFFOLD_GENERATE_TYPES = [
   'page',
-  'feature',
   'spec',
   'helper',
-  'steps',
   'component',
   'scaffold'
 ] as const

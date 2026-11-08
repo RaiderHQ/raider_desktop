@@ -75,8 +75,6 @@ describe('ScaffoldPanel', () => {
       expect(optionTexts).toEqual([
         'scaffold.types.page',
         'scaffold.types.spec',
-        'scaffold.types.feature',
-        'scaffold.types.steps',
         'scaffold.types.helper',
         'scaffold.types.component'
       ])

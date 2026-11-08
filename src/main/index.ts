@@ -465,7 +465,7 @@ app.whenReady().then(() => {
   ipcMain.handle(
     'update-paths',
     (event, projectPath: string, pathValue: string, pathType?: string) =>
-      updatePaths(event, projectPath, pathValue, pathType as 'feature' | 'spec' | 'helper' | undefined)
+      updatePaths(event, projectPath, pathValue, pathType)
   )
 
   // --- Longship Integration Handlers ---
