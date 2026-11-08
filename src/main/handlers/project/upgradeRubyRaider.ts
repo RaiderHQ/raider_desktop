@@ -9,8 +9,10 @@ import type { UpgradeResult } from '../../../shared/types/upgradeResult'
 
 /** The active `gem 'ruby_raider', '<requirement>'` line of a Gemfile, requirement captured. */
 export const PIN_LINE = /^([ \t]*gem[ \t]+(['"])ruby_raider\2[ \t]*,[ \t]*)(['"])[^'"\n]*\3/m
-/** A `gem 'ruby_raider'` line with no requirement at all. */
-const BARE_LINE = /^([ \t]*gem[ \t]+(['"])ruby_raider\2)(?=[ \t]*(?:,|#|$))/m
+/** A `gem 'ruby_raider'` line with no requirement at all (`, option:` or a comment may follow). */
+const BARE_LINE = /^([ \t]*gem[ \t]+(['"])ruby_raider\2)(?=[ \t]*(?:,[ \t]*\w+:|#|$))/m
+/** A second requirement string after the pin (`'>= 3', '< 4'`): not a shape one repin can fix. */
+const SECOND_REQUIREMENT = /^[ \t]*,[ \t]*['"]/
 
 export const RUNTIME_PIN = '~> 4.0'
 
@@ -22,6 +24,10 @@ export function repinGemfile(text: string): string | null {
   const active = (line: string): boolean => !line.trimStart().startsWith('#')
   const pinned = lines.findIndex((line) => active(line) && PIN_LINE.test(line))
   if (pinned !== -1) {
+    const rest = lines[pinned].replace(PIN_LINE, '')
+    const next = lines[pinned + 1] ?? ''
+    const continued = /^[ \t]*,[ \t]*$/.test(rest) && /^[ \t]*['"]/.test(next)
+    if (SECOND_REQUIREMENT.test(rest) || continued) return null
     lines[pinned] = lines[pinned].replace(PIN_LINE, (_m, head: string, _q, quote: string) => {
       return `${head}${quote}${RUNTIME_PIN}${quote}`
     })

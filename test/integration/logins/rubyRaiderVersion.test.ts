@@ -62,6 +62,17 @@ describe('rubyRaiderPin', () => {
   ])('has no pin in %j', (gemfile) => {
     expect(rubyRaiderPin(gemfile)).toBeNull()
   })
+
+  // The text is a project's: padding must stay cheap and a version must stay short
+  it('stays linear on a padded Gemfile and bounds the version it reads', () => {
+    const padded = `${'\n'.repeat(256 * 1024)}${' '.repeat(50_000)}gem 'ruby_raider', '~> 3.15'\n`
+    const started = Date.now()
+    expect(rubyRaiderPin(padded)).toBe('3.15')
+    expect(Date.now() - started).toBeLessThan(500)
+    expect(rubyRaiderPin(`gem 'ruby_raider', '~> ${'9'.repeat(5000)}'\n`)).toBeNull()
+    expect(rubyRaiderVersion(`    ruby_raider (${'1.'.repeat(20)}1)\n`)).toBeNull()
+    expect(rubyRaiderVersion('    ruby_raider (4.0.0.pre1)\n')).toBeNull()
+  })
 })
 
 describe('supportsRuntime', () => {

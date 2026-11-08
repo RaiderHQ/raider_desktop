@@ -95,6 +95,10 @@ describe('repinGemfile', () => {
     ["  # gem 'ruby_raider', '~> 3.15'\ngem 'rspec'\n"],
     ["gem 'rspec'\ngem 'selenium-webdriver'\n"],
     ["gem 'ruby_raider_extra', '~> 3.15'\n"],
+    // Two requirement strings: one repin would leave an unsatisfiable pair
+    ["gem 'ruby_raider', '>= 3', '< 4'\n"],
+    ["gem 'ruby_raider',\n  '~> 3.0'\n"],
+    ["gem 'ruby_raider', '~> 3.15',\n  '< 4'\n"],
     ['']
   ])('has nothing to repin in %j', (text) => {
     expect(repinGemfile(text)).toBeNull()

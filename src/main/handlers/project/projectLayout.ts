@@ -7,9 +7,13 @@ import { rubyRaiderPin, rubyRaiderVersion, supportsRuntime } from '../logins/rub
 
 const DEFAULT_PATHS = { specPath: 'spec', featurePath: 'features', helperPath: 'helpers' }
 
+// Project files are read as text to look for a few lines; anything larger is not one of ours
+const FILE_LIMIT = 1024 * 1024
+
 async function readOptional(path: string): Promise<string | null> {
   try {
-    return await readFile(path, 'utf-8')
+    const text = await readFile(path, 'utf-8')
+    return text.length > FILE_LIMIT ? text.slice(0, FILE_LIMIT) : text
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
     throw error
