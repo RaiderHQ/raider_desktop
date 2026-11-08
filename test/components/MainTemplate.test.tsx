@@ -7,6 +7,7 @@ import { onMenuCommand } from '@foundation/menuCommands'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useTitleStore from '@foundation/Stores/titleStore'
 import useEditorStore from '@foundation/Stores/editorStore'
+import useOverlayStore from '@foundation/Stores/overlayStore'
 
 vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string, opts?: object) => string } => ({
@@ -34,19 +35,21 @@ vi.mock('@foundation/Stores/projectStore', () => {
   return { default: useProjectStore }
 })
 
+const rubyState = vi.hoisted(() => ({
+  rubyCommand: null,
+  rubyVersion: null,
+  versionWarning: null,
+  setRubyCommand: vi.fn(),
+  setRubyVersion: vi.fn(),
+  setVersionWarning: vi.fn(),
+  applyCheck: vi.fn(),
+  recheck: vi.fn(),
+  installGems: vi.fn()
+}))
 vi.mock('@foundation/Stores/rubyStore', () => {
-  const state = {
-    rubyCommand: null,
-    rubyVersion: null,
-    versionWarning: null,
-    setRubyCommand: vi.fn(),
-    setRubyVersion: vi.fn(),
-    setVersionWarning: vi.fn(),
-    applyCheck: vi.fn()
-  }
-  const useRubyStore = (selector?: (s: typeof state) => unknown) =>
-    selector ? selector(state) : state
-  useRubyStore.getState = () => state
+  const useRubyStore = (selector?: (s: typeof rubyState) => unknown) =>
+    selector ? selector(rubyState) : rubyState
+  useRubyStore.getState = () => rubyState
   return { default: useRubyStore }
 })
 
@@ -367,6 +370,79 @@ describe('MainTemplate tests updates', () => {
       act(() => menuListener()('new-project'))
       expect(screen.getByTestId('where')).toHaveTextContent('/overview')
       root.remove()
+    })
+
+    describe('the home page modals', () => {
+      afterEach(() => useOverlayStore.setState({ pageModalOpen: false }))
+
+      it('while one is open, the menu bar neither switches projects nor opens help over it', () => {
+        useOverlayStore.setState({ pageModalOpen: true })
+        renderAt('/start-project')
+        act(() => menuListener()('new-project'))
+        act(() => menuListener()('how-it-works'))
+        expect(screen.getByTestId('where')).toHaveTextContent('/start-project')
+        expect(screen.queryByText('concepts.title')).not.toBeInTheDocument()
+      })
+
+      it('How Ruby Raider works on the page opens the one concepts modal', () => {
+        const root = document.createElement('div')
+        root.id = 'root'
+        document.body.appendChild(root)
+        renderAt('/start-project')
+        act(() => useOverlayStore.getState().requestConcepts())
+        expect(screen.getAllByText('concepts.title')).toHaveLength(1)
+        root.remove()
+      })
+    })
+
+    describe('the startup install modals keep the setup line current', () => {
+      // The modals portal into #root, as in the app
+      beforeEach(() => {
+        const root = document.createElement('div')
+        root.id = 'root'
+        document.body.appendChild(root)
+      })
+      afterEach(() => document.getElementById('root')?.remove())
+
+      it('Install installs through the store, which checks again', async () => {
+        api().isRubyInstalled.mockResolvedValueOnce({
+          success: false,
+          rubyCommand: 'rbenv-prefix &&',
+          rubyVersion: '3.2.8',
+          missingGems: ['rspec']
+        })
+        renderAt('/overview')
+        const button = await screen.findByText('recorder.rubyGemsInstallModal.yes')
+        await act(async () => {
+          fireEvent.click(button)
+        })
+        expect(rubyState.installGems).toHaveBeenCalledWith(['rspec'])
+      })
+
+      it('closing the gems help checks again', async () => {
+        api().isRubyInstalled.mockResolvedValueOnce({
+          success: false,
+          rubyCommand: 'rbenv-prefix &&',
+          rubyVersion: '3.2.8',
+          missingGems: ['rspec']
+        })
+        renderAt('/overview')
+        const button = await screen.findByText('recorder.rubyGemsInstallModal.no')
+        await act(async () => {
+          fireEvent.click(button)
+        })
+        expect(rubyState.recheck).toHaveBeenCalled()
+      })
+
+      it('closing the Ruby help checks again', async () => {
+        api().isRubyInstalled.mockResolvedValueOnce({ success: false })
+        renderAt('/overview')
+        const button = await screen.findByText('recorder.rubyInstallModal.continue')
+        await act(async () => {
+          fireEvent.click(button)
+        })
+        expect(rubyState.recheck).toHaveBeenCalled()
+      })
     })
 
     describe('help overlays swap', () => {

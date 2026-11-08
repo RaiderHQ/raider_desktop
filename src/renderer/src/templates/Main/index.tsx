@@ -15,7 +15,7 @@ import useVersionStore from '@foundation/Stores/versionStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
-import { installMissingGems } from '@foundation/installGems'
+import useOverlayStore from '@foundation/Stores/overlayStore'
 import { subscribeRunEvents } from '@foundation/Stores/runStore'
 import useTitleStore from '@foundation/Stores/titleStore'
 import { windowTitle } from '@shared/windowTitle'
@@ -97,6 +97,8 @@ const MainTemplate: React.FC = (): JSX.Element => {
   // The install modals gate the app; the help overlays swap with each other instead
   const installModalOpen = useRef(false)
   installModalOpen.current = isRubyInstallModalOpen || isGemsInstallModalOpen
+  // A page's own modal (the home page's install help, Quick record) holds the menu off too
+  const pageModalOpen = (): boolean => useOverlayStore.getState().pageModalOpen
   const pickingFolder = useRef(false)
   // The project stays loaded while the start screen shows, so the page matters as much as the store
   const location = useLocation()
@@ -124,7 +126,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
     const offMenu = window.api.onMenuCommand((command) => {
       if (!isMenuCommand(command)) return
       if (command === 'how-it-works' || command === 'shortcuts' || command === 'recording-guide') {
-        if (installModalOpen.current) return
+        if (installModalOpen.current || pageModalOpen()) return
         // A swap from the menu is not the concepts modal's shortcuts button
         sheetFromConcepts.current = false
         setIsConceptsModalOpen(command === 'how-it-works')
@@ -138,7 +140,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
         void window.api.openDocs('docs.home')
         return
       }
-      if (modalOpen.current) return
+      if (modalOpen.current || pageModalOpen()) return
       if (command === 'new-test') {
         // Only a project has a Tests tab; with none open nothing listens. The project stays
         // loaded while the start screen shows, so the page matters as much as the store
@@ -168,6 +170,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
     const offRecent = window.api.onOpenRecentProject((projectPath) => {
       if (typeof projectPath !== 'string' || !projectPath) return
       if (installModalOpen.current || modalOpen.current || pickingFolder.current) return
+      if (pageModalOpen()) return
       if (anyEditorDirty()) return
       if (recorderBusy()) {
         toast.error(t('quickRecord.stopFirst'))
@@ -182,11 +185,24 @@ const MainTemplate: React.FC = (): JSX.Element => {
     }
   }, [])
 
-  const { rubyCommand } = useRubyStore()
+  // The home page's How Ruby Raider works link: the same modal as the menu's, never a second one
+  const conceptsRequest = useOverlayStore((state) => state.conceptsRequest)
+  // Only a request made while this template is up counts
+  const conceptsSeen = useRef(conceptsRequest)
+  useEffect(() => {
+    if (conceptsRequest === conceptsSeen.current) return
+    conceptsSeen.current = conceptsRequest
+    if (installModalOpen.current) return
+    sheetFromConcepts.current = false
+    setIsShortcutsOpen(false)
+    setIsGuideModalOpen(false)
+    setIsConceptsModalOpen(true)
+  }, [conceptsRequest])
 
-  const handleInstallGems = async (): Promise<void> => {
+  // Both end in a fresh check, so the home page's setup line follows what happened
+  const handleInstallGems = (): void => {
     setIsGemsInstallModalOpen(false)
-    await installMissingGems(rubyCommand!, missingGems!)
+    void useRubyStore.getState().installGems(missingGems ?? [])
   }
 
   const projectPath = useProjectStore((state) => state.projectPath)
@@ -262,14 +278,20 @@ const MainTemplate: React.FC = (): JSX.Element => {
 
       {isRubyInstallModalOpen && (
         <RubyInstallModal
-          onClose={() => setIsRubyInstallModalOpen(false)}
+          onClose={() => {
+            setIsRubyInstallModalOpen(false)
+            void useRubyStore.getState().recheck()
+          }}
           onCloseApp={() => window.api.closeApp()}
         />
       )}
       {isGemsInstallModalOpen && missingGems && (
         <RubyGemsInstallModal
           onInstall={handleInstallGems}
-          onClose={() => setIsGemsInstallModalOpen(false)}
+          onClose={() => {
+            setIsGemsInstallModalOpen(false)
+            void useRubyStore.getState().recheck()
+          }}
           missingGems={missingGems}
         />
       )}

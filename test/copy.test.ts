@@ -79,6 +79,7 @@ describe('copy', () => {
     expect(en.landing.start.newProject).toBe('New project…')
     expect(en.landing.start.openProject).toBe('Open project…')
     expect(en.landing.setup.fix).toBe('Fix…')
+    expect(en.landing.setup.retry).toBe('Check again')
     expect(en.quickRecord.starting).toBe('Creating the project…')
     expect(en.run.installingHint).toBe(
       "The first run installs the project's gems. Later runs start straight away."

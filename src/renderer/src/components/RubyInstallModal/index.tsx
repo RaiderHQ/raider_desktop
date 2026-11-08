@@ -6,7 +6,8 @@ import DocsLink from '@components/DocsLink'
 
 interface RubyInstallModalProps {
   onClose: () => void
-  onCloseApp: () => void
+  /** Startup only: a voluntary Fix… just closes, so it leaves this out */
+  onCloseApp?: () => void
 }
 
 const steps = [
@@ -74,9 +75,11 @@ const RubyInstallModal: React.FC<RubyInstallModalProps> = ({ onClose, onCloseApp
         {/* Actions */}
         <div className="px-6 py-4 border-t border-neutral-bdr flex justify-end items-center gap-3 shrink-0">
           <DocsLink id="docs.install" topic={t('docs.topics.install')} className="mr-auto" />
-          <Button onClick={onCloseApp} type="secondary">
-            {t('recorder.rubyInstallModal.close')}
-          </Button>
+          {onCloseApp && (
+            <Button onClick={onCloseApp} type="secondary">
+              {t('recorder.rubyInstallModal.close')}
+            </Button>
+          )}
           <Button onClick={onClose} type="success">
             {t('recorder.rubyInstallModal.continue')}
           </Button>

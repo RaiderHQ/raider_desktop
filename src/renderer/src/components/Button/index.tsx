@@ -7,6 +7,7 @@ interface ButtonProps {
   disabled?: boolean
   className?: string
   'aria-describedby'?: string
+  'aria-keyshortcuts'?: string
 }
 
 const Button = ({
@@ -15,7 +16,8 @@ const Button = ({
   onClick,
   disabled = false,
   className = '',
-  'aria-describedby': describedBy
+  'aria-describedby': describedBy,
+  'aria-keyshortcuts': keyShortcuts
 }: ButtonProps): JSX.Element => {
   const styles: Record<string, string> = {
     primary: 'bg-ruby text-white hover:shadow-card-hover',
@@ -36,6 +38,7 @@ const Button = ({
       className={`${baseClassName} ${className}`}
       disabled={disabled}
       aria-describedby={describedBy}
+      aria-keyshortcuts={keyShortcuts}
     >
       {children}
     </button>

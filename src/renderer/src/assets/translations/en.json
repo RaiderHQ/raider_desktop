@@ -37,7 +37,9 @@
       "missingGems": "Gems Raider needs are missing: {{gems}}.",
       "noRaider": "Raider can't find Ruby Raider.",
       "tooOld": "Ruby Raider {{version}} is installed; Raider needs 4.0.",
-      "fix": "Fix…"
+      "checkFailed": "Raider couldn't check Ruby.",
+      "fix": "Fix…",
+      "retry": "Check again"
     }
   },
   "quickRecord": {

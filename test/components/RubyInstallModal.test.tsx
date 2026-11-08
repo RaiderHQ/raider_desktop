@@ -36,4 +36,12 @@ describe('RubyInstallModal', () => {
     fireEvent.click(screen.getByText('recorder.rubyInstallModal.close'))
     expect(onCloseApp).toHaveBeenCalledTimes(1)
   })
+
+  it('opened by choice (the home page Fix…), it offers no Close app', () => {
+    const onClose = vi.fn()
+    render(<RubyInstallModal onClose={onClose} />)
+    expect(screen.queryByText('recorder.rubyInstallModal.close')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('recorder.rubyInstallModal.continue'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
 })
