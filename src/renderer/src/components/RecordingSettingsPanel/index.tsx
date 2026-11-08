@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { FaChevronDown, FaChevronRight } from 'react-icons/fa'
@@ -54,16 +54,28 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
   const recording = useRecorderStore((s) => s.isRecording)
   const [collapsed, setCollapsed] = useState(loadCollapsed)
   const [priority, setPriority] = useState<string[] | null>(null)
+  // What config.yml holds as far as we know: a failed save goes back to this, not to the
+  // order on screen when it started (a later save may have succeeded in between)
+  const saved = useRef<string[] | null>(null)
+  // A save that finishes after the project changed must not touch the new project's list
+  const generation = useRef(0)
+  const [announcement, setAnnouncement] = useState('')
+  const listRef = useRef<HTMLOListElement>(null)
 
   useEffect(() => {
     let cancelled = false
+    generation.current += 1
     setPriority(null)
+    saved.current = null
     window.api
       .getRecorderSettings()
       .then((settings) => {
         if (cancelled) return
         const list = settings?.selectorPriority
-        setPriority(Array.isArray(list) && list.length > 0 ? list : null)
+        // A name listed twice (or data-testid next to testId) shows once
+        const clean = Array.isArray(list) && list.length > 0 ? [...new Set(list)] : null
+        saved.current = clean
+        setPriority(clean)
       })
       .catch((error: unknown) => console.error('Loading the locator order failed:', error))
     return (): void => {
@@ -79,23 +91,39 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
   }
 
   const savePriority = async (next: string[]): Promise<void> => {
-    const previous = priority
+    const mine = generation.current
     setPriority(next)
+    let failure: string | null = null
     try {
       const result = await window.api.updateRecordingSettings({ selectorPriority: next })
-      if (result.success) return
-      setPriority(previous)
-      toast.error(`${t('settings.recording.error.recordingUpdateFailed')} ${result.error ?? ''}`)
+      if (result.success) {
+        if (generation.current === mine) saved.current = next
+        return
+      }
+      failure = result.error ?? ''
     } catch (error) {
-      setPriority(previous)
-      toast.error(`${t('settings.recording.error.recordingUpdateFailed')} ${String(error)}`)
+      failure = String(error)
     }
+    if (generation.current !== mine) return
+    setPriority(saved.current)
+    toast.error(`${t('settings.recording.error.recordingUpdateFailed')} ${failure}`)
   }
 
   const move = (index: number, by: -1 | 1): void => {
     if (!priority) return
     const next = [...priority]
+    const kind = next[index]
     ;[next[index], next[index + by]] = [next[index + by], next[index]]
+    const to = index + by
+    setAnnouncement(t('settings.recording.priority.moved', { kind: kindLabel(kind), position: to + 1 }))
+    // Keep focus on the moved kind; at an end its button turns off, so use the other one
+    const atEnd = to === 0 || to === next.length - 1
+    requestAnimationFrame(() => {
+      const item = listRef.current?.querySelector(`[data-kind="${CSS.escape(kind)}"]`)
+      const buttons = item?.querySelectorAll('button')
+      const target = buttons?.[atEnd ? (by === -1 ? 1 : 0) : by === -1 ? 0 : 1]
+      ;(target as HTMLButtonElement | undefined)?.focus()
+    })
     void savePriority(next)
   }
 
@@ -145,6 +173,8 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
                 id="recording-explicit-wait"
                 value={explicitWait}
                 onChange={(e) => {
+                  // An emptied field is not a wait of 0
+                  if (e.target.value.trim() === '') return
                   const value = Number(e.target.value)
                   if (Number.isFinite(value) && value >= 0) setExplicitWait(value)
                 }}
@@ -175,6 +205,7 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
             </div>
             {priority && (
               <ol
+                ref={listRef}
                 aria-labelledby="recording-priority-label"
                 data-testid="recording-priority-list"
                 className="flex flex-wrap items-center gap-1"
@@ -188,7 +219,7 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
                     <span className="text-neutral-md mr-1">{index + 1}.</span>
                     {kindLabel(kind)}
                     <button
-                      aria-label={`${t('settings.recording.priority.up')} ${kind}`}
+                      aria-label={`${t('settings.recording.priority.up')} ${kindLabel(kind)}`}
                       onClick={() => move(index, -1)}
                       disabled={index === 0 || recording}
                       className={buttonClass}
@@ -196,7 +227,7 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
                       ‹
                     </button>
                     <button
-                      aria-label={`${t('settings.recording.priority.down')} ${kind}`}
+                      aria-label={`${t('settings.recording.priority.down')} ${kindLabel(kind)}`}
                       onClick={() => move(index, 1)}
                       disabled={index === priority.length - 1 || recording}
                       className={buttonClass}
@@ -207,6 +238,9 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
                 ))}
               </ol>
             )}
+            <span className="sr-only" aria-live="polite">
+              {announcement}
+            </span>
           </div>
         </div>
       )}

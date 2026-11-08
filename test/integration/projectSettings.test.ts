@@ -178,6 +178,39 @@ describe('projectSettings', () => {
     expect(await readFile(configPath(), 'utf-8')).toBe('selector_priority: [css]\nafter: 1\n')
   })
 
+  it('quotes a priority name YAML would split or misread', async () => {
+    await seed(FIXTURE)
+    const names = ['role', 'data-qa', 'a,b', 'x: y', '#c', '[d]', "it's"]
+    await writeRecorderSettings(dir, { selectorPriority: names })
+    const text = await readFile(configPath(), 'utf-8')
+    expect(text).toContain('selector_priority: [role, data-qa, ')
+    expect(yaml.load(text)).toMatchObject({ selector_priority: names })
+  })
+
+  it('keeps both of two writes started together', async () => {
+    await seed(FIXTURE)
+    await Promise.all([
+      writeRecorderSettings(dir, { explicitWait: 7 }),
+      writeRecorderSettings(dir, { selectorPriority: ['css', 'id'] })
+    ])
+    expect(yaml.load(await readFile(configPath(), 'utf-8'))).toMatchObject({
+      explicit_wait: 7,
+      selector_priority: ['css', 'id']
+    })
+  })
+
+  it('applies writes in the order they were asked for', async () => {
+    await seed(FIXTURE)
+    await Promise.all([
+      writeRecorderSettings(dir, { selectorPriority: ['a'] }),
+      writeRecorderSettings(dir, { selectorPriority: ['b'] }),
+      writeRecorderSettings(dir, { selectorPriority: ['c'] })
+    ])
+    expect(yaml.load(await readFile(configPath(), 'utf-8'))).toMatchObject({
+      selector_priority: ['c']
+    })
+  })
+
   it('rejects and leaves config untouched on a non-ENOENT read error', async () => {
     await seed(FIXTURE)
     failRead.code = 'EACCES'

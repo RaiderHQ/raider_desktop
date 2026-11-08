@@ -189,6 +189,7 @@
         "reset": "Reset to default",
         "up": "Move earlier:",
         "down": "Move later:",
+        "moved": "{{kind}} is now number {{position}}",
         "kind": {
           "role": "Role",
           "label": "Label",

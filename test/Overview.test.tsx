@@ -385,17 +385,17 @@ describe('Overview Settings Toolbar', (): void => {
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
     fireEvent.click(toggle)
     expect(screen.getByTestId('overview-settings-toggle')).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByTestId('overview-url-input')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('overview-browser-select')).not.toBeInTheDocument()
+    expect(screen.getByTestId('overview-url-input')).not.toBeVisible()
+    expect(screen.getByTestId('overview-browser-select')).not.toBeVisible()
     expect(localStorage.getItem('filesSettingsCollapsed')).toBe('1')
   })
 
   it('opens collapsed when it was collapsed last time', async () => {
     localStorage.setItem('filesSettingsCollapsed', '1')
     await renderOverview()
-    expect(screen.queryByTestId('overview-url-input')).not.toBeInTheDocument()
+    expect(screen.getByTestId('overview-url-input')).not.toBeVisible()
     fireEvent.click(screen.getByTestId('overview-settings-toggle'))
-    expect(screen.getByTestId('overview-url-input')).toBeInTheDocument()
+    expect(screen.getByTestId('overview-url-input')).toBeVisible()
     expect(localStorage.getItem('filesSettingsCollapsed')).toBe('0')
   })
 
@@ -1627,6 +1627,47 @@ describe('Overview live runs', (): void => {
   })
 
   describe('menu bar commands on the Files tab (D11)', () => {
+    it('Run from the menu unfolds folded settings to show a missing custom tag', async () => {
+      localStorage.setItem('filesSettingsCollapsed', '1')
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      await openFilesTab()
+      fireEvent.change(screen.getByTestId('overview-run-mode-select'), {
+        target: { value: 'custom' }
+      })
+      const start = vi.fn()
+      useRunStore.setState({ start } as never)
+      act(() => dispatchMenuCommand('run'))
+      expect(start).not.toHaveBeenCalled()
+      expect(screen.getByTestId('overview-run-tag-input')).toBeVisible()
+      expect(screen.getByTestId('overview-settings-toggle')).toHaveAttribute('aria-expanded', 'true')
+    })
+
+    it('shows a bad address on the header while the settings are folded', async () => {
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      await openFilesTab()
+      const input = screen.getByTestId('overview-url-input')
+      fireEvent.change(input, { target: { value: 'not a url' } })
+      await act(async () => {
+        fireEvent.blur(input)
+      })
+      fireEvent.click(screen.getByTestId('overview-settings-toggle'))
+      expect(screen.getByTestId('overview-settings-folded-error')).toBeInTheDocument()
+    })
+
     it('Run from the menu runs the project tests while the Files tab is showing', async () => {
       useProjectStore.setState({ projectPath: '/fake/project', files: [] })
       await act(async () => {
