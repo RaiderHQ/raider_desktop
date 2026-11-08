@@ -34,8 +34,8 @@ test.describe('More menu on the Tests list', () => {
   })
 })
 
-// Check something…: pressing it makes the next click on the page pick an element, not a step
-test.describe('Check something… while recording', () => {
+// Add validation…: pressing it makes the next click on the page pick an element, not a step
+test.describe('Add validation… while recording', () => {
   let server: Server
   let pageUrl: string
 
@@ -111,7 +111,7 @@ test.describe('Check something… while recording', () => {
       events: Array<{ type?: string }>
     }> => electronApp.evaluate(() => (global as any).__SEEN__)
 
-    await page.getByRole('button', { name: 'Check something…' }).click()
+    await page.getByRole('button', { name: 'Add validation…' }).click()
     await expect(
       page.getByRole('status').filter({ hasText: 'Click the thing you want to check' })
     ).toBeVisible({ timeout: 20000 })

@@ -120,7 +120,7 @@ describe('showAssertionContextMenu', () => {
     expect(labels(wait.submenu as MenuItemConstructorOptions[])).toEqual(
       ['waitAppears', 'waitDisappears', 'waitEnabled'].map(t)
     )
-    expect(t('header')).toBe('Add a check')
+    expect(t('header')).toBe('Add a validation')
     expect(t('textIs')).toBe('Check its text is exactly…')
   })
 })

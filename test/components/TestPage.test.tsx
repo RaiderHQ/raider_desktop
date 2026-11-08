@@ -1570,7 +1570,7 @@ describe('TestPage re-picking the failed element', () => {
   })
 })
 
-describe('Check something…', () => {
+describe('Add validation…', () => {
   const recordingNow = async (): Promise<void> => {
     renderPage()
     await opened()
