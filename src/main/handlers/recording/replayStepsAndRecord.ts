@@ -7,6 +7,7 @@ import startRecordingMain from './startRecordingMain'
 import { generateRspecFile } from '../../codegen/testFile'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
 import { quoteShellArg } from '../../utils/shellQuote'
+import { isStep } from '../../../shared/types/step'
 import type { Step } from '../../../shared/types/step'
 import { missingSecrets, refusedSecretName } from '../../../shared/secretSteps'
 import { englishText } from '../../../shared/describeStepEnglish'
@@ -33,12 +34,19 @@ async function replayStepsAndRecord(
   if (!isValidRubyCommand(rubyCommand)) {
     return { success: false, error: 'The Ruby command is not valid, so the replay did not run.' }
   }
+  if (!Array.isArray(stepsToReplay)) {
+    return { success: false, error: 'The steps are not valid, so the replay did not run.' }
+  }
+  // A secret step naming a foreign variable gets its own message before the shape check
   const refused = stepsToReplay.map(refusedSecretName).find((name) => name !== undefined)
   if (refused !== undefined) {
     return {
       success: false,
       error: englishText('recorder.step.secretNameRefused', { name: refused })
     }
+  }
+  if (!stepsToReplay.every(isStep)) {
+    return { success: false, error: 'The steps are not valid, so the replay did not run.' }
   }
   // The replayed spec reads secrets with ENV.fetch, so say which one is missing up front
   const [missing] = missingSecrets(stepsToReplay, process.env)

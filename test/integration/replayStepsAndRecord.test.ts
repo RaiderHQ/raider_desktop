@@ -59,6 +59,19 @@ describe('replayStepsAndRecord', () => {
     expect(mockExec).not.toHaveBeenCalled()
   })
 
+  it('refuses steps that are not valid Steps and runs nothing', async () => {
+    const bad = [{ id: '1', kind: 'custom', code: 'system("id")', extra: 1 }, { kind: 'click' }]
+    const result = await replayStepsAndRecord({} as never, 'T', bad as never, 'ruby')
+    expect(result).toEqual({
+      success: false,
+      error: 'The steps are not valid, so the replay did not run.'
+    })
+    expect(mockExec).not.toHaveBeenCalled()
+    expect(mockWriteFile).not.toHaveBeenCalled()
+    const notAList = await replayStepsAndRecord({} as never, 'T', 'x' as never, 'ruby')
+    expect(notAList.success).toBe(false)
+  })
+
   it('replays the steps via a generated rspec file without sleeps', async () => {
     mockExec.mockImplementation(
       (

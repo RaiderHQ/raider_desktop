@@ -167,3 +167,25 @@ describe('migrateRecordedTests', () => {
     expect(await snapshot()).toEqual(before)
   })
 })
+
+describe('migrateRecordedTests leaves alone', () => {
+  it('a sidecar whose spec file is missing: an open never creates a file', async () => {
+    await writeOldProject()
+    await rm(specPath())
+
+    expect(await migrateRecordedTests(project, layout)).toBe(0)
+
+    await expect(fs.stat(specPath())).rejects.toThrow()
+    const sidecar = await readSidecar(project, FILE)
+    expect(sidecar?.codegen).toBeUndefined()
+  })
+
+  it('a sidecar from a newer Raider (codegen above the current shape)', async () => {
+    await writeOldProject({ codegen: CODEGEN_VERSION + 1 })
+    const before = await snapshot()
+
+    expect(await migrateRecordedTests(project, layout)).toBe(0)
+
+    expect(await snapshot()).toEqual(before)
+  })
+})
