@@ -27,6 +27,12 @@ function saveCollapsed(collapsed: boolean): void {
 }
 
 // The kinds the recorder knows; any other configured name is a test-id style attribute
+// A value for a quoted attribute selector (CSS.escape where the runtime has it)
+const cssString = (value: string): string =>
+  typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+    ? CSS.escape(value)
+    : value.replace(/["\\]/g, '\\$&')
+
 const KNOWN_KINDS = new Set(['role', 'label', 'testId', 'text', 'id', 'css', 'xpath'])
 
 interface RecordingSettingsPanelProps {
@@ -90,8 +96,12 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
     })
   }
 
+  // Saves reach main in order, so only the newest one decides what the screen shows
+  const latest = useRef(0)
+
   const savePriority = async (next: string[]): Promise<void> => {
     const mine = generation.current
+    const seq = ++latest.current
     setPriority(next)
     let failure: string | null = null
     try {
@@ -104,7 +114,8 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
     } catch (error) {
       failure = String(error)
     }
-    if (generation.current !== mine) return
+    // Another project now, or a later save (built on this order) still to come: that one decides
+    if (generation.current !== mine || seq !== latest.current) return
     setPriority(saved.current)
     toast.error(`${t('settings.recording.error.recordingUpdateFailed')} ${failure}`)
   }
@@ -119,7 +130,7 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
     // Keep focus on the moved kind; at an end its button turns off, so use the other one
     const atEnd = to === 0 || to === next.length - 1
     requestAnimationFrame(() => {
-      const item = listRef.current?.querySelector(`[data-kind="${CSS.escape(kind)}"]`)
+      const item = listRef.current?.querySelector(`[data-kind="${cssString(kind)}"]`)
       const buttons = item?.querySelectorAll('button')
       const target = buttons?.[atEnd ? (by === -1 ? 1 : 0) : by === -1 ? 0 : 1]
       ;(target as HTMLButtonElement | undefined)?.focus()

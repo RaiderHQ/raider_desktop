@@ -1148,6 +1148,8 @@ const Overview: React.FC = () => {
                     id="implicit-wait"
                     value={implicitWait}
                     onChange={(e) => {
+                      // An emptied field is not a wait of 0
+                      if (e.target.value.trim() === '') return
                       const val = Number(e.target.value)
                       if (val >= 0) setImplicitWait(val)
                     }}
@@ -1167,6 +1169,8 @@ const Overview: React.FC = () => {
                     id="explicit-wait"
                     value={explicitWait}
                     onChange={(e) => {
+                      // An emptied field is not a wait of 0
+                      if (e.target.value.trim() === '') return
                       const val = Number(e.target.value)
                       if (val >= 0) setExplicitWait(val)
                     }}

@@ -180,7 +180,7 @@ describe('projectSettings', () => {
 
   it('quotes a priority name YAML would split or misread', async () => {
     await seed(FIXTURE)
-    const names = ['role', 'data-qa', 'a,b', 'x: y', '#c', '[d]', "it's"]
+    const names = ['role', 'data-qa', 'a,b', 'x: y', '#c', '[d]', "it's", 'true', 'Null', 'off', 'y']
     await writeRecorderSettings(dir, { selectorPriority: names })
     const text = await readFile(configPath(), 'utf-8')
     expect(text).toContain('selector_priority: [role, data-qa, ')
