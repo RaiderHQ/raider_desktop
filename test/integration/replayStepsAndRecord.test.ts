@@ -51,7 +51,6 @@ const click = (id: string, value: string): Step => ({
 describe('replayStepsAndRecord', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    appState.projectAutomation = null
   })
 
   it('refuses a ruby command with shell characters and runs nothing', async () => {
@@ -80,30 +79,12 @@ describe('replayStepsAndRecord', () => {
     expect(code).toContain("@driver.find_element(id: 'a').click")
     expect(code).toContain("@driver.find_element(id: 'b').click")
     expect(code).toContain('puts "RAIDER_FINAL_URL:#{@driver.current_url}"')
-    expect(code).toContain('implicit_wait = 3')
+    expect(code).toContain('Raider.timeout = 20')
+    expect(code).toContain("require 'ruby_raider/runtime/rspec'")
+    expect(code).not.toContain('implicit_wait')
     expect(code).not.toContain('sleep(')
     expect(mockExec.mock.calls[0][0]).toMatch(/^ruby -S rspec .*\.rb$/)
     expect(appState.sessionUrl).toBe('http://final/page')
-    expect(result.success).toBe(true)
-  })
-
-  it('replays with Watir and reads the final URL from @browser on a Watir project', async () => {
-    appState.projectAutomation = 'watir'
-    mockExec.mockImplementation(
-      (
-        _cmd: string,
-        _opts: object,
-        cb: (err: Error | null, stdout: string, stderr: string) => void
-      ) => cb(null, 'RAIDER_FINAL_URL:http://final/watir\n', '')
-    )
-    const result = await replayStepsAndRecord({} as never, 'T', [click('1', 'a')], 'ruby')
-
-    const code = mockWriteFile.mock.calls[0][1] as string
-    expect(code).toContain("require 'watir'")
-    expect(code).toContain("@browser.element(id: 'a').click")
-    expect(code).toContain('puts "RAIDER_FINAL_URL:#{@browser.url}"')
-    expect(code).not.toContain('@driver')
-    expect(appState.sessionUrl).toBe('http://final/watir')
     expect(result.success).toBe(true)
   })
 

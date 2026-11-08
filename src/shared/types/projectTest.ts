@@ -24,9 +24,10 @@ export interface Sidecar {
   steps: Step[]
   /** Spec path relative to the project root, POSIX */
   file: string
-  automation: 'selenium' | 'watir'
   /** hashRuby(generated file) */
   hash: string
+  /** The codegen shape the file was written in (CODEGEN_VERSION); absent before 4.0 */
+  codegen?: number
   /** Absent for sidecars written before maps were stored */
   stepLines?: StepLines
   codeOwned?: true

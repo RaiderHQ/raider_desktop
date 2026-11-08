@@ -3,7 +3,7 @@ import fs from 'fs'
 import type { TestData } from '@foundation/Types/testData'
 import { appState } from '../appState'
 import { getExportExtension, getExportFilters } from '../frameworkTemplates'
-import { generateRspecFile, toAutomation } from '../../codegen/testFile'
+import { generateRspecFile } from '../../codegen/testFile'
 import { migrateLegacySteps } from '../../codegen/legacy'
 import { writeExportHeader } from '../../codegen/exportHeader'
 import { safeError } from '../../utils/safeLog'
@@ -35,11 +35,7 @@ export default async ({
   const migrated = migrateLegacySteps(steps)
   const scriptContent =
     writeExportHeader({ testName, steps: migrated }) +
-    generateRspecFile(
-      { name: testName, steps: migrated },
-      toAutomation(appState.projectAutomation),
-      appState.recorderSettings
-    )
+    generateRspecFile({ name: testName, steps: migrated }, appState.recorderSettings)
 
   try {
     fs.writeFileSync(filePath, scriptContent, 'utf8')

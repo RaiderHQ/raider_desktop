@@ -14,6 +14,7 @@ import {
 } from '../../../src/main/handlers/tests/recordedTests'
 import { readSidecar, writeSidecar } from '../../../src/main/handlers/tests/sidecar'
 import { hashRuby } from '../../../src/main/handlers/tests/codeHash'
+import { CODEGEN_VERSION } from '../../../src/main/codegen/testFile'
 import { sha256Bytes } from '../../../src/main/handlers/tests/stepLines'
 import type { ProjectLayout } from '../../../src/shared/types/projectLayout'
 import type { Test } from '../../../src/shared/types/test'
@@ -27,7 +28,6 @@ const layout: ProjectLayout = {
   specPath: 'spec',
   featurePath: 'features',
   helperPath: 'helpers',
-  waitHelper: false,
   recordable: true
 }
 
@@ -87,6 +87,8 @@ describe('recorded tests', () => {
     expect(sidecar.file).toBe('spec/checkout_spec.rb')
     const content = await readFile(join(project, 'spec', 'checkout_spec.rb'), 'utf-8')
     expect(hashRuby(content)).toBe(sidecar.hash)
+    expect(sidecar.codegen).toBe(CODEGEN_VERSION)
+    expect(content).toContain("require 'ruby_raider/runtime/rspec'")
     expect(await readSidecar(project, 'spec/checkout_spec.rb')).toEqual(sidecar)
   })
 
@@ -178,7 +180,6 @@ describe('recorded tests', () => {
       url: 'https://x.test',
       steps: steps(1),
       file: '../../etc/x_spec.rb',
-      automation: 'selenium' as const,
       hash: 'x',
       createdAt: '2026-10-26T00:00:00.000Z',
       updatedAt: '2026-10-26T00:00:00.000Z'
@@ -271,7 +272,6 @@ describe('recorded tests', () => {
       url: 'https://x.test',
       steps: steps(1),
       file: 'spec/login_spec.rb',
-      automation: 'selenium',
       hash: hashRuby(handWritten),
       createdAt: '2026-10-26T00:00:00.000Z',
       updatedAt: '2026-10-26T00:00:00.000Z'
@@ -297,7 +297,6 @@ describe('recorded tests', () => {
       url: 'https://x.test',
       steps: steps(1),
       file: 'spec/pay_spec.rb',
-      automation: 'selenium',
       hash: hashRuby(handWritten),
       createdAt: '2026-10-26T00:00:00.000Z',
       updatedAt: '2026-10-26T00:00:00.000Z'
@@ -404,122 +403,41 @@ describe('unchanged saves', () => {
     expect(after).toEqual(before)
   })
 
-  it('a changed step still writes', async () => {
-    const first = await saveRecordedTest(project, layout, test())
-    await new Promise((resolve) => setTimeout(resolve, 5))
-    const again = await saveRecordedTest(project, layout, test({ steps: steps(2) }))
-    expect(again.updatedAt).not.toBe(first.updatedAt)
-  })
-})
-
-describe('projects with the wait helper', () => {
-  const click: Step = { id: 'c1', kind: 'click', element: { strategy: 'css', value: '#go' } }
-  const clickTest = (over: Partial<Test> = {}): Test => test({ steps: [click], ...over })
-  const withHelper: ProjectLayout = { ...layout, waitHelper: true }
-
-  async function addWaitHelper(): Promise<void> {
-    await mkdir(join(project, 'helpers'), { recursive: true })
-    await writeFile(join(project, 'helpers', 'wait_helper.rb'), 'module WaitHelper; end\n')
-    await writeFile(
-      join(project, 'helpers', 'spec_helper.rb'),
-      "require_relative 'wait_helper'\n\nRSpec.configure do |config|\n  config.include WaitHelper\nend\n"
-    )
-  }
-
-  it('a new test is written with the helper and its sidecar matches the file', async () => {
-    await addWaitHelper()
-    const sidecar = await saveRecordedTest(project, withHelper, clickTest())
-    const content = await readFile(join(project, sidecar.file), 'utf-8')
-    expect(content).toContain("click({ css: '#go' })")
-    expect(content).not.toContain('let(:wait)')
-    expect(hashRuby(content)).toBe(sidecar.hash)
-  })
-
-  it('an unchanged old-style test is kept byte for byte; a changed one moves to the helper', async () => {
-    // Saved before the project had the helper
-    const first = await saveRecordedTest(project, layout, clickTest())
-    const spec = join(project, first.file)
-    const sidecarFile = join(project, '.raider', 'tests', 'spec', 'checkout_spec.rb.json')
-    const before = [await readFile(spec, 'utf-8'), await readFile(sidecarFile, 'utf-8')]
-    expect(before[0]).toContain('let(:wait)')
-    await addWaitHelper()
-
-    const again = await saveRecordedTest(project, withHelper, clickTest())
-
-    expect(again).toEqual(first)
-    expect([await readFile(spec, 'utf-8'), await readFile(sidecarFile, 'utf-8')]).toEqual(before)
-
-    const changed = { ...click, element: { strategy: 'css' as const, value: '#pay' } }
-    const edited = await saveRecordedTest(project, withHelper, clickTest({ steps: [changed] }))
-    const content = await readFile(spec, 'utf-8')
-    expect(content).toContain("click({ css: '#pay' })")
-    expect(content).not.toContain('let(:wait)')
-    expect(hashRuby(content)).toBe(edited.hash)
-  })
-
-  it('a layout that still says helper is ignored once wait_helper.rb is gone', async () => {
-    await addWaitHelper()
-    await saveRecordedTest(project, withHelper, clickTest())
-    await rm(join(project, 'helpers', 'wait_helper.rb'))
-
-    const saved = await saveRecordedTest(project, withHelper, clickTest({ steps: [click, click] }))
-
-    const content = await readFile(join(project, saved.file), 'utf-8')
-    expect(content).toContain('let(:wait)')
-    expect(content).not.toContain("click({ css: '#go' })")
-  })
-
   it('regenerates when helper_path changed, keeps when it did not', async () => {
-    await addWaitHelper()
-    const first = await saveRecordedTest(project, withHelper, clickTest())
+    const first = await saveRecordedTest(project, layout, test())
     const spec = join(project, first.file)
     const before = await readFile(spec, 'utf-8')
     expect(before).toContain("require_relative '../helpers/spec_helper'")
 
-    await saveRecordedTest(project, withHelper, clickTest())
+    await saveRecordedTest(project, layout, test())
     expect(await readFile(spec, 'utf-8')).toBe(before)
 
-    await mkdir(join(project, 'support'), { recursive: true })
-    await writeFile(join(project, 'support', 'wait_helper.rb'), 'module WaitHelper; end\n')
-    await writeFile(
-      join(project, 'support', 'spec_helper.rb'),
-      'RSpec.configure do |config|\n  config.include WaitHelper\nend\n'
-    )
-    const moved = await saveRecordedTest(
-      project,
-      { ...withHelper, helperPath: 'support' },
-      clickTest()
-    )
+    const moved = await saveRecordedTest(project, { ...layout, helperPath: 'support' }, test())
     const content = await readFile(spec, 'utf-8')
     expect(content).toContain("require_relative '../support/spec_helper'")
     expect(content).not.toContain('../helpers/spec_helper')
     expect(hashRuby(content)).toBe(moved.hash)
   })
 
-  it('saving one test leaves a second, unsaved recorded file byte-identical', async () => {
-    await addWaitHelper()
-    const a = await saveRecordedTest(project, withHelper, clickTest({ id: 'a', name: 'Checkout' }))
-    const b = await saveRecordedTest(project, layout, clickTest({ id: 'b', name: 'Payment' }))
-    const fileB = join(project, b.file)
-    const sidecarB = join(project, '.raider', 'tests', 'spec', 'payment_spec.rb.json')
-    const before = [await readFile(fileB, 'utf-8'), await readFile(sidecarB, 'utf-8')]
+  it('a sidecar without a codegen version is rewritten even when nothing changed', async () => {
+    const first = await saveRecordedTest(project, layout, test())
+    const { codegen: _, ...older } = first
+    await writeSidecar(project, older)
+    await new Promise((resolve) => setTimeout(resolve, 5))
 
-    await saveRecordedTest(
-      project,
-      withHelper,
-      clickTest({ id: 'a', name: 'Checkout', steps: [click, click] })
-    )
+    const again = await saveRecordedTest(project, layout, test())
 
-    expect(a.file).not.toBe(b.file)
-    expect([await readFile(fileB, 'utf-8'), await readFile(sidecarB, 'utf-8')]).toEqual(before)
+    expect(again.codegen).toBe(CODEGEN_VERSION)
+    expect(again.updatedAt).not.toBe(first.updatedAt)
+    expect(await readSidecar(project, first.file)).toEqual(again)
+    expect(hashRuby(await readFile(join(project, first.file), 'utf-8'))).toBe(again.hash)
   })
 
-  it('a renamed untitled test moves to the helper form', async () => {
-    await saveRecordedTest(project, layout, clickTest({ name: 'Untitled Test' }))
-    await addWaitHelper()
-    const saved = await saveRecordedTest(project, withHelper, clickTest())
-    expect(saved.file).toBe('spec/checkout_spec.rb')
-    expect(await readFile(join(project, saved.file), 'utf-8')).toContain("click({ css: '#go' })")
+  it('a changed step still writes', async () => {
+    const first = await saveRecordedTest(project, layout, test())
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    const again = await saveRecordedTest(project, layout, test({ steps: steps(2) }))
+    expect(again.updatedAt).not.toBe(first.updatedAt)
   })
 })
 
@@ -613,29 +531,6 @@ describe('step lines', () => {
 
     expect(await stepLinesFor(project, layout, 't1')).toEqual({ sidecar: older, stepLines: null })
     expect(await readFile(sidecarFile, 'utf-8')).toBe(before)
-  })
-
-  it('an unchanged old-style save in a project that now has the helper gets the old-style map', async () => {
-    await mkdir(join(project, 'helpers'), { recursive: true })
-    const clickTest = test({ steps: [click] })
-    const first = await saveRecordedTest(project, layout, clickTest)
-    const { stepLines, ...older } = first
-    await writeSidecar(project, older)
-    const spec = join(project, first.file)
-    const bytes = await readFile(spec, 'utf-8')
-    expect(bytes).toContain('let(:wait)')
-    await writeFile(join(project, 'helpers', 'wait_helper.rb'), 'module WaitHelper; end\n')
-    await writeFile(
-      join(project, 'helpers', 'spec_helper.rb'),
-      "require_relative 'wait_helper'\n\nRSpec.configure do |config|\n  config.include WaitHelper\nend\n"
-    )
-
-    const again = await saveRecordedTest(project, { ...layout, waitHelper: true }, clickTest)
-
-    expect(await readFile(spec, 'utf-8')).toBe(bytes)
-    expect(again.stepLines).toEqual(stepLines)
-    expect(again.stepLines?.fileSha256).toBe(sha256Bytes(bytes))
-    expect(again.updatedAt).toBe(first.updatedAt)
   })
 
   it('stepLinesFor derives and stores a missing map', async () => {

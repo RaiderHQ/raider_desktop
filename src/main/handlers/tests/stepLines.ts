@@ -5,23 +5,18 @@ export { sha256Bytes }
 
 /**
  * The map for a sidecar that has none, found by regenerating its spec in memory.
- * A no-change save keeps an older-style file, so both wait-helper variants are
- * tried; only one that matches the file byte for byte counts.
+ * Only a render that matches the file byte for byte counts.
  */
 export function deriveStepLines(
   sidecar: Sidecar,
   onDisk: string,
   helperPath: string
 ): StepLines | null {
-  for (const waitHelper of [false, true]) {
-    const { content, stepLines } = generateProjectSpecFileWithMap(
-      { name: sidecar.name, steps: sidecar.steps },
-      sidecar.automation,
-      { fileRelPath: sidecar.file, helperPath, waitHelper }
-    )
-    if (content === onDisk) return stepLines
-  }
-  return null
+  const { content, stepLines } = generateProjectSpecFileWithMap(
+    { name: sidecar.name, steps: sidecar.steps },
+    { fileRelPath: sidecar.file, helperPath }
+  )
+  return content === onDisk ? stepLines : null
 }
 
 /** The stored map, while the file still has the exact bytes it was made for. */

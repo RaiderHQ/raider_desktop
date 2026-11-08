@@ -22,13 +22,12 @@ vi.mock('../../src/main/handlers/appState', () => ({
   appState: {
     projectFramework: 'rspec',
     projectAutomation: 'selenium',
-    recorderSettings: { browser: 'chrome', headless: false, implicitWait: 0, explicitWait: 30 }
+    recorderSettings: { browser: 'chrome', headless: false, explicitWait: 30 }
   }
 }))
 
 vi.mock('../../src/main/codegen/testFile', () => ({
-  generateRspecFile: vi.fn(() => '# generated test content'),
-  toAutomation: vi.fn(() => 'selenium')
+  generateRspecFile: vi.fn(() => '# generated test content')
 }))
 
 vi.mock('../../src/main/handlers/frameworkTemplates', () => ({
@@ -97,11 +96,9 @@ describe('exportTest handler', () => {
   it('migrates legacy string steps to the step model before generating', async () => {
     mockShowSaveDialog.mockResolvedValue({ canceled: false, filePath: '/tmp/login_test.rb' })
     await exportTest(legacyInput)
-    const [test, automation, settings] = (generateRspecFile as ReturnType<typeof vi.fn>).mock
-      .calls[0]
+    const [test, settings] = (generateRspecFile as ReturnType<typeof vi.fn>).mock.calls[0]
     expect(test.name).toBe('Login Test')
     expect(test.steps.map((s: { kind: string }) => s.kind)).toEqual(['navigate', 'click'])
-    expect(automation).toBe('selenium')
     expect(settings).toMatchObject({ browser: 'chrome', explicitWait: 30 })
   })
 

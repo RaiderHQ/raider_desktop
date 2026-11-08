@@ -269,9 +269,7 @@ describe('recorderEvent handler', () => {
     appState.pickModeEndedAt = 0
   })
 
-  it('sends a structured click step, not Ruby, on a Watir project', () => {
-    ;(appState as { projectAutomation: string | null }).projectAutomation = 'watir'
-
+  it('sends a structured click step, not Ruby', () => {
     recorderEvent({ action: 'click', selector: 'myId', strategy: 'id', tagName: 'INPUT' })
 
     expect(sentSteps()).toEqual([

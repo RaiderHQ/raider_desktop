@@ -116,7 +116,6 @@ import { spawnTerminal, writeTerminal, resizeTerminal, killTerminal } from './ha
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { Step } from '@shared/types/step'
 import { renderStep } from './codegen/steps'
-import { toAutomation } from './codegen/testFile'
 import { applyUtf8Locale } from './utils/locale'
 
 /** The recents list, or nothing: a bad file in userData must never break the app */
@@ -340,9 +339,7 @@ app.whenReady().then(() => {
   ipcMain.handle('install-gems', (_event, rubyCommand: string, gems: string[]) =>
     installGems(rubyCommand, gems)
   )
-  ipcMain.handle('render-step', (_event, step: Step) =>
-    renderStep(step, toAutomation(appState.projectAutomation))
-  )
+  ipcMain.handle('render-step', (_event, step: Step) => renderStep(step))
   ipcMain.handle('get-tests', getTests)
   ipcMain.handle('list-project-tests', listProjectTestsHandler)
   ipcMain.handle('open-code-test', (_event, file: string) => openCodeTestHandler(file))

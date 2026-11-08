@@ -68,14 +68,7 @@ export async function recordOverExampleHandler(
     const target = await listedFile(file)
     if (typeof exampleName !== 'string') throw new Error('No example name was given.')
     if (!Array.isArray(steps) || !steps.every(isStep)) throw new Error('The steps are not valid.')
-    await replaceExample(
-      target.projectPath,
-      target.layout,
-      target.file,
-      exampleName,
-      steps,
-      rubyCommand
-    )
+    await replaceExample(target.projectPath, target.file, exampleName, steps, rubyCommand)
     return { success: true }
   } catch (error) {
     if (error instanceof ExampleNotUniqueError)

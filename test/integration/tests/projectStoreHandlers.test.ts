@@ -59,7 +59,6 @@ const layout = {
   specPath: 'spec',
   featurePath: 'features',
   helperPath: 'helpers',
-  waitHelper: false,
   recordable: true
 } as const
 

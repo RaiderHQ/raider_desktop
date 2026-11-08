@@ -2,7 +2,7 @@ export type MobilePlatform = 'ios' | 'android' | 'cross_platform'
 
 export interface ProjectLayout {
   framework: 'rspec'
-  automation: 'selenium' | 'watir' | 'appium'
+  automation: 'selenium' | 'appium'
   /** Set for appium projects whose capabilities.yml could be read */
   mobilePlatform?: MobilePlatform
   /** Config `spec_path`, default 'spec' */
@@ -11,8 +11,6 @@ export interface ProjectLayout {
   featurePath: string
   /** Config `helper_path`, default 'helpers' */
   helperPath: string
-  /** True for selenium RSpec projects that ship and include Ruby Raider's WaitHelper (3.12+) */
-  waitHelper: boolean
   /** False for appium / minitest / capybara / no Gemfile */
   recordable: boolean
   unsupportedReason?: 'mobile' | 'minitest' | 'capybara' | 'noGemfile'

@@ -3,8 +3,10 @@
 
 export const NAME_MAX = 80
 
-// Input types typed into as text; a missing type is a text field.
-export const TEXT_INPUT_TYPES = ['text', 'email', 'password', 'search', 'tel', 'url', 'number']
+// Input types typed into as text; a missing type is a text field. Shared with the
+// selector builders, which spell the same list in XPath.
+import { TEXT_INPUT_TYPES } from '../shared/locatorSelectors'
+export { TEXT_INPUT_TYPES }
 const BUTTON_INPUT_TYPES = ['button', 'submit', 'reset']
 const NAMED_BY_CONTENT = ['button', 'link', 'heading']
 

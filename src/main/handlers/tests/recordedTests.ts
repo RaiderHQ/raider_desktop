@@ -2,13 +2,12 @@ import fs from 'fs/promises'
 import { realpathSync } from 'fs'
 import { dirname, posix, resolve } from 'path'
 import {
+  CODEGEN_VERSION,
   generateProjectSpecFileWithMap,
-  RECORDED_MARKER,
-  toAutomation
+  RECORDED_MARKER
 } from '../../codegen/testFile'
 import { hashRuby } from './codeHash'
 import { deriveStepLines, usableStepLines } from './stepLines'
-import { usesWaitHelper } from '../project/waitHelperDetection'
 import { withSecretNames } from '../../../shared/secretSteps'
 import { describeLineWithTags, findDescribeLine, normalizeTags } from '../../../shared/tags'
 import {
@@ -119,7 +118,6 @@ async function refuseAsCodeOwned(projectPath: string, sidecar: Sidecar): Promise
 
 const buildSidecar = (
   test: Test,
-  layout: ProjectLayout,
   file: string,
   content: string,
   stepLines: StepLines,
@@ -133,8 +131,8 @@ const buildSidecar = (
   // The names the spec was generated with (generateProjectSpecFile names the same way)
   steps: withSecretNames(test.steps),
   file,
-  automation: toAutomation(layout.automation),
   hash: hashRuby(content),
+  codegen: CODEGEN_VERSION,
   stepLines,
   ...(normalizeTags(test.tags).length > 0 && { tags: normalizeTags(test.tags) }),
   createdAt,
@@ -149,19 +147,7 @@ const generate = (
   layout: ProjectLayout,
   file: string
 ): { content: string; stepLines: StepLines } =>
-  generateProjectSpecFileWithMap(test, toAutomation(layout.automation), {
-    fileRelPath: file,
-    helperPath: layout.helperPath,
-    waitHelper: layout.waitHelper
-  })
-
-/** `layout` with `waitHelper` checked on disk now: the project may have changed since it was read. */
-async function withCurrentWaitHelper(
-  projectPath: string,
-  layout: ProjectLayout
-): Promise<ProjectLayout> {
-  return { ...layout, waitHelper: await usesWaitHelper(projectPath, layout) }
-}
+  generateProjectSpecFileWithMap(test, { fileRelPath: file, helperPath: layout.helperPath })
 
 /**
  * Picks a free `<slug>[_n]_spec.rb` in `root` (default: the spec folder) and
@@ -206,10 +192,11 @@ const isUntitledFile = (file: string): boolean => UNTITLED_FILE.test(posix.basen
 const hasRealName = (test: Test): boolean =>
   /[a-z0-9]/i.test(test.name.normalize('NFKD')) && slugify(test.name) !== UNTITLED_SLUG
 
-const sameRecord = (sidecar: Sidecar, test: Test, layout: ProjectLayout): boolean =>
+// A file written in an older codegen shape is never the same record: it is rewritten
+const sameRecord = (sidecar: Sidecar, test: Test): boolean =>
+  sidecar.codegen === CODEGEN_VERSION &&
   sidecar.name === test.name &&
   sidecar.url === test.url &&
-  sidecar.automation === toAutomation(layout.automation) &&
   JSON.stringify(sidecar.tags ?? []) === JSON.stringify(normalizeTags(test.tags)) &&
   JSON.stringify(sidecar.steps) === JSON.stringify(test.steps)
 
@@ -234,7 +221,7 @@ async function moveToRealName(
     test,
     posix.dirname(existing.file)
   )
-  const sidecar = buildSidecar(test, layout, file, content, stepLines, existing.createdAt, now)
+  const sidecar = buildSidecar(test, file, content, stepLines, existing.createdAt, now)
   try {
     await writeSidecar(projectPath, sidecar)
   } catch (error) {
@@ -293,7 +280,7 @@ export function saveRecordedTest(
 ): Promise<Sidecar> {
   return serialize(testQueues, testKey(projectPath, input.id), async () => {
     const now = new Date().toISOString()
-    const current = await withCurrentWaitHelper(projectPath, layout)
+    const current = layout
     const existing =
       options.knownFile !== undefined
         ? await sidecarAt(projectPath, input.id, options.knownFile)
@@ -303,7 +290,7 @@ export function saveRecordedTest(
 
     if (!existing) {
       const { file, content, stepLines, target } = await createNewSpec(projectPath, current, test)
-      const sidecar = buildSidecar(test, current, file, content, stepLines, now, now)
+      const sidecar = buildSidecar(test, file, content, stepLines, now, now)
       try {
         await writeSidecar(projectPath, sidecar)
       } catch (error) {
@@ -332,7 +319,7 @@ export function saveRecordedTest(
     // require line must still be the one generated now, so a moved helper_path rewrites.
     if (
       onDisk !== null &&
-      sameRecord(existing, test, current) &&
+      sameRecord(existing, test) &&
       requireLine(onDisk) === requireLine(content)
     ) {
       if (existing.stepLines) return existing
@@ -352,7 +339,6 @@ export function saveRecordedTest(
     }
     const sidecar = buildSidecar(
       test,
-      current,
       existing.file,
       content,
       stepLines,
@@ -511,7 +497,7 @@ export async function setTagsForFile(
       return { kind: 'codeOwned' }
     }
 
-    const current = await withCurrentWaitHelper(projectPath, layout)
+    const current = layout
     const test: Test = {
       id: existing.id,
       name: existing.name,
@@ -523,7 +509,7 @@ export async function setTagsForFile(
     await writeFileAtomic(target, content, { mode: stat.mode & 0o7777 })
     await writeSidecar(
       projectPath,
-      buildSidecar(test, current, existing.file, content, stepLines, existing.createdAt, now)
+      buildSidecar(test, existing.file, content, stepLines, existing.createdAt, now)
     )
     return { kind: 'recorded' }
   })

@@ -23,7 +23,6 @@ const sidecar = (file: string, over: Partial<Sidecar> = {}): Sidecar => ({
   url: 'https://x.test',
   steps: [{ id: 's1', kind: 'navigate', url: 'https://x.test' }],
   file,
-  automation: 'selenium',
   hash: 'abc',
   createdAt: '2026-10-26T00:00:00.000Z',
   updatedAt: '2026-10-26T00:00:00.000Z',
@@ -159,6 +158,31 @@ describe('sidecar store', () => {
     await writeFile(
       join(testsDir(), 'spec', 'a_spec.rb.json'),
       JSON.stringify({ ...sidecar('spec/a_spec.rb'), steps: [{ kind: 'nope' }] })
+    )
+    await expect(readSidecar(project, 'spec/a_spec.rb')).rejects.toBeInstanceOf(
+      SidecarUnreadableError
+    )
+  })
+
+  it('round-trips the codegen version and still loads a sidecar written without one', async () => {
+    await writeSidecar(project, sidecar('spec/a_spec.rb', { codegen: 2 }))
+    expect((await readSidecar(project, 'spec/a_spec.rb'))?.codegen).toBe(2)
+    // A 3.x sidecar: no codegen, and an automation field this version no longer knows
+    await mkdir(join(testsDir(), 'spec'), { recursive: true })
+    await writeFile(
+      join(testsDir(), 'spec', 'old_spec.rb.json'),
+      JSON.stringify({ ...sidecar('spec/old_spec.rb'), automation: 'selenium' })
+    )
+    const old = await readSidecar(project, 'spec/old_spec.rb')
+    expect(old?.codegen).toBeUndefined()
+    expect(old?.name).toBe('Checkout')
+  })
+
+  it.each([0, 1.5, '2'])('refuses a sidecar whose codegen is %j', async (codegen) => {
+    await mkdir(join(testsDir(), 'spec'), { recursive: true })
+    await writeFile(
+      join(testsDir(), 'spec', 'a_spec.rb.json'),
+      JSON.stringify({ ...sidecar('spec/a_spec.rb'), codegen })
     )
     await expect(readSidecar(project, 'spec/a_spec.rb')).rejects.toBeInstanceOf(
       SidecarUnreadableError

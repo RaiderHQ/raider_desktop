@@ -22,8 +22,7 @@ const steps: Step[] = [
   { id: 'custom', kind: 'custom', code: "puts 'TOPSECRETCODE'" }
 ]
 const opts = { fileRelPath: 'spec/a_spec.rb', helperPath: 'helpers' }
-const gen = (s: Step[] = steps) =>
-  generateProjectSpecFileWithMap({ name: 'A', steps: s }, 'selenium', opts)
+const gen = (s: Step[] = steps) => generateProjectSpecFileWithMap({ name: 'A', steps: s }, opts)
 
 describe('step range titles', () => {
   it('save writes the English description for every range', () => {
@@ -59,7 +58,6 @@ describe('step range titles', () => {
       url: 'u',
       steps,
       file: 'spec/a_spec.rb',
-      automation: 'selenium',
       hash: 'h',
       createdAt: 'x',
       updatedAt: 'x'

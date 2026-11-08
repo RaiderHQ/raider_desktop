@@ -2,7 +2,7 @@ import { BrowserWindow, dialog } from 'electron'
 import fs from 'fs/promises'
 import path from 'path'
 import { appState } from '../appState'
-import { generateRspecFile, toAutomation } from '../../codegen/testFile'
+import { CODEGEN_VERSION, generateRspecFile } from '../../codegen/testFile'
 import { migrateLegacyTest } from '../../codegen/legacy'
 import { writeExportHeader } from '../../codegen/exportHeader'
 import { hashRuby } from '../tests/codeHash'
@@ -29,7 +29,6 @@ export default async (): Promise<{ success: boolean; path?: string; error?: stri
     return { success: false, error: 'Export cancelled.' }
   }
 
-  const automation = toAutomation(appState.projectAutomation)
   // Taken once: the project may change while the files are written
   const tests = Array.from(appState.tests.values())
   const activeProject = appState.projectPath
@@ -54,7 +53,7 @@ export default async (): Promise<{ success: boolean; path?: string; error?: stri
         const tags = normalizeTags(test.tags)
         const scriptContent =
           writeExportHeader({ testName: test.name, steps: migrated.steps }) +
-          generateRspecFile({ ...migrated, tags }, automation, appState.recorderSettings)
+          generateRspecFile({ ...migrated, tags }, appState.recorderSettings)
         await fs.writeFile(path.join(filePath, name), scriptContent, {
           encoding: 'utf8',
           flag: 'wx',
@@ -67,8 +66,8 @@ export default async (): Promise<{ success: boolean; path?: string; error?: stri
           url: test.url ?? '',
           steps: migrated.steps,
           file: name,
-          automation,
           hash: hashRuby(scriptContent),
+          codegen: CODEGEN_VERSION,
           ...(tags.length > 0 && { tags }),
           createdAt: now,
           updatedAt: now

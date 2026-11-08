@@ -153,7 +153,7 @@ function isSidecar(value: unknown): value is Sidecar {
   return (
     s.version === 1 &&
     [s.id, s.name, s.url, s.file, s.hash, s.createdAt, s.updatedAt].every(isStr) &&
-    (s.automation === 'selenium' || s.automation === 'watir') &&
+    (s.codegen === undefined || (Number.isInteger(s.codegen) && (s.codegen as number) >= 1)) &&
     (s.codeOwned === undefined || s.codeOwned === true) &&
     (s.tags === undefined || Array.isArray(s.tags)) &&
     Array.isArray(s.steps) &&
