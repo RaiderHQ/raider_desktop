@@ -381,6 +381,10 @@ describe('trashTest', () => {
     })
     deletions.length = 0
     expect(await trashTest(project, saved.file)).toMatchObject({ success: false })
+    // Only the stand-in's own removal of the record folder; the handler deleted nothing
+    expect(deletions.filter((p) => p.startsWith(project) && !p.endsWith('.tmp'))).toEqual([
+      recordDir
+    ])
     deletions.length = 0
     expect(trashed.paths).toEqual([join(project, saved.file)])
     expect(await exists(join(outside, 'decoy', `${basename(saved.file)}.json`))).toBe(true)
