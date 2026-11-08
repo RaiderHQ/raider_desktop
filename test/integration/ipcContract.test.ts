@@ -93,6 +93,7 @@ describe('IPC Contract', () => {
     'mapFailedStep',
     'openCodeTest',
     'getProjectLayout',
+    'upgradeRubyRaider',
     'exportProject',
     'importProject',
     'importTest',

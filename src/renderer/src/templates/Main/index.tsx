@@ -25,7 +25,7 @@ import { anyEditorDirty, pageEditorDirty, recorderBusy } from '@foundation/switc
 
 const MainTemplate: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
-  const raiderVersion = useVersionStore((state: { version: string }) => state.version)
+  const raiderVersion = useVersionStore((state) => state.version)
   const { setRubyCommand, setRubyVersion, setVersionWarning } = useRubyStore()
   const [isRubyInstallModalOpen, setIsRubyInstallModalOpen] = useState(false)
   const [isGemsInstallModalOpen, setIsGemsInstallModalOpen] = useState(false)
@@ -243,7 +243,7 @@ const MainTemplate: React.FC = (): JSX.Element => {
       </main>
 
       <footer className="flex justify-center py-3 bg-white border-t border-neutral-bdr">
-        <p className="text-neutral-md text-sm">{t('version', { version: raiderVersion })}</p>
+        <p className="text-neutral-md text-sm">{raiderVersion ? t('version', { version: raiderVersion }) : t('versionUnknown')}</p>
       </footer>
 
       {isConceptsModalOpen && (

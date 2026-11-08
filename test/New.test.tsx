@@ -41,8 +41,8 @@ vi.mock('@foundation/Stores/versionStore', async (importActual) => {
   return {
     ...actual,
     __esModule: true,
-    default: create<{ version: string; loadVersion: () => Promise<void> }>(() => ({
-      version: '3.12.0',
+    default: create<{ version: string | null; loadVersion: () => Promise<void> }>(() => ({
+      version: '4.0.0',
       loadVersion: async (): Promise<void> => {}
     }))
   }
@@ -81,7 +81,7 @@ const create = async (runRubyRaider: ReturnType<typeof vi.fn>): Promise<void> =>
 
 describe('CreateProject Page', (): void => {
   beforeEach(() => {
-    useVersionStore.setState({ version: '3.12.0', loadVersion: async (): Promise<void> => {} })
+    useVersionStore.setState({ version: '4.0.0', loadVersion: async (): Promise<void> => {} })
   })
 
   it('renders correctly', async (): Promise<void> => {
@@ -257,12 +257,19 @@ describe('CreateProject Page', (): void => {
     expect(screen.getByRole('checkbox', { name: /newProject.addons.examples/ })).toBeChecked()
   })
 
-  it.each(['3.11.0', '2.0.0'])(
-    'gates Mobile app and examples on gem %s',
-    async (version): Promise<void> => {
+  describe('gem below the 4.0 runtime', () => {
+    const createButton = (): HTMLElement =>
+      screen.getByText('button.create.text').closest('button')!
+
+    it.each([
+      ['3.15.0', '3.15.0'],
+      ['unknown', null]
+    ])('cannot create a project on gem %s', async (_label, version): Promise<void> => {
       useVersionStore.setState({ version })
       const run = vi.fn().mockResolvedValue({ success: false, error: 'stop' })
       await renderPage()
+
+      expect(screen.getByRole('alert')).toHaveTextContent('newProject.gemNeedsUpdate')
       const mobile = screen.getByRole('radio', { name: 'newProject.target.mobile' })
       expect(mobile).toHaveAttribute('aria-disabled', 'true')
       expect(mobile).toHaveAccessibleDescription('newProject.target.mobileNeedsUpdate')
@@ -271,19 +278,40 @@ describe('CreateProject Page', (): void => {
       expect(
         screen.queryByRole('checkbox', { name: /newProject.addons.examples/ })
       ).not.toBeInTheDocument()
+
+      // A valid name is not enough: the gem has to be updated first
       await create(run)
-      expect(run.mock.calls[0][5]).toEqual({ accessibility: false, ci: 'github' })
-    }
-  )
+      expect(createButton()).toBeDisabled()
+      expect(run).not.toHaveBeenCalled()
+    })
+
+    it('creates a project with examples from gem 4.0.0', async (): Promise<void> => {
+      const run = vi.fn().mockResolvedValue({ success: false, error: 'stop' })
+      await renderPage()
+
+      expect(screen.queryByText('newProject.gemNeedsUpdate')).not.toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: /newProject.addons.examples/ })).toBeChecked()
+      fireEvent.change(screen.getByPlaceholderText('newProject.input.placeholder'), {
+        target: { value: 'proj' }
+      })
+      expect(createButton()).toBeEnabled()
+
+      await create(run)
+      expect(run).toHaveBeenCalledTimes(1)
+      expect(run.mock.calls[0][5]).toEqual({ accessibility: false, ci: 'github', examples: true })
+    })
+  })
 
   it('reads the gem version again each time the page opens', async (): Promise<void> => {
-    const versions = ['3.11.0', '3.12.0']
+    const versions = ['3.15.0', '4.0.0']
     const loadVersion = vi.fn(async (): Promise<void> => {
       useVersionStore.setState({ version: versions.shift() as string })
     })
-    useVersionStore.setState({ version: '3.11.0', loadVersion })
+    useVersionStore.setState({ version: '3.15.0', loadVersion })
     const mobile = (): HTMLElement =>
       screen.getByRole('radio', { name: 'newProject.target.mobile' })
+    const createButton = (): HTMLElement =>
+      screen.getByText('button.create.text').closest('button')!
 
     const first = render(
       <MemoryRouter>
@@ -292,15 +320,21 @@ describe('CreateProject Page', (): void => {
     )
     await act(async (): Promise<void> => {})
     expect(mobile()).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('alert')).toHaveTextContent('newProject.gemNeedsUpdate')
     first.unmount()
 
     // Ruby Raider was updated meanwhile
     await renderPage()
     expect(loadVersion).toHaveBeenCalledTimes(2)
     expect(mobile()).not.toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByText('newProject.gemNeedsUpdate')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByPlaceholderText('newProject.input.placeholder'), {
+      target: { value: 'proj' }
+    })
+    expect(createButton()).toBeEnabled()
   })
 
-  it('offers Mobile app and examples from gem 3.12.0', async (): Promise<void> => {
+  it('offers Mobile app and examples from gem 4.0.0', async (): Promise<void> => {
     await renderPage()
     expect(screen.getByRole('radio', { name: 'newProject.target.mobile' })).not.toHaveAttribute(
       'aria-disabled',
@@ -353,7 +387,7 @@ describe('CreateProject Page', (): void => {
     })
 
     it('keeps Website selected on ArrowRight when Mobile app is disabled', async (): Promise<void> => {
-      useVersionStore.setState({ version: '3.11.0' })
+      useVersionStore.setState({ version: '3.15.0' })
       await renderPage()
       fireEvent.keyDown(web(), { key: 'ArrowRight' })
       expect(web()).toHaveAttribute('aria-checked', 'true')

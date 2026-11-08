@@ -68,7 +68,7 @@
     "target": {
       "web": "Website",
       "mobile": "Mobile app",
-      "mobileNeedsUpdate": "Mobile apps need Ruby Raider 3.12 or later. Update Ruby Raider, then come back to this page."
+      "mobileNeedsUpdate": "Mobile apps need Ruby Raider 4.0 or later. Update Ruby Raider, then come back to this page."
     },
     "phones": {
       "ios": "iPhone (iOS)",
@@ -82,7 +82,8 @@
       "examples": "Include example tests",
       "examplesHelp": "Sample tests you can run straight away. Turn off for an empty project."
     },
-    "versionWarning": "Your Ruby version may not be compatible with Ruby Raider v3"
+    "versionWarning": "Your Ruby version may not be compatible with Ruby Raider v3",
+    "gemNeedsUpdate": "Raider needs Ruby Raider 4.0 or later installed. Run gem install ruby_raider in a terminal, then come back to this page."
   },
   "button": {
     "create": {
@@ -511,7 +512,8 @@
       "minitest": "This project uses a test style Raider can't record into yet.",
       "capybara": "This project uses a test style Raider can't record into yet.",
       "noGemfile": "Raider couldn't find the files it needs to set up this project.",
-      "generic": "Raider can't record into this project yet."
+      "generic": "Raider can't record into this project yet.",
+      "gemTooOld": "This project uses a ruby_raider older than 4.0, so Raider can't record into it or run it. Update ruby_raider from the Tests tab."
     },
     "saveFailed": "Raider couldn't save this test. Your work is still here.",
     "runFailed": "Raider couldn't run this test.",
@@ -1420,5 +1422,17 @@
   },
   "terminal": {
     "close": "Close terminal"
+  },
+  "versionUnknown": "Ruby Raider Version: not found",
+  "projectUpdate": {
+    "title": "This project needs ruby_raider 4.0",
+    "message": "It uses ruby_raider {{version}}. Raider records and runs tests only with 4.0 or later: change the Gemfile pin to ~> 4.0 and run bundle update ruby_raider, or let Raider do it.",
+    "messageUnknown": "It pins ruby_raider below 4.0. Raider records and runs tests only with 4.0 or later: change the Gemfile pin to ~> 4.0 and run bundle update ruby_raider, or let Raider do it.",
+    "button": "Update ruby_raider",
+    "confirmTitle": "Update ruby_raider to 4.0?",
+    "confirmMessage": "Raider will change the Gemfile pin to ~> 4.0 and run bundle update ruby_raider in {{project}}. Tests recorded with Raider are rewritten for 4.0 when the project reloads; specs edited by hand are left alone. Page objects and helpers written for 3.x may need changes of their own.",
+    "updating": "Updating ruby_raider…",
+    "done": "ruby_raider is on 4.0. The project reloaded.",
+    "failed": "Raider couldn't update ruby_raider."
   }
 }

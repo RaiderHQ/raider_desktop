@@ -19,6 +19,7 @@ vi.mock('../../../src/main/handlers/testing/runRecording', () => ({ default: moc
 
 import { appState } from '../../../src/main/handlers/appState'
 import { runTestHandler } from '../../../src/main/handlers/testing/runProjectTests'
+import { GEM_TOO_OLD } from '../../../src/main/handlers/run/runner'
 import type { Test } from '../../../src/shared/types/test'
 
 const test1: Test = { id: 't1', name: 'Login', url: 'https://x.test', steps: [] }
@@ -89,6 +90,51 @@ describe('run-test, project checks', () => {
       success: false,
       output: 'Test with ID t1 not found.'
     })
+  })
+})
+
+describe('run-test, ruby_raider version', () => {
+  const web = {
+    framework: 'rspec' as const,
+    automation: 'selenium' as const,
+    specPath: 'spec',
+    featurePath: 'features',
+    helperPath: 'helpers'
+  }
+
+  beforeEach(() => mockMode.mockReturnValue('locked'))
+
+  it('refuses a project on a ruby_raider below 4.0', async () => {
+    appState.layout = {
+      ...web,
+      recordable: false,
+      unsupportedReason: 'gemTooOld',
+      rubyRaiderVersion: '3.15.2'
+    }
+    expect(await runTestHandler('t1', '/p', 'ruby')).toEqual({
+      success: false,
+      output: GEM_TOO_OLD
+    })
+    expect(mockRunRecording).not.toHaveBeenCalled()
+  })
+
+  it('runs on 4.0 or when the version is unknown', async () => {
+    appState.layout = { ...web, recordable: true, rubyRaiderVersion: '4.0.0' }
+    expect(await runTestHandler('t1', '/p', 'ruby')).toEqual({ success: true, output: 'rec' })
+    appState.layout = { ...web, recordable: true }
+    expect(await runTestHandler('t1', '/p', 'ruby')).toEqual({ success: true, output: 'rec' })
+    expect(mockRunRecording).toHaveBeenCalledTimes(2)
+  })
+
+  it('a files-mode project is sent to the live runner before the version check', async () => {
+    mockMode.mockReturnValue('files')
+    appState.layout = {
+      ...web,
+      recordable: false,
+      unsupportedReason: 'gemTooOld',
+      rubyRaiderVersion: '3.15.2'
+    }
+    expect(await runTestHandler('t1', '/p', 'ruby')).toEqual(live)
   })
 })
 

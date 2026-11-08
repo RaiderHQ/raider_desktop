@@ -13,7 +13,9 @@ export interface ProjectLayout {
   helperPath: string
   /** Config `test_id_attribute`, default 'data-testid': what the runtime's test_id: reads */
   testIdAttribute?: string
-  /** False for appium / minitest / capybara / no Gemfile */
+  /** The ruby_raider the project locks (Gemfile.lock) or pins (Gemfile); absent when unknown */
+  rubyRaiderVersion?: string
+  /** False for appium / minitest / capybara / no Gemfile / a ruby_raider below 4.0 */
   recordable: boolean
-  unsupportedReason?: 'mobile' | 'minitest' | 'capybara' | 'noGemfile'
+  unsupportedReason?: 'mobile' | 'minitest' | 'capybara' | 'noGemfile' | 'gemTooOld'
 }
