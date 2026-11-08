@@ -6,6 +6,7 @@ import { sample } from 'lodash'
 import { FaChevronDown, FaChevronRight, FaTerminal } from 'react-icons/fa'
 import Folder from '@components/Library/Folder'
 import ScaffoldPanel from '@components/ScaffoldPanel'
+import RecordingSettingsPanel from '@components/RecordingSettingsPanel'
 import ContextMenu from '@components/ContextMenu'
 import ToggleSwitch from '@components/ToggleSwitch'
 import TagInput from '@components/TagInput'
@@ -827,6 +828,12 @@ const Overview: React.FC = () => {
 
       {activeTab === 'tests' && (
         <div className="relative w-full">
+          <RecordingSettingsPanel
+            explicitWait={explicitWait}
+            setExplicitWait={setExplicitWait}
+            loaded={loaded}
+            saveWait={saveWait}
+          />
           {/* A project switched in place (the project menu, File › Open recent) gets a fresh list */}
           <TestsWorkspace key={projectPath ?? ''} />
         </div>

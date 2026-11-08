@@ -5,15 +5,9 @@ import type { RecorderSettings } from '@shared/types/recorderSettings'
 
 export type { RecorderSettings }
 
-export const DEFAULT_SELECTOR_PRIORITY: string[] = [
-  'role',
-  'label',
-  'testId',
-  'text',
-  'id',
-  'css',
-  'xpath'
-]
+import { DEFAULT_SELECTOR_PRIORITY } from '@shared/selectorPriority'
+
+export { DEFAULT_SELECTOR_PRIORITY }
 import { DEFAULT_TEST_ID_ATTRIBUTE, testIdAttributeFrom } from '../../../shared/testIdAttribute'
 
 export { DEFAULT_TEST_ID_ATTRIBUTE }

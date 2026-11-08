@@ -184,6 +184,27 @@
       },
       "explicitWait": {
         "label": "Explicit wait"
+      },
+      "title": "Recording settings",
+      "wait": {
+        "label": "Explicit wait",
+        "unit": "seconds"
+      },
+      "priority": {
+        "label": "Locator priority",
+        "reset": "Reset to default",
+        "up": "Move earlier:",
+        "down": "Move later:",
+        "kind": {
+          "role": "Role",
+          "label": "Label",
+          "testId": "Test id",
+          "text": "Text",
+          "id": "id",
+          "css": "CSS",
+          "xpath": "XPath",
+          "attribute": "Attribute {{name}}"
+        }
       }
     },
     "timeout": {
@@ -873,6 +894,12 @@
       "forgetLogin": "Delete this saved login",
       "treeRow": "Open in the editor; right-click for more",
       "runTests": "Run every test in the project"
+    },
+    "recordingSettings": {
+      "expand": "Show the recording settings",
+      "collapse": "Hide the recording settings",
+      "wait": "Longest a recorded wait step waits; finding elements uses the test timeout",
+      "priority": "Which locator the recorder picks first when an element has several"
     },
     "runPanel": {
       "cancel": "Stop the run",

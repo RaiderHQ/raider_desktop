@@ -869,7 +869,9 @@ describe('Overview wait settings', (): void => {
   })
 
   it('does not save before the settings have loaded', async (): Promise<void> => {
-    mockApi.getRecorderSettings.mockReturnValueOnce(new Promise(() => {}))
+    // The Tests tab's recording settings load them too: both stay pending
+    const pending = new Promise(() => {})
+    mockApi.getRecorderSettings.mockReturnValueOnce(pending).mockReturnValueOnce(pending)
     await renderFiles()
     const input = screen.getByLabelText('settings.recording.implicitWait.label')
     await act(async () => {
