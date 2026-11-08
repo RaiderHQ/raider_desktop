@@ -19,16 +19,17 @@ describe('describeTraceStep', () => {
       key: 'traceViewer.step.navigate',
       values: { url: 'https://raider-test-site.onrender.com/index.php' }
     })
-    // The runtime stamps no label on a field found by label or id: the role still names it
+    // The runtime stamps no label on a field found by label or id: the role alone names it
     expect(describeTraceStep(stepAt(2))).toMatchObject({
       key: 'traceViewer.step.clear',
-      element: { key: 'traceViewer.element.unnamed' }
+      element: { key: 'traceViewer.element.role', values: { role: 'text box' } }
     })
     expect(describeTraceStep(stepAt(3))).toMatchObject({
       key: 'traceViewer.step.typeText',
       values: { text: 'aguspe' },
-      element: { key: 'traceViewer.element.unnamed' }
+      element: { key: 'traceViewer.element.role', values: { role: 'text box' } }
     })
+    expect(englishText('traceViewer.element.role', { role: 'text box' })).toBe('the text box')
     expect(describeTraceStep(stepAt(6))).toMatchObject({
       key: 'traceViewer.step.click',
       element: { key: 'traceViewer.element.withRole', values: { label: 'Login', role: 'button' } }
@@ -118,6 +119,15 @@ describe('describeTraceStep', () => {
       key: 'traceViewer.element.named',
       values: { label: 'Menu' }
     })
+  })
+
+  it('an element with neither a label nor a known role is this element', () => {
+    expect(describeTraceStep(make({ element: { role: 'weird' } })).element?.key).toBe(
+      'traceViewer.element.unnamed'
+    )
+    expect(describeTraceStep(make({ element: null })).element?.key).toBe(
+      'traceViewer.element.unnamed'
+    )
   })
 
   it('never puts a selector or error text into the description', () => {

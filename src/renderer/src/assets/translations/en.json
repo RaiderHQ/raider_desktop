@@ -1240,6 +1240,7 @@
     "element": {
       "withRole": "the \"{{label}}\" {{role}}",
       "named": "\"{{label}}\"",
+      "role": "the {{role}}",
       "unnamed": "this element"
     },
     "step": {
