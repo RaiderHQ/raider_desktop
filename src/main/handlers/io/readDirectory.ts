@@ -23,6 +23,7 @@ async function readFolder(folderPath: string, isNested: boolean): Promise<FileNo
           name: content.name,
           isDirectory: true,
           type: 'folder' as const,
+          path: entryPath,
           children: await readFolder(entryPath, true)
         }
       }
