@@ -6,7 +6,7 @@ import { quoteShellArg } from '../../utils/shellQuote'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
 import { generateRspecFile } from '../../codegen/testFile'
 import { migrateLegacyTest } from '../../codegen/legacy'
-import { mobileNoLegacyResult, type LegacyRunResult } from '../../../shared/types/prepareRun'
+import type { LegacyRunResult } from '../../../shared/types/prepareRun'
 
 interface RunRecordingState {
   savedTest: { id: string; name: string; url: string; steps: unknown[] } | null
@@ -31,7 +31,6 @@ const runRecording = async (
   if (!appState.savedTest) {
     return { success: false, output: 'No test has been saved to run.' }
   }
-  if (appState.projectAutomation === 'appium') return mobileNoLegacyResult()
   // The command reaches a shell as is, so only the forms the app itself builds are run
   if (!isValidRubyCommand(appState.rubyCommand)) {
     return { success: false, output: 'Invalid Ruby command.' }

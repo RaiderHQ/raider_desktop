@@ -66,13 +66,13 @@ raider new "PROJECT_NAME" -p framework:FRAMEWORK automation:AUTOMATION [flags]
 
 **Parameters:**
 
-| Parameter     | Values                             | Flag                                         |
-| ------------- | ---------------------------------- | -------------------------------------------- |
-| framework     | `rspec` (4.0 removed `cucumber`)   | `-p framework:VALUE`                         |
-| automation    | `selenium` (4.0 removed `watir`)   | `-p automation:VALUE`                        |
-| mobile        | `ios`, `android`, `cross_platform` | `-p automation:VALUE` (overrides automation) |
-| ci            | `github` (default), `azure`        | `-p ci:VALUE`                                |
-| accessibility | boolean                            | `--accessibility`                            |
+| Parameter     | Values                             | Flag                                                                                                   |
+| ------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| framework     | `rspec` (4.0 removed `cucumber`)   | `-p framework:VALUE`                                                                                   |
+| automation    | `selenium` (4.0 removed `watir`)   | `-p automation:VALUE`                                                                                  |
+| mobile        | `ios`, `android`, `cross_platform` | `-p automation:VALUE` (overrides automation; the desktop never sends it: it creates web projects only) |
+| ci            | `github` (default), `azure`        | `-p ci:VALUE`                                                                                          |
+| accessibility | boolean                            | `--accessibility`                                                                                      |
 
 **Example:**
 
@@ -428,7 +428,7 @@ helper_path: 'custom/helpers'
 
 `config/config.yml` holds `platform` and `video`.
 
-Appium capabilities are stored separately in `config/capabilities.yml`. The desktop app can read/write this file directly for mobile projects (this is the one exception to the "never write config directly" rule).
+Appium capabilities are stored separately in `config/capabilities.yml`. The desktop does not read or write it: mobile (Appium) projects are not supported in this version, and opening one shows a not-supported message.
 
 ---
 
@@ -499,7 +499,7 @@ The gem auto-detects the project's automation type and framework by reading the 
 - `rspec` gem → rspec
 - `appium_lib`, `eyes_selenium` and `axe-core-*` gems are also mapped (`project_detector.rb`)
 
-If nothing matches, it warns and defaults to selenium + rspec. The desktop reads the Gemfile directly (`src/main/handlers/project/projectLayout.ts`): `appium_lib` → mobile (not recordable), `minitest` without `rspec` or `capybara` → not recordable, and the ruby_raider version from `Gemfile.lock` (`    ruby_raider (x.y.z)`) or the Gemfile pin → below 4 is not recordable or runnable (`unsupportedReason: 'gemTooOld'`).
+If nothing matches, it warns and defaults to selenium + rspec. The desktop reads the Gemfile directly (`src/main/handlers/project/projectLayout.ts`): `appium_lib` → mobile (`unsupportedReason: 'mobile'`: not supported, nothing opens past the message, main refuses runs), `minitest` without `rspec` or `capybara` → not recordable, and the ruby_raider version from `Gemfile.lock` (`    ruby_raider (x.y.z)`) or the Gemfile pin → below 4 is not recordable or runnable (`unsupportedReason: 'gemTooOld'`).
 
 ---
 

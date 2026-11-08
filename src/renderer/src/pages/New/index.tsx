@@ -7,7 +7,6 @@ import InfoButton from '@components/InfoButton'
 import InputField from '@components/InputField'
 import SelectInput from '@components/SelectInput'
 import Checkbox from '@components/Checkbox'
-import SegmentedControl from '@components/SegmentedControl'
 import LoadingScreen from '@components/LoadingScreen'
 import Tooltip from '@components/Tooltip'
 import useLoadingStore from '@foundation/Stores/loadingStore'
@@ -17,9 +16,6 @@ import useVersionStore, { supportsRuntime } from '@foundation/Stores/versionStor
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import { isValidProjectName } from '@shared/projectName'
 import { showErrorToast } from '@foundation/errorToast'
-
-type Target = 'web' | 'mobile'
-type Phones = 'ios' | 'android' | 'cross_platform'
 
 const CreateProject: React.FC = () => {
   const navigate = useNavigate()
@@ -32,15 +28,12 @@ const CreateProject: React.FC = () => {
   // Every project is generated on the 4.0 runtime: an older or missing gem cannot create one
   const gemVersion = useVersionStore((state) => state.version)
   const gemSupported = supportsRuntime(gemVersion)
-  const mobileSupported = gemSupported
 
   // The page tells users to update Ruby Raider and come back, so it reads the version again
   useEffect(() => {
     void useVersionStore.getState().loadVersion()
   }, [])
 
-  const [target, setTarget] = useState<Target>('web')
-  const [phones, setPhones] = useState<Phones>('ios')
   const [projectName, setProjectName] = useState('')
   const [ciProvider, setCiProvider] = useState<'github' | 'azure'>('github')
 
@@ -48,7 +41,6 @@ const CreateProject: React.FC = () => {
   const [accessibility, setAccessibility] = useState(false)
   const [examples, setExamples] = useState(true)
 
-  const isMobile = target === 'mobile' && mobileSupported
   const nameIsValid = isValidProjectName(projectName)
   // The rule shows under the field; it turns into an error once a wrong name is typed
   const nameError = projectName !== '' && !nameIsValid ? t('newProject.input.invalid') : undefined
@@ -64,18 +56,14 @@ const CreateProject: React.FC = () => {
     setLoading(true)
     try {
       const overviewFolder = `${folder}/${projectName}`
-      // Web-only choices are kept in state but not sent for mobile projects.
-      const projectOptions: ProjectCreationOptions = isMobile
-        ? { accessibility: false, ci: 'github' }
-        : { accessibility, ci: ciProvider }
-      projectOptions.examples = examples
+      // Web projects only (Selenium + RSpec): mobile is not supported in this version
+      const projectOptions: ProjectCreationOptions = { accessibility, ci: ciProvider, examples }
 
       const raiderResult = await window.api.runRubyRaider(
         folder,
         projectName,
         'selenium',
         rubyCommand || '',
-        isMobile ? phones : null,
         projectOptions
       )
 
@@ -132,58 +120,17 @@ const CreateProject: React.FC = () => {
 
           <div className="flex flex-col space-y-6 mb-6 w-full">
             <div>
-              <SegmentedControl<Target>
-                label={t('newProject.question.target')}
-                testId="target-control"
-                tooltip={t('tooltips.newProject.target')}
-                value={target}
-                onChange={setTarget}
-                options={[
-                  { value: 'web', label: t('newProject.target.web') },
-                  {
-                    value: 'mobile',
-                    label: t('newProject.target.mobile'),
-                    disabled: !mobileSupported,
-                    describedBy: mobileSupported ? undefined : 'gem-needs-update'
-                  }
-                ]}
-              />
-            </div>
-            {isMobile && (
-              <SegmentedControl<Phones>
-                label={t('newProject.question.phones')}
-                testId="phones-control"
-                tooltip={t('tooltips.newProject.phones')}
-                value={phones}
-                onChange={setPhones}
-                options={[
-                  { value: 'ios', label: t('newProject.phones.ios') },
-                  { value: 'android', label: t('newProject.phones.android') },
-                  { value: 'cross_platform', label: t('newProject.phones.both') }
-                ]}
-              />
-            )}
-            <div>
               <SelectInput
                 label={t('newProject.ci.label')}
-                options={
-                  isMobile
-                    ? [t('newProject.ci.github')]
-                    : [t('newProject.ci.github'), t('newProject.ci.azure')]
-                }
+                options={[t('newProject.ci.github'), t('newProject.ci.azure')]}
                 selected={
-                  ciProvider === 'azure' && !isMobile
-                    ? t('newProject.ci.azure')
-                    : t('newProject.ci.github')
+                  ciProvider === 'azure' ? t('newProject.ci.azure') : t('newProject.ci.github')
                 }
                 tooltip={t('tooltips.newProject.ci')}
                 onChange={({ target }: React.ChangeEvent<HTMLSelectElement>) =>
                   setCiProvider(target.value === t('newProject.ci.azure') ? 'azure' : 'github')
                 }
               />
-              {isMobile && (
-                <p className="mt-1 text-xs text-neutral-md">{t('newProject.ci.mobileAzure')}</p>
-              )}
             </div>
           </div>
 
@@ -193,15 +140,13 @@ const CreateProject: React.FC = () => {
               {t('newProject.addons.title')}
             </h3>
             <div className="space-y-2">
-              {!isMobile && (
-                <Checkbox
-                  label={t('newProject.addons.accessibility')}
-                  checked={accessibility}
-                  onChange={setAccessibility}
-                  helpText={t('newProject.addons.accessibilityHelp')}
-                  tooltip={t('tooltips.newProject.accessibility')}
-                />
-              )}
+              <Checkbox
+                label={t('newProject.addons.accessibility')}
+                checked={accessibility}
+                onChange={setAccessibility}
+                helpText={t('newProject.addons.accessibilityHelp')}
+                tooltip={t('tooltips.newProject.accessibility')}
+              />
               {gemSupported && (
                 <Checkbox
                   label={t('newProject.addons.examples')}

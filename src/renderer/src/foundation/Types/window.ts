@@ -26,11 +26,6 @@ import type {
   TraceOpenResult,
   ResultTraceSource
 } from '@shared/types/raiderTrace'
-import type {
-  DeviceSettings,
-  DeviceSettingsChange,
-  MobileReady
-} from '@shared/types/deviceSettings'
 
 /** Live-run methods (startRun, cancelRun, getActiveRun, getRunDefaults, onRunEvent) come from RunApi. */
 export interface WindowApi extends RunApi {
@@ -40,7 +35,6 @@ export interface WindowApi extends RunApi {
     projectName: string,
     automation: string,
     rubyCommand: string,
-    mobile?: string | null,
     options?: ProjectCreationOptions
   ) => Promise<CommandType>
   createQuickProject: (
@@ -109,7 +103,7 @@ export interface WindowApi extends RunApi {
   }>
   installGems: (rubyCommand: string, gems: string[]) => Promise<CommandType>
 
-  // --- Browser & Mobile Configuration ---
+  // --- Browser Configuration ---
   updateBrowserUrl: (
     projectPath: string,
     url: string
@@ -118,16 +112,6 @@ export interface WindowApi extends RunApi {
     projectPath: string,
     browser: string
   ) => Promise<{ success: boolean; output?: string; error?: string }>
-  getDeviceSettings: (projectPath: string) => Promise<DeviceSettings | { error: string }>
-  saveDeviceSettings: (
-    projectPath: string,
-    change: DeviceSettingsChange
-  ) => Promise<{ ok: true } | { error: string }>
-  checkMobileReady: (projectPath: string) => Promise<MobileReady | { error: string }>
-  chooseAppFile: (
-    projectPath: string,
-    platform: 'ios' | 'android'
-  ) => Promise<{ path: string } | { cancelled: true } | { error: string }>
 
   // --- Test Execution ---
   runCommand: (command: string) => Promise<CommandType>

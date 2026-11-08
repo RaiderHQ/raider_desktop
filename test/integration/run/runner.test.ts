@@ -11,6 +11,11 @@ vi.mock('electron', () => ({ app: { getPath: vi.fn(() => os.tmpdir()) } }))
 vi.mock('../../../src/main/handlers/longship/pushToLongship', () => ({
   pushToLongship: vi.fn(async () => undefined)
 }))
+// Activation is resolved unless a test holds it open
+let activation: Promise<void> = Promise.resolve()
+vi.mock('../../../src/main/handlers/project/setActiveProject', () => ({
+  activationSettled: vi.fn(() => activation)
+}))
 const LISTED = ['spec/a_spec.rb', 'spec/b_spec.rb']
 vi.mock('../../../src/main/handlers/tests/projectTestIpc', () => ({
   listedFiles: vi.fn(async (files: unknown[]) => {
@@ -27,6 +32,7 @@ import { appState } from '../../../src/main/handlers/appState'
 import { pushToLongship } from '../../../src/main/handlers/longship/pushToLongship'
 import { shellQuote } from '../../../src/main/utils/shellCommand'
 import { listedFiles } from '../../../src/main/handlers/tests/projectTestIpc'
+import { MOBILE_UNSUPPORTED } from '../../../src/main/handlers/project/projectLayout'
 import {
   cancelRun,
   getActiveRun,
@@ -136,6 +142,29 @@ describe('runner', () => {
     }
     fs.rmSync(project, { recursive: true, force: true })
     fs.rmSync(tempRoot, { recursive: true, force: true })
+  })
+
+  it('waits for a project switch, then refuses the mobile project it lands on', async () => {
+    let settle!: () => void
+    activation = new Promise<void>((resolve) => (settle = resolve))
+    appState.layout = LAYOUT
+    const pending = startRun(ALL, deps)
+    // Main still holds the previous web project while the switch is in flight
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(deps.spawnCommand).not.toHaveBeenCalled()
+    appState.layout = { ...LAYOUT, recordable: false, unsupportedReason: 'mobile' }
+    settle()
+    activation = Promise.resolve()
+    expect(await pending).toEqual({ error: MOBILE_UNSUPPORTED })
+    expect(deps.spawnCommand).not.toHaveBeenCalled()
+  })
+
+  it('refuses to run a mobile (Appium) project and spawns nothing', async () => {
+    appState.layout = { ...LAYOUT, recordable: false, unsupportedReason: 'mobile' }
+    expect(await startRun(ALL, deps)).toEqual({ error: MOBILE_UNSUPPORTED })
+    expect(deps.spawnCommand).not.toHaveBeenCalled()
+    expect(events).toEqual([])
+    expect(getActiveRun()).toBeNull()
   })
 
   it('refuses to run a project on a ruby_raider below 4.0 and spawns nothing', async () => {

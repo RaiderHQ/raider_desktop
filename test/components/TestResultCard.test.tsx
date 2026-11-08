@@ -143,9 +143,9 @@ describe('TestResultCard failure details', () => {
   })
 })
 
-describe('TestResultCard with a mobile (Appium) result', () => {
+describe('TestResultCard with a result that has no browser', () => {
   it('shows the mp4 video and no browser row', async () => {
-    const run = readFileSync('test/fixtures/results/mobile-run.json', 'utf8')
+    const run = readFileSync('test/fixtures/results/no-browser-run.json', 'utf8')
     const rows = await loadRaiderResults('/proj', {
       readDirectory: async () => [
         { name: 'run.json', type: 'file', path: '/proj/raider-results/run.json' }

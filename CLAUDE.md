@@ -36,7 +36,7 @@ This dual nature means the app should:
 2. **Test Recorder**: Record user interactions and generate test scripts
 3. **Test Runner**: Execute tests and display results
 4. **Dashboard**: Project statistics and recording session info
-5. **Settings**: Configure browsers, mobile capabilities, selector priorities
+5. **Settings**: Configure browsers and selector priorities
 
 ## Dependencies
 

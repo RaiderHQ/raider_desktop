@@ -55,24 +55,10 @@
       "hint": "Letters, numbers, underscores and hyphens, with no spaces. For example my_project.",
       "invalid": "Use letters, numbers, underscores and hyphens only, with no spaces. For example my_project."
     },
-    "question": {
-      "target": "What are you testing?",
-      "phones": "Which phones?"
-    },
     "ci": {
       "label": "CI provider",
       "github": "GitHub Actions",
-      "azure": "Azure Pipelines",
-      "mobileAzure": "Azure Pipelines isn't available for mobile projects yet."
-    },
-    "target": {
-      "web": "Website",
-      "mobile": "Mobile app"
-    },
-    "phones": {
-      "ios": "iPhone (iOS)",
-      "android": "Android",
-      "both": "Both"
+      "azure": "Azure Pipelines"
     },
     "addons": {
       "title": "Add-ons",
@@ -149,7 +135,6 @@
       "timeout": "Timeout",
       "viewport": "Viewport",
       "browserOptions": "Browser Options",
-      "appium": "Appium",
       "paths": "Paths"
     },
     "baseUrl": {
@@ -507,7 +492,7 @@
       "weak": "This step finds the element by its position in the page, which can break when the page changes. Re-record the step to pick a steadier one."
     },
     "unsupported": {
-      "mobile": "Mobile projects can't be recorded yet.",
+      "mobile": "Mobile projects are not supported in this version.",
       "minitest": "This project uses a test style Raider can't record into yet.",
       "capybara": "This project uses a test style Raider can't record into yet.",
       "noGemfile": "Raider couldn't find the files it needs to set up this project.",
@@ -662,7 +647,7 @@
     "step3Middle": " when you are done, then Run",
     "step3After": " to see it pass.",
     "gotIt": "Got it",
-    "learnMore": "Learn more about assertions"
+    "learnMore": "Learn more about validations"
   },
   "shortcuts": {
     "title": "Keyboard shortcuts",
@@ -798,7 +783,7 @@
     },
     "createProject": {
       "title": "About creating a project",
-      "message": "Give your project a name, choose whether you're testing a website or a mobile app, and Ruby Raider sets up an RSpec project for you.\n\nRuby Raider will generate a ready-to-use folder structure for you."
+      "message": "Give your project a name, choose a CI provider and add-ons, and Ruby Raider sets up a web project (Selenium + RSpec) for you.\n\nRuby Raider will generate a ready-to-use folder structure for you."
     },
     "landing": {
       "title": "Welcome to Ruby Raider",
@@ -887,10 +872,7 @@
       "paths": "Where generated pages, features, specs and helpers go",
       "forgetLogin": "Delete this saved login",
       "treeRow": "Open in the editor; right-click for more",
-      "runTests": "Run every test in the project",
-      "deviceName": "The device the tests run on",
-      "osVersion": "Its OS version",
-      "appFile": "The app file to install"
+      "runTests": "Run every test in the project"
     },
     "runPanel": {
       "cancel": "Stop the run",
@@ -921,8 +903,6 @@
     },
     "newProject": {
       "name": "Lowercase letters, numbers and underscores; this is the folder name",
-      "target": "What the tests will drive",
-      "phones": "Which phones the tests run on",
       "ci": "Which CI service gets a ready-made pipeline file",
       "accessibility": "Adds an accessibility check to every test",
       "examples": "Adds example pages and tests to learn from",
@@ -1022,16 +1002,7 @@
     "notifyBody": "{{passed}} passed, {{failed}} failed",
     "saveToRun": "Save this test to run it",
     "skippedMissing_one": "{{count}} test was skipped: its file is missing",
-    "skippedMissing_other": "{{count}} tests were skipped: their files are missing",
-    "mobile": {
-      "appium": "Can't reach Appium at {{address}}. Start Appium (run `appium` in a terminal), then try again.",
-      "app": "Can't find the app file {{file}}. Choose it in Device settings.",
-      "tryAgain": "Try again",
-      "openDeviceSettings": "Open device settings",
-      "runAnyway": "Run anyway",
-      "checkFailed": "Couldn't check this project. Try again.",
-      "noLegacy": "Mobile projects can't run recorded tests yet."
-    }
+    "skippedMissing_other": "{{count}} tests were skipped: their files are missing"
   },
   "logins": {
     "title": "Saved logins",
@@ -1046,28 +1017,6 @@
     "addHelper": "This project was made before saved logins. Recreate it with ruby_raider 3.11 or later to save logins.",
     "forgetConfirm": "Forget the saved login \"{{name}}\"? The next run logs in again.",
     "forget": "Forget"
-  },
-  "device": {
-    "title": "Device",
-    "runOn": "Run on",
-    "ios": "iOS",
-    "android": "Android",
-    "deviceName": "Device name",
-    "osVersion": "OS version",
-    "appFile": "App file",
-    "choose": "Choose…",
-    "driver": "Driver",
-    "fileMissing": "Can't find this file",
-    "chooseAppPrompt": "Choose the app file to test before running.",
-    "readError": "Couldn't read this project's device settings (config/capabilities.yml).",
-    "saved": "Saved",
-    "saveFailed": "Couldn't save the device settings.",
-    "chooseFailed": "Couldn't open the file picker.",
-    "notAnApp": "Choose an .app, .ipa, .apk or .aab file.",
-    "help": {
-      "deviceName": "The simulator, emulator or phone name, for example iPhone 15.",
-      "osVersion": "For example 17.0 or 14."
-    }
   },
   "screenshotComparison": {
     "title": "Screenshot comparison",
@@ -1434,5 +1383,10 @@
     "done": "ruby_raider is on 4.0. The project reloaded.",
     "failed": "Raider couldn't update ruby_raider.",
     "failedRepinned": "Raider couldn't finish the update. The Gemfile already pins ruby_raider ~> 4.0: run bundle update ruby_raider in the project to finish."
+  },
+  "mobileUnsupported": {
+    "title": "Mobile projects are not supported",
+    "message": "This is a mobile (Appium) project. This version of Ruby Raider works with web projects only, so it can't open, record or run it.",
+    "openAnother": "Open another project"
   }
 }

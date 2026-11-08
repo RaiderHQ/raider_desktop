@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "client_run_id": "mobile-fixture",
+  "client_run_id": "no-browser-fixture",
   "run": {
     "finished_at": "2026-11-01T10:00:00Z",
     "environment": {}

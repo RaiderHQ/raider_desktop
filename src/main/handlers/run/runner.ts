@@ -12,6 +12,8 @@ import type {
   StartRunResult
 } from '@shared/types/runEvents'
 import { appState } from '../appState'
+import { activationSettled } from '../project/setActiveProject'
+import { MOBILE_UNSUPPORTED } from '../project/projectLayout'
 import checkBundle from '../ruby/checkBundle'
 import bundleInstall from '../ruby/bundleInstall'
 import { pushToLongship } from '../longship/pushToLongship'
@@ -220,8 +222,11 @@ export async function startRun(
   if (starting || (current && !current.done)) return { error: 'busy' }
   starting = true
   try {
+    // A run asked for during a project switch waits for it, so it never runs the previous project
+    await activationSettled()
     const projectPath = appState.projectPath
     if (!projectPath) throw new Error('No project is open.')
+    if (appState.layout?.unsupportedReason === 'mobile') throw new Error(MOBILE_UNSUPPORTED)
     if (appState.layout?.runtimeSupported === false) throw new Error(GEM_TOO_OLD)
     const valid = await validate(request)
     // The files were checked against the project open now; run only if it's still the same one

@@ -199,12 +199,9 @@ describe('runRubyRaider handler (integration)', () => {
   })
 
   describe('ci option', () => {
-    const run = async (
-      options: ProjectCreationOptions | undefined,
-      mobile: string | null = null
-    ): Promise<string> => {
+    const run = async (options: ProjectCreationOptions | undefined): Promise<string> => {
       mockExecSuccess()
-      await handler(...validArgs, mobile, options)
+      await handler(...validArgs, options)
       return mockExec.mock.calls[0][0] as string
     }
 
@@ -224,16 +221,12 @@ describe('runRubyRaider handler (integration)', () => {
     it('ignores unknown providers', async () => {
       expect(await run({ ci: 'gitlab' as never })).not.toContain('ci:')
     })
-
-    it('ignores azure for mobile projects', async () => {
-      expect(await run({ ci: 'azure' }, 'android')).not.toContain('ci:')
-    })
   })
 
   describe('examples option', () => {
     const run = async (options: ProjectCreationOptions | undefined): Promise<string> => {
       mockExecSuccess()
-      await handler(...validArgs, null, options)
+      await handler(...validArgs, options)
       return mockExec.mock.calls[0][0] as string
     }
 
@@ -251,7 +244,7 @@ describe('runRubyRaider handler (integration)', () => {
 
   it('never emits -r, --skip_ci or --ruby_version', async () => {
     mockExecSuccess()
-    await handler(...validArgs, null, {
+    await handler(...validArgs, {
       accessibility: true,
       reporter: 'junit',
       skipCi: true,
@@ -305,10 +298,13 @@ describe('runRubyRaider handler (integration)', () => {
     expect(result.error).toContain('project directory was not created')
   })
 
-  it('uses the mobile platform as automation when mobile param is given', async () => {
-    mockExecSuccess()
-    await handler({} as any, '/tmp', 'proj', 'appium', 'ruby', 'android')
-    const call = mockExec.mock.calls[0][0] as string
-    expect(call).toContain('automation:android')
-  })
+  it.each(['appium', 'android', 'ios', 'cross_platform'])(
+    'refuses %s: the desktop creates web projects only',
+    async (automation) => {
+      const result = await handler({} as any, '/tmp', 'proj', automation, 'ruby')
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Invalid automation')
+      expect(mockExec).not.toHaveBeenCalled()
+    }
+  )
 })

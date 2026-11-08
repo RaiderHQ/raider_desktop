@@ -148,6 +148,14 @@ describe('upgradeRubyRaider', () => {
   })
 
   describe('refusals', () => {
+    it('refuses a mobile (Appium) project', async () => {
+      appState.layout = { ...layout, recordable: false, unsupportedReason: 'mobile' }
+      expect(await upgradeRubyRaider(dir, 'ruby')).toEqual({
+        success: false,
+        error: 'Mobile projects are not supported in this version.'
+      })
+    })
+
     it('only updates the open project', async () => {
       expect(await upgradeRubyRaider(join(dir, 'other'), 'ruby')).toEqual({
         success: false,

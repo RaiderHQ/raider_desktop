@@ -40,7 +40,6 @@ const handler = async (
   projectName: string,
   automation: string,
   rubyCommand: string,
-  mobile: string | null = null,
   options?: ProjectCreationOptions
 ): Promise<CommandType> => {
   const fixPath = (await import('fix-path')).default
@@ -59,14 +58,12 @@ const handler = async (
         'Invalid projectName: Use letters, numbers, underscores and hyphens, starting with a letter or number'
       )
     }
-    if (typeof automation !== 'string' || automation.trim() === '') {
-      throw new Error('Invalid automation: Must be a non-empty string')
+    // The desktop creates web projects only; mobile (Appium) is not supported in this version
+    if (automation !== 'selenium') {
+      throw new Error("Invalid automation: Only 'selenium' is supported")
     }
     if (typeof rubyCommand !== 'string' || rubyCommand.trim() === '') {
       throw new Error('Invalid rubyCommand: A command to set the Ruby environment is required.')
-    }
-    if (mobile !== null && typeof mobile !== 'string') {
-      throw new Error('Invalid mobile parameter: Must be a string if provided')
     }
 
     const normalizedFolderPath = path.resolve(folderPath)
@@ -79,17 +76,10 @@ const handler = async (
         error: `A folder named "${projectName}" already exists in ${normalizedFolderPath}.`
       }
     }
-    let formattedAutomation = automation.toLowerCase()
+    let raiderCommand = `raider new ${quoteShellArg(projectName)} -p framework:rspec automation:selenium`
 
-    if (typeof mobile === 'string' && mobile.trim() !== '') {
-      formattedAutomation = mobile.toLowerCase()
-    }
-
-    let raiderCommand = `raider new ${quoteShellArg(projectName)} -p framework:rspec automation:${formattedAutomation}`
-
-    // Azure Pipelines is web-only for now; github is ruby_raider's default so nothing is passed.
-    const isMobile = typeof mobile === 'string' && mobile.trim() !== ''
-    if (options?.ci === 'azure' && !isMobile) raiderCommand += ' ci:azure'
+    // github is ruby_raider's default so nothing is passed for it
+    if (options?.ci === 'azure') raiderCommand += ' ci:azure'
 
     if (options?.examples === false) raiderCommand += ' examples:false'
 

@@ -48,7 +48,7 @@ beforeEach(() => {
   api.importTest.mockResolvedValue({ success: true })
   api.importProject.mockResolvedValue({ success: true })
   api.exportProject.mockResolvedValue({ success: true, path: '/out/p.zip' })
-  useRunStore.setState({ run: null, origin: null, isActive: false, checking: false })
+  useRunStore.setState({ run: null, origin: null, isActive: false })
   useProjectStore.setState({ projectPath: '/p', layout: null })
   useRecorderStore.setState({ isRunning: false })
   useTestsListStore.setState({ rows: [] })
@@ -125,24 +125,19 @@ describe('TestsMoreMenu', () => {
     await waitFor(() => expect(mockToast.error).toHaveBeenCalled())
   })
 
-  it('leaves the mobile check of a tagged run to the live runner', () => {
-    // runStore.start asks main whether the device is ready and shows what is missing
-    useProjectStore.setState({ layout: { automation: 'appium' } as never })
-    render(<TestsMoreMenu tag="smoke" />)
-    open()
-    expect(screen.getByRole('menuitem', { name: 'Run tagged tests' })).toBeEnabled()
-  })
-
   it('disables both imports, with the reason, in a project that cannot record', () => {
     useProjectStore.setState({
-      layout: { recordable: false, unsupportedReason: 'mobile' } as never
+      layout: { recordable: false, unsupportedReason: 'minitest' } as never
     })
     render(<TestsMoreMenu tag={null} />)
     open()
     for (const name of ['Import test', 'Import project']) {
       const item = screen.getByRole('menuitem', { name })
       expect(item).toBeDisabled()
-      expect(item).toHaveAttribute('title', "Mobile projects can't be recorded yet.")
+      expect(item).toHaveAttribute(
+        'title',
+        "This project uses a test style Raider can't record into yet."
+      )
     }
     // Exporting what the project has stays possible
     expect(screen.getByRole('menuitem', { name: 'Export project' })).toBeEnabled()

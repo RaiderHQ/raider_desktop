@@ -70,8 +70,6 @@ const api = {
   listProjectTests: vi.fn(),
   openCodeTest: vi.fn(),
   startRun: vi.fn(),
-  // Main answers ok for a web project; the layout here is often not loaded yet
-  checkMobileReady: vi.fn().mockResolvedValue({ ok: true }),
   getRunDefaults: vi.fn(),
   recordOverExample: vi.fn(),
   saveRecording: vi.fn(),
@@ -134,7 +132,7 @@ beforeEach(() => {
   api.openCodeTest.mockResolvedValue(view)
   api.startRun.mockResolvedValue({ runId: 'r1' })
   api.getRunDefaults.mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 })
-  useRunStore.setState({ run: null, origin: null, isActive: false, notReady: null })
+  useRunStore.setState({ run: null, origin: null, isActive: false })
   api.recordOverExample.mockResolvedValue({ success: true })
   api.saveRecording.mockResolvedValue({
     success: true,
@@ -162,57 +160,30 @@ beforeEach(() => {
   useRubyStore.setState({ rubyCommand: 'ruby' })
 })
 
-const mobileLayout = {
+const unrecordableLayout = {
   framework: 'rspec',
-  automation: 'appium',
-  mobilePlatform: 'ios',
+  automation: 'selenium',
   specPath: 'spec',
   featurePath: 'features',
   helperPath: 'helpers',
   waitHelper: false,
   recordable: false,
-  unsupportedReason: 'mobile'
+  unsupportedReason: 'minitest'
 } as const
 
 describe('CodeTestPane', () => {
-  it('says why Record is off in a mobile project', async () => {
-    useProjectStore.setState({ layout: mobileLayout })
-    renderPane()
-    const record = await screen.findByRole('button', { name: 'testPage.record' })
-    expect(record).toBeDisabled()
-    expect(record).toHaveAttribute('title', 'recorder.unsupported.mobile')
-    expect(en.recorder.unsupported.mobile).toBe("Mobile projects can't be recorded yet.")
-  })
-
   it('shows a tooltip on focus for Run', async () => {
     renderPane()
     fireEvent.focus(await screen.findByRole('button', { name: 'testPage.run' }))
     expect(screen.getByRole('tooltip')).toHaveTextContent('tooltips.testPage.run')
   })
 
-  it('keeps Record without a reason for other projects that cannot record', async () => {
-    useProjectStore.setState({
-      layout: { ...mobileLayout, automation: 'selenium', unsupportedReason: 'minitest' }
-    })
+  it('keeps Record without a reason for projects that cannot record', async () => {
+    useProjectStore.setState({ layout: unrecordableLayout })
     renderPane()
     const record = await screen.findByRole('button', { name: 'testPage.record' })
     expect(record).toBeDisabled()
     expect(record).not.toHaveAttribute('title')
-  })
-
-  it('shows why a mobile run did not start, from this page', async () => {
-    useRunStore.setState({
-      notReady: {
-        reason: 'appium',
-        detail: '127.0.0.1:4723',
-        scope: { kind: 'files', files: ['spec/login_spec.rb'] },
-        origin: { route: '/overview/tests/x', label: 'Login' },
-        projectPath: '/Users/me/project'
-      }
-    })
-    renderPane()
-    await screen.findByRole('button', { name: 'logs in' })
-    expect(screen.getByRole('button', { name: 'run.mobile.runAnyway' })).toBeInTheDocument()
   })
 
   it('lists the examples and selects the first one', async () => {
@@ -615,13 +586,13 @@ describe('CodeTestPane', () => {
       await screen.findByRole('button', { name: 'testPage.record' })
       act(() => dispatchMenuCommand('run'))
       await waitFor(() => expect(api.startRun).toHaveBeenCalled())
-      act(() => useRunStore.setState({ isActive: false, checking: false, origin: null }))
+      act(() => useRunStore.setState({ isActive: false, origin: null }))
       act(() => dispatchMenuCommand('record'))
       expect(await screen.findByRole('button', { name: 'Confirm' })).toBeInTheDocument()
     })
 
     it('does not act while the buttons are disabled', async () => {
-      useProjectStore.setState({ layout: mobileLayout })
+      useProjectStore.setState({ layout: unrecordableLayout })
       renderPane()
       await screen.findByRole('button', { name: 'testPage.record' })
       act(() => dispatchMenuCommand('record'))

@@ -27,7 +27,7 @@ const menuItem =
 /** The Tests list's "More" menu: run the tagged tests, import and export. */
 const TestsMoreMenu: React.FC<TestsMoreMenuProps> = ({ tag }) => {
   const { t } = useTranslation()
-  const runActive = useRunStore((s) => s.isActive || s.checking)
+  const runActive = useRunStore((s) => s.isActive)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
   const runBusy = runActive || recorderRunning
   // A project Raider can't record into keeps its spec files read-only: nothing is imported into it
