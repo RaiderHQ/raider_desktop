@@ -43,7 +43,8 @@ describe('run-test', () => {
 
   it('run-test runs the cached test through runRecording in a project that is not on files', async () => {
     mockMode.mockReturnValue('locked')
-    const { implicitWait, explicitWait, browser, headless } = appState.recorderSettings
+    const { implicitWait, explicitWait, testIdAttribute, browser, headless } =
+      appState.recorderSettings
 
     expect(await runTestHandler('t1', '/p', 'ruby')).toEqual({ success: true, output: 'rec' })
 
@@ -51,6 +52,7 @@ describe('run-test', () => {
       savedTest: test1,
       implicitWait,
       explicitWait,
+      testIdAttribute,
       browser,
       headless,
       projectPath: '/p',

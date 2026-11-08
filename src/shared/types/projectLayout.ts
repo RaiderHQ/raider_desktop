@@ -11,6 +11,8 @@ export interface ProjectLayout {
   featurePath: string
   /** Config `helper_path`, default 'helpers' */
   helperPath: string
+  /** Config `test_id_attribute`, default 'data-testid': what the runtime's test_id: reads */
+  testIdAttribute?: string
   /** False for appium / minitest / capybara / no Gemfile */
   recordable: boolean
   unsupportedReason?: 'mobile' | 'minitest' | 'capybara' | 'noGemfile'

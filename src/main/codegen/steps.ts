@@ -34,8 +34,16 @@ const keyArg = (key: string): string =>
 // also shows 'Login or register'.
 const exact = (value: string): string => `[${rubyString(value)}, { exact: true }]`
 
-/** The locator argument of find_element, from the semantic locator when the recorder captured one. */
-export function locatorArg(el: ElementTarget): string {
+/** The attribute the runtime reads for test_id: unless config.yml names another. */
+export const DEFAULT_TEST_ID_ATTRIBUTE = 'data-testid'
+
+/**
+ * The locator argument of find_element, from the semantic locator when the recorder captured
+ * one. `testIdAttribute` is the project's `test_id_attribute`: the runtime resolves `test_id:`
+ * through that key only, so a test id recorded under any other attribute (the recorder accepts
+ * every unknown name in the selector priority as one) keeps its CSS form.
+ */
+export function locatorArg(el: ElementTarget, testIdAttribute = DEFAULT_TEST_ID_ATTRIBUTE): string {
   const semantic: Locator | undefined = el.locator
   if (!semantic) return `${el.strategy}: ${rubyString(el.value)}`
   switch (semantic.by) {
@@ -46,9 +54,9 @@ export function locatorArg(el: ElementTarget): string {
     case 'text':
       return `text: ${exact(semantic.text)}`
     case 'testId':
-      // The runtime reads the attribute name from config.yml (test_id_attribute), the
-      // same key the recorder read when it captured the value
-      return `test_id: ${rubyString(semantic.value)}`
+      return semantic.attribute === testIdAttribute
+        ? `test_id: ${rubyString(semantic.value)}`
+        : `${el.strategy}: ${rubyString(el.value)}`
     case 'id':
       return `id: ${rubyString(semantic.value)}`
     case 'css':
@@ -65,6 +73,8 @@ export function locatorArg(el: ElementTarget): string {
 export type Receiver = 'ivar' | 'helper'
 export interface RenderOptions {
   receiver?: Receiver
+  /** The project's test_id_attribute (config.yml); data-testid when absent */
+  testIdAttribute?: string
 }
 
 function need<T>(value: T | undefined, what: string, check: string): T {
@@ -77,13 +87,17 @@ function need<T>(value: T | undefined, what: string, check: string): T {
 // raises, where the plain form would wait for the element and fail at the deadline
 const check = (find: string, matcher: string): string => `expect { ${find} }.to ${matcher}`
 
-function renderAssert(step: Extract<Step, { kind: 'assert' }>, driver: string): string {
+function renderAssert(
+  step: Extract<Step, { kind: 'assert' }>,
+  driver: string,
+  testIdAttribute: string
+): string {
   const kind = step.check
   const expected = (): string => rubyString(need(step.expected, 'an expected string', kind))
   if (kind === 'titleEquals') return `expect(${driver}).to have_title(${expected()})`
   // have_url compares the whole URL, so a part of it goes through the retrying block form
   if (kind === 'urlIncludes') return `expect { ${driver}.current_url }.to include(${expected()})`
-  const find = `${driver}.find_element(${locatorArg(need(step.element, 'an element', kind))})`
+  const find = `${driver}.find_element(${locatorArg(need(step.element, 'an element', kind), testIdAttribute)})`
   switch (kind) {
     case 'displayed':
       return check(find, 'be_visible')
@@ -116,7 +130,9 @@ const WAIT_MATCHERS = { visible: 'be_visible', hidden: 'be_hidden', enabled: 'be
 /** Ruby for one step: one or more lines, no trailing newline, no indentation. */
 export function renderStep(step: Step, opts: RenderOptions = {}): string {
   const driver = opts.receiver === 'helper' ? 'driver' : '@driver'
-  const find = (el: ElementTarget): string => `${driver}.find_element(${locatorArg(el)})`
+  const testIdAttribute = opts.testIdAttribute ?? DEFAULT_TEST_ID_ATTRIBUTE
+  const find = (el: ElementTarget): string =>
+    `${driver}.find_element(${locatorArg(el, testIdAttribute)})`
   switch (step.kind) {
     case 'navigate':
       return `${driver}.navigate.to(${rubyString(step.url)})`
@@ -134,7 +150,7 @@ export function renderStep(step: Step, opts: RenderOptions = {}): string {
     case 'wait':
       return check(find(step.element), WAIT_MATCHERS[step.until])
     case 'assert':
-      return renderAssert(step, driver)
+      return renderAssert(step, driver, testIdAttribute)
     case 'switchFrame':
       return step.element
         ? `${driver}.switch_to.frame(${find(step.element)})`

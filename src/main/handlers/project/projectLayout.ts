@@ -4,7 +4,15 @@ import yaml from 'js-yaml'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import { detectMobilePlatform } from '../mobile/capabilitiesFile'
 
-const DEFAULT_PATHS = { specPath: 'spec', featurePath: 'features', helperPath: 'helpers' }
+const DEFAULT_PATHS = {
+  specPath: 'spec',
+  featurePath: 'features',
+  helperPath: 'helpers',
+  testIdAttribute: 'data-testid'
+}
+
+// An attribute name as the recorder and the runtime accept it
+const ATTRIBUTE_NAME = /^[A-Za-z_][\w-]*$/
 
 async function readOptional(path: string): Promise<string | null> {
   try {
@@ -38,7 +46,11 @@ async function readPaths(projectPath: string): Promise<typeof DEFAULT_PATHS> {
   return {
     specPath: safeRelativePath(values.spec_path, DEFAULT_PATHS.specPath),
     featurePath: safeRelativePath(values.feature_path, DEFAULT_PATHS.featurePath),
-    helperPath: safeRelativePath(values.helper_path, DEFAULT_PATHS.helperPath)
+    helperPath: safeRelativePath(values.helper_path, DEFAULT_PATHS.helperPath),
+    testIdAttribute:
+      typeof values.test_id_attribute === 'string' && ATTRIBUTE_NAME.test(values.test_id_attribute)
+        ? values.test_id_attribute
+        : DEFAULT_PATHS.testIdAttribute
   }
 }
 

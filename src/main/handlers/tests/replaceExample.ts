@@ -81,7 +81,8 @@ export async function replaceExample(
   fileRel: string,
   exampleName: string,
   steps: Step[],
-  rubyCommand: string
+  rubyCommand: string,
+  testIdAttribute?: string
 ): Promise<void> {
   const key = `${await fs.realpath(projectPath)}\0${fileRel}`
   return serialize(fileQueues, key, async () => {
@@ -108,7 +109,7 @@ export async function replaceExample(
     const receiver = receiverFor(source)
     // Checked now, not from the cached layout: the helper may have been added or removed
     const body = withSecretNames(steps).flatMap((step) =>
-      renderStep(step, { receiver }).split('\n')
+      renderStep(step, { receiver, testIdAttribute }).split('\n')
     )
     const wait = WAIT[receiver]
     const usesWait = body.some((line) => wait.uses.test(line.replace(STRING_LITERAL, "''")))

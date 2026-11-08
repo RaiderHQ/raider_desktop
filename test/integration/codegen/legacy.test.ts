@@ -354,11 +354,6 @@ describe('migrateLegacyStep: 4.0 shapes', () => {
       { kind: 'click', element: loginButton }
     ],
     [
-      'click role without exact, ivar, comment',
-      "@driver.find_element(by_role('link', name: 'Pricing')).click # Clicked <a>",
-      { kind: 'click', element: role('link', 'Pricing') }
-    ],
-    [
       'click role double-quoted',
       'driver.find_element(by_role("heading", name: "Billing", exact: true)).click',
       { kind: 'click', element: role('heading', 'Billing') }
@@ -369,18 +364,8 @@ describe('migrateLegacyStep: 4.0 shapes', () => {
       { kind: 'click', element: label('Login name') }
     ],
     [
-      'click label plain',
-      "driver.find_element(label: 'Login name').click",
-      { kind: 'click', element: label('Login name') }
-    ],
-    [
       'click text exact',
       "driver.find_element(text: ['Sign in', { exact: true }]).click",
-      { kind: 'click', element: text('Sign in') }
-    ],
-    [
-      'click text plain',
-      "driver.find_element(text: 'Sign in').click",
       { kind: 'click', element: text('Sign in') }
     ],
     [
@@ -519,6 +504,13 @@ describe('migrateLegacyStep: 4.0 shapes', () => {
       "driver.find_element(by_role('button', name: 'Lo', exact: false)).click"
     ],
     ['substring label', "driver.find_element(label: ['Login', { exact: false }]).click"],
+    // The plain forms are substring matches on 4.0, which no Locator describes
+    ['plain label', "driver.find_element(label: 'Login name').click"],
+    ['plain text', "driver.find_element(text: 'Sign in').click"],
+    [
+      'role without exact',
+      "@driver.find_element(by_role('link', name: 'Pricing')).click # Clicked <a>"
+    ],
     ['empty label', "driver.find_element(label: '').click"],
     ['empty test id', "driver.find_element(test_id: '').click"],
     ['unknown keyword', "driver.find_element(name: 'q').click"],

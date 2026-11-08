@@ -109,14 +109,30 @@ export function roleXPath(role: string, name: string, labelledBy: string | null)
   return parts.join(' | ')
 }
 
-/** The form control a label with this text names, via label[for], a wrapping label or aria-label. */
+// The tags the runtime treats as controls inside a wrapping label (Raider::Selectors::LABEL_CONTROLS).
+const LABEL_CONTROLS = ['input', 'textarea', 'select', 'button', 'meter', 'output', 'progress']
+  .map((tag) => `self::${tag}`)
+  .join(' or ')
+
+/**
+ * Mirrors Raider::Selectors.label(value, exact: true) branch for branch, so the recorder's
+ * uniqueness check sees exactly the candidates strict mode will match: (a) whatever a label[for]
+ * with this text points at (any element, not only a form control), (b) the controls inside
+ * such a label except hidden inputs, (c) an element whose normalized aria-label is the text,
+ * (d) an element whose aria-labelledby target has the text. Branch (a) is spelt id(...) rather
+ * than the runtime's //*[@id = //label[...]/@for]: the same nodes, but jsdom evaluates the
+ * latter once per element (25 s on a 500-row form against 30 ms). The two differ only for a
+ * duplicated id (id() yields the first) or a `for` holding whitespace (id() splits it).
+ */
 export function labelXPath(text: string): string {
   const t = xpathLiteral(text)
-  return (
-    `id(//label[normalize-space()=${t}]/@for)[self::input or self::textarea or self::select]` +
-    ` | //label[normalize-space()=${t}]//*[self::input or self::textarea or self::select]` +
-    ` | //*[@aria-label=${t}]`
-  )
+  const label = `//label[normalize-space(.)=${t}]`
+  return [
+    `id(${label}/@for)`,
+    `${label}//*[(${LABEL_CONTROLS}) and not(self::input[@type='hidden'])]`,
+    `//*[normalize-space(@aria-label)=${t}]`,
+    `//*[@aria-labelledby and normalize-space(string(id(@aria-labelledby)))=${t}]`
+  ].join(' | ')
 }
 
 /** The innermost element whose normalized text is exactly this. */

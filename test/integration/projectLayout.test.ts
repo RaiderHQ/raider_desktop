@@ -41,6 +41,15 @@ describe('detectProjectLayout', () => {
     })
   })
 
+  it('reads test_id_attribute, with data-testid as the default and for an unusable value', async () => {
+    await project("gem 'rspec'\n")
+    expect((await detectProjectLayout(dir)).testIdAttribute).toBe('data-testid')
+    await project("gem 'rspec'\n", 'test_id_attribute: data-cy\n')
+    expect((await detectProjectLayout(dir)).testIdAttribute).toBe('data-cy')
+    await project("gem 'rspec'\n", 'test_id_attribute: "data cy]"\n')
+    expect((await detectProjectLayout(dir)).testIdAttribute).toBe('data-testid')
+  })
+
   it('custom spec_path', async () => {
     await project("gem 'rspec'\n", 'spec_path: tests/ui\n')
     expect((await detectProjectLayout(dir)).specPath).toBe('tests/ui')

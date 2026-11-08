@@ -147,7 +147,11 @@ const generate = (
   layout: ProjectLayout,
   file: string
 ): { content: string; stepLines: StepLines } =>
-  generateProjectSpecFileWithMap(test, { fileRelPath: file, helperPath: layout.helperPath })
+  generateProjectSpecFileWithMap(test, {
+    fileRelPath: file,
+    helperPath: layout.helperPath,
+    testIdAttribute: layout.testIdAttribute
+  })
 
 /**
  * Picks a free `<slug>[_n]_spec.rb` in `root` (default: the spec folder) and
@@ -324,7 +328,7 @@ export function saveRecordedTest(
     ) {
       if (existing.stepLines) return existing
       // Recorded before maps were stored: map the kept file, without touching it
-      const derived = deriveStepLines(existing, onDisk, current.helperPath)
+      const derived = deriveStepLines(existing, onDisk, current.helperPath, current.testIdAttribute)
       if (!derived) return existing
       const mapped = { ...existing, stepLines: derived }
       await writeSidecar(projectPath, mapped)

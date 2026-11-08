@@ -12,6 +12,7 @@ interface RunRecordingState {
   savedTest: { id: string; name: string; url: string; steps: unknown[] } | null
   implicitWait: number
   explicitWait: number
+  testIdAttribute?: string
   browser?: string
   headless?: boolean
   projectPath: string
@@ -46,13 +47,14 @@ const runRecording = async (
 
     const executionEnv = { ...process.env, PATH: newPath }
 
-    const { explicitWait, rubyCommand, browser, headless } = appState
+    const { explicitWait, testIdAttribute, rubyCommand, browser, headless } = appState
     const test = migrateLegacyTest(appState.savedTest)
 
     const testCode = generateRspecFile(test, {
       browser: browser ?? 'chrome',
       headless: headless ?? false,
-      explicitWait
+      explicitWait,
+      testIdAttribute
     })
 
     await fs.writeFile(tempFilePath, testCode)

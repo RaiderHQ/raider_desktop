@@ -1,6 +1,6 @@
 import { CODEGEN_VERSION } from '../../codegen/testFile'
 import { CodeOwnedError, saveRecordedTest } from './recordedTests'
-import { listSidecars, resolveInside } from './sidecar'
+import { isSafeRelPath, listSidecars, resolveInside } from './sidecar'
 import { stat } from 'fs/promises'
 import { safeError } from '../../utils/safeLog'
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
@@ -26,6 +26,8 @@ export async function migrateRecordedTests(
   let rewritten = 0
   for (const { fileRel, sidecar } of await listSidecars(projectPath)) {
     if (!sidecar || sidecar.file !== fileRel || sidecar.codeOwned) continue
+    // The same rule as loading: only a safe relative *_spec.rb path is a recorded test
+    if (!isSafeRelPath(fileRel) || !fileRel.endsWith('_spec.rb')) continue
     // Only an older shape is rewritten: a file from a newer Raider is left as it is
     if (sidecar.codegen !== undefined && sidecar.codegen >= CODEGEN_VERSION) continue
     // Only a file that exists: an unattended open never creates a spec from a sidecar alone

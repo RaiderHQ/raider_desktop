@@ -1,7 +1,6 @@
 import * as monaco from 'monaco-editor'
 import { registerRubyCompletions } from './rubyCompletions'
 import { registerSeleniumCompletions } from './seleniumCompletions'
-import { registerWatirCompletions } from './watirCompletions'
 import { registerRspecCompletions } from './testFrameworkCompletions'
 
 let disposables: monaco.IDisposable[] = []
@@ -21,9 +20,6 @@ export function registerRubyProviders(
   const automationLower = (automation || '').toLowerCase()
   if (automationLower === 'selenium' || automationLower === '') {
     disposables.push(registerSeleniumCompletions(monacoInstance))
-  }
-  if (automationLower === 'watir') {
-    disposables.push(registerWatirCompletions(monacoInstance))
   }
 
   disposables.push(registerRspecCompletions(monacoInstance))

@@ -17,6 +17,43 @@ export function normalizedText(el: Element | null): string {
   return squash(el?.textContent)
 }
 
+// Subtrees the role engine leaves out of a name: aria-hidden, the hidden attribute, a hidden
+// input, and tags the UA stylesheet hides. Judged by attribute and tag only, so no layout.
+const HIDDEN_TAGS = new Set(['SCRIPT', 'STYLE', 'TEMPLATE', 'NOSCRIPT'])
+const hiddenFromName = (el: Element): boolean =>
+  el.getAttribute('aria-hidden') === 'true' ||
+  el.hasAttribute('hidden') ||
+  HIDDEN_TAGS.has(el.tagName) ||
+  (el.tagName === 'INPUT' && inputType(el) === 'hidden')
+
+// Raw, so the spaces at the edges of a child's text still separate it from its neighbours
+function rawVisibleText(el: Element): string {
+  let out = ''
+  for (const node of Array.from(el.childNodes)) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      out += node.nodeValue ?? ''
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const child = node as Element
+      if (hiddenFromName(child)) continue
+      const label = squash(child.getAttribute('aria-label'))
+      if (label) out += label
+      else if (child.tagName === 'IMG') out += child.getAttribute('alt') ?? ''
+      else out += rawVisibleText(child)
+    }
+  }
+  return out
+}
+
+/**
+ * The text the role engine's name-from-content walk sees: text nodes in document order, an
+ * image's alt or a descendant's own aria-label standing in for its subtree, skipping subtrees
+ * hidden by aria-hidden="true" or the hidden attribute. Unlike normalizedText (the runtime's
+ * `text:` key is normalize-space(.), hidden text and all) this is for role names only.
+ */
+export function visibleText(el: Element): string {
+  return squash(rawVisibleText(el))
+}
+
 const capped = (text: string): string | null => (text && text.length <= NAME_MAX ? text : null)
 
 function inputType(el: Element): string {
@@ -71,7 +108,10 @@ export function labelText(el: Element): string | null {
 function labelledBy(el: Element): string {
   const ids = (el.getAttribute('aria-labelledby') ?? '').split(/\s+/).filter(Boolean)
   return ids
-    .map((id) => normalizedText(el.ownerDocument.getElementById(id)))
+    .map((id) => {
+      const target = el.ownerDocument.getElementById(id)
+      return target ? visibleText(target) : ''
+    })
     .filter(Boolean)
     .join(' ')
 }
@@ -85,15 +125,17 @@ export function roleOf(el: Element): string | null {
 /** Where a name came from: visible content (or a button's value), aria-label, or elsewhere. */
 export type NameSource = 'content' | 'aria-label' | 'other'
 
-/** First non-empty of the spec's name sources and which it was; null when empty or over the cap. */
+/**
+ * First non-empty of the role engine's name sources, in its order, and which it was; null
+ * when empty or over the cap. aria-labelledby comes before aria-label; a button input's value
+ * and an image input's alt come before its labels; content is the engine's visible walk.
+ */
 export function accessibleNameSource(el: Element): { name: string; from: NameSource } | null {
   const role = roleOf(el)
   const isInput = el.tagName === 'INPUT'
   const sources: Array<[NameSource, () => string]> = [
-    ['aria-label', () => squash(el.getAttribute('aria-label'))],
     ['other', () => labelledBy(el)],
-    ['other', () => (isFormControl(el) ? forLabel(el) : '')],
-    ['other', () => (isFormControl(el) ? wrappingLabel(el) : '')],
+    ['aria-label', () => squash(el.getAttribute('aria-label'))],
     [
       'content',
       () =>
@@ -102,7 +144,9 @@ export function accessibleNameSource(el: Element): { name: string; from: NameSou
           : ''
     ],
     ['other', () => (isInput && inputType(el) === 'image' ? squash(el.getAttribute('alt')) : '')],
-    ['content', () => (role && NAMED_BY_CONTENT.includes(role) ? normalizedText(el) : '')],
+    ['other', () => (isFormControl(el) ? forLabel(el) : '')],
+    ['other', () => (isFormControl(el) ? wrappingLabel(el) : '')],
+    ['content', () => (role && NAMED_BY_CONTENT.includes(role) ? visibleText(el) : '')],
     ['other', () => squash(el.getAttribute('placeholder'))]
   ]
   for (const [from, source] of sources) {

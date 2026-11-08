@@ -57,9 +57,11 @@ const whole = (body: string): RegExp => new RegExp(`^\\s*${body}\\s*$`)
 // The locator argument forms. The 3.x pair (:css, "x") is kept as the plain fallback the
 // recorder stored; the 4.0 keyword forms carry the semantic locator steps.ts rendered.
 const PAIR = whole(String.raw`:?(\w+)\s*,\s*(?:%q\((.+)\)|${S})`) // 1 strategy, 2 %q, 3-4 string
-const KEYWORD = whole(String.raw`(\w+):\s*${S}`) // 1 key, 2-3 string
+// Only the exact forms steps.ts writes have a Step: a plain `label: 'x'` or a by_role without
+// exact: true is a substring match on 4.0, which no Locator says, so it stays custom
+const KEYWORD = whole(String.raw`(id|css|xpath|test_id):\s*${S}`) // 1 key, 2-3 string
 const EXACT = whole(String.raw`(label|text):\s*\[\s*${S}\s*,\s*\{\s*exact:\s*true\s*\}\s*\]`) // 1 key, 2-3 string
-const ROLE = whole(String.raw`by_role\(\s*${S}\s*,\s*name:\s*${S}\s*(?:,\s*exact:\s*true\s*)?\)`) // 1-2 role, 3-4 name
+const ROLE = whole(String.raw`by_role\(\s*${S}\s*,\s*name:\s*${S}\s*,\s*exact:\s*true\s*\)`) // 1-2 role, 3-4 name
 
 const isStrategy = (s: string): s is ElementTarget['strategy'] =>
   s === 'id' || s === 'css' || s === 'xpath'
