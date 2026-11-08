@@ -37,7 +37,9 @@ function browserSymbol(browser: string): string {
 // The runtime's own waits replace the implicit wait, which the gem's README asks to leave unset
 function seleniumSetup(settings: FileSettings, needsWait: boolean): string[] {
   const browser = browserSymbol(settings.browser)
-  const lines: string[] = [`Raider.timeout = ${settings.explicitWait}`]
+  // Always a number, whatever the settings object carried
+  const wait = Number(settings.explicitWait)
+  const lines: string[] = [`Raider.timeout = ${wait}`]
   if (settings.headless && (browser === 'chrome' || browser === 'edge')) {
     const klass = browser === 'chrome' ? 'Chrome' : 'Edge'
     lines.push(
@@ -49,7 +51,7 @@ function seleniumSetup(settings: FileSettings, needsWait: boolean): string[] {
     lines.push(`@driver = Selenium::WebDriver.for :${browser}`)
   }
   if (needsWait)
-    lines.push(`@wait = Selenium::WebDriver::Wait.new(timeout: ${settings.explicitWait})`)
+    lines.push(`@wait = Selenium::WebDriver::Wait.new(timeout: ${wait})`)
   return lines
 }
 
