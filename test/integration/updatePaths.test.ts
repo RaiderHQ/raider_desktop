@@ -43,6 +43,17 @@ describe('updatePaths handler', () => {
     expect(call).toMatch(/raider u path pages$/)
   })
 
+  it('treats a null type as the page path', async () => {
+    await handler({} as IpcMainInvokeEvent, '/project', 'pages', null as unknown as undefined)
+    expect(mockExec.mock.calls[0][0] as string).toMatch(/raider u path pages$/)
+  })
+
+  it('refuses a type that is not a string', async () => {
+    const result = await handler({} as IpcMainInvokeEvent, '/project', 'x', 3 as unknown as string)
+    expect(result.success).toBe(false)
+    expect(mockExec).not.toHaveBeenCalled()
+  })
+
   // The gem's `u path` has no -f; an unknown type must not fall through and rewrite page_path
   it.each(['feature', 'steps', 'page'])('refuses the %s path type without running anything', async (type) => {
     const result = await handler({} as IpcMainInvokeEvent, '/project', 'features', type)

@@ -11,10 +11,11 @@ const handler = async (
   _event: IpcMainInvokeEvent,
   projectPath: string,
   pathValue: string,
-  pathType?: string
+  pathType?: string | null
 ): Promise<CommandType> => {
-  // An unknown type must not fall through to the bare command, which would rewrite page_path
-  if (pathType !== undefined && !Object.hasOwn(PATH_FLAGS, pathType)) {
+  // No type (undefined or null) is the page path. An unknown type must not fall through to
+  // the bare command, which would rewrite page_path
+  if (pathType != null && (typeof pathType !== 'string' || !Object.hasOwn(PATH_FLAGS, pathType))) {
     return { success: false, output: '', error: `Unsupported path type: ${pathType}` }
   }
 
@@ -24,7 +25,7 @@ const handler = async (
   try {
     const args: string[] = ['raider', 'u', 'path', quoteShellArg(pathValue)]
 
-    if (pathType !== undefined) args.push(PATH_FLAGS[pathType])
+    if (pathType != null) args.push(PATH_FLAGS[pathType])
 
     const command = args.join(' ')
     const shellCommand = buildShellCommand(projectPath, command)
