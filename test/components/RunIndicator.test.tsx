@@ -154,6 +154,27 @@ describe('RunIndicator', () => {
     expect(screen.queryByTestId('run-indicator')).toBeNull()
   })
 
+  it('does not show the result of a run the user closed', () => {
+    useRunStore.setState({ run: makeRun(), origin, isActive: true, hiddenRunStartedAt: null })
+    renderAt('/settings')
+    act(() => {
+      useRunStore.setState({
+        run: makeRun({
+          finished: {
+            status: 'passed',
+            counts: { total: 1, passed: 1, failed: 0, quarantined: 0, pending: 0, skipped: 0 },
+            exitCode: 0,
+            finishedAt: '2026-01-01T00:01:00Z'
+          }
+        }),
+        isActive: false
+      })
+    })
+    expect(screen.getByTestId('run-indicator')).toBeInTheDocument()
+    act(() => useRunStore.getState().hideCurrentRun())
+    expect(screen.queryByTestId('run-indicator')).toBeNull()
+  })
+
   it('does not show an already-finished run it never saw running', () => {
     useRunStore.setState({
       run: makeRun({
