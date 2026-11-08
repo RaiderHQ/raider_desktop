@@ -33,7 +33,7 @@ vi.mock('fs', async () => {
   }
 })
 
-import handler from '../../src/main/handlers/project/scaffoldGenerate'
+import handler, { isGemSafeFolder } from '../../src/main/handlers/project/scaffoldGenerate'
 import { appState } from '../../src/main/handlers/appState'
 
 const mockEvent = {} as IpcMainInvokeEvent
@@ -299,12 +299,15 @@ describe('scaffoldGenerate into a folder (--path)', () => {
     expect(mockSafeExec.mock.calls[0][0]).toMatch(/&& raider g page checkout '--path=my pages'$/)
   })
 
-  it('keeps a folder named like a flag a value of --path', async () => {
-    gemWrites('--force/x_helper.rb')
-    const result = await generate({ type: 'helper', name: 'x', path: '--force' })
-    expect(result.files).toEqual(['--force/x_helper.rb'])
-    expect(mockSafeExec.mock.calls[0][0]).toMatch(/&& raider g helper x '--path=--force'$/)
-  })
+  // Thor reads --no-path / --skip-path as "no path": the gem would write to its default instead
+  it.each(['--force', '--no-path', 'pages/--skip-path'])(
+    'refuses the flag-like folder %j without running anything',
+    async (folder) => {
+      const result = await generate({ type: 'helper', name: 'x', path: folder })
+      expect(result).toMatchObject({ success: false, code: 'invalidName' })
+      expect(mockSafeExec).not.toHaveBeenCalled()
+    }
+  )
 
   it('predicts the name the gem normalizes to (CheckoutPage → checkout_page.rb)', async () => {
     gemWrites('page_objects/pages/checkout_page.rb')
@@ -423,3 +426,19 @@ describe('scaffoldGenerate into a folder (--path)', () => {
     expect(result.error).toContain('page_objects/pages/checkout_page.rb')
   })
 })
+
+describe('isGemSafeFolder', () => {
+  it.each(['--no-path', 'pages/--skip-path', '-x', 'a/-b'])('refuses %j, which the gem could read as an option', (folder) => {
+    expect(isGemSafeFolder(folder, 'darwin')).toBe(false)
+  })
+  it('refuses % and ! on Windows only', () => {
+    expect(isGemSafeFolder('a%PATH%', 'win32')).toBe(false)
+    expect(isGemSafeFolder('a!b', 'win32')).toBe(false)
+    expect(isGemSafeFolder('a%PATH%', 'darwin')).toBe(true)
+  })
+  it('accepts ordinary folders', () => {
+    expect(isGemSafeFolder('page_objects/pages', 'win32')).toBe(true)
+    expect(isGemSafeFolder('spec/a-b', 'linux')).toBe(true)
+  })
+})
+
