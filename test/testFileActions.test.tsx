@@ -9,10 +9,12 @@ import { useTestClipboardStore } from '@foundation/Stores/testClipboardStore'
 import {
   copyTest,
   duplicateTest,
+  onTestTrashed,
   pasteTest,
   trashTestRow,
   uniqueCopyName
 } from '@foundation/testFileActions'
+import en from '@assets/translations/en.json'
 import type { TestRow } from '@foundation/testKey'
 
 const mockToast = vi.hoisted(() =>
@@ -50,10 +52,14 @@ const api = {
   readDirectory: vi.fn().mockResolvedValue([])
 }
 
-/** Renders the last toast(fn) and clicks its Undo */
-const clickUndo = async (): Promise<void> => {
+/** Renders the last toast(fn) */
+const renderUndoToast = (): void => {
   const [content] = mockToast.mock.calls.at(-1)!
   render(<>{(content as (t: { id: string }) => React.ReactNode)({ id: 'x' })}</>)
+}
+/** Renders the last toast(fn) and clicks its Undo */
+const clickUndo = async (): Promise<void> => {
+  renderUndoToast()
   await act(async () => {
     fireEvent.click(screen.getByRole('button'))
   })
@@ -143,8 +149,67 @@ describe('pasteTest', () => {
     expect(api.pasteTestFile).toHaveBeenCalledWith('/p', {
       text: 'describe',
       sourceFile: 'spec/api/api_spec.rb',
-      nearFile: 'spec/login_spec.rb'
+      nearFile: 'spec/login_spec.rb',
+      name: 'API copy'
     })
+  })
+
+  it('loads the list first when it has not loaded, so the name is unique', async () => {
+    await copyTest(code)
+    useTestsListStore.setState({ rows: null })
+    api.listProjectTests.mockResolvedValue([{ ...code, name: 'API copy' }])
+    await pasteTest(null)
+    expect(api.pasteTestFile.mock.calls[0][1].name).toBe('API copy 2')
+  })
+
+  it('warns when the tags could not be copied', async () => {
+    await copyTest(recorded)
+    api.setTestTags.mockResolvedValue({ success: false, error: 'no' })
+    await pasteTest(null)
+    expect(mockToast).toHaveBeenCalledWith(en.tests.menu.tagsNotCopied, expect.anything())
+  })
+
+  it('skips tagging when the project changed during the save', async () => {
+    await copyTest(recorded)
+    api.saveRecording.mockImplementation(async (_p, test) => {
+      useProjectStore.setState({ projectPath: '/other' })
+      return { success: true, test: { ...test, file: 'spec/login_copy_spec.rb' } }
+    })
+    await pasteTest(null)
+    expect(api.setTestTags).not.toHaveBeenCalled()
+  })
+
+  it('says so when the tag filter hides the new test', async () => {
+    await copyTest(code)
+    api.listProjectTests.mockResolvedValue([
+      { name: 'API copy', file: 'spec/api/api_copy_spec.rb', ownership: 'code', tags: [] }
+    ])
+    await pasteTest(null, { activeTag: 'smoke' })
+    renderUndoToast()
+    expect(document.body.textContent).toContain(
+      en.tests.menu.hiddenByTag.replace('{{tag}}', 'smoke')
+    )
+  })
+
+  it('Undo after a project switch does nothing, and the switch dismisses the toast', async () => {
+    await copyTest(code)
+    await pasteTest(null)
+    mockToast.dismiss.mockClear()
+    act(() => useProjectStore.setState({ projectPath: '/other' }))
+    expect(mockToast.dismiss).toHaveBeenCalled()
+    await clickUndo()
+    expect(api.trashTest).not.toHaveBeenCalled()
+    expect(mockToast.error).toHaveBeenCalledWith(en.tests.menu.undoOtherProject)
+  })
+
+  it('Undo announces the trashed test so an open page can leave it', async () => {
+    const trashed = vi.fn()
+    const off = onTestTrashed(trashed)
+    await copyTest(code)
+    await pasteTest(null)
+    await clickUndo()
+    off()
+    expect(trashed).toHaveBeenCalledWith(['file:spec/api/api_copy_spec.rb'])
   })
 
   it("the toast's Undo moves the new file to the Trash", async () => {
@@ -179,15 +244,21 @@ describe('duplicateTest', () => {
     expect(api.pasteTestFile).toHaveBeenCalledWith('/p', {
       text: 'describe',
       sourceFile: 'spec/api/api_spec.rb',
-      nearFile: 'spec/api/api_spec.rb'
+      nearFile: 'spec/api/api_spec.rb',
+      name: 'API copy'
     })
     expect(useTestClipboardStore.getState().item).toBeNull()
   })
 })
 
 describe('trashTestRow', () => {
-  it('moves the file to the Trash and says so', async () => {
+  it('moves the file to the Trash, says so and announces it', async () => {
+    const trashed = vi.fn()
+    const off = onTestTrashed(trashed)
+    api.trashTest.mockResolvedValue({ success: true, testId: 't1' })
     expect(await trashTestRow(recorded)).toBe(true)
+    off()
+    expect(trashed).toHaveBeenCalledWith(['file:spec/login_spec.rb', 'id:t1'])
     expect(api.trashTest).toHaveBeenCalledWith('/p', 'spec/login_spec.rb')
     expect(mockToast.success).toHaveBeenCalledWith('Moved to the Trash.')
     expect(api.listProjectTests).toHaveBeenCalled()

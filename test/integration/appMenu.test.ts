@@ -201,7 +201,7 @@ describe('buildAppMenuTemplate', () => {
 
   it('the test commands reach the renderer; Duplicate and Delete only show their keys', () => {
     const a = actions()
-    const edit = buildAppMenuTemplate('darwin', a, { isPackaged: true }).find(
+    const edit = buildAppMenuTemplate('win32', a, { isPackaged: true }).find(
       (m) => m.label === 'Edit'
     )!.submenu as Item[]
     const byId = (id: string): Item => edit.find((i) => i.id === id)!
@@ -230,28 +230,44 @@ describe('buildAppMenuTemplate', () => {
     ])
   })
 
+  it('on macOS Duplicate and Delete Test have no key at all', () => {
+    // registerAccelerator is ignored on macOS: any accelerator there would take Cmd+D and
+    // Cmd+Backspace from text fields and Monaco
+    const edit = items(build('darwin'), 'Edit')
+    for (const id of ['copy-test', 'paste-test', 'duplicate-test', 'delete-test']) {
+      const item = edit.find((i) => i.id === id)!
+      expect(item.accelerator).toBeUndefined()
+      expect(item.registerAccelerator).toBeUndefined()
+    }
+    expect(JSON.stringify(build('darwin'))).not.toMatch(/CmdOrCtrl\+(D|Backspace)"/)
+  })
+
   it('New test is Cmd+N and New project Cmd+Shift+N', () => {
     const all = build('darwin').flatMap((m) => (Array.isArray(m.submenu) ? m.submenu : []))
     expect(all.find((i) => i.id === 'new-test')!.accelerator).toBe('CmdOrCtrl+N')
     expect(all.find((i) => i.id === 'new-project')!.accelerator).toBe('CmdOrCtrl+Shift+N')
   })
 
-  it('every accelerator comes from the shared table', () => {
-    const template = build('darwin', false)
-    const table = new Set(Object.values(SHORTCUTS).map((s) => s.accelerator))
-    const all = template.flatMap((m) => (Array.isArray(m.submenu) ? m.submenu : []))
-    for (const item of all) {
-      if (item.id && item.accelerator && item.id in SHORTCUTS)
-        expect(item.accelerator).toBe(SHORTCUTS[item.id as keyof typeof SHORTCUTS].accelerator)
+  it.each(['darwin', 'win32', 'linux'] as const)(
+    'every accelerator comes from the shared table (%s)',
+    (platform) => {
+      const template = build(platform, false)
+      const table = new Set(Object.values(SHORTCUTS).map((s) => s.accelerator))
+      const all = template.flatMap((m) => (Array.isArray(m.submenu) ? m.submenu : []))
+      for (const item of all) {
+        if (item.id && item.accelerator && item.id in SHORTCUTS)
+          expect(item.accelerator).toBe(SHORTCUTS[item.id as keyof typeof SHORTCUTS].accelerator)
+      }
+      // The Tests list's keys are shown in the menu but never registered there (Monaco owns Cmd+D)
+      const shownOnly = new Set(Object.values(LIST_SHORTCUTS).map((s) => s.accelerator))
+      const literals = JSON.stringify(template).match(/CmdOrCtrl\+[^"]*/g) ?? []
+      for (const literal of literals)
+        expect(table.has(literal) || shownOnly.has(literal)).toBe(true)
+      const shown = all.filter((i) => shownOnly.has(i.accelerator as string))
+      expect(shown).toHaveLength(platform === 'darwin' ? 0 : 2)
+      for (const item of shown) expect(item.registerAccelerator).toBe(false)
     }
-    // The Tests list's keys are shown in the menu but never registered there (Monaco owns Cmd+D)
-    const shownOnly = new Set(Object.values(LIST_SHORTCUTS).map((s) => s.accelerator))
-    const literals = JSON.stringify(template).match(/CmdOrCtrl\+[^"]*/g) ?? []
-    for (const literal of literals) expect(table.has(literal) || shownOnly.has(literal)).toBe(true)
-    const shown = all.filter((i) => shownOnly.has(i.accelerator as string))
-    expect(shown).toHaveLength(2)
-    for (const item of shown) expect(item.registerAccelerator).toBe(false)
-  })
+  )
 
   describe('Record / Stop & save', () => {
     afterEach(() => {

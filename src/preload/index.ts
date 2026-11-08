@@ -229,9 +229,10 @@ const api = {
     ipcRenderer.invoke('read-test-file', projectPath, fileRel),
   pasteTestFile: (
     projectPath: string,
-    payload: { text: string; sourceFile: string; nearFile?: string }
-  ): Promise<{ success: true; file: string } | { success: false; error: string }> =>
-    ipcRenderer.invoke('paste-test-file', projectPath, payload),
+    payload: { text: string; sourceFile: string; nearFile?: string; name?: string }
+  ): Promise<
+    { success: true; file: string; renamed: boolean } | { success: false; error: string }
+  > => ipcRenderer.invoke('paste-test-file', projectPath, payload),
   trashTest: (
     projectPath: string,
     fileRel: string

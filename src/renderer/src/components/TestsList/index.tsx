@@ -22,8 +22,8 @@ interface TestsListProps {
   onSelect: (key: TestKey) => void
   onNewTest: () => void
   headerExtra?: React.ReactNode
-  /** A test was moved to the Trash (the page leaves it when it was the selected one) */
-  onDeleted?: (key: TestKey) => void
+  /** The tag the list is filtered by: a paste the filter hides says so */
+  activeTag?: string | null
 }
 
 // Keys typed into a field, an editor or Monaco are theirs, never the list's
@@ -50,7 +50,7 @@ const TestsList: React.FC<TestsListProps> = ({
   onSelect,
   onNewTest,
   headerExtra,
-  onDeleted
+  activeTag = null
 }) => {
   const { t } = useTranslation()
   const layout = useProjectStore((s) => s.layout)
@@ -70,21 +70,29 @@ const TestsList: React.FC<TestsListProps> = ({
   const confirmDelete = async (): Promise<void> => {
     const row = confirming
     setConfirming(null)
-    if (row && (await trashTestRow(row))) onDeleted?.(testKeyOf(row))
+    // TestsWorkspace hears about it and leaves the test if it was open
+    if (row) await trashTestRow(row)
   }
 
   // The menu bar's Edit › Copy/Paste/Duplicate/Delete Test act on the selected test
-  const current = useRef({ selectedRow, projectPath, confirming })
-  current.current = { selectedRow, projectPath, confirming }
+  const current = useRef({ selectedRow, projectPath, confirming, activeTag })
+  current.current = { selectedRow, projectPath, confirming, activeTag }
   useEffect(
     () =>
       onMenuCommand((command) => {
-        const { selectedRow: row, projectPath: project, confirming: busy } = current.current
+        // These come only from clicking the menu: the items have no key on macOS, and elsewhere
+        // their keys are shown but not registered, so typing in a field never sends them
+        const {
+          selectedRow: row,
+          projectPath: project,
+          confirming: busy,
+          activeTag: tag
+        } = current.current
         if (busy || !project) return
-        if (command === 'paste-test') void pasteTest(row)
+        if (command === 'paste-test') void pasteTest(row, { activeTag: tag })
         if (!row) return
         if (command === 'copy-test') void copyTest(row)
-        if (command === 'duplicate-test') void duplicateTest(row)
+        if (command === 'duplicate-test') void duplicateTest(row, { activeTag: tag })
         if (command === 'delete-test') askDelete(row)
       }),
     []
@@ -98,19 +106,20 @@ const TestsList: React.FC<TestsListProps> = ({
     const focused = (e.target as HTMLElement).closest?.('[data-test-key]')
     const key = focused?.getAttribute('data-test-key')
     const row = (key && allRows.find((r) => testKeyOf(r) === key)) || selectedRow
-    const letter = mod && !e.shiftKey && !e.altKey ? e.key.toLowerCase() : null
-    if (letter === 'v') {
+    // The physical key, so Cmd+C stays Copy on any keyboard layout
+    const letter = mod && !e.shiftKey && !e.altKey ? e.code : null
+    if (letter === 'KeyV') {
       e.preventDefault()
-      void pasteTest(row)
+      void pasteTest(row, { activeTag })
       return
     }
     if (!row) return
-    if (letter === 'c') {
+    if (letter === 'KeyC') {
       e.preventDefault()
       void copyTest(row)
-    } else if (letter === 'd') {
+    } else if (letter === 'KeyD') {
       e.preventDefault()
-      void duplicateTest(row)
+      void duplicateTest(row, { activeTag })
     } else if ((e.key === 'Delete' && !mod) || (e.key === 'Backspace' && mod)) {
       e.preventDefault()
       askDelete(row)
@@ -127,14 +136,17 @@ const TestsList: React.FC<TestsListProps> = ({
   ): { label: string; onClick: () => void; disabled?: boolean }[] => {
     const paste = {
       label: t('tests.menu.paste'),
-      onClick: (): void => void pasteTest(row ?? selectedRow),
+      onClick: (): void => void pasteTest(row ?? selectedRow, { activeTag }),
       disabled: !clipboard
     }
     if (!row) return [paste]
     return [
       { label: t('tests.menu.copy'), onClick: (): void => void copyTest(row) },
       paste,
-      { label: t('tests.menu.duplicate'), onClick: (): void => void duplicateTest(row) },
+      {
+        label: t('tests.menu.duplicate'),
+        onClick: (): void => void duplicateTest(row, { activeTag })
+      },
       { label: t('tests.menu.delete'), onClick: (): void => askDelete(row), disabled: !row.file }
     ]
   }

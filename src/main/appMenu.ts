@@ -139,8 +139,17 @@ export function buildAppMenuTemplate(
       command('open-file', t('openFile'), 'open-file')
     ]
   }
-  // The editMenu role's own items (Electron 45), then the Tests list's commands. Duplicate and
-  // Delete only show their keys: the list handles them, so Monaco and text fields keep theirs
+  // Duplicate and Delete Test show the list's keys without registering them, so Monaco and text
+  // fields keep Cmd+D and Cmd+Backspace. registerAccelerator only works on Windows and Linux: on
+  // macOS any accelerator becomes a real key equivalent, so there the items have none
+  const shownKey = (
+    item: Electron.MenuItemConstructorOptions,
+    id: keyof typeof LIST_SHORTCUTS
+  ): Electron.MenuItemConstructorOptions =>
+    isMac
+      ? item
+      : { ...item, accelerator: LIST_SHORTCUTS[id].accelerator, registerAccelerator: false }
+  // The editMenu role's own items (Electron 45), then the Tests list's commands
   const edit: Electron.MenuItemConstructorOptions = {
     label: t('edit'),
     submenu: [
@@ -176,16 +185,8 @@ export function buildAppMenuTemplate(
       { type: 'separator' },
       command('copy-test', t('copyTest')),
       command('paste-test', t('pasteTest')),
-      {
-        ...command('duplicate-test', t('duplicateTest')),
-        accelerator: LIST_SHORTCUTS['duplicate-test'].accelerator,
-        registerAccelerator: false
-      },
-      {
-        ...command('delete-test', t('deleteTest')),
-        accelerator: LIST_SHORTCUTS['delete-test'].accelerator,
-        registerAccelerator: false
-      }
+      shownKey(command('duplicate-test', t('duplicateTest')), 'duplicate-test'),
+      shownKey(command('delete-test', t('deleteTest')), 'delete-test')
     ]
   }
   // Reload would take Cmd+R from Run: only the empty string clears a role's default accelerator

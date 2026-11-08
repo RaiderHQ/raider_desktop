@@ -8,6 +8,7 @@ import { useRunStore } from '@foundation/Stores/runStore'
 import type { RunTestView, RunView } from '@foundation/run/runModel'
 import { useTestClipboardStore } from '@foundation/Stores/testClipboardStore'
 import { dispatchMenuCommand } from '@foundation/menuCommands'
+import { onTestTrashed } from '@foundation/testFileActions'
 import type { TestRow } from '@foundation/testKey'
 
 vi.mock('react-i18next', () => ({
@@ -15,7 +16,7 @@ vi.mock('react-i18next', () => ({
 }))
 
 const mockToast = vi.hoisted(() =>
-  Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), loading: vi.fn() })
+  Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), loading: vi.fn(), dismiss: vi.fn() })
 )
 vi.mock('react-hot-toast', () => ({
   default: mockToast,
@@ -268,7 +269,8 @@ describe('TestsList copy, paste, duplicate and delete', () => {
     })
     expect(api.pasteTestFile).toHaveBeenCalledWith('/p', {
       text: 'describe',
-      sourceFile: 'spec/api_spec.rb'
+      sourceFile: 'spec/api_spec.rb',
+      name: 'API health copy'
     })
   })
 
@@ -283,9 +285,10 @@ describe('TestsList copy, paste, duplicate and delete', () => {
     expect(document.querySelector('.fixed')).toBeNull()
   })
 
-  it('Delete asks first, then moves the file to the Trash and reports the key', async () => {
-    const p = { onDeleted: vi.fn() }
-    setup(p)
+  it('Delete asks first, then moves the file to the Trash and announces it', async () => {
+    const trashed = vi.fn()
+    const off = onTestTrashed(trashed)
+    setup()
     fireEvent.contextMenu(screen.getByText('API health'))
     fireEvent.click(menuButton('tests.menu.delete'))
     expect(screen.getByText('tests.delete.message')).toBeInTheDocument()
@@ -293,8 +296,9 @@ describe('TestsList copy, paste, duplicate and delete', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'tests.delete.confirm' }))
     })
+    off()
     expect(api.trashTest).toHaveBeenCalledWith('/p', 'spec/api_spec.rb')
-    expect(p.onDeleted).toHaveBeenCalledWith('file:spec/api_spec.rb')
+    expect(trashed).toHaveBeenCalledWith(['file:spec/api_spec.rb'])
   })
 
   it('cancelling Delete trashes nothing', () => {
@@ -306,16 +310,18 @@ describe('TestsList copy, paste, duplicate and delete', () => {
     expect(api.trashTest).not.toHaveBeenCalled()
   })
 
-  it('a failed Delete does not report the key', async () => {
+  it('a failed Delete announces nothing', async () => {
     api.trashTest.mockResolvedValue({ success: false, error: 'no' })
-    const p = { onDeleted: vi.fn() }
-    setup(p)
+    const trashed = vi.fn()
+    const off = onTestTrashed(trashed)
+    setup()
     fireEvent.contextMenu(screen.getByText('API health'))
     fireEvent.click(menuButton('tests.menu.delete'))
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'tests.delete.confirm' }))
     })
-    expect(p.onDeleted).not.toHaveBeenCalled()
+    off()
+    expect(trashed).not.toHaveBeenCalled()
   })
 
   describe('keys on the focused row', () => {
@@ -324,29 +330,46 @@ describe('TestsList copy, paste, duplicate and delete', () => {
     it('Cmd+C copies, Ctrl+D duplicates', async () => {
       setup()
       await act(async () => {
-        fireEvent.keyDown(row('API health'), { key: 'c', metaKey: true })
+        fireEvent.keyDown(row('API health'), { key: 'c', code: 'KeyC', metaKey: true })
       })
       expect(useTestClipboardStore.getState().item).toEqual(codeClip)
       await act(async () => {
-        fireEvent.keyDown(row('API health'), { key: 'd', ctrlKey: true })
+        fireEvent.keyDown(row('API health'), { key: 'd', code: 'KeyD', ctrlKey: true })
       })
       expect(api.pasteTestFile).toHaveBeenCalledWith('/p', {
         text: 'describe',
         sourceFile: 'spec/api_spec.rb',
-        nearFile: 'spec/api_spec.rb'
+        nearFile: 'spec/api_spec.rb',
+        name: 'API health copy'
       })
+    })
+
+    it('matches the physical key, whatever letter the layout types', async () => {
+      setup()
+      await act(async () => {
+        // A Cyrillic layout types с on the C key
+        fireEvent.keyDown(row('API health'), { key: 'с', code: 'KeyC', metaKey: true })
+      })
+      expect(useTestClipboardStore.getState().item).toEqual(codeClip)
+      useTestClipboardStore.setState({ item: null })
+      await act(async () => {
+        // Dvorak's C is not on the KeyC position
+        fireEvent.keyDown(row('API health'), { key: 'c', code: 'KeyI', metaKey: true })
+      })
+      expect(useTestClipboardStore.getState().item).toBeNull()
     })
 
     it('Cmd+V pastes next to the focused row', async () => {
       useTestClipboardStore.setState({ item: codeClip })
       setup()
       await act(async () => {
-        fireEvent.keyDown(row('Login works'), { key: 'v', metaKey: true })
+        fireEvent.keyDown(row('Login works'), { key: 'v', code: 'KeyV', metaKey: true })
       })
       expect(api.pasteTestFile).toHaveBeenCalledWith('/p', {
         text: 'describe',
         sourceFile: 'spec/api_spec.rb',
-        nearFile: 'spec/login_spec.rb'
+        nearFile: 'spec/login_spec.rb',
+        name: 'API health copy'
       })
     })
 
@@ -369,7 +392,7 @@ describe('TestsList copy, paste, duplicate and delete', () => {
       const input = document.createElement('input')
       row('API health').appendChild(input)
       await act(async () => {
-        fireEvent.keyDown(input, { key: 'c', metaKey: true })
+        fireEvent.keyDown(input, { key: 'c', code: 'KeyC', metaKey: true })
         fireEvent.keyDown(input, { key: 'Delete' })
       })
       expect(api.readTestFile).not.toHaveBeenCalled()

@@ -26,7 +26,7 @@ vi.mock('react-i18next', () => ({
 }))
 
 const mockToast = vi.hoisted(() =>
-  Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), loading: vi.fn() })
+  Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), loading: vi.fn(), dismiss: vi.fn() })
 )
 vi.mock('react-hot-toast', () => ({
   default: mockToast,

@@ -471,7 +471,10 @@
       "pasteFailed": "Raider couldn't paste the test. Nothing was changed.",
       "duplicateFailed": "Raider couldn't duplicate this test. Nothing was changed.",
       "deleteFailed": "Raider couldn't move this test to the Trash. Nothing was changed.",
-      "undoFailed": "Raider couldn't undo that. The new test is still in your project."
+      "undoFailed": "Raider couldn't undo that. The new test is still in your project.",
+      "undoOtherProject": "That test is in another project now, so nothing was undone.",
+      "tagsNotCopied": "The test was pasted, but its tags couldn't be copied.",
+      "hiddenByTag": "The {{tag}} filter hides it."
     },
     "delete": {
       "title": "Delete test",
