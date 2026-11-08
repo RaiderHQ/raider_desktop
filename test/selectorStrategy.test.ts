@@ -30,6 +30,20 @@ function pick(el: Element, priorities = DEFAULT_PRIORITIES, testIdAttribute = TE
   return result
 }
 
+describe('a label with hidden markup', () => {
+  // The role name skips the aria-hidden asterisk, so the role XPath (normalize-space) finds
+  // nothing and the pick falls through; the label locator keeps the asterisk, as the
+  // runtime's label: XPath compares it, and is found
+  it('falls from role to a label that carries the hidden text', () => {
+    document.body.innerHTML =
+      '<label for="e">Email <span aria-hidden="true">*</span></label><input id="e">'
+    const el = document.getElementById('e')!
+    const pick = getPrioritizedSelector(el, ['role', 'label', 'id'])
+    expect(pick.locator).toEqual({ by: 'label', text: 'Email *' })
+    expect(pick.strategy).toBe('xpath')
+  })
+})
+
 describe('getPrioritizedSelector: candidates', () => {
   beforeEach(() => {
     document.body.innerHTML = ''

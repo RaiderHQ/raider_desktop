@@ -79,30 +79,41 @@ export function implicitRole(el: Element): string | null {
 
 const isFormControl = (el: Element): boolean => ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)
 
+// Two readers of a label's words, for the two things the runtime does with them. The
+// `label:` locator is an XPath normalize-space(.) comparison, so hidden markup (a required
+// asterisk in an aria-hidden span) is part of it; an accessible name comes from the role
+// engine, which skips hidden markup.
+type LabelReader = (label: Element) => string
+const asLocator: LabelReader = (label) => normalizedText(label)
+const asName: LabelReader = (label) => visibleText(label)
+
 // A wrapping label's own words, without the text of the control(s) inside it.
-function ownLabelText(label: Element): string {
+function ownLabelText(label: Element, read: LabelReader): string {
   const copy = label.cloneNode(true) as Element
   copy.querySelectorAll('input, textarea, select, button').forEach((c) => c.remove())
-  return visibleText(copy)
+  return read(copy)
 }
 
-function forLabel(el: Element): string {
+function forLabel(el: Element, read: LabelReader): string {
   if (!el.id) return ''
   const label = Array.from(el.ownerDocument.querySelectorAll('label')).find(
     (l) => l.getAttribute('for') === el.id
   )
-  return label ? visibleText(label) : ''
+  return label ? read(label) : ''
 }
 
-function wrappingLabel(el: Element): string {
+function wrappingLabel(el: Element, read: LabelReader): string {
   const label = el.parentElement?.closest('label')
-  return label ? ownLabelText(label) : ''
+  return label ? ownLabelText(label, read) : ''
 }
 
-/** The text of the label naming a form control, via label[for] or a wrapping label. */
+/**
+ * The text of the label naming a form control, via label[for] or a wrapping label, as the
+ * runtime's `label:` compares it (hidden markup included).
+ */
 export function labelText(el: Element): string | null {
   if (!isFormControl(el)) return null
-  return capped(forLabel(el) || wrappingLabel(el))
+  return capped(forLabel(el, asLocator) || wrappingLabel(el, asLocator))
 }
 
 function labelledBy(el: Element): string {
@@ -144,8 +155,8 @@ export function accessibleNameSource(el: Element): { name: string; from: NameSou
           : ''
     ],
     ['other', () => (isInput && inputType(el) === 'image' ? squash(el.getAttribute('alt')) : '')],
-    ['other', () => (isFormControl(el) ? forLabel(el) : '')],
-    ['other', () => (isFormControl(el) ? wrappingLabel(el) : '')],
+    ['other', () => (isFormControl(el) ? forLabel(el, asName) : '')],
+    ['other', () => (isFormControl(el) ? wrappingLabel(el, asName) : '')],
     ['content', () => (role && NAMED_BY_CONTENT.includes(role) ? visibleText(el) : '')],
     ['other', () => squash(el.getAttribute('placeholder'))]
   ]

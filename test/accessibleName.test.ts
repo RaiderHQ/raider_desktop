@@ -229,15 +229,17 @@ describe('labelText', () => {
   })
 })
 
-describe('labels skip hidden markup like the runtime does', () => {
-  it('a required-field asterisk hidden from assistive tech is not part of the name', () => {
+describe('a label read as a name and as a locator', () => {
+  // The role engine skips hidden markup for the name; the runtime's label: XPath compares
+  // normalize-space(.) and keeps it
+  it('a hidden required-field asterisk is not in the name but is in the label text', () => {
     document.body.innerHTML =
       '<label for="e">Email <span aria-hidden="true">*</span></label><input id="e">' +
       '<label>Phone <span hidden>(optional)</span><input id="p"></label>'
     expect(accessibleName(document.getElementById('e')!)).toBe('Email')
-    expect(labelText(document.getElementById('e')!)).toBe('Email')
+    expect(labelText(document.getElementById('e')!)).toBe('Email *')
     expect(accessibleName(document.getElementById('p')!)).toBe('Phone')
-    expect(labelText(document.getElementById('p')!)).toBe('Phone')
+    expect(labelText(document.getElementById('p')!)).toBe('Phone (optional)')
   })
 })
 
