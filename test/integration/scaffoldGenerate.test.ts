@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { IpcMainInvokeEvent } from 'electron'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 const { mockSafeExec, mockExistsSync } = vi.hoisted(() => ({
   mockSafeExec: vi.fn(),
@@ -28,6 +31,24 @@ beforeEach(() => {
 })
 
 describe('scaffoldGenerate handler', () => {
+  it('generates nothing into a mobile (Appium) project', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'scaffold-appium-'))
+    writeFileSync(join(dir, 'Gemfile'), "gem 'appium_lib'\ngem 'rspec'\n")
+    const result = await handler(
+      mockEvent,
+      { operation: 'generate', type: 'page', name: 'login' },
+      dir,
+      'ruby'
+    )
+    rmSync(dir, { recursive: true, force: true })
+    expect(result).toEqual({
+      success: false,
+      output: '',
+      error: 'Mobile projects are not supported in this version.'
+    })
+    expect(mockSafeExec).not.toHaveBeenCalled()
+  })
+
   it('builds correct command for generate page', async () => {
     mockSafeExec.mockResolvedValue({
       stdout: 'Created page_objects/pages/login.rb',

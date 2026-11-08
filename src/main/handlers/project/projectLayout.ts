@@ -5,6 +5,9 @@ import type { ProjectLayout } from '@shared/types/projectLayout'
 import { rubyRaiderPin, rubyRaiderVersion, supportsRuntime } from '../logins/rubyRaiderVersion'
 import { DEFAULT_TEST_ID_ATTRIBUTE, testIdAttributeFrom } from '../../../shared/testIdAttribute'
 
+/** Why a mobile (Appium) project is refused: this version opens web projects only. */
+export const MOBILE_UNSUPPORTED = 'Mobile projects are not supported in this version.'
+
 const DEFAULT_PATHS = {
   specPath: 'spec',
   featurePath: 'features',

@@ -5,6 +5,7 @@ import { isValidRubyCommand } from '../../utils/rubyCommand'
 import { safeExec } from '../../utils/safeExec'
 import { writeFileAtomic } from '../tests/sidecar'
 import setActiveProject, { activationSettled } from './setActiveProject'
+import { MOBILE_UNSUPPORTED } from './projectLayout'
 import type { UpgradeResult } from '../../../shared/types/upgradeResult'
 
 /** The active `gem 'ruby_raider', '<requirement>'` line of a Gemfile, requirement captured. */
@@ -79,6 +80,9 @@ async function run(projectPath: unknown, rubyCommand: unknown): Promise<UpgradeR
   await activationSettled()
   if (typeof projectPath !== 'string' || projectPath !== appState.projectPath) {
     return { success: false, error: 'Only the open project can be updated.' }
+  }
+  if (appState.layout?.unsupportedReason === 'mobile') {
+    return { success: false, error: MOBILE_UNSUPPORTED }
   }
   if (!isValidRubyCommand(rubyCommand)) return { success: false, error: 'Invalid Ruby command.' }
   const gemfilePath = join(projectPath, 'Gemfile')

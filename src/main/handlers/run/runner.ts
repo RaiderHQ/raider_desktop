@@ -12,6 +12,8 @@ import type {
   StartRunResult
 } from '@shared/types/runEvents'
 import { appState } from '../appState'
+import { activationSettled } from '../project/setActiveProject'
+import { MOBILE_UNSUPPORTED } from '../project/projectLayout'
 import checkBundle from '../ruby/checkBundle'
 import bundleInstall from '../ruby/bundleInstall'
 import { pushToLongship } from '../longship/pushToLongship'
@@ -47,8 +49,6 @@ const POLL_MS = 50
 /** Shown when a project locks a ruby_raider below 4.0; the Tests tab offers the update. */
 export const GEM_TOO_OLD =
   'This project uses a ruby_raider older than 4.0. Change its Gemfile pin to ~> 4.0 and run bundle update ruby_raider, or use Update ruby_raider on the Tests tab.'
-/** Shown when a mobile (Appium) project is asked to run; this version opens web projects only. */
-export const MOBILE_UNSUPPORTED = 'Mobile projects are not supported in this version.'
 const LOCATION = /^(.+):(\d+)$/
 
 interface Active {
@@ -222,6 +222,8 @@ export async function startRun(
   if (starting || (current && !current.done)) return { error: 'busy' }
   starting = true
   try {
+    // A run asked for during a project switch waits for it, so it never runs the previous project
+    await activationSettled()
     const projectPath = appState.projectPath
     if (!projectPath) throw new Error('No project is open.')
     if (appState.layout?.unsupportedReason === 'mobile') throw new Error(MOBILE_UNSUPPORTED)

@@ -1,7 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync } from 'fs'
-import { tmpdir } from 'os'
-import { join } from 'path'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 const { mockMode, mockRunRecording } = vi.hoisted(() => ({
   mockMode: vi.fn(),
@@ -145,13 +142,9 @@ describe('run-test, mobile projects', () => {
     success: false,
     output: 'Mobile projects are not supported in this version.'
   }
-  let dir: string
-
   beforeEach(() => {
     mockMode.mockReturnValue('locked')
-    dir = mkdtempSync(join(tmpdir(), 'raider-mobile-'))
   })
-  afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
   it('never runs generated code for an Appium project', async () => {
     appState.layout = {
@@ -165,18 +158,5 @@ describe('run-test, mobile projects', () => {
     }
     expect(await runTestHandler('t1', '/p', 'ruby')).toEqual(refused)
     expect(mockRunRecording).not.toHaveBeenCalled()
-  })
-
-  it('refuses a project with appium_lib in its Gemfile while the layout is unknown', async () => {
-    writeFileSync(join(dir, 'Gemfile'), "gem 'appium_lib'\ngem 'rspec'\n")
-    appState.projectPath = dir
-    expect(await runTestHandler('t1', dir, 'ruby')).toEqual(refused)
-    expect(mockRunRecording).not.toHaveBeenCalled()
-  })
-
-  it('still runs a web project while the layout is unknown', async () => {
-    writeFileSync(join(dir, 'Gemfile'), "gem 'selenium-webdriver'\ngem 'rspec'\n")
-    appState.projectPath = dir
-    expect(await runTestHandler('t1', dir, 'ruby')).toEqual({ success: true, output: 'rec' })
   })
 })

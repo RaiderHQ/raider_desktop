@@ -6,6 +6,7 @@ import type { ScaffoldParams } from '@shared/types/scaffoldTypes'
 import { SCAFFOLD_GENERATE_TYPES as GENERATE_TYPES } from '@shared/types/scaffoldTypes'
 import { quoteShellArg } from '../../utils/shellQuote'
 import { CommandType } from '@foundation/Types/commandType'
+import { detectProjectLayout, MOBILE_UNSUPPORTED } from './projectLayout'
 
 function buildCommand(params: ScaffoldParams): string {
   if (params.operation !== 'generate' || !params.type || !params.name) {
@@ -32,6 +33,10 @@ const handler = async (
     // Validate project path exists
     if (!fs.existsSync(projectPath)) {
       return { success: false, output: '', error: `Project path does not exist: ${projectPath}` }
+    }
+    // Mobile (Appium) projects are not supported in this version, so nothing is generated into one
+    if ((await detectProjectLayout(projectPath)).unsupportedReason === 'mobile') {
+      return { success: false, output: '', error: MOBILE_UNSUPPORTED }
     }
 
     const command = buildCommand(params)
