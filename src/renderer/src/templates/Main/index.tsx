@@ -56,7 +56,8 @@ const MainTemplate: React.FC = (): JSX.Element => {
 
         if (!result.success) {
           setMissingGems(result.missingGems)
-          if (result.rubyCommand) {
+          // System or Windows Ruby with missing gems answers rubyCommand '': gems, not Ruby
+          if (result.missingGems?.length) {
             setIsGemsInstallModalOpen(true)
           } else {
             setIsRubyInstallModalOpen(true)

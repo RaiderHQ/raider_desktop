@@ -149,7 +149,7 @@ test.describe('Landing Page', () => {
     await page.getByRole('button', { name: 'Fix…' }).click()
     await expect(page.getByRole('heading', { name: 'Missing gems' })).toBeVisible()
 
-    // While it is open, File › Open project… and Help › How it works stand down
+    // While it is open, File › New project… and Help › How it works stand down
     await electronApp.evaluate(({ BrowserWindow }) => {
       const contents = BrowserWindow.getAllWindows()[0].webContents
       contents.send('menu-command', 'new-project')

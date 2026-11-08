@@ -75,18 +75,25 @@ const useRubyStore = create<RubyStore>(
     recheck: async (): Promise<void> => {
       set({ rechecking: true })
       try {
-        get().applyCheck(await window.api.isRubyInstalled())
-      } catch (error) {
-        console.error('Ruby check failed:', error)
-        get().applyCheck(null)
+        try {
+          get().applyCheck(await window.api.isRubyInstalled())
+        } catch (error) {
+          console.error('Ruby check failed:', error)
+          get().applyCheck(null)
+        }
+        await useVersionStore.getState().loadVersion()
+      } finally {
+        // Never leave the setup line on "checking"
+        set({ rechecking: false })
       }
-      await useVersionStore.getState().loadVersion()
-      set({ rechecking: false })
     },
     installGems: async (gems: string[]): Promise<void> => {
       set({ rechecking: true })
-      await installMissingGems(get().gemPrefix ?? '', gems)
-      await get().recheck()
+      try {
+        await installMissingGems(get().gemPrefix ?? '', gems)
+      } finally {
+        await get().recheck()
+      }
     }
   })
 )

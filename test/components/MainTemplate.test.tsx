@@ -46,6 +46,13 @@ const rubyState = vi.hoisted(() => ({
   recheck: vi.fn(),
   installGems: vi.fn()
 }))
+// Cleared before every test, so a recheck left by one test can't make another pass
+beforeEach(() => {
+  rubyState.recheck.mockClear()
+  rubyState.installGems.mockClear()
+  rubyState.applyCheck.mockClear()
+})
+
 vi.mock('@foundation/Stores/rubyStore', () => {
   const useRubyStore = (selector?: (s: typeof rubyState) => unknown) =>
     selector ? selector(rubyState) : rubyState
@@ -432,6 +439,18 @@ describe('MainTemplate tests updates', () => {
           fireEvent.click(button)
         })
         expect(rubyState.recheck).toHaveBeenCalled()
+      })
+
+      it('system Ruby with missing gems (rubyCommand empty) gets the gems help, not the Ruby one', async () => {
+        api().isRubyInstalled.mockResolvedValueOnce({
+          success: false,
+          rubyCommand: '',
+          rubyVersion: '3.3.0',
+          missingGems: ['rspec']
+        })
+        renderAt('/overview')
+        expect(await screen.findByText('recorder.rubyGemsInstallModal.yes')).toBeInTheDocument()
+        expect(screen.queryByText('recorder.rubyInstallModal.continue')).not.toBeInTheDocument()
       })
 
       it('closing the Ruby help checks again', async () => {

@@ -7,11 +7,7 @@ import { goToNewProject, mockRubyReady } from './helpers/navigation'
 test.describe('New Project Page', () => {
   test.beforeEach(async ({ electronApp, page }) => {
     await goToNewProject(page)
-    // The gem version gates Create; mockRubyReady's reload re-reads it
-    await electronApp.evaluate(async ({ ipcMain }) => {
-      ipcMain.removeHandler('run-command')
-      ipcMain.handle('run-command', async () => ({ success: true, output: 'Ruby Raider 4.0.0' }))
-    })
+    // The gem version gates Create; mockRubyReady answers it (4.0.1) and reloads
     await mockRubyReady(electronApp, page)
   })
 
