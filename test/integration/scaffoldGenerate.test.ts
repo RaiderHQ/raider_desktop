@@ -189,6 +189,19 @@ describe('scaffoldGenerate handler', () => {
     expect(result.error).toContain('type and name are required')
   })
 
+  // Ruby Raider 4.0 has no `raider g feature` or `raider g steps`
+  it.each(['feature', 'steps'])('refuses the %s type without running anything', async (type) => {
+    const result = await handler(
+      mockEvent,
+      { operation: 'generate', type, name: 'login' } as never,
+      '/project',
+      'ruby'
+    )
+
+    expect(result).toEqual({ success: false, output: '', error: `Unsupported type: ${type}` })
+    expect(mockSafeExec).not.toHaveBeenCalled()
+  })
+
   it('returns error when project path does not exist', async () => {
     mockExistsSync.mockReturnValueOnce(false)
 

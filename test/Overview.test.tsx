@@ -303,6 +303,34 @@ describe('Overview Page', (): void => {
     expect(screen.queryByTestId('scaffold-panel')).not.toBeInTheDocument()
   })
 
+  it('sends the page path with no type and the spec and helper paths with theirs', async (): Promise<void> => {
+    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+    fireEvent.click(screen.getByText('overview.tabs.scaffold'))
+    const page = screen.getByPlaceholderText('overview.paths.placeholder.page')
+    fireEvent.change(page, { target: { value: 'page_objects/pages' } })
+    fireEvent.change(screen.getByPlaceholderText('overview.paths.placeholder.spec'), {
+      target: { value: 'spec' }
+    })
+    fireEvent.change(screen.getByPlaceholderText('overview.paths.placeholder.helper'), {
+      target: { value: 'helpers' }
+    })
+    await act(async () => {
+      fireEvent.blur(page)
+    })
+    expect(mockApi.updatePaths.mock.calls).toEqual([
+      ['/fake/project', 'page_objects/pages', undefined],
+      ['/fake/project', 'spec', 'spec'],
+      ['/fake/project', 'helpers', 'helper']
+    ])
+  })
+
   it('shows ScaffoldPanel when Scaffolding tab is clicked', async (): Promise<void> => {
     useProjectStore.setState({ projectPath: '/fake/project', files: [] })
     await act(async () => {

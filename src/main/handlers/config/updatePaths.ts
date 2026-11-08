@@ -4,23 +4,28 @@ import { buildShellCommand } from '../../utils/shellCommand'
 import { quoteShellArg } from '../../utils/shellQuote'
 import { CommandType } from '@foundation/Types/commandType'
 
-type PathType = 'feature' | 'spec' | 'helper'
+// `raider u path` takes only -s (spec_path) and -h (helper_path); no flag sets page_path
+const PATH_FLAGS: Record<string, string> = { spec: '-s', helper: '-h' }
 
 const handler = async (
   _event: IpcMainInvokeEvent,
   projectPath: string,
   pathValue: string,
-  pathType?: PathType
+  pathType?: string | null
 ): Promise<CommandType> => {
+  // No type (undefined or null) is the page path. An unknown type must not fall through to
+  // the bare command, which would rewrite page_path
+  if (pathType != null && (typeof pathType !== 'string' || !Object.hasOwn(PATH_FLAGS, pathType))) {
+    return { success: false, output: '', error: `Unsupported path type: ${pathType}` }
+  }
+
   const fixPath = (await import('fix-path')).default
   fixPath()
 
   try {
     const args: string[] = ['raider', 'u', 'path', quoteShellArg(pathValue)]
 
-    if (pathType === 'feature') args.push('-f')
-    else if (pathType === 'spec') args.push('-s')
-    else if (pathType === 'helper') args.push('-h')
+    if (pathType != null) args.push(PATH_FLAGS[pathType])
 
     const command = args.join(' ')
     const shellCommand = buildShellCommand(projectPath, command)

@@ -279,17 +279,15 @@ Recording needs ffmpeg. `RAIDER_FFMPEG_PATH` points the gem at an existing ffmpe
 ```bash
 raider u path /custom/pages              # page_path (default)
 raider u path /custom/specs -s           # spec_path
-raider u path /custom/features -f        # feature_path
 raider u path /custom/helpers -h         # helper_path
 ```
 
-**Config keys affected:** `page_path`, `spec_path`, `feature_path`, `helper_path`
+**Config keys affected:** `page_path`, `spec_path`, `helper_path`. `path` takes only `-s` and `-h` (`-f` is an error in 4.0), so the desktop offers no Features path; an older `feature_path` key is still read but nothing generates into it.
 
 These override where scaffolding generates files. When not set, defaults are:
 
 - Pages: `page_objects/pages/`
 - Specs: `spec/`
-- Features: `features/`
 - Helpers: `helpers/`
 
 ---

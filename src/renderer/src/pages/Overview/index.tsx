@@ -166,7 +166,6 @@ const Overview: React.FC = () => {
   const configRequestRef = useRef(0)
   const [pagePath, setPagePath] = useState('')
   const [specPath, setSpecPath] = useState('')
-  const [featurePath, setFeaturePath] = useState('')
   const [helperPath, setHelperPath] = useState('')
 
   // File context menu state
@@ -445,9 +444,8 @@ const Overview: React.FC = () => {
   const handlePathsUpdate = async (): Promise<void> => {
     if (!projectPath) return
     try {
-      const updates: { value: string; type?: 'feature' | 'spec' | 'helper' }[] = []
+      const updates: { value: string; type?: 'spec' | 'helper' }[] = []
       if (pagePath.trim()) updates.push({ value: pagePath.trim() })
-      if (featurePath.trim()) updates.push({ value: featurePath.trim(), type: 'feature' })
       if (specPath.trim()) updates.push({ value: specPath.trim(), type: 'spec' })
       if (helperPath.trim()) updates.push({ value: helperPath.trim(), type: 'helper' })
 
@@ -1273,19 +1271,6 @@ const Overview: React.FC = () => {
                       onChange={(e) => setPagePath(e.target.value)}
                       onBlur={handlePathsUpdate}
                       placeholder={t('overview.paths.placeholder.page')}
-                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
-                    />
-                  </Tooltip>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.feature')}</label>
-                  <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
-                    <input
-                      type="text"
-                      value={featurePath}
-                      onChange={(e) => setFeaturePath(e.target.value)}
-                      onBlur={handlePathsUpdate}
-                      placeholder={t('overview.paths.placeholder.feature')}
                       className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
                     />
                   </Tooltip>

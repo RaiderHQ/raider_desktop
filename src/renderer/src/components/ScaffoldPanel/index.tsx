@@ -9,8 +9,6 @@ import type { ScaffoldParams, ScaffoldComponentType } from '@foundation/Types/sc
 const COMPONENT_TYPES: ScaffoldComponentType[] = [
   'page',
   'spec',
-  'feature',
-  'steps',
   'helper',
   'component'
 ]

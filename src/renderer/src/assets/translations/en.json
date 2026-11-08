@@ -227,7 +227,6 @@
     },
     "paths": {
       "page": "Page objects path:",
-      "feature": "Features path:",
       "spec": "Specs path:",
       "helper": "Helpers path:",
       "updateButton": "Update paths",
@@ -313,7 +312,6 @@
     "paths": {
       "placeholder": {
         "page": "e.g. pages",
-        "feature": "e.g. features",
         "spec": "e.g. spec",
         "helper": "e.g. helpers"
       }
@@ -797,7 +795,7 @@
       },
       "scaffold": {
         "title": "Scaffolding",
-        "message": "Scaffolding generates boilerplate files for you — page objects, spec files, feature files, and helpers.\n\nFill in the form and Ruby Raider will create the right file structure so you can start writing test logic immediately without setting things up by hand."
+        "message": "Scaffolding generates boilerplate files for you — page objects, spec files, components and helpers.\n\nFill in the form and Ruby Raider will create the right file structure so you can start writing test logic immediately without setting things up by hand."
       },
       "dashboard": {
         "title": "Project dashboard",
@@ -894,7 +892,7 @@
       "runBusy": "A run is in progress",
       "freshLogin": "Ignore saved logins once, on the next run",
       "browserOptions": "Extra flags for the browser, for example no-sandbox",
-      "paths": "Where generated pages, features, specs and helpers go",
+      "paths": "Where generated pages, specs and helpers go",
       "forgetLogin": "Delete this saved login",
       "treeRow": "Open in the editor; right-click for more",
       "runTests": "Run every test in the project"
@@ -1350,15 +1348,13 @@
     "cancel": "Cancel"
   },
   "scaffold": {
-    "intro": "Generate page objects, specs, features, steps, helpers, or components for your project.",
+    "intro": "Generate page objects, specs, helpers or components for your project.",
     "type": "Type",
     "name": "Name",
     "namePlaceholder": "e.g. login",
     "types": {
-      "page": "Page Object",
+      "page": "Page object",
       "spec": "Spec",
-      "feature": "Feature",
-      "steps": "Steps",
       "helper": "Helper",
       "component": "Component"
     },

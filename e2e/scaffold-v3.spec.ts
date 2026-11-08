@@ -27,21 +27,21 @@ test.describe('Scaffold Panel v3 Features', () => {
 
   test('component type dropdown includes all v3 types', async ({ page }) => {
     // Look for the scaffold panel - it may be in the overview sidebar
-    const componentSelect = page.locator('select').filter({ hasText: /Page Object/ })
+    const componentSelect = page.locator('select').filter({ hasText: /Page object/ })
     if (await componentSelect.isVisible().catch(() => false)) {
       const options = componentSelect.locator('option')
       const texts = await options.allTextContents()
-      expect(texts).toContain('Page Object')
+      expect(texts).toContain('Page object')
       expect(texts).toContain('Spec')
-      expect(texts).toContain('Feature')
-      expect(texts).toContain('Steps')
+      expect(texts).not.toContain('Feature')
+      expect(texts).not.toContain('Steps')
       expect(texts).toContain('Helper')
       expect(texts).toContain('Component')
     }
   })
 
   test('shows "From Page Object" input when Spec type is selected', async ({ page }) => {
-    const typeSelect = page.locator('select').filter({ hasText: /Page Object/ })
+    const typeSelect = page.locator('select').filter({ hasText: /Page object/ })
     if (await typeSelect.isVisible().catch(() => false)) {
       await typeSelect.selectOption('spec')
       await page.waitForTimeout(300)
@@ -50,7 +50,7 @@ test.describe('Scaffold Panel v3 Features', () => {
   })
 
   test('hides "From Page Object" input for non-spec types', async ({ page }) => {
-    const typeSelect = page.locator('select').filter({ hasText: /Page Object/ })
+    const typeSelect = page.locator('select').filter({ hasText: /Page object/ })
     if (await typeSelect.isVisible().catch(() => false)) {
       // First select spec to show the field
       await typeSelect.selectOption('spec')
