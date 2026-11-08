@@ -44,6 +44,8 @@ vi.mock('react-router', async () => {
 })
 
 const api = {
+  // The dialog reads the gem version again when it opens
+  runCommand: vi.fn().mockResolvedValue({ success: true, output: 'The version is 4.0.0' }),
   createQuickProject: vi.fn(),
   isRubyInstalled: vi.fn(),
   installGems: vi.fn(),
@@ -78,6 +80,7 @@ beforeEach(() => {
   // @ts-expect-error - Mocking window.api
   window.api = api
   api.isRubyInstalled.mockResolvedValue({ success: true, rubyCommand: '/usr/bin/ruby' })
+  api.runCommand.mockResolvedValue({ success: true, output: 'The version is 4.0.0' })
   api.installGems.mockResolvedValue({ success: true })
   useRubyStore.setState({ rubyCommand: '/usr/bin/ruby' })
   useProjectStore.setState({ projectPath: null })
@@ -95,6 +98,11 @@ describe('QuickRecordDialog', (): void => {
   // A 3.x raider new would write a project the desktop can neither record into nor run
   it.each(['3.15.2', null])('refuses to start on gem %s', async (version): Promise<void> => {
     useVersionStore.setState({ version })
+    api.runCommand.mockResolvedValueOnce(
+      version
+        ? { success: true, output: `The version is ${version}` }
+        : { success: false, output: '' }
+    )
     await renderDialog()
     fill()
     expect(screen.getByRole('alert')).toHaveTextContent('newProject.gemNeedsUpdate')
