@@ -142,7 +142,7 @@ describe('copy', () => {
       'Use the page on the right as you normally would. Every click and keystroke becomes a step here.'
     )
     expect(en.guide.step2).toBe(
-      'To check something, press Check something\u2026 (or right-click the page) and choose what to check.'
+      'To add a validation, press Add validation\u2026 (or right-click the page) and choose what to check.'
     )
     expect(en.guide.step3Before + en.guide.step3Middle + en.guide.step3After).toBe(
       'Press Stop & save when you are done, then Run to see it pass.'
