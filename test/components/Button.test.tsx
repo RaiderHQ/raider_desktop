@@ -47,4 +47,9 @@ describe('Button', () => {
     render(<Button className="extra-class">Button</Button>)
     expect(screen.getByRole('button')).toHaveClass('extra-class')
   })
+
+  it('announces a keyboard shortcut', () => {
+    render(<Button aria-keyshortcuts="Meta+O">Open</Button>)
+    expect(screen.getByRole('button')).toHaveAttribute('aria-keyshortcuts', 'Meta+O')
+  })
 })

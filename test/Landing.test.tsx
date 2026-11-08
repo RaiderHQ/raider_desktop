@@ -5,6 +5,7 @@ import { vi, beforeEach } from 'vitest'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useVersionStore from '@foundation/Stores/versionStore'
+import useOverlayStore from '@foundation/Stores/overlayStore'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
@@ -47,7 +48,10 @@ const READY = {
   rubyCommand: 'ruby',
   rubyVersion: '3.2.8',
   versionWarning: null,
-  missingGems: []
+  missingGems: [],
+  gemPrefix: '',
+  checkFailed: false,
+  rechecking: false
 }
 
 beforeEach(() => {
@@ -67,6 +71,7 @@ beforeEach(() => {
   window.api = api
   useRubyStore.setState(READY)
   useVersionStore.setState({ version: null })
+  useOverlayStore.setState({ pageModalOpen: false, conceptsRequest: 0 })
 })
 
 vi.mock('react-hot-toast', () => ({
@@ -74,10 +79,17 @@ vi.mock('react-hot-toast', () => ({
 }))
 
 vi.mock('@components/RubyInstallModal', () => ({
-  default: ({ onClose }: { onClose: () => void }): JSX.Element => (
+  default: ({
+    onClose,
+    onCloseApp
+  }: {
+    onClose: () => void
+    onCloseApp?: () => void
+  }): JSX.Element => (
     <div>
       ruby-install-modal
       <button onClick={onClose}>close-ruby-modal</button>
+      {onCloseApp && <button onClick={onCloseApp}>close-app</button>}
     </div>
   )
 }))
@@ -97,9 +109,6 @@ vi.mock('@components/RubyGemsInstallModal', () => ({
       <button onClick={onClose}>close-gems-modal</button>
     </div>
   )
-}))
-vi.mock('@components/ConceptsModal', () => ({
-  default: (): JSX.Element => <div>concepts-modal</div>
 }))
 
 vi.mock('@components/QuickRecordDialog', () => ({
@@ -169,12 +178,32 @@ describe('Landing Page', (): void => {
       expect(screen.getByRole('tooltip')).toHaveTextContent('tooltips.landing.create')
     })
 
-    it('How Ruby Raider works is a text link that opens the concepts', async () => {
+    it('How Ruby Raider works is a text link that asks for the one concepts modal', async () => {
       await renderLanding()
       await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: 'header.howItWorks' }))
       })
-      expect(screen.getByText('concepts-modal')).toBeInTheDocument()
+      expect(useOverlayStore.getState().conceptsRequest).toBe(1)
+    })
+
+    it('the shortcut chips are announced by the buttons, not read as text', async () => {
+      await renderLanding()
+      const button = screen.getByRole('button', { name: /landing\.start\.newProject/ })
+      expect(button.getAttribute('aria-keyshortcuts')).toMatch(/^(Meta|Control)\+Shift\+N$/)
+      expect(button.querySelector('kbd')).toHaveAttribute('aria-hidden', 'true')
+      expect(
+        screen
+          .getByRole('button', { name: /landing\.start\.openProject/ })
+          .getAttribute('aria-keyshortcuts')
+      ).toMatch(/^(Meta|Control)\+O$/)
+    })
+
+    it('while Quick record is open, the menu bar knows a page modal is up', async () => {
+      await renderLanding()
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'landing.start.record' }))
+      })
+      expect(useOverlayStore.getState().pageModalOpen).toBe(true)
     })
   })
 
@@ -205,12 +234,16 @@ describe('Landing Page', (): void => {
         fireEvent.click(screen.getByRole('button', { name: 'landing.setup.fix' }))
       })
       expect(screen.getByText('ruby-install-modal')).toBeInTheDocument()
+      // Opened by choice: its second button must not quit the app
+      expect(screen.queryByText('close-app')).not.toBeInTheDocument()
+      expect(useOverlayStore.getState().pageModalOpen).toBe(true)
     })
 
     it('with gems missing: names them, Fix… opens the gems help and installs, then checks again', async () => {
       useRubyStore.setState({
         checked: true,
         rubyCommand: 'rbenv exec',
+        gemPrefix: 'rbenv exec',
         rubyVersion: '3.2.8',
         missingGems: ['ruby_raider', 'rspec']
       })
@@ -241,6 +274,60 @@ describe('Landing Page', (): void => {
         fireEvent.click(screen.getByRole('button', { name: 'landing.setup.fix' }))
       })
       expect(screen.getByText('gems-install-modal ruby_raider')).toBeInTheDocument()
+    })
+
+    it('Fix… for an old gem installs with the Ruby prefix, not the ruby command', async () => {
+      const rbenv = 'eval "$(rbenv init -)" && rbenv shell 3.2.8 &&'
+      useRubyStore.setState({ rubyCommand: `${rbenv} ruby`, gemPrefix: rbenv })
+      api.runCommand.mockResolvedValue({ success: true, output: '3.1.2' })
+      await renderLanding()
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'landing.setup.fix' }))
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByText('install-gems'))
+      })
+      expect(api.installGems).toHaveBeenCalledWith(rbenv, ['ruby_raider'])
+    })
+
+    it('while Fix… installs, the line says it is checking and offers no second Fix…', async () => {
+      api.runCommand.mockResolvedValue({ success: true, output: '3.1.2' })
+      let finish!: (value: { success: boolean }) => void
+      api.installGems.mockReturnValue(new Promise((resolve) => (finish = resolve)))
+      await renderLanding()
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'landing.setup.fix' }))
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByText('install-gems'))
+      })
+      expect(screen.getByTestId('setup-line')).toHaveTextContent('landing.setup.checking')
+      expect(screen.queryByRole('button', { name: 'landing.setup.fix' })).not.toBeInTheDocument()
+      expect(useOverlayStore.getState().pageModalOpen).toBe(false)
+      api.runCommand.mockResolvedValue({ success: true, output: '4.0.1' })
+      await act(async () => finish({ success: true }))
+      expect(screen.getByTestId('setup-line')).toHaveTextContent('landing.setup.ready')
+    })
+
+    it('with the gem version already known, it shows at once and refreshes quietly', async () => {
+      useVersionStore.setState({ version: '4.0.1' })
+      api.runCommand.mockReturnValue(new Promise(() => {}))
+      await renderLanding()
+      expect(screen.getByTestId('setup-line')).toHaveTextContent('landing.setup.ready')
+      expect(screen.getByRole('button', { name: 'landing.start.record' })).toBeEnabled()
+      expect(api.runCommand).toHaveBeenCalledWith('raider version')
+    })
+
+    it('when the check itself failed: says so, not "no Ruby", and Check again asks again', async () => {
+      useRubyStore.setState({ checked: true, checkFailed: true, rubyCommand: null })
+      await renderLanding()
+      expect(screen.getByTestId('setup-line')).toHaveTextContent('landing.setup.checkFailed')
+      expect(screen.getByTestId('setup-line')).not.toHaveTextContent('landing.setup.noRuby')
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'landing.setup.retry' }))
+      })
+      expect(api.isRubyInstalled).toHaveBeenCalled()
+      expect(screen.getByTestId('setup-line')).toHaveTextContent('landing.setup.ready')
     })
 
     it('when Ruby Raider cannot be read: says so and Fix… offers to install it', async () => {
@@ -288,6 +375,16 @@ describe('Landing Page', (): void => {
       expect(screen.queryByText('landing.subtitle')).not.toBeInTheDocument()
       const list = screen.getByRole('region', { name: 'landing.quickRecordings.title' })
       expect(row.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
+    it('in the compact row, the reason Record a test is disabled is shown as text too', async () => {
+      useRubyStore.setState({ checked: true, rubyCommand: null, rubyVersion: null })
+      api.listQuickProjects.mockResolvedValue([
+        { path: '/data/quick-record/shop_test', name: 'shop_test', modifiedAt: 2 }
+      ])
+      await renderLanding()
+      expect(screen.getByTestId('landing')).toHaveAttribute('data-layout', 'recents')
+      expect(screen.getByText('landing.start.notReady')).toBeInTheDocument()
     })
   })
 

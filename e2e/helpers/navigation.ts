@@ -28,9 +28,16 @@ export function newProjectButton(page: Page): Locator {
  * Without it a host missing a gem shows a "Missing Gems" modal that swallows
  * every click. The check runs once at startup, before a test can install a mock,
  * so mock it in the main process and reload to re-run it.
+ * The gem version (`raider version`, the only command the renderer runs) is mocked
+ * too, so the home page's setup line does not depend on the host's gem; pass
+ * `gemVersion: null` to keep the real one (the real-gem spec).
  */
-export async function mockRubyReady(electronApp: ElectronApplication, page: Page): Promise<void> {
-  await electronApp.evaluate(async ({ ipcMain }) => {
+export async function mockRubyReady(
+  electronApp: ElectronApplication,
+  page: Page,
+  { gemVersion = '4.0.1' }: { gemVersion?: string | null } = {}
+): Promise<void> {
+  await electronApp.evaluate(async ({ ipcMain }, version) => {
     ipcMain.removeHandler('is-ruby-installed')
     ipcMain.handle('is-ruby-installed', async () => ({
       success: true,
@@ -38,7 +45,11 @@ export async function mockRubyReady(electronApp: ElectronApplication, page: Page
       rubyCommand: 'ruby',
       missingGems: []
     }))
-  })
+    if (version !== null) {
+      ipcMain.removeHandler('run-command')
+      ipcMain.handle('run-command', async () => ({ success: true, output: version }))
+    }
+  }, gemVersion)
   await page.reload()
   await page.waitForLoadState('domcontentloaded')
   await page.waitForTimeout(1500)

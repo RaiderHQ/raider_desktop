@@ -6,16 +6,14 @@ import Logo from '@components/Logo'
 import Tooltip from '@components/Tooltip'
 import Button from '@components/Button'
 import QuickRecordDialog from '@components/QuickRecordDialog'
-import ConceptsModal from '@components/ConceptsModal'
-import ShortcutsSheet from '@components/ShortcutsSheet'
 import RubyInstallModal from '@components/RubyInstallModal'
 import RubyGemsInstallModal from '@components/RubyGemsInstallModal'
 import useLoadingStore from '@foundation/Stores/loadingStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useVersionStore, { supportsRuntime } from '@foundation/Stores/versionStore'
-import { installMissingGems } from '@foundation/installGems'
-import { platformFrom, shortcutLabel } from '@shared/shortcuts'
+import useOverlayStore from '@foundation/Stores/overlayStore'
+import { platformFrom, shortcutLabel, SHORTCUTS } from '@shared/shortcuts'
 import type { ShortcutId } from '@shared/shortcuts'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { RecentProjectEntry } from '@shared/types/recentProject'
@@ -23,6 +21,7 @@ import type { RecentProjectEntry } from '@shared/types/recentProject'
 /** Where Ruby and the gem stand, from what the startup check and `raider version` answered */
 type Setup =
   | { kind: 'checking' }
+  | { kind: 'checkFailed' }
   | { kind: 'noRuby' }
   | { kind: 'missingGems'; gems: string[] }
   | { kind: 'noRaider' }
@@ -31,6 +30,7 @@ type Setup =
 
 const setupFrom = (state: {
   checked: boolean
+  checkFailed: boolean
   versionRead: boolean
   rubyCommand: string | null
   rubyVersion: string | null
@@ -38,6 +38,8 @@ const setupFrom = (state: {
   version: string | null
 }): Setup => {
   if (!state.checked || !state.versionRead) return { kind: 'checking' }
+  // A check that threw says nothing about Ruby, so it is not "no Ruby"
+  if (state.checkFailed) return { kind: 'checkFailed' }
   // Missing gems come first: on Windows the check gives no command while gems are missing
   if (state.missingGems.length > 0) return { kind: 'missingGems', gems: state.missingGems }
   if (!state.rubyCommand) return { kind: 'noRuby' }
@@ -50,16 +52,14 @@ const setupFrom = (state: {
 const Landing: React.FC = (): JSX.Element => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [conceptsOpen, setConceptsOpen] = useState(false)
-  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [quickRecordOpen, setQuickRecordOpen] = useState(false)
 
   // The setup line: Ruby from the startup check, the gem from `raider version`, read again here
   // because the user may have installed it since
-  const { checked, rubyCommand, rubyVersion, missingGems, applyCheck } = useRubyStore()
+  const { checked, checkFailed, rechecking, rubyCommand, rubyVersion, missingGems } = useRubyStore()
   const gemVersion = useVersionStore((state) => state.version)
-  const [versionRead, setVersionRead] = useState(false)
-  const [rechecking, setRechecking] = useState(false)
+  // A version already read shows at once and refreshes quietly; an unknown one is waited for
+  const [versionRead, setVersionRead] = useState(() => gemVersion !== null)
   const [fixOpen, setFixOpen] = useState<'ruby' | 'gems' | null>(null)
   useEffect(() => {
     let current = true
@@ -77,6 +77,7 @@ const Landing: React.FC = (): JSX.Element => {
     ? ({ kind: 'checking' } as Setup)
     : setupFrom({
         checked,
+        checkFailed,
         versionRead,
         rubyCommand,
         rubyVersion,
@@ -85,16 +86,16 @@ const Landing: React.FC = (): JSX.Element => {
       })
   const ready = setup.kind === 'ready'
 
-  /** After a Fix… modal: the same check as at startup, then the gem version */
-  const recheck = async (): Promise<void> => {
-    setRechecking(true)
-    try {
-      applyCheck(await window.api.isRubyInstalled())
-    } catch (error) {
-      console.error('Ruby check failed:', error)
-    }
-    await useVersionStore.getState().loadVersion()
-    setRechecking(false)
+  // The menu bar stands down while this page shows a modal of its own
+  const pageModalOpen = quickRecordOpen || fixOpen !== null
+  useEffect(() => {
+    useOverlayStore.getState().setPageModalOpen(pageModalOpen)
+  }, [pageModalOpen])
+  useEffect(() => (): void => useOverlayStore.getState().setPageModalOpen(false), [])
+
+  /** After a Fix… modal: the same check as at startup, then the gem version (shared with startup) */
+  const recheck = (): void => {
+    void useRubyStore.getState().recheck()
   }
 
   // An old or unreadable gem is fixed the same way as a missing one: gem install ruby_raider
@@ -155,11 +156,16 @@ const Landing: React.FC = (): JSX.Element => {
     navigate('/overview/tests')
   }
 
+  const platform = platformFrom(navigator.platform)
+  // The chip is for the eye; the button announces the shortcut itself
   const shortcutChip = (id: ShortcutId): JSX.Element => (
-    <kbd className="font-sans text-xs font-normal text-neutral-md">
-      {shortcutLabel(id, platformFrom(navigator.platform))}
+    <kbd aria-hidden="true" className="font-sans text-xs font-normal text-neutral-md">
+      {shortcutLabel(id, platform)}
     </kbd>
   )
+  /** aria-keyshortcuts wants Meta / Control, not CmdOrCtrl */
+  const keyShortcuts = (id: ShortcutId): string =>
+    SHORTCUTS[id].accelerator.replace('CmdOrCtrl', platform === 'mac' ? 'Meta' : 'Control')
 
   const handleOpenProject = async (): Promise<void> => {
     try {
@@ -186,6 +192,8 @@ const Landing: React.FC = (): JSX.Element => {
     switch (setup.kind) {
       case 'checking':
         return t('landing.setup.checking')
+      case 'checkFailed':
+        return t('landing.setup.checkFailed')
       case 'noRuby':
         return t('landing.setup.noRuby')
       case 'missingGems':
@@ -221,10 +229,14 @@ const Landing: React.FC = (): JSX.Element => {
       </span>
       {!ready && setup.kind !== 'checking' && (
         <button
-          onClick={() => setFixOpen(setup.kind === 'noRuby' ? 'ruby' : 'gems')}
+          onClick={() =>
+            setup.kind === 'checkFailed'
+              ? recheck()
+              : setFixOpen(setup.kind === 'noRuby' ? 'ruby' : 'gems')
+          }
           className="text-sm px-2.5 py-1 rounded-md border border-neutral-bdr bg-white font-semibold text-ruby hover:bg-ruby-sub transition-colors"
         >
-          {t('landing.setup.fix')}
+          {t(setup.kind === 'checkFailed' ? 'landing.setup.retry' : 'landing.setup.fix')}
         </button>
       )}
     </div>
@@ -250,13 +262,21 @@ const Landing: React.FC = (): JSX.Element => {
   const secondaryButtons = (
     <>
       <Tooltip content={t('tooltips.landing.create')} position="bottom">
-        <Button type="secondary" onClick={() => navigate('/new')}>
+        <Button
+          type="secondary"
+          onClick={() => navigate('/new')}
+          aria-keyshortcuts={keyShortcuts('new-project')}
+        >
           {t('landing.start.newProject')}
           {shortcutChip('new-project')}
         </Button>
       </Tooltip>
       <Tooltip content={t('tooltips.landing.open')} position="bottom">
-        <Button type="secondary" onClick={() => void handleOpenProject()}>
+        <Button
+          type="secondary"
+          onClick={() => void handleOpenProject()}
+          aria-keyshortcuts={keyShortcuts('open-project')}
+        >
           {t('landing.start.openProject')}
           {shortcutChip('open-project')}
         </Button>
@@ -266,7 +286,7 @@ const Landing: React.FC = (): JSX.Element => {
 
   const howItWorks = (
     <button
-      onClick={() => setConceptsOpen(true)}
+      onClick={() => useOverlayStore.getState().requestConcepts()}
       className="text-sm text-ruby hover:underline focus:outline-none focus-visible:underline"
     >
       {t('header.howItWorks')}
@@ -284,6 +304,8 @@ const Landing: React.FC = (): JSX.Element => {
             {recordButton(false)}
             {secondaryButtons}
           </div>
+          {/* A disabled button cannot be focused, so its reason is text as well as a tooltip */}
+          {!ready && <p className="text-sm text-neutral-md mb-2">{notReadyReason}</p>}
           <div className="mb-8">{howItWorks}</div>
           {recentProjects.length > 0 && (
             <section aria-labelledby="recent-projects" className="w-full mb-8">
@@ -411,24 +433,12 @@ const Landing: React.FC = (): JSX.Element => {
 
       {quickRecordOpen && <QuickRecordDialog onClose={() => setQuickRecordOpen(false)} />}
 
-      {conceptsOpen && (
-        <ConceptsModal
-          onClose={() => setConceptsOpen(false)}
-          onOpenShortcuts={() => {
-            setConceptsOpen(false)
-            setShortcutsOpen(true)
-          }}
-        />
-      )}
-      {shortcutsOpen && <ShortcutsSheet onClose={() => setShortcutsOpen(false)} />}
-
       {fixOpen === 'ruby' && (
         <RubyInstallModal
           onClose={() => {
             setFixOpen(null)
-            void recheck()
+            recheck()
           }}
-          onCloseApp={() => window.api.closeApp()}
         />
       )}
       {fixOpen === 'gems' && (
@@ -436,11 +446,12 @@ const Landing: React.FC = (): JSX.Element => {
           missingGems={gemsToInstall}
           onInstall={() => {
             setFixOpen(null)
-            void installMissingGems(rubyCommand ?? '', gemsToInstall).then(recheck)
+            // Busy at once, so the line shows the check and Fix… cannot start a second install
+            void useRubyStore.getState().installGems(gemsToInstall)
           }}
           onClose={() => {
             setFixOpen(null)
-            void recheck()
+            recheck()
           }}
         />
       )}
