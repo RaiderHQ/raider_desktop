@@ -3,8 +3,7 @@ export interface RaiderConfig {
   rubyVersion: string
   createdAt: string
   framework: {
-    automation: 'Selenium' | 'Watir' | 'Appium'
-    mobile: 'Android' | 'iOS'
+    automation: 'Selenium'
   }
   settings: {
     baseUrl: string | null

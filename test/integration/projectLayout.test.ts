@@ -73,40 +73,16 @@ describe('detectProjectLayout', () => {
     expect(layout.featurePath).toBe('features')
   })
 
-  it('appium is not recordable', async () => {
+  it('an appium project is a mobile project, not supported in this version', async () => {
     await project("gem 'appium_lib'\ngem 'rspec'\n")
-    expect(await detectProjectLayout(dir)).toMatchObject({
-      automation: 'appium',
+    const layout = await detectProjectLayout(dir)
+    expect(layout).toMatchObject({
+      automation: 'selenium',
       recordable: false,
       unsupportedReason: 'mobile'
     })
+    expect(layout).not.toHaveProperty('mobilePlatform')
   })
-
-  it('appium without a capabilities file has no mobile platform', async () => {
-    await project("gem 'appium_lib'\ngem 'rspec'\n")
-    expect((await detectProjectLayout(dir)).mobilePlatform).toBeUndefined()
-  })
-
-  for (const version of ['3.11', '3.12']) {
-    for (const kind of ['ios', 'android', 'cross_platform']) {
-      it(`appium ${kind} project from ${version} reports its mobile platform`, async () => {
-        await project("gem 'appium_lib'\ngem 'rspec'\n")
-        await mkdir(join(dir, 'config'), { recursive: true })
-        await writeFile(
-          join(dir, 'config', 'capabilities.yml'),
-          readFileSync(
-            join(__dirname, '..', 'fixtures', 'mobile', `${kind}-${version}.capabilities.yml`)
-          )
-        )
-        expect(await detectProjectLayout(dir)).toMatchObject({
-          automation: 'appium',
-          mobilePlatform: kind,
-          recordable: false,
-          unsupportedReason: 'mobile'
-        })
-      })
-    }
-  }
 
   it('minitest and capybara are not recordable', async () => {
     await project("gem 'minitest'\n")
@@ -224,7 +200,7 @@ describe('detectProjectLayout, ruby_raider version gate', () => {
     await project("gem 'appium_lib'\ngem 'rspec'\ngem 'ruby_raider'\n")
     await lockFile('3.13.0')
     expect(await detectProjectLayout(dir)).toMatchObject({
-      automation: 'appium',
+      automation: 'selenium',
       recordable: false,
       unsupportedReason: 'mobile',
       rubyRaiderVersion: '3.13.0'

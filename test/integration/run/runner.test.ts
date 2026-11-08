@@ -32,6 +32,7 @@ import {
   getActiveRun,
   GEM_TOO_OLD,
   killActiveRun,
+  MOBILE_UNSUPPORTED,
   startRun,
   type RunnerDeps
 } from '../../../src/main/handlers/run/runner'
@@ -136,6 +137,14 @@ describe('runner', () => {
     }
     fs.rmSync(project, { recursive: true, force: true })
     fs.rmSync(tempRoot, { recursive: true, force: true })
+  })
+
+  it('refuses to run a mobile (Appium) project and spawns nothing', async () => {
+    appState.layout = { ...LAYOUT, recordable: false, unsupportedReason: 'mobile' }
+    expect(await startRun(ALL, deps)).toEqual({ error: MOBILE_UNSUPPORTED })
+    expect(deps.spawnCommand).not.toHaveBeenCalled()
+    expect(events).toEqual([])
+    expect(getActiveRun()).toBeNull()
   })
 
   it('refuses to run a project on a ruby_raider below 4.0 and spawns nothing', async () => {

@@ -6,11 +6,9 @@ import type { SavedLoginsResult } from '@shared/types/savedLogins'
 /** 'list-saved-logins': the active project's saved logins, once activation has finished. */
 export async function listSavedLoginsHandler(): Promise<SavedLoginsResult> {
   await activationSettled()
-  const { projectPath, layout } = appState
+  const { projectPath } = appState
   if (!projectPath) return { logins: [], unsupportedReason: null }
-  return listSavedLogins(projectPath, new Date(), {
-    mobile: layout?.unsupportedReason === 'mobile'
-  })
+  return listSavedLogins(projectPath, new Date())
 }
 
 /** 'forget-saved-login' */

@@ -72,13 +72,9 @@ describe('IPC Contract', () => {
     'installRbenvAndRuby',
     'installGems',
 
-    // Browser & Mobile Configuration
+    // Browser Configuration
     'updateBrowserUrl',
     'updateBrowserType',
-    'getDeviceSettings',
-    'saveDeviceSettings',
-    'checkMobileReady',
-    'chooseAppFile',
 
     // Test Execution
     'runCommand',

@@ -1,5 +1,4 @@
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
-import type React from 'react'
 import Overview from '@pages/Overview'
 import { dispatchMenuCommand } from '@foundation/menuCommands'
 import '@testing-library/jest-dom'
@@ -60,27 +59,6 @@ vi.mock('@components/ScaffoldPanel', () => ({
 vi.mock('@components/ProjectDashboard', () => ({
   default: (): JSX.Element => <div data-testid="project-dashboard">ProjectDashboard</div>
 }))
-
-// A stand-in by default; the real component where its async load matters
-const realDeviceSettings = vi.hoisted(() => ({ on: false }))
-vi.mock('@components/DeviceSettings', async () => {
-  const { default: Real } = await vi.importActual<typeof import('@components/DeviceSettings')>(
-    '@components/DeviceSettings'
-  )
-  return {
-    default: (
-      props: React.ComponentProps<typeof Real> & { focusRef?: React.Ref<HTMLInputElement> }
-    ): JSX.Element =>
-      realDeviceSettings.on ? (
-        <Real {...props} />
-      ) : (
-        <div data-testid="device-settings">
-          {props.projectPath}
-          <input aria-label="device-app" ref={props.focusRef} />
-        </div>
-      )
-  }
-})
 
 vi.mock('@components/Editor', () => ({
   default: ({
@@ -156,12 +134,10 @@ const mockApi = {
   duplicateFile: vi.fn().mockResolvedValue({ success: true, newPath: '' }),
   startRun: vi.fn().mockResolvedValue({ runId: 'r1' }),
   getRunDefaults: vi.fn().mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 }),
-  checkMobileReady: vi.fn().mockResolvedValue({ ok: true }),
-  getDeviceSettings: vi.fn(),
   onTestsUpdated: vi.fn(() => vi.fn())
 }
 
-// Web controls only show once the layout says the project isn't mobile
+// Web controls only show once the layout is known
 const webLayout = {
   framework: 'rspec',
   automation: 'selenium',
@@ -170,6 +146,12 @@ const webLayout = {
   helperPath: 'helpers',
   waitHelper: false,
   recordable: true
+} as const
+
+const mobileLayout = {
+  ...webLayout,
+  recordable: false,
+  unsupportedReason: 'mobile'
 } as const
 
 beforeEach(async () => {
@@ -186,10 +168,7 @@ beforeEach(async () => {
     run: null,
     origin: null,
     isActive: false,
-    freshLoginNext: false,
-    notReady: null,
-    deviceFocusRequested: false,
-    checking: false
+    freshLoginNext: false
   })
   useRecorderStore.setState({ isRunning: false })
 })
@@ -243,6 +222,23 @@ describe('Overview Page', (): void => {
     })
     await openFilesTab()
 
+    expect(mockNavigate).toHaveBeenCalledWith('/start-project')
+  })
+
+  it('shows only the unsupported message for a mobile project', async (): Promise<void> => {
+    useProjectStore.setState({ layout: mobileLayout })
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+
+    expect(screen.getByRole('alert')).toBe(screen.getByTestId('mobile-project-unsupported'))
+    expect(screen.queryByText('overview.tabs.tests')).not.toBeInTheDocument()
+    expect(screen.queryByText('overview.tabs.files')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'mobileUnsupported.openAnother' }))
     expect(mockNavigate).toHaveBeenCalledWith('/start-project')
   })
 
@@ -383,58 +379,8 @@ describe('Overview Settings Toolbar', (): void => {
     expect(screen.getByText('overview.settings.headlessLabel')).toBeInTheDocument()
   })
 
-  const appiumLayout = {
-    framework: 'rspec',
-    automation: 'appium',
-    mobilePlatform: 'ios',
-    specPath: 'spec',
-    featurePath: 'features',
-    helperPath: 'helpers',
-    waitHelper: false,
-    recordable: false,
-    unsupportedReason: 'mobile'
-  } as const
-
-  it('shows the Device section in place of the web settings for a mobile project', async () => {
-    useProjectStore.setState({ layout: appiumLayout })
-    await renderOverview()
-
-    expect(screen.getByTestId('device-settings')).toHaveTextContent('/fake/project')
-    expect(screen.queryByTestId('overview-url-input')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('overview-browser-select')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('overview-headless-toggle')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('settings.timeout.label')).not.toBeInTheDocument()
-    expect(screen.queryByText('settings.section.browserOptions')).not.toBeInTheDocument()
-    // Run controls stay
-    expect(screen.getByTestId('overview-run-mode-select')).toBeInTheDocument()
-  })
-
-  it('has no parallel or workers controls for a mobile project', async () => {
-    useProjectStore.setState({ layout: appiumLayout })
-    await renderOverview()
-
-    expect(screen.queryByTestId('overview-parallel-toggle')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('overview-more-options'))
-    expect(screen.getByTestId('overview-more-options-panel')).toBeInTheDocument()
-    expect(screen.queryByTestId('overview-workers-input')).not.toBeInTheDocument()
-  })
-
-  it('has no browser login or recorder wait controls for a mobile project', async () => {
-    useProjectStore.setState({ layout: appiumLayout })
-    await renderOverview()
-
-    fireEvent.click(screen.getByTestId('overview-more-options'))
-    expect(screen.getByTestId('overview-quarantined-fails-toggle')).toBeInTheDocument()
-    expect(screen.queryByTestId('overview-reuse-logins')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('overview-fresh-login')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('settings.recording.implicitWait.label')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('settings.recording.explicitWait.label')).not.toBeInTheDocument()
-  })
-
   it('keeps the browser login and recorder wait controls for a web project', async () => {
-    useProjectStore.setState({
-      layout: { ...appiumLayout, automation: 'selenium', recordable: true }
-    })
+    useProjectStore.setState({ layout: webLayout })
     await renderOverview()
 
     fireEvent.click(screen.getByTestId('overview-more-options'))
@@ -444,8 +390,13 @@ describe('Overview Settings Toolbar', (): void => {
     expect(screen.getByLabelText('settings.recording.explicitWait.label')).toBeInTheDocument()
   })
 
-  it('opens the Files tab and focuses the app file when device settings are asked for', async () => {
-    useProjectStore.setState({ layout: appiumLayout, projectPath: '/fake/project', files: [] })
+  it('does not fall back to stored browser settings for a mobile project', async () => {
+    localStorage.setItem('browserUrl', 'https://stored-url.com')
+    mockApi.getProjectConfig.mockResolvedValueOnce({
+      success: true,
+      config: { baseUrl: 'https://from-config.com', browser: 'firefox', headless: true }
+    })
+    useProjectStore.setState({ layout: mobileLayout, projectPath: '/fake/project', files: [] })
     await act(async () => {
       render(
         <MemoryRouter>
@@ -453,85 +404,16 @@ describe('Overview Settings Toolbar', (): void => {
         </MemoryRouter>
       )
     })
-    expect(screen.queryByTestId('device-settings')).not.toBeInTheDocument()
-
-    await act(async () => {
-      useRunStore.getState().requestDeviceFocus()
-    })
-    expect(await screen.findByLabelText('device-app')).toHaveFocus()
-    expect(useRunStore.getState().deviceFocusRequested).toBe(false)
-  })
-
-  it('focuses the real app file field once its settings load', async () => {
-    let loaded: (v: unknown) => void = () => {}
-    mockApi.getDeviceSettings.mockReturnValueOnce(new Promise((resolve) => (loaded = resolve)))
-    realDeviceSettings.on = true
-    try {
-      useProjectStore.setState({ layout: appiumLayout, projectPath: '/fake/project', files: [] })
-      await act(async () => {
-        render(
-          <MemoryRouter>
-            <Overview />
-          </MemoryRouter>
-        )
-      })
-      await act(async () => {
-        useRunStore.getState().requestDeviceFocus()
-      })
-      // The tab is open but the field isn't there yet, so the request waits
-      expect(screen.getByTestId('device-settings')).toBeInTheDocument()
-      expect(screen.queryByTestId('device-ios-app')).not.toBeInTheDocument()
-      expect(useRunStore.getState().deviceFocusRequested).toBe(true)
-
-      await act(async () => {
-        loaded({
-          platform: 'ios',
-          ios: {
-            deviceName: 'iPhone 15',
-            platformVersion: '17.0',
-            app: '/apps/Shop.app',
-            automationName: 'XCUITest'
-          }
-        })
-      })
-      expect(await screen.findByTestId('device-ios-app')).toHaveFocus()
-      expect(useRunStore.getState().deviceFocusRequested).toBe(false)
-    } finally {
-      realDeviceSettings.on = false
-    }
-  })
-
-  it('focuses the app file when the Files tab is already open', async () => {
-    useProjectStore.setState({ layout: appiumLayout })
-    await renderOverview()
-    expect(screen.getByLabelText('device-app')).not.toHaveFocus()
-
-    await act(async () => {
-      useRunStore.getState().requestDeviceFocus()
-    })
-    expect(screen.getByLabelText('device-app')).toHaveFocus()
-    expect(useRunStore.getState().deviceFocusRequested).toBe(false)
-  })
-
-  it('does not fall back to stored browser settings for a mobile project', async () => {
-    localStorage.setItem('browserUrl', 'https://stored-url.com')
-    mockApi.getProjectConfig.mockResolvedValueOnce({
-      success: true,
-      config: { baseUrl: 'https://from-config.com', browser: 'firefox', headless: true }
-    })
-    useProjectStore.setState({ layout: appiumLayout })
-    await renderOverview()
 
     expect(localStorage.getItem('browserUrl')).toBe('https://stored-url.com')
     expect(localStorage.getItem('selectedBrowser')).toBeNull()
     expect(localStorage.getItem('headless')).toBeNull()
   })
 
-  it('keeps the web settings and no Device section for a selenium project', async () => {
+  it('keeps the web settings for a selenium project', async () => {
     useProjectStore.setState({ layout: webLayout })
     await renderOverview()
 
-    expect(screen.queryByTestId('device-settings')).not.toBeInTheDocument()
     expect(screen.getByTestId('overview-url-input')).toBeInTheDocument()
     expect(screen.getByTestId('overview-browser-select')).toBeInTheDocument()
     expect(screen.getByTestId('overview-headless-toggle')).toBeInTheDocument()
@@ -539,7 +421,7 @@ describe('Overview Settings Toolbar', (): void => {
     expect(screen.getByText('settings.section.browserOptions')).toBeInTheDocument()
   })
 
-  it('shows neither the web settings nor the Device section until the layout is known', async () => {
+  it('shows no web settings until the layout is known', async () => {
     useProjectStore.setState({ layout: null })
     await renderOverview()
 
@@ -547,7 +429,6 @@ describe('Overview Settings Toolbar', (): void => {
     expect(screen.queryByTestId('overview-browser-select')).not.toBeInTheDocument()
     expect(screen.queryByTestId('overview-headless-toggle')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('settings.timeout.label')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('device-settings')).not.toBeInTheDocument()
   })
 
   it('discards a web config load that lands after the layout says mobile', async () => {
@@ -559,7 +440,7 @@ describe('Overview Settings Toolbar', (): void => {
     await renderOverview()
 
     await act(async () => {
-      useProjectStore.setState({ layout: appiumLayout })
+      useProjectStore.setState({ layout: mobileLayout })
     })
     await act(async () => {
       resolveConfig({
@@ -571,7 +452,7 @@ describe('Overview Settings Toolbar', (): void => {
     expect(localStorage.getItem('browserUrl')).toBeNull()
     expect(localStorage.getItem('selectedBrowser')).toBeNull()
     expect(localStorage.getItem('headless')).toBeNull()
-    expect(screen.getByTestId('device-settings')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-project-unsupported')).toBeInTheDocument()
   })
 
   it('settings toolbar is not visible on Scaffolding tab', async () => {
@@ -1054,15 +935,6 @@ describe('Overview live runs', (): void => {
       route: '/overview',
       label: 'run.originProject'
     })
-  })
-
-  it('keeps Run Tests and Re-run failed off while a mobile check is running', async () => {
-    await renderOverview()
-    act(() => useRunStore.setState({ checking: true }))
-    expect(screen.getByTestId('run-tests')).toBeDisabled()
-    expect(screen.getByTestId('overview-rerun-failed-btn')).toBeDisabled()
-    act(() => useRunStore.setState({ checking: false }))
-    expect(screen.getByTestId('run-tests')).toBeEnabled()
   })
 
   it('runs the smoke tag when the run mode is Smoke', async () => {

@@ -1,10 +1,7 @@
-export type MobilePlatform = 'ios' | 'android' | 'cross_platform'
-
 export interface ProjectLayout {
   framework: 'rspec'
-  automation: 'selenium' | 'appium'
-  /** Set for appium projects whose capabilities.yml could be read */
-  mobilePlatform?: MobilePlatform
+  /** Always 'selenium': the desktop opens web projects only (kept for the R9 framework plumbing) */
+  automation: 'selenium'
   /** Config `spec_path`, default 'spec' */
   specPath: string
   /** Config `feature_path`, default 'features' */
@@ -17,7 +14,7 @@ export interface ProjectLayout {
   rubyRaiderVersion?: string
   /** False when that version is known and below 4.0: nothing runs or records, the update is offered */
   runtimeSupported?: boolean
-  /** False for appium / minitest / capybara / no Gemfile / a ruby_raider below 4.0 */
+  /** False for mobile (Appium, not supported) / minitest / capybara / no Gemfile / a ruby_raider below 4.0 */
   recordable: boolean
   unsupportedReason?: 'mobile' | 'minitest' | 'capybara' | 'noGemfile' | 'gemTooOld'
 }

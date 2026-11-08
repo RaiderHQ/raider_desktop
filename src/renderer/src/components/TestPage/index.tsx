@@ -64,13 +64,11 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
   const activeTest = useRecorderStore((s) => s.activeTest)
   const activeTestSaved = useRecorderStore((s) => s.activeTestSaved)
   const draftTest = useRecorderStore((s) => s.draftTest)
-  const runActive = useRunStore((s) => s.isActive || s.checking)
+  const runActive = useRunStore((s) => s.isActive)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
   const runBusy = runActive || recorderRunning
   // Only this page's own run: Overview's panel already shows a run from elsewhere
-  const ownRun = useRunStore(
-    (s) => s.origin?.route === location.pathname || s.notReady?.origin.route === location.pathname
-  )
+  const ownRun = useRunStore((s) => s.origin?.route === location.pathname)
   // Record hides the last run's panel before paint; only a run after it shows again (V5)
   const wasRecording = useRef(recording.isRecording)
   useLayoutEffect(() => {
@@ -90,12 +88,9 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
   const assertPicking = useRecorderStore((s) => s.assertPicking)
   useEscEndsAssertPick()
   const recordingDisabled = useProjectStore((s) => s.layout?.recordable === false)
-  // A mobile project or an old ruby_raider says why Record is off
-  const unsupportedReason = useProjectStore((s) => s.layout?.unsupportedReason)
-  const recordingDisabledReason =
-    unsupportedReason === 'mobile' || unsupportedReason === 'gemTooOld'
-      ? t(`recorder.unsupported.${unsupportedReason}`)
-      : undefined
+  // An old ruby_raider says why Record is off
+  const gemTooOld = useProjectStore((s) => s.layout?.unsupportedReason === 'gemTooOld')
+  const recordingDisabledReason = gemTooOld ? t('recorder.unsupported.gemTooOld') : undefined
   const runOutput = useRunOutputStore((s) => s.runOutput)
   // Output of a run on a project that can't keep tests as files; live runs show in the run panel instead
   const hasLegacyOutput = runOutput !== ''

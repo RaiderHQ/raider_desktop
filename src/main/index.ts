@@ -98,12 +98,6 @@ import {
 } from './handlers/project/recentProjects'
 import updateRecordingSettings from './handlers/config/updateRecordingSettings'
 import { closeApp } from './handlers/closeApp'
-import {
-  getDeviceSettingsHandler,
-  saveDeviceSettingsHandler
-} from './handlers/mobile/deviceSettingsIpc'
-import { checkMobileReadyHandler } from './handlers/mobile/checkMobileReady'
-import { chooseAppFileHandler } from './handlers/mobile/chooseAppFile'
 import { listSavedLoginsHandler, forgetSavedLoginHandler } from './handlers/logins/savedLoginsIpc'
 import scaffoldGenerate from './handlers/project/scaffoldGenerate'
 import updateTimeout from './handlers/config/updateTimeout'
@@ -300,10 +294,8 @@ app.whenReady().then(() => {
       projectName: string,
       automation: string,
       rubyCommand: string,
-      mobile: string | null,
       options?: ProjectCreationOptions
-    ) =>
-      runRubyRaider(event, folderPath, projectName, automation, rubyCommand, mobile, options)
+    ) => runRubyRaider(event, folderPath, projectName, automation, rubyCommand, options)
   )
   ipcMain.handle('create-quick-project', (_event, url: string, rubyCommand: string) =>
     createQuickProject(url, rubyCommand)
@@ -320,18 +312,6 @@ app.whenReady().then(() => {
     updateBrowserType(event, projectPath, browser)
   )
   ipcMain.handle('run-command', runCommand)
-  ipcMain.handle('get-device-settings', (_event, projectPath: unknown) =>
-    getDeviceSettingsHandler(projectPath)
-  )
-  ipcMain.handle('save-device-settings', (_event, projectPath: unknown, change: unknown) =>
-    saveDeviceSettingsHandler(projectPath, change)
-  )
-  ipcMain.handle('check-mobile-ready', (_event, projectPath: unknown) =>
-    checkMobileReadyHandler(projectPath)
-  )
-  ipcMain.handle('choose-app-file', (_event, projectPath: unknown, platform: unknown) =>
-    chooseAppFileHandler(projectPath, platform)
-  )
   ipcMain.handle('is-ruby-installed', isRubyInstalled)
   ipcMain.handle('is-rbenv-ruby-installed', isRbenvRubyInstalled)
   ipcMain.handle('is-rvm-ruby-installed', isRvmRubyInstalled)

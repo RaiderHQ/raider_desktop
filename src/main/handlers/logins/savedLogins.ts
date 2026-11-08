@@ -148,14 +148,11 @@ async function readLogin(authDir: string, file: string): Promise<LoginFields | n
 
 /**
  * Why this project cannot save logins: 'gem' when Gemfile.lock lists a ruby_raider older than
- * 3.11.0, 'helper' when it lacks the generated helpers/session_state.rb; null when it can, or
- * for a mobile project, which never gets the helper
+ * 3.11.0, 'helper' when it lacks the generated helpers/session_state.rb; null when it can
  */
 async function loginsUnsupportedReason(
-  projectPath: string,
-  mobile: boolean
+  projectPath: string
 ): Promise<LoginsUnsupportedReason | null> {
-  if (mobile) return null
   const lock = await readFile(join(projectPath, 'Gemfile.lock'), 'utf-8').catch(() => '')
   const version = rubyRaiderVersion(lock)
   if (version !== null && !supportsLoginReuse(version)) return 'gem'
@@ -165,10 +162,9 @@ async function loginsUnsupportedReason(
 
 export async function listSavedLogins(
   projectPath: string,
-  now: Date = new Date(),
-  { mobile = false }: { mobile?: boolean } = {}
+  now: Date = new Date()
 ): Promise<SavedLoginsResult> {
-  const unsupportedReason = await loginsUnsupportedReason(projectPath, mobile)
+  const unsupportedReason = await loginsUnsupportedReason(projectPath)
   let authDir: string | null
   let files: string[]
   try {

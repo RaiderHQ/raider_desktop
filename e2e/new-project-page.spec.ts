@@ -7,10 +7,10 @@ import { goToNewProject, mockRubyReady } from './helpers/navigation'
 test.describe('New Project Page', () => {
   test.beforeEach(async ({ electronApp, page }) => {
     await goToNewProject(page)
-    // The gem version gates the Mobile app option; mockRubyReady's reload re-reads it
+    // The gem version gates Create; mockRubyReady's reload re-reads it
     await electronApp.evaluate(async ({ ipcMain }) => {
       ipcMain.removeHandler('run-command')
-      ipcMain.handle('run-command', async () => ({ success: true, output: 'Ruby Raider 3.12.0' }))
+      ipcMain.handle('run-command', async () => ({ success: true, output: 'Ruby Raider 4.0.0' }))
     })
     await mockRubyReady(electronApp, page)
   })
@@ -37,10 +37,10 @@ test.describe('New Project Page', () => {
     await expect(input).toHaveValue('my_test_project')
   })
 
-  test('shows the Website / Mobile app choice', async ({ page }) => {
-    await expect(page.getByText('What are you testing?')).toBeVisible()
-    await expect(page.getByRole('radio', { name: 'Website' })).toBeChecked()
-    await expect(page.getByRole('radio', { name: 'Mobile app' })).toBeEnabled()
+  test('offers web projects only: no Website / Mobile app choice', async ({ page }) => {
+    await expect(page.getByText('What are you testing?')).toHaveCount(0)
+    await expect(page.getByRole('radio')).toHaveCount(0)
+    await expect(page.getByText(/mobile/i)).toHaveCount(0)
     await expect(page.getByText('Watir')).toHaveCount(0)
   })
 
@@ -64,7 +64,7 @@ test.describe('New Project Page', () => {
     ).toBeVisible()
     await expect(
       page.getByText(
-        "Give your project a name, choose whether you're testing a website or a mobile app"
+        "Give your project a name, choose a CI provider and add-ons, and Ruby Raider sets up a web project"
       )
     ).toBeVisible()
   })
@@ -101,7 +101,7 @@ test.describe('New Project Page', () => {
     await expect(page).toHaveURL(/#\/overview/)
   })
 
-  test('Mobile app creation sends the chosen phone platform', async ({ electronApp, page }) => {
+  test('creation sends selenium and the web options', async ({ electronApp, page }) => {
     await electronApp.evaluate(async ({ ipcMain }) => {
       ipcMain.removeHandler('select-folder')
       ipcMain.handle('select-folder', async () => '/mock/folder')
@@ -112,17 +112,16 @@ test.describe('New Project Page', () => {
       })
     })
 
-    await page.getByRole('radio', { name: 'Mobile app' }).click()
-    await page.getByRole('radio', { name: 'Android' }).click()
-    await page.getByPlaceholder('Enter project name').fill('mobile_project')
+    await page.getByPlaceholder('Enter project name').fill('web_project')
     await page.getByRole('button', { name: 'Create', exact: true }).click()
 
     await expect(page).toHaveURL(/#\/overview/)
     const args = await electronApp.evaluate(
       () => (globalThis as Record<string, unknown>).__raiderArgs as unknown[]
     )
-    expect(args[4]).toBe('android')
-    expect(args[5]).toEqual({ accessibility: false, ci: 'github', examples: true })
+    expect(args[2]).toBe('selenium')
+    expect(args[4]).toEqual({ accessibility: false, ci: 'github', examples: true })
+    expect(args).toHaveLength(5)
   })
 
   test('says the name rule inline and keeps Create off for a name with spaces (D13)', async ({

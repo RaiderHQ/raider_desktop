@@ -2,7 +2,6 @@ import { readFile } from 'fs/promises'
 import { isAbsolute, join, normalize } from 'path'
 import yaml from 'js-yaml'
 import type { ProjectLayout } from '@shared/types/projectLayout'
-import { detectMobilePlatform } from '../mobile/capabilitiesFile'
 import { rubyRaiderPin, rubyRaiderVersion, supportsRuntime } from '../logins/rubyRaiderVersion'
 import { DEFAULT_TEST_ID_ATTRIBUTE, testIdAttributeFrom } from '../../../shared/testIdAttribute'
 
@@ -90,11 +89,8 @@ export async function detectProjectLayout(projectPath: string): Promise<ProjectL
   if (version !== null) base.rubyRaiderVersion = version
   base.runtimeSupported = supportsRuntime(version)
 
-  if (has('appium_lib')) {
-    const caps = await readOptional(join(projectPath, 'config', 'capabilities.yml'))
-    const mobilePlatform = (caps !== null && detectMobilePlatform(caps)) || undefined
-    return { ...unsupported('mobile'), automation: 'appium', mobilePlatform }
-  }
+  // Mobile (Appium) projects are not supported in this version: nothing opens past the message
+  if (has('appium_lib')) return unsupported('mobile')
   if (has('minitest') && !has('rspec')) return unsupported('minitest')
   if (has('capybara')) return unsupported('capybara')
   if (!base.runtimeSupported) return unsupported('gemTooOld')

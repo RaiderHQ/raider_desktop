@@ -95,7 +95,9 @@ describe('CreateProject Page', (): void => {
 
     expect(screen.getByText('newProject.title')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('newProject.input.placeholder')).toBeInTheDocument()
-    expect(screen.getByText('newProject.question.target')).toBeInTheDocument()
+    // Web projects only: no Website / Mobile app choice and no phones picker
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+    expect(screen.queryByText(/mobile/i)).not.toBeInTheDocument()
     expect(screen.getByText('button.back.text')).toBeInTheDocument()
     expect(screen.getByText('button.create.text')).toBeInTheDocument()
   })
@@ -154,7 +156,6 @@ describe('CreateProject Page', (): void => {
       'proj',
       'selenium',
       '/usr/bin/ruby',
-      null,
       { accessibility: false, ci: 'azure', examples: true }
     )
   })
@@ -165,7 +166,7 @@ describe('CreateProject Page', (): void => {
     expect(screen.queryByText(/watir/i)).not.toBeInTheDocument()
   })
 
-  it('sends selenium and a null mobile for Website', async (): Promise<void> => {
+  it('sends selenium and the web options', async (): Promise<void> => {
     const run = vi.fn().mockResolvedValue({ success: false, error: 'stop' })
     await renderPage()
     await create(run)
@@ -174,7 +175,6 @@ describe('CreateProject Page', (): void => {
       'proj',
       'selenium',
       '/usr/bin/ruby',
-      null,
       {
         accessibility: false,
         ci: 'github',
@@ -183,62 +183,19 @@ describe('CreateProject Page', (): void => {
     )
   })
 
-  it.each([
-    ['newProject.phones.ios', 'ios'],
-    ['newProject.phones.android', 'android'],
-    ['newProject.phones.both', 'cross_platform']
-  ])('sends mobile %s as %s, ignoring web-only choices', async (label, value): Promise<void> => {
+  it('sends accessibility and Azure Pipelines when chosen', async (): Promise<void> => {
     const run = vi.fn().mockResolvedValue({ success: false, error: 'stop' })
     await renderPage()
     fireEvent.click(screen.getByRole('checkbox', { name: /newProject.addons.accessibility/ }))
     fireEvent.change(screen.getByDisplayValue('newProject.ci.github'), {
       target: { value: 'newProject.ci.azure' }
     })
-    fireEvent.click(screen.getByRole('radio', { name: 'newProject.target.mobile' }))
-    fireEvent.click(screen.getByRole('radio', { name: label }))
     await create(run)
-    expect(run).toHaveBeenCalledWith(
-      '/tmp/projects',
-      'proj',
-      'selenium',
-      '/usr/bin/ruby',
-      value,
-      {
-        accessibility: false,
-        ci: 'github',
-        examples: true
-      }
-    )
-  })
-
-  it('hides web-only add-ons under Mobile app and restores them on Website', async (): Promise<void> => {
-    const run = vi.fn().mockResolvedValue({ success: false, error: 'stop' })
-    await renderPage()
-    fireEvent.click(screen.getByRole('checkbox', { name: /newProject.addons.accessibility/ }))
-    fireEvent.change(screen.getByDisplayValue('newProject.ci.github'), {
-      target: { value: 'newProject.ci.azure' }
+    expect(run).toHaveBeenCalledWith('/tmp/projects', 'proj', 'selenium', '/usr/bin/ruby', {
+      accessibility: true,
+      ci: 'azure',
+      examples: true
     })
-    fireEvent.click(screen.getByRole('radio', { name: 'newProject.target.mobile' }))
-    expect(
-      screen.queryByRole('checkbox', { name: /newProject.addons.accessibility/ })
-    ).not.toBeInTheDocument()
-    expect(screen.getByText('newProject.ci.mobileAzure')).toBeInTheDocument()
-    expect(screen.queryByText('newProject.ci.azure')).not.toBeInTheDocument()
-    expect(screen.getByText('newProject.question.phones')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('radio', { name: 'newProject.target.web' }))
-    await create(run)
-    expect(run).toHaveBeenCalledWith(
-      '/tmp/projects',
-      'proj',
-      'selenium',
-      '/usr/bin/ruby',
-      null,
-      {
-        accessibility: true,
-        ci: 'azure',
-        examples: true
-      }
-    )
   })
 
   it('includes example tests by default and sends examples: false when unchecked', async (): Promise<void> => {
@@ -248,13 +205,7 @@ describe('CreateProject Page', (): void => {
     expect(box).toBeChecked()
     fireEvent.click(box)
     await create(run)
-    expect(run.mock.calls[0][5]).toEqual({ accessibility: false, ci: 'github', examples: false })
-  })
-
-  it('keeps the examples checkbox under Mobile app', async (): Promise<void> => {
-    await renderPage()
-    fireEvent.click(screen.getByRole('radio', { name: 'newProject.target.mobile' }))
-    expect(screen.getByRole('checkbox', { name: /newProject.addons.examples/ })).toBeChecked()
+    expect(run.mock.calls[0][4]).toEqual({ accessibility: false, ci: 'github', examples: false })
   })
 
   describe('gem below the 4.0 runtime', () => {
@@ -270,11 +221,6 @@ describe('CreateProject Page', (): void => {
       await renderPage()
 
       expect(screen.getByRole('alert')).toHaveTextContent('newProject.gemNeedsUpdate')
-      const mobile = screen.getByRole('radio', { name: 'newProject.target.mobile' })
-      expect(mobile).toHaveAttribute('aria-disabled', 'true')
-      expect(mobile).toHaveAccessibleDescription('newProject.gemNeedsUpdate')
-      fireEvent.click(mobile)
-      expect(screen.queryByText('newProject.question.phones')).not.toBeInTheDocument()
       expect(
         screen.queryByRole('checkbox', { name: /newProject.addons.examples/ })
       ).not.toBeInTheDocument()
@@ -298,7 +244,7 @@ describe('CreateProject Page', (): void => {
 
       await create(run)
       expect(run).toHaveBeenCalledTimes(1)
-      expect(run.mock.calls[0][5]).toEqual({ accessibility: false, ci: 'github', examples: true })
+      expect(run.mock.calls[0][4]).toEqual({ accessibility: false, ci: 'github', examples: true })
     })
   })
 
@@ -308,8 +254,6 @@ describe('CreateProject Page', (): void => {
       useVersionStore.setState({ version: versions.shift() as string })
     })
     useVersionStore.setState({ version: '3.15.0', loadVersion })
-    const mobile = (): HTMLElement =>
-      screen.getByRole('radio', { name: 'newProject.target.mobile' })
     const createButton = (): HTMLElement =>
       screen.getByText('button.create.text').closest('button')!
 
@@ -319,83 +263,17 @@ describe('CreateProject Page', (): void => {
       </MemoryRouter>
     )
     await act(async (): Promise<void> => {})
-    expect(mobile()).toHaveAttribute('aria-disabled', 'true')
     expect(screen.getByRole('alert')).toHaveTextContent('newProject.gemNeedsUpdate')
     first.unmount()
 
     // Ruby Raider was updated meanwhile
     await renderPage()
     expect(loadVersion).toHaveBeenCalledTimes(2)
-    expect(mobile()).not.toHaveAttribute('aria-disabled', 'true')
     expect(screen.queryByText('newProject.gemNeedsUpdate')).not.toBeInTheDocument()
     fireEvent.change(screen.getByPlaceholderText('newProject.input.placeholder'), {
       target: { value: 'proj' }
     })
     expect(createButton()).toBeEnabled()
-  })
-
-  it('offers Mobile app and examples from gem 4.0.0', async (): Promise<void> => {
-    await renderPage()
-    expect(screen.getByRole('radio', { name: 'newProject.target.mobile' })).not.toHaveAttribute(
-      'aria-disabled',
-      'true'
-    )
-    expect(screen.queryByText('newProject.target.mobileNeedsUpdate')).not.toBeInTheDocument()
-  })
-
-  describe('target keyboard navigation', () => {
-    const radio = (name: string): HTMLElement => screen.getByRole('radio', { name })
-    const web = (): HTMLElement => radio('newProject.target.web')
-    const mobile = (): HTMLElement => radio('newProject.target.mobile')
-
-    it('moves the selection with ArrowRight and ArrowLeft', async (): Promise<void> => {
-      await renderPage()
-      expect(web()).toHaveAttribute('aria-checked', 'true')
-      fireEvent.keyDown(web(), { key: 'ArrowRight' })
-      expect(mobile()).toHaveAttribute('aria-checked', 'true')
-      fireEvent.keyDown(mobile(), { key: 'ArrowLeft' })
-      expect(web()).toHaveAttribute('aria-checked', 'true')
-    })
-
-    it('wraps at both ends', async (): Promise<void> => {
-      await renderPage()
-      fireEvent.keyDown(web(), { key: 'ArrowLeft' })
-      expect(mobile()).toHaveAttribute('aria-checked', 'true')
-      fireEvent.keyDown(mobile(), { key: 'ArrowRight' })
-      expect(web()).toHaveAttribute('aria-checked', 'true')
-    })
-
-    it('jumps with Home and End', async (): Promise<void> => {
-      await renderPage()
-      fireEvent.keyDown(web(), { key: 'End' })
-      expect(mobile()).toHaveAttribute('aria-checked', 'true')
-      fireEvent.keyDown(mobile(), { key: 'Home' })
-      expect(web()).toHaveAttribute('aria-checked', 'true')
-    })
-
-    it('has exactly one tabbable radio', async (): Promise<void> => {
-      await renderPage()
-      const tabbableIn = (group: HTMLElement): number =>
-        Array.from(group.querySelectorAll('[role="radio"]')).filter(
-          (r) => r.getAttribute('tabindex') === '0'
-        ).length
-      expect(tabbableIn(screen.getByRole('radiogroup'))).toBe(1)
-      fireEvent.keyDown(web(), { key: 'ArrowRight' })
-      const groups = screen.getAllByRole('radiogroup')
-      expect(groups).toHaveLength(2)
-      groups.forEach((group) => expect(tabbableIn(group)).toBe(1))
-    })
-
-    it('keeps Website selected on ArrowRight when Mobile app is disabled', async (): Promise<void> => {
-      useVersionStore.setState({ version: '3.15.0' })
-      await renderPage()
-      fireEvent.keyDown(web(), { key: 'ArrowRight' })
-      expect(web()).toHaveAttribute('aria-checked', 'true')
-      expect(mobile()).toHaveAttribute('tabindex', '-1')
-      expect(screen.getByRole('radiogroup')).toHaveAccessibleDescription(
-        expect.stringContaining('newProject.gemNeedsUpdate')
-      )
-    })
   })
 
   describe('project name rule (D13)', () => {

@@ -1,108 +1,62 @@
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 import { test, expect } from './electronApp'
-import { goToOverview, goToOverviewFiles, mockRubyReady } from './helpers/navigation'
-import {
-  mockIPC,
-  mockIPCMultiple,
-  mockProjectTests,
-  setProjectLayout,
-  setupProjectContext
-} from './helpers/ipc-mock'
-import { mockRunner, getStartRequests } from './helpers/run-mock'
+import { goToOverview, mockRubyReady } from './helpers/navigation'
+import { mockIPC, setProjectPath } from './helpers/ipc-mock'
 
-const projectPath = '/mock/mobile-project'
-
-const androidLayout = {
-  framework: 'rspec',
-  automation: 'appium',
-  mobilePlatform: 'android',
-  specPath: 'spec',
-  featurePath: 'features',
-  helperPath: 'helpers',
-  recordable: false,
-  unsupportedReason: 'mobile'
-}
-
-const androidSettings = {
-  platform: 'android',
-  android: {
-    deviceName: 'Pixel 8 API 34',
-    platformVersion: '14',
-    app: 'app-release.apk',
-    automationName: 'UiAutomator2'
-  }
-}
+// Mobile (Appium) projects are not supported in this version: opening one shows a single
+// message in place of the project, and main refuses to run it. Main detects it from the
+// real Gemfile here, so nothing about the layout is mocked.
+let projectPath: string
 
 test.beforeEach(async ({ electronApp, page }) => {
   // The startup Ruby check must pass whatever gems the host has (a Missing Gems modal swallows clicks)
   await mockRubyReady(electronApp, page)
-  await mockRunner(electronApp, { events: [] })
-  await setupProjectContext(page, { projectPath })
-  await mockIPCMultiple(page, {
-    getDeviceSettings: androidSettings,
-    checkMobileReady: { ok: true }
-  })
-  await goToOverviewFiles(page)
-  await setProjectLayout(page, androidLayout)
+  projectPath = fs.mkdtempSync(path.join(os.tmpdir(), 'raider-appium-'))
+  fs.writeFileSync(
+    path.join(projectPath, 'Gemfile'),
+    "source 'https://rubygems.org'\ngem 'appium_lib'\ngem 'rspec'\ngem 'ruby_raider', '~> 4.0'\n"
+  )
+  fs.mkdirSync(path.join(projectPath, 'spec'))
+  fs.writeFileSync(path.join(projectPath, 'spec', 'login_spec.rb'), "describe 'Login' do\nend\n")
+  await mockIPC(page, 'readDirectory', [])
+  await mockIPC(page, 'listProjectTests', [])
+  await setProjectPath(page, projectPath)
+  await goToOverview(page)
 })
 
-test.describe('Mobile project', () => {
-  test('shows the Device section and no web run controls', async ({ page }) => {
-    await expect(page.getByTestId('device-settings')).toBeVisible()
-    await expect(page.getByTestId('device-android-deviceName')).toHaveValue('Pixel 8 API 34')
-    await expect(page.getByText('Base URL')).toHaveCount(0)
-    await expect(page.getByText('Headless')).toHaveCount(0)
+test.afterEach(() => {
+  fs.rmSync(projectPath, { recursive: true, force: true })
+})
+
+test.describe('Mobile (Appium) project', () => {
+  test('shows one not-supported message in place of the project', async ({ page }) => {
+    const alert = page.getByTestId('mobile-project-unsupported')
+    await expect(alert).toBeVisible({ timeout: 20000 })
+    await expect(alert).toContainText('Mobile projects are not supported')
+    await expect(alert).toContainText('works with web projects only')
+    for (const tab of ['Tests', 'Files', 'Scaffolding', 'Dashboard']) {
+      await expect(page.getByRole('button', { name: tab, exact: true })).toHaveCount(0)
+    }
+    await expect(page.getByTitle('Run tests')).toHaveCount(0)
   })
 
-  test('does not start a run when Appium is unreachable', async ({ electronApp, page }) => {
-    await mockIPC(page, 'checkMobileReady', {
-      ok: false,
-      reason: 'appium',
-      detail: '127.0.0.1:4723'
-    })
-    await page.getByTitle('Run tests').click()
-
-    await expect(page.getByTestId('mobile-not-ready')).toContainText(
-      "Can't reach Appium at 127.0.0.1:4723"
-    )
-    expect(await getStartRequests(electronApp)).toHaveLength(0)
+  test('Open another project goes back to the start page', async ({ page }) => {
+    await expect(page.getByTestId('mobile-project-unsupported')).toBeVisible({ timeout: 20000 })
+    await page.getByRole('button', { name: 'Open another project' }).click()
+    await expect(page).toHaveURL(/#\/start-project/)
   })
 
-  test('Open device settings focuses the App file field', async ({ page }) => {
-    await mockIPC(page, 'checkMobileReady', {
-      ok: false,
-      reason: 'app',
-      detail: 'app-release.apk'
-    })
-    await page.getByTitle('Run tests').click()
-
-    await expect(page.getByTestId('mobile-not-ready')).toContainText(
-      "Can't find the app file app-release.apk"
+  test('main refuses to run it', async ({ page }) => {
+    await expect(page.getByTestId('mobile-project-unsupported')).toBeVisible({ timeout: 20000 })
+    const result = await page.evaluate(() =>
+      (
+        window as unknown as {
+          api: { startRun: (r: unknown) => Promise<unknown> }
+        }
+      ).api.startRun({ scope: { kind: 'all' }, rubyCommand: 'ruby' })
     )
-    await page.getByRole('button', { name: 'Open device settings' }).click()
-    await expect(page.getByTestId('device-android-app')).toBeFocused()
-  })
-
-  test('Open device settings from the Tests tab focuses the App file field', async ({ page }) => {
-    await mockProjectTests(page, [{ file: 'spec/login_spec.rb', name: 'Login', ownership: 'code' }])
-    await mockIPCMultiple(page, {
-      openCodeTest: {
-        file: 'spec/login_spec.rb',
-        examples: [{ name: 'logs in', steps: [] }]
-      },
-      checkMobileReady: { ok: false, reason: 'app', detail: 'app-release.apk' }
-    })
-    await goToOverview(page)
-    await page.getByRole('button', { name: 'Tests', exact: true }).click()
-    await page.locator('li[role="button"]').filter({ hasText: 'Login' }).click()
-    await page.getByRole('button', { name: 'Run', exact: true }).click()
-
-    await expect(page.getByTestId('mobile-not-ready')).toContainText(
-      "Can't find the app file app-release.apk"
-    )
-    await page.getByRole('button', { name: 'Open device settings' }).click()
-    await expect(page.getByRole('button', { name: 'Files', exact: true })).toHaveClass(
-      /border-ruby/
-    )
-    await expect(page.getByTestId('device-android-app')).toBeFocused()
+    expect(result).toEqual({ error: 'Mobile projects are not supported in this version.' })
   })
 })

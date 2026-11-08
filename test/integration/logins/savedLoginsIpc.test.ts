@@ -46,14 +46,10 @@ describe('saved logins IPC', () => {
     expect(result.logins.map((l) => l.name)).toEqual(['admin'])
   })
 
-  it('gives a mobile project no hint, and a web project the helper hint', async () => {
+  it('gives a web project without the session helper the helper hint', async () => {
     await writeFile(join(project, 'Gemfile'), "gem 'rspec'\ngem 'selenium-webdriver'\n")
     await setActiveProject(project)
     expect((await listSavedLoginsHandler()).unsupportedReason).toBe('helper')
-
-    await writeFile(join(project, 'Gemfile'), "gem 'rspec'\ngem 'appium_lib'\n")
-    await setActiveProject(project)
-    expect((await listSavedLoginsHandler()).unsupportedReason).toBeNull()
   })
 
   it('forget waits for a pending activation and removes from that project', async () => {

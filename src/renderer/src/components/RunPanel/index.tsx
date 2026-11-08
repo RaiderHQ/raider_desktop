@@ -7,7 +7,6 @@ import { useRecordedTests } from '../../hooks/useTestsList'
 import { loadRaiderResults } from '@foundation/raiderResults'
 import { fixInTestRoute, recordedTestForFile } from '@foundation/recordedTestForFile'
 import { failedStepLine, resolveFailedStep } from '../../hooks/useFailedStep'
-import MobileNotReady from '@components/MobileNotReady'
 import Tooltip from '@components/Tooltip'
 import Icon from '@components/Icon'
 import {
@@ -123,7 +122,6 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
   const { t } = useTranslation()
   const run = useRunStore((s) => s.run)
   const origin = useRunStore((s) => s.origin)
-  const notReady = useRunStore((s) => s.notReady)
   const collapsed = useRunStore((s) => s.resultsCollapsed)
   const hiddenRunStartedAt = useRunStore((s) => s.hiddenRunStartedAt)
   const resultsId = useId()
@@ -141,11 +139,6 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)
   }, [active])
-
-  // A mobile run that didn't start says why where it was started from
-  if (notReady && notReady.origin.route === routeKey && notReady.projectPath === projectPath) {
-    return <MobileNotReady notReady={notReady} />
-  }
 
   if (!run) return null
 

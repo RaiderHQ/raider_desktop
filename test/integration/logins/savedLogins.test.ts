@@ -307,8 +307,8 @@ describe('saved logins', () => {
       await mkdir(join(project, 'helpers'), { recursive: true })
       await writeFile(join(project, 'helpers', 'session_state.rb'), 'class SessionState; end\n')
     }
-    const reason = async (options?: { mobile?: boolean }): Promise<string | null> =>
-      (await listSavedLogins(project, NOW, options)).unsupportedReason
+    const reason = async (): Promise<string | null> =>
+      (await listSavedLogins(project, NOW)).unsupportedReason
 
     it("is 'gem' when Gemfile.lock lists ruby_raider older than 3.11.0, helper or not", async () => {
       await lock('3.10.2')
@@ -341,11 +341,6 @@ describe('saved logins', () => {
       await rm(join(project, 'Gemfile.lock'))
       await mkdir(join(project, 'Gemfile.lock'))
       expect(await reason()).toBeNull()
-    })
-
-    it('is null for a mobile project, which never gets the helper', async () => {
-      await lock('3.10.2')
-      expect(await reason({ mobile: true })).toBeNull()
     })
   })
 

@@ -36,14 +36,14 @@ test.describe('Tests list import/export', () => {
     await setProjectLayout(page, {
       framework: 'rspec',
       recordable: false,
-      unsupportedReason: 'mobile'
+      unsupportedReason: 'minitest'
     })
     await openMenu(page)
     for (const name of ['Import test', 'Import project']) {
       await expect(page.getByRole('menuitem', { name })).toBeDisabled()
       await expect(page.getByRole('menuitem', { name })).toHaveAttribute(
         'title',
-        "Mobile projects can't be recorded yet."
+        "This project uses a test style Raider can't record into yet."
       )
     }
   })

@@ -62,7 +62,6 @@ const api = {
   prepareTestRun: vi.fn(),
   startRun: vi.fn(),
   // Main answers ok for a web project; the layout here is often not loaded yet
-  checkMobileReady: vi.fn().mockResolvedValue({ ok: true }),
   getRunDefaults: vi.fn(),
   setActiveProject: vi.fn(),
   readDirectory: vi.fn(),
@@ -519,13 +518,17 @@ describe('useTestRecording', () => {
       expect(api.startRun).not.toHaveBeenCalled()
     })
 
-    it('says a mobile project cannot run recorded tests when main refuses', async () => {
-      api.runTest.mockResolvedValue({ success: false, output: 'refused', code: 'mobileNoLegacy' })
+    it('shows main\'s refusal as the run result', async () => {
+      api.runTest.mockResolvedValue({
+        success: false,
+        output: 'Mobile projects are not supported in this version.'
+      })
       const rec = await mount()
       await act(() => rec.run())
-      expect(useRunOutputStore.getState().runOutput).toBe('run.mobile.noLegacy')
+      expect(useRunOutputStore.getState().runOutput).toBe(
+        'Mobile projects are not supported in this version.'
+      )
       expect(useRunOutputStore.getState().runFailed).toBe(true)
-      expect(mockToast.error).toHaveBeenCalledWith('run.mobile.noLegacy')
     })
 
     it('runs a recorded test in files mode live, from the current page', async () => {

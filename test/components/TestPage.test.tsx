@@ -163,7 +163,7 @@ beforeEach(() => {
   useRecorderStore.getState().resetForProject()
   useRecorderStore.setState({ showCode: false, isOutputVisible: false })
   useRunOutputStore.setState({ runOutput: '' })
-  useRunStore.setState({ run: null, origin: null, isActive: false, notReady: null })
+  useRunStore.setState({ run: null, origin: null, isActive: false })
   useProjectStore.setState({ layout: null })
 })
 
@@ -219,34 +219,21 @@ describe('TestPage leaving a new test', () => {
   })
 })
 
-const mobileLayout = {
+const unrecordableLayout = {
   framework: 'rspec',
-  automation: 'appium',
-  mobilePlatform: 'ios',
+  automation: 'selenium',
   specPath: 'spec',
   featurePath: 'features',
   helperPath: 'helpers',
   waitHelper: false,
-  recordable: false,
-  unsupportedReason: 'mobile'
+  recordable: false
 } as const
 
 describe('TestPage', () => {
-  it('says why Record is off in a mobile project', async () => {
-    useProjectStore.setState({ layout: mobileLayout })
-    renderPage()
-    await opened()
-    const record = screen.getByRole('button', { name: 'testPage.record' })
-    expect(record).toBeDisabled()
-    expect(record).toHaveAttribute('title', 'recorder.unsupported.mobile')
-    expect(en.recorder.unsupported.mobile).toBe("Mobile projects can't be recorded yet.")
-  })
-
   it('says why Record is off in a project on a ruby_raider below 4.0', async () => {
     useProjectStore.setState({
       layout: {
-        ...mobileLayout,
-        automation: 'selenium',
+        ...unrecordableLayout,
         unsupportedReason: 'gemTooOld',
         rubyRaiderVersion: '3.15.2'
       }
@@ -294,47 +281,13 @@ describe('TestPage', () => {
 
   it('keeps Record without a reason for other projects that cannot record', async () => {
     useProjectStore.setState({
-      layout: { ...mobileLayout, automation: 'selenium', unsupportedReason: 'minitest' }
+      layout: { ...unrecordableLayout, unsupportedReason: 'minitest' }
     })
     renderPage()
     await opened()
     const record = screen.getByRole('button', { name: 'testPage.record' })
     expect(record).toBeDisabled()
     expect(record).not.toHaveAttribute('title')
-  })
-
-  it('says why a new test cannot be recorded in a mobile project', () => {
-    useProjectStore.setState({ layout: mobileLayout })
-    render(
-      <MemoryRouter initialEntries={['/overview/tests/new']}>
-        <Routes>
-          <Route path="/overview/tests/new" element={<TestPage />} />
-        </Routes>
-      </MemoryRouter>
-    )
-    const start = screen.getByRole('button', { name: 'tests.startRecording' })
-    expect(start).toBeDisabled()
-    expect(start).toHaveAttribute('title', 'recorder.unsupported.mobile')
-    expect(screen.getByText('recorder.unsupported.mobile')).toBeInTheDocument()
-  })
-
-  it('shows why a mobile run did not start, from this page', async () => {
-    // Opening the project first: a switch clears why a run didn't start
-    useProjectStore.setState({ projectPath: '/p' })
-    useRunStore.setState({
-      notReady: {
-        reason: 'app',
-        detail: '',
-        scope: { kind: 'files', files: ['spec/login_spec.rb'] },
-        origin: { route: '/overview/tests/x', label: 'Login' },
-        projectPath: '/p'
-      }
-    })
-    renderPage()
-    await opened()
-    expect(
-      screen.getByRole('button', { name: 'run.mobile.openDeviceSettings' })
-    ).toBeInTheDocument()
   })
 
   it('shows a breadcrumb back to the Tests list, then the test name', async () => {

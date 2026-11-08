@@ -143,8 +143,7 @@ describe('run-test, ruby_raider version', () => {
 describe('run-test, mobile projects', () => {
   const refused = {
     success: false,
-    output: "Mobile projects can't run recorded tests yet.",
-    code: 'mobileNoLegacy'
+    output: 'Mobile projects are not supported in this version.'
   }
   let dir: string
 
@@ -157,14 +156,13 @@ describe('run-test, mobile projects', () => {
   it('never runs generated code for an Appium project', async () => {
     appState.layout = {
       framework: 'rspec',
-      automation: 'appium',
+      automation: 'selenium',
       specPath: 'spec',
       featurePath: 'features',
       helperPath: 'helpers',
       recordable: false,
       unsupportedReason: 'mobile'
     }
-    appState.projectAutomation = 'appium'
     expect(await runTestHandler('t1', '/p', 'ruby')).toEqual(refused)
     expect(mockRunRecording).not.toHaveBeenCalled()
   })

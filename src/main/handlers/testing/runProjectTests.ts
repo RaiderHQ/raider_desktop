@@ -3,21 +3,21 @@ import runRecording from './runRecording'
 import { activationSettled } from '../project/setActiveProject'
 import { filesStore, PROJECT_CHANGED_ERROR } from '../tests/recordedStore'
 import { detectProjectLayout } from '../project/projectLayout'
-import { GEM_TOO_OLD } from '../run/runner'
+import { GEM_TOO_OLD, MOBILE_UNSUPPORTED } from '../run/runner'
 import type { Test } from '../../../shared/types/test'
-import { mobileNoLegacyResult, type LegacyRunResult } from '../../../shared/types/prepareRun'
+import type { LegacyRunResult } from '../../../shared/types/prepareRun'
 
 type RunResult = LegacyRunResult
 
 const USE_LIVE_RUNNER = 'Use the live runner.'
 
-/** True for an Appium project, read from its Gemfile while its layout isn't known yet */
+/** True for a mobile (Appium) project, read from its Gemfile while its layout isn't known yet */
 async function isMobileProject(): Promise<boolean> {
-  if (appState.layout) return appState.layout.automation === 'appium'
+  if (appState.layout) return appState.layout.unsupportedReason === 'mobile'
   const path = appState.projectPath
   if (!path) return false
   try {
-    return (await detectProjectLayout(path)).automation === 'appium'
+    return (await detectProjectLayout(path)).unsupportedReason === 'mobile'
   } catch {
     // An unreadable Gemfile says nothing about mobile; the run reports its own error
     return false
@@ -40,9 +40,9 @@ export async function runTestHandler(
   if (projectPath !== appState.projectPath) {
     return { success: false, output: PROJECT_CHANGED_ERROR }
   }
+  if (await isMobileProject()) return { success: false, output: MOBILE_UNSUPPORTED }
   if (filesStore()) return { success: false, output: USE_LIVE_RUNNER }
   if (appState.layout?.runtimeSupported === false) return { success: false, output: GEM_TOO_OLD }
-  if (await isMobileProject()) return mobileNoLegacyResult()
 
   const cached = appState.tests.get(testId)
   if (!cached) return { success: false, output: `Test with ID ${testId} not found.` }

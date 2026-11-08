@@ -27,11 +27,6 @@ import type {
   ResultTraceSource
 } from '@shared/types/raiderTrace'
 import type {
-  DeviceSettings,
-  DeviceSettingsChange,
-  MobileReady
-} from '@shared/types/deviceSettings'
-import type {
   ActiveRun,
   RunDefaults,
   RunEvent,
@@ -64,7 +59,6 @@ const api = {
     projectName: string,
     automation: string,
     rubyCommand: string,
-    mobile: string | null = null,
     options?: ProjectCreationOptions
   ): Promise<CommandType> => {
     return ipcRenderer.invoke(
@@ -73,7 +67,6 @@ const api = {
       projectName,
       automation,
       rubyCommand,
-      mobile,
       options
     )
   },
@@ -171,20 +164,6 @@ const api = {
     output?: string
     error?: string
   }> => ipcRenderer.invoke('install-rbenv-and-ruby'),
-  getDeviceSettings: async (projectPath: string): Promise<DeviceSettings | { error: string }> =>
-    ipcRenderer.invoke('get-device-settings', projectPath),
-  saveDeviceSettings: async (
-    projectPath: string,
-    change: DeviceSettingsChange
-  ): Promise<{ ok: true } | { error: string }> =>
-    ipcRenderer.invoke('save-device-settings', projectPath, change),
-  checkMobileReady: async (projectPath: string): Promise<MobileReady | { error: string }> =>
-    ipcRenderer.invoke('check-mobile-ready', projectPath),
-  chooseAppFile: async (
-    projectPath: string,
-    platform: 'ios' | 'android'
-  ): Promise<{ path: string } | { cancelled: true } | { error: string }> =>
-    ipcRenderer.invoke('choose-app-file', projectPath, platform),
 
   // --- Recorder and recorded tests APIs ---
 
