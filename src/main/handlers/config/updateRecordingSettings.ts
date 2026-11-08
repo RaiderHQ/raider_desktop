@@ -47,10 +47,10 @@ export function validSettingsPatch(patch: unknown): SettingsPatch | null {
  * a test id recorded under the old attribute keeps finding its element (as a CSS locator).
  * Files edited by hand are left alone, as on every save.
  */
-async function regenerateRecordedTests(projectPath: string): Promise<void> {
+async function regenerateNow(projectPath: string): Promise<void> {
   try {
     const layout = appState.layout
-    if (!layout) return
+    if (!layout || appState.projectPath !== projectPath) return
     await migrateRecordedTests(projectPath, layout, { force: true })
     const tests = await loadRecordedTests(projectPath)
     if (appState.projectPath !== projectPath) return
@@ -59,6 +59,31 @@ async function regenerateRecordedTests(projectPath: string): Promise<void> {
   } catch (error) {
     safeError('Could not rewrite the recorded tests for the new test id attribute:', error)
   }
+}
+
+// One regeneration at a time per project; a change during one runs once more afterwards,
+// with the layout as it is then, so the specs always end on the last attribute
+const regenerating = new Map<string, { running: Promise<void>; again: boolean }>()
+
+function regenerateRecordedTests(projectPath: string): Promise<void> {
+  const current = regenerating.get(projectPath)
+  if (current) {
+    current.again = true
+    return current.running
+  }
+  const entry = { running: Promise.resolve(), again: false }
+  entry.running = (async (): Promise<void> => {
+    try {
+      do {
+        entry.again = false
+        await regenerateNow(projectPath)
+      } while (entry.again)
+    } finally {
+      regenerating.delete(projectPath)
+    }
+  })()
+  regenerating.set(projectPath, entry)
+  return entry.running
 }
 
 const handler = async (input: unknown): Promise<{ success: boolean; error?: string }> => {

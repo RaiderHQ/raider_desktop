@@ -5,7 +5,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 import { migrateRecordedTests } from '../../../src/main/handlers/tests/migrateRecordedTests'
-import { saveRecordedTest } from '../../../src/main/handlers/tests/recordedTests'
+import { saveRecordedTest, TestGoneError } from '../../../src/main/handlers/tests/recordedTests'
 import { readSidecar, writeSidecar } from '../../../src/main/handlers/tests/sidecar'
 import { hashRuby } from '../../../src/main/handlers/tests/codeHash'
 import { CODEGEN_VERSION, RECORDED_MARKER } from '../../../src/main/codegen/testFile'
@@ -236,6 +236,50 @@ describe('migrateRecordedTests with force (the test id attribute changed)', () =
     const after = await readFile(join(project, 'spec', 'go_spec.rb'), 'utf-8')
     expect(after).not.toContain("test_id: 'go'")
     expect(after).toContain('data-testid')
+  })
+
+  it('regenerates from the record as it is now, not from a stale copy', async () => {
+    const lay = { ...layout, testIdAttribute: 'data-testid' }
+    await saveRecordedTest(project, lay, { id: 't3', name: 'Go', url: 'https://x.test', steps: testIdSteps })
+    // A save landed after the caller's snapshot: the record has one step more
+    const newer = [...testIdSteps, { id: 'n2', kind: 'navigate', url: 'https://y.test' } as Step]
+    await saveRecordedTest(project, lay, { id: 't3', name: 'Go', url: 'https://x.test', steps: newer })
+    const stale = { id: 't3', name: 'Old', url: 'https://x.test', steps: testIdSteps }
+    await saveRecordedTest(project, { ...layout, testIdAttribute: 'data-qa' }, stale, {
+      knownFile: 'spec/go_spec.rb',
+      regenerate: true
+    })
+    const after = await readFile(join(project, 'spec', 'go_spec.rb'), 'utf-8')
+    expect(after).toContain('https://y.test')
+    expect(after).not.toContain("'Old'")
+  })
+
+  it('does not recreate a test deleted before its regenerate turn', async () => {
+    const gone = { id: 't4', name: 'Gone', url: 'https://x.test', steps: testIdSteps }
+    await expect(
+      saveRecordedTest(project, layout, gone, { knownFile: 'spec/gone_spec.rb', regenerate: true })
+    ).rejects.toBeInstanceOf(TestGoneError)
+    await expect(fs.stat(join(project, 'spec', 'gone_spec.rb'))).rejects.toThrow()
+  })
+
+  it('leaves a spec written by a newer Raider alone, even when forced', async () => {
+    const lay = { ...layout, testIdAttribute: 'data-testid' }
+    const saved = await saveRecordedTest(project, lay, { id: 't5', name: 'New', url: 'https://x.test', steps: testIdSteps })
+    await writeSidecar(project, { ...saved, codegen: CODEGEN_VERSION + 1 })
+    const before = await readFile(join(project, saved.file), 'utf-8')
+    await migrateRecordedTests(project, { ...layout, testIdAttribute: 'data-qa' }, { force: true })
+    expect(await readFile(join(project, saved.file), 'utf-8')).toBe(before)
+  })
+
+  it('does not touch a spec the change does not affect', async () => {
+    const lay = { ...layout, testIdAttribute: 'data-testid' }
+    const plain = [{ id: 'n', kind: 'navigate', url: 'https://x.test' } as Step]
+    const saved = await saveRecordedTest(project, lay, { id: 't6', name: 'Plain', url: 'https://x.test', steps: plain })
+    const path = join(project, saved.file)
+    const mtime = (await fs.stat(path)).mtimeMs
+    await new Promise((r) => setTimeout(r, 20))
+    await migrateRecordedTests(project, { ...layout, testIdAttribute: 'data-qa' }, { force: true })
+    expect((await fs.stat(path)).mtimeMs).toBe(mtime)
   })
 })
 

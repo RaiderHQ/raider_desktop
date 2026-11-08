@@ -111,6 +111,30 @@ describe('update-recording-settings handler', () => {
     expect(send).toHaveBeenCalledWith('tests-updated', [expect.objectContaining({ id: 't1' })])
   })
 
+  it('runs one regeneration at a time and once more for a change made during it', async () => {
+    writeRecorderSettings.mockResolvedValue(undefined)
+    let finishFirst: () => void = () => {}
+    let running = 0
+    let most = 0
+    migrateRecordedTests.mockImplementation(async () => {
+      running++
+      most = Math.max(most, running)
+      if (migrateRecordedTests.mock.calls.length === 1) await new Promise<void>((r) => (finishFirst = r))
+      running--
+      return 0
+    })
+    appState.layout = { testIdAttribute: 'a' } as never
+    const first = handler({ testIdAttribute: 'b1' })
+    await new Promise((r) => setTimeout(r, 0))
+    const second = handler({ testIdAttribute: 'c1' })
+    await new Promise((r) => setTimeout(r, 0))
+    finishFirst()
+    await Promise.all([first, second])
+    expect(most).toBe(1)
+    expect(migrateRecordedTests).toHaveBeenCalledTimes(2)
+    expect(migrateRecordedTests.mock.calls[1][1]).toEqual(expect.objectContaining({ testIdAttribute: 'c1' }))
+  })
+
   it('rewrites nothing when the attribute is unchanged', async () => {
     writeRecorderSettings.mockResolvedValue(undefined)
     appState.layout = { testIdAttribute: 'data-qa' } as never

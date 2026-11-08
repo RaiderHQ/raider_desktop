@@ -71,6 +71,8 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
   const [attribute, setAttribute] = useState('')
   const savedAttribute = useRef<string | null>(null)
   const [attributeError, setAttributeError] = useState<string | null>(null)
+  // Main rewrites the recorded tests after a change: one change at a time
+  const [attributeSaving, setAttributeSaving] = useState(false)
   const listRef = useRef<HTMLOListElement>(null)
 
   useEffect(() => {
@@ -149,6 +151,7 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
     setAttribute(next)
     const mine = generation.current
     let failure: string | null = null
+    setAttributeSaving(true)
     try {
       const result = await window.api.updateRecordingSettings({ testIdAttribute: next })
       if (result.success) {
@@ -158,6 +161,8 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
       failure = result.error ?? ''
     } catch (error) {
       failure = String(error)
+    } finally {
+      setAttributeSaving(false)
     }
     if (generation.current !== mine) return
     setAttribute(previous)
@@ -263,7 +268,7 @@ const RecordingSettingsPanel: React.FC<RecordingSettingsPanelProps> = ({
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') void saveAttribute()
                   }}
-                  disabled={savedAttribute.current === null || recording}
+                  disabled={savedAttribute.current === null || recording || attributeSaving}
                   spellCheck={false}
                   aria-invalid={attributeError ? true : undefined}
                   aria-describedby={attributeError ? 'recording-test-id-error' : undefined}
