@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
@@ -27,6 +27,10 @@ const QuickRecordDialog: React.FC<QuickRecordDialogProps> = ({ onClose }) => {
   const setProjectPath = useProjectStore((s) => s.setProjectPath)
   // raider new on an older gem writes a 3.x project the desktop can neither record into nor run
   const gemSupported = useVersionStore((s) => supportsRuntime(s.version))
+  // The message says to install the gem and come back, so the version is read again on open
+  useEffect(() => {
+    void useVersionStore.getState().loadVersion()
+  }, [])
   const [url, setUrl] = useState('')
   const [name, setName] = useState('')
   const [creating, setCreating] = useState(false)

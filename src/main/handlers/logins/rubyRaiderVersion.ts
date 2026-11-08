@@ -7,7 +7,8 @@ export function rubyRaiderVersion(lockText: string): string | null {
 }
 
 // The active `gem 'ruby_raider', '~> 3.15'` line of a Gemfile (either quote style, one
-// requirement). Only blanks, never `\s`: the file is untrusted and `\s` would cross lines.
+// requirement). Only blanks, never `\s`: the file is untrusted and `\s` would cross lines. A
+// requirement continued on the next line reads as no pin (the lock, once bundled, decides).
 const PIN_LINE = /^[ \t]*gem[ \t]+(['"])ruby_raider\1[ \t]*,[ \t]*(['"])([^'"\n]{1,64})\2/
 
 /**
