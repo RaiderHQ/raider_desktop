@@ -38,7 +38,10 @@ const handler = async (input: unknown): Promise<{ success: boolean; error?: stri
   if (patch === null) return { success: false, error: 'The settings are not valid.' }
   try {
     await writeRecorderSettings(projectPath, patch)
-    appState.recorderSettings = { ...appState.recorderSettings, ...patch }
+    // A project opened meanwhile has settings of its own: this patch was for the other one
+    if (appState.projectPath === projectPath) {
+      appState.recorderSettings = { ...appState.recorderSettings, ...patch }
+    }
     return { success: true }
   } catch (error) {
     return { success: false, error: (error as Error).message }
