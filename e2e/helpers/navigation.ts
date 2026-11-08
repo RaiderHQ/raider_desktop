@@ -12,13 +12,15 @@ export async function navigateTo(page: Page, route: string): Promise<void> {
 }
 
 /**
- * The "Open" button of the open-project card on the Welcome page, anchored on
- * this card's heading (the button is the heading's sibling).
+ * The "Open project…" button on the home page (its name ends with the shortcut chip).
  */
 export function openProjectButton(page: Page): Locator {
-  return page
-    .getByRole('heading', { name: 'Open existing project' })
-    .locator('xpath=following-sibling::*[1]//button')
+  return page.getByRole('button', { name: /^Open project…/ })
+}
+
+/** The "New project…" button on the home page (its name ends with the shortcut chip). */
+export function newProjectButton(page: Page): Locator {
+  return page.getByRole('button', { name: /^New project…/ })
 }
 
 /**

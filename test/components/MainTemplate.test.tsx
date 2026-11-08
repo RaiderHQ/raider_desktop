@@ -41,7 +41,8 @@ vi.mock('@foundation/Stores/rubyStore', () => {
     versionWarning: null,
     setRubyCommand: vi.fn(),
     setRubyVersion: vi.fn(),
-    setVersionWarning: vi.fn()
+    setVersionWarning: vi.fn(),
+    applyCheck: vi.fn()
   }
   const useRubyStore = (selector?: (s: typeof state) => unknown) =>
     selector ? selector(state) : state

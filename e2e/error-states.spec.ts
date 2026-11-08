@@ -1,5 +1,5 @@
 import { test, expect } from './electronApp'
-import { navigateTo, goToOverview, mockRubyReady } from './helpers/navigation'
+import { navigateTo, goToOverview, mockRubyReady, newProjectButton } from './helpers/navigation'
 import { setupProjectContext } from './helpers/ipc-mock'
 
 test.describe('Error States & Edge Cases', () => {
@@ -62,7 +62,7 @@ test.describe('Error States & Edge Cases', () => {
 
   test('back button on new project page navigates away', async ({ page }) => {
     await navigateTo(page, '/start-project')
-    await page.getByRole('button', { name: 'Create', exact: true }).click()
+    await newProjectButton(page).click()
     await expect(page).toHaveURL(/#\/new/)
 
     await page.getByRole('button', { name: 'Back' }).click()

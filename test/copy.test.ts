@@ -68,6 +68,20 @@ describe('copy', () => {
     )
     expect(en.landing.subtitle).toBe('Record, run and fix UI tests without leaving the app.')
   })
+
+  it('words the home page start plainly (D1)', () => {
+    expect(en.landing.start.record).toBe('Record a test')
+    expect(en.landing.start.recordHint).toBe(
+      'Raider keeps it in its own folder until you save it somewhere.'
+    )
+    expect(en.landing.start.newProject).toBe('New project…')
+    expect(en.landing.start.openProject).toBe('Open project…')
+    expect(en.landing.setup.fix).toBe('Fix…')
+    expect(en.quickRecord.starting).toBe('Creating the project…')
+    expect(en.run.installingHint).toBe(
+      "The first run installs the project's gems. Later runs start straight away."
+    )
+  })
   it('words the save branch plainly (PR B)', () => {
     expect(en.testPage.autosaved).toBe('Changes to this test are saved automatically.')
     expect(en.files.unsavedSuffix).toBe('{{name}}, unsaved changes')
@@ -92,7 +106,6 @@ describe('copy', () => {
     expect(en.files.rename.title).toBe('Rename file')
     expect(en.common.back).toBe('Go back')
     expect(en.header.howItWorks).toBe('How Ruby Raider works')
-    expect(en.landing.bubble).toBe('New here? Click me.')
     expect(en.recorder.step.editCommand).toBe('Edit command')
   })
 

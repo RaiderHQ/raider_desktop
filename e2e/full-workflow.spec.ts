@@ -3,7 +3,8 @@ import {
   goToLanding,
   goToOverview,
   mockRubyReady,
-  navigateTo
+  navigateTo,
+  newProjectButton
 } from './helpers/navigation'
 import {
   setupProjectContext,
@@ -22,7 +23,7 @@ test.describe('User Workflows', () => {
     await goToLanding(page)
     await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
 
-    await page.getByRole('button', { name: 'Create', exact: true }).click()
+    await newProjectButton(page).click()
     await page.waitForTimeout(800)
 
     await page.getByPlaceholder('Enter project name').fill('test_automation_project')
@@ -59,7 +60,7 @@ test.describe('User Workflows', () => {
     await mockIPC(page, 'getTests', [])
     await goToLanding(page)
 
-    await page.getByRole('button', { name: 'Quick record' }).click()
+    await page.getByRole('button', { name: 'Record a test' }).click()
     const dialog = page.getByRole('dialog', { name: 'Quick record' })
     await expect(dialog).toBeVisible()
     await dialog.getByPlaceholder('https://example.com').fill('example.com')
@@ -72,25 +73,11 @@ test.describe('User Workflows', () => {
     await expect(page.getByLabel('Test name')).toHaveValue('Checkout works')
   })
 
-  test('landing page info modals show correct content', async ({ page }) => {
-    await goToLanding(page)
-
-    // Cards are ordered Quick record, Create, Open
-    const infoIcons = page.locator('button[aria-label="Help"]')
-    await expect(infoIcons).toHaveCount(3)
-
-    await infoIcons.nth(1).click()
-    await expect(page.getByRole('heading', { name: 'Creating a new project' })).toBeVisible()
-    await expect(
-      page.getByText('Here you can create a new project and start automating your tests.')
-    ).toBeVisible()
-  })
-
   test('full navigation round trip: all pages', async ({ page }) => {
     await goToLanding(page)
     await expect(page.getByText('Welcome to Ruby Raider!')).toBeVisible()
 
-    await page.getByRole('button', { name: 'Create', exact: true }).click()
+    await newProjectButton(page).click()
     await page.waitForTimeout(800)
     await expect(page.getByRole('heading', { name: 'Create a new project' })).toBeVisible()
 
