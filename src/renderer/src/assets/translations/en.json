@@ -258,6 +258,7 @@
       "scaffold": "Scaffolding"
     },
     "settings": {
+      "title": "Test settings",
       "urlLabel": "URL",
       "urlPlaceholder": "https://example.com",
       "browserLabel": "Browser",
@@ -796,6 +797,8 @@
       "clearBreakpoint": "Clear this breakpoint"
     },
     "overview": {
+      "settingsCollapse": "Hide the test settings to give the files more room",
+      "settingsExpand": "Show the test settings",
       "urlInput": "The address tests open first, for example https://staging.example.com",
       "browserSelect": "The browser tests run in",
       "headlessToggle": "Run the browser hidden; faster, but you cannot watch it",
@@ -883,7 +886,8 @@
       "filterRunning": "Show only running",
       "filterQueued": "Show only queued",
       "minimise": "Hide the results list; the summary stays",
-      "showResults": "Show the results list again"
+      "showResults": "Show the results list again",
+      "close": "Close this finished run"
     },
     "editor": {
       "save": "Save this file"
@@ -937,6 +941,7 @@
   },
   "run": {
     "minimiseResults": "Minimise results",
+    "close": "Close run",
     "showResults": "Show results",
     "phase": {
       "installing": "Installing gems…",

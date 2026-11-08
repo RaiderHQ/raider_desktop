@@ -379,6 +379,26 @@ describe('Overview Settings Toolbar', (): void => {
     expect(screen.getByText('overview.settings.headlessLabel')).toBeInTheDocument()
   })
 
+  it('collapses the settings to their header and remembers it', async () => {
+    await renderOverview()
+    const toggle = screen.getByTestId('overview-settings-toggle')
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(toggle)
+    expect(screen.getByTestId('overview-settings-toggle')).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByTestId('overview-url-input')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('overview-browser-select')).not.toBeInTheDocument()
+    expect(localStorage.getItem('filesSettingsCollapsed')).toBe('1')
+  })
+
+  it('opens collapsed when it was collapsed last time', async () => {
+    localStorage.setItem('filesSettingsCollapsed', '1')
+    await renderOverview()
+    expect(screen.queryByTestId('overview-url-input')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('overview-settings-toggle'))
+    expect(screen.getByTestId('overview-url-input')).toBeInTheDocument()
+    expect(localStorage.getItem('filesSettingsCollapsed')).toBe('0')
+  })
+
   it('keeps the browser login and recorder wait controls for a web project', async () => {
     useProjectStore.setState({ layout: webLayout })
     await renderOverview()
