@@ -229,9 +229,11 @@ describe('TestsList', () => {
 })
 
 describe('TestsList copy, paste, duplicate and delete', () => {
+  // The shared ContextMenu renders menu items (role menuitem); dialogs keep plain buttons
   const menuLabels = (): string[] =>
-    Array.from(document.querySelectorAll('.fixed button')).map((b) => b.textContent ?? '')
+    screen.queryAllByRole('menuitem').map((b) => b.textContent ?? '')
   const menuButton = (label: string): HTMLElement =>
+    screen.queryAllByRole('menuitem', { name: label })[0] ??
     screen.getAllByRole('button', { name: label }).find((b) => b.tagName === 'BUTTON')!
   const codeClip = {
     kind: 'code' as const,
