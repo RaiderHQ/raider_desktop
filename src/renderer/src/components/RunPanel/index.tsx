@@ -302,6 +302,19 @@ const RunPanel: React.FC<RunPanelProps> = ({ routeKey, onRunAgain, onRerunFailed
             />
           </button>
         </Tooltip>
+        {/* A finished run can be closed; a running one is stopped with Cancel first */}
+        {finished && (
+          <Tooltip content={t('tooltips.runPanel.close')} position="bottom">
+            <button
+              data-testid="run-close"
+              aria-label={t('run.close')}
+              className="p-1 rounded text-neutral-dk hover:bg-neutral-50 transition-colors"
+              onClick={() => useRunStore.getState().hideCurrentRun()}
+            >
+              <Icon name="x" size={16} color="currentColor" className="inline-flex" />
+            </button>
+          </Tooltip>
+        )}
       </div>
 
       {/* Why a run could not run stays in view even when minimised */}

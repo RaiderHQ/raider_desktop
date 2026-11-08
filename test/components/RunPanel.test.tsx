@@ -117,6 +117,22 @@ describe('RunPanel', () => {
     expect(screen.getByTestId('run-panel')).toBeInTheDocument()
   })
 
+  it('offers Close once the run finished, and closing hides it until a later run', () => {
+    setRun(makeRun({ phase: null, finished: finished('passed', 1) }, [test1('a1', 'passed')]))
+    const { container } = render(<RunPanel routeKey="/tests" />)
+    fireEvent.click(screen.getByTestId('run-close'))
+    expect(container).toBeEmptyDOMElement()
+    act(() => setRun(makeRun({ runId: 'r2', startedAt: '2026-10-31T11:00:00.000Z' })))
+    expect(screen.getByTestId('run-panel')).toBeInTheDocument()
+  })
+
+  it('has no Close while the run is in progress: Cancel stops it first', () => {
+    setRun(makeRun())
+    render(<RunPanel routeKey="/tests" />)
+    expect(screen.queryByTestId('run-close')).not.toBeInTheDocument()
+    expect(screen.getByTestId('run-cancel')).toBeInTheDocument()
+  })
+
   it('renders nothing for a different routeKey', () => {
     setRun(makeRun())
     const { container } = render(<RunPanel routeKey="/other" />)

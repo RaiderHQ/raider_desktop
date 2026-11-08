@@ -29,7 +29,7 @@ beforeEach(() => {
   state.userData = path.join(tmp, 'userData')
   mockRun.mockReset().mockImplementation(async (_e, folder: string, name: string) => {
     fs.mkdirSync(path.join(folder, name, 'spec'), { recursive: true })
-    fs.writeFileSync(path.join(folder, name, 'spec', 'a.rb'), 'x')
+    fs.writeFileSync(path.join(folder, name, 'spec', '.keep'), 'x')
     return { success: true, output: '' }
   })
   mockUrl.mockReset().mockResolvedValue({ success: true, output: '' })
@@ -64,6 +64,11 @@ describe('createQuickProject', () => {
       path.join(quickProjectsDir(), 'shop_test'),
       'https://www.shop.test/cart'
     )
+  })
+
+  it('creates the project without example specs', async () => {
+    await createQuickProject('https://shop.test', 'ruby')
+    expect(mockRun.mock.calls[0][5]).toEqual({ examples: false })
   })
 
   it('counts a dangling symlink as a taken name', async () => {
@@ -127,7 +132,7 @@ describe('saveQuickProjectTo', () => {
     const s = await saveQuickProjectTo(r.projectPath, dest)
     expect(s).toEqual({ success: true, projectPath: path.join(dest, 'shop_test') })
     expect(fs.existsSync(r.projectPath)).toBe(false)
-    expect(fs.readFileSync(path.join(dest, 'shop_test', 'spec', 'a.rb'), 'utf8')).toBe('x')
+    expect(fs.readFileSync(path.join(dest, 'shop_test', 'spec', '.keep'), 'utf8')).toBe('x')
   })
   it('refuses over an existing path and keeps the source', async () => {
     const r = await createQuickProject('https://shop.test', 'ruby')
@@ -149,7 +154,7 @@ describe('saveQuickProjectTo', () => {
     spy.mockRestore()
     errSpy.mockRestore()
     expect(s).toEqual({ success: true, projectPath: path.join(dest, 'shop_test') })
-    expect(fs.readFileSync(path.join(dest, 'shop_test', 'spec', 'a.rb'), 'utf8')).toBe('x')
+    expect(fs.readFileSync(path.join(dest, 'shop_test', 'spec', '.keep'), 'utf8')).toBe('x')
   })
   it('refuses a project that is not a quick project', async () => {
     const other = path.join(tmp, 'other')

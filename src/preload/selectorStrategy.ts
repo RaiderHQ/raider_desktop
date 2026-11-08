@@ -16,21 +16,14 @@ import {
   textXPath,
   xpathLiteral
 } from '../shared/locatorSelectors'
+import { DEFAULT_SELECTOR_PRIORITY } from '../shared/selectorPriority'
 
 // The string builders moved to shared (the legacy parser synthesises the same fallbacks);
 // re-exported so the preload and tests keep importing them from here
 export { cssEscape, xpathLiteral }
 
-// Mirrors DEFAULT_SELECTOR_PRIORITY in main; used until the project's config arrives.
-export const DEFAULT_PRIORITIES: string[] = [
-  'role',
-  'label',
-  'testId',
-  'text',
-  'id',
-  'css',
-  'xpath'
-]
+// The shared default; used until the project's config arrives.
+export const DEFAULT_PRIORITIES: string[] = [...DEFAULT_SELECTOR_PRIORITY]
 export { DEFAULT_TEST_ID_ATTRIBUTE }
 
 export function getCssPath(el: Element): string {

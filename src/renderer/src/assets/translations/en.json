@@ -184,6 +184,28 @@
       },
       "explicitWait": {
         "label": "Explicit wait"
+      },
+      "title": "Recording settings",
+      "wait": {
+        "label": "Explicit wait",
+        "unit": "seconds"
+      },
+      "priority": {
+        "label": "Locator priority",
+        "reset": "Reset to default",
+        "up": "Move earlier:",
+        "down": "Move later:",
+        "moved": "{{kind}} is now number {{position}}",
+        "kind": {
+          "role": "Role",
+          "label": "Label",
+          "testId": "Test id",
+          "text": "Text",
+          "id": "id",
+          "css": "CSS",
+          "xpath": "XPath",
+          "attribute": "Attribute {{name}}"
+        }
       }
     },
     "timeout": {
@@ -258,6 +280,7 @@
       "scaffold": "Scaffolding"
     },
     "settings": {
+      "title": "Test settings",
       "urlLabel": "URL",
       "urlPlaceholder": "https://example.com",
       "browserLabel": "Browser",
@@ -796,6 +819,8 @@
       "clearBreakpoint": "Clear this breakpoint"
     },
     "overview": {
+      "settingsCollapse": "Hide the test settings to give the files more room",
+      "settingsExpand": "Show the test settings",
       "urlInput": "The address tests open first, for example https://staging.example.com",
       "browserSelect": "The browser tests run in",
       "headlessToggle": "Run the browser hidden; faster, but you cannot watch it",
@@ -874,6 +899,12 @@
       "treeRow": "Open in the editor; right-click for more",
       "runTests": "Run every test in the project"
     },
+    "recordingSettings": {
+      "expand": "Show the recording settings",
+      "collapse": "Hide the recording settings",
+      "wait": "Longest a recorded wait step waits; finding elements uses the test timeout",
+      "priority": "Which locator the recorder picks first when an element has several"
+    },
     "runPanel": {
       "cancel": "Stop the run",
       "runAgain": "Run the same tests again",
@@ -883,7 +914,8 @@
       "filterRunning": "Show only running",
       "filterQueued": "Show only queued",
       "minimise": "Hide the results list; the summary stays",
-      "showResults": "Show the results list again"
+      "showResults": "Show the results list again",
+      "close": "Close this finished run"
     },
     "editor": {
       "save": "Save this file"
@@ -937,6 +969,7 @@
   },
   "run": {
     "minimiseResults": "Minimise results",
+    "close": "Close run",
     "showResults": "Show results",
     "phase": {
       "installing": "Installing gems…",
