@@ -10,11 +10,12 @@ export { sha256Bytes }
 export function deriveStepLines(
   sidecar: Sidecar,
   onDisk: string,
-  helperPath: string
+  helperPath: string,
+  testIdAttribute?: string
 ): StepLines | null {
   const { content, stepLines } = generateProjectSpecFileWithMap(
     { name: sidecar.name, steps: sidecar.steps },
-    { fileRelPath: sidecar.file, helperPath }
+    { fileRelPath: sidecar.file, helperPath, testIdAttribute }
   )
   return content === onDisk ? stepLines : null
 }

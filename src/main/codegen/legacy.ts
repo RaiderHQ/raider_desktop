@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { DEFAULT_TEST_ID_ATTRIBUTE } from '../../shared/testIdAttribute'
 import { isStep } from '../../shared/types/step'
 import { withSecretNames } from '../../shared/secretSteps'
 import type { AssertKind, ElementTarget, Step } from '../../shared/types/step'
@@ -57,15 +58,18 @@ const whole = (body: string): RegExp => new RegExp(`^\\s*${body}\\s*$`)
 // The locator argument forms. The 3.x pair (:css, "x") is kept as the plain fallback the
 // recorder stored; the 4.0 keyword forms carry the semantic locator steps.ts rendered.
 const PAIR = whole(String.raw`:?(\w+)\s*,\s*(?:%q\((.+)\)|${S})`) // 1 strategy, 2 %q, 3-4 string
-const KEYWORD = whole(String.raw`(\w+):\s*${S}`) // 1 key, 2-3 string
+// Only the exact forms steps.ts writes have a Step: a plain `label: 'x'` or a by_role without
+// exact: true is a substring match on 4.0, which no Locator says, so it stays custom
+const KEYWORD = whole(String.raw`(id|css|xpath|test_id):\s*${S}`) // 1 key, 2-3 string
 const EXACT = whole(String.raw`(label|text):\s*\[\s*${S}\s*,\s*\{\s*exact:\s*true\s*\}\s*\]`) // 1 key, 2-3 string
-const ROLE = whole(String.raw`by_role\(\s*${S}\s*,\s*name:\s*${S}\s*(?:,\s*exact:\s*true\s*)?\)`) // 1-2 role, 3-4 name
+const ROLE = whole(String.raw`by_role\(\s*${S}\s*,\s*name:\s*${S}\s*,\s*exact:\s*true\s*\)`) // 1-2 role, 3-4 name
 
 const isStrategy = (s: string): s is ElementTarget['strategy'] =>
   s === 'id' || s === 'css' || s === 'xpath'
 
-// The recorder reads the attribute from config.yml; the parser has only the default to go on
-const TEST_ID_ATTRIBUTE = 'data-testid'
+// The project's test_id_attribute while a migration runs (parsing is synchronous), so a
+// test_id: line carries the attribute the project actually uses
+let testIdAttribute = DEFAULT_TEST_ID_ATTRIBUTE
 
 function semantic(key: string, text: string): ElementTarget | null {
   // isLocator refuses an empty name, so an empty value has no locator to carry
@@ -78,8 +82,8 @@ function semantic(key: string, text: string): ElementTarget | null {
     case 'test_id':
       return {
         strategy: 'css',
-        value: testIdCss(TEST_ID_ATTRIBUTE, text),
-        locator: { by: 'testId', attribute: TEST_ID_ATTRIBUTE, value: text }
+        value: testIdCss(testIdAttribute, text),
+        locator: { by: 'testId', attribute: testIdAttribute, value: text }
       }
     default:
       return null
@@ -228,7 +232,8 @@ function collapseType(clearLine: string, sendLine: string): Step | null {
   return { id: randomUUID(), kind: 'type', element: se, text: str(s, 2) }
 }
 
-export function migrateLegacyStep(code: string): Step {
+export function migrateLegacyStep(code: string, attribute = DEFAULT_TEST_ID_ATTRIBUTE): Step {
+  testIdAttribute = attribute
   const lines = code.split(/\r?\n/).filter((l) => l.trim() !== '')
   if (lines.length === 2) {
     const collapsed = collapseType(lines[0], lines[1])
@@ -237,7 +242,11 @@ export function migrateLegacyStep(code: string): Step {
   return (lines.length <= 1 && parseLine(code)) || custom(code)
 }
 
-export function migrateLegacySteps(steps: unknown[]): Step[] {
+export function migrateLegacySteps(
+  steps: unknown[],
+  attribute = DEFAULT_TEST_ID_ATTRIBUTE
+): Step[] {
+  testIdAttribute = attribute
   const out: Step[] = []
   for (let i = 0; i < steps.length; i++) {
     const s = steps[i]
@@ -250,7 +259,7 @@ export function migrateLegacySteps(steps: unknown[]): Step[] {
         out.push(collapsed)
         i++
       } else if (s.trim() !== '') {
-        out.push(migrateLegacyStep(s))
+        out.push(migrateLegacyStep(s, attribute))
       }
     } else {
       out.push(custom(`# unrecognised step: ${JSON.stringify(s)}`))
@@ -260,14 +269,17 @@ export function migrateLegacySteps(steps: unknown[]): Step[] {
   return withSecretNames(out)
 }
 
-export function migrateLegacyTest(test: {
-  id: string
-  name: string
-  url: string
-  steps?: unknown
-  hasTrace?: boolean
-  trace?: unknown
-}): Test {
+export function migrateLegacyTest(
+  test: {
+    id: string
+    name: string
+    url: string
+    steps?: unknown
+    hasTrace?: boolean
+    trace?: unknown
+  },
+  attribute = DEFAULT_TEST_ID_ATTRIBUTE
+): Test {
   const steps = Array.isArray(test.steps) ? test.steps : []
-  return { ...test, steps: migrateLegacySteps(steps) } as Test
+  return { ...test, steps: migrateLegacySteps(steps, attribute) } as Test
 }

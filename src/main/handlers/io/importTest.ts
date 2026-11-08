@@ -4,6 +4,7 @@ import * as fs from 'fs'
 import { activationSettled } from '../project/setActiveProject'
 import type { Test } from '@foundation/Types/test'
 import { randomUUID } from 'crypto'
+import { appState } from '../appState'
 import { readExportHeader, startUrl, withUniqueIds } from '../../codegen/exportHeader'
 import { confirmCustomCode, importCancelled, secretRefused } from './confirmCustomCode'
 import { findDescribeLine, tagsFromDescribeLine } from '../../../shared/tags'
@@ -46,7 +47,7 @@ export default async function importTest(
     if (!isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
 
     // Exported files carry their steps as JSON; older files hold Ruby lines
-    const header = readExportHeader(fileContent)
+    const header = readExportHeader(fileContent, appState.recorderSettings.testIdAttribute)
     if (header.refusedSecret !== undefined) {
       return { success: false, error: secretRefused(header.refusedSecret) }
     }

@@ -17,7 +17,8 @@ import type { StepLines } from '../../shared/types/projectTest'
  */
 export const CODEGEN_VERSION = 2
 
-type FileSettings = Pick<RecorderSettings, 'browser' | 'headless' | 'explicitWait'>
+type FileSettings = Pick<RecorderSettings, 'browser' | 'headless' | 'explicitWait'> &
+  Partial<Pick<RecorderSettings, 'testIdAttribute'>>
 
 const BROWSERS = ['chrome', 'firefox', 'safari', 'edge']
 
@@ -50,8 +51,7 @@ function seleniumSetup(settings: FileSettings, needsWait: boolean): string[] {
   } else {
     lines.push(`@driver = Selenium::WebDriver.for :${browser}`)
   }
-  if (needsWait)
-    lines.push(`@wait = Selenium::WebDriver::Wait.new(timeout: ${wait})`)
+  if (needsWait) lines.push(`@wait = Selenium::WebDriver::Wait.new(timeout: ${wait})`)
   return lines
 }
 
@@ -87,7 +87,9 @@ export function generateRspecFile(
 ): string {
   const name = rubyString(test.name)
   // Steps loaded through migrateLegacyTest are named already; this covers any caller that isn't
-  const body = withSecretNames(test.steps).map((step) => indent(renderStep(step), 4))
+  const body = withSecretNames(test.steps).map((step) =>
+    indent(renderStep(step, { testIdAttribute: settings.testIdAttribute }), 4)
+  )
   const setup = seleniumSetup(settings, mentionsWait(body))
 
   return [
@@ -154,7 +156,7 @@ export const RECORDED_MARKER = '# Recorded with Raider.'
 export const sha256Bytes = (content: string): string =>
   createHash('sha256').update(Buffer.from(content, 'utf-8')).digest('hex')
 
-type ProjectSpecOptions = { fileRelPath: string; helperPath: string }
+type ProjectSpecOptions = { fileRelPath: string; helperPath: string; testIdAttribute?: string }
 
 /**
  * Builds a recorded spec that lives inside a Ruby Raider project and uses the
@@ -184,7 +186,9 @@ export function generateProjectSpecFileWithMap(
     throw new Error('Project spec paths must be relative to the project root')
   const toHelper = posix.relative(posix.dirname(fileRel), posix.join(helperRel, 'spec_helper'))
   const named = withSecretNames(test.steps)
-  const body = named.map((step) => indent(renderStep(step, { receiver: 'helper' }), 4))
+  const body = named.map((step) =>
+    indent(renderStep(step, { receiver: 'helper', testIdAttribute: opts.testIdAttribute }), 4)
+  )
   const setup = mentionsWait(body)
     ? [
         '  let(:wait) do',

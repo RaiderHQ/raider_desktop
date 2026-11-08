@@ -340,7 +340,9 @@ app.whenReady().then(() => {
   ipcMain.handle('install-gems', (_event, rubyCommand: string, gems: string[]) =>
     installGems(rubyCommand, gems)
   )
-  ipcMain.handle('render-step', (_event, step: Step) => renderStep(step))
+  ipcMain.handle('render-step', (_event, step: Step) =>
+    renderStep(step, { testIdAttribute: appState.layout?.testIdAttribute })
+  )
   ipcMain.handle('get-tests', getTests)
   ipcMain.handle('list-project-tests', listProjectTestsHandler)
   ipcMain.handle('open-code-test', (_event, file: string) => openCodeTestHandler(file))

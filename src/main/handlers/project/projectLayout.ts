@@ -4,8 +4,14 @@ import yaml from 'js-yaml'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import { detectMobilePlatform } from '../mobile/capabilitiesFile'
 import { rubyRaiderPin, rubyRaiderVersion, supportsRuntime } from '../logins/rubyRaiderVersion'
+import { DEFAULT_TEST_ID_ATTRIBUTE, testIdAttributeFrom } from '../../../shared/testIdAttribute'
 
-const DEFAULT_PATHS = { specPath: 'spec', featurePath: 'features', helperPath: 'helpers' }
+const DEFAULT_PATHS = {
+  specPath: 'spec',
+  featurePath: 'features',
+  helperPath: 'helpers',
+  testIdAttribute: DEFAULT_TEST_ID_ATTRIBUTE
+}
 
 // Project files are read as text to look for a few lines; anything larger is not one of ours
 const FILE_LIMIT = 1024 * 1024
@@ -43,7 +49,8 @@ async function readPaths(projectPath: string): Promise<typeof DEFAULT_PATHS> {
   return {
     specPath: safeRelativePath(values.spec_path, DEFAULT_PATHS.specPath),
     featurePath: safeRelativePath(values.feature_path, DEFAULT_PATHS.featurePath),
-    helperPath: safeRelativePath(values.helper_path, DEFAULT_PATHS.helperPath)
+    helperPath: safeRelativePath(values.helper_path, DEFAULT_PATHS.helperPath),
+    testIdAttribute: testIdAttributeFrom(values.test_id_attribute)
   }
 }
 

@@ -4,7 +4,8 @@ import {
   accessibleName,
   accessibleNameSource,
   labelText,
-  looksGenerated
+  looksGenerated,
+  visibleText
 } from '../src/preload/accessibleName'
 
 const first = (selector: string): Element => document.querySelector(selector)!
@@ -64,6 +65,57 @@ describe('accessibleName', () => {
     document.body.innerHTML =
       '<span id="a">Billing</span><span id="b"> address </span><input aria-labelledby="a b">'
     expect(accessibleName(first('input'))).toBe('Billing address')
+  })
+
+  // The role engine consults aria-labelledby first and only then aria-label
+  it('prefers aria-labelledby over aria-label', () => {
+    document.body.innerHTML =
+      '<span id="l">Billing</span><input aria-labelledby="l" aria-label="Other">'
+    expect(accessibleName(first('input'))).toBe('Billing')
+  })
+
+  it('falls back to aria-label when aria-labelledby points at nothing or at empty text', () => {
+    document.body.innerHTML =
+      '<span id="e"> </span><input aria-labelledby="missing" aria-label="A"><input aria-labelledby="e" aria-label="B">'
+    const [a, b] = document.querySelectorAll('input')
+    expect(accessibleName(a)).toBe('A')
+    expect(accessibleName(b)).toBe('B')
+  })
+
+  it('skips aria-hidden text inside an aria-labelledby target', () => {
+    document.body.innerHTML =
+      '<span id="l"><i aria-hidden="true">*</i> Required</span><input aria-labelledby="l">'
+    expect(accessibleName(first('input'))).toBe('Required')
+  })
+
+  it('prefers a button value or image alt over its label', () => {
+    document.body.innerHTML =
+      '<label for="s">Send it</label><input id="s" type="submit" value="Go">' +
+      '<label for="i">Picture</label><input id="i" type="image" alt="Search">'
+    expect(accessibleName(first('#s'))).toBe('Go')
+    expect(accessibleName(first('#i'))).toBe('Search')
+  })
+
+  describe('name from content, as the role engine walks it', () => {
+    it.each([
+      ['<button><span aria-hidden="true">x</span> Close</button>', 'button', 'Close'],
+      ['<button><span hidden>Old</span>New</button>', 'button', 'New'],
+      ['<button>Save<script>1</script></button>', 'button', 'Save'],
+      ['<a href="/"><img alt="Logo"> Home</a>', 'a', 'Logo Home'],
+      ['<a href="/"><img alt="Logo">Home</a>', 'a', 'LogoHome'],
+      ['<a href="/"><img src="x.png"> Home</a>', 'a', 'Home'],
+      ['<button><i aria-label="search"></i> Search</button>', 'button', 'search Search'],
+      ['<h2><span>Billing </span><em>address</em></h2>', 'h2', 'Billing address'],
+      ['<button><input type="hidden" value="t">Go</button>', 'button', 'Go']
+    ])('%s is named %s', (html, selector, name) => {
+      document.body.innerHTML = html
+      expect(accessibleName(first(selector))).toBe(name)
+    })
+
+    it('is null when only hidden text is left', () => {
+      document.body.innerHTML = '<button><span aria-hidden="true">x</span></button>'
+      expect(accessibleName(first('button'))).toBeNull()
+    })
   })
 
   it('reads label[for]', () => {
@@ -127,6 +179,35 @@ describe('accessibleNameSource', () => {
     document.body.innerHTML = '<input>'
     expect(accessibleNameSource(first('input'))).toBeNull()
   })
+
+  it('reports content for a name computed by the visible walk', () => {
+    document.body.innerHTML = '<button><span aria-hidden="true">x</span> Close</button>'
+    expect(accessibleNameSource(first('button'))).toEqual({ name: 'Close', from: 'content' })
+  })
+
+  it('reports aria-labelledby, not aria-label, when both are set', () => {
+    document.body.innerHTML =
+      '<span id="l">Billing</span><input aria-labelledby="l" aria-label="Other">'
+    expect(accessibleNameSource(first('input'))).toEqual({ name: 'Billing', from: 'other' })
+  })
+})
+
+describe('visibleText', () => {
+  beforeEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  it('keeps hidden text out but leaves normalizedText alone', () => {
+    document.body.innerHTML = '<p><span aria-hidden="true">x</span> Close <b hidden>y</b></p>'
+    const p = first('p')
+    expect(visibleText(p)).toBe('Close')
+    expect(p.textContent?.replace(/\s+/g, ' ').trim()).toBe('x Close y')
+  })
+
+  it('collapses whitespace across nested elements without gluing words together', () => {
+    document.body.innerHTML = '<p>\n  <span>Read the</span>\n  <b>terms</b> first\n</p>'
+    expect(visibleText(first('p'))).toBe('Read the terms first')
+  })
 })
 
 describe('labelText', () => {
@@ -145,6 +226,18 @@ describe('labelText', () => {
     document.body.innerHTML = '<input aria-label="x"><label for="d">Hi</label><div id="d"></div>'
     expect(labelText(first('input'))).toBeNull()
     expect(labelText(first('#d'))).toBeNull()
+  })
+})
+
+describe('labels skip hidden markup like the runtime does', () => {
+  it('a required-field asterisk hidden from assistive tech is not part of the name', () => {
+    document.body.innerHTML =
+      '<label for="e">Email <span aria-hidden="true">*</span></label><input id="e">' +
+      '<label>Phone <span hidden>(optional)</span><input id="p"></label>'
+    expect(accessibleName(document.getElementById('e')!)).toBe('Email')
+    expect(labelText(document.getElementById('e')!)).toBe('Email')
+    expect(accessibleName(document.getElementById('p')!)).toBe('Phone')
+    expect(labelText(document.getElementById('p')!)).toBe('Phone')
   })
 })
 

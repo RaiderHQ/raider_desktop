@@ -49,11 +49,12 @@ export async function runTestHandler(
 
   const cached = appState.tests.get(testId)
   if (!cached) return { success: false, output: `Test with ID ${testId} not found.` }
-  const { implicitWait, explicitWait, browser, headless } = appState.recorderSettings
+  const { implicitWait, explicitWait, testIdAttribute, browser, headless } = appState.recorderSettings
   return runRecording({
     savedTest: cached,
     implicitWait,
     explicitWait,
+    testIdAttribute,
     browser,
     headless,
     projectPath,

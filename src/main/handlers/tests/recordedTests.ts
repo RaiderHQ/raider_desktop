@@ -50,7 +50,9 @@ export function slugify(name: string): string {
   return slug || 'recorded_test'
 }
 
-const isSpecRel = (rel: unknown): rel is string => isSafeRelPath(rel) && rel.endsWith('_spec.rb')
+/** A recorded test's spec path: safe, relative, and a *_spec.rb file. */
+export const isSpecRel = (rel: unknown): rel is string =>
+  isSafeRelPath(rel) && rel.endsWith('_spec.rb')
 
 // lstat, so a broken symlink counts as taken too
 const exists = (p: string): Promise<boolean> =>
@@ -147,7 +149,11 @@ const generate = (
   layout: ProjectLayout,
   file: string
 ): { content: string; stepLines: StepLines } =>
-  generateProjectSpecFileWithMap(test, { fileRelPath: file, helperPath: layout.helperPath })
+  generateProjectSpecFileWithMap(test, {
+    fileRelPath: file,
+    helperPath: layout.helperPath,
+    testIdAttribute: layout.testIdAttribute
+  })
 
 /**
  * Picks a free `<slug>[_n]_spec.rb` in `root` (default: the spec folder) and
@@ -324,7 +330,7 @@ export function saveRecordedTest(
     ) {
       if (existing.stepLines) return existing
       // Recorded before maps were stored: map the kept file, without touching it
-      const derived = deriveStepLines(existing, onDisk, current.helperPath)
+      const derived = deriveStepLines(existing, onDisk, current.helperPath, current.testIdAttribute)
       if (!derived) return existing
       const mapped = { ...existing, stepLines: derived }
       await writeSidecar(projectPath, mapped)
@@ -337,14 +343,7 @@ export function saveRecordedTest(
     } else {
       await writeFileAtomic(target, content)
     }
-    const sidecar = buildSidecar(
-      test,
-      existing.file,
-      content,
-      stepLines,
-      existing.createdAt,
-      now
-    )
+    const sidecar = buildSidecar(test, existing.file, content, stepLines, existing.createdAt, now)
     await writeSidecar(projectPath, sidecar)
     return sidecar
   })
@@ -370,7 +369,7 @@ export function stepLinesFor(
 
     const stored = usableStepLines(existing, onDisk)
     if (stored) return { sidecar: existing, stepLines: stored }
-    const derived = deriveStepLines(existing, onDisk, layout.helperPath)
+    const derived = deriveStepLines(existing, onDisk, layout.helperPath, layout.testIdAttribute)
     if (!derived) return { sidecar: existing, stepLines: null }
     const sidecar = { ...existing, stepLines: derived }
     await writeSidecar(projectPath, sidecar)

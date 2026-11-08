@@ -169,6 +169,19 @@ describe('migrateRecordedTests', () => {
 })
 
 describe('migrateRecordedTests leaves alone', () => {
+  it('a sidecar at a path that is not a spec file: nothing is created for it', async () => {
+    await mkdir(join(project, 'spec'), { recursive: true })
+    await writeFile(join(project, 'spec', 'notes.rb'), OLD_SPEC)
+    await writeSidecar(project, oldSidecar(OLD_SPEC, { file: 'spec/notes.rb' }))
+
+    expect(await migrateRecordedTests(project, layout)).toBe(0)
+
+    expect(await readFile(join(project, 'spec', 'notes.rb'), 'utf-8')).toBe(OLD_SPEC)
+    await expect(fs.stat(join(project, 'spec', 'notes_spec.rb'))).rejects.toThrow()
+    const written = await fs.readdir(join(project, '.raider', 'tests', 'spec'))
+    expect(written).toEqual(['notes.rb.json'])
+  })
+
   it('a sidecar whose spec file is missing: an open never creates a file', async () => {
     await writeOldProject()
     await rm(specPath())

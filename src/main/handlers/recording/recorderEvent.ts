@@ -131,7 +131,8 @@ function recorderEvent(data: RecorderEventData): void {
     stepId: step.id,
     // The app names a secret step when it adds it, after this; the trace shows a placeholder
     command: renderStep(
-      step.kind === 'type' && step.secret ? { ...step, secretName: 'RAIDER_SECRET_N' } : step
+      step.kind === 'type' && step.secret ? { ...step, secretName: 'RAIDER_SECRET_N' } : step,
+      { testIdAttribute: appState.layout?.testIdAttribute }
     ),
     timestamp: Date.now(),
     url: data.pageUrl || '',

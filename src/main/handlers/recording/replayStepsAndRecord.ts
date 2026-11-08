@@ -53,7 +53,7 @@ async function replayStepsAndRecord(
   if (missing) {
     return { success: false, error: englishText('recorder.step.secretMissing', { name: missing }) }
   }
-  const { explicitWait } = appState.recorderSettings
+  const { explicitWait, testIdAttribute } = appState.recorderSettings
   const tempFilePath = path.join(os.tmpdir(), `replay_${Date.now()}_spec.rb`)
 
   // Replay headlessly in Chrome, then print the final URL for the recorder to resume from.
@@ -65,7 +65,7 @@ async function replayStepsAndRecord(
         { id: 'replay-final-url', kind: 'custom', code: 'puts "RAIDER_FINAL_URL:#{@driver.current_url}"' }
       ]
     },
-    { browser: 'chrome', headless: true, explicitWait }
+    { browser: 'chrome', headless: true, explicitWait, testIdAttribute }
   )
 
   try {

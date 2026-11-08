@@ -268,9 +268,20 @@ describe('semantic locators', () => {
     )
   })
 
-  it('a test id recorded with another attribute still uses test_id (the project config names it)', () => {
+  // The runtime resolves test_id: through the project's test_id_attribute only, so a test id
+  // recorded under any other attribute keeps the CSS the recorder stored
+  it('a test id under another attribute keeps its CSS unless the project names that attribute', () => {
     const l: Locator = { by: 'testId', attribute: 'data-cy', value: 'x' }
-    expect(locatorArg(target(l))).toBe("test_id: 'x'")
+    const el: ElementTarget = { strategy: 'css', value: '[data-cy="x"]', locator: l }
+    expect(locatorArg(el)).toBe('css: \'[data-cy="x"]\'')
+    expect(locatorArg(el, 'data-cy')).toBe("test_id: 'x'")
+    expect(locatorArg(el, 'data-qa')).toBe('css: \'[data-cy="x"]\'')
+    expect(
+      renderStep({ id: '1', kind: 'click', element: el }, { testIdAttribute: 'data-cy' })
+    ).toBe("@driver.find_element(test_id: 'x').click")
+    expect(renderStep({ id: '1', kind: 'click', element: el })).toBe(
+      '@driver.find_element(css: \'[data-cy="x"]\').click'
+    )
   })
 
   it('without a semantic locator the Selenium pair is the locator', () => {

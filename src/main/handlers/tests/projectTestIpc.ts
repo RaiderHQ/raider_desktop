@@ -49,7 +49,7 @@ export async function listedFiles(
 /** 'open-code-test': the read-only view of a listed spec file. */
 export async function openCodeTestHandler(file: string): Promise<CodeTestView> {
   const target = await listedFile(file)
-  return readCodeTest(target.projectPath, target.file)
+  return readCodeTest(target.projectPath, target.file, target.layout.testIdAttribute)
 }
 
 type RecordOverResult =
@@ -68,7 +68,14 @@ export async function recordOverExampleHandler(
     const target = await listedFile(file)
     if (typeof exampleName !== 'string') throw new Error('No example name was given.')
     if (!Array.isArray(steps) || !steps.every(isStep)) throw new Error('The steps are not valid.')
-    await replaceExample(target.projectPath, target.file, exampleName, steps, rubyCommand)
+    await replaceExample(
+      target.projectPath,
+      target.file,
+      exampleName,
+      steps,
+      rubyCommand,
+      target.layout.testIdAttribute
+    )
     return { success: true }
   } catch (error) {
     if (error instanceof ExampleNotUniqueError)

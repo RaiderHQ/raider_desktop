@@ -11,6 +11,8 @@ export interface ProjectLayout {
   featurePath: string
   /** Config `helper_path`, default 'helpers' */
   helperPath: string
+  /** Config `test_id_attribute`, default 'data-testid': what the runtime's test_id: reads */
+  testIdAttribute?: string
   /** The ruby_raider the project locks (Gemfile.lock) or pins (Gemfile); absent when unknown */
   rubyRaiderVersion?: string
   /** False for appium / minitest / capybara / no Gemfile / a ruby_raider below 4.0 */

@@ -115,6 +115,102 @@ describe('getPrioritizedSelector: candidates', () => {
     })
   })
 
+  // The label net is the runtime's Selectors.label(value, exact: true): one extra candidate
+  // under strict mode raises AmbiguousMatch there, so it must fail uniqueness here.
+  describe('label candidates, as the runtime counts them', () => {
+    it('emits the runtime label selector, branch for branch', () => {
+      document.body.innerHTML = '<label for="e">Email</label><input id="e">'
+      expect(pick(document.querySelector('input')!, ['label']).selector).toBe(
+        'id(//label[normalize-space(.)="Email"]/@for)' +
+          ' | //label[normalize-space(.)="Email"]//*[(self::input or self::textarea or self::select' +
+          " or self::button or self::meter or self::output or self::progress) and not(self::input[@type='hidden'])]" +
+          ' | //*[normalize-space(@aria-label)="Email"]' +
+          ' | //*[@aria-labelledby and normalize-space(string(id(@aria-labelledby)))="Email"]'
+      )
+    })
+
+    it('does not pick the label of a field whose wrapping label also holds a button with text', () => {
+      // The label's own words are "Email" but its normalize-space is "Email ?": no runtime match
+      document.body.innerHTML = '<label>Email <button>?</button><input id="e"></label>'
+      expect(pick(document.querySelector('input')!, ['label', 'id', 'css']).locator).toEqual({
+        by: 'id',
+        value: 'e'
+      })
+    })
+
+    it('does not pick the label of a field whose wrapping label also holds a text-less button', () => {
+      document.body.innerHTML =
+        '<label>Email <input id="e"><button aria-label="Help"></button></label>'
+      expect(pick(document.querySelector('input')!, ['label', 'id', 'css']).locator).toEqual({
+        by: 'id',
+        value: 'e'
+      })
+    })
+
+    it.each(['meter', 'output', 'progress', 'div'])(
+      'rejects a label[for] when a label with the same text names a %s elsewhere',
+      (tag) => {
+        document.body.innerHTML = `<label for="e">Email</label><input id="e"><label for="m">Email</label><${tag} id="m"></${tag}>`
+        expect(pick(document.querySelector('input')!, ['label', 'id']).locator).toEqual({
+          by: 'id',
+          value: 'e'
+        })
+      }
+    )
+
+    it('counts an aria-labelledby element with the same text as a candidate', () => {
+      document.body.innerHTML =
+        '<label for="e">Email</label><input id="e"><span id="x">Email</span><input id="f" aria-labelledby="x">'
+      expect(pick(document.querySelector('#e')!, ['label', 'id']).locator).toEqual({
+        by: 'id',
+        value: 'e'
+      })
+    })
+
+    it('counts a padded aria-label with the same text as a candidate', () => {
+      document.body.innerHTML =
+        '<label for="e">Email</label><input id="e"><button id="b" aria-label=" Email "></button>'
+      expect(pick(document.querySelector('#e')!, ['label', 'id']).locator).toEqual({
+        by: 'id',
+        value: 'e'
+      })
+    })
+
+    it('does not count a hidden input inside the label', () => {
+      document.body.innerHTML = '<label>Email <input type="hidden" name="t"><input id="e"></label>'
+      expect(pick(document.querySelector('#e')!, ['label', 'id']).locator).toEqual({
+        by: 'label',
+        text: 'Email'
+      })
+    })
+
+    it('still picks a label whose only candidate is the field', () => {
+      document.body.innerHTML =
+        '<label for="e">Email</label><input id="e"><label for="n">Name</label><meter id="n"></meter>'
+      expect(pick(document.querySelector('#e')!, ['label', 'id']).locator).toEqual({
+        by: 'label',
+        text: 'Email'
+      })
+    })
+  })
+
+  // The role name is the engine's visible walk, but roleXPath can only compare normalize-space(),
+  // which keeps aria-hidden text: XPath 1.0 cannot subtract a subtree. The role pick fails its
+  // own check and the step falls to text (the runtime's text: key keeps hidden text too).
+  it('falls from role to text for a button whose icon carries aria-hidden text', () => {
+    document.body.innerHTML = '<button><span aria-hidden="true">x</span> Close</button>'
+    expect(pick(document.querySelector('button')!).locator).toEqual({ by: 'text', text: 'x Close' })
+  })
+
+  it('names a button by its visible words when the icon has none', () => {
+    document.body.innerHTML = '<button><i class="icon" aria-hidden="true"></i> Save</button>'
+    expect(pick(document.querySelector('button')!).locator).toMatchObject({
+      by: 'role',
+      role: 'button',
+      name: 'Save'
+    })
+  })
+
   // A label scan per candidate field took ~16 s here in jsdom; one scan via id() takes ~0.3 s.
   // The bound leaves headroom for slow machines while still catching the quadratic form.
   describe('on a large form with a repeated label', () => {
