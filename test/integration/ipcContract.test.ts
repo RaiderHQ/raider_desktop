@@ -100,6 +100,9 @@ describe('IPC Contract', () => {
     // Test Management
     'saveRecording',
     'deleteTest',
+    'readTestFile',
+    'pasteTestFile',
+    'trashTest',
     'exportTest',
 
     // Recording Session

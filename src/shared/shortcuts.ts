@@ -24,6 +24,15 @@ export const SHORTCUTS: Record<ShortcutId, { accelerator: string; mac: string; o
   shortcuts: { accelerator: 'CmdOrCtrl+Shift+H', mac: '⌘⇧H', other: 'Ctrl+Shift+H' }
 }
 
+/**
+ * The Tests list's own keys, handled by the list while it has focus. The menu bar shows them
+ * but never registers them: Cmd+D and Cmd+Backspace belong to Monaco and text fields elsewhere.
+ */
+export const LIST_SHORTCUTS = {
+  'duplicate-test': { accelerator: 'CmdOrCtrl+D', mac: '⌘D', other: 'Ctrl+D' },
+  'delete-test': { accelerator: 'CmdOrCtrl+Backspace', mac: '⌘⌫', other: 'Ctrl+Backspace' }
+} as const
+
 export function shortcutLabel(id: ShortcutId, platform: Platform): string {
   return platform === 'mac' ? SHORTCUTS[id].mac : SHORTCUTS[id].other
 }

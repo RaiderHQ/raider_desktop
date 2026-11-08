@@ -13,7 +13,7 @@ import {
   setRecentProjectsMenu,
   withLiveWindow
 } from '../../src/main/appMenu'
-import { SHORTCUTS } from '../../src/shared/shortcuts'
+import { LIST_SHORTCUTS, SHORTCUTS } from '../../src/shared/shortcuts'
 import { appState } from '../../src/main/handlers/appState'
 
 type Item = Electron.MenuItemConstructorOptions
@@ -45,7 +45,7 @@ describe('buildAppMenuTemplate', () => {
     expect(build('darwin').map((item) => item.role ?? item.label)).toEqual([
       'appMenu',
       'File',
-      'editMenu',
+      'Edit',
       'Test',
       'View',
       'windowMenu',
@@ -144,23 +144,130 @@ describe('buildAppMenuTemplate', () => {
     expect(test[1]).toMatchObject({ label: 'Run', accelerator: 'CmdOrCtrl+R' })
   })
 
+  it("Edit keeps the editMenu role's items on macOS, then the test commands", () => {
+    const edit = items(build('darwin'), 'Edit')
+    expect(edit.map((item) => item.role ?? item.id ?? item.label ?? item.type)).toEqual([
+      'undo',
+      'redo',
+      'separator',
+      'cut',
+      'copy',
+      'paste',
+      'pasteAndMatchStyle',
+      'delete',
+      'selectAll',
+      'separator',
+      'Substitutions',
+      'Speech',
+      'separator',
+      'copy-test',
+      'paste-test',
+      'duplicate-test',
+      'delete-test'
+    ])
+    const sub = (label: string): (string | undefined)[] =>
+      (edit.find((i) => i.label === label)!.submenu as Item[]).map((i) => i.role ?? i.type)
+    expect(sub('Substitutions')).toEqual([
+      'showSubstitutions',
+      'separator',
+      'toggleSmartQuotes',
+      'toggleSmartDashes',
+      'toggleTextReplacement'
+    ])
+    expect(sub('Speech')).toEqual(['startSpeaking', 'stopSpeaking'])
+  })
+
+  it("Edit keeps the editMenu role's items on Windows and Linux, then the test commands", () => {
+    for (const platform of ['win32', 'linux'] as const) {
+      const edit = items(build(platform), 'Edit')
+      expect(edit.map((item) => item.role ?? item.id ?? item.type)).toEqual([
+        'undo',
+        'redo',
+        'separator',
+        'cut',
+        'copy',
+        'paste',
+        'delete',
+        'separator',
+        'selectAll',
+        'separator',
+        'copy-test',
+        'paste-test',
+        'duplicate-test',
+        'delete-test'
+      ])
+    }
+  })
+
+  it('the test commands reach the renderer; Duplicate and Delete only show their keys', () => {
+    const a = actions()
+    const edit = buildAppMenuTemplate('win32', a, { isPackaged: true }).find(
+      (m) => m.label === 'Edit'
+    )!.submenu as Item[]
+    const byId = (id: string): Item => edit.find((i) => i.id === id)!
+    expect(byId('copy-test')).toMatchObject({ label: 'Copy Test' })
+    expect(byId('paste-test')).toMatchObject({ label: 'Paste Test' })
+    expect(byId('copy-test').accelerator).toBeUndefined()
+    expect(byId('paste-test').accelerator).toBeUndefined()
+    expect(byId('duplicate-test')).toMatchObject({
+      label: 'Duplicate Test',
+      accelerator: 'CmdOrCtrl+D',
+      registerAccelerator: false
+    })
+    expect(byId('delete-test')).toMatchObject({
+      label: 'Delete Test',
+      accelerator: 'CmdOrCtrl+Backspace',
+      registerAccelerator: false
+    })
+    for (const id of ['copy-test', 'paste-test', 'duplicate-test', 'delete-test']) {
+      ;(byId(id).click as () => void)()
+    }
+    expect(a.onCommand.mock.calls).toEqual([
+      ['copy-test'],
+      ['paste-test'],
+      ['duplicate-test'],
+      ['delete-test']
+    ])
+  })
+
+  it('on macOS Duplicate and Delete Test have no key at all', () => {
+    // registerAccelerator is ignored on macOS: any accelerator there would take Cmd+D and
+    // Cmd+Backspace from text fields and Monaco
+    const edit = items(build('darwin'), 'Edit')
+    for (const id of ['copy-test', 'paste-test', 'duplicate-test', 'delete-test']) {
+      const item = edit.find((i) => i.id === id)!
+      expect(item.accelerator).toBeUndefined()
+      expect(item.registerAccelerator).toBeUndefined()
+    }
+    expect(JSON.stringify(build('darwin'))).not.toMatch(/CmdOrCtrl\+(D|Backspace)"/)
+  })
+
   it('New test is Cmd+N and New project Cmd+Shift+N', () => {
     const all = build('darwin').flatMap((m) => (Array.isArray(m.submenu) ? m.submenu : []))
     expect(all.find((i) => i.id === 'new-test')!.accelerator).toBe('CmdOrCtrl+N')
     expect(all.find((i) => i.id === 'new-project')!.accelerator).toBe('CmdOrCtrl+Shift+N')
   })
 
-  it('every accelerator comes from the shared table', () => {
-    const template = build('darwin', false)
-    const table = new Set(Object.values(SHORTCUTS).map((s) => s.accelerator))
-    const all = template.flatMap((m) => (Array.isArray(m.submenu) ? m.submenu : []))
-    for (const item of all) {
-      if (item.id && item.accelerator && item.id in SHORTCUTS)
-        expect(item.accelerator).toBe(SHORTCUTS[item.id as keyof typeof SHORTCUTS].accelerator)
+  it.each(['darwin', 'win32', 'linux'] as const)(
+    'every accelerator comes from the shared table (%s)',
+    (platform) => {
+      const template = build(platform, false)
+      const table = new Set(Object.values(SHORTCUTS).map((s) => s.accelerator))
+      const all = template.flatMap((m) => (Array.isArray(m.submenu) ? m.submenu : []))
+      for (const item of all) {
+        if (item.id && item.accelerator && item.id in SHORTCUTS)
+          expect(item.accelerator).toBe(SHORTCUTS[item.id as keyof typeof SHORTCUTS].accelerator)
+      }
+      // The Tests list's keys are shown in the menu but never registered there (Monaco owns Cmd+D)
+      const shownOnly = new Set(Object.values(LIST_SHORTCUTS).map((s) => s.accelerator))
+      const literals = JSON.stringify(template).match(/CmdOrCtrl\+[^"]*/g) ?? []
+      for (const literal of literals)
+        expect(table.has(literal) || shownOnly.has(literal)).toBe(true)
+      const shown = all.filter((i) => shownOnly.has(i.accelerator as string))
+      expect(shown).toHaveLength(platform === 'darwin' ? 0 : 2)
+      for (const item of shown) expect(item.registerAccelerator).toBe(false)
     }
-    const literals = JSON.stringify(template).match(/CmdOrCtrl\+[^"]*/g) ?? []
-    for (const literal of literals) expect(table.has(literal)).toBe(true)
-  })
+  )
 
   describe('Record / Stop & save', () => {
     afterEach(() => {

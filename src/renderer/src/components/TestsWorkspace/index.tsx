@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useMatch, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@components/Tooltip'
@@ -12,6 +12,7 @@ import TagFilter from '@components/TagFilter'
 import { useTestsList } from '../../hooks/useTestsList'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import { fromRouteParam, testKeyOf, toRouteParam } from '@foundation/testKey'
+import { onTestTrashed } from '@foundation/testFileActions'
 import type { TestKey, TestRow } from '@foundation/testKey'
 
 interface TestsWorkspaceProps {
@@ -37,6 +38,17 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
   const activeTag = tagFilter && rows?.some((r) => r.tags.includes(tagFilter)) ? tagFilter : null
   const visibleRows = rows?.filter((r) => !activeTag || r.tags.includes(activeTag))
   const selectedRow = rows?.find((r) => testKeyOf(r) === selectedKey) ?? null
+
+  // A test that went to the Trash (Delete, or Undo of a Paste) can't stay open
+  const openKey = useRef(selectedKey)
+  openKey.current = selectedKey
+  useEffect(
+    () =>
+      onTestTrashed((keys) => {
+        if (openKey.current && keys.includes(openKey.current)) void navigate('/overview/tests')
+      }),
+    [navigate]
+  )
 
   const select = (key: TestKey): void => {
     void navigate(`/overview/tests/${toRouteParam(key)}`)
@@ -99,6 +111,7 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
               }
               selectedKey={selectedKey}
               onSelect={select}
+              activeTag={activeTag}
               onNewTest={
                 onNewTest ??
                 ((): void => {

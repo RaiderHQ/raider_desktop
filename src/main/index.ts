@@ -73,6 +73,7 @@ import importProject from './handlers/io/importProject'
 import importTest from './handlers/io/importTest'
 import { setTestTags } from './handlers/tests/setTestTags'
 import deleteTest from './handlers/deleteTest'
+import { pasteTestFile, readTestFile, trashTest } from './handlers/tests/testFileActions'
 import recorderEvent, { RecorderEventData } from './handlers/recording/recorderEvent'
 import {
   handleRecorderPickCancelled,
@@ -393,6 +394,16 @@ app.whenReady().then(() => {
     if (result.success && !result.codeOwned) deleteTrace(args.testId)
     return result
   })
+  // The Tests list's Copy, Paste, Duplicate and Delete: project-relative spec paths only
+  ipcMain.handle('read-test-file', (_event, projectPath: unknown, fileRel: unknown) =>
+    readTestFile(projectPath, fileRel)
+  )
+  ipcMain.handle('paste-test-file', (_event, projectPath: unknown, payload: unknown) =>
+    pasteTestFile(projectPath, payload)
+  )
+  ipcMain.handle('trash-test', (_event, projectPath: unknown, fileRel: unknown) =>
+    trashTest(projectPath, fileRel)
+  )
   ipcMain.handle('set-active-project', async (_event, projectPath: string | null) => {
     const wasActive = appState.projectPath
     const result = await setActiveProject(projectPath)

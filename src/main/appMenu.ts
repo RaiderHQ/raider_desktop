@@ -2,7 +2,7 @@ import path from 'path'
 import type { RecentProjectEntry } from '../shared/types/recentProject'
 import { Menu } from 'electron'
 import { englishText } from '../shared/describeStepEnglish'
-import { SHORTCUTS, type ShortcutId } from '../shared/shortcuts'
+import { LIST_SHORTCUTS, SHORTCUTS, type ShortcutId } from '../shared/shortcuts'
 import { appState } from './handlers/appState'
 
 /** What the menu bar can ask the renderer to do; the renderer checks the value before acting. */
@@ -19,6 +19,10 @@ export type MenuCommand =
   | 'shortcuts'
   | 'docs'
   | 'recording-guide'
+  | 'copy-test'
+  | 'paste-test'
+  | 'duplicate-test'
+  | 'delete-test'
 
 export interface MenuActions {
   /** File → Open trace…: a main-side dialog; the renderer never sends a path */
@@ -81,7 +85,7 @@ function openRecentSubmenu(
 const t = (key: string): string => englishText(`appMenu.${key}`)
 
 /**
- * The app's menu bar: File (projects, trace, save), Edit, Test (record, run), View,
+ * The app's menu bar: File (projects, trace, save), Edit (with the Tests list's commands), Test (record, run), View,
  * Window and Help. Commands reach the renderer as a constant string; nothing else.
  */
 export function buildAppMenuTemplate(
@@ -135,6 +139,56 @@ export function buildAppMenuTemplate(
       command('open-file', t('openFile'), 'open-file')
     ]
   }
+  // Duplicate and Delete Test show the list's keys without registering them, so Monaco and text
+  // fields keep Cmd+D and Cmd+Backspace. registerAccelerator only works on Windows and Linux: on
+  // macOS any accelerator becomes a real key equivalent, so there the items have none
+  const shownKey = (
+    item: Electron.MenuItemConstructorOptions,
+    id: keyof typeof LIST_SHORTCUTS
+  ): Electron.MenuItemConstructorOptions =>
+    isMac
+      ? item
+      : { ...item, accelerator: LIST_SHORTCUTS[id].accelerator, registerAccelerator: false }
+  // The editMenu role's own items (Electron 45), then the Tests list's commands
+  const edit: Electron.MenuItemConstructorOptions = {
+    label: t('edit'),
+    submenu: [
+      { role: 'undo' },
+      { role: 'redo' },
+      { type: 'separator' },
+      { role: 'cut' },
+      { role: 'copy' },
+      { role: 'paste' },
+      ...(isMac
+        ? ([
+            { role: 'pasteAndMatchStyle' },
+            { role: 'delete' },
+            { role: 'selectAll' },
+            { type: 'separator' },
+            {
+              label: 'Substitutions',
+              submenu: [
+                { role: 'showSubstitutions' },
+                { type: 'separator' },
+                { role: 'toggleSmartQuotes' },
+                { role: 'toggleSmartDashes' },
+                { role: 'toggleTextReplacement' }
+              ]
+            },
+            { label: 'Speech', submenu: [{ role: 'startSpeaking' }, { role: 'stopSpeaking' }] }
+          ] as Electron.MenuItemConstructorOptions[])
+        : ([
+            { role: 'delete' },
+            { type: 'separator' },
+            { role: 'selectAll' }
+          ] as Electron.MenuItemConstructorOptions[])),
+      { type: 'separator' },
+      command('copy-test', t('copyTest')),
+      command('paste-test', t('pasteTest')),
+      shownKey(command('duplicate-test', t('duplicateTest')), 'duplicate-test'),
+      shownKey(command('delete-test', t('deleteTest')), 'delete-test')
+    ]
+  }
   // Reload would take Cmd+R from Run: only the empty string clears a role's default accelerator
   const developer: Electron.MenuItemConstructorOptions[] = options.isPackaged
     ? []
@@ -168,7 +222,7 @@ export function buildAppMenuTemplate(
   return [
     ...(isMac ? [{ role: 'appMenu' } as const] : []),
     file,
-    { role: 'editMenu' },
+    edit,
     test,
     view,
     { role: 'windowMenu' },

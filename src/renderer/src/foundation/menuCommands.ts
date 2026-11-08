@@ -11,7 +11,11 @@ export const MENU_COMMANDS = [
   'how-it-works',
   'shortcuts',
   'docs',
-  'recording-guide'
+  'recording-guide',
+  'copy-test',
+  'paste-test',
+  'duplicate-test',
+  'delete-test'
 ] as const
 export type MenuCommand = (typeof MENU_COMMANDS)[number]
 
