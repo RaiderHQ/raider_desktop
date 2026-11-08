@@ -98,7 +98,7 @@ describe('QuickRecordDialog', (): void => {
   // A 3.x raider new would write a project the desktop can neither record into nor run
   it.each(['3.15.2', null])('refuses to start on gem %s', async (version): Promise<void> => {
     useVersionStore.setState({ version })
-    api.runCommand.mockResolvedValueOnce(
+    api.runCommand.mockResolvedValue(
       version
         ? { success: true, output: `The version is ${version}` }
         : { success: false, output: '' }
