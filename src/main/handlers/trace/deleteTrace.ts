@@ -3,10 +3,8 @@ import { safeError } from '../../utils/safeLog'
 import { join, relative, isAbsolute } from 'path'
 import { rm } from 'fs/promises'
 import { existsSync } from 'fs'
+import { isSafeTraceId } from './traceId'
 
-// Same rule as saveTrace: a test id names a file and a folder under traces/, nothing else.
-// The id can come from a sidecar in the project, which a cloned repository controls.
-const SAFE_TEST_ID = /^[A-Za-z0-9_-]+$/
 
 const strictlyInside = (root: string, target: string): boolean => {
   const rel = relative(root, target)
@@ -14,7 +12,7 @@ const strictlyInside = (root: string, target: string): boolean => {
 }
 
 export default async (testId: string): Promise<void> => {
-  if (typeof testId !== 'string' || !SAFE_TEST_ID.test(testId)) {
+  if (!isSafeTraceId(testId)) {
     safeError('Refused to delete a trace for an invalid test id')
     return
   }

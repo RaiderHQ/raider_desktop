@@ -92,4 +92,8 @@ describe('loadTrace handler', () => {
     const result = await loadTrace(testId)
     expect(result.trace![0].screenshotPath).toBe('/some/path/step-1.jpg')
   })
+
+  it.each(['..', '../x', 'a/b', '', '.'])('refuses the unsafe test id %j', async (id) => {
+    expect(await loadTrace(id)).toEqual({ success: false })
+  })
 })

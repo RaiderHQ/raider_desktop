@@ -15,6 +15,8 @@ import { randomUUID } from 'crypto'
 import type { TraceStep } from '../../src/renderer/src/foundation/Types/traceStep'
 
 const testTracesDir = join(tmpdir(), 'raider-test-traces-' + randomUUID())
+// The recorder writes its pictures under tmpdir()/raider-traces; saveTrace copies only from there
+const recorderDir = join(tmpdir(), 'raider-traces', 'test-' + randomUUID())
 const mockSend = vi.fn()
 
 vi.mock('electron', () => ({
@@ -43,12 +45,14 @@ describe('saveTrace handler', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     appState.tests = new Map()
+    mkdirSync(recorderDir, { recursive: true })
   })
 
   afterEach(() => {
     if (existsSync(testTracesDir)) {
       rmSync(testTracesDir, { recursive: true, force: true })
     }
+    rmSync(recorderDir, { recursive: true, force: true })
   })
 
   it('saves trace JSON to the correct path', async () => {
@@ -74,7 +78,8 @@ describe('saveTrace handler', () => {
 
   it('copies screenshots to trace directory', async () => {
     // Create a fake screenshot file
-    const srcDir = join(tmpdir(), 'raider-src-' + randomUUID())
+    // Where the recorder writes its pictures
+    const srcDir = join(tmpdir(), 'raider-traces', 'test-src-' + randomUUID())
     mkdirSync(srcDir, { recursive: true })
     const srcScreenshot = join(srcDir, 'shot.jpg')
     writeFileSync(srcScreenshot, 'fake-image-data')
@@ -119,6 +124,31 @@ describe('saveTrace handler', () => {
 
     const result = await saveTrace(testId, trace)
     expect(result.success).toBe(true)
+  })
+
+  // Both come from the renderer: a step id must not name a path, nor a picture come from anywhere
+  it('copies no picture for a step id that would leave the trace folder', async () => {
+    const src = join(recorderDir, 'pic.jpg')
+    writeFileSync(src, 'x')
+    const result = await saveTrace(testId, [
+      { id: '../../escape', command: 'c', timestamp: 1, url: 'u', screenshotPath: src }
+    ])
+    expect(result.success).toBe(true)
+    expect(existsSync(join(testTracesDir, 'escape.jpg'))).toBe(false)
+    const saved = JSON.parse(readFileSync(join(testTracesDir, 'traces', `${testId}.trace.json`), 'utf-8'))
+    expect(saved[0].screenshotPath).toBeUndefined()
+  })
+
+  it('copies no picture from outside the recorder folder', async () => {
+    const outside = join(testTracesDir, 'secret.txt')
+    mkdirSync(testTracesDir, { recursive: true })
+    writeFileSync(outside, 'secret')
+    await saveTrace(testId, [
+      { id: 'step-1', command: 'c', timestamp: 1, url: 'u', screenshotPath: outside }
+    ])
+    expect(existsSync(join(testTracesDir, 'traces', testId, 'step-1.jpg'))).toBe(false)
+    const saved = JSON.parse(readFileSync(join(testTracesDir, 'traces', `${testId}.trace.json`), 'utf-8'))
+    expect(saved[0].screenshotPath).toBeUndefined()
   })
 
   it('sets hasTrace flag on matching test in appState', async () => {
@@ -227,7 +257,7 @@ describe('saveTrace handler', () => {
 
     it('keeps the entries of the remaining steps and drops the rest with their pictures', async () => {
       seed()
-      const src = join(testTracesDir, 'tmp-e3.jpg')
+      const src = join(recorderDir, 'tmp-e3.jpg')
       writeFileSync(src, 'three')
       const incoming: TraceStep = {
         id: 'e3',
@@ -372,8 +402,8 @@ describe('saveTrace handler', () => {
     })
 
     it('keeps both pictures of two overlapping saves', async () => {
-      const a = join(testTracesDir, 'tmp-a.jpg')
-      const b = join(testTracesDir, 'tmp-b.jpg')
+      const a = join(recorderDir, 'tmp-a.jpg')
+      const b = join(recorderDir, 'tmp-b.jpg')
       mkdirSync(testTracesDir, { recursive: true })
       writeFileSync(a, 'A')
       writeFileSync(b, 'B')
