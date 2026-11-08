@@ -10,14 +10,19 @@ interface FileNameDialogProps {
   /** Where the first selection ends (Rename selects the name without its extension) */
   selectEnd?: number
   /** Names already in the target folder */
-  taken: string[]
+  taken?: string[]
+  /** Another rule in place of the file name rule: the message to show, or null when fine */
+  validate?: (name: string) => string | null
+  /** What the name will make (New page object… shows the file), under the field */
+  preview?: (name: string) => string | null
   /** Does the work; resolves to an error to show, or null when done */
   onSubmit: (name: string) => Promise<string | null>
   onCancel: () => void
 }
 
 /**
- * Asks for a file or folder name (New file, New folder, Rename). A name that is empty,
+ * Asks for a file or folder name (New file, New folder, Rename), or a name to generate from
+ * (New page object… and the rest, with their own `validate`). A name that is empty,
  * `.`/`..`, has a separator or is already taken is refused in place: the dialog stays open
  * with the reason under the field.
  */
@@ -26,7 +31,9 @@ const FileNameDialog: React.FC<FileNameDialogProps> = ({
   confirmLabel,
   initialValue = '',
   selectEnd,
-  taken,
+  taken = [],
+  validate,
+  preview,
   onSubmit,
   onCancel
 }) => {
@@ -37,6 +44,7 @@ const FileNameDialog: React.FC<FileNameDialogProps> = ({
   const inputRef = useRef<HTMLInputElement>(null)
   const titleId = useId()
   const errorId = useId()
+  const previewId = useId()
 
   useEffect(() => {
     const input = inputRef.current
@@ -49,17 +57,25 @@ const FileNameDialog: React.FC<FileNameDialogProps> = ({
     if (busy) return
     const name = value.trim()
     // Keeping the current name is always fine (Rename does nothing then)
-    const problem =
-      initialValue !== '' && name === initialValue
-        ? null
-        : // The entry's own name is not taken by someone else: Login.rb may become login.rb
-          entryNameProblem(
-            name,
-            taken.filter((n) => n !== initialValue)
-          )
-    if (problem) {
-      setError(t(problem, { name }))
-      return
+    if (validate) {
+      const refused = validate(name)
+      if (refused) {
+        setError(refused)
+        return
+      }
+    } else {
+      const problem =
+        initialValue !== '' && name === initialValue
+          ? null
+          : // The entry's own name is not taken by someone else: Login.rb may become login.rb
+            entryNameProblem(
+              name,
+              taken.filter((n) => n !== initialValue)
+            )
+      if (problem) {
+        setError(t(problem, { name }))
+        return
+      }
     }
     setBusy(true)
     try {
@@ -69,6 +85,8 @@ const FileNameDialog: React.FC<FileNameDialogProps> = ({
       setBusy(false)
     }
   }
+
+  const hint = preview?.(value.trim()) ?? null
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -92,7 +110,7 @@ const FileNameDialog: React.FC<FileNameDialogProps> = ({
           type="text"
           aria-labelledby={titleId}
           aria-invalid={error ? true : undefined}
-          aria-describedby={error ? errorId : undefined}
+          aria-describedby={error ? errorId : hint ? previewId : undefined}
           value={value}
           onChange={(e) => {
             setValue(e.target.value)
@@ -103,10 +121,16 @@ const FileNameDialog: React.FC<FileNameDialogProps> = ({
           }}
           className="w-full px-3 py-2 border border-neutral-bdr rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
         />
-        {error && (
+        {error ? (
           <p id={errorId} role="alert" className="mt-2 text-xs text-red-600">
             {error}
           </p>
+        ) : (
+          hint && (
+            <p id={previewId} className="mt-2 text-xs text-neutral-md">
+              {hint}
+            </p>
+          )
         )}
         <div className="flex justify-end gap-2 mt-4">
           <button

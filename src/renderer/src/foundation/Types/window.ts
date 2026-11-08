@@ -16,6 +16,7 @@ import type {
 } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { ProjectFileResult } from '@shared/types/projectFiles'
+import type { ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { RunApi } from '@shared/types/runEvents'
 import type { AssertionMessage } from '@shared/types/pendingAssertion'
@@ -308,7 +309,7 @@ export interface WindowApi extends RunApi {
     params: Record<string, unknown>,
     projectPath: string,
     rubyCommand: string
-  ) => Promise<{ success: boolean; output: string; error?: string }>
+  ) => Promise<ScaffoldResult>
 
   // --- Extended Project Settings ---
   updateTimeout: (projectPath: string, seconds: number) => Promise<CommandType>

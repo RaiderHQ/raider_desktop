@@ -5,6 +5,8 @@ interface ContextMenuItem {
   label: string
   onClick: () => void
   disabled?: boolean
+  /** Starts a new group: a line above the item */
+  separatorBefore?: boolean
 }
 
 interface ContextMenuProps {
@@ -95,19 +97,23 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
       style={{ left: position.left, top: position.top }}
     >
       {items.map((item, index) => (
-        <button
-          key={index}
-          type="button"
-          role="menuitem"
-          onClick={() => {
-            item.onClick()
-            onClose()
-          }}
-          disabled={item.disabled}
-          className="block w-full text-left px-3 py-1.5 text-sm text-neutral-dk hover:bg-ruby-sub hover:text-ruby focus:bg-ruby-sub focus:text-ruby focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {item.label}
-        </button>
+        <React.Fragment key={index}>
+          {item.separatorBefore && index > 0 && (
+            <div role="separator" className="my-1 border-t border-neutral-bdr" />
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              item.onClick()
+              onClose()
+            }}
+            disabled={item.disabled}
+            className="block w-full text-left px-3 py-1.5 text-sm text-neutral-dk hover:bg-ruby-sub hover:text-ruby focus:bg-ruby-sub focus:text-ruby focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {item.label}
+          </button>
+        </React.Fragment>
       ))}
     </div>,
     document.body

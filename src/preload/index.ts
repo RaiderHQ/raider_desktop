@@ -19,6 +19,7 @@ import type {
 } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { ProjectFileResult } from '@shared/types/projectFiles'
+import type { ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type { AcceptBaselineResult } from '@shared/types/acceptBaseline'
@@ -416,7 +417,7 @@ const api = {
     params: Record<string, unknown>,
     projectPath: string,
     rubyCommand: string
-  ): Promise<{ success: boolean; output: string; error?: string }> =>
+  ): Promise<ScaffoldResult> =>
     ipcRenderer.invoke('scaffold-generate', params, projectPath, rubyCommand),
 
   // --- Extended Project Settings APIs ---

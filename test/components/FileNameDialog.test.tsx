@@ -131,4 +131,39 @@ describe('FileNameDialog', () => {
     })
     expect(onSubmit).toHaveBeenCalledWith('Login.rb')
   })
+
+  it('takes another rule for the name in place of the file name rule', async () => {
+    const validate = vi.fn((name: string) => (name.includes('-') ? 'no dashes' : null))
+    const { onSubmit } = setup({ validate, taken: [] })
+    type('check-out')
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'files.newFile.confirm' }))
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent('no dashes')
+    expect(onSubmit).not.toHaveBeenCalled()
+    // A name the file rule refuses is fine when the other rule allows it
+    type('Gemfile')
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'files.newFile.confirm' }))
+    })
+    expect(onSubmit).toHaveBeenCalledWith('Gemfile')
+    expect(validate).toHaveBeenLastCalledWith('Gemfile')
+  })
+
+  it('shows what the name will make, tied to the field, until there is an error', async () => {
+    setup({
+      preview: (name) => (name ? `Creates ${name}_page.rb` : null),
+      validate: (name) => (name === 'bad' ? 'refused' : null)
+    })
+    expect(screen.queryByText(/Creates/)).not.toBeInTheDocument()
+    type('checkout')
+    const hint = screen.getByText('Creates checkout_page.rb')
+    expect(screen.getByRole('textbox')).toHaveAttribute('aria-describedby', hint.id)
+    type('bad')
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'files.newFile.confirm' }))
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent('refused')
+    expect(screen.queryByText(/Creates/)).not.toBeInTheDocument()
+  })
 })
