@@ -1,16 +1,16 @@
 import { app } from 'electron'
-import { join, basename, resolve } from 'path'
+import { join, basename, resolve, relative, isAbsolute } from 'path'
+import { tmpdir } from 'os'
 import { mkdir, copyFile, writeFile, readFile, readdir, realpath, unlink } from 'fs/promises'
 import { existsSync } from 'fs'
 import { appState } from '../appState'
 import { serialize } from '../tests/sidecar'
 import { safeError } from '../../utils/safeLog'
+import { isSafeTraceId } from './traceId'
 import type { TraceStep } from '@foundation/Types/traceStep'
 
 // Per test id: overlapping saves would otherwise clean up each other's fresh pictures
 const saveQueues = new Map<string, Promise<unknown>>()
-// Test ids are UUIDs; anything else could point outside the traces folder
-const SAFE_TEST_ID = /^[A-Za-z0-9_-]+$/
 
 // `existed`: the old file was there and held a list, so it says which pictures are wanted
 type ExistingTrace = { entries: TraceStep[]; existed: boolean }
@@ -61,12 +61,35 @@ export default (
   // Anything but a list of step ids is saved as without one: it never decides what is deleted
   serialize(saveQueues, testId, () => save(testId, trace, isStepIds(stepIds) ? stepIds : undefined))
 
+const inside = (root: string, target: string): boolean => {
+  const rel = relative(root, target)
+  return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel)
+}
+
+/** The picture is a file under the recorder's temp folder or this test's trace folder. */
+async function isRecordedPicture(path: unknown, testTraceDir: string): Promise<boolean> {
+  if (typeof path !== 'string' || path === '') return false
+  let real: string
+  try {
+    real = await realpath(path)
+  } catch {
+    // Not there: nothing to copy, and a path nobody wrote is not kept either
+    return false
+  }
+  const roots = [join(tmpdir(), 'raider-traces'), testTraceDir]
+  for (const root of roots) {
+    const realRoot = await realpath(root).catch(() => resolve(root))
+    if (inside(realRoot, real)) return true
+  }
+  return false
+}
+
 async function save(
   testId: string,
   trace: TraceStep[],
   stepIds?: string[]
 ): Promise<{ success: boolean; error?: string }> {
-  if (!SAFE_TEST_ID.test(testId)) return { success: false, error: 'Invalid test id' }
+  if (!isSafeTraceId(testId)) return { success: false, error: 'Invalid test id' }
   try {
     const tracesDir = join(app.getPath('userData'), 'traces')
     const testTraceDir = join(tracesDir, testId)
@@ -94,7 +117,14 @@ async function save(
     for (const step of trace) {
       const updatedStep = { ...step }
 
-      if (step.screenshotPath && existsSync(step.screenshotPath)) {
+      // A picture is copied only from where the recorder writes them (or this test's own
+      // folder), and only under a safe step id: both come from the renderer
+      if (
+        step.screenshotPath &&
+        !(isSafeTraceId(step.id) && (await isRecordedPicture(step.screenshotPath, testTraceDir)))
+      ) {
+        delete updatedStep.screenshotPath
+      } else if (step.screenshotPath && existsSync(step.screenshotPath)) {
         const filename = `${step.id}.jpg`
         const destPath = join(testTraceDir, filename)
         if (resolve(step.screenshotPath) !== resolve(destPath)) {

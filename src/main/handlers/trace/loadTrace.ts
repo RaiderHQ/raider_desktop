@@ -2,11 +2,14 @@ import { app } from 'electron'
 import { join } from 'path'
 import { readFile } from 'fs/promises'
 import { existsSync } from 'fs'
+import { isSafeTraceId } from './traceId'
 import type { TraceStep } from '@foundation/Types/traceStep'
 
 export default async (
   testId: string
 ): Promise<{ success: boolean; trace?: TraceStep[] }> => {
+  // The id names a file under traces/: never a path that leaves it
+  if (!isSafeTraceId(testId)) return { success: false }
   try {
     const jsonPath = join(app.getPath('userData'), 'traces', `${testId}.trace.json`)
 
