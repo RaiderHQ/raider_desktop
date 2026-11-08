@@ -165,6 +165,24 @@ describe('ProjectNeedsUpdate', () => {
     expect(button()).toBeEnabled()
   })
 
+  // After bundle ran the Gemfile already pins 4.0: the toast says so and the project is asked
+  // again from main, which may have closed it when its reload failed
+  it('after a bundle that ran, says the Gemfile is repinned and re-syncs the project', async () => {
+    api.upgradeRubyRaider.mockResolvedValue({
+      success: false,
+      error: 'could not reload',
+      output: 'Bundle updated!'
+    })
+    api.setActiveProject.mockClear()
+    render(<ProjectNeedsUpdate />)
+
+    fireEvent.click(button())
+    await confirm()
+
+    expect(showErrorToast).toHaveBeenCalledWith(en.projectUpdate.failedRepinned, 'could not reload')
+    expect(api.setActiveProject).toHaveBeenCalledWith('/p/shop')
+  })
+
   it('reports an update that threw', async () => {
     api.upgradeRubyRaider.mockRejectedValue(new Error('IPC failed'))
     render(<ProjectNeedsUpdate />)

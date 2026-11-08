@@ -9,8 +9,9 @@ import type { UpgradeResult } from '../../../shared/types/upgradeResult'
 
 /** The active `gem 'ruby_raider', '<requirement>'` line of a Gemfile, requirement captured. */
 export const PIN_LINE = /^([ \t]*gem[ \t]+(['"])ruby_raider\2[ \t]*,[ \t]*)(['"])[^'"\n]*\3/m
-/** A `gem 'ruby_raider'` line with no requirement at all (`, option:` or a comment may follow). */
-const BARE_LINE = /^([ \t]*gem[ \t]+(['"])ruby_raider\2)(?=[ \t]*(?:,[ \t]*\w+:|#|$))/m
+/** A `gem 'ruby_raider'` line with no requirement: an option (`, require: false`, `, :require => false`), a comment, a continuation comma or the end may follow. */
+const BARE_LINE =
+  /^([ \t]*gem[ \t]+(['"])ruby_raider\2)(?=[ \t]*(?:,[ \t]*\w+:|,[ \t]*:\w+[ \t]*=>|,[ \t]*$|#|$))/m
 /** A second requirement string after the pin (`'>= 3', '< 4'`): not a shape one repin can fix. */
 const SECOND_REQUIREMENT = /^[ \t]*,[ \t]*['"]/
 
@@ -18,16 +19,23 @@ export const RUNTIME_PIN = '~> 4.0'
 
 const GEMFILE_LIMIT = 1024 * 1024
 
-/** The Gemfile with its ruby_raider pin set to the 4.0 runtime, or null when it has no pin line. */
-export function repinGemfile(text: string): string | null {
+/** Why a Gemfile cannot be repinned by the one-line edit. */
+export type RepinRefusal = 'noLine' | 'severalRequirements'
+
+/**
+ * The Gemfile with its ruby_raider pin set to the 4.0 runtime, or why it cannot be: no
+ * `gem 'ruby_raider'` line, or a pin with more than one requirement string.
+ */
+export function repinGemfile(text: string): string | RepinRefusal {
   const lines = text.split('\n')
   const active = (line: string): boolean => !line.trimStart().startsWith('#')
   const pinned = lines.findIndex((line) => active(line) && PIN_LINE.test(line))
   if (pinned !== -1) {
-    const rest = lines[pinned].replace(PIN_LINE, '')
+    // What follows the pin on its line, without a trailing comment
+    const rest = lines[pinned].replace(PIN_LINE, '').replace(/#.*$/, '')
     const next = lines[pinned + 1] ?? ''
     const continued = /^[ \t]*,[ \t]*$/.test(rest) && /^[ \t]*['"]/.test(next)
-    if (SECOND_REQUIREMENT.test(rest) || continued) return null
+    if (SECOND_REQUIREMENT.test(rest) || continued) return 'severalRequirements'
     lines[pinned] = lines[pinned].replace(PIN_LINE, (_m, head: string, _q, quote: string) => {
       return `${head}${quote}${RUNTIME_PIN}${quote}`
     })
@@ -35,7 +43,12 @@ export function repinGemfile(text: string): string | null {
   }
   // No requirement: the lock alone held it back, so the line gets one
   const bare = lines.findIndex((line) => active(line) && BARE_LINE.test(line))
-  if (bare === -1) return null
+  if (bare === -1) return 'noLine'
+  // A bare line ending in a comma whose next line is a requirement string is a continued pin
+  const after = lines[bare].replace(BARE_LINE, '').replace(/#.*$/, '')
+  if (/^[ \t]*,[ \t]*$/.test(after) && /^[ \t]*['"]/.test(lines[bare + 1] ?? '')) {
+    return 'severalRequirements'
+  }
   lines[bare] = lines[bare].replace(BARE_LINE, (_m, head: string, quote: string) => {
     return `${head}, ${quote}${RUNTIME_PIN}${quote}`
   })
@@ -77,8 +90,15 @@ async function run(projectPath: unknown, rubyCommand: unknown): Promise<UpgradeR
   }
   if (gemfile.length > GEMFILE_LIMIT) return { success: false, error: 'The Gemfile is too large.' }
   const repinned = repinGemfile(gemfile)
-  if (repinned === null) {
+  if (repinned === 'noLine') {
     return { success: false, error: "The Gemfile has no gem 'ruby_raider' line to update." }
+  }
+  if (repinned === 'severalRequirements') {
+    return {
+      success: false,
+      error:
+        "The Gemfile pins ruby_raider with more than one requirement. Change it to '~> 4.0' by hand, then run bundle update ruby_raider."
+    }
   }
   if (repinned !== gemfile) {
     // Keep the file's own permissions: writeFileAtomic writes a private temp file otherwise

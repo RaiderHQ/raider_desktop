@@ -95,13 +95,26 @@ describe('repinGemfile', () => {
     ["  # gem 'ruby_raider', '~> 3.15'\ngem 'rspec'\n"],
     ["gem 'rspec'\ngem 'selenium-webdriver'\n"],
     ["gem 'ruby_raider_extra', '~> 3.15'\n"],
-    // Two requirement strings: one repin would leave an unsatisfiable pair
-    ["gem 'ruby_raider', '>= 3', '< 4'\n"],
-    ["gem 'ruby_raider',\n  '~> 3.0'\n"],
-    ["gem 'ruby_raider', '~> 3.15',\n  '< 4'\n"],
     ['']
   ])('has nothing to repin in %j', (text) => {
-    expect(repinGemfile(text)).toBeNull()
+    expect(repinGemfile(text)).toBe('noLine')
+  })
+
+  it.each([
+    ["gem 'ruby_raider', '>= 3', '< 4'\n"],
+    ["gem 'ruby_raider', '~> 3.15', # note\n  '< 4'\n"],
+    ["gem 'ruby_raider', '~> 3.15',\n  '< 4'\n"],
+    // A requirement continued on the next line after a bare-looking line
+    ["gem 'ruby_raider',\n  '~> 3.0'\n"]
+  ])('refuses a pin with several requirements %j', (text) => {
+    expect(repinGemfile(text)).toBe('severalRequirements')
+  })
+
+  it.each([
+    ["gem 'ruby_raider', :require => false\n", "gem 'ruby_raider', '~> 4.0', :require => false\n"],
+    ["gem 'ruby_raider',\n  require: false\n", "gem 'ruby_raider', '~> 4.0',\n  require: false\n"]
+  ])('adds the requirement before hash-rocket or continued options %j', (text, expected) => {
+    expect(repinGemfile(text)).toBe(expected)
   })
 
   // A bare line names no version: the lock alone held the gem back, so the line gets one
@@ -207,6 +220,34 @@ describe('upgradeRubyRaider', () => {
     expect(activate).toHaveBeenCalledTimes(1)
     expect(activate).toHaveBeenCalledWith(dir)
     expect(result).toEqual({ success: true, layout, output: 'Bundle updated!\n' })
+  })
+
+  it('runs one update at a time', async () => {
+    let finish: (value: { exitCode: number; stdout: string; stderr: string }) => void = () => {}
+    exec.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve
+      }) as never
+    )
+    const first = upgradeRubyRaider(dir, 'ruby')
+    expect(await upgradeRubyRaider(dir, 'ruby')).toEqual({
+      success: false,
+      error: 'An update is already running.'
+    })
+    finish({ exitCode: 0, stdout: 'done', stderr: '' })
+    expect((await first).success).toBe(true)
+    expect(exec).toHaveBeenCalledTimes(1)
+    // Settled: the next call runs
+    await upgradeRubyRaider(dir, 'ruby')
+    expect(exec).toHaveBeenCalledTimes(2)
+  })
+
+  it('names the several-requirements case instead of saying there is no line', async () => {
+    await writeFile(join(dir, 'Gemfile'), "gem 'ruby_raider', '>= 3', '< 4'\n")
+    const result = await upgradeRubyRaider(dir, 'ruby')
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('more than one requirement')
+    expect(exec).not.toHaveBeenCalled()
   })
 
   it('passes the chosen Ruby through to bundle', async () => {
