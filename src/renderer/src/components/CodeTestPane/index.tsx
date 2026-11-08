@@ -10,7 +10,7 @@ import StyledPanel from '@components/StyledPanel'
 import AssertionTextModal from '@components/AssertionTextModal'
 import {
   AssertPickBanner,
-  CheckSomethingButton,
+  AddValidationButton,
   useEscEndsAssertPick
 } from '@components/TestPage/AssertPick'
 import RunPanel from '@components/RunPanel'
@@ -248,7 +248,7 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
                 </button>
               </Tooltip>
             )}
-            {recording.isRecording && <CheckSomethingButton disabled={isReplaying} />}
+            {recording.isRecording && <AddValidationButton disabled={isReplaying} />}
             <Tooltip content={t('tooltips.testPage.run')} shortcut="run" position="bottom">
               <button
                 onClick={run}

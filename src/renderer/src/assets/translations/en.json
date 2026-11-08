@@ -452,7 +452,7 @@
     "record": "Record",
     "autosaved": "Changes to this test are saved automatically.",
     "stop": "Stop & save",
-    "addAssertion": "Check something…",
+    "addAssertion": "Add validation…",
     "assertPickStarting": "Getting ready to pick…",
     "assertPickBanner": "Click the thing you want to check. Press Esc to cancel.",
     "recording": "Recording",
@@ -642,7 +642,7 @@
   "guide": {
     "title": "Recording a test",
     "step1": "Use the page on the right as you normally would. Every click and keystroke becomes a step here.",
-    "step2": "To check something, press Check something… (or right-click the page) and choose what to check.",
+    "step2": "To add a validation, press Add validation… (or right-click the page) and choose what to check.",
     "step3Before": "Press Stop & save",
     "step3Middle": " when you are done, then Run",
     "step3After": " to see it pass.",
@@ -828,7 +828,7 @@
       "startRecording": "Open the page and start recording",
       "cancelNew": "Go back without starting a recording",
       "cancelPick": "Stop picking and keep recording",
-      "addAssertion": "Pick something on the page and add a check for it",
+      "addAssertion": "Pick something on the page and add a validation for it",
       "examples": "Pick which test in the file to work on",
       "saveAsNew": "Keep these steps as a separate recorded test"
     },
@@ -1341,7 +1341,7 @@
   },
   "assertions": {
     "menu": {
-      "header": "Add a check",
+      "header": "Add a validation",
       "wait": "Wait until it…",
       "waitAppears": "appears",
       "waitDisappears": "disappears",
