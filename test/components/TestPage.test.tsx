@@ -257,7 +257,7 @@ describe('TestPage', () => {
     expect(record).toBeDisabled()
     expect(record).toHaveAttribute('title', 'recorder.unsupported.gemTooOld')
     expect(en.recorder.unsupported.gemTooOld).toBe(
-      "This project uses a ruby_raider older than 4.0, so Raider can't record into it or run it. Update ruby_raider from the Tests tab."
+      "This project uses a ruby_raider older than 4.0, so Raider can't record into it or run it. Use Update ruby_raider beside the tests list."
     )
   })
 

@@ -139,7 +139,12 @@ describe('runner', () => {
   })
 
   it('refuses to run a project on a ruby_raider below 4.0 and spawns nothing', async () => {
-    appState.layout = { ...LAYOUT, recordable: false, rubyRaiderVersion: '3.15.2' }
+    appState.layout = {
+      ...LAYOUT,
+      recordable: false,
+      rubyRaiderVersion: '3.15.2',
+      runtimeSupported: false
+    }
     expect(await startRun(ALL, deps)).toEqual({ error: GEM_TOO_OLD })
     expect(deps.spawnCommand).not.toHaveBeenCalled()
     expect(events).toEqual([])

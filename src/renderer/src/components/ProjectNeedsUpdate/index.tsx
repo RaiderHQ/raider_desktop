@@ -6,6 +6,11 @@ import ConfirmationModal from '@components/ConfirmationModal'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { showErrorToast } from '@foundation/errorToast'
+import { create } from 'zustand'
+
+// Shared across mounts: the Tests tab unmounts this pane while the Files tab shows, and the
+// button must stay disabled until main has answered
+const useUpdating = create<{ project: string | null }>(() => ({ project: null }))
 
 /**
  * The Tests tab of a project locked to a ruby_raider below 4.0: what is wrong, the fix,
@@ -17,7 +22,7 @@ const ProjectNeedsUpdate: React.FC = () => {
   const version = useProjectStore((s) => s.layout?.rubyRaiderVersion)
   const rubyCommand = useRubyStore((s) => s.rubyCommand)
   const [confirming, setConfirming] = useState(false)
-  const [updating, setUpdating] = useState(false)
+  const updating = useUpdating((s) => s.project !== null && s.project === projectPath)
 
   const update = async (): Promise<void> => {
     setConfirming(false)
@@ -25,13 +30,19 @@ const ProjectNeedsUpdate: React.FC = () => {
       toast.error(t('recorder.noRuby'))
       return
     }
-    setUpdating(true)
+    useUpdating.setState({ project: projectPath })
     try {
       const result = await window.api.upgradeRubyRaider(projectPath, rubyCommand)
       // The answer is about the project that was open when the update started
       if (useProjectStore.getState().projectPath !== projectPath) return
       if (!result.success) {
-        showErrorToast(t('projectUpdate.failed'), result.error)
+        // After bundle ran the Gemfile already pins 4.0; before, nothing changed
+        const summary =
+          result.output !== undefined ? 'projectUpdate.failedRepinned' : 'projectUpdate.failed'
+        showErrorToast(t(summary), result.error)
+        // Main may have closed the project when its reload failed: ask it again, so the
+        // renderer shows what main has (and the activation error, if it repeats)
+        if (result.output !== undefined) useProjectStore.getState().setProjectPath(projectPath)
         return
       }
       if (result.layout) useProjectStore.setState({ layout: result.layout })
@@ -39,7 +50,7 @@ const ProjectNeedsUpdate: React.FC = () => {
     } catch (error) {
       showErrorToast(t('projectUpdate.failed'), String(error))
     } finally {
-      setUpdating(false)
+      useUpdating.setState({ project: null })
     }
   }
 

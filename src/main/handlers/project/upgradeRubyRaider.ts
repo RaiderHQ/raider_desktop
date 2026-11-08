@@ -48,10 +48,21 @@ export function repinGemfile(text: string): string | null {
  * Only the open project can be updated, and only after the user confirmed in the renderer.
  * On success the project is activated again, so its layout and recorded tests are current.
  */
-export async function upgradeRubyRaider(
+// One update at a time: a second click while bundle runs gets a refusal, not a second bundle
+let inFlight: Promise<UpgradeResult> | null = null
+
+export function upgradeRubyRaider(
   projectPath: unknown,
   rubyCommand: unknown
 ): Promise<UpgradeResult> {
+  if (inFlight) return Promise.resolve({ success: false, error: 'An update is already running.' })
+  inFlight = run(projectPath, rubyCommand).finally(() => {
+    inFlight = null
+  })
+  return inFlight
+}
+
+async function run(projectPath: unknown, rubyCommand: unknown): Promise<UpgradeResult> {
   await activationSettled()
   if (typeof projectPath !== 'string' || projectPath !== appState.projectPath) {
     return { success: false, error: 'Only the open project can be updated.' }

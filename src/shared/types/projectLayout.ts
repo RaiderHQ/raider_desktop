@@ -15,6 +15,8 @@ export interface ProjectLayout {
   testIdAttribute?: string
   /** The ruby_raider the project locks (Gemfile.lock) or pins (Gemfile); absent when unknown */
   rubyRaiderVersion?: string
+  /** False when that version is known and below 4.0: nothing runs or records, the update is offered */
+  runtimeSupported?: boolean
   /** False for appium / minitest / capybara / no Gemfile / a ruby_raider below 4.0 */
   recordable: boolean
   unsupportedReason?: 'mobile' | 'minitest' | 'capybara' | 'noGemfile' | 'gemTooOld'

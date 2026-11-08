@@ -34,6 +34,7 @@ const TestsMoreMenu: React.FC<TestsMoreMenuProps> = ({ tag }) => {
   const cannotImportReason = useProjectStore((s) => {
     const layout = s.layout
     if (!layout || layout.recordable !== false) return undefined
+    if (layout.runtimeSupported === false) return t('recorder.unsupported.gemTooOld')
     return t(`recorder.unsupported.${layout.unsupportedReason ?? 'generic'}`)
   })
   const [open, setOpen] = useState(false)

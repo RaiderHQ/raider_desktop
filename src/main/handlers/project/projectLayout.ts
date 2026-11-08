@@ -65,6 +65,7 @@ export async function detectProjectLayout(projectPath: string): Promise<ProjectL
     framework: 'rspec',
     automation: 'selenium',
     ...paths,
+    runtimeSupported: true,
     recordable: true
   }
   if (gemfile === null) return { ...base, recordable: false, unsupportedReason: 'noGemfile' }
@@ -83,9 +84,11 @@ export async function detectProjectLayout(projectPath: string): Promise<ProjectL
 
   // The lock says what is installed; a project never bundled yet only has its pin, and a
   // project naming no version at all is given the benefit of the doubt (the run installs it)
-  const lock = await readOptional(join(projectPath, 'Gemfile.lock'))
+  // An unreadable lock says nothing about the version; a missing one falls back to the pin
+  const lock = await readOptional(join(projectPath, 'Gemfile.lock')).catch(() => null)
   const version = (lock !== null ? rubyRaiderVersion(lock) : null) ?? rubyRaiderPin(gemfile)
   if (version !== null) base.rubyRaiderVersion = version
+  base.runtimeSupported = supportsRuntime(version)
 
   if (has('appium_lib')) {
     const caps = await readOptional(join(projectPath, 'config', 'capabilities.yml'))
@@ -94,6 +97,6 @@ export async function detectProjectLayout(projectPath: string): Promise<ProjectL
   }
   if (has('minitest') && !has('rspec')) return unsupported('minitest')
   if (has('capybara')) return unsupported('capybara')
-  if (!supportsRuntime(version)) return unsupported('gemTooOld')
+  if (!base.runtimeSupported) return unsupported('gemTooOld')
   return base
 }

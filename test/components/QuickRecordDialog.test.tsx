@@ -7,6 +7,7 @@ import QuickRecordDialog from '@components/QuickRecordDialog'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
+import useVersionStore from '@foundation/Stores/versionStore'
 
 vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string) => string } => ({ t: (key: string): string => key })
@@ -72,6 +73,7 @@ const renderDialog = async (onClose = vi.fn()): Promise<typeof onClose> => {
 }
 
 beforeEach(() => {
+  useVersionStore.setState({ version: '4.0.0' })
   vi.clearAllMocks()
   // @ts-expect-error - Mocking window.api
   window.api = api
@@ -88,6 +90,18 @@ describe('QuickRecordDialog', (): void => {
     await renderDialog()
     expect(screen.getByText('ruby-install-modal')).toBeInTheDocument()
     expect(screen.queryByText('quickRecord.start')).not.toBeInTheDocument()
+  })
+
+  // A 3.x raider new would write a project the desktop can neither record into nor run
+  it.each(['3.15.2', null])('refuses to start on gem %s', async (version): Promise<void> => {
+    useVersionStore.setState({ version })
+    await renderDialog()
+    fill()
+    expect(screen.getByRole('alert')).toHaveTextContent('newProject.gemNeedsUpdate')
+    const start = screen.getByRole('button', { name: 'quickRecord.start' })
+    expect(start).toBeDisabled()
+    fireEvent.click(start)
+    expect(api.createQuickProject).not.toHaveBeenCalled()
   })
 
   it('disables Start until both fields are filled', async (): Promise<void> => {

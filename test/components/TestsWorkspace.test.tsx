@@ -141,6 +141,7 @@ describe('TestsWorkspace on a ruby_raider below 4.0', () => {
         helperPath: 'helpers',
         recordable: false,
         unsupportedReason: 'gemTooOld',
+        runtimeSupported: false,
         rubyRaiderVersion: '3.15.2'
       }
     })
