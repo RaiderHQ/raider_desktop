@@ -20,7 +20,11 @@ describe('menu commands', () => {
       'how-it-works',
       'shortcuts',
       'docs',
-      'recording-guide'
+      'recording-guide',
+      'copy-test',
+      'paste-test',
+      'duplicate-test',
+      'delete-test'
     ]
     for (const c of sent) expect(isMenuCommand(c)).toBe(true)
     expect(MENU_COMMANDS).toEqual(sent)

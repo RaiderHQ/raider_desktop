@@ -99,6 +99,10 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
               }
               selectedKey={selectedKey}
               onSelect={select}
+              // A test that went to the Trash can't stay open
+              onDeleted={(key) => {
+                if (key === selectedKey) void navigate('/overview/tests')
+              }}
               onNewTest={
                 onNewTest ??
                 ((): void => {

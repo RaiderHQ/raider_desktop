@@ -1,6 +1,6 @@
 import { render, screen, within, fireEvent, act, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { vi, describe, it, expect, beforeEach } from 'vitest'
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { ipcSubscriptions } from '../helpers/ipcSubscriptions'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import TestsWorkspace from '@components/TestsWorkspace'
@@ -158,6 +158,66 @@ describe('TestsWorkspace on a ruby_raider below 4.0', () => {
     expect(screen.getByTestId('project-needs-update')).toBeInTheDocument()
     expect(screen.queryByText(en.tests.selectOrCreate)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: en.testPage.record })).not.toBeInTheDocument()
+  })
+})
+
+describe('TestsWorkspace Delete from the list', () => {
+  const gemTooOld = {
+    framework: 'rspec',
+    automation: 'selenium',
+    specPath: 'spec',
+    featurePath: 'features',
+    helperPath: 'helpers',
+    recordable: false,
+    unsupportedReason: 'gemTooOld',
+    runtimeSupported: false
+  } as const
+  afterEach(() => useProjectStore.setState({ projectPath: null }))
+  const deleteFromList = async (name: string): Promise<void> => {
+    const row = await screen.findByRole('button', { name: new RegExp(name) })
+    fireEvent.contextMenu(row)
+    fireEvent.click(screen.getByRole('button', { name: en.tests.menu.delete }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: en.tests.delete.confirm }))
+    })
+  }
+  const renderAt = (): void => {
+    Object.assign(window.api, {
+      trashTest: vi.fn().mockResolvedValue({ success: true }),
+      setActiveProject: vi.fn().mockResolvedValue({ success: true }),
+      readDirectory: vi.fn().mockResolvedValue([])
+    })
+    useProjectStore.setState({ layout: gemTooOld, projectPath: '/p' })
+    render(
+      <MemoryRouter initialEntries={[`/overview/tests/${keyOf(search)}`]}>
+        <Routes>
+          <Route path="/overview/tests/:testKey" element={<TestsWorkspace />} />
+          <Route
+            path="/overview/tests"
+            element={
+              <>
+                <TestsWorkspace />
+                <span>back on the list</span>
+              </>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    )
+  }
+
+  it('leaves the selected test once it is in the Trash', async () => {
+    renderAt()
+    await deleteFromList('Search products')
+    expect(window.api.trashTest).toHaveBeenCalledWith('/p', 'spec/search_products_spec.rb')
+    expect(await screen.findByText('back on the list')).toBeInTheDocument()
+  })
+
+  it('stays on the selected test when another one is deleted', async () => {
+    renderAt()
+    await deleteFromList('Checkout')
+    expect(window.api.trashTest).toHaveBeenCalledWith('/p', 'spec/checkout_spec.rb')
+    expect(screen.queryByText('back on the list')).not.toBeInTheDocument()
   })
 })
 

@@ -433,7 +433,29 @@
     "saved": "Saved to your project as {{name}} ({{file}})",
     "savedNoFile": "Saved to your project as {{name}}",
     "saveRefusedCodeOwned": "This test was changed in code, so the recording wasn't saved. Your steps are still here.",
-    "saveRefusedCodeOwnedOnLeave": "This test was changed in code, so your recording wasn't saved."
+    "saveRefusedCodeOwnedOnLeave": "This test was changed in code, so your recording wasn't saved.",
+    "menu": {
+      "copy": "Copy",
+      "paste": "Paste",
+      "duplicate": "Duplicate",
+      "delete": "Delete",
+      "copied": "Test copied.",
+      "pasted": "Test pasted.",
+      "duplicated": "Test duplicated.",
+      "trashed": "Moved to the Trash.",
+      "undo": "Undo",
+      "copyFailed": "Raider couldn't copy this test.",
+      "pasteFailed": "Raider couldn't paste the test. Nothing was changed.",
+      "duplicateFailed": "Raider couldn't duplicate this test. Nothing was changed.",
+      "deleteFailed": "Raider couldn't move this test to the Trash. Nothing was changed.",
+      "undoFailed": "Raider couldn't undo that. The new test is still in your project."
+    },
+    "delete": {
+      "title": "Delete test",
+      "message": "Its file moves to the Trash, where you can restore it. Recorded tests take their recording with them.",
+      "confirm": "Move to Trash",
+      "cancel": "Cancel"
+    }
   },
   "testPage": {
     "breadcrumb": "Breadcrumb",
@@ -1228,6 +1250,11 @@
   },
   "appMenu": {
     "file": "File",
+    "edit": "Edit",
+    "copyTest": "Copy Test",
+    "pasteTest": "Paste Test",
+    "duplicateTest": "Duplicate Test",
+    "deleteTest": "Delete Test",
     "newProject": "New project…",
     "openProject": "Open project…",
     "openRecent": "Open recent",
