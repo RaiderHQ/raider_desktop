@@ -176,7 +176,7 @@ describe('TestsWorkspace Delete from the list', () => {
   const deleteFromList = async (name: string): Promise<void> => {
     const row = await screen.findByRole('button', { name: new RegExp(name) })
     fireEvent.contextMenu(row)
-    fireEvent.click(screen.getByRole('button', { name: en.tests.menu.delete }))
+    fireEvent.click(screen.getByRole('menuitem', { name: en.tests.menu.delete }))
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: en.tests.delete.confirm }))
     })
