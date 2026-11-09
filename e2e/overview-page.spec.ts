@@ -31,13 +31,13 @@ test.describe('Overview/Tests Page', () => {
     expect(url).toContain('#/start-project')
   })
 
-  test('shows Tests, Files, Scaffolding, Dashboard tabs', async ({ page }) => {
+  test('shows Tests, Files, Dashboard tabs', async ({ page }) => {
     await setupProjectContext(page)
     await goToOverview(page)
 
     await expect(page.getByRole('button', { name: 'Tests', exact: true })).toBeVisible()
     await expect(page.getByText('Files', { exact: true })).toBeVisible()
-    await expect(page.getByText('Scaffolding', { exact: true })).toBeVisible()
+    await expect(page.getByText('Scaffolding', { exact: true })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Dashboard', exact: true })).toBeVisible()
   })
 

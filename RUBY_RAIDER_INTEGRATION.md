@@ -274,7 +274,7 @@ Recording needs ffmpeg. `RAIDER_FFMPEG_PATH` points the gem at an existing ffmpe
 
 ### 4.8 Custom Paths
 
-**IPC Channel:** `update-paths`
+The desktop does not set these (4.0.0 removed its Paths settings and the `update-paths` channel): it always passes `--path` when it generates a file, and it reads `spec_path` and `helper_path` to find specs and helpers.
 
 ```bash
 raider u path /custom/pages              # page_path (default)
@@ -284,7 +284,7 @@ raider u path /custom/helpers -h         # helper_path
 
 **Config keys affected:** `page_path`, `spec_path`, `helper_path`. `path` takes only `-s` and `-h` (`-f` is an error in 4.0), so the desktop offers no Features path; an older `feature_path` key is still read but nothing generates into it.
 
-These override where scaffolding generates files. When not set, defaults are:
+These set where `raider g` writes when no `--path` is given. When not set, defaults are:
 
 - Pages: `page_objects/pages/`
 - Specs: `spec/`
@@ -307,7 +307,7 @@ Only relevant for cross-platform mobile projects.
 
 ## 5. Scaffolding Commands
 
-**IPC Channel:** `scaffold-generate`
+**IPC Channel:** `scaffold-generate`. The desktop runs `raider g <page|spec|component|helper> <name> --path=<folder>` from the Files tab's folder menu; `path` is required.
 
 ### 5.1 Generate Individual Files
 
@@ -337,7 +337,7 @@ raider g scaffold users                          # page + spec
 raider g scaffold users accounts products        # multiple resources
 ```
 
-`scaffold` takes only names and has no flags. It generates a spec and a page object (4.0 removed `raider g feature`, `raider g steps` and `raider u path --feature`). Missing or unrecognised Gemfile entries produce a warning and default to selenium + rspec.
+The desktop does not offer `raider g scaffold`. `scaffold` takes only names and has no flags. It generates a spec and a page object (4.0 removed `raider g feature`, `raider g steps` and `raider u path --feature`). Missing or unrecognised Gemfile entries produce a warning and default to selenium + rspec.
 
 ---
 

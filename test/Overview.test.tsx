@@ -52,10 +52,6 @@ vi.mock('@components/Library/Folder', () => ({
   )
 }))
 
-vi.mock('@components/ScaffoldPanel', () => ({
-  default: (): JSX.Element => <div data-testid="scaffold-panel">ScaffoldPanel</div>
-}))
-
 vi.mock('@components/ProjectDashboard', () => ({
   default: (): JSX.Element => <div data-testid="project-dashboard">ProjectDashboard</div>
 }))
@@ -126,7 +122,6 @@ const mockApi = {
   updateRecordingSettings: vi.fn().mockResolvedValue({ success: true }),
   updateTimeout: vi.fn().mockResolvedValue({ success: true }),
   updateViewport: vi.fn().mockResolvedValue({ success: true }),
-  updatePaths: vi.fn().mockResolvedValue({ success: true }),
   readFile: vi.fn().mockResolvedValue({ success: true, data: '' }),
   editFile: vi.fn().mockResolvedValue({ success: true }),
   trashProjectEntry: vi.fn().mockResolvedValue({ success: true }),
@@ -200,7 +195,6 @@ describe('Overview Page', (): void => {
     const tabs: [string, string][] = [
       ['overview.tabs.tests', 'tooltips.overview.tabTests'],
       ['overview.tabs.files', 'tooltips.overview.tabFiles'],
-      ['overview.tabs.scaffold', 'tooltips.overview.tabScaffold'],
       ['overview.tabs.dashboard', 'tooltips.overview.tabDashboard']
     ]
     for (const [name, key] of tabs) {
@@ -272,7 +266,7 @@ describe('Overview Page', (): void => {
     expect(mockApi.openDocs).toHaveBeenCalledWith('docs.recorder')
   })
 
-  it('renders Files, Scaffolding, and Dashboard tabs', async (): Promise<void> => {
+  it('renders Files and Dashboard tabs, and no Scaffolding tab', async (): Promise<void> => {
     useProjectStore.setState({ projectPath: '/fake/project', files: [] })
     await act(async () => {
       render(
@@ -284,8 +278,9 @@ describe('Overview Page', (): void => {
     await openFilesTab()
 
     expect(screen.getByText('overview.tabs.files')).toBeInTheDocument()
-    expect(screen.getByText('overview.tabs.scaffold')).toBeInTheDocument()
     expect(screen.getByText('overview.tabs.dashboard')).toBeInTheDocument()
+    // Pages, specs, components and helpers are generated from the Files menu
+    expect(screen.queryByText('overview.tabs.scaffold')).not.toBeInTheDocument()
   })
 
   it('shows file tree by default on Files tab', async (): Promise<void> => {
@@ -300,71 +295,6 @@ describe('Overview Page', (): void => {
     await openFilesTab()
 
     expect(screen.getByTestId('folder')).toBeInTheDocument()
-    expect(screen.queryByTestId('scaffold-panel')).not.toBeInTheDocument()
-  })
-
-  it('sends the page path with no type and the spec and helper paths with theirs', async (): Promise<void> => {
-    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <Overview />
-        </MemoryRouter>
-      )
-    })
-    fireEvent.click(screen.getByText('overview.tabs.scaffold'))
-    const page = screen.getByPlaceholderText('overview.paths.placeholder.page')
-    fireEvent.change(page, { target: { value: 'page_objects/pages' } })
-    fireEvent.change(screen.getByPlaceholderText('overview.paths.placeholder.spec'), {
-      target: { value: 'spec' }
-    })
-    fireEvent.change(screen.getByPlaceholderText('overview.paths.placeholder.helper'), {
-      target: { value: 'helpers' }
-    })
-    await act(async () => {
-      fireEvent.blur(page)
-    })
-    expect(mockApi.updatePaths.mock.calls).toEqual([
-      ['/fake/project', 'page_objects/pages', undefined],
-      ['/fake/project', 'spec', 'spec'],
-      ['/fake/project', 'helpers', 'helper']
-    ])
-  })
-
-  it('shows ScaffoldPanel when Scaffolding tab is clicked', async (): Promise<void> => {
-    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <Overview />
-        </MemoryRouter>
-      )
-    })
-    await openFilesTab()
-
-    fireEvent.click(screen.getByText('overview.tabs.scaffold'))
-
-    expect(screen.getByTestId('scaffold-panel')).toBeInTheDocument()
-    expect(screen.queryByTestId('folder')).not.toBeInTheDocument()
-  })
-
-  it('switches back to Files tab from Scaffolding', async (): Promise<void> => {
-    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <Overview />
-        </MemoryRouter>
-      )
-    })
-    await openFilesTab()
-
-    fireEvent.click(screen.getByText('overview.tabs.scaffold'))
-    expect(screen.getByTestId('scaffold-panel')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('overview.tabs.files'))
-    expect(screen.getByTestId('folder')).toBeInTheDocument()
-    expect(screen.queryByTestId('scaffold-panel')).not.toBeInTheDocument()
   })
 
   it('shows ProjectDashboard when Dashboard tab is clicked', async (): Promise<void> => {
@@ -382,7 +312,6 @@ describe('Overview Page', (): void => {
 
     expect(screen.getByTestId('project-dashboard')).toBeInTheDocument()
     expect(screen.queryByTestId('folder')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('scaffold-panel')).not.toBeInTheDocument()
   })
 })
 
@@ -503,10 +432,10 @@ describe('Overview Settings Toolbar', (): void => {
     expect(screen.getByTestId('mobile-project-unsupported')).toBeInTheDocument()
   })
 
-  it('settings toolbar is not visible on Scaffolding tab', async () => {
+  it('settings toolbar is not visible on the Dashboard tab', async () => {
     await renderOverview()
 
-    fireEvent.click(screen.getByText('overview.tabs.scaffold'))
+    fireEvent.click(screen.getByText('overview.tabs.dashboard'))
 
     expect(screen.queryByTestId('overview-url-input')).not.toBeInTheDocument()
     expect(screen.queryByTestId('overview-browser-select')).not.toBeInTheDocument()

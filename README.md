@@ -73,8 +73,7 @@ The main hub for working with your project, organized into tabs:
 
 | Tab | What it does |
 |-----|-------------|
-| **Files** | Browse and edit project files with the built-in Monaco editor |
-| **Scaffolding** | Generate new specs, page objects, and helpers |
+| **Files** | Browse and edit project files with the built-in Monaco editor. Right-click a folder to generate a page object, spec, component or helper into it |
 | **Dashboard** | View test results with pass/fail stats, pie charts, and accessibility violation reports |
 
 The **toolbar** at the top of the Files tab gives you quick access to:

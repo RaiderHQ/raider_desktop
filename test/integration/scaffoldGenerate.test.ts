@@ -43,202 +43,19 @@ beforeEach(() => {
 })
 
 describe('scaffoldGenerate handler', () => {
-  it('generates nothing into a mobile (Appium) project', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'scaffold-appium-'))
-    writeFileSync(join(dir, 'Gemfile'), "gem 'appium_lib'\ngem 'rspec'\n")
-    const result = await handler(
-      mockEvent,
-      { operation: 'generate', type: 'page', name: 'login' },
-      dir,
-      'ruby'
-    )
-    rmSync(dir, { recursive: true, force: true })
-    expect(result).toEqual({
-      success: false,
-      output: '',
-      error: 'Mobile projects are not supported in this version.'
-    })
-    expect(mockSafeExec).not.toHaveBeenCalled()
-  })
-
-  it('builds correct command for generate page', async () => {
-    mockSafeExec.mockResolvedValue({
-      stdout: 'Created page_objects/pages/login.rb',
-      stderr: '',
-      exitCode: 0
-    })
-
-    const result = await handler(
-      mockEvent,
-      { operation: 'generate', type: 'page', name: 'login' },
-      '/project',
-      'ruby'
-    )
-
-    expect(result.success).toBe(true)
-    expect(result.output).toBe('Created page_objects/pages/login.rb')
-    const calledCmd = mockSafeExec.mock.calls[0][0] as string
-    expect(calledCmd).toContain('raider g page login')
-  })
-
-  it('builds correct command for generate spec', async () => {
-    mockSafeExec.mockResolvedValue({
-      stdout: 'Created spec/login_page_spec.rb',
-      stderr: '',
-      exitCode: 0
-    })
-
-    await handler(
-      mockEvent,
-      { operation: 'generate', type: 'spec', name: 'login' },
-      '/project',
-      'ruby'
-    )
-
-    const calledCmd = mockSafeExec.mock.calls[0][0] as string
-    expect(calledCmd).toContain('raider g spec login')
-  })
-
-  it('builds correct command for scaffold type', async () => {
-    mockSafeExec.mockResolvedValue({ stdout: 'Generated', stderr: '', exitCode: 0 })
-
-    await handler(
-      mockEvent,
-      { operation: 'generate', type: 'scaffold', name: 'login' },
-      '/project',
-      'ruby'
-    )
-
-    const calledCmd = mockSafeExec.mock.calls[0][0] as string
-    expect(calledCmd).toContain('raider g scaffold login')
-  })
-
-  it('never emits flags or commands the gem does not accept', async () => {
-    mockSafeExec.mockResolvedValue({ stdout: 'Created', stderr: '', exitCode: 0 })
-
-    await handler(
-      mockEvent,
-      {
-        operation: 'delete',
-        type: 'spec',
-        name: 'login',
-        uses: ['a'],
-        from: 'x.rb',
-        ai: true,
-        crud: true
-      } as never,
-      '/project',
-      'ruby'
-    )
-
-    const calls = mockSafeExec.mock.calls
-    const cmd = (calls[0]?.[0] as string | undefined) ?? ''
-    for (const bad of [
-      '--uses',
-      '--from',
-      '--ai',
-      '--delete',
-      '--dry-run',
-      '--crud',
-      'destroy',
-      'from_url'
-    ]) {
-      expect(cmd).not.toContain(bad)
-    }
-  })
-
-  it('wraps command with rbenv init and cd to project path', async () => {
-    mockSafeExec.mockResolvedValue({ stdout: 'OK', stderr: '', exitCode: 0 })
-
-    await handler(
-      mockEvent,
-      { operation: 'generate', type: 'page', name: 'login' },
-      '/my/project',
-      'ruby'
-    )
-
-    const command = mockSafeExec.mock.calls[0][0] as string
-    expect(command).toContain('rbenv init')
-    expect(command).toContain('cd /my/project && ')
-  })
-
-  it('returns failure when exec errors', async () => {
-    mockSafeExec.mockResolvedValue({
-      stdout: '',
-      stderr: 'raider not found',
-      exitCode: 1
-    })
-
-    const result = await handler(
-      mockEvent,
-      { operation: 'generate', type: 'page', name: 'login' },
-      '/project',
-      'ruby'
-    )
-
-    expect(result.success).toBe(false)
-    expect(result.output).toBe('raider not found')
-  })
-
-  it('returns error for generate without type', async () => {
-    const result = await handler(
-      mockEvent,
-      { operation: 'generate', name: 'login' } as any,
-      '/project',
-      'ruby'
-    )
-
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('type and name are required')
-  })
-
-  // Ruby Raider 4.0 has no `raider g feature` or `raider g steps`
-  it.each(['feature', 'steps'])('refuses the %s type without running anything', async (type) => {
-    const result = await handler(
-      mockEvent,
-      { operation: 'generate', type, name: 'login' } as never,
-      '/project',
-      'ruby'
-    )
-
-    expect(result).toEqual({ success: false, output: '', error: `Unsupported type: ${type}` })
-    expect(mockSafeExec).not.toHaveBeenCalled()
-  })
-
   it('returns error when project path does not exist', async () => {
     mockExistsSync.mockReturnValueOnce(false)
 
     const result = await handler(
       mockEvent,
-      { operation: 'generate', type: 'page', name: 'login' },
+      { operation: 'generate', type: 'page', name: 'login', path: 'page_objects/pages' },
       '/nonexistent/project',
       'ruby'
     )
 
     expect(result.success).toBe(false)
     expect(result.error).toContain('Project path does not exist')
-  })
-
-  it('quotes name and drops every extra field', async () => {
-    mockSafeExec.mockResolvedValue({ stdout: 'Created', stderr: '', exitCode: 0 })
-
-    await handler(
-      mockEvent,
-      {
-        operation: 'generate',
-        type: 'page',
-        name: 'login page; rm x',
-        uses: 'a',
-        from: 'b',
-        ai: true,
-        crud: true
-      } as never,
-      '/project',
-      'ruby'
-    )
-
-    const calledCmd = mockSafeExec.mock.calls[0][0] as string
-    expect(calledCmd).toMatch(/&& raider g page 'login page; rm x'$/)
+    expect(mockSafeExec).not.toHaveBeenCalled()
   })
 })
 
@@ -291,6 +108,58 @@ describe('scaffoldGenerate into a folder (--path)', () => {
     })
     const command = mockSafeExec.mock.calls[0][0] as string
     expect(command).toMatch(new RegExp(`&& raider g ${type} checkout '--path=page_objects/pages'$`))
+  })
+
+  // The Scaffolding tab is gone: nothing generates into config.yml's default folders
+  it('refuses a call without a folder, without running anything', async () => {
+    const result = await generate({ type: 'page', name: 'checkout' })
+    expect(result).toEqual({ success: false, output: '', error: 'Not a folder path' })
+    expect(mockSafeExec).not.toHaveBeenCalled()
+  })
+
+  // Whatever arrives over IPC: nothing runs unless every field is right
+  it.each([
+    ['no params', undefined, 'Unsupported type for a folder: undefined'],
+    ['null params', null, 'Unsupported type for a folder: undefined'],
+    ['no operation', { type: 'page', name: 'checkout', path: 'page_objects/pages' }, 'Unsupported type for a folder: page'],
+    ['another operation', { operation: 'delete', type: 'page', name: 'checkout', path: 'page_objects/pages' }, 'Unsupported type for a folder: page'],
+    ['no type', { operation: 'generate', name: 'checkout', path: 'page_objects/pages' }, 'Unsupported type for a folder: undefined'],
+    ['a number as the name', { operation: 'generate', type: 'page', name: 42, path: 'page_objects/pages' }, 'A name starts with a letter and has only letters, digits and underscores.']
+  ])('refuses %s without running anything', async (_label, params, error) => {
+    const result = await handler(mockEvent, params as never, project, 'ruby')
+    // A thrown TypeError would land in the outer catch with another message
+    expect(result).toMatchObject({ success: false, error })
+    expect(mockSafeExec).not.toHaveBeenCalled()
+  })
+
+  it('returns a failure when running the gem throws', async () => {
+    mockSafeExec.mockRejectedValueOnce(new Error('spawn failed'))
+    const result = await generate({ type: 'page', name: 'checkout', path: 'page_objects/pages' })
+    expect(result).toEqual({ success: false, output: '', error: 'spawn failed' })
+  })
+
+  it('wraps the command with rbenv init and cd to the project', async () => {
+    gemWrites('page_objects/pages/checkout_page.rb')
+    await generate({ type: 'page', name: 'checkout', path: 'page_objects/pages' })
+    const command = mockSafeExec.mock.calls[0][0] as string
+    expect(command).toContain('rbenv init')
+    expect(command).toContain(`cd ${project} && `)
+  })
+
+  it('drops every field the gem does not take', async () => {
+    gemWrites('page_objects/pages/checkout_page.rb')
+    await generate({
+      type: 'page',
+      name: 'checkout',
+      path: 'page_objects/pages',
+      uses: ['a'],
+      from: 'x.rb',
+      ai: true,
+      crud: true
+    })
+    expect(mockSafeExec.mock.calls[0][0]).toMatch(
+      /&& raider g page checkout '--path=page_objects\/pages'$/
+    )
   })
 
   it('quotes the folder as one argument, flag and all', async () => {

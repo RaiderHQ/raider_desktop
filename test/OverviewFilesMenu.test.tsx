@@ -57,7 +57,6 @@ vi.mock('@components/Library/Folder', () => ({
   )
 }))
 
-vi.mock('@components/ScaffoldPanel', () => ({ default: (): null => null }))
 vi.mock('@components/ProjectDashboard', () => ({ default: (): null => null }))
 vi.mock('@components/Editor', () => ({
   default: ({

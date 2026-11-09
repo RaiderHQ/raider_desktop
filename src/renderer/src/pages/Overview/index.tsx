@@ -5,7 +5,6 @@ import toast from 'react-hot-toast'
 import { sample } from 'lodash'
 import { FaChevronDown, FaChevronRight, FaTerminal } from 'react-icons/fa'
 import Folder from '@components/Library/Folder'
-import ScaffoldPanel from '@components/ScaffoldPanel'
 import RecordingSettingsPanel from '@components/RecordingSettingsPanel'
 import ContextMenu from '@components/ContextMenu'
 import FileNameDialog from '@components/FileNameDialog'
@@ -59,7 +58,7 @@ import { loadSettingsCollapsed, saveSettingsCollapsed } from '@foundation/filesS
 import { TAG_RE } from '@shared/tags'
 import type { RunDefaults, RunScope } from '@shared/types/runEvents'
 
-type OverviewTab = 'tests' | 'files' | 'scaffold' | 'dashboard'
+type OverviewTab = 'tests' | 'files' | 'dashboard'
 
 const OVERVIEW_DOCS: Record<
   OverviewTab,
@@ -67,7 +66,6 @@ const OVERVIEW_DOCS: Record<
 > = {
   tests: (t) => ({ id: 'docs.recorder', topic: t('docs.topics.recording') }),
   files: (t) => ({ id: 'docs.testScreen', topic: t('docs.topics.files') }),
-  scaffold: (t) => ({ id: 'docs.scaffolding', topic: t('docs.topics.scaffolding') }),
   dashboard: (t) => ({ id: 'docs.dashboard', topic: t('docs.topics.dashboard') })
 }
 
@@ -190,9 +188,6 @@ const Overview: React.FC = () => {
   const [configLoaded, setConfigLoaded] = useState(false)
   // Latest-request-wins token for config loads (project load and browser-change re-fetch)
   const configRequestRef = useRef(0)
-  const [pagePath, setPagePath] = useState('')
-  const [specPath, setSpecPath] = useState('')
-  const [helperPath, setHelperPath] = useState('')
 
   // File context menu state: a file or folder row, or the root (its row and empty tree space)
   const [fileContextMenu, setFileContextMenu] = useState<{
@@ -482,29 +477,6 @@ const Overview: React.FC = () => {
         toast.success(t('settings.timeout.updateSuccess'))
       } else {
         toast.error(result.error || t('settings.error.unexpected'))
-      }
-    } catch (error) {
-      toast.error(`${t('settings.error.unexpected')}: ${error}`)
-    }
-  }
-
-  const handlePathsUpdate = async (): Promise<void> => {
-    if (!projectPath) return
-    try {
-      const updates: { value: string; type?: 'spec' | 'helper' }[] = []
-      if (pagePath.trim()) updates.push({ value: pagePath.trim() })
-      if (specPath.trim()) updates.push({ value: specPath.trim(), type: 'spec' })
-      if (helperPath.trim()) updates.push({ value: helperPath.trim(), type: 'helper' })
-
-      for (const update of updates) {
-        const result = await window.api.updatePaths(projectPath, update.value, update.type)
-        if (!result.success) {
-          toast.error(result.error || t('settings.error.unexpected'))
-          return
-        }
-      }
-      if (updates.length > 0) {
-        toast.success(t('settings.paths.updateSuccess'))
       }
     } catch (error) {
       toast.error(`${t('settings.error.unexpected')}: ${error}`)
@@ -1067,18 +1039,6 @@ const Overview: React.FC = () => {
             {t('overview.tabs.files')}
           </button>
         </Tooltip>
-        <Tooltip content={t('tooltips.overview.tabScaffold')} position="bottom">
-          <button
-            onClick={() => switchTab('scaffold')}
-            className={`px-5 py-2 text-sm font-semibold transition-colors ${
-              activeTab === 'scaffold'
-                ? 'text-neutral-dark border-b-2 border-ruby'
-                : 'text-neutral-md hover:text-neutral-dk'
-            }`}
-          >
-            {t('overview.tabs.scaffold')}
-          </button>
-        </Tooltip>
         <Tooltip content={t('tooltips.overview.tabDashboard')} position="bottom">
           <button
             onClick={() => switchTab('dashboard')}
@@ -1559,61 +1519,6 @@ const Overview: React.FC = () => {
           </div>
         </div>
       )}
-
-      {activeTab === 'scaffold' && (
-        <div className="relative w-full">
-          <div className="relative h-[70vh] border border-neutral-bdr rounded-lg shadow-card overflow-y-auto bg-white p-4 flex gap-8">
-            <div className="flex-1">
-              <ScaffoldPanel />
-            </div>
-            <div className="w-64 shrink-0 border-l border-neutral-bdr pl-8">
-              <h3 className="text-sm font-semibold text-neutral-dark mb-3">{t('settings.section.paths')}</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.page')}</label>
-                  <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
-                    <input
-                      type="text"
-                      value={pagePath}
-                      onChange={(e) => setPagePath(e.target.value)}
-                      onBlur={handlePathsUpdate}
-                      placeholder={t('overview.paths.placeholder.page')}
-                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
-                    />
-                  </Tooltip>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.spec')}</label>
-                  <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
-                    <input
-                      type="text"
-                      value={specPath}
-                      onChange={(e) => setSpecPath(e.target.value)}
-                      onBlur={handlePathsUpdate}
-                      placeholder={t('overview.paths.placeholder.spec')}
-                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
-                    />
-                  </Tooltip>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-neutral-dk block mb-1">{t('settings.paths.helper')}</label>
-                  <Tooltip content={t('tooltips.files.paths')} position="left" className="w-full">
-                    <input
-                      type="text"
-                      value={helperPath}
-                      onChange={(e) => setHelperPath(e.target.value)}
-                      onBlur={handlePathsUpdate}
-                      placeholder={t('overview.paths.placeholder.helper')}
-                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-full"
-                    />
-                  </Tooltip>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
 
       {activeTab === 'dashboard' && (
         <div className="relative w-full">

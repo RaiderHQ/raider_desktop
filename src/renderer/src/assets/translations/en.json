@@ -130,8 +130,7 @@
       "browser": "Browser",
       "timeout": "Timeout",
       "viewport": "Viewport",
-      "browserOptions": "Browser Options",
-      "paths": "Paths"
+      "browserOptions": "Browser Options"
     },
     "baseUrl": {
       "label": "Browser URL:",
@@ -225,13 +224,6 @@
       "updateButton": "Update options",
       "updateSuccess": "Browser options updated!"
     },
-    "paths": {
-      "page": "Page objects path:",
-      "spec": "Specs path:",
-      "helper": "Helpers path:",
-      "updateButton": "Update paths",
-      "updateSuccess": "Paths updated successfully!"
-    },
     "llm": {
       "title": "AI / LLM configuration",
       "description": "Configure the AI provider for smart scaffolding features.",
@@ -275,8 +267,7 @@
       "tests": "Tests",
       "files": "Files",
       "dashboard": "Dashboard",
-      "settings": "Settings",
-      "scaffold": "Scaffolding"
+      "settings": "Settings"
     },
     "settings": {
       "title": "Test settings",
@@ -308,13 +299,6 @@
       "new": "New project…",
       "unsaved": "Save or discard your changes first",
       "project": "Project"
-    },
-    "paths": {
-      "placeholder": {
-        "page": "e.g. pages",
-        "spec": "e.g. spec",
-        "helper": "e.g. helpers"
-      }
     }
   },
   "editor": {
@@ -819,10 +803,6 @@
         "title": "Files & test settings",
         "message": "Browse all files in your project on the left — click any file to preview it on the right.\n\nUse the toolbar above to set which browser to use, whether to run headlessly, which tests to run, and the timeout.\n\nThese settings apply every time you run your tests."
       },
-      "scaffold": {
-        "title": "Scaffolding",
-        "message": "Scaffolding generates boilerplate files for you — page objects, spec files, components and helpers.\n\nFill in the form and Ruby Raider will create the right file structure so you can start writing test logic immediately without setting things up by hand."
-      },
       "dashboard": {
         "title": "Project dashboard",
         "message": "The dashboard shows the last run at a glance: how many tests passed, failed or were skipped, and what went wrong in each failure.\n\nOpen a failed test to see the step it failed on, the screenshot and the trace."
@@ -851,7 +831,6 @@
       "explicitWait": "Longest wait for one condition, such as a button becoming clickable",
       "tabTests": "Record, run and fix your tests",
       "tabFiles": "Browse and edit project files; set the browser and base URL",
-      "tabScaffold": "Generate pages, tests and helpers from templates",
       "tabDashboard": "See the last run's results",
       "openTerminal": "Run commands in this project's folder",
       "projectMenu": "Switch to another project or start a new one",
@@ -914,7 +893,6 @@
       "runBusy": "A run is in progress",
       "freshLogin": "Ignore saved logins once, on the next run",
       "browserOptions": "Extra flags for the browser, for example no-sandbox",
-      "paths": "Where generated pages, specs and helpers go",
       "forgetLogin": "Delete this saved login",
       "treeRow": "Open in the editor; right-click for more",
       "runTests": "Run every test in the project"
@@ -968,11 +946,6 @@
       "back": "Go back to the start page",
       "github": "Open the Ruby Raider code on GitHub",
       "website": "Open the Ruby Raider website"
-    },
-    "scaffold": {
-      "type": "What to generate",
-      "name": "Lowercase name, for example login",
-      "generate": "Create the file in the project"
     },
     "fileEditor": {
       "back": "Back to the project"
@@ -1319,7 +1292,6 @@
       "projects": "projects",
       "recording": "recording",
       "files": "the Files tab",
-      "scaffolding": "scaffolding",
       "dashboard": "the dashboard",
       "runs": "running tests",
       "install": "installing Ruby Raider",
@@ -1428,27 +1400,6 @@
     "save": "Save",
     "discard": "Don't save",
     "cancel": "Cancel"
-  },
-  "scaffold": {
-    "intro": "Generate page objects, specs, helpers or components for your project.",
-    "type": "Type",
-    "name": "Name",
-    "namePlaceholder": "e.g. login",
-    "types": {
-      "page": "Page object",
-      "spec": "Spec",
-      "helper": "Helper",
-      "component": "Component"
-    },
-    "generate": "Generate",
-    "generating": "Generating...",
-    "toast": {
-      "noName": "Please enter a name.",
-      "noProject": "No project is open. Please open a project first.",
-      "success": "Generated successfully!\n{{output}}",
-      "failed": "Generation failed: {{error}}",
-      "error": "Error: {{error}}"
-    }
   },
   "assertions": {
     "menu": {

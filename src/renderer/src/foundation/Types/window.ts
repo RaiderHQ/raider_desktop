@@ -16,7 +16,7 @@ import type {
 } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { ProjectFileResult } from '@shared/types/projectFiles'
-import type { ScaffoldResult } from '@shared/types/scaffoldTypes'
+import type { ScaffoldParams, ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { RunApi } from '@shared/types/runEvents'
 import type { AssertionMessage } from '@shared/types/pendingAssertion'
@@ -306,7 +306,7 @@ export interface WindowApi extends RunApi {
 
   // --- Scaffolding ---
   scaffoldGenerate: (
-    params: Record<string, unknown>,
+    params: ScaffoldParams,
     projectPath: string,
     rubyCommand: string
   ) => Promise<ScaffoldResult>
@@ -331,9 +331,6 @@ export interface WindowApi extends RunApi {
     }
     error?: string
   }>
-
-  // --- Path Configuration ---
-  updatePaths: (projectPath: string, pathValue: string, pathType?: string) => Promise<CommandType>
 
   // --- Longship Integration ---
   getLongshipConfig: () => Promise<{
