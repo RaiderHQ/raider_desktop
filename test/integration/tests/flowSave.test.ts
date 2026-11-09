@@ -346,6 +346,43 @@ describe('saveRecordedFlow', () => {
 })
 
 describe('flowInputsOf', () => {
+  it('a test save drops input names: only a flow reads inputs', async () => {
+    const steps = [nav(), typing('t1', 'hours', '8')]
+    const saved = await saveRecordedTest(project, layout, flow({ id: 'x1', name: 'Plain', steps }))
+
+    expect(saved.steps[1]).not.toHaveProperty('inputName')
+    expect(saved).not.toHaveProperty('inputs')
+    const record = await readSidecar(project, saved.file)
+    expect(record?.steps[1]).not.toHaveProperty('inputName')
+    expect(await readFile(join(project, saved.file), 'utf-8')).not.toContain('flow_input')
+
+    // Saving the same steps again keeps the file as it is (nothing to strip any more)
+    const again = await saveRecordedTest(project, layout, flow({ id: 'x1', name: 'Plain', steps }))
+    expect(again.updatedAt).toBe(saved.updatedAt)
+  })
+
+  it('rebuilds inputs from the steps on every flow save: rename, add, remove', async () => {
+    await setUpFlows()
+    const first = await saveRecordedFlow(
+      project,
+      layout,
+      flow({ steps: [nav(), typing('t1', 'hours', '8')] })
+    )
+    expect(first.inputs).toEqual([{ name: 'hours', default: '8' }])
+    const renamed = await saveRecordedFlow(
+      project,
+      layout,
+      flow({ steps: [nav(), typing('t1', 'days', '8'), typing('t2', 'note', 'hi')] })
+    )
+    expect(renamed.inputs).toEqual([
+      { name: 'days', default: '8' },
+      { name: 'note', default: 'hi' }
+    ])
+    expect(await readFile(join(project, renamed.file), 'utf-8')).toContain(
+      "flow_input('days', '8')"
+    )
+  })
+
   it('never makes an input of a secret', () => {
     const secret = { ...typing('t1', 'pw', 'x'), secret: true } as Step
     expect(flowInputsOf([secret])).toEqual([])

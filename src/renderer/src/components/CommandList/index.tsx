@@ -22,6 +22,8 @@ interface CommandListProps {
   failedIndex?: number | null
   /** Anything shown under a step, such as a fix for the failed one */
   belowStep?: (index: number) => React.ReactNode
+  /** A flow being edited: typed steps can become inputs */
+  canUseInputs?: boolean
 }
 
 const CommandList: React.FC<CommandListProps> = ({
@@ -37,7 +39,8 @@ const CommandList: React.FC<CommandListProps> = ({
   readOnly = false,
   markLatest = false,
   failedIndex = null,
-  belowStep
+  belowStep,
+  canUseInputs = false
 }) => {
   const { t } = useTranslation()
   const setGuideOpen = useRecorderStore((state) => state.setGuideOpen)
@@ -84,6 +87,7 @@ const CommandList: React.FC<CommandListProps> = ({
                 readOnly={readOnly}
                 latest={markLatest && index === steps.length - 1}
                 failed={failedIndex === index}
+                canUseInputs={canUseInputs}
               />
               {belowStep?.(index)}
             </React.Fragment>

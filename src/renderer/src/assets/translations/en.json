@@ -678,6 +678,7 @@
       "clickRegion": "Click an empty area of the page",
       "pressKey": "Press the {{key}} key on \"{{element}}\"",
       "typeText": "Type \"{{text}}\" into \"{{element}}\"",
+      "typeTextInput": "Type \"{{text}}\" into \"{{element}}\" as input {{name}}",
       "typeSecret": "Type secret (from {{name}}) into \"{{element}}\"",
       "switchToFrame": "Switch to frame \"{{element}}\"",
       "switchToDefaultContent": "Switch back to main content",
@@ -704,7 +705,21 @@
       "secretUnnamed": "This password step has no variable yet.",
       "secretMissing": "This step types a password from {{name}}, which isn't set on this computer. Set it, restart Raider, and try again.",
       "renderFailed": "Couldn't render code",
-      "editCommand": "Edit command"
+      "editCommand": "Edit command",
+      "useAsInput": "Use as input…",
+      "changeInput": "Change input…",
+      "stopInput": "Stop using as input",
+      "inputModal": {
+        "titleNew": "Use as input",
+        "titleChange": "Change input",
+        "nameLabel": "Input name",
+        "nameHint": "Lowercase letters, digits or _, starting with a letter",
+        "nameInvalid": "Use up to 40 lowercase letters, digits or _, starting with a letter.",
+        "defaultLabel": "Default value",
+        "defaultHelp": "Runs use this value unless you give another.",
+        "save": "Save",
+        "cancel": "Cancel"
+      }
     }
   },
   "guide": {
@@ -906,7 +921,14 @@
       "recordFromHere": "Replay the steps above, then keep recording",
       "drag": "Drag to move this step; steps run top to bottom",
       "edit": "Edit this step's code",
-      "weakLocator": "Found by position, which can break when the page changes; re-record it"
+      "weakLocator": "Found by position, which can break when the page changes; re-record it",
+      "useAsInput": "Let each run give its own value for this typing",
+      "changeInput": "Rename the input runs use to give this value",
+      "stopInput": "Always type the recorded text again",
+      "inputName": "The name runs use to give their own value",
+      "inputSave": "Use this name for the input",
+      "inputSaveInvalid": "Enter a valid input name first",
+      "inputCancel": "Close without changing the input"
     },
     "failedStep": {
       "editValue": "Change the typed text",

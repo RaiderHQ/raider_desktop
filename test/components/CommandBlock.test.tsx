@@ -177,6 +177,104 @@ describe('CommandBlock', () => {
       })
     })
 
+    describe('flow inputs', () => {
+      const hours: Step = {
+        id: 'h',
+        kind: 'type',
+        element: { strategy: 'id', value: 'hours', label: 'Hours' },
+        text: '8'
+      }
+      const useAs = 'recorder.step.useAsInput'
+      const nameField = (): HTMLElement =>
+        screen.getByLabelText('recorder.step.inputModal.nameLabel')
+      const save = (): HTMLElement =>
+        screen.getByRole('button', { name: 'recorder.step.inputModal.save' })
+
+      it('offers "Use as input…" on a typing step of a flow only', async () => {
+        await renderBlock({ step: hours, onEdit: vi.fn(), canUseInputs: true })
+        expect(screen.getByRole('button', { name: useAs })).toBeInTheDocument()
+      })
+
+      it.each([
+        ['a test', hours, {}],
+        ['a read-only flow', hours, { canUseInputs: true, readOnly: true }],
+        ['a click step', watirClick, { canUseInputs: true }],
+        [
+          'a secret step',
+          { ...hours, text: '', secret: true, secretName: 'RAIDER_SECRET_1' } as Step,
+          { canUseInputs: true }
+        ]
+      ])('offers no input on %s', async (_what, step, extra) => {
+        await renderBlock({ step, onEdit: vi.fn(), ...extra })
+        expect(screen.queryByRole('button', { name: useAs })).toBeNull()
+      })
+
+      it('validates the name live and saves it on the step', async () => {
+        const onEdit = vi.fn()
+        await renderBlock({ step: hours, onEdit, canUseInputs: true })
+        fireEvent.click(screen.getByRole('button', { name: useAs }))
+
+        expect(screen.getByRole('dialog')).toHaveTextContent('recorder.step.inputModal.titleNew')
+        // The default is the recorded text, shown but not editable
+        expect(screen.getByTestId('input-default')).toHaveTextContent('8')
+        expect(screen.getByText('recorder.step.inputModal.defaultHelp')).toBeInTheDocument()
+        expect(save()).toBeDisabled()
+
+        for (const bad of ['Hours', '1st', 'my hours', 'a'.repeat(41), '_x']) {
+          fireEvent.change(nameField(), { target: { value: bad } })
+          expect(save()).toBeDisabled()
+          expect(screen.getByText('recorder.step.inputModal.nameInvalid')).toBeInTheDocument()
+        }
+        fireEvent.keyDown(nameField(), { key: 'Enter' })
+        expect(onEdit).not.toHaveBeenCalled()
+
+        fireEvent.change(nameField(), { target: { value: 'hours_2' } })
+        expect(screen.queryByText('recorder.step.inputModal.nameInvalid')).toBeNull()
+        expect(save()).toBeEnabled()
+        fireEvent.click(save())
+        expect(onEdit).toHaveBeenCalledWith(0, { ...hours, inputName: 'hours_2' })
+        expect(screen.queryByRole('dialog')).toBeNull()
+      })
+
+      it('saves with Enter and closes on Cancel without saving', async () => {
+        const onEdit = vi.fn()
+        await renderBlock({ step: hours, onEdit, canUseInputs: true })
+        fireEvent.click(screen.getByRole('button', { name: useAs }))
+        fireEvent.click(screen.getByRole('button', { name: 'recorder.step.inputModal.cancel' }))
+        expect(screen.queryByRole('dialog')).toBeNull()
+        expect(onEdit).not.toHaveBeenCalled()
+
+        fireEvent.click(screen.getByRole('button', { name: useAs }))
+        fireEvent.change(nameField(), { target: { value: 'hours' } })
+        fireEvent.keyDown(nameField(), { key: 'Enter' })
+        expect(onEdit).toHaveBeenCalledWith(0, { ...hours, inputName: 'hours' })
+      })
+
+      it('shows the input in the label, and changes or stops it', async () => {
+        const onEdit = vi.fn()
+        const input = { ...hours, inputName: 'hours' }
+        await renderBlock({ step: input, onEdit, canUseInputs: true })
+        expect(
+          screen.getByText(
+            'recorder.commandParser.typeTextInput {"element":"Hours","text":"8","name":"hours"}'
+          )
+        ).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: useAs })).toBeNull()
+
+        fireEvent.click(screen.getByRole('button', { name: 'recorder.step.changeInput' }))
+        expect(screen.getByRole('dialog')).toHaveTextContent('recorder.step.inputModal.titleChange')
+        expect(nameField()).toHaveValue('hours')
+        fireEvent.change(nameField(), { target: { value: 'days' } })
+        fireEvent.click(save())
+        expect(onEdit).toHaveBeenLastCalledWith(0, { ...hours, inputName: 'days' })
+
+        fireEvent.click(screen.getByRole('button', { name: 'recorder.step.stopInput' }))
+        const stopped = onEdit.mock.lastCall![1]
+        expect(stopped).toEqual(hours)
+        expect(stopped).not.toHaveProperty('inputName')
+      })
+    })
+
     it('does not enter edit mode', async () => {
       await renderBlock({ step: watirClick, onEdit: vi.fn() })
       fireEvent.doubleClick(

@@ -281,9 +281,10 @@ describe('flows over IPC', () => {
       expect(result.test).toMatchObject({
         kind: 'flow',
         file: 'flows/book_room_flow.rb',
-        name: 'Book room',
-        inputs: [{ name: 'hours', default: '8' }]
+        name: 'Book room'
       })
+      // A test keeps no input names (only a flow reads inputs), so the new flow starts with none
+      expect(result.test).not.toHaveProperty('inputs')
       expect(result.test.steps.map((s) => s.id)).toEqual(['n1', 't1'])
       expect(await readFile(join(project, file), 'utf-8')).toBe(before)
       expect(await readSidecar(project, file)).toEqual(record)

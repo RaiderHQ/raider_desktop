@@ -547,6 +547,7 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
           .catch((error: unknown) => console.error('Recording failed:', error))
       }
       readOnly={readOnly}
+      canUseInputs={isFlow && !readOnly}
       markLatest={recording.isRecording}
       failedIndex={failedIndex}
       belowStep={(index) =>

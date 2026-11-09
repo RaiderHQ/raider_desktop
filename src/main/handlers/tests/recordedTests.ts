@@ -241,6 +241,15 @@ async function refuseAsCodeOwned(projectPath: string, sidecar: Sidecar): Promise
   throw new CodeOwnedError(sidecar.file)
 }
 
+// Only a flow reads inputs (flow_input), so a test keeps no input names
+const withoutInputNames = (steps: Step[]): Step[] =>
+  steps.map((step) => {
+    if (step.kind !== 'type' || !('inputName' in step)) return step
+    const rest = { ...step }
+    delete rest.inputName
+    return rest
+  })
+
 const buildSidecar = (
   test: Test,
   file: string,
@@ -453,7 +462,7 @@ export function saveRecordedTest(
             steps: existing.steps,
             tags: existing.tags
           }
-        : { ...input, tags: existing?.tags }
+        : { ...input, steps: withoutInputNames(input.steps), tags: existing?.tags }
 
     if (!existing) {
       const { file, content, stepLines, target } = await createNewSpec(projectPath, current, test)

@@ -258,3 +258,61 @@ describe('New flow', () => {
     expect(useRecorderStore.getState().draftTest?.kind).toBeUndefined()
   })
 })
+
+describe('Flow inputs', () => {
+  const typing: Test['steps'][number] = {
+    id: 'h',
+    kind: 'type',
+    element: { strategy: 'id', value: 'hours', label: 'Hours' },
+    text: '8'
+  }
+  const flow: Test = {
+    ...base,
+    kind: 'flow',
+    file: 'flows/book_room_flow.rb',
+    steps: [nav('a'), typing]
+  }
+  const flowRow = { kind: 'flow' as const, file: 'flows/book_room_flow.rb' }
+
+  it('names a typing step as an input and autosaves it through save-recording', async () => {
+    renderPage(flow, flowRow)
+    fireEvent.click(await screen.findByRole('button', { name: 'Use as input…' }))
+    expect(screen.getByText('Runs use this value unless you give another.')).toBeInTheDocument()
+    const field = screen.getByLabelText('Input name')
+    fireEvent.change(field, { target: { value: 'Hours' } })
+    expect(
+      screen.getByText('Use up to 40 lowercase letters, digits or _, starting with a letter.')
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    fireEvent.change(field, { target: { value: 'hours' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByText('Type "8" into "Hours" as input hours')).toBeInTheDocument()
+    await waitFor(
+      () =>
+        expect(api.saveRecording).toHaveBeenCalledWith(
+          '/p',
+          expect.objectContaining({
+            id: 't1',
+            steps: [nav('a'), { ...typing, inputName: 'hours' }]
+          })
+        ),
+      { timeout: 2000 }
+    )
+  })
+
+  it('is not offered on a test', async () => {
+    renderPage({ ...base, steps: [nav('a'), typing] })
+    await screen.findByText('Type "8" into "Hours"')
+    expect(screen.queryByRole('button', { name: 'Use as input…' })).toBeNull()
+  })
+
+  it('is not offered on a code-owned flow', async () => {
+    renderPage(
+      { ...flow, ownership: 'codeOwnedWasRecorded' },
+      { ...flowRow, ownership: 'codeOwnedWasRecorded' }
+    )
+    await screen.findByText('Type "8" into "Hours"')
+    expect(screen.queryByRole('button', { name: 'Use as input…' })).toBeNull()
+  })
+})
