@@ -336,6 +336,21 @@ describe('a flow never gets a check', () => {
     expect(result).toEqual({ success: false, error: FLOW_CHECK_ERROR })
   })
 
+  it('refuses a save when the snapshot says test but the sidecar on disk says flow', async () => {
+    await setActiveProject(project)
+    await saveRecording(win, project, checkout())
+    const json = sidecarJson('spec/checkout_spec.rb')
+    await writeFile(
+      json,
+      JSON.stringify({ ...JSON.parse(await readFile(json, 'utf-8')), kind: 'flow' })
+    )
+
+    for (const test of [checkout(), withCheck(checkout())]) {
+      expect((await saveRecording(win, project, test)).success).toBe(false)
+    }
+    expect(JSON.parse(await readFile(json, 'utf-8')).kind).toBe('flow')
+  })
+
   it('loads the kind from the sidecar, so a reloaded flow keeps refusing checks', async () => {
     await setActiveProject(project)
     await saveRecording(win, project, checkout())

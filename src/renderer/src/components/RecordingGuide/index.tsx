@@ -35,7 +35,7 @@ const RecordingGuide: React.FC<RecordingGuideProps> = ({ variant, kind = 'test',
   const setGuideOpen = useRecorderStore((state) => state.setGuideOpen)
 
   const close = (): void => {
-    markGuideSeen()
+    markGuideSeen(kind)
     setGuideOpen(false)
     onClose?.()
   }
@@ -67,7 +67,7 @@ const RecordingGuide: React.FC<RecordingGuideProps> = ({ variant, kind = 'test',
       className="rounded-lg border border-neutral-bdr border-l-4 border-l-ruby bg-white p-4 shadow-elevated"
     >
       <h2 id="recording-guide-title" className="text-sm font-semibold text-neutral-dark mb-2">
-        {t('guide.title')}
+        {t(kind === 'flow' ? 'recorder.flowGuide.title' : 'guide.title')}
       </h2>
       {kind === 'flow' ? (
         <ul className="list-disc pl-5 space-y-1.5 text-sm text-neutral-dark">
@@ -89,9 +89,14 @@ const RecordingGuide: React.FC<RecordingGuideProps> = ({ variant, kind = 'test',
         </ol>
       )}
       <div className="mt-3 flex items-center justify-between">
-        <DocsLink id="docs.assertions" topic={t('docs.topics.recording')}>
-          {t('guide.learnMore')}
-        </DocsLink>
+        {/* The docs page is about checks, which a flow doesn't have */}
+        {kind === 'flow' ? (
+          <span />
+        ) : (
+          <DocsLink id="docs.assertions" topic={t('docs.topics.recording')}>
+            {t('guide.learnMore')}
+          </DocsLink>
+        )}
         <button
           ref={gotItRef}
           type="button"

@@ -2,6 +2,7 @@ import { appState } from '../appState'
 import {
   CodeOwnedError,
   deleteRecordedTest,
+  FlowIdError,
   saveRecordedTest,
   setTagsForFile
 } from './recordedTests'
@@ -104,13 +105,36 @@ const fromSidecar = (sidecar: Sidecar, previous?: Test): Test => ({
 
 export type SaveResult = { success: true; test: Test } | { success: false; error: string }
 
+export const FLOW_HAS_CHECKS_ERROR = 'A flow has no checks. Remove the check to save it.'
+export const FLOW_SAVE_UNAVAILABLE_ERROR = "Raider can't save flows here yet."
+
+const hasCheck = (test: Test): boolean => test.steps.some((step) => step.kind === 'assert')
+
+/**
+ * Why `input` can't go to the spec writer because it is a flow, or null. Kind belongs to main:
+ * for a known test the snapshot's record (read from its sidecar) decides; the renderer's kind,
+ * or `newIsFlow` (the recorder records a flow), only name a new one. With a check every sign
+ * counts, deliberately: a known test the renderer calls a flow is refused too. The spec writer
+ * then refuses any id a flow sidecar holds, wherever it sits (FlowIdError).
+ */
+function flowRefusal(previous: Test | undefined, input: Test, newIsFlow: boolean): string | null {
+  const check = hasCheck(input)
+  const saysFlow = input.kind === 'flow'
+  const flow = previous?.kind === 'flow' || (previous ? check && saysFlow : saysFlow || newIsFlow)
+  if (!flow) return null
+  return check ? FLOW_HAS_CHECKS_ERROR : FLOW_SAVE_UNAVAILABLE_ERROR
+}
+
 /**
  * Saves `input` as a project file and keeps it in the snapshot. A test edited in code
- * is never rewritten: it comes back as `codeOwned` and is shown as such.
+ * is never rewritten: it comes back as `codeOwned` and is shown as such. A flow is never
+ * written here, so it never gets a check, whichever handler saves it. `newIsFlow`: a test
+ * this snapshot doesn't know is a flow (save-recording while the recorder records one).
  */
 export async function saveRecordedTestInProject(
   store: FilesStore,
-  input: Test
+  input: Test,
+  { newIsFlow = false }: { newIsFlow?: boolean } = {}
 ): Promise<SaveResult> {
   if (!isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
   if (!isStorableTest(input)) return { success: false, error: INVALID_TEST_ERROR }
@@ -120,12 +144,22 @@ export async function saveRecordedTestInProject(
   // all. Unknown (undefined) still scans: null would mean "no sidecar" and create a second file
   const previous = store.tests.get(test.id)
 
+  // The flow writer (flows/<name>_flow.rb) goes here; the spec writer must never take a flow
+  const refusal = flowRefusal(previous, input, newIsFlow)
+  if (refusal) return { success: false, error: refusal }
+
   let sidecar: Sidecar
   try {
     sidecar = await saveRecordedTest(store.projectPath, store.layout, test, {
       knownFile: previous?.file
     })
   } catch (error) {
+    if (error instanceof FlowIdError) {
+      return {
+        success: false,
+        error: hasCheck(test) ? FLOW_HAS_CHECKS_ERROR : FLOW_SAVE_UNAVAILABLE_ERROR
+      }
+    }
     if (!(error instanceof CodeOwnedError)) throw error
     // Tell the renderer once: re-sending on every refused autosave would keep resetting its test
     if (previous && previous.ownership !== 'codeOwnedWasRecorded' && isCurrent(store)) {

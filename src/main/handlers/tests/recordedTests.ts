@@ -36,6 +36,22 @@ export class TestGoneError extends Error {
 }
 
 /** The spec file was edited outside Raider, so Raider must not rewrite or delete it. */
+/** A flow's id: the spec writer never writes a flow, nor a second record under its id */
+export class FlowIdError extends Error {
+  constructor(id: string) {
+    super(`The recorded flow ${id} can't be saved as a test`)
+    this.name = 'FlowIdError'
+  }
+}
+
+/** Some sidecar in the project, wherever it sits, records `testId` as a flow */
+async function hasFlowSidecar(projectPath: string, testId: string): Promise<boolean> {
+  return (await listSidecars(projectPath)).some(
+    ({ fileRel, sidecar }) =>
+      sidecar?.id === testId && sidecar.file === fileRel && sidecar.kind === 'flow'
+  )
+}
+
 export class CodeOwnedError extends Error {
   constructor(file: string) {
     super(`This test was changed in code and can no longer be edited in Raider: ${file}`)
@@ -319,6 +335,10 @@ export function saveRecordedTest(
       options.knownFile !== undefined
         ? await sidecarAt(projectPath, input.id, options.knownFile)
         : await findSidecarById(projectPath, input.id)
+    // Checked inside the queue, so no save of the same id can slip in between
+    if (existing?.kind === 'flow' || (!existing && (await hasFlowSidecar(projectPath, input.id)))) {
+      throw new FlowIdError(input.id)
+    }
     if (options.regenerate && !existing) throw new TestGoneError(input.id)
     // Tags change only through set-test-tags: a save never takes tags from its caller
     const test: Test =

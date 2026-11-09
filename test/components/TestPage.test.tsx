@@ -1574,16 +1574,18 @@ describe('Add validation…', () => {
       expect(setPick()).not.toHaveBeenCalledWith(true, 'assert')
     })
 
-    it('shows the flow guide card instead of the test guide', async () => {
+    it('shows the flow guide card instead of the test guide, even after the test guide was seen', async () => {
+      localStorage.setItem('recorderGuideSeen', '1')
       await recordingFlow()
-      act(() => useRecorderStore.getState().setGuideOpen(true))
-      for (const key of ['line1', 'line2', 'line3'])
+      for (const key of ['title', 'line1', 'line2', 'line3'])
         expect(screen.getByText(`recorder.flowGuide.${key}`)).toBeInTheDocument()
       expect(screen.queryByText('guide.step1')).not.toBeInTheDocument()
+      localStorage.clear()
     })
 
     it('has the guide lines in en.json', () => {
       expect(en.recorder.flowGuide).toEqual({
+        title: 'Recording a flow',
         line1: 'A flow does a job; it has no checks.',
         line2: 'Mark a typed value as an input to change it per run.',
         line3: 'Save, then run or schedule it from Flows.'

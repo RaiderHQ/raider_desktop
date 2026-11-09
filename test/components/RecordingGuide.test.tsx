@@ -31,7 +31,7 @@ describe('RecordingGuide', () => {
     expect(screen.getByText('guide.learnMore')).toBeInTheDocument()
   })
 
-  it('for a flow, says what a flow is in three lines instead', () => {
+  it('for a flow, says what a flow is in three lines under its own title, with no docs link', () => {
     render(<RecordingGuide variant="card" kind="flow" />)
     const items = Array.from(document.querySelectorAll('li')).map((li) => li.textContent)
     expect(items).toEqual([
@@ -39,7 +39,20 @@ describe('RecordingGuide', () => {
       'recorder.flowGuide.line2',
       'recorder.flowGuide.line3'
     ])
+    expect(screen.getByRole('region')).toHaveAttribute(
+      'aria-labelledby',
+      screen.getByText('recorder.flowGuide.title').id
+    )
+    expect(screen.queryByText('guide.title')).not.toBeInTheDocument()
+    expect(screen.queryByText('guide.learnMore')).not.toBeInTheDocument()
     expect(screen.getByText('guide.gotIt')).toBeInTheDocument()
+  })
+
+  it("Got it on a flow's guide marks only the flow guide seen", () => {
+    render(<RecordingGuide variant="card" kind="flow" />)
+    fireEvent.click(screen.getByText('guide.gotIt'))
+    expect(hasSeenGuide('flow')).toBe(true)
+    expect(hasSeenGuide('test')).toBe(false)
   })
 
   it('Learn more opens the assertions page of the docs', () => {
