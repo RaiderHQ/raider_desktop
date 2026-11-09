@@ -144,7 +144,8 @@ export interface WindowApi extends RunApi {
 
   // --- Step Rendering ---
   /** Ruby for one step, in the active project's automation (Selenium or Watir). */
-  renderStep: (step: Step) => Promise<string>
+  /** `{ flow: true }` renders as in a flow file (a typed input reads flow_input) */
+  renderStep: (step: Step, options?: { flow: true }) => Promise<string>
 
   /** The active project's recorded tests, with their steps; [] without a project */
   getTests: () => Promise<Test[]>

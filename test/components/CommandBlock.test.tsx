@@ -291,6 +291,21 @@ describe('CommandBlock', () => {
       expect(await screen.findByText('ruby for c1')).toBeInTheDocument()
     })
 
+    it('asks for a flow rendering on a flow, so an input shows as flow_input', async () => {
+      const typed: Step = {
+        id: 'h',
+        kind: 'type',
+        element: { strategy: 'id', value: 'hours' },
+        text: '8',
+        inputName: 'hours'
+      }
+      await renderBlock({ step: typed, showCode: true, flow: true })
+      expect(renderStep).toHaveBeenCalledWith(typed, { flow: true })
+      renderStep.mockClear()
+      await renderBlock({ step: typed, showCode: true })
+      expect(renderStep.mock.calls).toEqual([[typed]])
+    })
+
     it('shows a short message and stays usable when rendering fails', async () => {
       renderStep.mockRejectedValue(new Error('bad step'))
       const onDelete = vi.fn()

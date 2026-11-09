@@ -11,6 +11,8 @@ interface InputNameModalProps {
   initialName: string
   /** The recorded text: what runs type unless they give another value */
   defaultValue: string
+  /** True when another step of the flow uses `name` with a different recorded text */
+  isTaken?: (name: string) => boolean
   onSave: (name: string) => void
   onClose: () => void
 }
@@ -24,14 +26,25 @@ const M = 'recorder.step.inputModal'
 const InputNameModal: React.FC<InputNameModalProps> = ({
   initialName,
   defaultValue,
+  isTaken = (): boolean => false,
   onSave,
   onClose
 }) => {
   const { t } = useTranslation()
   const [name, setName] = useState(initialName)
-  const valid = isValidInputName(name)
+  const wellFormed = isValidInputName(name)
+  // One input has one default: a name another step types a different value under is refused
+  const taken = wellFormed && isTaken(name)
+  const valid = wellFormed && !taken
   // Nothing typed yet is not an error; anything else that can't be saved says why
-  const error = name !== '' && !valid ? t(`${M}.nameInvalid`) : undefined
+  const error =
+    name === ''
+      ? undefined
+      : !wellFormed
+        ? t(`${M}.nameInvalid`)
+        : taken
+          ? t(`${M}.nameTaken`)
+          : undefined
 
   const save = (): void => {
     if (valid) onSave(name)

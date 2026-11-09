@@ -273,6 +273,7 @@ describe('Flow inputs', () => {
     steps: [nav('a'), typing]
   }
   const flowRow = { kind: 'flow' as const, file: 'flows/book_room_flow.rb' }
+  afterEach(() => useRecorderStore.setState({ showCode: false }))
 
   it('names a typing step as an input and autosaves it through save-recording', async () => {
     renderPage(flow, flowRow)
@@ -299,6 +300,21 @@ describe('Flow inputs', () => {
         ),
       { timeout: 2000 }
     )
+  })
+
+  it("renders a flow's code view as a flow file, so an input shows as flow_input", async () => {
+    useRecorderStore.setState({ showCode: true })
+    api.renderStep.mockResolvedValue('ruby')
+    renderPage(flow, flowRow)
+    await waitFor(() => expect(api.renderStep).toHaveBeenCalledWith(typing, { flow: true }))
+  })
+
+  it("renders a test's code view without the flow flag", async () => {
+    useRecorderStore.setState({ showCode: true })
+    api.renderStep.mockResolvedValue('ruby')
+    renderPage({ ...base, steps: [nav('a'), typing] })
+    await waitFor(() => expect(api.renderStep).toHaveBeenCalledWith(typing))
+    expect(api.renderStep.mock.calls.every((call) => call.length === 1)).toBe(true)
   })
 
   it('is not offered on a test', async () => {

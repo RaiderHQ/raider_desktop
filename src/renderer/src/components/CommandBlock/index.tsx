@@ -28,6 +28,10 @@ interface CommandBlockProps {
   failed?: boolean
   /** A flow being edited: a typed step can become an input runs give a value for */
   canUseInputs?: boolean
+  /** True when another step uses this input name with a different recorded text */
+  inputTaken?: (name: string) => boolean
+  /** The step belongs to a flow: the code view renders it as in a flow file */
+  flow?: boolean
 }
 
 type TypeStep = Extract<Step, { kind: 'type' }>
@@ -146,7 +150,9 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   readOnly = false,
   latest = false,
   failed = false,
-  canUseInputs = false
+  canUseInputs = false,
+  inputTaken,
+  flow = false
 }) => {
   const { t } = useTranslation()
   // Ruby for the code view, rendered by the main process for the project's automation
@@ -173,8 +179,10 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
     let isMounted = true
     setCode(null)
     setRenderFailed(false)
-    window.api
-      .renderStep(step)
+    const rendering = flow
+      ? window.api.renderStep(step, { flow: true })
+      : window.api.renderStep(step)
+    rendering
       .then((ruby) => {
         if (isMounted) setCode(ruby)
       })
@@ -184,7 +192,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
     return (): void => {
       isMounted = false
     }
-  }, [step, showCode])
+  }, [step, showCode, flow])
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -396,6 +404,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
         <InputNameModal
           initialName={inputStep.inputName ?? ''}
           defaultValue={inputStep.text}
+          isTaken={inputTaken}
           onSave={(inputName) => {
             setNamingInput(false)
             onEdit?.(index, { ...inputStep, inputName })

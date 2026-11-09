@@ -384,7 +384,10 @@ const api = {
   },
   loadUrlRequest: async (url: string): Promise<CommandType> =>
     ipcRenderer.invoke('load-url-request', url),
-  renderStep: (step: Step): Promise<string> => ipcRenderer.invoke('render-step', step),
+  renderStep: (step: Step, options?: { flow: true }): Promise<string> =>
+    options
+      ? ipcRenderer.invoke('render-step', step, options)
+      : ipcRenderer.invoke('render-step', step),
   exportTest: (
     testName: string,
     steps: Step[]

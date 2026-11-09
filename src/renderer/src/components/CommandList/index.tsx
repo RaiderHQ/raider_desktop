@@ -24,7 +24,23 @@ interface CommandListProps {
   belowStep?: (index: number) => React.ReactNode
   /** A flow being edited: typed steps can become inputs */
   canUseInputs?: boolean
+  /** The steps are a flow's: the code view renders them as in a flow file */
+  flow?: boolean
 }
+
+// Another typing step reads `name` but types a different value: one input, one default
+const takenBy =
+  (steps: Step[], step: Step) =>
+  (name: string): boolean =>
+    step.kind === 'type' &&
+    steps.some(
+      (other) =>
+        other.id !== step.id &&
+        other.kind === 'type' &&
+        !other.secret &&
+        other.inputName === name &&
+        other.text !== step.text
+    )
 
 const CommandList: React.FC<CommandListProps> = ({
   steps,
@@ -40,7 +56,8 @@ const CommandList: React.FC<CommandListProps> = ({
   markLatest = false,
   failedIndex = null,
   belowStep,
-  canUseInputs = false
+  canUseInputs = false,
+  flow = false
 }) => {
   const { t } = useTranslation()
   const setGuideOpen = useRecorderStore((state) => state.setGuideOpen)
@@ -88,6 +105,8 @@ const CommandList: React.FC<CommandListProps> = ({
                 latest={markLatest && index === steps.length - 1}
                 failed={failedIndex === index}
                 canUseInputs={canUseInputs}
+                inputTaken={takenBy(steps, step)}
+                flow={flow}
               />
               {belowStep?.(index)}
             </React.Fragment>

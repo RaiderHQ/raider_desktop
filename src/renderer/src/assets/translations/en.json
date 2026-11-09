@@ -715,6 +715,7 @@
         "nameLabel": "Input name",
         "nameHint": "Lowercase letters, digits or _, starting with a letter",
         "nameInvalid": "Use up to 40 lowercase letters, digits or _, starting with a letter.",
+        "nameTaken": "Another step uses this name with a different value.",
         "defaultLabel": "Default value",
         "defaultHelp": "Runs use this value unless you give another.",
         "save": "Save",

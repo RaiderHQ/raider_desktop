@@ -548,6 +548,7 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
       }
       readOnly={readOnly}
       canUseInputs={isFlow && !readOnly}
+      flow={isFlow}
       markLatest={recording.isRecording}
       failedIndex={failedIndex}
       belowStep={(index) =>
