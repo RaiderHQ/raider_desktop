@@ -183,6 +183,8 @@ function createWindow(): void {
 
   resetRecordingOnWindowLoss(newMainWindow, () => {
     appState.recording = false
+    // A recorder left in flow mode by a lost page would make every new test a flow
+    appState.recordingMode = 'test'
     setRecordingMenuState(false)
   })
 

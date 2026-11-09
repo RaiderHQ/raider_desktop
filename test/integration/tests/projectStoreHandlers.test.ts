@@ -327,6 +327,11 @@ describe('a flow never gets a check', () => {
     )
     appState.tests.delete('t-checkout')
 
+    // A clean save first must not rewrite the flow's sidecar as a test's
+    const clean = await saveRecording(win, project, checkout())
+    expect(clean.success).toBe(false)
+    expect(JSON.parse(await readFile(json, 'utf-8')).kind).toBe('flow')
+
     const result = await saveRecording(win, project, withCheck(checkout()))
     expect(result).toEqual({ success: false, error: FLOW_CHECK_ERROR })
   })

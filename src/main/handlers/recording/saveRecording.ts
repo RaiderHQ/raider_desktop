@@ -34,8 +34,8 @@ async function storedAsFlow(projectPath: string, id: unknown): Promise<boolean> 
 /**
  * Whether `test` is a flow. Kind belongs to main: for a known test the snapshot's record (read
  * from its sidecar) decides; the renderer's kind or the recorder mode only name a new one.
- * With a check, every sign counts, so a renderer can never add a check to a flow; the sidecars
- * are scanned only then, for an unknown id, so autosaves still read only their own sidecar.
+ * With a check, every sign counts, so a renderer can never add a check to a flow. An unknown id
+ * is looked up in the sidecars (the spec writer scans them for it anyway); known ids are not.
  */
 async function isFlow(store: FilesStore, test: unknown, withCheck: boolean): Promise<boolean> {
   const id = isObject(test) ? test.id : undefined
@@ -44,7 +44,8 @@ async function isFlow(store: FilesStore, test: unknown, withCheck: boolean): Pro
   if (known?.kind === 'flow') return true
   if (known) return withCheck && saysFlow
   if (saysFlow || appState.recordingMode === 'flow') return true
-  return withCheck && (await storedAsFlow(store.projectPath, id))
+  // Any save of an unknown id: a clean save would otherwise rewrite a flow's sidecar as a test's
+  return storedAsFlow(store.projectPath, id)
 }
 
 /**
