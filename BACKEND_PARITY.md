@@ -56,21 +56,21 @@ raider new project_name -p framework:rspec automation:selenium --accessibility
 
 ## 2. Scaffolding Commands (`raider g`)
 
-### Scaffolding (already supported)
+### Scaffolding (Files tab folder menu, always with `--path=<folder>`)
 
 | Command | CLI | Desktop Status |
 |---------|-----|---------------|
 | `raider g page NAME` | Generate page object | Supported via `scaffoldGenerate.ts` |
 | `raider g spec NAME` | Generate spec file | Supported |
-| `raider g scaffold NAME...` | Generate page + spec for one or more names | Handler accepts it, but the Scaffold panel has no `scaffold` option (no UI) |
+| `raider g scaffold NAME...` | Generate page + spec for one or more names | Not offered; the handler refuses it |
 
 ### Other Scaffolding Commands
 
 | Command | CLI Usage | Desktop Status | Priority | Notes |
 |---------|-----------|---------------|----------|-------|
-| `raider g component NAME` | Generates a component class | Supported (Scaffold panel) | — | Inherits from `Component` base class |
-| `raider g helper NAME` | Generates a helper file | Supported (Scaffold panel) | — | |
-| `--path` / `-p` on page, spec, helper, component | Custom output directory, e.g. `raider g page Foo -p custom/pages` | **MISSING** | LOW | Desktop has its own path config |
+| `raider g component NAME` | Generates a component class | Supported (Files folder menu) | — | Inherits from `Component` base class |
+| `raider g helper NAME` | Generates a helper file | Supported (Files folder menu) | — | |
+| `--path` / `-p` on page, spec, helper, component | Custom output directory, e.g. `raider g page Foo -p custom/pages` | Supported: always passed, as the folder right-clicked | — | |
 
 `raider g scaffold` takes only names. It has no flags; it generates a spec and a page object. Ruby Raider 4.0 has no `raider g feature` or `raider g steps` (`Could not find command`), so the desktop offers neither.
 
@@ -152,11 +152,11 @@ Shipped: the `--accessibility` checkbox, the CI provider select, and component a
 2. **Failure video toggle**: `raider u video on/off`
 
 ### LOW — Nice to have
-3. **Scaffold UI for `g scaffold`**
+3. ~~**Scaffold UI for `g scaffold`**~~: not planned; the Files folder menu generates one file at a time
 4. ~~**Mobile capabilities and Start Appium**~~: shipped as Device settings on the Files tab; the desktop asks the user to start Appium instead of starting it
 5. **Viewport**: UI for the existing `updateViewport` handler
 6. **Platform**: `raider u platform` for cross-platform projects
-7. **Scaffold output path**: `--path` on individual generators
+7. ~~**Scaffold output path**~~: shipped; the Files folder menu passes `--path`
 
 ---
 
@@ -171,7 +171,6 @@ raider new name -p framework:rspec automation:selenium ci:github --accessibility
 # Scaffolding
 raider g page PageName
 raider g spec SpecName
-raider g scaffold UserProfile
 raider g component Header
 raider g helper AuthHelper
 

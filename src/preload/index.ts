@@ -19,7 +19,7 @@ import type {
 } from '@shared/types/prepareRun'
 import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { ProjectFileResult } from '@shared/types/projectFiles'
-import type { ScaffoldResult } from '@shared/types/scaffoldTypes'
+import type { ScaffoldParams, ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type { AcceptBaselineResult } from '@shared/types/acceptBaseline'
@@ -414,7 +414,7 @@ const api = {
 
   // --- Scaffolding APIs ---
   scaffoldGenerate: async (
-    params: Record<string, unknown>,
+    params: ScaffoldParams,
     projectPath: string,
     rubyCommand: string
   ): Promise<ScaffoldResult> =>

@@ -266,7 +266,7 @@ describe('Overview Page', (): void => {
     expect(mockApi.openDocs).toHaveBeenCalledWith('docs.recorder')
   })
 
-  it('renders Files, Scaffolding, and Dashboard tabs', async (): Promise<void> => {
+  it('renders Files and Dashboard tabs, and no Scaffolding tab', async (): Promise<void> => {
     useProjectStore.setState({ projectPath: '/fake/project', files: [] })
     await act(async () => {
       render(

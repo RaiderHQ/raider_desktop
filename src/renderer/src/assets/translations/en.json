@@ -803,10 +803,6 @@
         "title": "Files & test settings",
         "message": "Browse all files in your project on the left — click any file to preview it on the right.\n\nUse the toolbar above to set which browser to use, whether to run headlessly, which tests to run, and the timeout.\n\nThese settings apply every time you run your tests."
       },
-      "scaffold": {
-        "title": "Scaffolding",
-        "message": "Scaffolding generates boilerplate files for you — page objects, spec files, components and helpers.\n\nFill in the form and Ruby Raider will create the right file structure so you can start writing test logic immediately without setting things up by hand."
-      },
       "dashboard": {
         "title": "Project dashboard",
         "message": "The dashboard shows the last run at a glance: how many tests passed, failed or were skipped, and what went wrong in each failure.\n\nOpen a failed test to see the step it failed on, the screenshot and the trace."

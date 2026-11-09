@@ -117,6 +117,26 @@ describe('scaffoldGenerate into a folder (--path)', () => {
     expect(mockSafeExec).not.toHaveBeenCalled()
   })
 
+  // Whatever arrives over IPC: nothing runs unless every field is right
+  it.each([
+    ['no params', undefined],
+    ['null params', null],
+    ['no operation', { type: 'page', name: 'checkout', path: 'page_objects/pages' }],
+    ['another operation', { operation: 'delete', type: 'page', name: 'checkout', path: 'page_objects/pages' }],
+    ['no type', { operation: 'generate', name: 'checkout', path: 'page_objects/pages' }],
+    ['a number as the name', { operation: 'generate', type: 'page', name: 42, path: 'page_objects/pages' }]
+  ])('refuses %s without running anything', async (_label, params) => {
+    const result = await handler(mockEvent, params as never, project, 'ruby')
+    expect(result.success).toBe(false)
+    expect(mockSafeExec).not.toHaveBeenCalled()
+  })
+
+  it('returns a failure when running the gem throws', async () => {
+    mockSafeExec.mockRejectedValue(new Error('spawn failed'))
+    const result = await generate({ type: 'page', name: 'checkout', path: 'page_objects/pages' })
+    expect(result).toEqual({ success: false, output: '', error: 'spawn failed' })
+  })
+
   it('wraps the command with rbenv init and cd to the project', async () => {
     gemWrites('page_objects/pages/checkout_page.rb')
     await generate({ type: 'page', name: 'checkout', path: 'page_objects/pages' })
