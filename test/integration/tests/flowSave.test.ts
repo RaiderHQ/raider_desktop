@@ -187,9 +187,7 @@ describe('saveRecordedFlow', () => {
   it('refuses two steps that share an input with different values, and writes nothing', async () => {
     await setUpFlows()
     const steps = [nav(), typing('t1', 'hours', '8'), typing('t2', 'hours', '9')]
-    const error = await saveRecordedFlow(project, layout, flow({ steps })).catch(
-      (e: unknown) => e
-    )
+    const error = await saveRecordedFlow(project, layout, flow({ steps })).catch((e: unknown) => e)
     expect(error).toBeInstanceOf(FlowInputClashError)
     expect((error as Error).message).toBe('Two steps use the input hours with different values.')
     expect(await readdir(join(project, 'flows'))).toEqual(['flow_helper.rb'])
