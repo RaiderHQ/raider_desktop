@@ -14,6 +14,7 @@ import {
   CodeOwnedError,
   FlowIdError,
   FlowIdTakenError,
+  FlowInputClashError,
   FlowRecordsUnsafeError,
   FlowsNotReadyError
 } from '../../../src/main/handlers/tests/recordedTests'
@@ -87,12 +88,12 @@ afterEach(async () => {
 describe('saveRecordedFlow', () => {
   it('writes flows/<stem>_flow.rb at the project root and a flow record with its inputs', async () => {
     await setUpFlows()
-    const steps = [nav(), typing('t1', 'hours', '8'), typing('t2', 'hours', '9')]
+    const steps = [nav(), typing('t1', 'hours', '8'), typing('t2', 'hours', '8')]
     const saved = await saveRecordedFlow(project, layout, flow({ steps }))
 
     expect(saved.file).toBe('flows/fill_timesheet_flow.rb')
     expect(saved.kind).toBe('flow')
-    // First default wins on a duplicate name
+    // Two steps may share an input when they type the same value: one input
     expect(saved.inputs).toEqual([{ name: 'hours', default: '8' }])
     const content = await readFile(join(project, 'flows', 'fill_timesheet_flow.rb'), 'utf-8')
     expect(content).toBe(generateFlowFileWithMap({ name: 'Fill timesheet', steps }, {}).content)
@@ -181,6 +182,29 @@ describe('saveRecordedFlow', () => {
     expect(error).toBeInstanceOf(FlowHasChecksError)
     expect((error as FlowHasChecksError).stepIds).toEqual(['a1'])
     expect(await readdir(join(project, 'flows'))).toEqual(['flow_helper.rb'])
+  })
+
+  it('refuses two steps that share an input with different values, and writes nothing', async () => {
+    await setUpFlows()
+    const steps = [nav(), typing('t1', 'hours', '8'), typing('t2', 'hours', '9')]
+    const error = await saveRecordedFlow(project, layout, flow({ steps })).catch(
+      (e: unknown) => e
+    )
+    expect(error).toBeInstanceOf(FlowInputClashError)
+    expect((error as Error).message).toBe('Two steps use the input hours with different values.')
+    expect(await readdir(join(project, 'flows'))).toEqual(['flow_helper.rb'])
+
+    // An existing flow keeps its file when an edit makes a clash
+    const saved = await saveRecordedFlow(
+      project,
+      layout,
+      flow({ steps: [nav(), typing('t1', 'hours', '8'), typing('t2', 'hours', '8')] })
+    )
+    const before = await readFile(join(project, saved.file), 'utf-8')
+    await expect(saveRecordedFlow(project, layout, flow({ steps }))).rejects.toBeInstanceOf(
+      FlowInputClashError
+    )
+    expect(await readFile(join(project, saved.file), 'utf-8')).toBe(before)
   })
 
   it('updates an existing flow in place and keeps kind and inputs', async () => {

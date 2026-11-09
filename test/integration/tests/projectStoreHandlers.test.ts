@@ -429,6 +429,29 @@ describe('a flow never gets a check', () => {
     expect(fromMode).toMatchObject({ success: true, test: { kind: 'flow' } })
   })
 
+  it('refuses a flow whose steps give one input two values, saying which', async () => {
+    await mkdir(join(project, 'flows'))
+    await writeFile(join(project, 'flows', 'flow_helper.rb'), '# helper\n')
+    await setActiveProject(project)
+    const typing = (id: string, text: string): Test['steps'][number] => ({
+      id,
+      kind: 'type',
+      element: { strategy: 'id', value: 'hours' },
+      text,
+      inputName: 'hours'
+    })
+    const result = await saveRecording(win, project, {
+      ...checkout('f-clash'),
+      kind: 'flow',
+      steps: [typing('s1', '8'), typing('s2', '9')]
+    })
+    expect(result).toEqual({
+      success: false,
+      error: 'Two steps use the input hours with different values.'
+    })
+    expect(await exists(join(project, 'flows', 'checkout_flow.rb'))).toBe(false)
+  })
+
   it('refuses a test whose id a flow also holds, saying so', async () => {
     await mkdir(join(project, 'flows'))
     await writeFile(join(project, 'flows', 'flow_helper.rb'), '# helper\n')

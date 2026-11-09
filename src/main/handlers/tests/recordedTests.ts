@@ -70,6 +70,14 @@ export class FlowsNotReadyError extends Error {
   }
 }
 
+/** Two typing steps share an input name but type different values: a run would have two defaults */
+export class FlowInputClashError extends Error {
+  constructor(name: string) {
+    super(`Two steps use the input ${name} with different values.`)
+    this.name = 'FlowInputClashError'
+  }
+}
+
 /** The spec file was edited outside Raider, so Raider must not rewrite or delete it. */
 export class CodeOwnedError extends Error {
   constructor(file: string) {
@@ -712,7 +720,22 @@ export const flowsReady = (projectPath: string): Promise<boolean> =>
     () => false
   )
 
-/** A flow's inputs, from its steps alone: each named, non-secret typing; the first default wins. */
+/** The first input name two non-secret typing steps give different values, or null. */
+function clashingInput(steps: Step[]): string | null {
+  const values = new Map<string, string>()
+  for (const step of steps) {
+    if (step.kind !== 'type' || step.secret || !step.inputName) continue
+    const seen = values.get(step.inputName)
+    if (seen !== undefined && seen !== step.text) return step.inputName
+    values.set(step.inputName, step.text)
+  }
+  return null
+}
+
+/**
+ * A flow's inputs, from its steps alone: each named, non-secret typing. Steps sharing a name
+ * type the same value (saveRecordedFlow refuses a clash), so the first default is everyone's.
+ */
 export function flowInputsOf(steps: Step[]): FlowInput[] {
   const inputs: FlowInput[] = []
   for (const step of steps) {
@@ -842,6 +865,9 @@ export function saveRecordedFlow(
         : { id: input.id, name: input.name, url: input.url, steps: input.steps }
     const checks = checksOf(test.steps)
     if (checks.length > 0) throw new FlowHasChecksError(checks)
+    // Main is the authority on inputs: one name has one default, or the file and record disagree
+    const clash = clashingInput(test.steps)
+    if (clash !== null) throw new FlowInputClashError(clash)
     await assertFlowsReady(projectPath)
     const now = new Date().toISOString()
 

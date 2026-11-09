@@ -9,6 +9,7 @@ import {
   FlowIdTakenError,
   FlowRecordsUnsafeError,
   FlowsNotReadyError,
+  FlowInputClashError,
   saveRecordedFlow,
   saveRecordedTest,
   setTagsForFile
@@ -150,6 +151,8 @@ function flowError(error: unknown): string | null {
   if (error instanceof FlowsNotReadyError) return FLOWS_NOT_READY_ERROR
   if (error instanceof FlowIdTakenError) return FLOW_ID_TAKEN_ERROR
   if (error instanceof FlowRecordsUnsafeError) return FLOW_RECORDS_UNSAFE_ERROR
+  // Built from a name that passed the input-name rule, so it is safe to show as is
+  if (error instanceof FlowInputClashError) return error.message
   return null
 }
 
