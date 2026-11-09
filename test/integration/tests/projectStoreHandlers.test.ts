@@ -374,6 +374,40 @@ describe('a flow never gets a check', () => {
     expect(await exists(join(project, 'spec'))).toBe(false)
   })
 
+  it('saves a new flow to flows/<stem>_flow.rb and keeps it a flow on every save', async () => {
+    await mkdir(join(project, 'flows'))
+    await writeFile(join(project, 'flows', 'flow_helper.rb'), '# helper\n')
+    await setActiveProject(project)
+
+    const first = await saveRecording(win, project, { ...checkout('f-new'), kind: 'flow' })
+    expect(first).toMatchObject({
+      success: true,
+      test: { kind: 'flow', file: 'flows/checkout_flow.rb' }
+    })
+    // The renderer leaves kind out on an autosave: main's record keeps it a flow
+    const again = await saveRecording(win, project, { ...checkout('f-new'), name: 'Pay' })
+    expect(again).toMatchObject({
+      success: true,
+      test: { kind: 'flow', file: 'flows/checkout_flow.rb' }
+    })
+    expect((await readSidecar(project, 'flows/checkout_flow.rb'))?.kind).toBe('flow')
+    expect(await exists(join(project, 'spec'))).toBe(false)
+
+    // A new recording while the recorder records a flow is a flow too
+    appState.recordingMode = 'flow'
+    const fromMode = await saveRecording(win, project, checkout('f-mode'))
+    expect(fromMode).toMatchObject({ success: true, test: { kind: 'flow' } })
+  })
+
+  it('tells the user to set up flows when flows/flow_helper.rb is missing', async () => {
+    await setActiveProject(project)
+    const result = await saveRecording(win, project, { ...checkout(), kind: 'flow' })
+    expect(result).toEqual({
+      success: false,
+      error: 'Set up flows first: run raider flow init in this project.'
+    })
+  })
+
   it('refuses a malformed test as before, without throwing', async () => {
     await setActiveProject(project)
     for (const bad of [{ ...checkout(), steps: 'x' }, { ...checkout(), steps: [null] }, null]) {

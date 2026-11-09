@@ -29,3 +29,15 @@ export function flowStem(slug: string, n: number): string {
 
 /** Project-relative POSIX path of the flow file with this name. */
 export const flowFile = (stem: string): string => `${FLOWS_DIR}/${stem}_flow.rb`
+
+const FLOW_FILE = /^flows\/([a-z0-9_]{1,60})_flow\.rb$/
+
+/** The flow name of `rel` when it is exactly `flows/<name>_flow.rb` with a valid name, else null. */
+export function flowStemOf(rel: unknown): string | null {
+  if (typeof rel !== 'string') return null
+  const stem = FLOW_FILE.exec(rel)?.[1]
+  return stem !== undefined && isFlowName(stem) ? stem : null
+}
+
+/** True for a flow file's project-relative path: `flows/<name>_flow.rb`, no subfolders. */
+export const isFlowFileRel = (rel: unknown): rel is string => flowStemOf(rel) !== null

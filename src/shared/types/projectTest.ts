@@ -64,9 +64,33 @@ export interface ProjectTestEntry {
   tags: string[]
   /** Sidecar exists but the file is gone */
   missingFile?: true
+  /** A flow (`flows/<name>_flow.rb`); absent for a test */
+  kind?: 'flow'
 }
 
 export interface CodeTestView {
   file: string
   examples: { name: string; steps: Step[] }[]
 }
+
+/** One flow of the project (`list-project-flows`) */
+export interface ProjectFlowEntry {
+  /** Record name, else the first describe string, else the file name */
+  name: string
+  /** `flows/<stem>_flow.rb` */
+  file: string
+  /** The flow's name for `raider flow <stem>` */
+  stem: string
+  ownership: Ownership
+  /** Present when Raider recorded it */
+  testId?: string
+  /** The recorded flow's inputs; [] for a flow Raider didn't record or doesn't own */
+  inputs: FlowInput[]
+  missingFile?: true
+}
+
+/** 'convert-to-flow' */
+export type ConvertToFlowResult =
+  | { success: true; test: import('./test').Test }
+  | { success: false; error: 'has-checks'; stepIds: string[] }
+  | { success: false; error: string }

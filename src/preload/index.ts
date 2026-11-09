@@ -17,7 +17,12 @@ import type {
   LegacyRunResult,
   PrepareTestRunResult
 } from '@shared/types/prepareRun'
-import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
+import type {
+  CodeTestView,
+  ConvertToFlowResult,
+  ProjectFlowEntry,
+  ProjectTestEntry
+} from '@shared/types/projectTest'
 import type { ProjectFileResult } from '@shared/types/projectFiles'
 import type { ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
@@ -183,6 +188,12 @@ const api = {
 
   getTests: async (): Promise<Test[]> => ipcRenderer.invoke('get-tests'),
   listProjectTests: (): Promise<ProjectTestEntry[]> => ipcRenderer.invoke('list-project-tests'),
+  listProjectFlows: (): Promise<ProjectFlowEntry[]> => ipcRenderer.invoke('list-project-flows'),
+  flowsReady: (): Promise<boolean> => ipcRenderer.invoke('flows-ready'),
+  convertToFlow: (
+    projectPath: string,
+    request: { testId: string; dropChecks?: boolean }
+  ): Promise<ConvertToFlowResult> => ipcRenderer.invoke('convert-to-flow', projectPath, request),
   openCodeTest: (file: string): Promise<CodeTestView> => ipcRenderer.invoke('open-code-test', file),
   mapFailedStep: (
     projectPath: string,

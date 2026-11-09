@@ -1,6 +1,6 @@
 import fs from 'fs/promises'
 import { realpathSync } from 'fs'
-import { dirname, posix, resolve } from 'path'
+import { dirname, join, posix, resolve } from 'path'
 import {
   CODEGEN_VERSION,
   generateProjectSpecFileWithMap,
@@ -23,8 +23,11 @@ import {
   writeSidecar
 } from './sidecar'
 import { safeError } from '../../utils/safeLog'
+import { FLOWS_DIR, flowFile, flowStem, isFlowFileRel } from '../../../shared/flows'
+import { FlowHasChecksError, generateFlowFileWithMap } from '../../codegen/flowFile'
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
-import type { Sidecar, StepLines } from '../../../shared/types/projectTest'
+import type { FlowInput, Sidecar, StepLines } from '../../../shared/types/projectTest'
+import type { Step } from '../../../shared/types/step'
 import type { Test } from '../../../shared/types/test'
 
 /** A regenerate found no record any more: the test was deleted meanwhile. */
@@ -35,7 +38,6 @@ export class TestGoneError extends Error {
   }
 }
 
-/** The spec file was edited outside Raider, so Raider must not rewrite or delete it. */
 /** A flow's id: the spec writer never writes a flow, nor a second record under its id */
 export class FlowIdError extends Error {
   constructor(id: string) {
@@ -44,14 +46,23 @@ export class FlowIdError extends Error {
   }
 }
 
-/** Some sidecar in the project, wherever it sits, records `testId` as a flow */
-async function hasFlowSidecar(projectPath: string, testId: string): Promise<boolean> {
-  return (await listSidecars(projectPath)).some(
-    ({ fileRel, sidecar }) =>
-      sidecar?.id === testId && sidecar.file === fileRel && sidecar.kind === 'flow'
-  )
+/** The flow writer found the id on a test's record, or on more than one record */
+export class FlowIdTakenError extends Error {
+  constructor(id: string) {
+    super(`The id ${id} belongs to a test or to more than one record, so no flow is saved under it`)
+    this.name = 'FlowIdTakenError'
+  }
 }
 
+/** The project has no usable flows/flow_helper.rb (set up with `raider flow init`) */
+export class FlowsNotReadyError extends Error {
+  constructor() {
+    super('Set up flows first: run raider flow init in this project.')
+    this.name = 'FlowsNotReadyError'
+  }
+}
+
+/** The spec file was edited outside Raider, so Raider must not rewrite or delete it. */
 export class CodeOwnedError extends Error {
   constructor(file: string) {
     super(`This test was changed in code and can no longer be edited in Raider: ${file}`)
@@ -62,8 +73,9 @@ export class CodeOwnedError extends Error {
 const SLUG_MAX = 60
 const MAX_SUFFIX = 1000
 
-export function slugify(name: string): string {
-  const slug = name
+/** The slug of `name`, '' when nothing usable is left (slugify adds the test fallback). */
+export function slugOf(name: string): string {
+  return name
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
@@ -71,12 +83,58 @@ export function slugify(name: string): string {
     .replace(/^_+|_+$/g, '')
     .slice(0, SLUG_MAX)
     .replace(/_+$/, '')
-  return slug || 'recorded_test'
+}
+
+export function slugify(name: string): string {
+  return slugOf(name) || 'recorded_test'
 }
 
 /** A recorded test's spec path: safe, relative, and a *_spec.rb file. */
 export const isSpecRel = (rel: unknown): rel is string =>
   isSafeRelPath(rel) && rel.endsWith('_spec.rb')
+
+/**
+ * A recorded file's path: a spec (as isSpecRel) or exactly `flows/<name>_flow.rb`. Where a
+ * record sits says what it is: a record of a flow file is a flow, whatever its `kind` says.
+ */
+export const isRecordedRel = (rel: unknown): rel is string =>
+  isSpecRel(rel) || (isSafeRelPath(rel) && isFlowFileRel(rel))
+
+/** A record the spec writer must never take: a flow file's, or one that calls itself a flow */
+export const isFlowish = (sidecar: Sidecar): boolean =>
+  sidecar.kind === 'flow' || isFlowFileRel(sidecar.file)
+
+const FLOW_RECORDS = join('.raider', 'tests', FLOWS_DIR)
+
+/**
+ * The records in `.raider/tests/flows/` (flat: a flow file has no subfolder), each only where
+ * its own `file` says. An unreadable one is skipped.
+ */
+async function flowFolderRecords(projectPath: string): Promise<Sidecar[]> {
+  const dir = join(projectPath, FLOW_RECORDS)
+  let names: string[]
+  try {
+    await assertRealInside(projectPath, dir)
+    names = (await fs.readdir(dir, { withFileTypes: true }))
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
+      .map((entry) => entry.name)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []
+    throw error
+  }
+  const records: Sidecar[] = []
+  for (const name of names.sort()) {
+    const fileRel = `${FLOWS_DIR}/${name.slice(0, -'.json'.length)}`
+    if (!isFlowFileRel(fileRel)) continue
+    const sidecar = await readSidecar(projectPath, fileRel).catch(() => null)
+    if (sidecar && sidecar.file === fileRel) records.push(sidecar)
+  }
+  return records
+}
+
+/** Some flow's record holds `testId` */
+const flowFolderHolds = async (projectPath: string, testId: string): Promise<boolean> =>
+  (await flowFolderRecords(projectPath)).some((sidecar) => sidecar.id === testId)
 
 // lstat, so a broken symlink counts as taken too
 const exists = (p: string): Promise<boolean> =>
@@ -103,7 +161,7 @@ export async function findSidecarById(
   testId: string
 ): Promise<Sidecar | null> {
   for (const { fileRel, sidecar } of await listSidecars(projectPath)) {
-    if (sidecar?.id === testId && sidecar.file === fileRel && isSpecRel(sidecar.file)) {
+    if (sidecar?.id === testId && sidecar.file === fileRel && isRecordedRel(sidecar.file)) {
       return sidecar
     }
   }
@@ -121,7 +179,7 @@ export const specRoot = (layout: ProjectLayout): string => {
  * file inside the project, so tests stay editable after spec_path changes.
  */
 async function recordedFilePath(projectPath: string, fileRel: string): Promise<string> {
-  if (!isSpecRel(fileRel)) throw new Error(`Not a spec file: ${fileRel}`)
+  if (!isRecordedRel(fileRel)) throw new Error(`Not a recorded file: ${fileRel}`)
   const target = resolveInside(projectPath, fileRel)
   await assertRealInside(projectPath, target)
   return target
@@ -302,7 +360,7 @@ async function sidecarAt(
   knownFile: string | null
 ): Promise<Sidecar | null> {
   if (knownFile === null) return null
-  const sidecar = isSpecRel(knownFile)
+  const sidecar = isRecordedRel(knownFile)
     ? await readSidecar(projectPath, knownFile).catch(() => null)
     : null
   if (sidecar?.id === testId && sidecar.file === knownFile) return sidecar
@@ -335,8 +393,9 @@ export function saveRecordedTest(
       options.knownFile !== undefined
         ? await sidecarAt(projectPath, input.id, options.knownFile)
         : await findSidecarById(projectPath, input.id)
-    // Checked inside the queue, so no save of the same id can slip in between
-    if (existing?.kind === 'flow' || (!existing && (await hasFlowSidecar(projectPath, input.id)))) {
+    // Checked inside the queue, so no save of the same id can slip in between. A flow's record
+    // can only sit in .raider/tests/flows/, so a known test checks that one folder, not them all
+    if ((existing && isFlowish(existing)) || (await flowFolderHolds(projectPath, input.id))) {
       throw new FlowIdError(input.id)
     }
     if (options.regenerate && !existing) throw new TestGoneError(input.id)
@@ -570,5 +629,240 @@ export async function setTagsForFile(
       buildSidecar(test, existing.file, content, stepLines, existing.createdAt, now)
     )
     return { kind: 'recorded' }
+  })
+}
+
+/** The helper `raider flow init` writes; every flow file requires it */
+export const FLOW_HELPER = `${FLOWS_DIR}/flow_helper.rb`
+
+/**
+ * Throws FlowsNotReadyError unless `flows/` is a real folder (never a link) and
+ * `flows/flow_helper.rb` a regular file, both really inside the project.
+ */
+export async function assertFlowsReady(projectPath: string): Promise<void> {
+  try {
+    const dir = resolveInside(projectPath, FLOWS_DIR)
+    const helper = resolveInside(projectPath, FLOW_HELPER)
+    if (!(await fs.lstat(dir)).isDirectory()) throw new FlowsNotReadyError()
+    if (!(await fs.lstat(helper)).isFile()) throw new FlowsNotReadyError()
+    await assertRealInside(projectPath, dir)
+    await assertRealInside(projectPath, helper)
+  } catch {
+    throw new FlowsNotReadyError()
+  }
+}
+
+/** True when the project can take flows (see assertFlowsReady). */
+export const flowsReady = (projectPath: string): Promise<boolean> =>
+  assertFlowsReady(projectPath).then(
+    () => true,
+    () => false
+  )
+
+/** A flow's inputs, from its steps alone: each named, non-secret typing; the first default wins. */
+export function flowInputsOf(steps: Step[]): FlowInput[] {
+  const inputs: FlowInput[] = []
+  for (const step of steps) {
+    if (step.kind !== 'type' || step.secret || !step.inputName) continue
+    if (inputs.some((input) => input.name === step.inputName)) continue
+    inputs.push({ name: step.inputName, default: step.text })
+  }
+  return inputs
+}
+
+const checksOf = (steps: Step[]): string[] =>
+  steps.filter((step) => step.kind === 'assert').map((step) => step.id)
+
+const generateFlow = (
+  test: Test,
+  layout: ProjectLayout
+): { content: string; stepLines: StepLines } =>
+  generateFlowFileWithMap(
+    { name: test.name, steps: test.steps },
+    { testIdAttribute: layout.testIdAttribute }
+  )
+
+// Every field of a flow's record is rebuilt here, so a rewrite never drops kind or inputs
+const buildFlowSidecar = (
+  test: Test,
+  file: string,
+  content: string,
+  stepLines: StepLines,
+  createdAt: string,
+  now: string
+): Sidecar => {
+  const steps = withSecretNames(test.steps)
+  const inputs = flowInputsOf(steps)
+  return {
+    version: 1,
+    id: test.id,
+    name: test.name,
+    url: test.url,
+    steps,
+    file,
+    hash: hashRuby(content),
+    codegen: CODEGEN_VERSION,
+    stepLines,
+    kind: 'flow',
+    ...(inputs.length > 0 && { inputs }),
+    createdAt,
+    updatedAt: now
+  }
+}
+
+/**
+ * Picks a free `flows/<stem>_flow.rb` (stem from the name, by the gem's rule) and creates it
+ * without ever replacing a file. `flows/` must exist: it is never created here.
+ */
+async function createNewFlow(
+  projectPath: string,
+  layout: ProjectLayout,
+  test: Test
+): Promise<{ file: string; content: string; stepLines: StepLines; target: string }> {
+  const slug = slugOf(test.name)
+  for (let n = 1; n <= MAX_SUFFIX; n++) {
+    const file = flowFile(flowStem(slug, n))
+    if (!isRecordedRel(file)) continue
+    const target = resolveInside(projectPath, file)
+    if ((await exists(target)) || (await exists(sidecarPath(projectPath, file)))) continue
+    await assertRealInside(projectPath, dirname(target))
+    const { content, stepLines } = generateFlow(test, layout)
+    try {
+      await writeFileAtomic(target, content, { exclusive: true })
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'EEXIST') continue
+      throw error
+    }
+    return { file, content, stepLines, target }
+  }
+  throw new Error(`No free flow file name for ${slug}`)
+}
+
+async function writeNewFlow(
+  projectPath: string,
+  layout: ProjectLayout,
+  test: Test,
+  createdAt: string,
+  now: string
+): Promise<Sidecar> {
+  const { file, content, stepLines, target } = await createNewFlow(projectPath, layout, test)
+  const sidecar = buildFlowSidecar(test, file, content, stepLines, createdAt, now)
+  try {
+    await writeSidecar(projectPath, sidecar)
+  } catch (error) {
+    await fs.unlink(target).catch(() => undefined)
+    throw error
+  }
+  return sidecar
+}
+
+const UNTITLED_FLOW_FILE = new RegExp(`^${UNTITLED_SLUG}(?:_\\d+)?_flow\\.rb$`)
+
+/**
+ * Saves `input` as a flow: `flows/<stem>_flow.rb` at the project root plus its record at
+ * `.raider/tests/flows/<stem>_flow.rb.json`, with `kind: 'flow'` and the inputs rebuilt from
+ * the steps. Runs in the same per-id queue as saveRecordedTest. Refuses a check
+ * (FlowHasChecksError), a project without flows set up (FlowsNotReadyError), and an id a test's
+ * record or several records hold (FlowIdTakenError). A file edited outside Raider is code-owned.
+ */
+export function saveRecordedFlow(
+  projectPath: string,
+  layout: ProjectLayout,
+  input: Test,
+  options: { regenerate?: boolean } = {}
+): Promise<Sidecar> {
+  return serialize(testQueues, testKey(projectPath, input.id), async () => {
+    const records = (await listSidecars(projectPath))
+      .map(({ fileRel, sidecar }) => (sidecar?.file === fileRel ? sidecar : null))
+      .filter((s): s is Sidecar => s !== null && s.id === input.id && isRecordedRel(s.file))
+    if (records.length > 1 || records.some((s) => !isFlowFileRel(s.file))) {
+      throw new FlowIdTakenError(input.id)
+    }
+    const existing = records[0] ?? null
+    if (options.regenerate && !existing) throw new TestGoneError(input.id)
+    const test: Test =
+      options.regenerate && existing
+        ? { id: existing.id, name: existing.name, url: existing.url, steps: existing.steps }
+        : { id: input.id, name: input.name, url: input.url, steps: input.steps }
+    const checks = checksOf(test.steps)
+    if (checks.length > 0) throw new FlowHasChecksError(checks)
+    await assertFlowsReady(projectPath)
+    const now = new Date().toISOString()
+
+    if (!existing) return writeNewFlow(projectPath, layout, test, now, now)
+
+    if (existing.codeOwned) throw new CodeOwnedError(existing.file)
+    const target = await recordedFilePath(projectPath, existing.file)
+    const onDisk = await readIfExists(target)
+    if (onDisk !== null && !isRaiderFile(onDisk, existing)) {
+      return refuseAsCodeOwned(projectPath, existing)
+    }
+
+    if (
+      !options.regenerate &&
+      UNTITLED_FLOW_FILE.test(posix.basename(existing.file)) &&
+      hasRealName(test)
+    ) {
+      // The new record is written before the old one goes: an interruption leaves a duplicate
+      const sidecar = await writeNewFlow(projectPath, layout, test, existing.createdAt, now)
+      try {
+        await deleteSidecar(projectPath, existing.file)
+        if (onDisk !== null) await fs.unlink(target)
+      } catch (error) {
+        safeError(`Could not remove the old file of renamed flow ${test.id}:`, error)
+      }
+      return sidecar
+    }
+
+    const { content, stepLines } = generateFlow(test, layout)
+    if (
+      onDisk === content &&
+      existing.kind === 'flow' &&
+      existing.codegen === CODEGEN_VERSION &&
+      (options.regenerate || sameRecord(existing, test))
+    ) {
+      if (existing.stepLines) return existing
+      const mapped = { ...existing, stepLines }
+      await writeSidecar(projectPath, mapped)
+      return mapped
+    }
+    if (onDisk === null) await writeFileAtomic(target, content, { exclusive: true })
+    else await writeFileAtomic(target, content)
+    const sidecar = buildFlowSidecar(
+      test,
+      existing.file,
+      content,
+      stepLines,
+      existing.createdAt,
+      now
+    )
+    await writeSidecar(projectPath, sidecar)
+    return sidecar
+  })
+}
+
+export class NotConvertibleError extends Error {
+  constructor(readonly reason: 'notFound' | 'flow' | 'codeOwned') {
+    super(`This test can't become a flow (${reason})`)
+    this.name = 'NotConvertibleError'
+  }
+}
+
+/**
+ * The record of a recorded test that may become a flow, read fresh in the test's own queue:
+ * a test's record (never a flow's) that Raider still owns and whose file, when there, is still
+ * the one Raider wrote. Throws NotConvertibleError otherwise. Nothing is written.
+ */
+export function convertibleTest(projectPath: string, testId: string): Promise<Sidecar> {
+  return serialize(testQueues, testKey(projectPath, testId), async () => {
+    const existing = await findSidecarById(projectPath, testId)
+    if (!existing) throw new NotConvertibleError('notFound')
+    if (isFlowish(existing)) throw new NotConvertibleError('flow')
+    if (existing.codeOwned) throw new NotConvertibleError('codeOwned')
+    const onDisk = await readIfExists(await recordedFilePath(projectPath, existing.file))
+    if (onDisk !== null && !isRaiderFile(onDisk, existing)) {
+      throw new NotConvertibleError('codeOwned')
+    }
+    return existing
   })
 }

@@ -1,5 +1,13 @@
 import { CODEGEN_VERSION } from '../../codegen/testFile'
-import { CodeOwnedError, TestGoneError, isSpecRel, saveRecordedTest } from './recordedTests'
+import {
+  CodeOwnedError,
+  FlowsNotReadyError,
+  TestGoneError,
+  isRecordedRel,
+  saveRecordedFlow,
+  saveRecordedTest
+} from './recordedTests'
+import { isFlowFileRel } from '../../../shared/flows'
 import { listSidecars, resolveInside } from './sidecar'
 import { stat } from 'fs/promises'
 import { safeError } from '../../utils/safeLog'
@@ -28,8 +36,8 @@ export async function migrateRecordedTests(
   let rewritten = 0
   for (const { fileRel, sidecar } of await listSidecars(projectPath)) {
     if (!sidecar || sidecar.file !== fileRel || sidecar.codeOwned) continue
-    // The same rule as loading: only a safe relative *_spec.rb path is a recorded test
-    if (!isSpecRel(fileRel)) continue
+    // The same rule as loading: a safe *_spec.rb path, or a flows/<name>_flow.rb flow file
+    if (!isRecordedRel(fileRel)) continue
     // Only an older shape is rewritten: a file from a newer Raider is left as it is
     if (
       sidecar.codegen !== undefined &&
@@ -46,13 +54,20 @@ export async function migrateRecordedTests(
       ...(sidecar.tags && { tags: sidecar.tags })
     }
     try {
-      const saved = await saveRecordedTest(projectPath, layout, test, {
-        knownFile: fileRel,
-        regenerate: force
-      })
+      // A flow is written again from its record by the flow codegen, never renamed
+      const saved = isFlowFileRel(fileRel)
+        ? await saveRecordedFlow(projectPath, layout, test, { regenerate: true })
+        : await saveRecordedTest(projectPath, layout, test, {
+            knownFile: fileRel,
+            regenerate: force
+          })
       if (saved.codegen === CODEGEN_VERSION && !saved.codeOwned) rewritten++
     } catch (error) {
-      if (!(error instanceof CodeOwnedError) && !(error instanceof TestGoneError))
+      if (
+        !(error instanceof CodeOwnedError) &&
+        !(error instanceof TestGoneError) &&
+        !(error instanceof FlowsNotReadyError)
+      )
         safeError(`Could not update ${fileRel}:`, error)
     }
   }

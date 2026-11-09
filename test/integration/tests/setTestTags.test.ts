@@ -9,7 +9,11 @@ vi.mock('../../../src/main/utils/safeExec', () => ({ safeExec: mockSafeExec }))
 
 import setActiveProject from '../../../src/main/handlers/project/setActiveProject'
 import { appState } from '../../../src/main/handlers/appState'
-import { saveRecordedTest } from '../../../src/main/handlers/tests/recordedTests'
+import {
+  saveRecordedFlow,
+  saveRecordedTest,
+  setTagsForFile
+} from '../../../src/main/handlers/tests/recordedTests'
 import { readSidecar } from '../../../src/main/handlers/tests/sidecar'
 import { listProjectTestsHandler } from '../../../src/main/handlers/tests/projectTestIpc'
 import { setTestTags } from '../../../src/main/handlers/tests/setTestTags'
@@ -209,5 +213,24 @@ describe('setTestTags', () => {
   it('fails without a project', async () => {
     await setActiveProject(null)
     expect((await setTestTags('spec/a_spec.rb', ['a'])).success).toBe(false)
+  })
+})
+
+describe('tags on a flow', () => {
+  it('are refused, and the flow and its record stay as they were', async () => {
+    await mkdir(join(project, 'flows'))
+    await writeFile(join(project, 'flows', 'flow_helper.rb'), '# helper\n')
+    const f = await saveRecordedFlow(project, appState.layout!, rec('f', 'Fill'))
+    const before = await read(f.file)
+
+    expect(await setTestTags(f.file, ['smoke'])).toEqual({
+      success: false,
+      error: 'This test could not be found.'
+    })
+    expect(await setTagsForFile(project, appState.layout!, f.file, ['smoke'])).toEqual({
+      kind: 'notFound'
+    })
+    expect(await read(f.file)).toBe(before)
+    expect((await readSidecar(project, f.file))?.tags).toBeUndefined()
   })
 })

@@ -43,7 +43,10 @@ import isSystemRubyInstalled from './handlers/ruby/isSystemRubyInstalled'
 import installRbenvAndRuby from './handlers/ruby/installRbenvAndRuby'
 import installGems from './handlers/ruby/installGems'
 import {
+  convertToFlowHandler,
+  flowsReadyHandler,
   getProjectLayoutHandler,
+  listProjectFlowsHandler,
   listProjectTestsHandler,
   openCodeTestHandler,
   recordOverExampleHandler
@@ -345,6 +348,12 @@ app.whenReady().then(() => {
   )
   ipcMain.handle('get-tests', getTests)
   ipcMain.handle('list-project-tests', listProjectTestsHandler)
+  ipcMain.handle('list-project-flows', listProjectFlowsHandler)
+  ipcMain.handle('flows-ready', flowsReadyHandler)
+  // Only the payload reaches the handler, which validates it; main reads the test itself
+  ipcMain.handle('convert-to-flow', (_event, projectPath: unknown, request: unknown) =>
+    convertToFlowHandler(projectPath, request)
+  )
   ipcMain.handle('open-code-test', (_event, file: string) => openCodeTestHandler(file))
   ipcMain.handle('get-project-layout', getProjectLayoutHandler)
   ipcMain.handle('upgrade-ruby-raider', (_event, projectPath: unknown, rubyCommand: unknown) =>
