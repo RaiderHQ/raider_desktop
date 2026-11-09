@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useId } from 'react'
 import { map } from 'lodash'
 import Tooltip from '@components/Tooltip'
 
@@ -18,9 +18,11 @@ const SelectInput: React.FC<SelectInputProps> = ({
   label,
   tooltip
 }) => {
+  const selectId = useId()
   const select = (
     <select
-      className="block w-full p-3 border border-neutral-bdr rounded-md bg-white text-neutral-dk appearance-none focus:outline-none focus:ring-2 focus:ring-ruby focus:border-ruby transition-colors"
+      id={selectId}
+      className="block w-full pl-3 pr-8 py-1 border border-neutral-bdr rounded bg-white text-sm text-neutral-dk appearance-none focus:ring-ruby focus:border-ruby transition-colors"
       value={selected}
       onChange={onChange}
     >
@@ -34,7 +36,10 @@ const SelectInput: React.FC<SelectInputProps> = ({
 
   return (
     <div>
-      <label className="block mb-1 text-xs font-semibold uppercase tracking-wider text-neutral-dk">
+      <label
+        htmlFor={selectId}
+        className="block mb-1 text-xs font-semibold uppercase tracking-wider text-neutral-dk"
+      >
         {label}
       </label>
       <div className="relative">
@@ -45,10 +50,10 @@ const SelectInput: React.FC<SelectInputProps> = ({
         ) : (
           select
         )}
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
           <svg
-            width="16"
-            height="16"
+            width="14"
+            height="14"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
