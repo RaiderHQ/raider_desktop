@@ -97,7 +97,6 @@ describe('copy', () => {
   it('uses sentence case in the modals and menus', () => {
     expect(en.concepts.title).toBe('How Ruby Raider works')
     expect(en.concepts.hint).toBe('Hover any button for what it does.')
-    expect(en.overview.tabs.scaffold).toBe('Scaffolding')
     expect(en.overview.openTerminal).toBe('Open terminal')
     expect(en.files.menu.copyPath).toBe('Copy path')
     expect(en.files.menu.rename).toBe('Rename…')

@@ -100,19 +100,4 @@ test.describe('Overview settings toolbar - functional', () => {
     await expect(tagInput).toHaveClass(/lowercase/)
     await expect(page.getByRole('button', { name: 'Run tests' })).toBeEnabled()
   })
-  test('paths on the Scaffolding tab trigger update-paths on blur', async ({
-    electronApp,
-    page
-  }) => {
-    await mockMainIPCCapture(electronApp, 'update-paths', { success: true })
-    await page.getByText('Scaffolding', { exact: true }).first().click()
-    const pageInput = page.getByPlaceholder('e.g. pages')
-    await pageInput.fill('my_pages')
-    await pageInput.blur()
-    await expect
-      .poll(async () => (await getMainIPCCalls(electronApp, 'update-paths')).length)
-      .toBeGreaterThanOrEqual(1)
-    const calls = await getMainIPCCalls(electronApp, 'update-paths')
-    expect(calls[0].slice(0, 2)).toEqual([PROJECT, 'my_pages'])
-  })
 })

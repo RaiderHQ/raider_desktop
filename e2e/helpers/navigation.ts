@@ -134,19 +134,6 @@ export async function goToOverviewSettings(page: Page): Promise<void> {
 }
 
 /**
- * Navigate to Overview page and click the Scaffolding tab.
- */
-export async function goToOverviewScaffold(page: Page): Promise<void> {
-  await navigateTo(page, '/overview')
-  await page.waitForTimeout(500)
-  const scaffoldTab = page.getByText('Scaffolding', { exact: true }).first()
-  if (await scaffoldTab.isVisible().catch(() => false)) {
-    await scaffoldTab.click()
-    await page.waitForTimeout(500)
-  }
-}
-
-/**
  * Navigate to Overview page and click the Dashboard tab.
  */
 export async function goToOverviewDashboard(page: Page): Promise<void> {

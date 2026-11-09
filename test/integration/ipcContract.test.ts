@@ -168,9 +168,6 @@ describe('IPC Contract', () => {
     'getProjectConfig',
     'openDocs',
 
-    // Path Configuration
-    'updatePaths',
-
     // Terminal
     'terminalSpawn',
     'terminalWrite',

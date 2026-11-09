@@ -36,7 +36,7 @@ test.describe('Mobile (Appium) project', () => {
     await expect(alert).toBeVisible({ timeout: 20000 })
     await expect(alert).toContainText('Mobile projects are not supported')
     await expect(alert).toContainText('works with web projects only')
-    for (const tab of ['Tests', 'Files', 'Scaffolding', 'Dashboard']) {
+    for (const tab of ['Tests', 'Files', 'Dashboard']) {
       await expect(page.getByRole('button', { name: tab, exact: true })).toHaveCount(0)
     }
     await expect(page.getByTitle('Run tests')).toHaveCount(0)

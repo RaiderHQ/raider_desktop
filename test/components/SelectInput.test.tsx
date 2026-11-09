@@ -10,6 +10,11 @@ describe('SelectInput', () => {
     expect(screen.getByText('Browser')).toBeInTheDocument()
   })
 
+  it('names the select by its label', () => {
+    render(<SelectInput label="Browser" options={options} selected="Chrome" onChange={vi.fn()} />)
+    expect(screen.getByLabelText('Browser')).toBe(screen.getByRole('combobox'))
+  })
+
   it('renders all options', () => {
     render(<SelectInput label="Browser" options={options} selected="Chrome" onChange={vi.fn()} />)
     expect(screen.getByText('Chrome')).toBeInTheDocument()

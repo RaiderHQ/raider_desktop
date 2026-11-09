@@ -17,7 +17,7 @@ test.describe('New Project Page', () => {
 
   test('shows subtitle instructions', async ({ page }) => {
     await expect(
-      page.getByText('To create a project, first you need to select the following')
+      page.getByText('Name your project, choose a CI provider and pick any add-ons')
     ).toBeVisible()
   })
 
@@ -60,7 +60,7 @@ test.describe('New Project Page', () => {
     ).toBeVisible()
     await expect(
       page.getByText(
-        "Give your project a name, choose a CI provider and add-ons, and Ruby Raider sets up a web project"
+        'Give your project a name, choose a CI provider and add-ons, and Ruby Raider sets up a web project'
       )
     ).toBeVisible()
   })

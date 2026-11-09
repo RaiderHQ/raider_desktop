@@ -10,7 +10,6 @@ export const DOCS_LINK_IDS = [
   'docs.running',
   'docs.dashboard',
   'docs.testScreen',
-  'docs.scaffolding',
   'docs.errors',
   'docs.install',
   'docs.gem',

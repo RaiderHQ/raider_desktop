@@ -167,8 +167,8 @@ test.describe('Test Execution Features', () => {
       await expect(page.getByTestId('overview-run-mode-select')).toBeVisible()
       await expect(page.getByTestId('overview-rerun-failed-btn')).toBeVisible()
 
-      // Switch to Scaffolding tab
-      await page.getByText('Scaffolding', { exact: true }).click()
+      // Switch to the Dashboard tab
+      await page.getByRole('button', { name: 'Dashboard', exact: true }).click()
 
       await expect(page.getByTestId('overview-run-mode-select')).not.toBeVisible()
       await expect(page.getByTestId('overview-rerun-failed-btn')).not.toBeVisible()
