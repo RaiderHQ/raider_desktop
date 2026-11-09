@@ -1,10 +1,11 @@
 import fs from 'fs/promises'
 import { randomBytes } from 'crypto'
 import { dirname, isAbsolute, join, relative, resolve } from 'path'
-import { isStep } from '../../../shared/types/step'
+import { isStep, isValidInputName } from '../../../shared/types/step'
+import { safeWarn } from '../../utils/safeLog'
 import { refusedSecretName, withSecretNames } from '../../../shared/secretSteps'
 import { normalizeTags } from '../../../shared/tags'
-import type { Sidecar, StepLines } from '../../../shared/types/projectTest'
+import type { FlowInput, Sidecar, StepLines } from '../../../shared/types/projectTest'
 
 export class SidecarUnreadableError extends Error {
   constructor(message: string) {
@@ -177,6 +178,46 @@ function isStepLines(value: unknown): value is StepLines {
   )
 }
 
+const KINDS = ['test', 'flow']
+
+function validInputs(value: unknown): FlowInput[] {
+  if (!Array.isArray(value)) return []
+  const seen = new Set<string>()
+  return value.filter((entry: unknown): entry is FlowInput => {
+    if (typeof entry !== 'object' || entry === null) return false
+    const { name, default: fallback } = entry as Record<string, unknown>
+    if (!isValidInputName(name) || !isStr(fallback) || seen.has(name)) return false
+    seen.add(name)
+    return true
+  })
+}
+
+/**
+ * Drops the flow fields that don't hold up, each on its own, so one bad value
+ * doesn't make the record unreadable: an unknown kind (read as a test), bad inputs
+ * entries, and a step's input name that fails the rule or sits on a secret step.
+ */
+function dropBadFlowFields(parsed: unknown, fileRel: string): void {
+  if (typeof parsed !== 'object' || parsed === null) return
+  const s = parsed as Record<string, unknown>
+  if ('kind' in s && !KINDS.includes(s.kind as string)) {
+    safeWarn(`Sidecar ${fileRel} has an unknown kind; reading it as a test.`)
+    delete s.kind
+  }
+  if ('inputs' in s) {
+    const inputs = validInputs(s.inputs)
+    if (inputs.length > 0) s.inputs = inputs
+    else delete s.inputs
+  }
+  if (!Array.isArray(s.steps)) return
+  for (const step of s.steps as unknown[]) {
+    if (typeof step !== 'object' || step === null) continue
+    const t = step as Record<string, unknown>
+    if (t.kind !== 'type' || !('inputName' in t)) continue
+    if (!isValidInputName(t.inputName) || t.secret !== undefined) delete t.inputName
+  }
+}
+
 /** Null when there is no sidecar; throws SidecarUnreadableError for bad JSON or shape. */
 export async function readSidecar(projectPath: string, fileRel: string): Promise<Sidecar | null> {
   let raw: string
@@ -202,6 +243,7 @@ export async function readSidecar(projectPath: string, fileRel: string): Promise
       refused
     )
   }
+  dropBadFlowFields(parsed, fileRel)
   if (!isSidecar(parsed)) throw new SidecarUnreadableError(`Sidecar has a bad shape: ${fileRel}`)
   // A bad map only costs the map: the test itself is still readable
   if ('stepLines' in parsed && !isStepLines(parsed.stepLines)) delete parsed.stepLines

@@ -50,6 +50,8 @@ export type Step =
       text: string
       secret?: true
       secretName?: string
+      /** In a flow, the text is the default of this input (flow_input); never with secret */
+      inputName?: string
     }
   | { id: string; kind: 'pressKey'; element: ElementTarget; key: string }
   | { id: string; kind: 'wait'; element: ElementTarget; until: 'visible' | 'hidden' | 'enabled' }
@@ -64,6 +66,10 @@ const STRATEGIES = ['id', 'css', 'xpath']
  * Hideout client's RAIDER_TOKEN) and type it into a page.
  */
 export const SECRET_NAME = /^RAIDER_SECRET_[A-Z0-9_]+$/
+/** A flow input's name: the gem reads it from RAIDER_INPUT_<NAME>. */
+export const INPUT_NAME = /^[a-z][a-z0-9_]{0,39}$/
+export const isValidInputName = (v: unknown): v is string =>
+  typeof v === 'string' && INPUT_NAME.test(v)
 const WAIT_UNTIL = ['visible', 'hidden', 'enabled']
 const ASSERT_KINDS: AssertKind[] = [
   'displayed',
@@ -155,6 +161,11 @@ export function isStep(value: unknown): value is Step {
       if (
         value.secretName !== undefined &&
         !(value.secret === true && isStr(value.secretName) && SECRET_NAME.test(value.secretName))
+      )
+        return false
+      if (
+        value.inputName !== undefined &&
+        !(isValidInputName(value.inputName) && value.secret === undefined)
       )
         return false
       return isElementTarget(value.element) && isStr(value.text)

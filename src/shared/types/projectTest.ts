@@ -15,6 +15,14 @@ export interface StepLines {
   ranges: StepRange[]
 }
 
+/** A flow input: its name (INPUT_NAME) and the value typed when none is given. */
+export interface FlowInput {
+  name: string
+  default: string
+}
+
+export type RecordingKind = 'test' | 'flow'
+
 /** Raider's record of a recorded test, stored at `.raider/tests/<file>.json`. */
 export interface Sidecar {
   version: 1
@@ -33,6 +41,10 @@ export interface Sidecar {
   codeOwned?: true
   /** Normalized: lower-case, sorted, unique (see shared/tags) */
   tags?: string[]
+  /** Absent means a test */
+  kind?: RecordingKind
+  /** A flow's inputs, unique by name */
+  inputs?: FlowInput[]
   /** ISO */
   createdAt: string
   updatedAt: string
