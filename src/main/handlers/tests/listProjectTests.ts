@@ -37,15 +37,47 @@ async function specFilesUnder(projectPath: string, specPath: string): Promise<st
   }
 }
 
+/** True when `flows/` is a real folder (never a link) inside the project */
+async function flowsFolderIsReal(projectPath: string): Promise<boolean> {
+  try {
+    const dir = resolveInside(projectPath, FLOWS_DIR)
+    if (!(await fs.lstat(dir)).isDirectory()) return false
+    await assertRealInside(projectPath, dir)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * A flow file a record names passes the walk's checks: `flows/` real, and the file a regular
+ * file (never a link) inside the project, or missing (listed as a missing file).
+ */
+async function recordedFlowListable(projectPath: string, file: string): Promise<boolean> {
+  if (!(await flowsFolderIsReal(projectPath))) return false
+  try {
+    const target = resolveInside(projectPath, file)
+    const stat = await fs.lstat(target).catch((e: NodeJS.ErrnoException) => {
+      if (e.code === 'ENOENT') return null
+      throw e
+    })
+    if (!stat) return true
+    if (!stat.isFile()) return false
+    await assertRealInside(projectPath, target)
+    return true
+  } catch {
+    return false
+  }
+}
+
 /**
  * The flow files directly in `flows/` (`<name>_flow.rb`, regular files only, no symlinks, no
  * subfolders). Only when `flows/` is a real folder inside the project.
  */
 async function flowFiles(projectPath: string): Promise<string[]> {
   try {
+    if (!(await flowsFolderIsReal(projectPath))) return []
     const dir = resolveInside(projectPath, FLOWS_DIR)
-    if (!(await fs.lstat(dir)).isDirectory()) return []
-    await assertRealInside(projectPath, dir)
     return (await fs.readdir(dir, { withFileTypes: true }))
       .filter((entry) => entry.isFile())
       .map((entry) => `${FLOWS_DIR}/${entry.name}`)
@@ -153,8 +185,10 @@ export async function listProjectTests(
   // A sidecar only counts when it sits where its own `file` says
   const sidecars = new Map<string, Sidecar>()
   for (const { fileRel, sidecar } of await sidecarsOrNone(projectPath)) {
-    if (sidecar && sidecar.file === fileRel && isRecordedRel(fileRel))
-      sidecars.set(fileRel, sidecar)
+    if (!sidecar || sidecar.file !== fileRel || !isRecordedRel(fileRel)) continue
+    // A record can't make a file behind a linked flows/ (or a linked file) listed, or runnable
+    if (isFlowFileRel(fileRel) && !(await recordedFlowListable(projectPath, fileRel))) continue
+    sidecars.set(fileRel, sidecar)
   }
   const files = new Set<string>(await specFilesUnder(projectPath, layout.specPath))
   for (const file of await flowFiles(projectPath)) files.add(file)

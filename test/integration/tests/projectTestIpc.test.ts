@@ -226,6 +226,21 @@ describe('flows over IPC', () => {
     expect(await readFile(join(project, made.file), 'utf-8')).toBe(before)
   })
 
+  it('never runs a file a planted record names behind a linked flows/', async () => {
+    await setUpFlows()
+    await setActiveProject(project)
+    const made = await saveRecordedFlow(project, appState.layout!, {
+      id: 'f1',
+      name: 'Fill hours',
+      url: '',
+      steps: [nav]
+    })
+    await rm(join(project, 'flows'), { recursive: true })
+    await writeFile(join(outside, 'fill_hours_flow.rb'), 'puts 1\n')
+    await symlink(outside, join(project, 'flows'))
+    await expect(listedFiles([made.file])).rejects.toThrow('Not a project test')
+  })
+
   describe('convert-to-flow', () => {
     const saveTest = async (steps: Step[]): Promise<string> => {
       const saved = await saveRecordedTest(project, appState.layout!, {

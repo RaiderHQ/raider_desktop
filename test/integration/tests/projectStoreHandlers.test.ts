@@ -1,5 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtemp, mkdir, readFile, writeFile, rm, access, readdir, chmod } from 'fs/promises'
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  writeFile,
+  rm,
+  access,
+  readdir,
+  chmod,
+  symlink
+} from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -417,6 +427,23 @@ describe('a flow never gets a check', () => {
       error: "Another test or flow uses the same id, so Raider can't save this one."
     })
     expect(await exists(join(project, 'spec', 'checkout_2_spec.rb'))).toBe(false)
+  })
+
+  it('says why a flow is not saved when its records folder is a link', async () => {
+    await mkdir(join(project, 'flows'))
+    await writeFile(join(project, 'flows', 'flow_helper.rb'), '# helper\n')
+    await mkdir(join(project, 'elsewhere'))
+    await mkdir(join(project, '.raider', 'tests'), { recursive: true })
+    await symlink(join(project, 'elsewhere'), join(project, '.raider', 'tests', 'flows'))
+    await setActiveProject(project)
+    const result = await saveRecording(win, project, { ...checkout('f-new'), kind: 'flow' })
+    expect(result).toEqual({
+      success: false,
+      error:
+        "Raider's flow records folder (.raider/tests/flows) is a link or not a folder, so the flow wasn't saved."
+    })
+    // A test still saves
+    expect((await saveRecording(win, project, checkout())).success).toBe(true)
   })
 
   it('tells the user to set up flows when flows/flow_helper.rb is missing', async () => {

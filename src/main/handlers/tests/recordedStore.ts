@@ -7,6 +7,7 @@ import {
   NotConvertibleError,
   FlowIdError,
   FlowIdTakenError,
+  FlowRecordsUnsafeError,
   FlowsNotReadyError,
   saveRecordedFlow,
   saveRecordedTest,
@@ -117,6 +118,8 @@ export const FLOW_HAS_CHECKS_ERROR = 'A flow has no checks. Remove the check to 
 export const FLOW_SAVE_UNAVAILABLE_ERROR =
   'This flow was changed outside Raider. Open the project again to save it.'
 export const FLOWS_NOT_READY_ERROR = 'Set up flows first: run raider flow init in this project.'
+export const FLOW_RECORDS_UNSAFE_ERROR =
+  "Raider's flow records folder (.raider/tests/flows) is a link or not a folder, so the flow wasn't saved."
 export const FLOW_ID_TAKEN_ERROR =
   "Another test or flow uses the same id, so Raider can't save this one."
 
@@ -146,6 +149,7 @@ function flowError(error: unknown): string | null {
   if (error instanceof FlowHasChecksError) return FLOW_HAS_CHECKS_ERROR
   if (error instanceof FlowsNotReadyError) return FLOWS_NOT_READY_ERROR
   if (error instanceof FlowIdTakenError) return FLOW_ID_TAKEN_ERROR
+  if (error instanceof FlowRecordsUnsafeError) return FLOW_RECORDS_UNSAFE_ERROR
   return null
 }
 

@@ -22,7 +22,7 @@ import {
   writeFileAtomic,
   writeSidecar
 } from './sidecar'
-import { safeError } from '../../utils/safeLog'
+import { safeError, safeWarn } from '../../utils/safeLog'
 import { FLOWS_DIR, flowFile, flowStem, isFlowFileRel } from '../../../shared/flows'
 import { FlowHasChecksError, generateFlowFileWithMap } from '../../codegen/flowFile'
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
@@ -51,6 +51,14 @@ export class FlowIdTakenError extends Error {
   constructor(id: string) {
     super(`The id ${id} belongs to a test or to more than one record, so no flow is saved under it`)
     this.name = 'FlowIdTakenError'
+  }
+}
+
+/** `.raider/tests/flows` (or a folder above it) is a link or not a folder: no record goes there */
+export class FlowRecordsUnsafeError extends Error {
+  constructor() {
+    super("Raider's flow records folder (.raider/tests/flows) isn't a plain folder.")
+    this.name = 'FlowRecordsUnsafeError'
   }
 }
 
@@ -107,14 +115,47 @@ export const isFlowish = (sidecar: Sidecar): boolean =>
 const FLOW_RECORDS = join('.raider', 'tests', FLOWS_DIR)
 
 /**
+ * Whether `.raider/tests/flows` can hold flow records: 'absent' (not there yet, or a folder on
+ * the way missing), 'ok' (every part a real folder, never a link, inside the project), or
+ * 'unsafe' (a part is a link or not a folder). listSidecars never follows a linked folder, so
+ * a record written through one would never be found again.
+ */
+export async function flowRecordsFolder(projectPath: string): Promise<'absent' | 'ok' | 'unsafe'> {
+  let current = projectPath
+  for (const part of ['.raider', 'tests', FLOWS_DIR]) {
+    current = join(current, part)
+    let stat: import('fs').Stats
+    try {
+      stat = await fs.lstat(current)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return 'absent'
+      return 'unsafe'
+    }
+    if (!stat.isDirectory()) return 'unsafe'
+  }
+  try {
+    await assertRealInside(projectPath, current)
+  } catch {
+    return 'unsafe'
+  }
+  return 'ok'
+}
+
+/**
  * The records in `.raider/tests/flows/` (flat: a flow file has no subfolder), each only where
- * its own `file` says. An unreadable one is skipped.
+ * its own `file` says. An unreadable one is skipped. A folder that isn't a real one inside the
+ * project holds no records (as for listSidecars): a test save is never blocked by it.
  */
 async function flowFolderRecords(projectPath: string): Promise<Sidecar[]> {
+  const state = await flowRecordsFolder(projectPath)
+  if (state === 'absent') return []
+  if (state === 'unsafe') {
+    safeWarn(`${FLOW_RECORDS} is not a plain folder in the project; its records are ignored.`)
+    return []
+  }
   const dir = join(projectPath, FLOW_RECORDS)
   let names: string[]
   try {
-    await assertRealInside(projectPath, dir)
     names = (await fs.readdir(dir, { withFileTypes: true }))
       .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
       .map((entry) => entry.name)
@@ -775,6 +816,9 @@ export function saveRecordedFlow(
   options: { regenerate?: boolean } = {}
 ): Promise<Sidecar> {
   return serialize(testQueues, testKey(projectPath, input.id), async () => {
+    // Before anything is read or written: a record behind a link would never be found again,
+    // so every save would make another flow file
+    if ((await flowRecordsFolder(projectPath)) === 'unsafe') throw new FlowRecordsUnsafeError()
     const records = (await listSidecars(projectPath))
       .map(({ fileRel, sidecar }) => (sidecar?.file === fileRel ? sidecar : null))
       .filter((s): s is Sidecar => s !== null && s.id === input.id && isRecordedRel(s.file))

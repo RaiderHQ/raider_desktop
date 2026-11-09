@@ -14,6 +14,7 @@ import {
   CodeOwnedError,
   FlowIdError,
   FlowIdTakenError,
+  FlowRecordsUnsafeError,
   FlowsNotReadyError
 } from '../../../src/main/handlers/tests/recordedTests'
 import { FlowHasChecksError, generateFlowFileWithMap } from '../../../src/main/codegen/flowFile'
@@ -430,5 +431,82 @@ describe('flows in the project', () => {
     const before = await readFile(join(project, made.file), 'utf-8')
     expect(await migrateRecordedTests(project, layout)).toBe(0)
     expect(await readFile(join(project, made.file), 'utf-8')).toBe(before)
+  })
+})
+
+describe('the flow records folder', () => {
+  const records = (): string => join(project, '.raider', 'tests', 'flows')
+
+  it('refuses a flow save when .raider/tests/flows is a link, every time, without making files', async () => {
+    await setUpFlows()
+    await mkdir(join(project, 'elsewhere'))
+    await mkdir(join(project, '.raider', 'tests'), { recursive: true })
+    await symlink(join(project, 'elsewhere'), records())
+
+    for (let i = 0; i < 2; i++) {
+      await expect(saveRecordedFlow(project, layout, flow())).rejects.toBeInstanceOf(
+        FlowRecordsUnsafeError
+      )
+    }
+    expect(await readdir(join(project, 'flows'))).toEqual(['flow_helper.rb'])
+    expect(await readdir(join(project, 'elsewhere'))).toEqual([])
+  })
+
+  it('refuses a flow save when .raider or .raider/tests is a link, or the folder is a file', async () => {
+    await setUpFlows()
+    await mkdir(join(project, 'real-raider'))
+    await symlink(join(project, 'real-raider'), join(project, '.raider'))
+    await expect(saveRecordedFlow(project, layout, flow())).rejects.toBeInstanceOf(
+      FlowRecordsUnsafeError
+    )
+    await rm(join(project, '.raider'))
+    await mkdir(join(project, '.raider', 'tests'), { recursive: true })
+    await writeFile(records(), 'not a folder')
+    await expect(saveRecordedFlow(project, layout, flow())).rejects.toBeInstanceOf(
+      FlowRecordsUnsafeError
+    )
+    expect(await readdir(join(project, 'flows'))).toEqual(['flow_helper.rb'])
+  })
+
+  it('never blocks a test save: a dangling or outside link there holds no flow records', async () => {
+    await mkdir(join(project, '.raider', 'tests'), { recursive: true })
+    await symlink(join(project, 'nowhere'), records())
+    const first = await saveRecordedTest(project, layout, { ...flow(), id: 't1', name: 'Login' })
+    expect(first.file).toBe('spec/login_spec.rb')
+    const again = await saveRecordedTest(project, layout, { ...flow(), id: 't1', name: 'Login' })
+    expect(again.id).toBe('t1')
+
+    await rm(records())
+    await symlink(outside, records())
+    const second = await saveRecordedTest(project, layout, { ...flow(), id: 't2', name: 'Cart' })
+    expect(second.file).toBe('spec/cart_spec.rb')
+  })
+})
+
+describe('listing a flow named by a record', () => {
+  it('skips a record whose flow file sits behind a linked flows/', async () => {
+    await setUpFlows()
+    const made = await saveRecordedFlow(project, layout, flow())
+    // Move the flow out and link flows/ to where it went; the record stays
+    await rm(join(project, 'flows'), { recursive: true })
+    await writeFile(join(outside, 'fill_timesheet_flow.rb'), 'puts 1\n')
+    await symlink(outside, join(project, 'flows'))
+
+    const entries = await listProjectTests(project, layout)
+    expect(entries.map((e) => e.file)).not.toContain(made.file)
+  })
+
+  it('skips a record whose flow file is a link, and keeps one whose file is missing', async () => {
+    await setUpFlows()
+    const linked = await saveRecordedFlow(project, layout, flow({ id: 'a', name: 'Linked' }))
+    const gone = await saveRecordedFlow(project, layout, flow({ id: 'b', name: 'Gone' }))
+    await rm(join(project, linked.file))
+    await writeFile(join(outside, 'x.rb'), 'puts 1\n')
+    await symlink(join(outside, 'x.rb'), join(project, linked.file))
+    await rm(join(project, gone.file))
+
+    const entries = await listProjectTests(project, layout)
+    expect(entries.map((e) => e.file)).not.toContain(linked.file)
+    expect(entries.find((e) => e.file === gone.file)).toMatchObject({ missingFile: true })
   })
 })
