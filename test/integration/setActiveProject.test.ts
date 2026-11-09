@@ -48,6 +48,15 @@ describe('setActiveProject', () => {
     expect(result.settings).toEqual(appState.recorderSettings)
   })
 
+  it('a project switch puts the recorder back in test mode', async () => {
+    appState.recordingMode = 'flow'
+    await setActiveProject(dir)
+    expect(appState.recordingMode).toBe('test')
+    appState.recordingMode = 'flow'
+    await setActiveProject(null)
+    expect(appState.recordingMode).toBe('test')
+  })
+
   it('null resets to defaults and clears projectPath and sessionUrl', async () => {
     await setActiveProject(dir)
     appState.sessionUrl = 'https://other.test/'

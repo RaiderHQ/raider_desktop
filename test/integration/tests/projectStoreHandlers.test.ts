@@ -282,11 +282,19 @@ describe('a flow never gets a check', () => {
   const withCheck = (test: Test): Test => ({ ...test, steps: [...test.steps, assertStep] })
   const FLOW_CHECK_ERROR = 'A flow has no checks. Remove the check to save it.'
 
+  // The recorder records a flow: a recorder guest is attached in flow mode
+  const recordFlow = (): void => {
+    appState.recordingMode = 'flow'
+    appState.recorderWebContentsId = 1
+  }
+
   beforeEach(() => {
     appState.recordingMode = 'test'
+    appState.recorderWebContentsId = null
   })
   afterEach(() => {
     appState.recordingMode = 'test'
+    appState.recorderWebContentsId = null
   })
 
   it('rejects an assert step for a flow from the renderer', async () => {
@@ -310,7 +318,7 @@ describe('a flow never gets a check', () => {
 
   it('rejects an assert step in a new test saved while a flow is recorded', async () => {
     await setActiveProject(project)
-    appState.recordingMode = 'flow'
+    recordFlow()
     const result = await saveRecording(win, project, withCheck(checkout()))
     expect(result).toEqual({ success: false, error: FLOW_CHECK_ERROR })
   })
@@ -318,8 +326,20 @@ describe('a flow never gets a check', () => {
   it('still saves an existing test with a check while a flow is recorded', async () => {
     await setActiveProject(project)
     await saveRecording(win, project, checkout())
-    appState.recordingMode = 'flow'
+    recordFlow()
     expect((await saveRecording(win, project, withCheck(checkout()))).success).toBe(true)
+  })
+
+  it('saves a new test as a test when flow mode is stale and no recorder is attached', async () => {
+    await mkdir(join(project, 'flows'))
+    await writeFile(join(project, 'flows', 'flow_helper.rb'), '# helper\n')
+    await setActiveProject(project)
+    appState.recordingMode = 'flow'
+    appState.recorderWebContentsId = null
+    const result = await saveRecording(win, project, checkout())
+    expect(result).toMatchObject({ success: true, test: { file: 'spec/checkout_spec.rb' } })
+    expect(result.test?.kind).not.toBe('flow')
+    expect(await exists(join(project, 'flows', 'checkout_flow.rb'))).toBe(false)
   })
 
   it('saves a check in a test', async () => {
@@ -404,7 +424,7 @@ describe('a flow never gets a check', () => {
     expect(await exists(join(project, 'spec'))).toBe(false)
 
     // A new recording while the recorder records a flow is a flow too
-    appState.recordingMode = 'flow'
+    recordFlow()
     const fromMode = await saveRecording(win, project, checkout('f-mode'))
     expect(fromMode).toMatchObject({ success: true, test: { kind: 'flow' } })
   })
