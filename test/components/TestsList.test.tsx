@@ -485,6 +485,14 @@ describe('flows in the list', () => {
     expect(screen.getByRole('menuitem', { name: 'tests.menu.delete' })).toBeEnabled()
   })
 
+  it('turns Delete off for a flow written in code, with a tooltip', () => {
+    setup({ rows: [{ ...flowRow, ownership: 'code' }] })
+    fireEvent.contextMenu(screen.getByText('Fill hours'))
+    const item = screen.getByRole('menuitem', { name: 'tests.menu.delete' })
+    expect(item).toBeDisabled()
+    expect(item).toHaveAttribute('title', 'tooltips.tests.flowNoDelete')
+  })
+
   it('refuses the keys and menu bar Copy and Duplicate on a flow', async () => {
     setup({ rows: [flowRow], selectedKey: 'id:f1' })
     const row = screen.getByText('Fill hours').closest('li')!

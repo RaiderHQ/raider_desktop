@@ -228,6 +228,54 @@ describe('Save as flow', () => {
   })
 })
 
+describe('a flow page says flow', () => {
+  const flow = { ...base, kind: 'flow' as const, file: 'flows/book_room_flow.rb' }
+  const flowRow = { kind: 'flow' as const, file: 'flows/book_room_flow.rb' }
+
+  it('names the field Flow name and says the flow is saved automatically', async () => {
+    renderPage(flow, flowRow)
+    await screen.findByDisplayValue(flow.name)
+    expect(screen.getByLabelText('Flow name')).toBeInTheDocument()
+    expect(screen.getByText('Changes to this flow are saved automatically.')).toBeInTheDocument()
+    expect(screen.queryByText('Changes to this test are saved automatically.')).toBeNull()
+  })
+
+  it('offers Start over and Delete flow, and no Export test', async () => {
+    renderPage(flow, flowRow)
+    await openMore(flow)
+    expect(screen.getByRole('menuitem', { name: 'Start over' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Delete flow' })).toBeEnabled()
+    expect(screen.queryByRole('menuitem', { name: 'Export test' })).toBeNull()
+    expect(screen.queryByRole('menuitem', { name: 'Delete test' })).toBeNull()
+  })
+
+  it("asks to replace the flow's steps on Start over", async () => {
+    renderPage(flow, flowRow)
+    await openMore(flow)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Start over' }))
+    expect(
+      screen.getByText("Start over? Recording again replaces this flow's steps.")
+    ).toBeInTheDocument()
+  })
+
+  it('a test keeps its test wording', async () => {
+    renderPage(base)
+    await openMore(base)
+    expect(screen.getByLabelText('Test name')).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Export test' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Delete test' })).toBeInTheDocument()
+  })
+
+  it('has the flow copy in en.json', () => {
+    expect(en.testPage.flowName).toBe('Flow name')
+    expect(en.testPage.autosavedFlow).toBe('Changes to this flow are saved automatically.')
+    expect(en.testPage.deleteFlow).toBe('Delete flow')
+    expect(en.testPage.startOverConfirmFlow).toBe(
+      "Start over? Recording again replaces this flow's steps."
+    )
+  })
+})
+
 describe('New flow', () => {
   it('names the page New flow and starts a flow draft', async () => {
     render(
@@ -238,7 +286,9 @@ describe('New flow', () => {
       </MemoryRouter>
     )
     expect(screen.getByText('New flow')).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Test name'), { target: { value: 'Fill hours' } })
+    expect(screen.getByPlaceholderText('Flow name')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Test name')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Flow name'), { target: { value: 'Fill hours' } })
     fireEvent.click(screen.getByRole('button', { name: 'Start recording' }))
     await waitFor(() => expect(useRecorderStore.getState().draftTest?.kind).toBe('flow'))
   })

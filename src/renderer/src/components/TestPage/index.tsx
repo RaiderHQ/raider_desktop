@@ -161,6 +161,7 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
     readOnly || row?.ownership === 'code' || row?.ownership === 'codeOwnedWasRecorded'
   // Flows have no tags (yet): plan D gives them their own tab
   const isFlow = row?.kind === 'flow' || test?.kind === 'flow'
+  const codeFlow = isFlow && row?.ownership === 'code'
   // Main says whether this project has flows set up (flows/flow_helper.rb); only asked for a
   // recorded test, the only kind that can be saved as a flow
   const [flowsReady, setFlowsReady] = useState(false)
@@ -499,7 +500,10 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
     ...(readOnly || recordingDisabled
       ? []
       : [{ label: t('testPage.startOver'), onClick: (): void => setConfirmingStartOver(true) }]),
-    { label: t('testPage.exportTest'), onClick: (): void => void exportTest() },
+    // Export writes a plain spec, which drops a flow's inputs: flows aren't exported
+    ...(isFlow
+      ? []
+      : [{ label: t('testPage.exportTest'), onClick: (): void => void exportTest() }]),
     ...(canSaveAsFlow
       ? [
           {
@@ -520,7 +524,12 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
           }
         ]
       : []),
-    { label: t('testPage.deleteTest'), onClick: (): void => setConfirmingDelete(true) }
+    {
+      label: t(isFlow ? 'testPage.deleteFlow' : 'testPage.deleteTest'),
+      onClick: (): void => setConfirmingDelete(true),
+      // Main trashes only a flow it recorded: a hand-written one has no record
+      ...(codeFlow && { disabled: true, title: t('tooltips.tests.flowNoDelete') })
+    }
   ]
 
   const steps = test ? (
@@ -587,6 +596,7 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
             onCancel={() => navigate('/overview/tests')}
             disabled={recordingDisabled}
             disabledReason={recordingDisabledReason}
+            kind={newKind}
           />
         )
       ) : (
@@ -600,8 +610,8 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
                 onChange={(e) => setNameDraft(e.target.value)}
                 onBlur={commitName}
                 onKeyDown={(e) => e.key === 'Enter' && commitName()}
-                placeholder={t('testPage.name')}
-                aria-label={t('testPage.name')}
+                placeholder={t(isFlow ? 'testPage.flowName' : 'testPage.name')}
+                aria-label={t(isFlow ? 'testPage.flowName' : 'testPage.name')}
                 disabled={readOnly}
               />
             </Tooltip>
@@ -724,7 +734,10 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
               </Tooltip>
             )}
             {!isDraft && (
-              <Tooltip content={t('tooltips.testPage.more')} position="bottom">
+              <Tooltip
+                content={t(isFlow ? 'tooltips.testPage.moreFlow' : 'tooltips.testPage.more')}
+                position="bottom"
+              >
                 <Dropdown
                   buttonText={t('testPage.more')}
                   options={moreOptions}
@@ -801,7 +814,9 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
                 <StyledPanel>{steps ?? <></>}</StyledPanel>
               </div>
               {!isDraft && !recording.isRecording && !readOnly && (
-                <p className="text-xs text-neutral-md mt-2">{t('testPage.autosaved')}</p>
+                <p className="text-xs text-neutral-md mt-2">
+                  {t(isFlow ? 'testPage.autosavedFlow' : 'testPage.autosaved')}
+                </p>
               )}
             </>
           )}
@@ -831,7 +846,7 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
       {confirmingStartOver && (
         <ConfirmationModal
           title={t('testPage.startOver')}
-          message={t('testPage.startOverConfirm')}
+          message={t(isFlow ? 'testPage.startOverConfirmFlow' : 'testPage.startOverConfirm')}
           onConfirm={startOver}
           onCancel={() => setConfirmingStartOver(false)}
         />

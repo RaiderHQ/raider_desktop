@@ -490,6 +490,7 @@
     "breadcrumb": "Breadcrumb",
     "breadcrumbRoot": "Tests",
     "name": "Test name",
+    "flowName": "Flow name",
     "tags": {
       "label": "Tags",
       "placeholder": "Add a tag",
@@ -502,6 +503,7 @@
     "url": "Start URL",
     "record": "Record",
     "autosaved": "Changes to this test are saved automatically.",
+    "autosavedFlow": "Changes to this flow are saved automatically.",
     "stop": "Stop & save",
     "addAssertion": "Add validation…",
     "assertPickStarting": "Getting ready to pick…",
@@ -516,6 +518,7 @@
     "more": "More",
     "startOver": "Start over",
     "startOverConfirm": "Start over? Recording again replaces this test's steps.",
+    "startOverConfirmFlow": "Start over? Recording again replaces this flow's steps.",
     "exportTest": "Export test",
     "saveAsFlow": "Save as flow",
     "saveAsFlowDropChecks_one": "Remove {{count}} check and save as flow",
@@ -529,6 +532,7 @@
     "savedAsFlow": "Saved as a flow in {{file}}",
     "saveAsFlowFailed": "Raider couldn't save this test as a flow. {{error}}",
     "deleteTest": "Delete test",
+    "deleteFlow": "Delete flow",
     "deleteFailed": "Raider couldn't delete this test. Nothing was changed.",
     "noSteps": "There are no steps to export.",
     "editCode": "View file",
@@ -545,7 +549,7 @@
       "title": "Recording a flow",
       "line1": "A flow does a job; it has no checks.",
       "line2": "Mark a typed value as an input to change it per run.",
-      "line3": "Save, then run or schedule it from Flows."
+      "line3": "Save it, then run it from the Tests list."
     },
     "foundBy": {
       "role": "Found by role · {{role}} \"{{name}}\"",
@@ -907,6 +911,7 @@
       "ruby": "Show the generated Ruby code",
       "lastRun": "Show the output of the last run",
       "more": "Start over, export, save as flow or delete this test",
+      "moreFlow": "Start over or delete this flow",
       "startRecording": "Open the page and start recording",
       "cancelNew": "Go back without starting a recording",
       "cancelPick": "Stop picking and keep recording",
@@ -951,6 +956,7 @@
       "newFlow": "Record a flow: steps that do a job, with no checks",
       "flowsNotReady": "Set up flows first: run raider flow init in this project",
       "flowNoCopy": "Flows can't be copied or duplicated yet",
+      "flowNoDelete": "A flow written in code can't be deleted here",
       "restore": "Put this deleted test back",
       "rail": "Show the tests list again"
     },
