@@ -6,7 +6,6 @@ export type { TestData } from './testData'
 export type { RaiderConfig } from './raiderConfig'
 export type { IpcResult } from './ipcResult'
 export type {
-  ScaffoldComponentType,
   ScaffoldOperation,
   ScaffoldParams,
   ScaffoldResult

@@ -108,7 +108,6 @@ import scaffoldGenerate from './handlers/project/scaffoldGenerate'
 import updateTimeout from './handlers/config/updateTimeout'
 import updateViewport from './handlers/config/updateViewport'
 import updateBrowserOptions from './handlers/config/updateBrowserOptions'
-import updatePaths from './handlers/config/updatePaths'
 import updateHeadlessMode from './handlers/config/updateHeadlessMode'
 import { openDocs } from './docsLinks'
 import getProjectConfig from './handlers/config/getProjectConfig'
@@ -487,13 +486,6 @@ app.whenReady().then(() => {
   ipcMain.handle('open-docs', async (_event, id: unknown) => ({ success: await openDocs(id) }))
   ipcMain.handle('get-project-config', (_event, projectPath: string) =>
     getProjectConfig(projectPath)
-  )
-
-  // --- Path Configuration Handler ---
-  ipcMain.handle(
-    'update-paths',
-    (event, projectPath: string, pathValue: string, pathType?: string) =>
-      updatePaths(event, projectPath, pathValue, pathType)
   )
 
   // --- Longship Integration Handlers ---

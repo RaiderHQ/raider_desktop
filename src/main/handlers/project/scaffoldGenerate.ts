@@ -4,24 +4,12 @@ import { IpcMainInvokeEvent } from 'electron'
 import { safeExec } from '../../utils/safeExec'
 import { buildShellCommand } from '../../utils/shellCommand'
 import type { ScaffoldParams, ScaffoldResult } from '@shared/types/scaffoldTypes'
-import { SCAFFOLD_GENERATE_TYPES as GENERATE_TYPES } from '@shared/types/scaffoldTypes'
 import { isFolderScaffoldType, isScaffoldName, scaffoldFileName } from '@shared/scaffoldName'
 import { quoteShellArg } from '../../utils/shellQuote'
 import { scaffoldTarget } from '../io/projectFiles'
 import { detectProjectLayout, MOBILE_UNSUPPORTED } from './projectLayout'
 
 const NAME_RULE = 'A name starts with a letter and has only letters, digits and underscores.'
-
-/** `raider g <type> <name>` into the folders set in config.yml (the Scaffolding tab). */
-function buildCommand(params: ScaffoldParams): string {
-  if (params.operation !== 'generate' || !params.type || !params.name) {
-    throw new Error('type and name are required')
-  }
-  if (!GENERATE_TYPES.includes(params.type)) {
-    throw new Error(`Unsupported type: ${params.type}`)
-  }
-  return ['raider', 'g', params.type, quoteShellArg(params.name)].join(' ')
-}
 
 type Prepared = { command: string; fileRel: string } | ScaffoldResult
 
@@ -49,8 +37,9 @@ export function isGemSafeFolder(path: string, platform: NodeJS.Platform): boolea
 }
 
 async function prepareInFolder(params: ScaffoldParams, projectPath: string): Promise<Prepared> {
-  const { type, name, path } = params
-  if (params.operation !== 'generate' || !isFolderScaffoldType(type)) {
+  // From IPC: every field is checked, whatever the type says
+  const { type, name, path } = (params ?? {}) as Partial<ScaffoldParams>
+  if (params?.operation !== 'generate' || !isFolderScaffoldType(type)) {
     return { success: false, output: '', error: `Unsupported type for a folder: ${String(type)}` }
   }
   if (!isScaffoldName(name)) {
@@ -88,15 +77,9 @@ const handler = async (
       return { success: false, output: '', error: MOBILE_UNSUPPORTED }
     }
 
-    let command: string
-    let fileRel: string | undefined
-    if (params?.path !== undefined) {
-      const prepared = await prepareInFolder(params, projectPath)
-      if (!('command' in prepared)) return prepared
-      ;({ command, fileRel } = prepared)
-    } else {
-      command = buildCommand(params)
-    }
+    const prepared = await prepareInFolder(params, projectPath)
+    if (!('command' in prepared)) return prepared
+    const { command, fileRel } = prepared
     const shellCommand = buildShellCommand(projectPath, command)
 
     // stdin stays open on purpose: if a file appears at the target after the check, Thor's
@@ -111,7 +94,6 @@ const handler = async (
       }
     }
     const output = result.stdout.trim()
-    if (fileRel === undefined) return { success: true, output }
     if (!(await fs.promises.lstat(join(projectPath, fileRel)).catch(() => null))) {
       return { success: false, output, error: `Ruby Raider did not create ${fileRel}` }
     }

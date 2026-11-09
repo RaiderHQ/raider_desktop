@@ -450,13 +450,6 @@ const api = {
     error?: string
   }> => ipcRenderer.invoke('get-project-config', projectPath),
 
-  // --- Path Configuration APIs ---
-  updatePaths: async (
-    projectPath: string,
-    pathValue: string,
-    pathType?: string
-  ): Promise<CommandType> => ipcRenderer.invoke('update-paths', projectPath, pathValue, pathType),
-
   // --- Longship Integration APIs ---
   getLongshipConfig: async (): Promise<{
     url: string

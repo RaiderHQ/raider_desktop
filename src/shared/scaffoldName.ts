@@ -2,8 +2,6 @@
  * The names `raider g <type> <name> --path <folder>` takes from the Files tab, and the file
  * Ruby Raider 4.0.1 writes for them (its NameNormalizer and Scaffolding#default_path).
  */
-import type { ScaffoldComponentType } from './types/scaffoldTypes'
-
 /** The types the Files menu offers on a folder, in menu order. */
 export const FOLDER_SCAFFOLD_TYPES = ['page', 'spec', 'component', 'helper'] as const
 
@@ -47,9 +45,6 @@ function normalize(name: string): string {
 }
 
 /** The file name `raider g <type> <name> --path <folder>` creates inside the folder. */
-export function scaffoldFileName(
-  type: Extract<ScaffoldComponentType, FolderScaffoldType>,
-  name: string
-): string {
+export function scaffoldFileName(type: FolderScaffoldType, name: string): string {
   return `${normalize(name)}${SUFFIX[type]}`
 }

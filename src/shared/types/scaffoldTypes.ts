@@ -1,23 +1,14 @@
 import type { ProjectFileErrorCode } from './projectFiles'
-
-// Mirrors `raider generate <type> <name> [--path]`; the gem accepts nothing more.
-export const SCAFFOLD_GENERATE_TYPES = [
-  'page',
-  'spec',
-  'helper',
-  'component',
-  'scaffold'
-] as const
-
-export type ScaffoldComponentType = (typeof SCAFFOLD_GENERATE_TYPES)[number]
+import type { FolderScaffoldType } from '../scaffoldName'
 
 export type ScaffoldOperation = 'generate'
 
+/** `raider g <type> <name> --path=<path>` from the Files folder menu; path is project-relative. */
 export interface ScaffoldParams {
   operation: ScaffoldOperation
-  type?: ScaffoldComponentType
-  name?: string
-  path?: string
+  type: FolderScaffoldType
+  name: string
+  path: string
 }
 
 /**

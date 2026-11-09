@@ -332,9 +332,6 @@ export interface WindowApi extends RunApi {
     error?: string
   }>
 
-  // --- Path Configuration ---
-  updatePaths: (projectPath: string, pathValue: string, pathType?: string) => Promise<CommandType>
-
   // --- Longship Integration ---
   getLongshipConfig: () => Promise<{
     url: string
