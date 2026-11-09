@@ -30,7 +30,7 @@ import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import { useRunStore } from '@foundation/Stores/runStore'
 import { buildAssertionStep, assertionModalType } from '@foundation/assertionStep'
 import { handleSaveResult } from '@foundation/saveResult'
-import { testKeyOf } from '@foundation/testKey'
+import { testKeyOf, toRouteParam } from '@foundation/testKey'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { MAX_TAG_LENGTH, MAX_TAGS, TAG_RE, normalizeTags } from '@shared/tags'
 import type { TestRow } from '@foundation/testKey'
@@ -112,6 +112,8 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
   }, [])
 
   const draftTarget: RecordingTarget = { kind: 'draft' }
+  // "New flow…" opens this page with { kind: 'flow' }: the draft is then a flow
+  const newKind = (location.state as { kind?: unknown } | null)?.kind === 'flow' ? 'flow' : 'test'
   const key = row ? testKeyOf(row) : null
   const [openFailed, setOpenFailed] = useState(false)
   useEffect(() => {
@@ -157,6 +159,28 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
   useEffect(() => setTagsProblem(null), [row?.file])
   const codeOwnedTags =
     readOnly || row?.ownership === 'code' || row?.ownership === 'codeOwnedWasRecorded'
+  // Flows have no tags (yet): plan D gives them their own tab
+  const isFlow = row?.kind === 'flow' || test?.kind === 'flow'
+  // Main says whether this project has flows set up (flows/flow_helper.rb); only asked for a
+  // recorded test, the only kind that can be saved as a flow
+  const [flowsReady, setFlowsReady] = useState(false)
+  const mayBecomeFlow = row?.ownership === 'recorded' && row.kind !== 'flow'
+  useEffect(() => {
+    if (!mayBecomeFlow) return
+    let current = true
+    Promise.resolve()
+      .then(() => window.api.flowsReady())
+      .then((ready) => {
+        if (current) setFlowsReady(ready === true)
+      })
+      .catch((error: unknown) => {
+        console.error('Checking whether flows are set up failed:', error)
+        if (current) setFlowsReady(false)
+      })
+    return (): void => {
+      current = false
+    }
+  }, [projectPath, mayBecomeFlow])
   const changeTags = (next: string[]): void => {
     if (!row?.file || savingTagsRef.current) return
     const tags = normalizeTags(next)
@@ -290,6 +314,7 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
 
   const [confirmingStartOver, setConfirmingStartOver] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [confirmingFlow, setConfirmingFlow] = useState(false)
 
   const record = (): void => {
     if (!test) return
@@ -311,7 +336,8 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
 
   // The menu bar's Test › Record and Run act like the toolbar buttons, under the same rules
   // A confirmation on top of the page blocks the buttons; it must block the menu too
-  const confirming = confirmingDelete || confirmingStartOver || reRecordingFrom !== null
+  const confirming =
+    confirmingDelete || confirmingStartOver || confirmingFlow || reRecordingFrom !== null
   // recordingTarget covers the moment between pressing Record and the recorder starting
   const starting = useRecorderStore((s) => s.recordingTarget !== null)
   const canRecord = !!test && !readOnly && !busy && !starting && !recordingDisabled && !confirming
@@ -407,7 +433,7 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
       toast.error(t('recorder.unsupportedUrl'))
       return
     }
-    useRecorderStore.getState().startDraft(name, url)
+    useRecorderStore.getState().startDraft(name, url, { kind: newKind })
     recording
       .start(draftTarget)
       .catch((error: unknown) => console.error('Recording failed:', error))
@@ -433,11 +459,61 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
     }
   }, [isDraft, hasTest])
 
+  // Save as flow: main reads the test, writes a flow copy under a new id, and leaves the test
+  const checkCount = test ? test.steps.filter((step) => step.kind === 'assert').length : 0
+  const saveAsFlow = async (dropChecks: boolean): Promise<void> => {
+    setConfirmingFlow(false)
+    if (!test || !projectPath) return
+    try {
+      const result = await window.api.convertToFlow(projectPath, {
+        testId: test.id,
+        ...(dropChecks && { dropChecks: true })
+      })
+      if (result.success) {
+        toast.success(t('testPage.savedAsFlow', { file: result.test.file ?? '' }))
+        await useTestsListStore.getState().reload()
+        navigate(`/overview/tests/${toRouteParam(`id:${result.test.id}`)}`)
+        return
+      }
+      // The saved test has checks the page didn't show yet: ask first
+      if (result.error === 'has-checks') {
+        setConfirmingFlow(true)
+        return
+      }
+      toast.error(t('testPage.saveAsFlowFailed', { error: result.error }))
+    } catch (error) {
+      console.error('Saving the test as a flow failed:', error)
+      toast.error(t('testPage.saveAsFlowFailed', { error: '' }))
+    }
+  }
+  // Only a recorded test Raider still owns, once saved, can become a flow
+  const canSaveAsFlow = !!test && !readOnly && !isFlow && !isDraft && activeTestSaved
+
   const moreOptions = [
     ...(readOnly || recordingDisabled
       ? []
       : [{ label: t('testPage.startOver'), onClick: (): void => setConfirmingStartOver(true) }]),
     { label: t('testPage.exportTest'), onClick: (): void => void exportTest() },
+    ...(canSaveAsFlow
+      ? [
+          {
+            label:
+              checkCount > 0
+                ? t('testPage.saveAsFlowDropChecks', { count: checkCount })
+                : t('testPage.saveAsFlow'),
+            disabled: !flowsReady,
+            title: !flowsReady
+              ? t('tooltips.tests.flowsNotReady')
+              : checkCount > 0
+                ? t('tooltips.testPage.saveAsFlowChecks')
+                : t('tooltips.testPage.saveAsFlow'),
+            onClick: (): void => {
+              if (checkCount > 0) setConfirmingFlow(true)
+              else void saveAsFlow(false)
+            }
+          }
+        ]
+      : []),
     { label: t('testPage.deleteTest'), onClick: (): void => setConfirmingDelete(true) }
   ]
 
@@ -490,7 +566,7 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
         </Link>
         <span className="text-neutral-md">/</span>
         <span className="font-semibold text-neutral-dark truncate">
-          {test?.name ?? row?.name ?? t('tests.newTest')}
+          {test?.name ?? row?.name ?? t(newKind === 'flow' ? 'tests.newFlow' : 'tests.newTest')}
         </span>
       </nav>
 
@@ -536,7 +612,7 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
             </Tooltip>
           </div>
 
-          {row?.file && !row.missingFile && !recording.isRecording && (
+          {row?.file && !row.missingFile && !recording.isRecording && !isFlow && (
             <div className="flex flex-col gap-1">
               {codeOwnedTags ? (
                 <TagChips tags={row.tags} />
@@ -761,6 +837,17 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
           })}
           onConfirm={() => reRecordFrom(reRecordingFrom)}
           onCancel={() => setReRecordingFrom(null)}
+        />
+      )}
+      {confirmingFlow && test && (
+        <ConfirmationModal
+          title={t('testPage.saveAsFlow')}
+          subject={test.name}
+          message={t('testPage.saveAsFlowConfirm.message', { count: Math.max(checkCount, 1) })}
+          confirmLabel={t('testPage.saveAsFlowConfirm.confirm')}
+          cancelLabel={t('testPage.saveAsFlowConfirm.cancel')}
+          onConfirm={() => void saveAsFlow(true)}
+          onCancel={() => setConfirmingFlow(false)}
         />
       )}
       {confirmingDelete && test && (

@@ -455,3 +455,50 @@ describe('TestsList copy, paste, duplicate and delete', () => {
     })
   })
 })
+
+describe('flows in the list', () => {
+  const flowRow: TestRow = {
+    name: 'Fill hours',
+    file: 'flows/fill_hours_flow.rb',
+    testId: 'f1',
+    ownership: 'recorded',
+    tags: [],
+    kind: 'flow'
+  }
+
+  it('labels a flow, and only a flow', () => {
+    setup({ rows: [...rows, flowRow] })
+    const labels = screen.getAllByTestId('flow-label')
+    expect(labels).toHaveLength(1)
+    expect(labels[0]).toHaveTextContent('tests.flowBadge')
+    expect(screen.getByText('Fill hours').closest('li')).toContainElement(labels[0])
+  })
+
+  it('turns Copy and Duplicate off for a flow, with a tooltip; Delete stays', () => {
+    setup({ rows: [flowRow] })
+    fireEvent.contextMenu(screen.getByText('Fill hours'))
+    for (const name of ['tests.menu.copy', 'tests.menu.duplicate']) {
+      const item = screen.getByRole('menuitem', { name })
+      expect(item).toBeDisabled()
+      expect(item).toHaveAttribute('title', 'tooltips.tests.flowNoCopy')
+    }
+    expect(screen.getByRole('menuitem', { name: 'tests.menu.delete' })).toBeEnabled()
+  })
+
+  it('refuses the keys and menu bar Copy and Duplicate on a flow', async () => {
+    setup({ rows: [flowRow], selectedKey: 'id:f1' })
+    const row = screen.getByText('Fill hours').closest('li')!
+    fireEvent.keyDown(row, { key: 'c', metaKey: true })
+    fireEvent.keyDown(row, { key: 'd', metaKey: true })
+    await act(async () => {
+      dispatchMenuCommand('copy-test')
+      dispatchMenuCommand('duplicate-test')
+    })
+    expect(api.getTests).not.toHaveBeenCalled()
+    expect(api.readTestFile).not.toHaveBeenCalled()
+    expect(api.saveRecording).not.toHaveBeenCalled()
+    // Each attempt says why (i18n is not loaded here, so the text itself isn't checked)
+    expect(mockToast.error).toHaveBeenCalledTimes(4)
+    expect(useTestClipboardStore.getState().item).toBeNull()
+  })
+})

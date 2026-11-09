@@ -88,6 +88,7 @@ const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
 }
 
 const api = {
+  flowsReady: vi.fn().mockResolvedValue(false),
   getTests: vi.fn(),
   listProjectTests: vi.fn(),
   openCodeTest: vi.fn(),

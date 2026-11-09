@@ -416,6 +416,8 @@
     "view": "View",
     "restore": "Restore",
     "newTest": "New test",
+    "newFlow": "New flow",
+    "flowBadge": "Flow",
     "startRecording": "Start recording",
     "editedInCode": "From file",
     "selectOrCreate": "Select a test, or create a new one.",
@@ -434,6 +436,7 @@
     "moreMenu": {
       "label": "More",
       "actions": "More test actions",
+      "newFlow": "New flow…",
       "runTagged": "Run tagged tests",
       "importTest": "Import test",
       "importProject": "Import project",
@@ -473,7 +476,8 @@
       "undoFailed": "Raider couldn't undo that. The new test is still in your project.",
       "undoOtherProject": "That test is in another project now, so nothing was undone.",
       "tagsNotCopied": "The test was pasted, but its tags couldn't be copied.",
-      "hiddenByTag": "The {{tag}} filter hides it."
+      "hiddenByTag": "The {{tag}} filter hides it.",
+      "flowNoCopy": "Flows can't be copied or duplicated yet."
     },
     "delete": {
       "title": "Delete test",
@@ -513,6 +517,17 @@
     "startOver": "Start over",
     "startOverConfirm": "Start over? Recording again replaces this test's steps.",
     "exportTest": "Export test",
+    "saveAsFlow": "Save as flow",
+    "saveAsFlowDropChecks_one": "Remove {{count}} check and save as flow",
+    "saveAsFlowDropChecks_other": "Remove {{count}} checks and save as flow",
+    "saveAsFlowConfirm": {
+      "message_one": "A flow has no checks. The flow leaves out this test's check; the test keeps it.",
+      "message_other": "A flow has no checks. The flow leaves out this test's {{count}} checks; the test keeps them.",
+      "confirm": "Remove and save",
+      "cancel": "Cancel"
+    },
+    "savedAsFlow": "Saved as a flow in {{file}}",
+    "saveAsFlowFailed": "Raider couldn't save this test as a flow. {{error}}",
     "deleteTest": "Delete test",
     "deleteFailed": "Raider couldn't delete this test. Nothing was changed.",
     "noSteps": "There are no steps to export.",
@@ -875,13 +890,15 @@
       "steps": "Show the steps as cards",
       "ruby": "Show the generated Ruby code",
       "lastRun": "Show the output of the last run",
-      "more": "Start over, export or delete this test",
+      "more": "Start over, export, save as flow or delete this test",
       "startRecording": "Open the page and start recording",
       "cancelNew": "Go back without starting a recording",
       "cancelPick": "Stop picking and keep recording",
       "addAssertion": "Pick something on the page and add a validation for it",
       "examples": "Pick which test in the file to work on",
-      "saveAsNew": "Keep these steps as a separate recorded test"
+      "saveAsNew": "Keep these steps as a separate recorded test",
+      "saveAsFlow": "Keep a copy of these steps as a flow",
+      "saveAsFlowChecks": "Keep a copy as a flow, without the checks"
     },
     "steps": {
       "breakpoint": "Replay to here, then record the rest from this point",
@@ -907,6 +924,9 @@
         "noTag": "Pick a tag first"
       },
       "newTest": "Start a new test: give it a name and a page, then record",
+      "newFlow": "Record a flow: steps that do a job, with no checks",
+      "flowsNotReady": "Set up flows first: run raider flow init in this project",
+      "flowNoCopy": "Flows can't be copied or duplicated yet",
       "restore": "Put this deleted test back",
       "rail": "Show the tests list again"
     },

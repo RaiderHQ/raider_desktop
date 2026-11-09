@@ -135,19 +135,28 @@ const TestsList: React.FC<TestsListProps> = ({
   }
   const menuItems = (
     row: TestRow | null
-  ): { label: string; onClick: () => void; disabled?: boolean }[] => {
+  ): { label: string; onClick: () => void; disabled?: boolean; title?: string }[] => {
     const paste = {
       label: t('tests.menu.paste'),
       onClick: (): void => void pasteTest(row ?? selectedRow, { activeTag }),
       disabled: !clipboard
     }
     if (!row) return [paste]
+    const flow = row.kind === 'flow'
+    const noCopy = flow ? t('tooltips.tests.flowNoCopy') : undefined
     return [
-      { label: t('tests.menu.copy'), onClick: (): void => void copyTest(row) },
+      {
+        label: t('tests.menu.copy'),
+        onClick: (): void => void copyTest(row),
+        disabled: flow,
+        title: noCopy
+      },
       paste,
       {
         label: t('tests.menu.duplicate'),
-        onClick: (): void => void duplicateTest(row, { activeTag })
+        onClick: (): void => void duplicateTest(row, { activeTag }),
+        disabled: flow,
+        title: noCopy
       },
       { label: t('tests.menu.delete'), onClick: (): void => askDelete(row), disabled: !row.file }
     ]
@@ -235,6 +244,14 @@ const TestsList: React.FC<TestsListProps> = ({
                 }`}
               >
                 <span className="flex-1 min-w-0 truncate text-neutral-dark">{row.name}</span>
+                {row.kind === 'flow' && (
+                  <span
+                    data-testid="flow-label"
+                    className="text-xs px-2 py-0.5 rounded-full bg-ruby-sub text-ruby font-medium whitespace-nowrap"
+                  >
+                    {t('tests.flowBadge')}
+                  </span>
+                )}
                 {editedInCode && !row.missingFile && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-lt text-neutral-dk font-medium whitespace-nowrap">
                     {t('tests.editedInCode')}

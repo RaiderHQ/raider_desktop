@@ -10,6 +10,8 @@ import { useTestsListStore } from '@foundation/Stores/testsListStore'
 interface TestsMoreMenuProps {
   /** The tag the list is filtered by; null means all tests. */
   tag: string | null
+  /** Starts naming a new flow; without it the menu has no New flow item */
+  onNewFlow?: () => void
 }
 
 type Outcome = {
@@ -25,7 +27,7 @@ const menuItem =
   'block w-full text-left px-3 py-1.5 text-xs text-neutral-dk hover:bg-neutral-50 disabled:text-neutral-mid disabled:cursor-not-allowed disabled:hover:bg-white'
 
 /** The Tests list's "More" menu: run the tagged tests, import and export. */
-const TestsMoreMenu: React.FC<TestsMoreMenuProps> = ({ tag }) => {
+const TestsMoreMenu: React.FC<TestsMoreMenuProps> = ({ tag, onNewFlow }) => {
   const { t } = useTranslation()
   const runActive = useRunStore((s) => s.isActive)
   const recorderRunning = useRecorderStore((s) => s.isRunning)
@@ -39,6 +41,25 @@ const TestsMoreMenu: React.FC<TestsMoreMenuProps> = ({ tag }) => {
   })
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  // Main says whether flows/flow_helper.rb is set up; asked each time the menu opens
+  const projectPath = useProjectStore((s) => s.projectPath)
+  const [flowsReady, setFlowsReady] = useState(false)
+  useEffect(() => {
+    if (!open || !onNewFlow) return
+    let current = true
+    Promise.resolve()
+      .then(() => window.api.flowsReady())
+      .then((ready) => {
+        if (current) setFlowsReady(ready === true)
+      })
+      .catch((error: unknown) => {
+        console.error('Checking whether flows are set up failed:', error)
+        if (current) setFlowsReady(false)
+      })
+    return (): void => {
+      current = false
+    }
+  }, [open, projectPath, onNewFlow])
 
   useEffect(() => {
     const close = (e: MouseEvent): void => {
@@ -126,6 +147,26 @@ const TestsMoreMenu: React.FC<TestsMoreMenuProps> = ({ tag }) => {
           role="menu"
           className="absolute right-0 top-full mt-1 z-20 w-40 rounded border border-neutral-bdr bg-white shadow-card py-1"
         >
+          {onNewFlow && (
+            <>
+              <button
+                role="menuitem"
+                className={menuItem}
+                disabled={!flowsReady || cannotImportReason !== undefined}
+                title={
+                  cannotImportReason ??
+                  (flowsReady ? t('tooltips.tests.newFlow') : t('tooltips.tests.flowsNotReady'))
+                }
+                onClick={() => {
+                  setOpen(false)
+                  onNewFlow()
+                }}
+              >
+                {t('tests.moreMenu.newFlow')}
+              </button>
+              <hr className="my-1 border-neutral-bdr" />
+            </>
+          )}
           <button
             role="menuitem"
             className={menuItem}

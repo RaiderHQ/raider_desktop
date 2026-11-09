@@ -53,8 +53,16 @@ async function itemOrFail(row: TestRow, failKey: string): Promise<ClipboardTest 
   }
 }
 
+// Flows are listed with the tests but can't be copied yet (their copy would become a test)
+const refusedFlow = (row: TestRow): boolean => {
+  if (row.kind !== 'flow') return false
+  fail('tests.menu.flowNoCopy')
+  return true
+}
+
 /** Copy: the row's test onto the app's clipboard. */
 export async function copyTest(row: TestRow): Promise<void> {
+  if (refusedFlow(row)) return
   const item = await itemOrFail(row, 'tests.menu.copyFailed')
   if (!item) return
   useTestClipboardStore.getState().setItem(item)
@@ -229,6 +237,7 @@ export async function pasteTest(near: TestRow | null, options?: PasteOptions): P
 
 /** Duplicate: Copy and Paste of `row` in place, leaving the clipboard alone. */
 export async function duplicateTest(row: TestRow, options?: PasteOptions): Promise<void> {
+  if (refusedFlow(row)) return
   const item = await itemOrFail(row, 'tests.menu.duplicateFailed')
   if (!item) return
   await pasteItem(item, row, 'tests.menu.duplicated', 'tests.menu.duplicateFailed', options)

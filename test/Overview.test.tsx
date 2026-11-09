@@ -108,6 +108,7 @@ const openFilesTab = async (): Promise<void> => {
 }
 
 const mockApi = {
+  flowsReady: vi.fn().mockResolvedValue(false),
   openDocs: vi.fn().mockResolvedValue({ success: true }),
   listProjectTests: vi.fn().mockResolvedValue([]),
   getTests: vi.fn().mockResolvedValue([]),

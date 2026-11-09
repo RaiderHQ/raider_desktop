@@ -58,6 +58,7 @@ const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
 let saved: Test[] = []
 
 const api = {
+  flowsReady: vi.fn().mockResolvedValue(false),
   getTests: vi.fn(),
   listProjectTests: vi.fn(),
   saveRecording: vi.fn(),
