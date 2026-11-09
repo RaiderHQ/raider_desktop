@@ -7,7 +7,7 @@ import { renderStep } from './steps'
 import { describeStepEnglish } from '../../shared/describeStepEnglish'
 import { withSecretNames } from '../../shared/secretSteps'
 import { normalizeTags } from '../../shared/tags'
-import type { StepLines } from '../../shared/types/projectTest'
+import type { StepLines, StepRange } from '../../shared/types/projectTest'
 
 /**
  * The shape of the Ruby this module writes. Stored in each sidecar, so a project
@@ -55,7 +55,7 @@ function seleniumSetup(settings: FileSettings, needsWait: boolean): string[] {
   return lines
 }
 
-const indent = (text: string, spaces: number): string =>
+export const indent = (text: string, spaces: number): string =>
   text
     .split('\n')
     .map((line) => (line === '' ? line : ' '.repeat(spaces) + line))
@@ -69,15 +69,15 @@ const tagMetadata = (tags: string[] | undefined): string =>
 
 // The runtime's matchers and by_role, included in the describe so the spec runs the same
 // in a project whose spec_helper predates 4.0 (pin bumped, helpers not regenerated)
-const RUNTIME_REQUIRE = "require 'ruby_raider/runtime/rspec'"
-const RUNTIME_INCLUDES = ['  include Raider::Matchers', '  include Raider::Helpers']
+export const RUNTIME_REQUIRE = "require 'ruby_raider/runtime/rspec'"
+export const RUNTIME_INCLUDES = ['  include Raider::Matchers', '  include Raider::Helpers']
 
 // Ruby string literals and trailing comments, so recorded values like 'expect delays' don't count
 const TRAILING_COMMENT = /#.*$/
 const WAIT_WORD = /\bwait\b/
 
 // Recorded steps never use a wait object; custom code may still mention one
-const mentionsWait = (body: string[]): boolean =>
+export const mentionsWait = (body: string[]): boolean =>
   body.some((line) => WAIT_WORD.test(line.replace(STRING_LITERAL, "''")))
 
 /** Builds a standalone RSpec file (run and export share it) from structured steps. */
@@ -129,7 +129,7 @@ const EXPECTATION = /\b(?:expect|is_expected|are_expected|expect_any_instance_of
  * fire is itself an offense (Lint/RedundantCopDisableDirective), so the list
  * must match the test.
  */
-function copsToDisable(name: string, body: string[]): string[] {
+export function copsToDisable(name: string, body: string[]): string[] {
   // ExampleLength counts code lines only, like rubocop with CountComments off
   const code = body
     .join('\n')
@@ -147,6 +147,33 @@ function copsToDisable(name: string, body: string[]): string[] {
   // A recording with no check is still a test the user wants to run
   if (expectations === 0) cops.push('RSpec/NoExpectationExample')
   return cops
+}
+
+/** The project wait object, for a recording whose custom code mentions `wait`. */
+export const waitSetup = (body: string[]): string[] =>
+  mentionsWait(body)
+    ? [
+        '  let(:wait) do',
+        "    config = YAML.load_file('config/config.yml')",
+        `    Selenium::WebDriver::Wait.new(timeout: ${CONFIG_WAIT})`,
+        '  end',
+        ''
+      ]
+    : []
+
+/** Appends each step's rendered chunk to `lines`, returning the lines each one took. */
+export function appendSteps(lines: string[], body: string[], steps: Step[]): StepRange[] {
+  return body.map((chunk, i) => {
+    const start = lines.length + 1
+    const chunkLines = chunk.split('\n')
+    lines.push(...chunkLines)
+    return {
+      stepId: steps[i].id,
+      start,
+      end: start + chunkLines.length - 1,
+      title: stepTitle(steps[i])
+    }
+  })
 }
 
 /** Header line that marks a spec file as written by Raider (hashRuby ignores comments). */
@@ -189,15 +216,7 @@ export function generateProjectSpecFileWithMap(
   const body = named.map((step) =>
     indent(renderStep(step, { receiver: 'helper', testIdAttribute: opts.testIdAttribute }), 4)
   )
-  const setup = mentionsWait(body)
-    ? [
-        '  let(:wait) do',
-        "    config = YAML.load_file('config/config.yml')",
-        `    Selenium::WebDriver::Wait.new(timeout: ${CONFIG_WAIT})`,
-        '  end',
-        ''
-      ]
-    : []
+  const setup = waitSetup(body)
   const cops = copsToDisable(test.name, body).join(', ')
 
   const lines = [
@@ -214,17 +233,7 @@ export function generateProjectSpecFileWithMap(
     ...setup,
     `  it ${name} do`
   ]
-  const ranges = body.map((chunk, i) => {
-    const start = lines.length + 1
-    const chunkLines = chunk.split('\n')
-    lines.push(...chunkLines)
-    return {
-      stepId: named[i].id,
-      start,
-      end: start + chunkLines.length - 1,
-      title: stepTitle(named[i])
-    }
-  })
+  const ranges = appendSteps(lines, body, named)
   lines.push('  end', 'end', ...(cops ? [`# rubocop:enable ${cops}`] : []), '')
   const content = lines.join('\n')
   return { content, stepLines: { fileSha256: sha256Bytes(content), ranges } }
