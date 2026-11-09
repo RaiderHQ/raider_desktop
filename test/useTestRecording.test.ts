@@ -420,6 +420,25 @@ describe('useTestRecording', () => {
       expect(location).toBe(`/overview/tests/${toRouteParam(`id:${id}`)}`)
     })
 
+    it('a new flow draft is saved with kind flow, so main writes it as a flow', async () => {
+      const rec = await mount()
+      act(() =>
+        useRecorderStore.getState().startDraft('Fill hours', 'https://x.test', { kind: 'flow' })
+      )
+      await act(() => rec.start({ kind: 'draft' }))
+      await emit('recording-started', 'https://x.test/login')
+      await emit('new-recorded-step', step('c'))
+
+      await act(() => rec.stop())
+
+      expect(api.saveRecording).toHaveBeenCalledTimes(1)
+      expect(api.saveRecording).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ name: 'Fill hours', kind: 'flow' })
+      )
+      expect(api.startRecordingMain).toHaveBeenCalledWith({ mode: 'flow' })
+    })
+
     it('stop drops a draft with only its start page and goes back to the list', async () => {
       const rec = await mount()
       await recordingDraft(rec)

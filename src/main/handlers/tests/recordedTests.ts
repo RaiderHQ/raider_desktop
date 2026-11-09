@@ -395,7 +395,10 @@ export function saveRecordedTest(
         : await findSidecarById(projectPath, input.id)
     // Checked inside the queue, so no save of the same id can slip in between. A flow's record
     // can only sit in .raider/tests/flows/, so a known test checks that one folder, not them all
-    if ((existing && isFlowish(existing)) || (await flowFolderHolds(projectPath, input.id))) {
+    if (existing && isFlowish(existing)) throw new FlowIdError(input.id)
+    if (await flowFolderHolds(projectPath, input.id)) {
+      // A test's record and a flow's hold the same id: neither is saved (fail closed)
+      if (existing) throw new FlowIdTakenError(input.id)
       throw new FlowIdError(input.id)
     }
     if (options.regenerate && !existing) throw new TestGoneError(input.id)

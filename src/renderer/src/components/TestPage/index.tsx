@@ -465,6 +465,12 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
     setConfirmingFlow(false)
     if (!test || !projectPath) return
     try {
+      // Main reads the test from its file: write any edit an autosave hasn't written yet
+      const flushed = await window.api.saveRecording(projectPath, test)
+      if (!flushed?.success) {
+        toast.error(t('testPage.saveAsFlowFailed', { error: flushed?.error ?? '' }))
+        return
+      }
       const result = await window.api.convertToFlow(projectPath, {
         testId: test.id,
         ...(dropChecks && { dropChecks: true })

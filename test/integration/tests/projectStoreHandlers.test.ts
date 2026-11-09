@@ -399,6 +399,26 @@ describe('a flow never gets a check', () => {
     expect(fromMode).toMatchObject({ success: true, test: { kind: 'flow' } })
   })
 
+  it('refuses a test whose id a flow also holds, saying so', async () => {
+    await mkdir(join(project, 'flows'))
+    await writeFile(join(project, 'flows', 'flow_helper.rb'), '# helper\n')
+    await setActiveProject(project)
+    await saveRecording(win, project, checkout())
+    const flow = await saveRecording(win, project, { ...checkout('f-copy'), kind: 'flow' })
+    const json = sidecarJson(flow.test!.file!)
+    await writeFile(
+      json,
+      JSON.stringify({ ...JSON.parse(await readFile(json, 'utf-8')), id: 't-checkout' })
+    )
+
+    const result = await saveRecording(win, project, { ...checkout(), name: 'Checkout 2' })
+    expect(result).toEqual({
+      success: false,
+      error: "Another test or flow uses the same id, so Raider can't save this one."
+    })
+    expect(await exists(join(project, 'spec', 'checkout_2_spec.rb'))).toBe(false)
+  })
+
   it('tells the user to set up flows when flows/flow_helper.rb is missing', async () => {
     await setActiveProject(project)
     const result = await saveRecording(win, project, { ...checkout(), kind: 'flow' })

@@ -119,6 +119,7 @@ beforeEach(() => {
   useTestsListStore.setState({ rows: null, tests: [] })
   api.listProjectTests.mockResolvedValue([])
   api.flowsReady.mockResolvedValue(true)
+  api.saveRecording.mockResolvedValue({ success: true })
   const listeners = new Map<string, (...args: unknown[]) => unknown>()
   // @ts-expect-error - Mocking window.api
   window.api = api
@@ -143,10 +144,14 @@ describe('Save as flow', () => {
     expect(item).toHaveAttribute('title', en.tooltips.testPage.saveAsFlow)
     fireEvent.click(item)
 
-    await waitFor(() =>
-      expect(api.convertToFlow).toHaveBeenCalledWith('/p', { testId: 't1' })
+    await waitFor(() => expect(api.convertToFlow).toHaveBeenCalledWith('/p', { testId: 't1' }))
+    // The test is written first, so main converts what the page shows
+    expect(api.saveRecording.mock.invocationCallOrder[0]).toBeLessThan(
+      api.convertToFlow.mock.invocationCallOrder[0]
     )
-    await waitFor(() => expect(screen.getByTestId('where').textContent).not.toBe('/overview/tests/x'))
+    await waitFor(() =>
+      expect(screen.getByTestId('where').textContent).not.toBe('/overview/tests/x')
+    )
     expect(mockToast.success).toHaveBeenCalledWith('Saved as a flow in flows/book_room_flow.rb')
   })
 
@@ -158,7 +163,9 @@ describe('Save as flow', () => {
     })
     renderPage(test)
     await openMore(test)
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Remove 1 check and save as flow' }))
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: 'Remove 1 check and save as flow' })
+    )
 
     expect(api.convertToFlow).not.toHaveBeenCalled()
     expect(
@@ -185,7 +192,9 @@ describe('Save as flow', () => {
     const test = { ...base, steps: [check('c1')] }
     renderPage(test)
     await openMore(test)
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Remove 1 check and save as flow' }))
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: 'Remove 1 check and save as flow' })
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(api.convertToFlow).not.toHaveBeenCalled()
   })

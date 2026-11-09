@@ -269,7 +269,7 @@ describe('saveRecordedFlow', () => {
         { ...flow(), id: 'dup', name: 'X' },
         { knownFile: test.file }
       )
-    ).rejects.toBeInstanceOf(FlowIdError)
+    ).rejects.toBeInstanceOf(FlowIdTakenError)
     // Loading keeps the first record found
     const loaded = await loadRecordedTests(project)
     expect(loaded.filter((t) => t.id === 'dup')).toHaveLength(1)

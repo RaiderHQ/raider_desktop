@@ -108,7 +108,9 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
                   <TagFilter rows={rows} value={activeTag} onChange={setTagFilter} />
                   <TestsMoreMenu
                     tag={activeTag}
-                    onNewFlow={() => void navigate('/overview/tests/new', { state: { kind: 'flow' } })}
+                    onNewFlow={() =>
+                      void navigate('/overview/tests/new', { state: { kind: 'flow' } })
+                    }
                   />
                 </>
               }

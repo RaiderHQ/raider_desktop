@@ -898,7 +898,8 @@
       "examples": "Pick which test in the file to work on",
       "saveAsNew": "Keep these steps as a separate recorded test",
       "saveAsFlow": "Keep a copy of these steps as a flow",
-      "saveAsFlowChecks": "Keep a copy as a flow, without the checks"
+      "saveAsFlowChecks": "Keep a copy as a flow, without the checks",
+      "flowNoRecord": "A flow written in code can't be recorded over"
     },
     "steps": {
       "breakpoint": "Replay to here, then record the rest from this point",
