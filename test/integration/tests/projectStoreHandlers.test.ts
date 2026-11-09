@@ -262,6 +262,107 @@ describe('recorded tests as project files', () => {
   })
 })
 
+describe('a flow never gets a check', () => {
+  const assertStep = {
+    id: 'a1',
+    kind: 'assert',
+    check: 'displayed',
+    element: { strategy: 'id', value: 'done' }
+  } as const
+  const withCheck = (test: Test): Test => ({ ...test, steps: [...test.steps, assertStep] })
+  const FLOW_CHECK_ERROR = 'A flow has no checks. Remove the check to save it.'
+
+  beforeEach(() => {
+    appState.recordingMode = 'test'
+  })
+  afterEach(() => {
+    appState.recordingMode = 'test'
+  })
+
+  it('rejects an assert step for a flow from the renderer', async () => {
+    await setActiveProject(project)
+    appState.tests.set('t-flow', { ...checkout('t-flow'), kind: 'flow' })
+
+    // The renderer leaves kind out (or says test): main's record of the flow wins
+    for (const kind of [undefined, 'test'] as const) {
+      const result = await saveRecording(win, project, { ...withCheck(checkout('t-flow')), kind })
+      expect(result).toEqual({ success: false, error: FLOW_CHECK_ERROR })
+    }
+    expect(await exists(join(project, 'spec'))).toBe(false)
+  })
+
+  it('rejects an assert step when the renderer says the test is a flow', async () => {
+    await setActiveProject(project)
+    const result = await saveRecording(win, project, { ...withCheck(checkout()), kind: 'flow' })
+    expect(result).toEqual({ success: false, error: FLOW_CHECK_ERROR })
+    expect(await exists(join(project, 'spec'))).toBe(false)
+  })
+
+  it('rejects an assert step in a new test saved while a flow is recorded', async () => {
+    await setActiveProject(project)
+    appState.recordingMode = 'flow'
+    const result = await saveRecording(win, project, withCheck(checkout()))
+    expect(result).toEqual({ success: false, error: FLOW_CHECK_ERROR })
+  })
+
+  it('still saves an existing test with a check while a flow is recorded', async () => {
+    await setActiveProject(project)
+    await saveRecording(win, project, checkout())
+    appState.recordingMode = 'flow'
+    expect((await saveRecording(win, project, withCheck(checkout()))).success).toBe(true)
+  })
+
+  it('saves a check in a test', async () => {
+    await setActiveProject(project)
+    expect((await saveRecording(win, project, withCheck(checkout()))).success).toBe(true)
+  })
+
+  it("rejects a check for a test whose sidecar is a flow, even when it isn't in the snapshot", async () => {
+    await setActiveProject(project)
+    await saveRecording(win, project, checkout())
+    const json = sidecarJson('spec/checkout_spec.rb')
+    await writeFile(
+      json,
+      JSON.stringify({ ...JSON.parse(await readFile(json, 'utf-8')), kind: 'flow' })
+    )
+    appState.tests.delete('t-checkout')
+
+    const result = await saveRecording(win, project, withCheck(checkout()))
+    expect(result).toEqual({ success: false, error: FLOW_CHECK_ERROR })
+  })
+
+  it('loads the kind from the sidecar, so a reloaded flow keeps refusing checks', async () => {
+    await setActiveProject(project)
+    await saveRecording(win, project, checkout())
+    const json = sidecarJson('spec/checkout_spec.rb')
+    await writeFile(
+      json,
+      JSON.stringify({ ...JSON.parse(await readFile(json, 'utf-8')), kind: 'flow' })
+    )
+    await setActiveProject(null)
+    await setActiveProject(project)
+
+    expect(appState.tests.get('t-checkout')?.kind).toBe('flow')
+    const result = await saveRecording(win, project, withCheck(checkout()))
+    expect(result).toEqual({ success: false, error: FLOW_CHECK_ERROR })
+  })
+
+  it('does not write a flow through the test writer', async () => {
+    await setActiveProject(project)
+    const result = await saveRecording(win, project, { ...checkout(), kind: 'flow' })
+    expect(result.success).toBe(false)
+    expect(await exists(join(project, 'spec'))).toBe(false)
+  })
+
+  it('refuses a malformed test as before, without throwing', async () => {
+    await setActiveProject(project)
+    for (const bad of [{ ...checkout(), steps: 'x' }, { ...checkout(), steps: [null] }, null]) {
+      const result = await saveRecording(win, project, bad as never)
+      expect(result.success).toBe(false)
+    }
+  })
+})
+
 describe('activation', () => {
   const suites = JSON.stringify({
     version: 2,

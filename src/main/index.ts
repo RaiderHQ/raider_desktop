@@ -428,11 +428,12 @@ app.whenReady().then(() => {
     return { selectorPriority, testIdAttribute }
   })
   ipcMain.handle('load-url-request', (_event, url: string) => loadUrlRequest(url))
-  ipcMain.handle('start-recording-main', startRecordingMain)
+  // Only the options reach it: the IPC event must never be read as the recorder mode
+  ipcMain.handle('start-recording-main', (_event, options: unknown) => startRecordingMain(options))
   ipcMain.handle(
     'replay-steps-and-record',
-    (event, testName: string, stepsToReplay: Step[], rubyCommand: string) =>
-      replayStepsAndRecord(event, testName, stepsToReplay, rubyCommand)
+    (event, testName: string, stepsToReplay: Step[], rubyCommand: string, options: unknown) =>
+      replayStepsAndRecord(event, testName, stepsToReplay, rubyCommand, options)
   )
   ipcMain.handle('cancel-replay', () => {
     if (appState.activeReplayProcess && !appState.activeReplayProcess.killed) {

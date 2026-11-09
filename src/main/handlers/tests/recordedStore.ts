@@ -97,6 +97,8 @@ const fromSidecar = (sidecar: Sidecar, previous?: Test): Test => ({
   file: sidecar.file,
   ownership: 'recorded',
   ...(sidecar.tags && { tags: sidecar.tags }),
+  ...(sidecar.kind && { kind: sidecar.kind }),
+  ...(sidecar.inputs && { inputs: sidecar.inputs }),
   ...(previous?.hasTrace && { hasTrace: true })
 })
 

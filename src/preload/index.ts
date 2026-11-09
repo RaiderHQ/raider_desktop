@@ -292,23 +292,27 @@ const api = {
     }
   },
   // Recording Session Control
-  startRecordingMain: async (): Promise<{
+  startRecordingMain: async (options?: {
+    mode?: 'test' | 'flow'
+  }): Promise<{
     success: boolean
     url: string
     preloadPath: string
     reason?: 'unsupportedUrl'
-  }> => ipcRenderer.invoke('start-recording-main'),
+  }> => ipcRenderer.invoke('start-recording-main', options),
   replayStepsAndRecord: async (
     testName: string,
     stepsToReplay: Step[],
-    rubyCommand: string
+    rubyCommand: string,
+    options?: { mode?: 'test' | 'flow' }
   ): Promise<{
     success: boolean
     url?: string
     preloadPath?: string
     error?: string
     cancelled?: boolean
-  }> => ipcRenderer.invoke('replay-steps-and-record', testName, stepsToReplay, rubyCommand),
+  }> =>
+    ipcRenderer.invoke('replay-steps-and-record', testName, stepsToReplay, rubyCommand, options),
   cancelReplay: async (): Promise<{ success: boolean }> => ipcRenderer.invoke('cancel-replay'),
   replayInWebview: async (
     steps: Step[]

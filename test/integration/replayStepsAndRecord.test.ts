@@ -37,6 +37,7 @@ vi.mock('../../src/main/handlers/recording/startRecordingMain', () => ({
 
 import replayStepsAndRecord from '../../src/main/handlers/recording/replayStepsAndRecord'
 import { appState } from '../../src/main/handlers/appState'
+import startRecordingMain from '../../src/main/handlers/recording/startRecordingMain'
 import type { Step } from '../../src/shared/types/step'
 
 const mockExec = exec as ReturnType<typeof vi.fn>
@@ -99,6 +100,20 @@ describe('replayStepsAndRecord', () => {
     expect(mockExec.mock.calls[0][0]).toMatch(/^ruby -S rspec .*\.rb$/)
     expect(appState.sessionUrl).toBe('http://final/page')
     expect(result.success).toBe(true)
+  })
+
+  it('hands the recorder mode to startRecordingMain', async () => {
+    mockExec.mockImplementation(
+      (
+        _cmd: string,
+        _opts: object,
+        cb: (err: Error | null, stdout: string, stderr: string) => void
+      ) => cb(null, '', '')
+    )
+    await replayStepsAndRecord({} as never, 'T', [click('1', 'a')], 'ruby', { mode: 'flow' })
+    expect(startRecordingMain).toHaveBeenLastCalledWith({ mode: 'flow' })
+    await replayStepsAndRecord({} as never, 'T', [click('1', 'a')], 'ruby')
+    expect(startRecordingMain).toHaveBeenLastCalledWith(undefined)
   })
 
   it('quotes the temp spec path, which can hold a space or $ in the user name', async () => {

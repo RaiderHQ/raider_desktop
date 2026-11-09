@@ -216,7 +216,8 @@ export interface WindowApi extends RunApi {
   ) => Promise<{ success: boolean; path?: string; error?: string }>
 
   // --- Recording Session ---
-  startRecordingMain: () => Promise<{
+  /** `mode: 'flow'` records a flow: main then refuses checks */
+  startRecordingMain: (options?: { mode?: 'test' | 'flow' }) => Promise<{
     success: boolean
     url: string
     preloadPath: string
@@ -226,7 +227,8 @@ export interface WindowApi extends RunApi {
   replayStepsAndRecord: (
     testName: string,
     stepsToReplay: Step[],
-    rubyCommand: string
+    rubyCommand: string,
+    options?: { mode?: 'test' | 'flow' }
   ) => Promise<{
     success: boolean
     url?: string

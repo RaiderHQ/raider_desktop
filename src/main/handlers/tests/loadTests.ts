@@ -13,7 +13,9 @@ async function testFor(projectPath: string, sidecar: Sidecar): Promise<Test> {
     url: sidecar.url,
     steps: sidecar.steps,
     file: sidecar.file,
-    ...(sidecar.tags && { tags: sidecar.tags })
+    ...(sidecar.tags && { tags: sidecar.tags }),
+    ...(sidecar.kind && { kind: sidecar.kind }),
+    ...(sidecar.inputs && { inputs: sidecar.inputs })
   }
   try {
     const { ownership } = await recordedOwnership(projectPath, sidecar)

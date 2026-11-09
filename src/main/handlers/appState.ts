@@ -5,6 +5,8 @@ import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import { DEFAULT_RECORDER_SETTINGS } from './config/projectSettings'
 
+export type RecordingMode = 'test' | 'flow'
+
 interface AppState {
   mainWindow: BrowserWindow | null
   recorderWindow: BrowserWindow | null
@@ -29,6 +31,8 @@ interface AppState {
   pickPurpose: 'repick' | 'assert'
   /** The page reported a recording in progress (drives the Record / Stop & save menu item) */
   recording: boolean
+  /** What the recorder is recording: a flow has no checks, so the check controls are refused */
+  recordingMode: RecordingMode
 }
 
 export const appState: AppState = {
@@ -49,7 +53,8 @@ export const appState: AppState = {
   pickMode: false,
   pickModeEndedAt: 0,
   pickPurpose: 'repick',
-  recording: false
+  recording: false,
+  recordingMode: 'test'
 }
 
 export function setProjectAutomation(automation: string | null): void {

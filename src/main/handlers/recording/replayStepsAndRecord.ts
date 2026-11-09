@@ -29,7 +29,9 @@ async function replayStepsAndRecord(
   _event: Electron.IpcMainInvokeEvent,
   _testName: string,
   stepsToReplay: Step[],
-  rubyCommand: string
+  rubyCommand: string,
+  /** The renderer's `{ mode }`, validated by startRecordingMain */
+  recordingOptions?: unknown
 ): Promise<ReplayResult> {
   if (!isValidRubyCommand(rubyCommand)) {
     return { success: false, error: 'The Ruby command is not valid, so the replay did not run.' }
@@ -123,7 +125,7 @@ async function replayStepsAndRecord(
 
     appState.sessionUrl = finalUrl
 
-    const recordingResult = startRecordingMain()
+    const recordingResult = startRecordingMain(recordingOptions)
     return {
       success: recordingResult.success,
       url: recordingResult.url,
