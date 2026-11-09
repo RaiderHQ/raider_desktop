@@ -119,20 +119,21 @@ describe('scaffoldGenerate into a folder (--path)', () => {
 
   // Whatever arrives over IPC: nothing runs unless every field is right
   it.each([
-    ['no params', undefined],
-    ['null params', null],
-    ['no operation', { type: 'page', name: 'checkout', path: 'page_objects/pages' }],
-    ['another operation', { operation: 'delete', type: 'page', name: 'checkout', path: 'page_objects/pages' }],
-    ['no type', { operation: 'generate', name: 'checkout', path: 'page_objects/pages' }],
-    ['a number as the name', { operation: 'generate', type: 'page', name: 42, path: 'page_objects/pages' }]
-  ])('refuses %s without running anything', async (_label, params) => {
+    ['no params', undefined, 'Unsupported type for a folder: undefined'],
+    ['null params', null, 'Unsupported type for a folder: undefined'],
+    ['no operation', { type: 'page', name: 'checkout', path: 'page_objects/pages' }, 'Unsupported type for a folder: page'],
+    ['another operation', { operation: 'delete', type: 'page', name: 'checkout', path: 'page_objects/pages' }, 'Unsupported type for a folder: page'],
+    ['no type', { operation: 'generate', name: 'checkout', path: 'page_objects/pages' }, 'Unsupported type for a folder: undefined'],
+    ['a number as the name', { operation: 'generate', type: 'page', name: 42, path: 'page_objects/pages' }, 'A name starts with a letter and has only letters, digits and underscores.']
+  ])('refuses %s without running anything', async (_label, params, error) => {
     const result = await handler(mockEvent, params as never, project, 'ruby')
-    expect(result.success).toBe(false)
+    // A thrown TypeError would land in the outer catch with another message
+    expect(result).toMatchObject({ success: false, error })
     expect(mockSafeExec).not.toHaveBeenCalled()
   })
 
   it('returns a failure when running the gem throws', async () => {
-    mockSafeExec.mockRejectedValue(new Error('spawn failed'))
+    mockSafeExec.mockRejectedValueOnce(new Error('spawn failed'))
     const result = await generate({ type: 'page', name: 'checkout', path: 'page_objects/pages' })
     expect(result).toEqual({ success: false, output: '', error: 'spawn failed' })
   })
