@@ -31,6 +31,17 @@ describe('RecordingGuide', () => {
     expect(screen.getByText('guide.learnMore')).toBeInTheDocument()
   })
 
+  it('for a flow, says what a flow is in three lines instead', () => {
+    render(<RecordingGuide variant="card" kind="flow" />)
+    const items = Array.from(document.querySelectorAll('li')).map((li) => li.textContent)
+    expect(items).toEqual([
+      'recorder.flowGuide.line1',
+      'recorder.flowGuide.line2',
+      'recorder.flowGuide.line3'
+    ])
+    expect(screen.getByText('guide.gotIt')).toBeInTheDocument()
+  })
+
   it('Learn more opens the assertions page of the docs', () => {
     render(<RecordingGuide variant="card" />)
     fireEvent.click(screen.getByText('guide.learnMore'))

@@ -759,6 +759,65 @@ describe('useTestRecording', () => {
     expect(mockToast.error).not.toHaveBeenCalledWith('tests.saveRefusedCodeOwned')
   })
 
+  describe('the recorder mode', () => {
+    const flow: Test = { ...test1, kind: 'flow' }
+
+    it('records a test as a test', async () => {
+      const rec = await mount()
+      await act(() => rec.start({ kind: 'test' }))
+      expect(api.startRecordingMain).toHaveBeenCalledWith({ mode: 'test' })
+    })
+
+    it('records a flow as a flow', async () => {
+      useRecorderStore.setState({ activeTest: flow })
+      const rec = await mount()
+      await act(() => rec.start({ kind: 'test' }))
+      expect(api.startRecordingMain).toHaveBeenCalledWith({ mode: 'flow' })
+    })
+
+    it('records a flow from a step as a flow', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      useRecorderStore.setState({ activeTest: flow })
+      const rec = await mount()
+      let done: Promise<void> = Promise.resolve()
+      act(() => {
+        done = rec.recordFromHere(1, { kind: 'test' })
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1600)
+        await done
+      })
+      expect(api.startRecordingMain).toHaveBeenCalledWith({ mode: 'flow' })
+    })
+
+    it("opens a flow's recorder as a flow to re-pick an element", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const clickFlow: Test = {
+        ...flow,
+        steps: [
+          step('a'),
+          { id: 'b', kind: 'click', element: { strategy: 'css', value: '#go', label: 'Go' } }
+        ]
+      }
+      useRecorderStore.setState({ activeTest: clickFlow })
+      api.getTests.mockResolvedValue([clickFlow])
+      const rec = await mount()
+      let outcome: Promise<unknown> = Promise.resolve()
+      act(() => {
+        outcome = rec.rePick(1)
+      })
+      outcome.catch(() => {})
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1600)
+      })
+      expect(api.startRecordingMain).toHaveBeenCalledWith({ mode: 'flow' })
+      await act(async () => {
+        picked?.({ cancelled: true })
+        await outcome
+      })
+    })
+  })
+
   describe('leaving while the recording is starting', () => {
     const test2: Test = { ...test1, id: 't2', name: 'Other', steps: [step('x'), step('y')] }
 

@@ -9,6 +9,8 @@ import { platformFrom, shortcutLabel } from '@shared/shortcuts'
 interface RecordingGuideProps {
   /** A card above the steps while recording, or a modal when nothing is recording */
   variant: 'card' | 'modal'
+  /** A flow's guide says what a flow is; it has no checks to point at */
+  kind?: 'test' | 'flow'
   onClose?: () => void
 }
 
@@ -28,7 +30,7 @@ const Chip: React.FC<{ id: 'stop' | 'run' }> = ({ id }) => (
   </kbd>
 )
 
-const RecordingGuide: React.FC<RecordingGuideProps> = ({ variant, onClose }) => {
+const RecordingGuide: React.FC<RecordingGuideProps> = ({ variant, kind = 'test', onClose }) => {
   const { t } = useTranslation()
   const setGuideOpen = useRecorderStore((state) => state.setGuideOpen)
 
@@ -67,17 +69,25 @@ const RecordingGuide: React.FC<RecordingGuideProps> = ({ variant, onClose }) => 
       <h2 id="recording-guide-title" className="text-sm font-semibold text-neutral-dark mb-2">
         {t('guide.title')}
       </h2>
-      <ol className="list-decimal pl-5 space-y-1.5 text-sm text-neutral-dark">
-        <li>{t('guide.step1')}</li>
-        <li>{t('guide.step2')}</li>
-        <li>
-          {t('guide.step3Before')}
-          <Chip id="stop" />
-          {t('guide.step3Middle')}
-          <Chip id="run" />
-          {t('guide.step3After')}
-        </li>
-      </ol>
+      {kind === 'flow' ? (
+        <ul className="list-disc pl-5 space-y-1.5 text-sm text-neutral-dark">
+          <li>{t('recorder.flowGuide.line1')}</li>
+          <li>{t('recorder.flowGuide.line2')}</li>
+          <li>{t('recorder.flowGuide.line3')}</li>
+        </ul>
+      ) : (
+        <ol className="list-decimal pl-5 space-y-1.5 text-sm text-neutral-dark">
+          <li>{t('guide.step1')}</li>
+          <li>{t('guide.step2')}</li>
+          <li>
+            {t('guide.step3Before')}
+            <Chip id="stop" />
+            {t('guide.step3Middle')}
+            <Chip id="run" />
+            {t('guide.step3After')}
+          </li>
+        </ol>
+      )}
       <div className="mt-3 flex items-center justify-between">
         <DocsLink id="docs.assertions" topic={t('docs.topics.recording')}>
           {t('guide.learnMore')}

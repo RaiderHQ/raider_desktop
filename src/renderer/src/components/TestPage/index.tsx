@@ -594,7 +594,9 @@ const TestPage: React.FC<TestPageProps> = ({ row }) => {
                 </button>
               </Tooltip>
             )}
-            {recording.isRecording && <AddValidationButton disabled={picking || isReplaying} />}
+            {recording.isRecording && activeTest?.kind !== 'flow' && (
+              <AddValidationButton disabled={picking || isReplaying} />
+            )}
             <Tooltip
               content={t('tooltips.testPage.run')}
               shortcut="run"

@@ -27,6 +27,7 @@ const RecordingLayout: React.FC<RecordingLayoutProps> = ({
   const guideOpen = useRecorderStore((state) => state.guideOpen)
   const isPicking = useRecorderStore((state) => state.recordingTarget?.kind === 'pick')
   const isReplayingToBreakpoint = useRecorderStore((state) => state.isReplayingToBreakpoint)
+  const kind = useRecorderStore((state) => (state.activeTest?.kind === 'flow' ? 'flow' : 'test'))
   const [seen, setSeen] = useState(hasSeenGuide)
   // Only for a real recording, not while re-picking an element or replaying to a breakpoint
   const showGuide = (!seen || guideOpen) && !isPicking && !isReplayingToBreakpoint
@@ -35,7 +36,7 @@ const RecordingLayout: React.FC<RecordingLayoutProps> = ({
       <div className="w-[40%] min-h-0 flex flex-col">
         {showGuide && (
           <div className="mb-3 shrink-0">
-            <RecordingGuide variant="card" onClose={() => setSeen(true)} />
+            <RecordingGuide variant="card" kind={kind} onClose={() => setSeen(true)} />
           </div>
         )}
         <div data-testid="recording-steps" className="flex-1 min-h-0">
