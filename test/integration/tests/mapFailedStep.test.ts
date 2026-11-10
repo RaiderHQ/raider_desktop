@@ -142,32 +142,16 @@ describe('mapFailedStepHandler', () => {
       expect(await map(failure())).toEqual({ none: 'changedSinceRun' })
     })
 
-    describe("from a flow run's results folder", () => {
-      const DIR = 'flow-results/hello/20261110T110856Z'
-      const writeFlowRunAt = async (ms: number): Promise<void> => {
-        await mkdir(join(project, DIR), { recursive: true })
-        await writeFile(join(project, DIR, 'run.json'), '{}')
-        await utimes(join(project, DIR, 'run.json'), ms / 1000, ms / 1000)
-      }
-
-      it("stats the flow run's run.json, not raider-results", async () => {
-        await writeRunAt(Date.parse(saved.updatedAt) - 60_000)
-        await writeFlowRunAt(Date.parse(saved.updatedAt) + 60_000)
-        expect(await map({ ...failure(), resultsDir: DIR })).toEqual({ stepId: 's3', index: 2 })
-      })
-
-      it('never falls back to raider-results when the flow run.json is missing', async () => {
-        await writeRunAt(Date.parse(saved.updatedAt) + 60_000)
-        expect(await map({ ...failure(), resultsDir: DIR })).toEqual({ none: 'changedSinceRun' })
-      })
-
-      it.each(['raider-results', 'flow-results/hello/../x', '/abs', 'flow-results/hello/latest'])(
-        'refuses a results folder that is not a flow run: %s',
-        async (resultsDir) => {
-          await writeRunAt(Date.parse(saved.updatedAt) + 60_000)
-          expect(await map({ ...failure(), resultsDir })).toEqual({ none: 'notRecorded' })
-        }
-      )
+    it('never reads a flow-results run.json (removed with flows), even when asked to', async () => {
+      const dir = 'flow-results/hello/20261110T110856Z'
+      await mkdir(join(project, dir), { recursive: true })
+      await writeFile(join(project, dir, 'run.json'), '{}')
+      const newer = (Date.parse(saved.updatedAt) + 60_000) / 1000
+      await utimes(join(project, dir, 'run.json'), newer, newer)
+      await writeRunAt(Date.parse(saved.updatedAt) - 60_000)
+      // The old flow field is not part of the query any more: it is ignored, and only
+      // raider-results/run.json (older than the save) says when the row ran
+      expect(await map({ ...failure(), resultsDir: dir })).toEqual({ none: 'changedSinceRun' })
     })
 
     it('treats an unreadable finishedAt like a missing one', async () => {

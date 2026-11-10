@@ -41,32 +41,3 @@ export function flowStemOf(rel: unknown): string | null {
 
 /** True for a flow file's project-relative path: `flows/<name>_flow.rb`, no subfolders. */
 export const isFlowFileRel = (rel: unknown): rel is string => flowStemOf(rel) !== null
-
-// --- A flow run's results (ruby_raider 4.1+) ---
-
-/** Where the gem writes each flow run's results: `flow-results/<name>/<UTC stamp>[-n]` */
-export const FLOW_RESULTS_ROOT = 'flow-results'
-/** The folder name of one flow run's results: a UTC stamp, `-n` when two runs share a second */
-export const FLOW_RESULTS_STAMP = /^\d{8}T\d{6}Z(-\d+)?$/
-const FLOW_RESULTS_DIR = /^flow-results\/([a-z0-9_]{1,60})\/(\d{8}T\d{6}Z(?:-\d+)?)$/
-
-/**
- * The flow name of a project-relative results folder `flow-results/<name>/<stamp>`, or null.
- * When `name` is given, the folder must belong to that flow.
- */
-export function flowOfResultsDir(rel: unknown, name?: string): string | null {
-  if (typeof rel !== 'string') return null
-  const flow = FLOW_RESULTS_DIR.exec(rel)?.[1]
-  if (flow === undefined || !isFlowName(flow)) return null
-  return name === undefined || flow === name ? flow : null
-}
-
-// --- Flow secrets (.raider/flows/env) ---
-
-/** A key the Flows tab may write to the flow secrets file */
-export const FLOW_SECRET_KEY = /^(RAIDER_SECRET_[A-Z0-9_]+|TEST_USER|TEST_PASSWORD)$/
-/** The longest secret key */
-export const MAX_FLOW_SECRET_KEY = 100
-
-export const isFlowSecretKey = (key: unknown): key is string =>
-  typeof key === 'string' && key.length <= MAX_FLOW_SECRET_KEY && FLOW_SECRET_KEY.test(key)

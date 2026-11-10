@@ -10,7 +10,7 @@ import {
   isFlowsChange,
   startFlowWatcher,
   stopFlowWatcher,
-  FLOW_FAILED_TITLE,
+  SCHEDULE_FAILED_TITLE,
   type FlowWatcher,
   type FlowWatcherDeps
 } from '../../src/main/handlers/schedules/scheduleWatcher'
@@ -170,13 +170,14 @@ describe('flowWatcher', () => {
     await watcher.idle()
     await change(f)
     expect(f.notes).toHaveLength(0)
-    expect(f.sent).toEqual(['flows-changed'])
+    expect(f.sent).toEqual(['schedules-changed'])
 
     await appendFile(log(), line())
     await change(f)
     expect(f.notes).toEqual([
-      expect.objectContaining({ title: FLOW_FAILED_TITLE, body: 'broken failed at line 7' })
+      expect.objectContaining({ title: SCHEDULE_FAILED_TITLE, body: 'broken failed at line 7' })
     ])
+    expect(SCHEDULE_FAILED_TITLE).toBe('Scheduled run failed')
     await change(f)
     expect(f.notes).toHaveLength(1)
   })
@@ -255,7 +256,7 @@ describe('flowWatcher', () => {
     expect(f.notes).toHaveLength(2)
   })
 
-  it('debounces: 5 events make one scan and one flows-changed', async () => {
+  it('debounces: 5 events make one scan and one schedules-changed', async () => {
     const f = fakes()
     watcher = createFlowWatcher(dir, f.deps)
     await watcher.idle()
@@ -265,7 +266,7 @@ describe('flowWatcher', () => {
     f.flush()
     f.flush()
     await watcher.idle()
-    expect(f.sent).toEqual(['flows-changed'])
+    expect(f.sent).toEqual(['schedules-changed'])
     expect(f.notes).toHaveLength(1)
   })
 
@@ -403,7 +404,7 @@ describe('flowWatcher', () => {
         expect(isFlowsChange(churn), churn).toBe(false)
     })
 
-    it('scheduler.log and lock churn push no flows-changed', async () => {
+    it('scheduler.log and lock churn push no schedules-changed', async () => {
       const f = fakes()
       watcher = createFlowWatcher(dir, f.deps)
       await watcher.idle()
@@ -417,7 +418,7 @@ describe('flowWatcher', () => {
       f.watches[0].fire('broken/runs.jsonl')
       f.flush()
       await watcher.idle()
-      expect(f.sent).toEqual(['flows-changed'])
+      expect(f.sent).toEqual(['schedules-changed'])
     })
   })
 
@@ -431,7 +432,7 @@ describe('flowWatcher', () => {
     expect(f.win.restore).toHaveBeenCalled()
     expect(f.win.show).toHaveBeenCalled()
     expect(f.win.focus).toHaveBeenCalled()
-    expect(f.sent).toEqual(['flows-changed', 'focus-flows-tab'])
+    expect(f.sent).toEqual(['schedules-changed', 'focus-schedules'])
   })
 
   it('after stop (a project switch) closes its banners and a late click opens nothing', async () => {
@@ -445,7 +446,7 @@ describe('flowWatcher', () => {
     expect(f.notes[0].closed).toBe(true)
     f.notes[0].click()
     expect(f.win.focus).not.toHaveBeenCalled()
-    expect(f.sent).toEqual(['flows-changed'])
+    expect(f.sent).toEqual(['schedules-changed'])
   })
 
   it('without .raider/flows watches .raider and arms when it is made', async () => {

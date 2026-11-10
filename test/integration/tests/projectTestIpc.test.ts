@@ -12,7 +12,6 @@ import {
   convertToFlowHandler,
   flowsReadyHandler,
   getProjectLayoutHandler,
-  listProjectFlowsHandler,
   listProjectTestsHandler,
   listedFiles,
   openCodeTestHandler,
@@ -193,23 +192,6 @@ describe('flows over IPC', () => {
     })
     await writeFile(join(project, 'flows', 'manual_flow.rb'), "RSpec.describe 'Manual' do\nend\n")
 
-    expect(await listProjectFlowsHandler()).toEqual([
-      {
-        name: 'Fill hours',
-        file: 'flows/fill_hours_flow.rb',
-        stem: 'fill_hours',
-        ownership: 'recorded',
-        testId: 'f1',
-        inputs: [{ name: 'hours', default: '8' }]
-      },
-      {
-        name: 'Manual',
-        file: 'flows/manual_flow.rb',
-        stem: 'manual',
-        ownership: 'code',
-        inputs: []
-      }
-    ])
     const tests = await listProjectTestsHandler()
     expect(tests.find((e) => e.file === made.file)?.kind).toBe('flow')
     expect(tests.find((e) => e.file === 'spec/a_spec.rb')?.kind).toBeUndefined()

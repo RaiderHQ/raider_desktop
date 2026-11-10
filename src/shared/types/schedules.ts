@@ -34,7 +34,6 @@ export interface GemScheduleRule {
   at: string
   on: FlowDay | null
   retries: number
-  inputs: Record<string, string>
   notify: boolean
   nextRunAt: string | null
   osState: string

@@ -40,10 +40,3 @@ export function supportsRuntime(version: string | null): boolean {
   const [major = 0] = version.split('.').map(Number)
   return major >= 4
 }
-
-/** The Flows tab (`raider flow list|schedule|…`) needs ruby_raider 4.1.0 or later; unknown is no. */
-export function supportsFlows(version: string | null): boolean {
-  if (!version) return false
-  const [major = 0, minor = 0] = version.split('.').map(Number)
-  return major > 4 || (major === 4 && minor >= 1)
-}

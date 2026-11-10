@@ -1,0 +1,54 @@
+import { constants, promises as fs } from 'node:fs'
+import { assertRealInside, resolveInside } from '../tests/sidecar'
+import { isFlowName } from '../../../shared/flows'
+
+// The gem's run log of a scheduled job (.raider/flows/<name>/runs.jsonl, one JSON line per
+// run). It is written by project code, so nothing is trusted: each line is parsed on its own.
+
+/** Only the log's tail is read; the gem trims it to 50 lines anyway */
+const MAX_LOG_BYTES = 1024 * 1024
+
+const runLogRel = (name: string): string => `.raider/flows/${name}/runs.jsonl`
+
+/**
+ * The log's lines, oldest first, each parsed on its own (a bad line is skipped). Empty when
+ * the log is missing, unreadable, a link, or outside the project.
+ */
+export async function readRunLog(
+  projectPath: string,
+  name: string,
+  maxBytes = MAX_LOG_BYTES
+): Promise<unknown[]> {
+  if (!isFlowName(name)) return []
+  let handle: fs.FileHandle | undefined
+  try {
+    const file = resolveInside(projectPath, runLogRel(name))
+    await assertRealInside(projectPath, file)
+    // O_NOFOLLOW refuses a link where it exists; the lstat covers platforms without it
+    if ((await fs.lstat(file)).isSymbolicLink()) return []
+    handle = await fs.open(
+      file,
+      constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0)
+    )
+    const stat = await handle.stat()
+    if (!stat.isFile()) return []
+    const length = Math.min(stat.size, maxBytes)
+    const buffer = Buffer.alloc(length)
+    const { bytesRead } = await handle.read(buffer, 0, length, stat.size - length)
+    const lines = buffer.subarray(0, bytesRead).toString('utf8').split('\n')
+    // A tail read starts mid-line
+    if (stat.size > length) lines.shift()
+    return lines.flatMap((line) => {
+      if (line.trim() === '') return []
+      try {
+        return [JSON.parse(line) as unknown]
+      } catch {
+        return []
+      }
+    })
+  } catch {
+    return []
+  } finally {
+    await handle?.close().catch(() => undefined)
+  }
+}

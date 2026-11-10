@@ -43,7 +43,6 @@ const schedule = (patch: Partial<GemScheduleRule> = {}): GemScheduleRule => ({
   at: '08:00',
   on: null,
   retries: 0,
-  inputs: {},
   notify: false,
   nextRunAt: null,
   osState: 'ok',
@@ -51,6 +50,7 @@ const schedule = (patch: Partial<GemScheduleRule> = {}): GemScheduleRule => ({
   ...patch
 })
 
+// What the modal is given to send a schedule with: it never reaches window.api itself
 const api = {
   scheduleFlow: vi.fn()
 }
@@ -58,7 +58,6 @@ const api = {
 beforeEach(() => {
   vi.clearAllMocks()
   Object.values(api).forEach((f) => f.mockReset())
-  ;(window as unknown as { api: typeof api }).api = api
   useRubyStore.setState({ rubyCommand: 'ruby' })
 })
 
@@ -130,6 +129,7 @@ describe('ScheduleModal', () => {
         schedule={null}
         onClose={vi.fn()}
         onScheduled={onScheduled}
+        save={api.scheduleFlow}
       />
     )
   }

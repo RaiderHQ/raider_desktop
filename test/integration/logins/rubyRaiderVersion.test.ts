@@ -3,7 +3,6 @@ import { describe, it, expect } from 'vitest'
 import {
   rubyRaiderPin,
   rubyRaiderVersion,
-  supportsFlows,
   supportsLoginReuse,
   supportsRuntime
 } from '../../../src/main/handlers/logins/rubyRaiderVersion'
@@ -89,16 +88,5 @@ describe('supportsRuntime', () => {
     expect(supportsRuntime('2.12.0')).toBe(false)
     expect(supportsRuntime(null)).toBe(true)
     expect(supportsRuntime('')).toBe(true)
-  })
-})
-
-describe('supportsFlows', () => {
-  it('needs 4.1.0 or later and refuses an unknown version', () => {
-    expect(supportsFlows('4.1.0')).toBe(true)
-    expect(supportsFlows('4.12.3')).toBe(true)
-    expect(supportsFlows('5.0.0')).toBe(true)
-    expect(supportsFlows('4.0.9')).toBe(false)
-    expect(supportsFlows('3.15.0')).toBe(false)
-    expect(supportsFlows(null)).toBe(false)
   })
 })

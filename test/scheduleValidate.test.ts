@@ -1,69 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import {
-  FLOW_INPUT_NAME,
-  scheduleArgs,
-  validateFlowInputs,
-  validateSchedule
-} from '../src/shared/schedules'
+import { scheduleArgs, validateSchedule } from '../src/shared/schedules'
 
 const base = { every: 'day', at: '09:30', retries: 1, notify: false }
-
-describe('FLOW_INPUT_NAME', () => {
-  it('takes a lower-case name of up to 40 starting with a letter', () => {
-    expect(FLOW_INPUT_NAME.test('hours')).toBe(true)
-    expect(FLOW_INPUT_NAME.test('a'.repeat(40))).toBe(true)
-    expect(FLOW_INPUT_NAME.test('a'.repeat(41))).toBe(false)
-    expect(FLOW_INPUT_NAME.test('1abc')).toBe(false)
-    expect(FLOW_INPUT_NAME.test('Abc')).toBe(false)
-  })
-})
-
-describe('validateFlowInputs', () => {
-  it('returns a fresh copy of valid inputs', () => {
-    const given = { hours: '5', user_name: 'Ana' }
-    const result = validateFlowInputs(given)
-    expect(result).toEqual(given)
-    expect(result).not.toBe(given)
-  })
-
-  it('takes 20 entries and refuses 21', () => {
-    const entries = (n: number): Record<string, string> =>
-      Object.fromEntries(Array.from({ length: n }, (_, i) => [`k${i}`, 'v']))
-    expect(Object.keys(validateFlowInputs(entries(20)))).toHaveLength(20)
-    expect(() => validateFlowInputs(entries(21))).toThrow()
-  })
-
-  it('takes a 2000-char value and refuses 2001', () => {
-    expect(validateFlowInputs({ a: 'x'.repeat(2000) }).a).toHaveLength(2000)
-    expect(() => validateFlowInputs({ a: 'x'.repeat(2001) })).toThrow()
-  })
-
-  it.each(['a\u0000b', 'a\nb', 'a\rb', 'a\tb', 'a\u001fb', 'a\u007fb'])(
-    'refuses a control character in %j',
-    (value) => {
-      expect(() => validateFlowInputs({ a: value })).toThrow()
-    }
-  )
-
-  it('keeps shell syntax as plain text', () => {
-    expect(validateFlowInputs({ a: '$(rm -rf ~); echo' }).a).toBe('$(rm -rf ~); echo')
-  })
-
-  it.each([['Bad'], ['1x'], ['__proto__'], ['a-b'], ['']])('refuses the name %j', (name) => {
-    expect(() => validateFlowInputs(JSON.parse(`{${JSON.stringify(name)}:"v"}`))).toThrow()
-  })
-
-  it.each([[null], [[]], ['x'], [new Date()], [Object.create({ a: '1' })]])(
-    'refuses %j as the inputs',
-    (value) => {
-      expect(() => validateFlowInputs(value)).toThrow()
-    }
-  )
-
-  it('refuses a non-string value', () => {
-    expect(() => validateFlowInputs({ a: 5 })).toThrow()
-  })
-})
 
 describe('validateSchedule', () => {
   it('accepts a valid schedule and drops nothing', () => {

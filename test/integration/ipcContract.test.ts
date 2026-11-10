@@ -88,20 +88,6 @@ describe('IPC Contract', () => {
 
     'getTests',
     'listProjectTests',
-    'listProjectFlows',
-    'flowsReady',
-    'flowsStatus',
-    'listFlows',
-    'listSchedules',
-    'setupFlows',
-    'scheduleFlow',
-    'unscheduleFlow',
-    'openFlowResults',
-    'flowLastResults',
-    'listFlowEnvKeys',
-    'setFlowEnv',
-    'removeFlowEnv',
-    'convertToFlow',
     'mapFailedStep',
     'openCodeTest',
     'getProjectLayout',
@@ -153,8 +139,6 @@ describe('IPC Contract', () => {
     // Menu bar
     'onMenuCommand',
     'onOpenRecentProject',
-    'onFlowsChanged',
-    'onFocusFlowsTab',
 
     // Results
     'acceptBaseline',
@@ -271,8 +255,6 @@ describe('IPC Contract', () => {
       onTestsUpdated: 'tests-updated',
       onMenuCommand: 'menu-command',
       onOpenRecentProject: 'open-recent-project',
-      onFlowsChanged: 'flows-changed',
-      onFocusFlowsTab: 'focus-flows-tab',
       onRecordingStarted: 'recording-started',
       onRecordingStopped: 'recording-stopped',
       onNewRecordedStep: 'new-recorded-step',
