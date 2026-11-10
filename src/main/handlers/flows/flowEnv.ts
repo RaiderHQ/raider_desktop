@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto'
 import path from 'node:path'
 import { assertRealInside, resolveInside, serialize } from '../tests/sidecar'
 import type { FlowEnvError, FlowEnvKeys } from '../../../shared/types/flows'
+import { isFlowSecretKey } from '../../../shared/flows'
 
 // The flow secrets file, .raider/flows/env, as the gem's flows/support/run.rb loads it: KEY=value
 // lines, `#` comment lines, the raw value stripped and one pair of surrounding quotes removed, no
@@ -13,9 +14,7 @@ import type { FlowEnvError, FlowEnvKeys } from '../../../shared/types/flows'
 const ENV_DIRS = ['.raider', '.raider/flows'] as const
 const ENV_FILE = '.raider/flows/env'
 const MAX_BYTES = 64 * 1024
-const MAX_KEY = 100
 const MAX_VALUE = 2000
-const SETTABLE_KEY = /^(RAIDER_SECRET_[A-Z0-9_]+|TEST_USER|TEST_PASSWORD)$/
 // eslint-disable-next-line no-control-regex -- control characters are exactly what it refuses
 const CONTROL = /[\u0000-\u001f\u007f]/
 // The gem's ENV_KEY; it ignores RAIDER_FLOW_* keys (the run wrapper's own)
@@ -47,8 +46,8 @@ const hasExactly = (payload: Record<string, unknown>, keys: string[]): boolean =
   return own.length === keys.length && keys.every((key) => own.includes(key))
 }
 
-const isSettableKey = (key: unknown): key is string =>
-  typeof key === 'string' && key.length <= MAX_KEY && SETTABLE_KEY.test(key)
+// The same rule the Flows tab checks a typed key against
+const isSettableKey = isFlowSecretKey
 
 const isValue = (value: unknown): value is string =>
   typeof value === 'string' &&

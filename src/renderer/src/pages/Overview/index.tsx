@@ -30,6 +30,7 @@ import UnsavedChangesModal from '@components/UnsavedChangesModal'
 import Terminal from '@components/Terminal'
 import Tooltip from '@components/Tooltip'
 import TestsWorkspace from '@components/TestsWorkspace'
+import FlowsPane from '@components/Flows/FlowsPane'
 import InfoButton from '@components/InfoButton'
 import ProjectMenu from '@components/ProjectMenu'
 import DocsLink from '@components/DocsLink'
@@ -58,13 +59,14 @@ import { loadSettingsCollapsed, saveSettingsCollapsed } from '@foundation/filesS
 import { TAG_RE } from '@shared/tags'
 import type { RunDefaults, RunScope } from '@shared/types/runEvents'
 
-type OverviewTab = 'tests' | 'files' | 'dashboard'
+type OverviewTab = 'tests' | 'flows' | 'files' | 'dashboard'
 
 const OVERVIEW_DOCS: Record<
   OverviewTab,
   (t: (key: string) => string) => { id: DocsLinkId; topic: string }
 > = {
   tests: (t) => ({ id: 'docs.recorder', topic: t('docs.topics.recording') }),
+  flows: (t) => ({ id: 'docs.flows', topic: t('docs.topics.flows') }),
   files: (t) => ({ id: 'docs.testScreen', topic: t('docs.topics.files') }),
   dashboard: (t) => ({ id: 'docs.dashboard', topic: t('docs.topics.dashboard') })
 }
@@ -78,7 +80,6 @@ const isWebAddress = (value: string): boolean => {
     return false
   }
 }
-
 
 // The Files menu's items for generated files, in menu order
 const SCAFFOLD_MENU_LABEL: Record<FolderScaffoldType, string> = {
@@ -175,9 +176,12 @@ const Overview: React.FC = () => {
     if (savedTimer.current) clearTimeout(savedTimer.current)
     savedTimer.current = setTimeout(() => setSettingsSaved(false), 2500)
   }
-  useEffect(() => (): void => {
-    if (savedTimer.current) clearTimeout(savedTimer.current)
-  }, [])
+  useEffect(
+    () => (): void => {
+      if (savedTimer.current) clearTimeout(savedTimer.current)
+    },
+    []
+  )
   const [selectedBrowser, setSelectedBrowser] = useState('chrome')
   const [headless, setHeadless] = useState(false)
 
@@ -456,7 +460,8 @@ const Overview: React.FC = () => {
         setHeadless(!enabled)
         let errorMsg = response.error || t('overview.settings.headlessUpdateFailed')
         if (errorMsg.includes('is not installed') || errorMsg.includes('rbenv')) {
-          errorMsg = 'Ruby version not found. Please set a valid Ruby version with rbenv (e.g. rbenv local 3.4.1) in your project directory.'
+          errorMsg =
+            'Ruby version not found. Please set a valid Ruby version with rbenv (e.g. rbenv local 3.4.1) in your project directory.'
         }
         toast.error(errorMsg)
         return
@@ -565,6 +570,19 @@ const Overview: React.FC = () => {
   // The panel only shows Overview's own run, so its scope is the one Overview last started
   const handleRunAgain = (): void => {
     if (runBusy || (!projectRun && customTagProblem)) return
+    const flow = projectRun?.finished?.flow
+    if (projectRun && flow) {
+      // A flow runs again with the inputs it had; after a reload only its recorded ones
+      const { lastFlow, origin } = useRunStore.getState()
+      void useRunStore
+        .getState()
+        .start(
+          projectRun.scope,
+          origin ?? { route: '/overview', label: flow.name },
+          lastFlow?.name === flow.name ? lastFlow : { name: flow.name, inputs: {}, headed: false }
+        )
+      return
+    }
     startRun(projectRun?.scope ?? runModeScope())
   }
 
@@ -1027,6 +1045,18 @@ const Overview: React.FC = () => {
             {t('overview.tabs.tests')}
           </button>
         </Tooltip>
+        <Tooltip content={t('tooltips.overview.tabFlows')} position="bottom">
+          <button
+            onClick={() => switchTab('flows')}
+            className={`px-5 py-2 text-sm font-semibold transition-colors ${
+              activeTab === 'flows'
+                ? 'text-neutral-dark border-b-2 border-ruby'
+                : 'text-neutral-md hover:text-neutral-dk'
+            }`}
+          >
+            {t('overview.tabs.flows')}
+          </button>
+        </Tooltip>
         <Tooltip content={t('tooltips.overview.tabFiles')} position="bottom">
           <button
             onClick={() => switchTab('files')}
@@ -1078,7 +1108,8 @@ const Overview: React.FC = () => {
         <RunPanel
           routeKey="/overview"
           onRunAgain={handleRunAgain}
-          onRerunFailed={handleRerunFailed}
+          // A flow has no per-example re-run: it runs again whole, with its inputs
+          onRerunFailed={run?.finished?.flow ? undefined : handleRerunFailed}
         />
       </div>
 
@@ -1110,12 +1141,22 @@ const Overview: React.FC = () => {
         </div>
       )}
 
+      {activeTab === 'flows' && (
+        <div className="relative w-full flex flex-col h-[calc(100vh-11rem)]">
+          <FlowsPane key={projectPath ?? ''} />
+        </div>
+      )}
+
       {activeTab === 'files' && (
         <div className="relative w-full">
           {/* Test settings toolbar */}
           <div className="border border-neutral-bdr rounded-t-lg bg-neutral-50 px-4 py-3 space-y-2">
             <Tooltip
-              content={t(settingsCollapsed ? 'tooltips.overview.settingsExpand' : 'tooltips.overview.settingsCollapse')}
+              content={t(
+                settingsCollapsed
+                  ? 'tooltips.overview.settingsExpand'
+                  : 'tooltips.overview.settingsCollapse'
+              )}
               position="right"
             >
               <button
@@ -1137,315 +1178,347 @@ const Overview: React.FC = () => {
             )}
             {/* Hidden rather than unmounted: the fields keep their state, refs and focus */}
             <div id="overview-settings-body" className="space-y-2" hidden={settingsCollapsed}>
-            {showWebSettings && (
-              <Tooltip content={t('tooltips.overview.urlInput')} position="right" className="w-full">
-                <div className="flex items-center gap-2 w-full">
-                  <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                    {t('overview.settings.urlLabel')}:
-                  </label>
-                  <input
-                    type="text"
-                    value={browserUrl}
-                    onChange={(e) => {
-                      setBrowserUrl(e.target.value)
-                      setUrlError(null)
-                    }}
-                    onBlur={handleUrlSave}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleUrlSave()
-                    }}
-                    placeholder={t('overview.settings.urlPlaceholder')}
-                    aria-invalid={urlError ? true : undefined}
-                    aria-describedby={urlError ? 'overview-url-error' : undefined}
-                    className={`flex-1 border rounded px-2 py-1 text-sm ${urlError ? 'border-status-err' : 'border-neutral-bdr'}`}
-                    data-testid="overview-url-input"
-                  />
-                  {settingsSaved && (
-                    <span role="status" className="text-xs text-status-ok whitespace-nowrap">
-                      {t('overview.settings.saved')}
-                    </span>
-                  )}
-                </div>
-                {urlError && (
-                  <p id="overview-url-error" role="alert" className="text-xs text-status-err mt-1">
-                    {urlError}
-                  </p>
-                )}
-              </Tooltip>
-            )}
-            <div className="flex items-center gap-4 flex-wrap">
               {showWebSettings && (
-                <Tooltip content={t('tooltips.overview.browserSelect')} position="right">
+                <Tooltip
+                  content={t('tooltips.overview.urlInput')}
+                  position="right"
+                  className="w-full"
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                      {t('overview.settings.urlLabel')}:
+                    </label>
+                    <input
+                      type="text"
+                      value={browserUrl}
+                      onChange={(e) => {
+                        setBrowserUrl(e.target.value)
+                        setUrlError(null)
+                      }}
+                      onBlur={handleUrlSave}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleUrlSave()
+                      }}
+                      placeholder={t('overview.settings.urlPlaceholder')}
+                      aria-invalid={urlError ? true : undefined}
+                      aria-describedby={urlError ? 'overview-url-error' : undefined}
+                      className={`flex-1 border rounded px-2 py-1 text-sm ${urlError ? 'border-status-err' : 'border-neutral-bdr'}`}
+                      data-testid="overview-url-input"
+                    />
+                    {settingsSaved && (
+                      <span role="status" className="text-xs text-status-ok whitespace-nowrap">
+                        {t('overview.settings.saved')}
+                      </span>
+                    )}
+                  </div>
+                  {urlError && (
+                    <p
+                      id="overview-url-error"
+                      role="alert"
+                      className="text-xs text-status-err mt-1"
+                    >
+                      {urlError}
+                    </p>
+                  )}
+                </Tooltip>
+              )}
+              <div className="flex items-center gap-4 flex-wrap">
+                {showWebSettings && (
+                  <Tooltip content={t('tooltips.overview.browserSelect')} position="right">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
+                        {t('overview.settings.browserLabel')}
+                      </label>
+                      <select
+                        value={selectedBrowser}
+                        onChange={handleBrowserChange}
+                        className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[160px]"
+                        data-testid="overview-browser-select"
+                      >
+                        <option value="chrome">{t('settings.browser.chrome')}</option>
+                        <option value="firefox">{t('settings.browser.firefox')}</option>
+                        {selectedBrowser !== 'chrome' && selectedBrowser !== 'firefox' && (
+                          <option value={selectedBrowser}>{selectedBrowser}</option>
+                        )}
+                      </select>
+                    </div>
+                  </Tooltip>
+                )}
+                {showWebSettings && (
+                  <Tooltip content={t('tooltips.overview.headlessToggle')} position="right">
+                    <ToggleSwitch
+                      label={t('overview.settings.headlessLabel')}
+                      checked={headless}
+                      onChange={handleHeadlessToggle}
+                      testId="overview-headless-toggle"
+                    />
+                  </Tooltip>
+                )}
+                <Tooltip content={t('tooltips.overview.runMode')} position="right">
                   <div className="flex items-center gap-2">
                     <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                      {t('overview.settings.browserLabel')}
+                      {t('overview.settings.runModeLabel')}
                     </label>
                     <select
-                      value={selectedBrowser}
-                      onChange={handleBrowserChange}
-                      className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[160px]"
-                      data-testid="overview-browser-select"
+                      value={runMode}
+                      onChange={(e) =>
+                        setRunMode(e.target.value as 'all' | 'smoke' | 'regression' | 'custom')
+                      }
+                      className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[140px]"
+                      data-testid="overview-run-mode-select"
                     >
-                      <option value="chrome">{t('settings.browser.chrome')}</option>
-                      <option value="firefox">{t('settings.browser.firefox')}</option>
-                      {selectedBrowser !== 'chrome' && selectedBrowser !== 'firefox' && (
-                        <option value={selectedBrowser}>{selectedBrowser}</option>
-                      )}
+                      <option value="all">{t('overview.settings.runMode.all')}</option>
+                      <option value="smoke">{t('overview.settings.runMode.smoke')}</option>
+                      <option value="regression">
+                        {t('overview.settings.runMode.regression')}
+                      </option>
+                      <option value="custom">{t('overview.settings.runMode.custom')}</option>
                     </select>
                   </div>
                 </Tooltip>
+                {runMode === 'custom' && (
+                  <input
+                    ref={tagInputRef}
+                    type="text"
+                    autoFocus
+                    value={customTag}
+                    onChange={(e) => setCustomTag(e.target.value)}
+                    placeholder={t('overview.settings.customTagPlaceholder')}
+                    aria-label={t('overview.settings.customTagLabel')}
+                    aria-invalid={customTag !== '' && !!customTagProblem}
+                    aria-describedby={
+                      customTag !== '' && customTagProblem ? 'overview-run-tag-error' : undefined
+                    }
+                    className="border border-neutral-bdr rounded px-3 py-1 text-sm w-[140px] lowercase"
+                    data-testid="overview-run-tag-input"
+                  />
+                )}
+                {runMode === 'custom' && (
+                  <span
+                    id="overview-run-tag-error"
+                    className="text-xs text-red-600"
+                    aria-live="polite"
+                  >
+                    {customTag !== '' && customTagProblem ? customTagProblem : ''}
+                  </span>
+                )}
+                <Tooltip
+                  content={t('tooltips.overview.rerunFailed')}
+                  disabledReason={canRerunFailed ? undefined : t('run.nothingFailed')}
+                  position="right"
+                >
+                  <button
+                    onClick={handleRerunFailed}
+                    disabled={runBusy || !canRerunFailed}
+                    title={canRerunFailed ? t('run.rerunSerial') : t('run.nothingFailed')}
+                    className="px-3 py-1 text-sm font-medium text-neutral-dk border border-neutral-bdr rounded hover:bg-neutral-lt transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    data-testid="overview-rerun-failed-btn"
+                  >
+                    {t('overview.settings.rerunFailed')}
+                  </button>
+                </Tooltip>
+                <ToggleSwitch
+                  label={t('run.parallel')}
+                  tooltip={t('tooltips.files.parallel')}
+                  checked={runSettings.parallel}
+                  onChange={(parallel) => updateRunSettings({ parallel })}
+                  testId="overview-parallel-toggle"
+                />
+                <Tooltip content={t('tooltips.files.moreOptions')} position="right">
+                  <button
+                    onClick={() => setMoreOptionsOpen((open) => !open)}
+                    aria-expanded={moreOptionsOpen}
+                    className="flex items-center gap-1 text-sm font-medium text-neutral-dk hover:text-neutral-dark transition-colors"
+                    data-testid="overview-more-options"
+                  >
+                    {moreOptionsOpen ? <FaChevronDown size={10} /> : <FaChevronRight size={10} />}
+                    {t('run.moreOptions')}
+                  </button>
+                </Tooltip>
+                {showWebSettings && (
+                  <Tooltip content={t('tooltips.overview.timeout')} position="right">
+                    <div className="flex items-center gap-2">
+                      <label
+                        htmlFor="timeout-input"
+                        className="text-sm font-medium text-neutral-dk whitespace-nowrap"
+                      >
+                        {t('settings.timeout.label')}
+                      </label>
+                      <input
+                        type="number"
+                        id="timeout-input"
+                        value={timeout}
+                        onChange={(e) => setTimeout_(Number(e.target.value))}
+                        onBlur={handleTimeoutUpdate}
+                        disabled={!configLoaded}
+                        min={1}
+                        max={300}
+                        className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
+                      />
+                    </div>
+                  </Tooltip>
+                )}
+              </div>
+              {moreOptionsOpen && (
+                <div
+                  className="flex items-center gap-4 flex-wrap"
+                  data-testid="overview-more-options-panel"
+                >
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="workers-input"
+                      className="text-sm font-medium text-neutral-dk whitespace-nowrap"
+                    >
+                      {t('run.workers')}
+                    </label>
+                    <Tooltip content={t('tooltips.files.workers')} position="right">
+                      <input
+                        type="number"
+                        id="workers-input"
+                        value={runSettings.workers ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.valueAsNumber
+                          updateRunSettings({
+                            workers: Number.isFinite(value) && value >= 1 ? Math.floor(value) : null
+                          })
+                        }}
+                        min={1}
+                        max={runDefaults?.maxWorkers}
+                        placeholder={
+                          runDefaults ? String(runDefaults.recommendedWorkers) : undefined
+                        }
+                        className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
+                        data-testid="overview-workers-input"
+                      />
+                    </Tooltip>
+                  </div>
+                  <ToggleSwitch
+                    label={t('run.quarantinedFails')}
+                    tooltip={t('tooltips.files.quarantinedFails')}
+                    checked={runSettings.quarantinedFails}
+                    onChange={(quarantinedFails) => updateRunSettings({ quarantinedFails })}
+                    testId="overview-quarantined-fails-toggle"
+                  />
+                  <>
+                    <ToggleSwitch
+                      label={t('run.reuseLogins')}
+                      tooltip={t('tooltips.files.reuseLogins')}
+                      checked={runSettings.reuseLogins}
+                      onChange={(reuseLogins) => updateRunSettings({ reuseLogins })}
+                      testId="overview-reuse-logins"
+                    />
+                    <div className="flex flex-col">
+                      <label className="flex items-center gap-2 text-sm text-neutral-dk">
+                        <Tooltip
+                          content={t('tooltips.files.freshLogin')}
+                          disabledReason={
+                            runSettings.reuseLogins ? undefined : t('tooltips.files.freshLoginOff')
+                          }
+                          position="right"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={freshLoginNext}
+                            disabled={!runSettings.reuseLogins}
+                            onChange={(e) => setFreshLoginNext(e.target.checked)}
+                            data-testid="overview-fresh-login"
+                          />
+                        </Tooltip>
+                        {t('run.freshLoginNext')}
+                      </label>
+                      <span className="text-xs text-neutral-md">{t('run.freshLoginHint')}</span>
+                    </div>
+                  </>
+                </div>
               )}
               {showWebSettings && (
-                <Tooltip content={t('tooltips.overview.headlessToggle')} position="right">
-                  <ToggleSwitch
-                    label={t('overview.settings.headlessLabel')}
-                    checked={headless}
-                    onChange={handleHeadlessToggle}
-                    testId="overview-headless-toggle"
-                  />
-                </Tooltip>
-              )}
-              <Tooltip content={t('tooltips.overview.runMode')} position="right">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                    {t('overview.settings.runModeLabel')}
+                    {t('settings.section.browserOptions')}
                   </label>
-                  <select
-                    value={runMode}
-                    onChange={(e) =>
-                      setRunMode(e.target.value as 'all' | 'smoke' | 'regression' | 'custom')
-                    }
-                    className="border border-neutral-bdr rounded px-3 py-1 text-sm min-w-[140px]"
-                    data-testid="overview-run-mode-select"
-                  >
-                    <option value="all">{t('overview.settings.runMode.all')}</option>
-                    <option value="smoke">{t('overview.settings.runMode.smoke')}</option>
-                    <option value="regression">{t('overview.settings.runMode.regression')}</option>
-                    <option value="custom">{t('overview.settings.runMode.custom')}</option>
-                  </select>
+                  <div className="flex-1">
+                    <TagInput
+                      tags={browserOptions}
+                      onChange={(tags) => {
+                        setBrowserOptions(tags)
+                        if (projectPath) {
+                          window.api
+                            .updateBrowserOptions(projectPath, tags)
+                            .then((result) => {
+                              if (!result.success) {
+                                toast.error(result.error || t('settings.error.unexpected'))
+                              }
+                            })
+                            .catch(() => toast.error(t('settings.error.unexpected')))
+                        }
+                      }}
+                      placeholder={t('settings.browserOptions.placeholder')}
+                      disabled={!configLoaded}
+                      tooltip={t('tooltips.files.browserOptions')}
+                    />
+                  </div>
                 </div>
-              </Tooltip>
-              {runMode === 'custom' && (
-                <input
-                  ref={tagInputRef}
-                  type="text"
-                  autoFocus
-                  value={customTag}
-                  onChange={(e) => setCustomTag(e.target.value)}
-                  placeholder={t('overview.settings.customTagPlaceholder')}
-                  aria-label={t('overview.settings.customTagLabel')}
-                  aria-invalid={customTag !== '' && !!customTagProblem}
-                  aria-describedby={
-                    customTag !== '' && customTagProblem ? 'overview-run-tag-error' : undefined
-                  }
-                  className="border border-neutral-bdr rounded px-3 py-1 text-sm w-[140px] lowercase"
-                  data-testid="overview-run-tag-input"
-                />
               )}
-              {runMode === 'custom' && (
-                <span
-                  id="overview-run-tag-error"
-                  className="text-xs text-red-600"
-                  aria-live="polite"
-                >
-                  {customTag !== '' && customTagProblem ? customTagProblem : ''}
-                </span>
-              )}
-              <Tooltip
-                content={t('tooltips.overview.rerunFailed')}
-                disabledReason={canRerunFailed ? undefined : t('run.nothingFailed')}
-                position="right"
-              >
-                <button
-                  onClick={handleRerunFailed}
-                  disabled={runBusy || !canRerunFailed}
-                  title={canRerunFailed ? t('run.rerunSerial') : t('run.nothingFailed')}
-                  className="px-3 py-1 text-sm font-medium text-neutral-dk border border-neutral-bdr rounded hover:bg-neutral-lt transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  data-testid="overview-rerun-failed-btn"
-                >
-                  {t('overview.settings.rerunFailed')}
-                </button>
-              </Tooltip>
-              <ToggleSwitch
-                label={t('run.parallel')}
-                tooltip={t('tooltips.files.parallel')}
-                checked={runSettings.parallel}
-                onChange={(parallel) => updateRunSettings({ parallel })}
-                testId="overview-parallel-toggle"
-              />
-              <Tooltip content={t('tooltips.files.moreOptions')} position="right">
-                <button
-                  onClick={() => setMoreOptionsOpen((open) => !open)}
-                  aria-expanded={moreOptionsOpen}
-                  className="flex items-center gap-1 text-sm font-medium text-neutral-dk hover:text-neutral-dark transition-colors"
-                  data-testid="overview-more-options"
-                >
-                  {moreOptionsOpen ? <FaChevronDown size={10} /> : <FaChevronRight size={10} />}
-                  {t('run.moreOptions')}
-                </button>
-              </Tooltip>
-              {showWebSettings && (
-                <Tooltip content={t('tooltips.overview.timeout')} position="right">
+              {/* The recorder waits apply to recorded web tests only */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <Tooltip content={t('tooltips.overview.implicitWait')} position="right">
                   <div className="flex items-center gap-2">
-                    <label htmlFor="timeout-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                      {t('settings.timeout.label')}
+                    <label
+                      htmlFor="implicit-wait"
+                      className="text-sm font-medium text-neutral-dk whitespace-nowrap"
+                    >
+                      {t('settings.recording.implicitWait.label')}
                     </label>
                     <input
                       type="number"
-                      id="timeout-input"
-                      value={timeout}
-                      onChange={(e) => setTimeout_(Number(e.target.value))}
-                      onBlur={handleTimeoutUpdate}
-                      disabled={!configLoaded}
-                      min={1}
-                      max={300}
-                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
+                      id="implicit-wait"
+                      value={implicitWait}
+                      onChange={(e) => {
+                        // An emptied field is not a wait of 0
+                        if (e.target.value.trim() === '') return
+                        const val = Number(e.target.value)
+                        if (val >= 0) setImplicitWait(val)
+                      }}
+                      onBlur={() => saveWait({ implicitWait })}
+                      min="0"
+                      className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
                     />
                   </div>
                 </Tooltip>
-              )}
-            </div>
-            {moreOptionsOpen && (
-              <div className="flex items-center gap-4 flex-wrap" data-testid="overview-more-options-panel">
-                <div className="flex items-center gap-2">
-                  <label htmlFor="workers-input" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                    {t('run.workers')}
-                  </label>
-                  <Tooltip content={t('tooltips.files.workers')} position="right">
+                <Tooltip content={t('tooltips.overview.explicitWait')} position="right">
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="explicit-wait"
+                      className="text-sm font-medium text-neutral-dk whitespace-nowrap"
+                    >
+                      {t('settings.recording.explicitWait.label')}
+                    </label>
                     <input
                       type="number"
-                      id="workers-input"
-                      value={runSettings.workers ?? ''}
+                      id="explicit-wait"
+                      value={explicitWait}
                       onChange={(e) => {
-                        const value = e.target.valueAsNumber
-                        updateRunSettings({
-                          workers: Number.isFinite(value) && value >= 1 ? Math.floor(value) : null
-                        })
+                        // An emptied field is not a wait of 0
+                        if (e.target.value.trim() === '') return
+                        const val = Number(e.target.value)
+                        if (val >= 0) setExplicitWait(val)
                       }}
-                      min={1}
-                      max={runDefaults?.maxWorkers}
-                    placeholder={runDefaults ? String(runDefaults.recommendedWorkers) : undefined}
-                      className="border border-neutral-bdr rounded px-2 py-1 text-sm w-20"
-                      data-testid="overview-workers-input"
+                      onBlur={() => saveWait({ explicitWait })}
+                      min="0"
+                      className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
                     />
-                  </Tooltip>
-                </div>
-                <ToggleSwitch
-                  label={t('run.quarantinedFails')}
-                  tooltip={t('tooltips.files.quarantinedFails')}
-                  checked={runSettings.quarantinedFails}
-                  onChange={(quarantinedFails) => updateRunSettings({ quarantinedFails })}
-                  testId="overview-quarantined-fails-toggle"
-                />
-                <>
-                  <ToggleSwitch
-                    label={t('run.reuseLogins')}
-                    tooltip={t('tooltips.files.reuseLogins')}
-                    checked={runSettings.reuseLogins}
-                    onChange={(reuseLogins) => updateRunSettings({ reuseLogins })}
-                    testId="overview-reuse-logins"
-                  />
-                  <div className="flex flex-col">
-                    <label className="flex items-center gap-2 text-sm text-neutral-dk">
-                      <Tooltip
-                        content={t('tooltips.files.freshLogin')}
-                        disabledReason={
-                          runSettings.reuseLogins ? undefined : t('tooltips.files.freshLoginOff')
-                        }
-                        position="right"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={freshLoginNext}
-                          disabled={!runSettings.reuseLogins}
-                          onChange={(e) => setFreshLoginNext(e.target.checked)}
-                          data-testid="overview-fresh-login"
-                        />
-                      </Tooltip>
-                      {t('run.freshLoginNext')}
-                    </label>
-                    <span className="text-xs text-neutral-md">{t('run.freshLoginHint')}</span>
                   </div>
-                </>
+                </Tooltip>
               </div>
-            )}
-            {showWebSettings && (
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                  {t('settings.section.browserOptions')}
-                </label>
-                <div className="flex-1">
-                  <TagInput
-                    tags={browserOptions}
-                    onChange={(tags) => {
-                      setBrowserOptions(tags)
-                      if (projectPath) {
-                        window.api.updateBrowserOptions(projectPath, tags)
-                          .then((result) => {
-                            if (!result.success) {
-                              toast.error(result.error || t('settings.error.unexpected'))
-                            }
-                          })
-                          .catch(() => toast.error(t('settings.error.unexpected')))
-                      }
-                    }}
-                    placeholder={t('settings.browserOptions.placeholder')}
-                    disabled={!configLoaded}
-                    tooltip={t('tooltips.files.browserOptions')}
-                  />
-                </div>
-              </div>
-            )}
-            {/* The recorder waits apply to recorded web tests only */}
-            <div className="flex items-center gap-4 flex-wrap">
-              <Tooltip content={t('tooltips.overview.implicitWait')} position="right">
-                <div className="flex items-center gap-2">
-                  <label htmlFor="implicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                    {t('settings.recording.implicitWait.label')}
-                  </label>
-                  <input
-                    type="number"
-                    id="implicit-wait"
-                    value={implicitWait}
-                    onChange={(e) => {
-                      // An emptied field is not a wait of 0
-                      if (e.target.value.trim() === '') return
-                      const val = Number(e.target.value)
-                      if (val >= 0) setImplicitWait(val)
-                    }}
-                    onBlur={() => saveWait({ implicitWait })}
-                    min="0"
-                    className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
-                  />
-                </div>
-              </Tooltip>
-              <Tooltip content={t('tooltips.overview.explicitWait')} position="right">
-                <div className="flex items-center gap-2">
-                  <label htmlFor="explicit-wait" className="text-sm font-medium text-neutral-dk whitespace-nowrap">
-                    {t('settings.recording.explicitWait.label')}
-                  </label>
-                  <input
-                    type="number"
-                    id="explicit-wait"
-                    value={explicitWait}
-                    onChange={(e) => {
-                      // An emptied field is not a wait of 0
-                      if (e.target.value.trim() === '') return
-                      const val = Number(e.target.value)
-                      if (val >= 0) setExplicitWait(val)
-                    }}
-                    onBlur={() => saveWait({ explicitWait })}
-                    min="0"
-                    className="border border-neutral-bdr rounded px-2 py-1 w-16 text-sm"
-                  />
-                </div>
-              </Tooltip>
-            </div>
             </div>
           </div>
-          <div className={`relative ${settingsCollapsed ? 'h-[calc(100vh-15rem)] min-h-[62vh]' : 'h-[62vh]'} border border-t-0 border-neutral-bdr rounded-b-lg shadow-card flex flex-col bg-white`}>
+          <div
+            className={`relative ${settingsCollapsed ? 'h-[calc(100vh-15rem)] min-h-[62vh]' : 'h-[62vh]'} border border-t-0 border-neutral-bdr rounded-b-lg shadow-card flex flex-col bg-white`}
+          >
             {/* Split: file tree left + editor preview right */}
-            <div className={`${terminalOpen ? 'h-1/3' : 'flex-1'} flex flex-row min-h-0 overflow-hidden`}>
+            <div
+              className={`${terminalOpen ? 'h-1/3' : 'flex-1'} flex flex-row min-h-0 overflow-hidden`}
+            >
               {/* File tree - always visible */}
               <div
                 className="w-[28%] border-r border-neutral-bdr overflow-y-auto shrink-0"
@@ -1509,10 +1582,7 @@ const Overview: React.FC = () => {
               <>
                 <div className="border-t border-neutral-bdr shrink-0" />
                 <div className="flex-1 min-h-0">
-                  <Terminal
-                    cwd={projectPath}
-                    onClose={() => setTerminalOpen(false)}
-                  />
+                  <Terminal cwd={projectPath} onClose={() => setTerminalOpen(false)} />
                 </div>
               </>
             )}

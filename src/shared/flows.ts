@@ -148,3 +148,13 @@ export function flowOfResultsDir(rel: unknown, name?: string): string | null {
   if (flow === undefined || !isFlowName(flow)) return null
   return name === undefined || flow === name ? flow : null
 }
+
+// --- Flow secrets (.raider/flows/env) ---
+
+/** A key the Flows tab may write to the flow secrets file */
+export const FLOW_SECRET_KEY = /^(RAIDER_SECRET_[A-Z0-9_]+|TEST_USER|TEST_PASSWORD)$/
+/** The longest secret key */
+export const MAX_FLOW_SECRET_KEY = 100
+
+export const isFlowSecretKey = (key: unknown): key is string =>
+  typeof key === 'string' && key.length <= MAX_FLOW_SECRET_KEY && FLOW_SECRET_KEY.test(key)
