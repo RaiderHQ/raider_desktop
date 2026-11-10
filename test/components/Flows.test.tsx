@@ -7,21 +7,13 @@ import en from '../../src/renderer/src/assets/translations/en.json'
 import FlowsPane from '@components/Flows/FlowsPane'
 import FlowRow from '@components/Flows/FlowRow'
 import RunFlowModal from '@components/Flows/RunFlowModal'
-import ScheduleModal, { buildSchedule } from '@components/Flows/ScheduleModal'
 import FlowSecretsModal from '@components/Flows/FlowSecretsModal'
-import {
-  lastResultText,
-  mergeFlows,
-  nextRunText,
-  scheduleText,
-  type FlowRowData
-} from '@components/Flows/flowText'
+import { mergeFlows, type FlowRowData } from '@components/Schedules/scheduleText'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { useRunStore } from '@foundation/Stores/runStore'
 import { toRouteParam } from '@foundation/testKey'
-import { validateSchedule } from '@shared/flows'
-import type { FlowLastRun, GemOrphanSchedule, GemScheduleRule } from '@shared/types/flows'
+import type { FlowLastRun, GemOrphanSchedule, GemScheduleRule } from '@shared/types/schedules'
 import type { ProjectFlowEntry } from '@shared/types/projectTest'
 
 /** en.json with {{placeholders}} filled, so the tests read the real copy */
@@ -292,44 +284,6 @@ describe('FlowsPane states', () => {
 })
 
 describe('flow texts', () => {
-  it('words the last result', () => {
-    expect(lastResultText(t, null, now)).toBe('Not run yet')
-    expect(lastResultText(t, last(), now)).toBe('Completed 08:00 today')
-    expect(
-      lastResultText(
-        t,
-        last({ status: 'failed', failedStep: { number: 4, title: 'Save', line: 9 } }),
-        now
-      )
-    ).toBe('Failed at step 4, 08:00 today')
-    expect(
-      lastResultText(t, last({ status: 'failed', failedStep: { title: 'x', line: 7 } }), now)
-    ).toBe('Failed at line 7, 08:00 today')
-    expect(lastResultText(t, last({ status: 'setup_error' }), now)).toBe(
-      'Could not start, 08:00 today'
-    )
-    expect(lastResultText(t, last({ finishedAt: at(8, 0, 1) }), now)).toBe(
-      'Completed 08:00 yesterday'
-    )
-  })
-
-  it('words each schedule preset', () => {
-    expect(scheduleText(t, schedule({ every: 'weekday' }))).toBe('Every weekday at 08:00')
-    expect(scheduleText(t, schedule({ every: 'hour', at: '00:15' }))).toBe('Every hour at :15')
-    expect(scheduleText(t, schedule({ every: 'day' }))).toBe('Every day at 08:00')
-    expect(scheduleText(t, schedule({ every: 'week', on: 'mon' }))).toBe('Every Monday at 08:00')
-    expect(scheduleText(t, schedule({ notify: true }))).toBe(
-      'Every weekday at 08:00, notify on failure'
-    )
-  })
-
-  it('words the next run in local time', () => {
-    // Tuesday 10 Nov 2026, 08:00 local
-    const next = new Date(2026, 10, 10, 8, 0).toISOString()
-    expect(nextRunText(t, next)).toBe('Next run Tue 08:00')
-    expect(nextRunText(t, null)).toBeNull()
-  })
-
   it('keeps a schedule whose flow is gone as a row', () => {
     const rows = mergeFlows([], [], [schedule({ name: 'gone' })])
     expect(rows).toEqual([expect.objectContaining({ name: 'gone', missing: true })])
@@ -503,93 +457,6 @@ describe('RunFlowModal', () => {
       resolveStart({ runId: 'r1' })
     })
     expect(api.startRun).toHaveBeenCalledTimes(1)
-  })
-})
-
-describe('ScheduleModal', () => {
-  it('builds a valid schedule for each preset', () => {
-    const base = { time: '08:00', day: 'tue' as const, retries: 2, notify: true, inputs: {} }
-    expect(validateSchedule(buildSchedule({ ...base, every: 'hour', time: '15' }))).toEqual({
-      every: 'hour',
-      at: '00:15',
-      retries: 2,
-      notify: true,
-      inputs: {}
-    })
-    for (const every of ['day', 'weekday'] as const) {
-      expect(validateSchedule(buildSchedule({ ...base, every }))).toEqual(
-        expect.objectContaining({ every, at: '08:00' })
-      )
-      expect(buildSchedule({ ...base, every })).not.toHaveProperty('on')
-    }
-    expect(validateSchedule(buildSchedule({ ...base, every: 'week' }))).toEqual(
-      expect.objectContaining({ every: 'week', at: '08:00', on: 'tue' })
-    )
-  })
-
-  const renderModal = (onScheduled = vi.fn()): void => {
-    render(
-      <ScheduleModal
-        name="fill_hours"
-        title="Fill hours"
-        inputs={[{ name: 'hours', default: '8' }]}
-        schedule={null}
-        onClose={vi.fn()}
-        onScheduled={onScheduled}
-      />
-    )
-  }
-
-  it('sends an hourly schedule with notify on by default', async () => {
-    api.scheduleFlow.mockResolvedValue({ ok: true, message: 'Scheduled fill_hours' })
-    const onScheduled = vi.fn()
-    renderModal(onScheduled)
-    fireEvent.change(screen.getByLabelText('Repeat'), { target: { value: 'hour' } })
-    fireEvent.change(screen.getByLabelText('Minute past the hour'), { target: { value: '15' } })
-    expect(screen.getByText(en.flows.scheduleModal.inputsHint)).toBeInTheDocument()
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Schedule' }))
-    })
-    expect(api.scheduleFlow).toHaveBeenCalledWith('ruby', 'fill_hours', {
-      every: 'hour',
-      at: '00:15',
-      retries: 0,
-      notify: true,
-      inputs: { hours: '8' }
-    })
-    expect(toast.success).toHaveBeenCalledWith('Scheduled fill_hours')
-    expect(onScheduled).toHaveBeenCalled()
-  })
-
-  it('shows a bad time inline and does not send', () => {
-    renderModal()
-    fireEvent.change(screen.getByLabelText('Time'), { target: { value: '25:00' } })
-    expect(screen.getByRole('alert')).toHaveTextContent(en.flows.scheduleModal.timeInvalid)
-    expect(screen.getByRole('button', { name: 'Schedule' })).toBeDisabled()
-  })
-
-  it('asks for a day on a weekly schedule', async () => {
-    api.scheduleFlow.mockResolvedValue({ ok: true, message: '' })
-    renderModal()
-    fireEvent.change(screen.getByLabelText('Repeat'), { target: { value: 'week' } })
-    fireEvent.change(screen.getByLabelText('Day'), { target: { value: 'fri' } })
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Schedule' }))
-    })
-    expect(api.scheduleFlow).toHaveBeenCalledWith(
-      'ruby',
-      'fill_hours',
-      expect.objectContaining({ every: 'week', on: 'fri' })
-    )
-  })
-
-  it("shows the gem's refusal", async () => {
-    api.scheduleFlow.mockResolvedValue({ error: 'refused', message: 'Ruby not found' })
-    renderModal()
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Schedule' }))
-    })
-    expect(screen.getByTestId('schedule-error')).toHaveTextContent('Ruby not found')
   })
 })
 

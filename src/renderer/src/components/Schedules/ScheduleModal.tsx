@@ -7,11 +7,11 @@ import DocsLink from '@components/DocsLink'
 import InputField from '@components/InputField'
 import Tooltip from '@components/Tooltip'
 import useRubyStore from '@foundation/Stores/rubyStore'
-import { FLOW_AT, validateSchedule } from '@shared/flows'
-import type { FlowDay, FlowEvery, FlowSchedule, GemScheduleRule } from '@shared/types/flows'
+import { FLOW_AT, validateSchedule } from '@shared/schedules'
+import type { FlowDay, FlowEvery, FlowSchedule, GemScheduleRule } from '@shared/types/schedules'
 import type { FlowInput } from '@shared/types/projectTest'
-import FlowModal from './FlowModal'
-import { cliErrorText, inputErrors } from './flowText'
+import FlowModal from '../Flows/FlowModal'
+import { cliErrorText, inputErrors } from './scheduleText'
 
 interface ScheduleModalProps {
   name: string

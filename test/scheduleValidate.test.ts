@@ -4,7 +4,7 @@ import {
   scheduleArgs,
   validateFlowInputs,
   validateSchedule
-} from '../src/shared/flows'
+} from '../src/shared/schedules'
 
 const base = { every: 'day', at: '09:30', retries: 1, notify: false, inputs: {} }
 

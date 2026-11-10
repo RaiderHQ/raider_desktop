@@ -1,12 +1,13 @@
-import { FLOW_AT, FLOW_INPUT_NAME, flowFile, isFlowName } from '../../../shared/flows'
+import { flowFile, isFlowName } from '../../../shared/flows'
+import { FLOW_AT, FLOW_INPUT_NAME } from '../../../shared/schedules'
+import type { GemFlow } from '../../../shared/types/flows'
 import type {
   FlowDay,
   FlowEvery,
   FlowFailedStep,
   FlowLastRun,
-  GemFlow,
   GemSchedule
-} from '../../../shared/types/flows'
+} from '../../../shared/types/schedules'
 
 // `raider flow list|schedules --json` prints what the project says: untrusted. Every field is
 // checked; an entry that doesn't fit is dropped, a last run that doesn't fit becomes null.

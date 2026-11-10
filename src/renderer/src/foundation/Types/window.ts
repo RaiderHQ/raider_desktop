@@ -19,15 +19,13 @@ import type {
 } from '@shared/types/projectTest'
 import type { ProjectFileResult } from '@shared/types/projectFiles'
 import type {
-  FlowCliError,
   FlowEnvError,
   FlowEnvKeys,
   FlowLastResults,
-  FlowSchedule,
   FlowsStatus,
-  GemFlow,
-  GemSchedule
+  GemFlow
 } from '@shared/types/flows'
+import type { FlowCliError, FlowSchedule, GemSchedule } from '@shared/types/schedules'
 import type { ScaffoldParams, ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { RunApi } from '@shared/types/runEvents'

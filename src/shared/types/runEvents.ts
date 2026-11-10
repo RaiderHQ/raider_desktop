@@ -8,7 +8,7 @@
  * `run:example.id` === `results[].identifier`.
  */
 
-import type { FlowFailedStep, FlowLastRun } from './flows'
+import type { FlowFailedStep, FlowLastRun } from './schedules'
 
 export type RunScope =
   | { kind: 'all' }

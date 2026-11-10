@@ -8,7 +8,7 @@ import { flowsReady } from '../tests/recordedTests'
 import { assertRealInside, resolveInside } from '../tests/sidecar'
 import { rubyRaiderVersion, supportsFlows } from '../logins/rubyRaiderVersion'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
-import { runFlowCli, type FlowCliResult } from './flowCli'
+import { runFlowCli, type FlowCliResult } from '../gem/gemCli'
 import {
   listFlowEnvKeys,
   parseRemovePayload,
@@ -17,24 +17,18 @@ import {
   setFlowEnv
 } from './flowEnv'
 import { lastFlowResults, realResultsDir } from './flowRuns'
-import { parseGemFlows, parseGemSchedules, plainText } from './gemJson'
-import {
-  flowFile,
-  flowOfResultsDir,
-  isFlowName,
-  scheduleArgs,
-  validateSchedule
-} from '../../../shared/flows'
+import { parseGemFlows, parseGemSchedules, plainText } from '../gem/gemJson'
+import { flowFile, flowOfResultsDir, isFlowName } from '../../../shared/flows'
+import { scheduleArgs, validateSchedule } from '../../../shared/schedules'
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
 import type {
-  FlowCliError,
   FlowEnvError,
   FlowEnvKeys,
   FlowLastResults,
   FlowsStatus,
-  GemFlow,
-  GemSchedule
+  GemFlow
 } from '../../../shared/types/flows'
+import type { FlowCliError, GemSchedule } from '../../../shared/types/schedules'
 
 // The Flows tab's channels. Only the main window may call them; the project is always the
 // active one (never a path from the renderer), and the renderer sends only its rubyCommand

@@ -13,7 +13,7 @@ import {
   FLOW_FAILED_TITLE,
   type FlowWatcher,
   type FlowWatcherDeps
-} from '../../src/main/handlers/flows/flowWatcher'
+} from '../../src/main/handlers/schedules/scheduleWatcher'
 
 interface FakeWatch {
   dir: string
