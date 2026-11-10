@@ -69,15 +69,40 @@ export function parseRemovePayload(payload: unknown): { key: string } | null {
   return isSettableKey(payload.key) ? { key: payload.key } : null
 }
 
+// What Ruby's String#strip removes: ASCII whitespace and NUL, not other Unicode spaces
+const RUBY_SPACE = new Set(['\t', '\n', '\v', '\f', '\r', ' ', '\0'])
+const QUOTES = ['"', "'"]
+
+/** Ruby's String#strip */
+export function rubyStrip(text: string): string {
+  let start = 0
+  let end = text.length
+  while (start < end && RUBY_SPACE.has(text[start])) start++
+  while (end > start && RUBY_SPACE.has(text[end - 1])) end--
+  return text.slice(start, end)
+}
+
+// The gem's unquote: one pair of the same surrounding quote, no escapes
+const unquote = (value: string): string =>
+  value.length >= 2 && value[0] === value[value.length - 1] && QUOTES.includes(value[0])
+    ? value.slice(1, -1)
+    : value
+
+/** The value the gem reads from `KEY=<written>` */
+const readBack = (written: string): string => unquote(rubyStrip(written))
+
 /**
  * The line's value as the gem reads it back exactly: raw when stripping and unquoting leave it
- * alone, else wrapped in one pair of quotes it doesn't contain. Null when it holds both kinds.
+ * alone (a `#` or quote inside is fine), else wrapped in a quote it doesn't start or end with.
+ * Null when no form round-trips.
  */
 export function envValue(value: string): string | null {
-  const needsQuotes = /["'#]/.test(value) || /^\s|\s$/.test(value)
-  if (!needsQuotes) return value
-  if (!value.includes('"')) return `"${value}"`
-  if (!value.includes("'")) return `'${value}'`
+  if (readBack(value) === value) return value
+  for (const quote of QUOTES) {
+    if (value.startsWith(quote) || value.endsWith(quote)) continue
+    const wrapped = `${quote}${value}${quote}`
+    if (readBack(wrapped) === value) return wrapped
+  }
   return null
 }
 
@@ -87,14 +112,14 @@ const utf8 = new TextDecoder('utf-8', { fatal: true })
 function keyOf(line: Buffer): string | null {
   let text: string
   try {
-    text = utf8.decode(line).trim()
+    text = rubyStrip(utf8.decode(line))
   } catch {
     return null
   }
   if (text === '' || text.startsWith('#')) return null
   const eq = text.indexOf('=')
   if (eq < 0) return null
-  const key = text.slice(0, eq).trim()
+  const key = rubyStrip(text.slice(0, eq))
   return GEM_KEY.test(key) && !key.startsWith('RAIDER_FLOW_') ? key : null
 }
 
@@ -165,10 +190,18 @@ async function readEnv(file: string): Promise<Buffer | null> {
     const stat = await handle.stat().catch(() => fail('io'))
     if (!stat.isFile()) fail('unsafe')
     if (stat.size > MAX_BYTES) fail('too-large')
+    // Read to EOF (a read may come back short), stopping one byte past the cap
     const buffer = Buffer.alloc(MAX_BYTES + 1)
-    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0).catch(() => fail('io'))
-    if (bytesRead > MAX_BYTES) fail('too-large')
-    return buffer.subarray(0, bytesRead)
+    let total = 0
+    while (total < buffer.length) {
+      const { bytesRead } = await handle
+        .read(buffer, total, buffer.length - total, total)
+        .catch(() => fail('io'))
+      if (bytesRead === 0) break
+      total += bytesRead
+    }
+    if (total > MAX_BYTES) fail('too-large')
+    return buffer.subarray(0, total)
   } finally {
     await handle.close().catch(() => undefined)
   }

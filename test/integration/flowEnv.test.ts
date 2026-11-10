@@ -12,6 +12,7 @@ vi.mock('electron', () => ({
 
 import { appState } from '../../src/main/handlers/appState'
 import { registerFlowsIpc, type FlowsIpcDeps } from '../../src/main/handlers/flows/flowsIpc'
+import { envValue } from '../../src/main/handlers/flows/flowEnv'
 import type { ProjectLayout } from '../../src/shared/types/projectLayout'
 
 const MAIN_ID = 7
@@ -45,16 +46,19 @@ async function write(rel: string, body = ''): Promise<void> {
   await fs.writeFile(path.join(project, rel), body)
 }
 
+// Ruby's String#strip: ASCII whitespace and NUL only (not U+00A0 and friends)
+const rubyStrip = (text: string): string => text.replace(/^[\t\n\v\f\r ]+|[\t\n\v\f\r ]+$/g, '')
+
 /** What the gem's load_env_file makes of the file: strip, split on the first =, unquote one pair */
 function gemParse(content: string): Record<string, string> {
   const env: Record<string, string> = {}
   for (const raw of content.split('\n')) {
-    const line = raw.trim()
+    const line = rubyStrip(raw)
     if (!line || line.startsWith('#')) continue
     const eq = line.indexOf('=')
     if (eq < 0) continue
-    const key = line.slice(0, eq).trim()
-    let value = line.slice(eq + 1).trim()
+    const key = rubyStrip(line.slice(0, eq))
+    let value = rubyStrip(line.slice(eq + 1))
     if (value.length >= 2 && value[0] === value[value.length - 1] && `"'`.includes(value[0]))
       value = value.slice(1, -1)
     env[key] = value
@@ -130,6 +134,13 @@ describe('list-flow-env-keys', () => {
     expect(result).toEqual({ keys: ['TEST_USER', 'RAIDER_SECRET_API'] })
     expect(JSON.stringify(result)).not.toContain('tok')
   })
+  it('skips a key padded with Unicode spaces, as Ruby strip keeps them', async () => {
+    await write(
+      '.raider/flows/env',
+      '\u00a0TEST_USER=x\nTEST_PASSWORD\u00a0=y\n\tRAIDER_SECRET_A=z\n'
+    )
+    expect(await call('list-flow-env-keys')).toEqual({ keys: ['RAIDER_SECRET_A'] })
+  })
 })
 
 describe('set-flow-env', () => {
@@ -191,17 +202,30 @@ describe('set-flow-env', () => {
     'say "hi" #1',
     "it's #1",
     'a=b',
-    '"'
+    '"',
+    'a"b\'c',
+    'x7"Q\'r#9',
+    '"it\'s"',
+    'a "b" \'c\'',
+    ' "a\'b ',
+    "'\"'",
+    '\u00a0nbsp\u00a0'
   ])('round-trips %j through the gem parser', async (value) => {
     await write('.raider/flows/env', '# keep\nTEST_USER=me\n')
     expect(await set('RAIDER_SECRET_X', value)).toEqual({ keys: ['TEST_USER', 'RAIDER_SECRET_X'] })
     expect(gemParse(await readEnv())).toEqual({ TEST_USER: 'me', RAIDER_SECRET_X: value })
   })
 
-  it('refuses a value that needs quoting and holds both quote kinds', async () => {
-    expect(await set('TEST_USER', `"it's"`)).toEqual({ error: 'value-unsupported' })
-    expect(await set('TEST_USER', `a "b" 'c'`)).toEqual({ error: 'value-unsupported' })
-    await expect(fs.lstat(envPath())).rejects.toThrow()
+  it.each([
+    ['a"b\'c', 'a"b\'c'],
+    ['x#y', 'x#y'],
+    ['#x', '#x'],
+    ['\u00a0x', '\u00a0x'],
+    [' x', '" x"'],
+    ['"q"', '\'"q"\''],
+    ["'q'", `"'q'"`]
+  ])('writes %j as %j', (value, written) => {
+    expect(envValue(value)).toBe(written)
   })
 
   it.each([
