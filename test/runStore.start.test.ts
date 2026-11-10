@@ -39,6 +39,18 @@ beforeEach(() => {
 })
 
 describe('runStore.start', () => {
+  it('sends a flow payload and keeps it for Run again; a later plain run clears it', async () => {
+    api.startRun.mockResolvedValue({ runId: 'r1' })
+    const flow = { name: 'fill_hours', inputs: { hours: '6' }, headed: true }
+    const files = { kind: 'files', files: ['flows/fill_hours_flow.rb'] } as const
+    await useRunStore.getState().start(files, origin, flow)
+    expect(api.startRun.mock.calls[0][0]).toEqual(expect.objectContaining({ scope: files, flow }))
+    expect(api.startRun.mock.calls[0][0].workers).toBeUndefined()
+    expect(useRunStore.getState().lastFlow).toEqual(flow)
+    await useRunStore.getState().start(scope, origin)
+    expect(api.startRun.mock.calls[1][0]).not.toHaveProperty('flow')
+    expect(useRunStore.getState().lastFlow).toBeNull()
+  })
   it('sets the origin when started', async () => {
     api.startRun.mockResolvedValue({ runId: 'r1' })
     expect(await useRunStore.getState().start(scope, origin)).toBe('started')

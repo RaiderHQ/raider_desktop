@@ -1,7 +1,9 @@
-// Reads raider_reporter's local output (raider-results/) into the shape the
-// project dashboard already renders. Local only: no network access.
+// Reads raider_reporter's local output (raider-results/, or a flow run's own
+// flow-results/<name>/<stamp>/) into the shape the project dashboard already renders.
+// Local only: no network access.
 
 import { TRACE_CONTENT_TYPE } from '@shared/types/raiderTrace'
+import { flowOfResultsDir } from '@shared/flows'
 import type { ComparisonStatus, ScreenshotComparison, TestResult } from './Types/testResult'
 import type { TraceRef } from './Types/testResult'
 
@@ -235,12 +237,21 @@ const selectCandidates = (all: Candidate[]): Candidate[] => {
   return shards.filter((c) => c.index! <= total && c.total === total)
 }
 
+const RAIDER_RESULTS = 'raider-results'
+
+/**
+ * `resultsRel`: the project-relative results folder, raider-results or a flow run's
+ * `flow-results/<name>/<stamp>`; anything else reads nothing.
+ */
 export const loadRaiderResults = async (
   projectPath: string,
   api: RaiderResultsApi,
-  onError?: (file: string, message: string) => void
+  onError?: (file: string, message: string) => void,
+  resultsRel: string = RAIDER_RESULTS
 ): Promise<TestResult[] | null> => {
-  const resultsDir = `${projectPath}/raider-results`
+  const flowRun = resultsRel !== RAIDER_RESULTS
+  if (flowRun && flowOfResultsDir(resultsRel) === null) return null
+  const resultsDir = `${projectPath}/${resultsRel}`
   let nodes: DirNode[]
   try {
     nodes = await api.readDirectory(resultsDir)
@@ -287,6 +298,10 @@ export const loadRaiderResults = async (
   if (parsed.length === 0) return null
 
   return selectCandidates(parsed).flatMap((c) =>
-    c.results.map((r) => toRow(r, resultsDir, c.browser, c.finishedAt))
+    c.results.map((r) => {
+      const row = toRow(r, resultsDir, c.browser, c.finishedAt)
+      if (flowRun) row.resultsDir = resultsRel
+      return row
+    })
   )
 }

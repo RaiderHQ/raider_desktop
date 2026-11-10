@@ -142,6 +142,34 @@ describe('mapFailedStepHandler', () => {
       expect(await map(failure())).toEqual({ none: 'changedSinceRun' })
     })
 
+    describe("from a flow run's results folder", () => {
+      const DIR = 'flow-results/hello/20261110T110856Z'
+      const writeFlowRunAt = async (ms: number): Promise<void> => {
+        await mkdir(join(project, DIR), { recursive: true })
+        await writeFile(join(project, DIR, 'run.json'), '{}')
+        await utimes(join(project, DIR, 'run.json'), ms / 1000, ms / 1000)
+      }
+
+      it("stats the flow run's run.json, not raider-results", async () => {
+        await writeRunAt(Date.parse(saved.updatedAt) - 60_000)
+        await writeFlowRunAt(Date.parse(saved.updatedAt) + 60_000)
+        expect(await map({ ...failure(), resultsDir: DIR })).toEqual({ stepId: 's3', index: 2 })
+      })
+
+      it('never falls back to raider-results when the flow run.json is missing', async () => {
+        await writeRunAt(Date.parse(saved.updatedAt) + 60_000)
+        expect(await map({ ...failure(), resultsDir: DIR })).toEqual({ none: 'changedSinceRun' })
+      })
+
+      it.each(['raider-results', 'flow-results/hello/../x', '/abs', 'flow-results/hello/latest'])(
+        'refuses a results folder that is not a flow run: %s',
+        async (resultsDir) => {
+          await writeRunAt(Date.parse(saved.updatedAt) + 60_000)
+          expect(await map({ ...failure(), resultsDir })).toEqual({ none: 'notRecorded' })
+        }
+      )
+    })
+
     it('treats an unreadable finishedAt like a missing one', async () => {
       expect(
         await map(query({ backtrace: [frame(rangeOf(2).start)], finishedAt: 'soon' }))

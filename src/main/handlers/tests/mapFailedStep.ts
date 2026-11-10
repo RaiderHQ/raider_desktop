@@ -5,6 +5,8 @@ import { appState } from '../appState'
 import { activeProject } from '../project/activeProject'
 import { findSidecarById, stepLinesFor } from './recordedTests'
 import { parseFrame } from '@shared/stackFrames'
+import { flowOfResultsDir } from '@shared/flows'
+import { assertRealInside, resolveInside } from './sidecar'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 
 const NOT_RECORDED: FailedStepMap = { none: 'notRecorded' }
@@ -20,7 +22,8 @@ function isQuery(value: unknown): value is FailedStepQuery {
     Array.isArray(q.backtrace) &&
     q.backtrace.every((l) => typeof l === 'string') &&
     (q.appFrame === undefined || typeof q.appFrame === 'string') &&
-    (q.finishedAt === undefined || typeof q.finishedAt === 'string')
+    (q.finishedAt === undefined || typeof q.finishedAt === 'string') &&
+    (q.resultsDir === undefined || flowOfResultsDir(q.resultsDir) !== null)
   )
 }
 
@@ -52,18 +55,25 @@ async function lineOfFirstFrameIn(
   return null
 }
 
+/** The run.json of the row's results folder: raider-results, or a (checked) flow run's own */
+async function resultsFile(projectPath: string, resultsDir: string | undefined): Promise<string> {
+  if (resultsDir === undefined) return join(projectPath, 'raider-results', 'run.json')
+  const file = resolveInside(projectPath, `${resultsDir}/run.json`)
+  await assertRealInside(projectPath, file)
+  return file
+}
+
 /**
  * When the failed row's run finished: its `finished_at`, else when the results file was
  * written (never earlier than the run's end). Null when neither tells: the steps may have
  * changed since, so no step is named.
  */
-async function whenRan(
-  finishedAt: string | undefined,
-  projectPath: string
-): Promise<number | null> {
-  const ran = finishedAt === undefined ? NaN : Date.parse(finishedAt)
+async function whenRan(failure: FailedStepQuery, projectPath: string): Promise<number | null> {
+  const ran = failure.finishedAt === undefined ? NaN : Date.parse(failure.finishedAt)
   if (!Number.isNaN(ran)) return ran
-  const written = await stat(join(projectPath, 'raider-results', 'run.json')).catch(() => null)
+  const written = await resultsFile(projectPath, failure.resultsDir)
+    .then((file) => stat(file))
+    .catch(() => null)
   return written ? written.mtimeMs : null
 }
 
@@ -85,7 +95,7 @@ export async function mapFailedStepHandler(
     if ('none' in found) return found
     const { sidecar, stepLines } = found
 
-    const ran = await whenRan(failure.finishedAt, project)
+    const ran = await whenRan(failure, project)
     if (ran === null || ran <= Date.parse(sidecar.updatedAt)) return { none: 'changedSinceRun' }
     if (!stepLines) return { none: 'noMap' }
 

@@ -13,10 +13,7 @@ import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import type { PickResult } from '@shared/types/pick'
-import type {
-  LegacyRunResult,
-  PrepareTestRunResult
-} from '@shared/types/prepareRun'
+import type { LegacyRunResult, PrepareTestRunResult } from '@shared/types/prepareRun'
 import type {
   CodeTestView,
   ConvertToFlowResult,
@@ -24,6 +21,16 @@ import type {
   ProjectTestEntry
 } from '@shared/types/projectTest'
 import type { ProjectFileResult } from '@shared/types/projectFiles'
+import type {
+  FlowCliError,
+  FlowEnvError,
+  FlowEnvKeys,
+  FlowLastResults,
+  FlowSchedule,
+  FlowsStatus,
+  GemFlow,
+  GemSchedule
+} from '@shared/types/flows'
 import type { ScaffoldParams, ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
@@ -190,6 +197,35 @@ const api = {
   listProjectTests: (): Promise<ProjectTestEntry[]> => ipcRenderer.invoke('list-project-tests'),
   listProjectFlows: (): Promise<ProjectFlowEntry[]> => ipcRenderer.invoke('list-project-flows'),
   flowsReady: (): Promise<boolean> => ipcRenderer.invoke('flows-ready'),
+  flowsStatus: (rubyCommand: string): Promise<FlowsStatus | FlowCliError> =>
+    ipcRenderer.invoke('flows-status', rubyCommand),
+  listFlows: (rubyCommand: string): Promise<{ flows: GemFlow[] } | FlowCliError> =>
+    ipcRenderer.invoke('list-flows', rubyCommand),
+  listSchedules: (rubyCommand: string): Promise<{ schedules: GemSchedule[] } | FlowCliError> =>
+    ipcRenderer.invoke('list-schedules', rubyCommand),
+  setupFlows: (rubyCommand: string): Promise<{ ok: true } | FlowCliError> =>
+    ipcRenderer.invoke('setup-flows', rubyCommand),
+  scheduleFlow: (
+    rubyCommand: string,
+    name: string,
+    schedule: FlowSchedule
+  ): Promise<{ ok: true; message: string } | FlowCliError> =>
+    ipcRenderer.invoke('schedule-flow', rubyCommand, name, schedule),
+  unscheduleFlow: (rubyCommand: string, name: string): Promise<{ ok: true } | FlowCliError> =>
+    ipcRenderer.invoke('unschedule-flow', rubyCommand, name),
+  openFlowResults: (
+    name: string,
+    resultsDir: string
+  ): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('open-flow-results', name, resultsDir),
+  flowLastResults: (name: string): Promise<FlowLastResults | null> =>
+    ipcRenderer.invoke('flow-last-results', name),
+  listFlowEnvKeys: (): Promise<FlowEnvKeys | FlowEnvError> =>
+    ipcRenderer.invoke('list-flow-env-keys'),
+  setFlowEnv: (entry: { key: string; value: string }): Promise<FlowEnvKeys | FlowEnvError> =>
+    ipcRenderer.invoke('set-flow-env', entry),
+  removeFlowEnv: (entry: { key: string }): Promise<FlowEnvKeys | FlowEnvError> =>
+    ipcRenderer.invoke('remove-flow-env', entry),
   convertToFlow: (
     projectPath: string,
     request: { testId: string; dropChecks?: boolean }
@@ -227,8 +263,7 @@ const api = {
     imported?: number
     skipped?: number
     failed?: number
-  }> =>
-    ipcRenderer.invoke('import-project'),
+  }> => ipcRenderer.invoke('import-project'),
   setTestTags: (
     fileRel: string,
     tags: string[]
@@ -294,6 +329,10 @@ const api = {
   /** File › Open recent: the path of a project main stored; the renderer opens it like a row */
   onOpenRecentProject: (callback: (projectPath: string) => void): (() => void) =>
     subscribe('open-recent-project', callback),
+  /** Something changed under the open project's .raider/flows/ (a scheduled run, a schedule) */
+  onFlowsChanged: (callback: () => void): (() => void) => subscribe('flows-changed', callback),
+  /** The failed-run notification was clicked: show the Flows tab */
+  onFocusFlowsTab: (callback: () => void): (() => void) => subscribe('focus-flows-tab', callback),
   /** Subscribes to traces opened from the menu; the returned function removes only this one */
   onTraceOpened: (callback: (result: TraceOpenResult) => void): (() => void) => {
     const listener = (_event: IpcRendererEvent, result: TraceOpenResult): void => callback(result)
@@ -401,7 +440,12 @@ const api = {
   ): Promise<LegacyRunResult> =>
     ipcRenderer.invoke('run-test', testId, projectPath, rubyCommand, test),
   updateRecordingSettings: (
-    settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[]; testIdAttribute: string }>
+    settings: Partial<{
+      implicitWait: number
+      explicitWait: number
+      selectorPriority: string[]
+      testIdAttribute: string
+    }>
   ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('update-recording-settings', settings),
   setActiveProject: (

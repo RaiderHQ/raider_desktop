@@ -8,6 +8,8 @@
  * `run:example.id` === `results[].identifier`.
  */
 
+import type { FlowFailedStep, FlowLastRun } from './flows'
+
 export type RunScope =
   | { kind: 'all' }
   /** Project-relative POSIX spec paths; each must be a project test file. */
@@ -27,6 +29,27 @@ export interface RunRequest {
   quarantinedFails?: boolean
   /** Sets RAIDER_LOGIN_STATE for this run (off: always log in, never save; refresh: log in and save). Unset: normal reuse; an inherited RAIDER_LOGIN_STATE is removed. */
   loginState?: 'off' | 'refresh'
+  /**
+   * Runs a flow (ruby_raider 4.1+): the scope must be exactly `flows/<name>_flow.rb`, run
+   * serially. Inputs reach the flow only through its environment (RAIDER_INPUT_<NAME>).
+   */
+  flow?: RunFlow
+}
+
+export interface RunFlow {
+  name: string
+  inputs: Record<string, string>
+  /** Shows the browser (RAIDER_FLOW_HEADED=1) */
+  headed: boolean
+}
+
+/** What the gem logged for a flow run; all null when it logged nothing (say, a hard kill). */
+export interface RunFinishedFlow {
+  name: string
+  status: FlowLastRun['status'] | null
+  /** Project-relative `flow-results/<name>/<stamp>`, checked to be that flow's own folder */
+  resultsDir: string | null
+  failedStep: FlowFailedStep | null
 }
 
 export type ExampleStatus = 'started' | 'passed' | 'failed' | 'quarantined' | 'pending' | 'skipped'
@@ -123,6 +146,8 @@ export type RunEvent =
       counts: RunCounts
       /** True when retained output passed the ~2 MB cap and the oldest chunks were trimmed. */
       truncated?: boolean
+      /** Set for a flow run (RunRequest.flow) */
+      flow?: RunFinishedFlow
     }
 
 export type StartRunResult = { runId: string } | { error: 'busy' | string }

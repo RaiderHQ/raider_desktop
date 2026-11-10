@@ -7,7 +7,10 @@ vi.mock('electron', () => ({ BrowserWindow: class {} }))
 
 import { appState } from '../../src/main/handlers/appState'
 import { DEFAULT_RECORDER_SETTINGS } from '../../src/main/handlers/config/projectSettings'
-import setActiveProject, { getRecorderSettings } from '../../src/main/handlers/project/setActiveProject'
+import setActiveProject, {
+  getRecorderSettings,
+  onActiveProjectChange
+} from '../../src/main/handlers/project/setActiveProject'
 import startRecordingMain from '../../src/main/handlers/recording/startRecordingMain'
 import loadUrlRequest from '../../src/main/handlers/loadUrlRequest'
 import updateRecordingSettings from '../../src/main/handlers/config/updateRecordingSettings'
@@ -65,6 +68,39 @@ describe('setActiveProject', () => {
     expect(appState.projectPath).toBeNull()
     expect(appState.sessionUrl).toBeNull()
     expect(appState.recorderSettings).toEqual(DEFAULT_RECORDER_SETTINGS)
+  })
+
+  it('tells the change listeners which project opened, and null when it closes', async () => {
+    const seen: (string | null)[] = []
+    const off = onActiveProjectChange((projectPath) => seen.push(projectPath))
+    try {
+      await setActiveProject(dir)
+      await setActiveProject(null)
+    } finally {
+      off()
+    }
+    await setActiveProject(dir)
+    expect(seen).toEqual([dir, null])
+  })
+
+  it('a throwing listener neither fails the activation nor skips the next one', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const seen: (string | null)[] = []
+    const offBad = onActiveProjectChange(() => {
+      throw new Error('boom')
+    })
+    const offGood = onActiveProjectChange((projectPath) => seen.push(projectPath))
+    try {
+      const result = await setActiveProject(dir)
+      expect(result.success).toBe(true)
+      expect(appState.projectPath).toBe(dir)
+      expect(seen).toEqual([dir])
+    } finally {
+      offBad()
+      offGood()
+      warn.mockRestore()
+      await setActiveProject(null)
+    }
   })
 })
 

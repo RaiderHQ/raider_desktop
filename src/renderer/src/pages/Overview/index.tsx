@@ -30,6 +30,7 @@ import UnsavedChangesModal from '@components/UnsavedChangesModal'
 import Terminal from '@components/Terminal'
 import Tooltip from '@components/Tooltip'
 import TestsWorkspace from '@components/TestsWorkspace'
+import FlowsPane from '@components/Flows/FlowsPane'
 import InfoButton from '@components/InfoButton'
 import ProjectMenu from '@components/ProjectMenu'
 import DocsLink from '@components/DocsLink'
@@ -58,13 +59,14 @@ import { loadSettingsCollapsed, saveSettingsCollapsed } from '@foundation/filesS
 import { TAG_RE } from '@shared/tags'
 import type { RunDefaults, RunScope } from '@shared/types/runEvents'
 
-type OverviewTab = 'tests' | 'files' | 'dashboard'
+type OverviewTab = 'tests' | 'flows' | 'files' | 'dashboard'
 
 const OVERVIEW_DOCS: Record<
   OverviewTab,
   (t: (key: string) => string) => { id: DocsLinkId; topic: string }
 > = {
   tests: (t) => ({ id: 'docs.recorder', topic: t('docs.topics.recording') }),
+  flows: (t) => ({ id: 'docs.flows', topic: t('docs.topics.flows') }),
   files: (t) => ({ id: 'docs.testScreen', topic: t('docs.topics.files') }),
   dashboard: (t) => ({ id: 'docs.dashboard', topic: t('docs.topics.dashboard') })
 }
@@ -101,7 +103,10 @@ const Overview: React.FC = () => {
   const { testKey } = useParams()
   const isNewTestRoute = useMatch('/overview/tests/new') !== null
   // Each navigation has its own key, so New test again at the same URL still lands here
-  const locationKey = useLocation().key
+  const location = useLocation()
+  const locationKey = location.key
+  // A failed scheduled run's notification asks for the Flows tab (navigated with this state)
+  const flowsRequested = (location.state as { tab?: unknown } | null)?.tab === 'flows'
   const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
     useRecorderSettings()
   const [activeTab, setActiveTab] = useState<OverviewTab>('tests')
@@ -121,10 +126,10 @@ const Overview: React.FC = () => {
     }
   }
 
-  // A test route always shows the Tests tab
+  // A test route always shows the Tests tab, also when the same test is opened again (Flows › Edit)
   useEffect(() => {
     if (testKey) setActiveTab('tests')
-  }, [testKey])
+  }, [testKey, locationKey])
 
   const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression' | 'custom'>('all')
   const [customTag, setCustomTag] = useState('')
@@ -565,6 +570,19 @@ const Overview: React.FC = () => {
   // The panel only shows Overview's own run, so its scope is the one Overview last started
   const handleRunAgain = (): void => {
     if (runBusy || (!projectRun && customTagProblem)) return
+    const flow = projectRun?.finished?.flow
+    if (projectRun && flow) {
+      // A flow runs again with the inputs it had; after a reload only its recorded ones
+      const { lastFlow, origin } = useRunStore.getState()
+      void useRunStore
+        .getState()
+        .start(
+          projectRun.scope,
+          origin ?? { route: '/overview', label: flow.name },
+          lastFlow?.name === flow.name ? lastFlow : { name: flow.name, inputs: {}, headed: false }
+        )
+      return
+    }
     startRun(projectRun?.scope ?? runModeScope())
   }
 
@@ -599,6 +617,11 @@ const Overview: React.FC = () => {
   useEffect(() => {
     if (isNewTestRoute) switchTab('tests')
   }, [isNewTestRoute, locationKey])
+
+  // The notification's Flows tab; a dirty Files edit asks first
+  useEffect(() => {
+    if (flowsRequested) switchTab('flows')
+  }, [flowsRequested, locationKey])
 
   const handleOpenFile = (filePath: string): void => guardUnsaved(() => void loadFile(filePath))
 
@@ -1027,6 +1050,18 @@ const Overview: React.FC = () => {
             {t('overview.tabs.tests')}
           </button>
         </Tooltip>
+        <Tooltip content={t('tooltips.overview.tabFlows')} position="bottom">
+          <button
+            onClick={() => switchTab('flows')}
+            className={`px-5 py-2 text-sm font-semibold transition-colors ${
+              activeTab === 'flows'
+                ? 'text-neutral-dark border-b-2 border-ruby'
+                : 'text-neutral-md hover:text-neutral-dk'
+            }`}
+          >
+            {t('overview.tabs.flows')}
+          </button>
+        </Tooltip>
         <Tooltip content={t('tooltips.overview.tabFiles')} position="bottom">
           <button
             onClick={() => switchTab('files')}
@@ -1078,7 +1113,8 @@ const Overview: React.FC = () => {
         <RunPanel
           routeKey="/overview"
           onRunAgain={handleRunAgain}
-          onRerunFailed={handleRerunFailed}
+          // A flow has no per-example re-run: it runs again whole, with its inputs
+          onRerunFailed={run?.finished?.flow ? undefined : handleRerunFailed}
         />
       </div>
 
@@ -1107,6 +1143,12 @@ const Overview: React.FC = () => {
           />
           {/* A project switched in place (the project menu, File › Open recent) gets a fresh list */}
           <TestsWorkspace key={projectPath ?? ''} />
+        </div>
+      )}
+
+      {activeTab === 'flows' && (
+        <div className="relative w-full flex flex-col h-[calc(100vh-11rem)]">
+          <FlowsPane key={projectPath ?? ''} />
         </div>
       )}
 

@@ -65,6 +65,74 @@ afterEach(() => {
   vi.mocked(dialog.showOpenDialog).mockReset()
 })
 
+describe('resolveTracePath result of a flow run', () => {
+  const STAMP = '20261110T110856Z'
+  const result = (p: string): { kind: 'result'; path: string } => ({ kind: 'result', path: p })
+  let flowProject: string
+  let flowZip: string
+  const put = (file: string): string => {
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.copyFileSync(FIXTURE, file)
+    return file
+  }
+
+  beforeAll(() => {
+    // A project that has run flows only: no raider-results at all
+    flowProject = path.join(root, 'flow-project')
+    flowZip = put(
+      path.join(flowProject, 'flow-results', 'hello', STAMP, 'attachments', '0-trace.zip')
+    )
+    put(path.join(otherProject, 'flow-results', 'hello', STAMP, 'attachments', '0-trace.zip'))
+    put(path.join(flowProject, 'flow-results', 'hello', 'latest', 'attachments', '0-trace.zip'))
+    // A stamp folder that links into another project's flow run
+    fs.symlinkSync(
+      path.join(otherProject, 'flow-results', 'hello', STAMP),
+      path.join(flowProject, 'flow-results', 'hello', '20261110T120000Z')
+    )
+    fs.symlinkSync(flowZip, path.join(path.dirname(flowZip), 'link.zip'))
+  })
+
+  beforeEach(() => {
+    appState.projectPath = flowProject
+  })
+
+  it("accepts a trace from the active project's flow run, with no raider-results", async () => {
+    expect(fs.existsSync(path.join(flowProject, 'raider-results'))).toBe(false)
+    expect(await resolveTracePath(result(flowZip))).toBe(flowZip)
+  })
+
+  it("refuses another project's flow trace, links, bad stamps and .. paths", async () => {
+    const refused = [
+      path.join(otherProject, 'flow-results', 'hello', STAMP, 'attachments', '0-trace.zip'),
+      path.join(
+        flowProject,
+        'flow-results',
+        'hello',
+        '20261110T120000Z',
+        'attachments',
+        '0-trace.zip'
+      ),
+      path.join(path.dirname(flowZip), 'link.zip'),
+      path.join(flowProject, 'flow-results', 'hello', 'latest', 'attachments', '0-trace.zip'),
+      [flowProject, 'flow-results', 'hello', STAMP, '..', STAMP, 'attachments', '0-trace.zip'].join(
+        '/'
+      )
+    ]
+    for (const p of refused) {
+      expect(fs.existsSync(p), p).toBe(true)
+      expect(await resolveTracePath(result(p)), p).toBeNull()
+    }
+  })
+
+  it('still accepts a raider-results trace of a project that also has flow results', async () => {
+    appState.projectPath = root
+    put(path.join(root, 'flow-results', 'hello', STAMP, 'attachments', '0-trace.zip'))
+    expect(await resolveTracePath(result(zip))).toBe(zip)
+    const own = path.join(root, 'flow-results', 'hello', STAMP, 'attachments', '0-trace.zip')
+    expect(await resolveTracePath(result(own))).toBe(own)
+  })
+})
+
 describe('resolveTracePath result', () => {
   const result = (p: string): { kind: 'result'; path: string } => ({ kind: 'result', path: p })
 

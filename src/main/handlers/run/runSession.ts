@@ -5,6 +5,7 @@ import type {
   RunEvent,
   RunFinishedStatus,
   RunPhase,
+  RunFinishedFlow,
   RunRequest
 } from '@shared/types/runEvents'
 
@@ -120,7 +121,12 @@ export class RunSession {
     this.cancelled = true
   }
 
-  finish(exitCode: number | null, fallbackCounts?: RunCounts): void {
+  /** `extra.flow`: what the gem logged; a flow run that gets none finishes with nulls. */
+  finish(
+    exitCode: number | null,
+    fallbackCounts?: RunCounts,
+    extra: { flow?: RunFinishedFlow } = {}
+  ): void {
     if (this.finished) return
     this.drainOutput()
     this.finished = true
@@ -138,7 +144,8 @@ export class RunSession {
       exitCode,
       status,
       counts,
-      ...(this.trimmed ? { truncated: true } : {})
+      ...(this.trimmed ? { truncated: true } : {}),
+      ...this.flowOf(extra.flow)
     })
   }
 
@@ -148,6 +155,14 @@ export class RunSession {
       projectPath: this.opts.projectPath,
       request: this.opts.request,
       events: [...this.retained]
+    }
+  }
+
+  private flowOf(logged: RunFinishedFlow | undefined): { flow?: RunFinishedFlow } {
+    const requested = this.opts.request.flow
+    if (!requested) return {}
+    return {
+      flow: logged ?? { name: requested.name, status: null, resultsDir: null, failedStep: null }
     }
   }
 

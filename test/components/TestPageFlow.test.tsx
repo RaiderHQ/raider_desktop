@@ -79,6 +79,7 @@ const api = {
   loadTrace: vi.fn().mockResolvedValue({ success: true, trace: [] }),
   setTestTags: vi.fn(),
   flowsReady: vi.fn(),
+  flowLastResults: vi.fn().mockResolvedValue(null),
   convertToFlow: vi.fn(),
   getProjectConfig: vi.fn().mockResolvedValue({ success: false })
 }

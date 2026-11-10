@@ -735,3 +735,56 @@ describe('comparisons', () => {
     expect(row.comparisons).toBeUndefined()
   })
 })
+
+describe("loadRaiderResults from a flow run's folder", () => {
+  const DIR = 'flow-results/hello/20261110T110856Z'
+  const flowApi = (): RaiderResultsApi => ({
+    readDirectory: vi.fn(async (dir: string) => {
+      if (dir !== `/proj/${DIR}`) throw new Error('ENOENT')
+      return [{ name: 'run.json', type: 'file', path: `/proj/${DIR}/run.json` }]
+    }),
+    readFile: vi.fn(async () => ({
+      success: true,
+      data: run([
+        r('Hello', 'failed', {
+          file_path: 'flows/hello_flow.rb',
+          failure: { message: 'boom', backtrace: [] },
+          attachments: [
+            { name: 'screenshot', content_type: 'image/png', path: 'attachments/0-runs.png' }
+          ]
+        })
+      ])
+    }))
+  })
+
+  it('reads the folder, joins attachments onto it and marks each row with it', async () => {
+    const api = flowApi()
+    const rows = await loadRaiderResults('/proj', api, undefined, DIR)
+    expect(api.readDirectory).toHaveBeenCalledWith(`/proj/${DIR}`)
+    expect(rows).toHaveLength(1)
+    expect(rows![0]).toMatchObject({
+      status: 'failed',
+      file: 'flows/hello_flow.rb',
+      screenshot: `/proj/${DIR}/attachments/0-runs.png`,
+      resultsDir: DIR
+    })
+  })
+
+  it.each([
+    'flow-results/hello/../../etc',
+    'flow-results/Hello/20261110T110856Z',
+    'flow-results/hello/latest',
+    '/etc',
+    'other-results',
+    'flow-results/hello/20261110T110856Z/attachments'
+  ])('reads nothing for the folder %s', async (dir) => {
+    const api = flowApi()
+    expect(await loadRaiderResults('/proj', api, undefined, dir)).toBeNull()
+    expect(api.readDirectory).not.toHaveBeenCalled()
+  })
+
+  it('leaves raider-results rows unmarked', async () => {
+    const rows = await loadRaiderResults('/proj', makeApi({ 'run.json': run([r('F', 'passed')]) }))
+    expect(rows![0]).not.toHaveProperty('resultsDir')
+  })
+})
