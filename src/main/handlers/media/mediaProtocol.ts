@@ -2,7 +2,6 @@ import { protocol } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import { Readable } from 'stream'
-import { FLOW_RESULTS_ROOT, FLOW_RESULTS_STAMP, isFlowName } from '../../../shared/flows'
 
 const SCHEME = 'raider-media'
 
@@ -14,25 +13,9 @@ const CONTENT_TYPES: Record<string, string> = {
 
 const ATTACHMENTS_DIR = /^attachments(-\d+)?$/
 
-// flow-results / <flow> / <stamp> / attachments(-N) / <file>: one flow run's own results,
-// never mixed with raider-results
-const hasFlowAttachmentsShape = (segments: string[]): boolean => {
-  if (segments.includes('raider-results')) return false
-  if (segments.filter((s) => s === FLOW_RESULTS_ROOT).length !== 1) return false
-  const idx = segments.indexOf(FLOW_RESULTS_ROOT)
-  return (
-    isFlowName(segments[idx + 1] ?? '') &&
-    FLOW_RESULTS_STAMP.test(segments[idx + 2] ?? '') &&
-    ATTACHMENTS_DIR.test(segments[idx + 3] ?? '') &&
-    segments.length === idx + 5 &&
-    segments[idx + 4] !== ''
-  )
-}
-
 const hasAttachmentsShape = (rawPath: string): boolean => {
   const segments = rawPath.split(/[\\/]/)
   if (segments.includes('..')) return false
-  if (hasFlowAttachmentsShape(segments)) return true
   if (segments.filter((s) => s === 'raider-results').length !== 1) return false
   const idx = segments.indexOf('raider-results')
   // raider-results / attachments(-N) / <file>, exactly one segment for the file
@@ -54,8 +37,7 @@ const isAttachment = (
 
 const anyExt = (): boolean => true
 
-// Resolves a file under raider-results/attachments(-N)/ (or a flow run's
-// flow-results/<flow>/<stamp>/attachments(-N)/) to its real path, or null.
+// Resolves a file under raider-results/attachments(-N)/ to its real path, or null.
 export const resolveAttachmentFile = async (
   rawPath: string,
   platform: NodeJS.Platform = process.platform,

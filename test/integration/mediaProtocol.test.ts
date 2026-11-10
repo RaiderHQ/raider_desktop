@@ -201,65 +201,31 @@ describe('resolveMediaPath escape vectors', () => {
   })
 })
 
-describe('flow-results attachments', () => {
+describe('flow-results (removed with flows)', () => {
   const STAMP = '20261110T110856Z'
-  const at = (...parts: string[]): string => path.join(root, ...parts)
-  const put = (file: string): string => {
-    fs.mkdirSync(path.dirname(file), { recursive: true })
-    fs.writeFileSync(file, bytes)
-    return file
-  }
-  let flowClip: string
+  let flowFiles: string[]
 
   beforeAll(() => {
-    flowClip = put(at('flow-results', 'hello', STAMP, 'attachments', '0-runs.webm'))
-    put(at('flow-results', 'hello', `${STAMP}-2`, 'attachments-2', '1-runs.webm'))
-    put(at('flow-results', 'flow-results', 'hello', STAMP, 'attachments', 'a.webm'))
-    put(at('flow-results', 'hello', 'latest', 'attachments', 'a.webm'))
-    put(at('flow-results', 'Hello', STAMP, 'attachments', 'a.webm'))
-    put(at('flow-results', 'env', STAMP, 'attachments', 'a.webm'))
-    put(at('raider-results', 'flow-results', 'hello', STAMP, 'attachments', 'a.webm'))
-    put(at('flow-results', 'hello', STAMP, 'attachments', 'x', 'a.webm'))
-    fs.symlinkSync(clip, at('flow-results', 'hello', STAMP, 'attachments', 'link.webm'))
+    const put = (...parts: string[]): string => {
+      const file = path.join(root, ...parts)
+      fs.mkdirSync(path.dirname(file), { recursive: true })
+      fs.writeFileSync(file, bytes)
+      return file
+    }
+    flowFiles = [
+      put('flow-results', 'hello', STAMP, 'attachments', '0-runs.webm'),
+      put('flow-results', 'hello', `${STAMP}-2`, 'attachments-2', '1-runs.webm'),
+      put('flow-results', 'hello', STAMP, 'attachments', '0-trace.zip')
+    ]
   })
 
-  it("serves a video from a flow run's attachments(-N)", async () => {
-    expect(await resolveMediaPath(url(flowClip))).toBe(flowClip)
-    const shard = at('flow-results', 'hello', `${STAMP}-2`, 'attachments-2', '1-runs.webm')
-    expect(await resolveMediaPath(url(shard))).toBe(shard)
-  })
-
-  it.each([
-    [
-      'flow-results/../raider-results',
-      ['flow-results', '..', 'raider-results', 'attachments', 'clip.webm']
-    ],
-    [
-      'two flow-results segments',
-      ['flow-results', 'flow-results', 'hello', STAMP, 'attachments', 'a.webm']
-    ],
-    ['a bad stamp', ['flow-results', 'hello', 'latest', 'attachments', 'a.webm']],
-    ['a bad flow name', ['flow-results', 'Hello', STAMP, 'attachments', 'a.webm']],
-    ['a reserved flow name', ['flow-results', 'env', STAMP, 'attachments', 'a.webm']],
-    [
-      'raider-results mixed in',
-      ['raider-results', 'flow-results', 'hello', STAMP, 'attachments', 'a.webm']
-    ],
-    ['a nested file', ['flow-results', 'hello', STAMP, 'attachments', 'x', 'a.webm']],
-    ['a symlinked file', ['flow-results', 'hello', STAMP, 'attachments', 'link.webm']]
-  ])('refuses %s', async (_label, parts) => {
-    // Each target is really there: only the checks refuse it
-    const raw = [root, ...parts].join('/')
-    expect(fs.existsSync(raw)).toBe(true)
-    expect(await resolveMediaPath(url(raw))).toBeNull()
-    expect(await resolveAttachmentFile(raw)).toBeNull()
-  })
-
-  it('refuses a flow-results UNC path before any fs call', async () => {
-    const realpath = vi.spyOn(fs.promises, 'realpath')
-    const unc = `//evil/s/flow-results/hello/${STAMP}/attachments/a.webm`
-    expect(await resolveMediaPath(url(unc))).toBeNull()
-    expect(realpath).not.toHaveBeenCalled()
+  it('refuses a video or trace from a flow run results folder', async () => {
+    for (const file of flowFiles) {
+      // Each one is really there: only the raider-results-only check refuses it
+      expect(fs.existsSync(file), file).toBe(true)
+      expect(await resolveMediaPath(url(file)), file).toBeNull()
+      expect(await resolveAttachmentFile(file), file).toBeNull()
+    }
   })
 })
 

@@ -7,7 +7,13 @@ import InputField from '@components/InputField'
 import Tooltip from '@components/Tooltip'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { FLOW_AT, validateSchedule } from '@shared/schedules'
-import type { FlowDay, FlowEvery, FlowSchedule, GemScheduleRule } from '@shared/types/schedules'
+import type {
+  FlowDay,
+  FlowEvery,
+  FlowSchedule,
+  GemCliError,
+  GemScheduleRule
+} from '@shared/types/schedules'
 import ScheduleDialogShell from './ScheduleDialogShell'
 import { cliErrorText } from './scheduleText'
 
@@ -19,6 +25,12 @@ interface ScheduleModalProps {
   onClose: () => void
   /** After the gem accepted the schedule */
   onScheduled: () => void
+  /** Sends the schedule to the gem; `message` is the gem's confirmation */
+  save: (
+    rubyCommand: string,
+    name: string,
+    schedule: FlowSchedule
+  ) => Promise<{ ok: true; message: string } | GemCliError>
 }
 
 const EVERY: FlowEvery[] = ['hour', 'day', 'weekday', 'week']
@@ -86,7 +98,8 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
   title,
   schedule,
   onClose,
-  onScheduled
+  onScheduled,
+  save
 }) => {
   const { t } = useTranslation()
   const [every, setEvery] = useState<FlowEvery>(schedule?.every ?? 'weekday')
@@ -133,7 +146,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
     }
     setSaving(true)
     try {
-      const result = await window.api.scheduleFlow(rubyCommand, name, request)
+      const result = await save(rubyCommand, name, request)
       if ('error' in result) {
         setError(cliErrorText(t, result))
         return

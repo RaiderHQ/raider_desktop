@@ -43,10 +43,7 @@ import isSystemRubyInstalled from './handlers/ruby/isSystemRubyInstalled'
 import installRbenvAndRuby from './handlers/ruby/installRbenvAndRuby'
 import installGems from './handlers/ruby/installGems'
 import {
-  convertToFlowHandler,
-  flowsReadyHandler,
   getProjectLayoutHandler,
-  listProjectFlowsHandler,
   listProjectTestsHandler,
   openCodeTestHandler,
   recordOverExampleHandler
@@ -56,7 +53,6 @@ import { mapFailedStepHandler } from './handlers/tests/mapFailedStep'
 import { runTestHandler } from './handlers/testing/runProjectTests'
 import getTests from './handlers/getTests'
 import { registerRunIpc } from './handlers/run/runIpc'
-import { registerFlowsIpc } from './handlers/flows/flowsIpc'
 import { openTraceFromDialog, registerTraceIpc } from './handlers/trace/traceIpc'
 import { makeBaselineConfirm } from './handlers/results/baselineConfirm'
 import { acceptBaseline } from './handlers/results/acceptBaseline'
@@ -97,11 +93,7 @@ import { installCloseFlush } from './handlers/recording/closeFlush'
 import saveTrace from './handlers/trace/saveTrace'
 import loadTrace from './handlers/trace/loadTrace'
 import deleteTrace from './handlers/trace/deleteTrace'
-import setActiveProject, {
-  getRecorderSettings,
-  onActiveProjectChange
-} from './handlers/project/setActiveProject'
-import { startFlowWatcher, stopFlowWatcher } from './handlers/schedules/scheduleWatcher'
+import setActiveProject, { getRecorderSettings } from './handlers/project/setActiveProject'
 import { upgradeRubyRaider } from './handlers/project/upgradeRubyRaider'
 import {
   clearRecentProjects,
@@ -248,12 +240,7 @@ app.whenReady().then(() => {
     quitting = true
     // The run is detached in its own process group, so it would outlive the app
     killActiveRun()
-    stopFlowWatcher()
   })
-  // Only the open project's flows are watched, for the Flows tab and failed scheduled runs
-  onActiveProjectChange((projectPath) =>
-    projectPath ? startFlowWatcher(projectPath) : stopFlowWatcher()
-  )
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
@@ -357,12 +344,6 @@ app.whenReady().then(() => {
   )
   ipcMain.handle('get-tests', getTests)
   ipcMain.handle('list-project-tests', listProjectTestsHandler)
-  ipcMain.handle('list-project-flows', listProjectFlowsHandler)
-  ipcMain.handle('flows-ready', flowsReadyHandler)
-  // Only the payload reaches the handler, which validates it; main reads the test itself
-  ipcMain.handle('convert-to-flow', (_event, projectPath: unknown, request: unknown) =>
-    convertToFlowHandler(projectPath, request)
-  )
   ipcMain.handle('open-code-test', (_event, file: string) => openCodeTestHandler(file))
   ipcMain.handle('get-project-layout', getProjectLayoutHandler)
   ipcMain.handle('upgrade-ruby-raider', (_event, projectPath: unknown, rubyCommand: unknown) =>
@@ -370,7 +351,6 @@ app.whenReady().then(() => {
   )
   ipcMain.handle('map-failed-step', (_e, p, id, f) => mapFailedStepHandler(p, id, f))
   registerRunIpc(ipcMain)
-  registerFlowsIpc(ipcMain)
   registerTraceIpc(ipcMain)
   ipcMain.handle('accept-baseline', (event, actualPath: unknown, baselinePath: unknown) =>
     acceptBaseline(actualPath, baselinePath, makeBaselineConfirm(event.sender))

@@ -1,6 +1,5 @@
-import { flowFile, isFlowName } from '../../../shared/flows'
-import { FLOW_AT, FLOW_INPUT_NAME } from '../../../shared/schedules'
-import type { GemFlow } from '../../../shared/types/flows'
+import { isFlowName } from '../../../shared/flows'
+import { FLOW_AT } from '../../../shared/schedules'
 import type {
   FlowDay,
   FlowEvery,
@@ -9,12 +8,11 @@ import type {
   GemSchedule
 } from '../../../shared/types/schedules'
 
-// `raider flow list|schedules --json` prints what the project says: untrusted. Every field is
+// `raider flow schedules --json` prints what the project says: untrusted. Every field is
 // checked; an entry that doesn't fit is dropped, a last run that doesn't fit becomes null.
 
 const MAX_STRING = 1000
 const MAX_ENTRIES = 1000
-const MAX_INPUT_VALUE = 2000
 // eslint-disable-next-line no-control-regex -- matching control characters is the point
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/g
 
@@ -67,30 +65,9 @@ function parseLastRun(value: unknown, name: string): FlowLastRun | null {
 
 const isName = (v: unknown): v is string => typeof v === 'string' && isFlowName(v)
 
-function parseFlow(value: unknown): GemFlow | null {
-  if (!isObject(value) || !isName(value.name)) return null
-  if (value.file !== flowFile(value.name)) return null
-  return { name: value.name, file: value.file, last: parseLastRun(value.last, value.name) }
-}
-
-/** The gem's `"k=v"` input strings as a record; null when one doesn't fit. */
-function parseInputs(value: unknown): Record<string, string> | null {
-  if (!Array.isArray(value) || value.length > MAX_ENTRIES) return null
-  const inputs: Record<string, string> = {}
-  for (const entry of value) {
-    if (typeof entry !== 'string') return null
-    const at = entry.indexOf('=')
-    if (at < 0) return null
-    const key = entry.slice(0, at)
-    const input = entry.slice(at + 1)
-    if (!FLOW_INPUT_NAME.test(key) || input.length > MAX_INPUT_VALUE) return null
-    inputs[key] = input
-  }
-  return inputs
-}
-
-// The rule fields of a schedules row: all null for a flow the OS runs but schedules.yml lost
-const RULE_FIELDS = ['every', 'at', 'on', 'retries', 'inputs', 'notify', 'next_run_at'] as const
+// The rule fields of a schedules row: all null for a job the OS runs but schedules.yml lost.
+// An `inputs` field from an older gem is ignored: the desktop never reads or sends inputs.
+const RULE_FIELDS = ['every', 'at', 'on', 'retries', 'notify', 'next_run_at'] as const
 
 const osStateText = (osState: string): string => plainText(osState.slice(0, MAX_STRING * 4))
 
@@ -112,15 +89,12 @@ function parseSchedule(value: unknown): GemSchedule | null {
   if (!isCount(retries) || typeof notify !== 'boolean') return null
   if (next_run_at !== null && !isString(next_run_at)) return null
   if (typeof os_state !== 'string') return null
-  const inputs = parseInputs(value.inputs)
-  if (inputs === null) return null
   return {
     name,
     every: every as FlowEvery,
     at,
     on: on as FlowDay | null,
     retries,
-    inputs,
     notify,
     nextRunAt: next_run_at,
     osState: osStateText(os_state),
@@ -135,9 +109,6 @@ function parseList<T>(value: unknown, parse: (entry: unknown) => T | null): T[] 
     .map(parse)
     .filter((entry): entry is T => entry !== null)
 }
-
-/** `flow list --json` as GemFlow[]; null when the output is not a list. */
-export const parseGemFlows = (value: unknown): GemFlow[] | null => parseList(value, parseFlow)
 
 /** `flow schedules --json` as GemSchedule[]; null when the output is not a list. */
 export const parseGemSchedules = (value: unknown): GemSchedule[] | null =>

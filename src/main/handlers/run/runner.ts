@@ -1,5 +1,5 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
-import { randomBytes, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { app } from 'electron'
@@ -7,8 +7,6 @@ import type {
   ActiveRun,
   RunCounts,
   RunEvent,
-  RunFinishedFlow,
-  RunFlow,
   RunRequest,
   RunScope,
   StartRunResult
@@ -20,7 +18,6 @@ import checkBundle from '../ruby/checkBundle'
 import bundleInstall from '../ruby/bundleInstall'
 import { pushToLongship } from '../longship/pushToLongship'
 import { buildShellCommand } from '../../utils/shellCommand'
-import { cleanPath } from '../../utils/cleanPath'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
 import { safeWarn } from '../../utils/safeLog'
 import { buildRunCommand, validateTags } from './runCommand'
@@ -32,9 +29,6 @@ import { Translator } from './translate'
 import { RunSession } from './runSession'
 import { OutputPrefixParser } from './outputPrefix'
 import { descendantProcesses, freshKillTargets, signalPid } from './processTree'
-import { flowRunById } from '../flows/flowRuns'
-import { flowFile, isFlowName } from '../../../shared/flows'
-import { isPlainObject, validateFlowInputs } from '../../../shared/schedules'
 
 export interface RunnerDeps {
   send(e: RunEvent): void
@@ -100,6 +94,14 @@ function defaultDeps(): RunnerDeps {
   }
 }
 
+/** PATH without node_modules/.bin, so it can't shadow the project's Ruby tools. */
+function cleanPath(): string {
+  return (process.env.PATH || '')
+    .split(path.delimiter)
+    .filter((p) => !p.includes(path.join('node_modules', '.bin')))
+    .join(path.delimiter)
+}
+
 const message = (error: unknown): string => (error instanceof Error ? error.message : String(error))
 
 const nonEmptyStrings = (value: unknown, what: string): string[] => {
@@ -108,32 +110,10 @@ const nonEmptyStrings = (value: unknown, what: string): string[] => {
   return value
 }
 
-const FLOW_KEYS = ['name', 'inputs', 'headed']
-
-/**
- * A flow run's part of the request: a valid name, inputs and headed flag, run serially on
- * exactly its own file. Returns a fresh copy.
- */
-function validateFlow(flow: unknown, scope: unknown, workers: unknown): RunFlow {
-  if (!isPlainObject(flow)) throw new Error('The flow is not valid, so it was not run.')
-  const unknown = Object.keys(flow).find((key) => !FLOW_KEYS.includes(key))
-  if (unknown !== undefined) throw new Error(`Unknown flow field: ${unknown}`)
-  const { name, inputs, headed } = flow
-  if (typeof name !== 'string' || !isFlowName(name)) throw new Error('Not a valid flow name.')
-  if (typeof headed !== 'boolean') throw new Error('Not a valid browser setting for the flow.')
-  const s = scope as RunScope | null
-  const files = s?.kind === 'files' ? s.files : null
-  if (!Array.isArray(files) || files.length !== 1 || files[0] !== flowFile(name))
-    throw new Error(`A flow run takes only its own file, ${flowFile(name)}.`)
-  if (workers !== undefined && !(typeof workers === 'number' && workers <= 1))
-    throw new Error('A flow always runs on its own, not in parallel.')
-  return { name, inputs: validateFlowInputs(inputs), headed }
-}
-
 /** Checks the (untrusted) request; only listed project tests and safe tags may run. */
 async function validate(request: unknown): Promise<RunRequest> {
   if (typeof request !== 'object' || request === null) throw new Error('No run request was given.')
-  const { scope, rubyCommand, loginState, flow, workers } = request as RunRequest
+  const { scope, rubyCommand, loginState } = request as RunRequest
   if (!isValidRubyCommand(rubyCommand)) {
     throw new Error('The Ruby command is not valid, so the tests were not run.')
   }
@@ -163,18 +143,17 @@ async function validate(request: unknown): Promise<RunRequest> {
     default:
       throw new Error('Unknown run scope.')
   }
-  if (flow === undefined) return request as RunRequest
-  return { ...(request as RunRequest), flow: validateFlow(flow, scope, workers) }
+  return request as RunRequest
 }
 
 type ResultFile = { shard: boolean; finished: number; statuses: unknown[] }
 
 /**
- * Degraded-mode counts from a results folder (raider-results, or a flow run's own folder):
- * run.json, or the run-<n>.json shards when they are newer, keeping only files that
- * finished after `since`.
+ * Degraded-mode counts from raider-results: run.json, or the run-<n>.json shards when
+ * they are newer, keeping only files that finished after `since`.
  */
-async function resultCounts(dir: string, since: number): Promise<RunCounts | undefined> {
+async function resultCounts(projectPath: string, since: number): Promise<RunCounts | undefined> {
+  const dir = path.join(projectPath, 'raider-results')
   let names: string[]
   try {
     names = await fs.readdir(dir)
@@ -298,8 +277,7 @@ export async function startRun(
       workers,
       liveEvents,
       rubyCommand: valid.rubyCommand,
-      loginState: valid.loginState,
-      flow: valid.flow ? { ...valid.flow, runId: randomBytes(8).toString('hex') } : undefined
+      loginState: valid.loginState
     })
     return { runId }
   } catch (error) {
@@ -319,8 +297,6 @@ async function launch(
     liveEvents: boolean
     rubyCommand: string
     loginState?: RunRequest['loginState']
-    /** runId: the gem's RAIDER_FLOW_RUN_ID, which finds this run's line in its log */
-    flow?: RunFlow & { runId: string }
   }
 ): Promise<void> {
   const { session, runId } = active
@@ -365,7 +341,6 @@ async function launch(
     // Never inherit a login mode from the app's own environment
     if (run.loginState) env.RAIDER_LOGIN_STATE = run.loginState
     else delete env.RAIDER_LOGIN_STATE
-    flowEnv(env, run.flow)
     const child = deps.spawnCommand(
       buildShellCommand(run.projectPath, run.command),
       run.projectPath,
@@ -415,7 +390,6 @@ async function launch(
       clearInterval(timer)
       clearKillTimer(active)
       let fallback: RunCounts | undefined
-      let flow: RunFinishedFlow | undefined
       try {
         await tail.poll()
         if (parsers) {
@@ -427,34 +401,20 @@ async function launch(
         // Degraded mode, or live mode that never saw a plan (formatter not loaded): count
         // from run.json. Its finished_at may have only second precision, so compare from
         // the start's second
-        let resultsDir: string | null = path.join(run.projectPath, 'raider-results')
-        if (run.flow) {
-          const logged = await flowRunById(run.projectPath, run.flow.name, run.flow.runId)
-          flow = {
-            name: run.flow.name,
-            status: logged?.status ?? null,
-            resultsDir: logged?.resultsDir ?? null,
-            failedStep: logged?.failedStep ?? null
-          }
-          // Only this run's own folder counts: never raider-results or another run's folder
-          resultsDir = flow.resultsDir && path.join(run.projectPath, flow.resultsDir)
-        }
-        if (resultsDir && (!run.liveEvents || !session.hasPlan())) {
-          fallback = await resultCounts(resultsDir, Math.floor(startedAt / 1000) * 1000)
+        if (!run.liveEvents || !session.hasPlan()) {
+          fallback = await resultCounts(run.projectPath, Math.floor(startedAt / 1000) * 1000)
         }
       } catch (error) {
         session.output('stderr', `${message(error)}\n`)
       } finally {
         // Always finish and free the slot, whatever failed above
         try {
-          session.finish(exitCode, fallback, { flow })
+          session.finish(exitCode, fallback)
         } finally {
           active.done = true
         }
       }
 
-      // A flow run is a job typing real data, not a test result: it never leaves the machine
-      if (run.flow) return
       const events = session.snapshot().events
       const finished = events[events.length - 1]
       const status = finished?.type === 'run:finished' ? finished.status : 'errored'
@@ -478,24 +438,6 @@ async function launch(
     session.output('stderr', `${message(error)}\n`)
     finishEarly(null)
   }
-}
-
-/**
- * A run never inherits flow settings or inputs from the app's own environment; a flow run
- * gets its own. Input values travel only here, never in the (shell) command.
- */
-function flowEnv(env: NodeJS.ProcessEnv, flow: (RunFlow & { runId: string }) | undefined): void {
-  for (const key of Object.keys(env)) {
-    const upper = key.toUpperCase()
-    if (upper.startsWith('RAIDER_FLOW_') || upper.startsWith('RAIDER_INPUT_')) delete env[key]
-  }
-  if (!flow) return
-  env.RAIDER_FLOW_NAME = flow.name
-  env.RAIDER_FLOW_TRIGGER = 'desktop'
-  env.RAIDER_FLOW_RUN_ID = flow.runId
-  for (const [name, value] of Object.entries(flow.inputs))
-    env[`RAIDER_INPUT_${name.toUpperCase()}`] = value
-  if (flow.headed) env.RAIDER_FLOW_HEADED = '1'
 }
 
 function clearKillTimer(active: Active): void {

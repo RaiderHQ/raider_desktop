@@ -1,7 +1,6 @@
 import { appState } from '../appState'
 import { activationSettled } from '../project/setActiveProject'
 import { listProjectTests } from './listProjectTests'
-import { listProjectFlows } from './listFlows'
 import { flowsReady } from './recordedTests'
 import {
   broadcast,
@@ -18,7 +17,6 @@ import { isFlowFileRel } from '../../../shared/flows'
 import type {
   CodeTestView,
   ConvertToFlowResult,
-  ProjectFlowEntry,
   ProjectTestEntry
 } from '../../../shared/types/projectTest'
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
@@ -108,14 +106,6 @@ export async function flowsReadyHandler(): Promise<boolean> {
   const { projectPath, layout } = appState
   if (!projectPath || !layout || !canRecordFiles(layout)) return false
   return flowsReady(projectPath)
-}
-
-/** 'list-project-flows': the active project's flows, once activation has finished. */
-export async function listProjectFlowsHandler(): Promise<ProjectFlowEntry[]> {
-  await activationSettled()
-  const { projectPath, layout } = appState
-  if (!projectPath || !layout) return []
-  return listProjectFlows(projectPath, layout)
 }
 
 const MAX_ID_LENGTH = 200

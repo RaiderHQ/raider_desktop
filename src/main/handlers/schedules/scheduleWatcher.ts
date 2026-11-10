@@ -4,17 +4,17 @@ import { Notification } from 'electron'
 import yaml from 'js-yaml'
 import { appState } from '../appState'
 import { assertRealInside, resolveInside } from '../tests/sidecar'
-import { readRunLog } from '../flows/flowRuns'
+import { readRunLog } from './runLog'
 import { isFlowName } from '../../../shared/flows'
 import { isPlainObject } from '../../../shared/schedules'
 
 // Scheduled runs (launchd) append to .raider/flows/<name>/runs.jsonl while the app is open.
-// The open project's .raider/flows/ is watched: each settled change refreshes the Flows tab
+// The open project's .raider/flows/ is watched: each settled change tells the renderer
 // and a new scheduled run that failed shows a notification. The log is written by project
 // code, so only the folder's flow name and plain integers ever reach the notification.
 
-/** Shown by the notification for a scheduled flow run that failed */
-export const FLOW_FAILED_TITLE = 'Flow failed'
+/** Shown by the notification for a scheduled run that failed */
+export const SCHEDULE_FAILED_TITLE = 'Scheduled run failed'
 const failedAtStep = (name: string, step: number): string => `${name} failed at step ${step}`
 const failedAtLine = (name: string, line: number): string => `${name} failed at line ${line}`
 const couldNotStart = (name: string): string => `${name} could not start`
@@ -229,7 +229,7 @@ export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): F
   const notify = (name: string, line: Record<string, unknown>): void => {
     if (!deps.notifications.isSupported()) return
     const notification = deps.notifications.create({
-      title: FLOW_FAILED_TITLE,
+      title: SCHEDULE_FAILED_TITLE,
       body: flowFailedBody(name, line)
     })
     shown.add(notification)
@@ -248,13 +248,13 @@ export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): F
     if (win.isMinimized()) win.restore()
     win.show()
     win.focus()
-    if (!win.webContents.isDestroyed()) win.webContents.send('focus-flows-tab')
+    if (!win.webContents.isDestroyed()) win.webContents.send('focus-schedules')
   }
 
   const pushFlowsChanged = (): void => {
     const win = deps.mainWindow()
     if (win && !win.isDestroyed() && !win.webContents.isDestroyed())
-      win.webContents.send('flows-changed')
+      win.webContents.send('schedules-changed')
   }
 
   /**

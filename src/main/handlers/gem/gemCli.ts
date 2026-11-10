@@ -8,10 +8,10 @@ import { ensureUtf8Locale } from '../../utils/locale'
 import { safeWarn } from '../../utils/safeLog'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
 
-// `raider flow …` (ruby_raider 4.1+) for the Flows tab. The renderer's rubyCommand is a shell
-// prefix (rbenv / rvm), so it is used once, in a constant command, to find the absolute ruby;
-// every gem call then runs that ruby with an argv array, never through a shell, so nothing
-// from a payload (flow names, schedule inputs) is ever parsed by one.
+// `raider …` gem commands. The renderer's rubyCommand is a shell prefix (rbenv / rvm), so it is
+// used once, in a constant command, to find the absolute ruby; every gem call then runs that
+// ruby with an argv array, never through a shell, so nothing from a payload (names, schedule
+// values) is ever parsed by one.
 
 const RESOLVE_TIMEOUT_MS = 20_000
 const CLI_TIMEOUT_MS = 60_000
@@ -37,12 +37,12 @@ export interface RubyResolverDeps {
 /** The absolute ruby a valid rubyCommand selects in a project, or null. */
 export type RubyResolver = (projectPath: string, rubyCommand: string) => Promise<string | null>
 
-export interface FlowCliDeps {
+export interface GemCliDeps {
   execFile: ExecFileFn
   resolveRuby: RubyResolver
 }
 
-export type FlowCliResult =
+export type GemCliResult =
   | { ok: true; stdout: string; json?: unknown }
   | {
       ok: false
@@ -73,7 +73,7 @@ export function makeRubyResolver(deps: RubyResolverDeps): RubyResolver {
   }
 }
 
-const defaultDeps: FlowCliDeps = {
+const defaultDeps: GemCliDeps = {
   execFile: (file, args, options, callback) =>
     execFile(file, args, { ...options, encoding: 'utf8' }, callback),
   resolveRuby: makeRubyResolver({ exec: safeExec, stat: (file) => fs.stat(file) })
@@ -83,9 +83,10 @@ const defaultDeps: FlowCliDeps = {
  * The environment of a gem call: the app's own, with the selected ruby's folder first on
  * PATH and no node_modules/.bin. GEM_HOME / GEM_PATH stay (the gem copies them into the OS
  * schedule entry); BUNDLE_GEMFILE goes (the project's Gemfile is found from cwd), and so do
- * inherited RAIDER_FLOW_* / RAIDER_INPUT_* values that would leak into a run.
+ * any RAIDER_FLOW_* / RAIDER_INPUT_* values inherited from the app's own environment: the
+ * desktop sets none, and a stray one must never reach a gem command or a run it schedules.
  */
-export function flowEnv(absRuby: string, base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+export function gemEnv(absRuby: string, base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...base }
   for (const key of Object.keys(env)) {
     if (key.startsWith('RAIDER_FLOW_') || key.startsWith('RAIDER_INPUT_')) delete env[key]
@@ -103,24 +104,24 @@ function refusalMessage(stderr: string): string {
 }
 
 /**
- * Runs `raider flow <args…> --project <projectPath>` with the project's bundle. Only the
- * command name (args[0]) is ever logged: the other arguments may hold schedule inputs.
+ * Runs `raider <args…> --project <projectPath>` with the project's bundle. Only the command
+ * name (args[0]) is ever logged: the other arguments may hold payload values.
  */
-export async function runFlowCli(
+export async function runGemCli(
   projectPath: string,
   rubyCommand: string,
   args: string[],
   opts: { json?: boolean } = {},
-  deps: FlowCliDeps = defaultDeps
-): Promise<FlowCliResult> {
+  deps: GemCliDeps = defaultDeps
+): Promise<GemCliResult> {
   const command = args[0] ?? ''
   const absRuby = await deps.resolveRuby(projectPath, rubyCommand)
   if (!absRuby) return { ok: false, error: 'ruby' }
 
-  const argv = ['-S', 'bundle', 'exec', 'raider', 'flow', ...args, '--project', projectPath]
+  const argv = ['-S', 'bundle', 'exec', 'raider', ...args, '--project', projectPath]
   const options: ExecFileOptions = {
     cwd: projectPath,
-    env: flowEnv(absRuby),
+    env: gemEnv(absRuby),
     timeout: CLI_TIMEOUT_MS,
     maxBuffer: MAX_STDOUT,
     windowsHide: true
@@ -136,30 +137,30 @@ export async function runFlowCli(
   })
 
   if (error) {
-    // Never error.message: Node puts the whole command line (with the inputs) in it
+    // Never error.message: Node puts the whole command line (with every argument) in it
     if (error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
-      safeWarn(`raider flow ${command}: output too large`)
+      safeWarn(`raider ${command}: output too large`)
       return { ok: false, error: 'gem-output' }
     }
     if (error.killed || error.signal) {
-      safeWarn(`raider flow ${command}: timed out`)
+      safeWarn(`raider ${command}: timed out`)
       return { ok: false, error: 'timeout' }
     }
     if (typeof error.code !== 'number') {
-      safeWarn(`raider flow ${command}: could not start ruby (${String(error.code)})`)
+      safeWarn(`raider ${command}: could not start ruby (${String(error.code)})`)
       return { ok: false, error: 'ruby' }
     }
     const message = refusalMessage(stderr)
-    safeWarn(`raider flow ${command} exited ${error.code}: ${message}`)
+    safeWarn(`raider ${command} exited ${error.code}: ${message}`)
     return { ok: false, error: 'refused', message, exitCode: error.code }
   }
 
-  if (stderr.trim()) safeWarn(`raider flow ${command} stderr: ${refusalMessage(stderr)}`)
+  if (stderr.trim()) safeWarn(`raider ${command} stderr: ${refusalMessage(stderr)}`)
   if (!opts.json) return { ok: true, stdout }
   try {
     return { ok: true, stdout, json: JSON.parse(stdout.trim()) }
   } catch {
-    safeWarn(`raider flow ${command}: output is not JSON`)
+    safeWarn(`raider ${command}: output is not JSON`)
     return { ok: false, error: 'gem-output' }
   }
 }

@@ -3,9 +3,6 @@
 //   steps: [{ delay?, event?, worker?, stdout?, stderr?, runJson? }]
 //     event   - an object (JSON-encoded) or a raw string, appended to $RAIDER_EVENTS_DIR/worker-<worker|1>.ndjson
 //     runJson - result statuses written to ./raider-results/run.json with finished_at = now
-//     flowLog - { name, lines }: lines appended to ./.raider/flows/<name>/runs.jsonl; a line
-//               with `ours: true` gets run_id = $RAIDER_FLOW_RUN_ID instead
-//     flowRunJson - { dir, statuses }: like runJson, written to ./<dir>/run.json
 //   exitCode     - exit code after the last step (default 0)
 //   hang         - stay alive after the steps until signalled
 //   ignoreSigint - ignore SIGINT (so only SIGKILL stops it)
@@ -43,28 +40,13 @@ for (const step of script.steps || []) {
   }
   if (step.stdout) process.stdout.write(step.stdout)
   if (step.stderr) process.stderr.write(step.stderr)
-  const runJsons = [
-    ['raider-results', step.runJson],
-    [step.flowRunJson?.dir, step.flowRunJson?.statuses]
-  ]
-  for (const [dir, statuses] of runJsons) {
-    if (!statuses) continue
-    fs.mkdirSync(dir, { recursive: true })
-    const results = statuses.map((status, i) => ({ full_name: `test ${i}`, status }))
+  if (step.runJson) {
+    fs.mkdirSync('raider-results', { recursive: true })
+    const results = step.runJson.map((status, i) => ({ full_name: `test ${i}`, status }))
     fs.writeFileSync(
-      path.join(dir, 'run.json'),
+      path.join('raider-results', 'run.json'),
       JSON.stringify({ run: { finished_at: new Date().toISOString() }, results })
     )
-  }
-  if (step.flowLog) {
-    const dir = path.join('.raider', 'flows', step.flowLog.name)
-    fs.mkdirSync(dir, { recursive: true })
-    const text = step.flowLog.lines
-      .map(({ ours, ...line }) =>
-        JSON.stringify(ours ? { ...line, run_id: process.env.RAIDER_FLOW_RUN_ID } : line)
-      )
-      .join('\n')
-    fs.appendFileSync(path.join(dir, 'runs.jsonl'), `${text}\n`)
   }
 }
 

@@ -11,21 +11,8 @@ import type { UpgradeResult } from '@shared/types/upgradeResult'
 import type { RecentProjectEntry } from '@shared/types/recentProject'
 import type { PickResult } from '@shared/types/pick'
 import type { LegacyRunResult, PrepareTestRunResult } from '@shared/types/prepareRun'
-import type {
-  CodeTestView,
-  ConvertToFlowResult,
-  ProjectFlowEntry,
-  ProjectTestEntry
-} from '@shared/types/projectTest'
+import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { ProjectFileResult } from '@shared/types/projectFiles'
-import type {
-  FlowEnvError,
-  FlowEnvKeys,
-  FlowLastResults,
-  FlowsStatus,
-  GemFlow
-} from '@shared/types/flows'
-import type { GemCliError, FlowSchedule, GemSchedule } from '@shared/types/schedules'
 import type { ScaffoldParams, ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { RunApi } from '@shared/types/runEvents'
@@ -160,47 +147,6 @@ export interface WindowApi extends RunApi {
   getTests: () => Promise<Test[]>
   /** Every spec file of the active project (recorded or hand-written); [] without a project */
   listProjectTests: () => Promise<ProjectTestEntry[]>
-  /** The active project's flows (flows/<name>_flow.rb) with their inputs; [] without a project */
-  listProjectFlows: () => Promise<ProjectFlowEntry[]>
-  /** Whether the active project has flows set up (flows/flow_helper.rb) */
-  flowsReady: () => Promise<boolean>
-  /** Whether the active project can use the Flows tab (ruby_raider 4.1+, set up); runs no gem */
-  flowsStatus: (rubyCommand: string) => Promise<FlowsStatus | GemCliError>
-  /** `raider flow list`: the active project's flows with their last run */
-  listFlows: (rubyCommand: string) => Promise<{ flows: GemFlow[] } | GemCliError>
-  /** `raider flow schedules`: the active project's scheduled flows */
-  listSchedules: (rubyCommand: string) => Promise<{ schedules: GemSchedule[] } | GemCliError>
-  /** `raider flow init`: sets flows up in the active project */
-  setupFlows: (rubyCommand: string) => Promise<{ ok: true } | GemCliError>
-  /** `raider flow schedule`: schedules an existing flow; `message` is the gem's confirmation */
-  scheduleFlow: (
-    rubyCommand: string,
-    name: string,
-    schedule: FlowSchedule
-  ) => Promise<{ ok: true; message: string } | GemCliError>
-  /** `raider flow unschedule`: removes a flow's schedule */
-  unscheduleFlow: (rubyCommand: string, name: string) => Promise<{ ok: true } | GemCliError>
-  /** Opens a flow run's HTML report (`<resultsDir>/index.html`) in the default app */
-  openFlowResults: (
-    name: string,
-    resultsDir: string
-  ) => Promise<{ success: boolean; error?: string }>
-  /** The results folder of the flow's newest run (from its run log); null when there is none */
-  flowLastResults: (name: string) => Promise<FlowLastResults | null>
-  /** Keys of the flow secrets file (.raider/flows/env), in file order; never values */
-  listFlowEnvKeys: () => Promise<FlowEnvKeys | FlowEnvError>
-  /** Adds or replaces a secret in .raider/flows/env (written 0600); answers keys only */
-  setFlowEnv: (entry: { key: string; value: string }) => Promise<FlowEnvKeys | FlowEnvError>
-  /** Removes a secret from .raider/flows/env; answers keys only */
-  removeFlowEnv: (entry: { key: string }) => Promise<FlowEnvKeys | FlowEnvError>
-  /**
-   * Saves a copy of a recorded test as a new flow (the test stays). With checks it returns
-   * `has-checks` and their ids, unless `dropChecks` (confirmed by the user)
-   */
-  convertToFlow: (
-    projectPath: string,
-    request: { testId: string; dropChecks?: boolean }
-  ) => Promise<ConvertToFlowResult>
   /** Read-only view of a listed spec file; rejects for any other path */
   openCodeTest: (file: string) => Promise<CodeTestView>
   /** The recorded step a failed row's frames point into, or why there is none; never rejects */
@@ -355,10 +301,6 @@ export interface WindowApi extends RunApi {
   /** Menu bar commands as plain strings; returns an unsubscribe function */
   onMenuCommand: (callback: (command: string) => void) => () => void
   onOpenRecentProject: (callback: (projectPath: string) => void) => () => void
-  /** Something changed under the open project's .raider/flows/; returns an unsubscribe function */
-  onFlowsChanged: (callback: () => void) => () => void
-  /** The failed-run notification was clicked: show the Flows tab; returns an unsubscribe function */
-  onFocusFlowsTab: (callback: () => void) => () => void
   /** Traces opened from File → Open trace; returns an unsubscribe function */
   onTraceOpened: (callback: (result: TraceOpenResult) => void) => () => void
 
