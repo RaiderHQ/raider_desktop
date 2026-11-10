@@ -78,6 +78,16 @@ describe('exportProject handler', () => {
     expect(await readdir(out)).toEqual([])
   })
 
+  it('never exports a flow as a spec', async () => {
+    appState.tests.set('t1', test('t1', 'Login test'))
+    appState.tests.set('f1', { ...test('f1', 'Fill hours'), kind: 'flow' })
+    mockDialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: out })
+
+    expect(await exportProject()).toEqual({ success: true, path: out })
+    expect(await readdir(out)).not.toContain('fill_hours_spec.rb')
+    expect(await readdir(out)).toContain('login_test_spec.rb')
+  })
+
   it('writes one spec file per test, flat, with no suite folders', async () => {
     appState.tests.set('t1', test('t1', 'Login test'))
     appState.tests.set('t2', test('t2', 'Signup test'))

@@ -420,6 +420,25 @@ describe('useTestRecording', () => {
       expect(location).toBe(`/overview/tests/${toRouteParam(`id:${id}`)}`)
     })
 
+    it('a new flow draft is saved with kind flow, so main writes it as a flow', async () => {
+      const rec = await mount()
+      act(() =>
+        useRecorderStore.getState().startDraft('Fill hours', 'https://x.test', { kind: 'flow' })
+      )
+      await act(() => rec.start({ kind: 'draft' }))
+      await emit('recording-started', 'https://x.test/login')
+      await emit('new-recorded-step', step('c'))
+
+      await act(() => rec.stop())
+
+      expect(api.saveRecording).toHaveBeenCalledTimes(1)
+      expect(api.saveRecording).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ name: 'Fill hours', kind: 'flow' })
+      )
+      expect(api.startRecordingMain).toHaveBeenCalledWith({ mode: 'flow' })
+    })
+
     it('stop drops a draft with only its start page and goes back to the list', async () => {
       const rec = await mount()
       await recordingDraft(rec)
@@ -757,6 +776,65 @@ describe('useTestRecording', () => {
     await act(async () => {})
     expect(mockToast.error).toHaveBeenCalledWith('tests.saveRefusedCodeOwnedOnLeave')
     expect(mockToast.error).not.toHaveBeenCalledWith('tests.saveRefusedCodeOwned')
+  })
+
+  describe('the recorder mode', () => {
+    const flow: Test = { ...test1, kind: 'flow' }
+
+    it('records a test as a test', async () => {
+      const rec = await mount()
+      await act(() => rec.start({ kind: 'test' }))
+      expect(api.startRecordingMain).toHaveBeenCalledWith({ mode: 'test' })
+    })
+
+    it('records a flow as a flow', async () => {
+      useRecorderStore.setState({ activeTest: flow })
+      const rec = await mount()
+      await act(() => rec.start({ kind: 'test' }))
+      expect(api.startRecordingMain).toHaveBeenCalledWith({ mode: 'flow' })
+    })
+
+    it('records a flow from a step as a flow', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      useRecorderStore.setState({ activeTest: flow })
+      const rec = await mount()
+      let done: Promise<void> = Promise.resolve()
+      act(() => {
+        done = rec.recordFromHere(1, { kind: 'test' })
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1600)
+        await done
+      })
+      expect(api.startRecordingMain).toHaveBeenCalledWith({ mode: 'flow' })
+    })
+
+    it("opens a flow's recorder as a flow to re-pick an element", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const clickFlow: Test = {
+        ...flow,
+        steps: [
+          step('a'),
+          { id: 'b', kind: 'click', element: { strategy: 'css', value: '#go', label: 'Go' } }
+        ]
+      }
+      useRecorderStore.setState({ activeTest: clickFlow })
+      api.getTests.mockResolvedValue([clickFlow])
+      const rec = await mount()
+      let outcome: Promise<unknown> = Promise.resolve()
+      act(() => {
+        outcome = rec.rePick(1)
+      })
+      outcome.catch(() => {})
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1600)
+      })
+      expect(api.startRecordingMain).toHaveBeenCalledWith({ mode: 'flow' })
+      await act(async () => {
+        picked?.({ cancelled: true })
+        await outcome
+      })
+    })
   })
 
   describe('leaving while the recording is starting', () => {

@@ -125,6 +125,13 @@ export function describeStep(step: Step): StepDescription {
           }
         }
       }
+      // A flow step whose text runs can override (flow_input) names its input
+      if (step.inputName) {
+        return {
+          key: `${P}.typeTextInput`,
+          values: { element: elementName(step.element), text: step.text, name: step.inputName }
+        }
+      }
       return {
         key: `${P}.typeText`,
         values: { element: elementName(step.element), text: step.text }

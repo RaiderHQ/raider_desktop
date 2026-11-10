@@ -179,3 +179,43 @@ describe('TestsMoreMenu', () => {
     await waitFor(() => expect(mockToast.error).toHaveBeenCalled())
   })
 })
+
+describe('TestsMoreMenu: New flow', () => {
+  const withFlowsReady = (ready: boolean): void => {
+    Object.assign(window, { api: { ...api, flowsReady: vi.fn().mockResolvedValue(ready) } })
+  }
+
+  it('has no New flow item without a handler', () => {
+    render(<TestsMoreMenu tag={null} />)
+    open()
+    expect(screen.queryByRole('menuitem', { name: 'New flow…' })).not.toBeInTheDocument()
+  })
+
+  it('is disabled with the set-up tooltip until main says flows are set up', async () => {
+    withFlowsReady(false)
+    const onNewFlow = vi.fn()
+    render(<TestsMoreMenu tag={null} onNewFlow={onNewFlow} />)
+    open()
+    const item = screen.getByRole('menuitem', { name: 'New flow…' })
+    await waitFor(() => expect(window.api.flowsReady).toHaveBeenCalled())
+    expect(item).toBeDisabled()
+    expect(item).toHaveAttribute('title', en.tooltips.tests.flowsNotReady)
+    expect(en.tooltips.tests.flowsNotReady).toBe(
+      'Set up flows first: run raider flow init in this project'
+    )
+    fireEvent.click(item)
+    expect(onNewFlow).not.toHaveBeenCalled()
+  })
+
+  it('starts a new flow once flows are set up', async () => {
+    withFlowsReady(true)
+    const onNewFlow = vi.fn()
+    render(<TestsMoreMenu tag={null} onNewFlow={onNewFlow} />)
+    open()
+    const item = screen.getByRole('menuitem', { name: 'New flow…' })
+    await waitFor(() => expect(item).toBeEnabled())
+    expect(item).toHaveAttribute('title', en.tooltips.tests.newFlow)
+    fireEvent.click(item)
+    expect(onNewFlow).toHaveBeenCalledTimes(1)
+  })
+})

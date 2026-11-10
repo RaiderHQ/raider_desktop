@@ -104,6 +104,8 @@ export async function setPickMode(
     endPickMode()
     return { success: true }
   }
+  // A flow has no checks: never pick an element to check while one is recorded
+  if (purpose === 'assert' && appState.recordingMode === 'flow') return { success: false }
   // Picking covers the top frame only: the recorder preload doesn't run in iframes, so a click
   // inside one picks nothing. The app doesn't offer picking for steps inside frames.
   const wc = guest()
@@ -187,6 +189,8 @@ export function handleShowAssertionContextMenu(senderId: number, data: unknown):
   }
   // While picking, a right-click must not open a second menu over the pick
   if (appState.pickMode) return
+  // A flow has no checks (nor waits, which share the menu)
+  if (appState.recordingMode === 'flow') return
   const request = assertionRequestFrom(data)
   if (request) showAssertionContextMenu(null, request)
 }
@@ -210,7 +214,7 @@ export function handleRecorderPicked(senderId: number, data: unknown): void {
   if (appState.pickPurpose === 'assert') {
     // Pick mode ends first: a popup that blocks or throws must not leave it on
     endPickMode({ cancelled: true, reason: 'asserted' })
-    showAssertionContextMenu(null, request)
+    if (appState.recordingMode !== 'flow') showAssertionContextMenu(null, request)
     return
   }
   endPickMode({ element })

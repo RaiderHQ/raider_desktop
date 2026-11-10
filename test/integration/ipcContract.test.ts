@@ -88,6 +88,9 @@ describe('IPC Contract', () => {
 
     'getTests',
     'listProjectTests',
+    'listProjectFlows',
+    'flowsReady',
+    'convertToFlow',
     'mapFailedStep',
     'openCodeTest',
     'getProjectLayout',

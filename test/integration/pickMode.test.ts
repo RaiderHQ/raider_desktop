@@ -27,6 +27,7 @@ vi.mock('../../src/main/handlers/appState', () => ({
   appState: {
     pickMode: false,
     pickPurpose: 'repick',
+    recordingMode: 'test',
     recorderWebContentsId: null,
     activeTraceDir: null,
     mainWindow: { webContents: { id: 1, send: (...args: unknown[]): unknown => mainSend(...args) } }
@@ -46,6 +47,7 @@ import stopRecordingMain from '../../src/main/handlers/recording/stopRecordingMa
 import { appState } from '../../src/main/handlers/appState'
 
 const state = appState as unknown as {
+  recordingMode: 'test' | 'flow'
   pickMode: boolean
   pickModeEndedAt: number
   recorderWebContentsId: number | null
@@ -73,6 +75,7 @@ describe('pick mode in main', () => {
       isLoading: () => loading
     })
     state.recorderWebContentsId = 7
+    state.recordingMode = 'test'
   })
 
   afterEach(() => {
@@ -260,6 +263,39 @@ describe('pick mode in main', () => {
     it('ignores a payload that is not an object', () => {
       handleShowAssertionContextMenu(7, 'x')
       expect(showMenu).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('recording a flow', () => {
+    beforeEach(() => {
+      state.recordingMode = 'flow'
+    })
+
+    it('refuses a pick for a check and never starts picking', async () => {
+      expect(await pickOn(() => handleSetPickMode(1, true, 'assert'))).toEqual({ success: false })
+      expect(await pickOn(() => setPickMode(true, 'assert'))).toEqual({ success: false })
+      expect(state.pickMode).toBe(false)
+      expect(guestSend).not.toHaveBeenCalled()
+    })
+
+    it('still allows a pick for a new element, and turning picking off', async () => {
+      expect(await pickOn(() => handleSetPickMode(1, true, 'repick'))).toEqual({ success: true })
+      expect(await handleSetPickMode(1, false, 'assert')).toEqual({ success: true })
+      expect(state.pickMode).toBe(false)
+    })
+
+    it('does not show the assertion menu on a right-click', () => {
+      handleShowAssertionContextMenu(7, { strategy: 'css', selector: '#x' })
+      expect(showMenu).not.toHaveBeenCalled()
+    })
+
+    it('does not show the assertion menu for a check pick started before the flow', async () => {
+      state.recordingMode = 'test'
+      await pickOn(() => handleSetPickMode(1, true, 'assert'))
+      state.recordingMode = 'flow'
+      handleRecorderPicked(7, { strategy: 'id', selector: 'q', innerText: 'Search' })
+      expect(showMenu).not.toHaveBeenCalled()
+      expect(state.pickMode).toBe(false)
     })
   })
 

@@ -17,7 +17,12 @@ import type {
   LegacyRunResult,
   PrepareTestRunResult
 } from '@shared/types/prepareRun'
-import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
+import type {
+  CodeTestView,
+  ConvertToFlowResult,
+  ProjectFlowEntry,
+  ProjectTestEntry
+} from '@shared/types/projectTest'
 import type { ProjectFileResult } from '@shared/types/projectFiles'
 import type { ScaffoldParams, ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
@@ -183,6 +188,12 @@ const api = {
 
   getTests: async (): Promise<Test[]> => ipcRenderer.invoke('get-tests'),
   listProjectTests: (): Promise<ProjectTestEntry[]> => ipcRenderer.invoke('list-project-tests'),
+  listProjectFlows: (): Promise<ProjectFlowEntry[]> => ipcRenderer.invoke('list-project-flows'),
+  flowsReady: (): Promise<boolean> => ipcRenderer.invoke('flows-ready'),
+  convertToFlow: (
+    projectPath: string,
+    request: { testId: string; dropChecks?: boolean }
+  ): Promise<ConvertToFlowResult> => ipcRenderer.invoke('convert-to-flow', projectPath, request),
   openCodeTest: (file: string): Promise<CodeTestView> => ipcRenderer.invoke('open-code-test', file),
   mapFailedStep: (
     projectPath: string,
@@ -292,23 +303,27 @@ const api = {
     }
   },
   // Recording Session Control
-  startRecordingMain: async (): Promise<{
+  startRecordingMain: async (options?: {
+    mode?: 'test' | 'flow'
+  }): Promise<{
     success: boolean
     url: string
     preloadPath: string
     reason?: 'unsupportedUrl'
-  }> => ipcRenderer.invoke('start-recording-main'),
+  }> => ipcRenderer.invoke('start-recording-main', options),
   replayStepsAndRecord: async (
     testName: string,
     stepsToReplay: Step[],
-    rubyCommand: string
+    rubyCommand: string,
+    options?: { mode?: 'test' | 'flow' }
   ): Promise<{
     success: boolean
     url?: string
     preloadPath?: string
     error?: string
     cancelled?: boolean
-  }> => ipcRenderer.invoke('replay-steps-and-record', testName, stepsToReplay, rubyCommand),
+  }> =>
+    ipcRenderer.invoke('replay-steps-and-record', testName, stepsToReplay, rubyCommand, options),
   cancelReplay: async (): Promise<{ success: boolean }> => ipcRenderer.invoke('cancel-replay'),
   replayInWebview: async (
     steps: Step[]
@@ -369,7 +384,10 @@ const api = {
   },
   loadUrlRequest: async (url: string): Promise<CommandType> =>
     ipcRenderer.invoke('load-url-request', url),
-  renderStep: (step: Step): Promise<string> => ipcRenderer.invoke('render-step', step),
+  renderStep: (step: Step, options?: { flow: true }): Promise<string> =>
+    options
+      ? ipcRenderer.invoke('render-step', step, options)
+      : ipcRenderer.invoke('render-step', step),
   exportTest: (
     testName: string,
     steps: Step[]

@@ -88,6 +88,7 @@ const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
 }
 
 const api = {
+  flowsReady: vi.fn().mockResolvedValue(false),
   getTests: vi.fn(),
   listProjectTests: vi.fn(),
   openCodeTest: vi.fn(),
@@ -1554,6 +1555,43 @@ describe('Add validation…', () => {
     await act(async () => ready({ success: true }))
     expect(screen.getByText('testPage.assertPickBanner')).toBeInTheDocument()
     expect(screen.queryByText('testPage.assertPickStarting')).not.toBeInTheDocument()
+  })
+
+  describe('recording a flow', () => {
+    const flow: Test = { ...recorded, kind: 'flow' }
+    const recordingFlow = async (): Promise<void> => {
+      api.getTests.mockResolvedValue([flow, empty])
+      renderPage(flow)
+      await opened()
+      await startRecording()
+      act(() => useRecorderStore.getState().setIsRecording(true))
+    }
+
+    it('hides Check something…, so no check is picked', async () => {
+      await recordingFlow()
+      expect(
+        screen.queryByRole('button', { name: 'testPage.addAssertion' })
+      ).not.toBeInTheDocument()
+      expect(setPick()).not.toHaveBeenCalledWith(true, 'assert')
+    })
+
+    it('shows the flow guide card instead of the test guide, even after the test guide was seen', async () => {
+      localStorage.setItem('recorderGuideSeen', '1')
+      await recordingFlow()
+      for (const key of ['title', 'line1', 'line2', 'line3'])
+        expect(screen.getByText(`recorder.flowGuide.${key}`)).toBeInTheDocument()
+      expect(screen.queryByText('guide.step1')).not.toBeInTheDocument()
+      localStorage.clear()
+    })
+
+    it('has the guide lines in en.json', () => {
+      expect(en.recorder.flowGuide).toEqual({
+        title: 'Recording a flow',
+        line1: 'A flow does a job; it has no checks.',
+        line2: 'Mark a typed value as an input to change it per run.',
+        line3: 'Save it, then run it from the Tests list.'
+      })
+    })
   })
 
   it('stopping closes the reopened guide card', async () => {

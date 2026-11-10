@@ -43,7 +43,10 @@ import isSystemRubyInstalled from './handlers/ruby/isSystemRubyInstalled'
 import installRbenvAndRuby from './handlers/ruby/installRbenvAndRuby'
 import installGems from './handlers/ruby/installGems'
 import {
+  convertToFlowHandler,
+  flowsReadyHandler,
   getProjectLayoutHandler,
+  listProjectFlowsHandler,
   listProjectTestsHandler,
   openCodeTestHandler,
   recordOverExampleHandler
@@ -114,7 +117,7 @@ import getProjectConfig from './handlers/config/getProjectConfig'
 import { spawnTerminal, writeTerminal, resizeTerminal, killTerminal } from './handlers/terminal/terminalManager'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { Step } from '@shared/types/step'
-import { renderStep } from './codegen/steps'
+import { renderStepHandler } from './handlers/recording/renderStepHandler'
 import { applyUtf8Locale } from './utils/locale'
 
 /** The recents list, or nothing: a bad file in userData must never break the app */
@@ -182,6 +185,8 @@ function createWindow(): void {
 
   resetRecordingOnWindowLoss(newMainWindow, () => {
     appState.recording = false
+    // A recorder left in flow mode by a lost page would make every new test a flow
+    appState.recordingMode = 'test'
     setRecordingMenuState(false)
   })
 
@@ -337,11 +342,17 @@ app.whenReady().then(() => {
   ipcMain.handle('install-gems', (_event, rubyCommand: string, gems: string[]) =>
     installGems(rubyCommand, gems)
   )
-  ipcMain.handle('render-step', (_event, step: Step) =>
-    renderStep(step, { testIdAttribute: appState.layout?.testIdAttribute })
+  ipcMain.handle('render-step', (_event, step: Step, options?: unknown) =>
+    renderStepHandler(step, options)
   )
   ipcMain.handle('get-tests', getTests)
   ipcMain.handle('list-project-tests', listProjectTestsHandler)
+  ipcMain.handle('list-project-flows', listProjectFlowsHandler)
+  ipcMain.handle('flows-ready', flowsReadyHandler)
+  // Only the payload reaches the handler, which validates it; main reads the test itself
+  ipcMain.handle('convert-to-flow', (_event, projectPath: unknown, request: unknown) =>
+    convertToFlowHandler(projectPath, request)
+  )
   ipcMain.handle('open-code-test', (_event, file: string) => openCodeTestHandler(file))
   ipcMain.handle('get-project-layout', getProjectLayoutHandler)
   ipcMain.handle('upgrade-ruby-raider', (_event, projectPath: unknown, rubyCommand: unknown) =>
@@ -427,11 +438,12 @@ app.whenReady().then(() => {
     return { selectorPriority, testIdAttribute }
   })
   ipcMain.handle('load-url-request', (_event, url: string) => loadUrlRequest(url))
-  ipcMain.handle('start-recording-main', startRecordingMain)
+  // Only the options reach it: the IPC event must never be read as the recorder mode
+  ipcMain.handle('start-recording-main', (_event, options: unknown) => startRecordingMain(options))
   ipcMain.handle(
     'replay-steps-and-record',
-    (event, testName: string, stepsToReplay: Step[], rubyCommand: string) =>
-      replayStepsAndRecord(event, testName, stepsToReplay, rubyCommand)
+    (event, testName: string, stepsToReplay: Step[], rubyCommand: string, options: unknown) =>
+      replayStepsAndRecord(event, testName, stepsToReplay, rubyCommand, options)
   )
   ipcMain.handle('cancel-replay', () => {
     if (appState.activeReplayProcess && !appState.activeReplayProcess.killed) {

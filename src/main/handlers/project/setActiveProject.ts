@@ -64,6 +64,8 @@ function clearActiveProject(): void {
 async function activate(projectPath: string | null): Promise<ActivationResult> {
   try {
     appState.sessionUrl = null
+    // A flow recording belongs to the project it started in
+    appState.recordingMode = 'test'
     if (projectPath === null) {
       clearActiveProject()
     } else {

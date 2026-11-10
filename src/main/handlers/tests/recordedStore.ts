@@ -1,15 +1,25 @@
+import { randomUUID } from 'crypto'
 import { appState } from '../appState'
 import {
   CodeOwnedError,
+  convertibleTest,
   deleteRecordedTest,
+  NotConvertibleError,
+  FlowIdError,
+  FlowIdTakenError,
+  FlowRecordsUnsafeError,
+  FlowsNotReadyError,
+  FlowInputClashError,
+  saveRecordedFlow,
   saveRecordedTest,
   setTagsForFile
 } from './recordedTests'
+import { FlowHasChecksError } from '../../codegen/flowFile'
 import { safeError } from '../../utils/safeLog'
 import { isStep } from '../../../shared/types/step'
 import { normalizeTags } from '../../../shared/tags'
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
-import type { Sidecar } from '../../../shared/types/projectTest'
+import type { ConvertToFlowResult, Sidecar } from '../../../shared/types/projectTest'
 import type { Test } from '../../../shared/types/test'
 
 /**
@@ -97,18 +107,65 @@ const fromSidecar = (sidecar: Sidecar, previous?: Test): Test => ({
   file: sidecar.file,
   ownership: 'recorded',
   ...(sidecar.tags && { tags: sidecar.tags }),
+  ...(sidecar.kind && { kind: sidecar.kind }),
+  ...(sidecar.inputs && { inputs: sidecar.inputs }),
   ...(previous?.hasTrace && { hasTrace: true })
 })
 
 export type SaveResult = { success: true; test: Test } | { success: false; error: string }
 
+export const FLOW_HAS_CHECKS_ERROR = 'A flow has no checks. Remove the check to save it.'
+/** The snapshot calls it a test but its record on disk is a flow's (changed outside Raider) */
+export const FLOW_SAVE_UNAVAILABLE_ERROR =
+  'This flow was changed outside Raider. Open the project again to save it.'
+export const FLOWS_NOT_READY_ERROR = 'Set up flows first: run raider flow init in this project.'
+export const FLOW_RECORDS_UNSAFE_ERROR =
+  "Raider's flow records folder (.raider/tests/flows) is a link or not a folder, so the flow wasn't saved."
+export const FLOW_ID_TAKEN_ERROR =
+  "Another test or flow uses the same id, so Raider can't save this one."
+
+const hasCheck = (test: Test): boolean => test.steps.some((step) => step.kind === 'assert')
+
+/**
+ * Whether `input` goes to the flow writer, or why it can't be saved at all. Kind belongs to main:
+ * for a known test the snapshot's record (read from its sidecar) decides; the renderer's kind,
+ * or `newIsFlow` (the recorder records a flow), only name a new one. With a check every sign
+ * counts, deliberately: a known test the renderer calls a flow is refused too. The spec writer
+ * then refuses any id a flow's record holds (FlowIdError).
+ */
+function routeOf(
+  previous: Test | undefined,
+  input: Test,
+  newIsFlow: boolean
+): 'test' | 'flow' | { error: string } {
+  const check = hasCheck(input)
+  const saysFlow = input.kind === 'flow'
+  const flow = previous?.kind === 'flow' || (previous ? check && saysFlow : saysFlow || newIsFlow)
+  if (!flow) return 'test'
+  return check ? { error: FLOW_HAS_CHECKS_ERROR } : 'flow'
+}
+
+/** The fixed message for a flow writer's refusal, or null for any other error. */
+function flowError(error: unknown): string | null {
+  if (error instanceof FlowHasChecksError) return FLOW_HAS_CHECKS_ERROR
+  if (error instanceof FlowsNotReadyError) return FLOWS_NOT_READY_ERROR
+  if (error instanceof FlowIdTakenError) return FLOW_ID_TAKEN_ERROR
+  if (error instanceof FlowRecordsUnsafeError) return FLOW_RECORDS_UNSAFE_ERROR
+  // Built from a name that passed the input-name rule, so it is safe to show as is
+  if (error instanceof FlowInputClashError) return error.message
+  return null
+}
+
 /**
  * Saves `input` as a project file and keeps it in the snapshot. A test edited in code
- * is never rewritten: it comes back as `codeOwned` and is shown as such.
+ * is never rewritten: it comes back as `codeOwned` and is shown as such. A flow is never
+ * written here, so it never gets a check, whichever handler saves it. `newIsFlow`: a test
+ * this snapshot doesn't know is a flow (save-recording while the recorder records one).
  */
 export async function saveRecordedTestInProject(
   store: FilesStore,
-  input: Test
+  input: Test,
+  { newIsFlow = false }: { newIsFlow?: boolean } = {}
 ): Promise<SaveResult> {
   if (!isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
   if (!isStorableTest(input)) return { success: false, error: INVALID_TEST_ERROR }
@@ -118,12 +175,27 @@ export async function saveRecordedTestInProject(
   // all. Unknown (undefined) still scans: null would mean "no sidecar" and create a second file
   const previous = store.tests.get(test.id)
 
+  // A flow goes to flows/<name>_flow.rb; the spec writer must never take a flow
+  const route = routeOf(previous, input, newIsFlow)
+  if (typeof route === 'object') return { success: false, error: route.error }
+
   let sidecar: Sidecar
   try {
-    sidecar = await saveRecordedTest(store.projectPath, store.layout, test, {
-      knownFile: previous?.file
-    })
+    sidecar =
+      route === 'flow'
+        ? await saveRecordedFlow(store.projectPath, store.layout, test)
+        : await saveRecordedTest(store.projectPath, store.layout, test, {
+            knownFile: previous?.file
+          })
   } catch (error) {
+    const refused = flowError(error)
+    if (refused) return { success: false, error: refused }
+    if (error instanceof FlowIdError) {
+      return {
+        success: false,
+        error: hasCheck(test) ? FLOW_HAS_CHECKS_ERROR : FLOW_SAVE_UNAVAILABLE_ERROR
+      }
+    }
     if (!(error instanceof CodeOwnedError)) throw error
     // Tell the renderer once: re-sending on every refused autosave would keep resetting its test
     if (previous && previous.ownership !== 'codeOwnedWasRecorded' && isCurrent(store)) {
@@ -176,4 +248,61 @@ export async function removeRecordedTest(store: FilesStore, testId: string): Pro
   }
   store.tests.delete(testId)
   return { success: true }
+}
+
+export const CONVERT_FAILED_ERROR = 'This test could not be saved as a flow.'
+export const CONVERT_NOT_FOUND_ERROR = 'This test could not be found.'
+export const CONVERT_FLOW_ERROR = 'This is already a flow.'
+export const CONVERT_CODE_OWNED_ERROR =
+  "This test was changed in code, so Raider can't save it as a flow."
+
+const CONVERT_REFUSALS = {
+  notFound: CONVERT_NOT_FOUND_ERROR,
+  flow: CONVERT_FLOW_ERROR,
+  codeOwned: CONVERT_CODE_OWNED_ERROR
+} as const
+
+/**
+ * Saves a copy of the recorded test `testId` as a new flow, under a new id, with the steps
+ * read from its record here (never from the renderer). The test itself is left as it is.
+ * With checks, nothing is written and their ids come back, unless `dropChecks` (the user
+ * confirmed), which leaves them out of the copy only.
+ */
+export async function convertToFlow(
+  store: FilesStore,
+  testId: string,
+  dropChecks: boolean
+): Promise<ConvertToFlowResult> {
+  if (!isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
+  let source: Sidecar
+  try {
+    source = await convertibleTest(store.projectPath, testId)
+  } catch (error) {
+    if (error instanceof NotConvertibleError) {
+      return { success: false, error: CONVERT_REFUSALS[error.reason] }
+    }
+    throw error
+  }
+  const checks = source.steps.filter((step) => step.kind === 'assert').map((step) => step.id)
+  if (checks.length > 0 && !dropChecks) {
+    return { success: false, error: 'has-checks', stepIds: checks }
+  }
+  const flow: Test = {
+    id: randomUUID(),
+    name: source.name,
+    url: source.url,
+    steps: source.steps.filter((step) => step.kind !== 'assert')
+  }
+  let sidecar: Sidecar
+  try {
+    sidecar = await saveRecordedFlow(store.projectPath, store.layout, flow)
+  } catch (error) {
+    const refused = flowError(error)
+    if (refused) return { success: false, error: refused }
+    throw error
+  }
+  if (!isCurrent(store)) return { success: false, error: PROJECT_CHANGED_ERROR }
+  const saved = fromSidecar(sidecar)
+  store.tests.set(saved.id, saved)
+  return { success: true, test: saved }
 }

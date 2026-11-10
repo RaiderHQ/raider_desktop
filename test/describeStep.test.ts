@@ -1,5 +1,5 @@
 import { describeStep, foundBy } from '@shared/describeStep'
-import { englishText } from '@shared/describeStepEnglish'
+import { describeStepEnglish, englishText } from '@shared/describeStepEnglish'
 import type { ElementTarget } from '@shared/types/step'
 
 const labelled: ElementTarget = { strategy: 'id', value: 'login', label: 'Log in' }
@@ -73,6 +73,18 @@ describe('describeStep', () => {
       key: 'recorder.commandParser.typeText',
       values: { element: 'Log in', text: 'bob' }
     })
+  })
+
+  it('names the input a flow step reads, and keeps the plain title without one', () => {
+    const step = { id, kind: 'type' as const, element: labelled, text: '8', inputName: 'hours' }
+    expect(describeStep(step)).toEqual({
+      key: 'recorder.commandParser.typeTextInput',
+      values: { element: 'Log in', text: '8', name: 'hours' }
+    })
+    expect(describeStepEnglish(step)).toBe('Type "8" into "Log in" as input hours')
+    expect(describeStepEnglish({ id, kind: 'type', element: labelled, text: '8' })).toBe(
+      'Type "8" into "Log in"'
+    )
   })
 
   it('describes a secret type step by where its value comes from, never by a value', () => {

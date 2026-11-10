@@ -1,5 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtemp, mkdir, readFile, writeFile, rm, access, readdir, chmod } from 'fs/promises'
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  writeFile,
+  rm,
+  access,
+  readdir,
+  chmod,
+  symlink
+} from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -259,6 +269,241 @@ describe('recorded tests as project files', () => {
   it('a save without a project says so', async () => {
     const result = await saveRecording(win, project, checkout())
     expect(result).toEqual({ success: false, error: 'No project is open.' })
+  })
+})
+
+describe('a flow never gets a check', () => {
+  const assertStep = {
+    id: 'a1',
+    kind: 'assert',
+    check: 'displayed',
+    element: { strategy: 'id', value: 'done' }
+  } as const
+  const withCheck = (test: Test): Test => ({ ...test, steps: [...test.steps, assertStep] })
+  const FLOW_CHECK_ERROR = 'A flow has no checks. Remove the check to save it.'
+
+  // The recorder records a flow: a recorder guest is attached in flow mode
+  const recordFlow = (): void => {
+    appState.recordingMode = 'flow'
+    appState.recorderWebContentsId = 1
+  }
+
+  beforeEach(() => {
+    appState.recordingMode = 'test'
+    appState.recorderWebContentsId = null
+  })
+  afterEach(() => {
+    appState.recordingMode = 'test'
+    appState.recorderWebContentsId = null
+  })
+
+  it('rejects an assert step for a flow from the renderer', async () => {
+    await setActiveProject(project)
+    appState.tests.set('t-flow', { ...checkout('t-flow'), kind: 'flow' })
+
+    // The renderer leaves kind out (or says test): main's record of the flow wins
+    for (const kind of [undefined, 'test'] as const) {
+      const result = await saveRecording(win, project, { ...withCheck(checkout('t-flow')), kind })
+      expect(result).toEqual({ success: false, error: FLOW_CHECK_ERROR })
+    }
+    expect(await exists(join(project, 'spec'))).toBe(false)
+  })
+
+  it('rejects an assert step when the renderer says the test is a flow', async () => {
+    await setActiveProject(project)
+    const result = await saveRecording(win, project, { ...withCheck(checkout()), kind: 'flow' })
+    expect(result).toEqual({ success: false, error: FLOW_CHECK_ERROR })
+    expect(await exists(join(project, 'spec'))).toBe(false)
+  })
+
+  it('rejects an assert step in a new test saved while a flow is recorded', async () => {
+    await setActiveProject(project)
+    recordFlow()
+    const result = await saveRecording(win, project, withCheck(checkout()))
+    expect(result).toEqual({ success: false, error: FLOW_CHECK_ERROR })
+  })
+
+  it('still saves an existing test with a check while a flow is recorded', async () => {
+    await setActiveProject(project)
+    await saveRecording(win, project, checkout())
+    recordFlow()
+    expect((await saveRecording(win, project, withCheck(checkout()))).success).toBe(true)
+  })
+
+  it('saves a new test as a test when flow mode is stale and no recorder is attached', async () => {
+    await mkdir(join(project, 'flows'))
+    await writeFile(join(project, 'flows', 'flow_helper.rb'), '# helper\n')
+    await setActiveProject(project)
+    appState.recordingMode = 'flow'
+    appState.recorderWebContentsId = null
+    const result = await saveRecording(win, project, checkout())
+    expect(result).toMatchObject({ success: true, test: { file: 'spec/checkout_spec.rb' } })
+    expect(result.test?.kind).not.toBe('flow')
+    expect(await exists(join(project, 'flows', 'checkout_flow.rb'))).toBe(false)
+  })
+
+  it('saves a check in a test', async () => {
+    await setActiveProject(project)
+    expect((await saveRecording(win, project, withCheck(checkout()))).success).toBe(true)
+  })
+
+  it("rejects a check for a test whose sidecar is a flow, even when it isn't in the snapshot", async () => {
+    await setActiveProject(project)
+    await saveRecording(win, project, checkout())
+    const json = sidecarJson('spec/checkout_spec.rb')
+    await writeFile(
+      json,
+      JSON.stringify({ ...JSON.parse(await readFile(json, 'utf-8')), kind: 'flow' })
+    )
+    appState.tests.delete('t-checkout')
+
+    // A clean save first must not rewrite the flow's sidecar as a test's
+    const clean = await saveRecording(win, project, checkout())
+    expect(clean.success).toBe(false)
+    expect(JSON.parse(await readFile(json, 'utf-8')).kind).toBe('flow')
+
+    const result = await saveRecording(win, project, withCheck(checkout()))
+    expect(result).toEqual({ success: false, error: FLOW_CHECK_ERROR })
+  })
+
+  it('refuses a save when the snapshot says test but the sidecar on disk says flow', async () => {
+    await setActiveProject(project)
+    await saveRecording(win, project, checkout())
+    const json = sidecarJson('spec/checkout_spec.rb')
+    await writeFile(
+      json,
+      JSON.stringify({ ...JSON.parse(await readFile(json, 'utf-8')), kind: 'flow' })
+    )
+
+    for (const test of [checkout(), withCheck(checkout())]) {
+      expect((await saveRecording(win, project, test)).success).toBe(false)
+    }
+    expect(JSON.parse(await readFile(json, 'utf-8')).kind).toBe('flow')
+  })
+
+  it('loads the kind from the sidecar, so a reloaded flow keeps refusing checks', async () => {
+    await setActiveProject(project)
+    await saveRecording(win, project, checkout())
+    const json = sidecarJson('spec/checkout_spec.rb')
+    await writeFile(
+      json,
+      JSON.stringify({ ...JSON.parse(await readFile(json, 'utf-8')), kind: 'flow' })
+    )
+    await setActiveProject(null)
+    await setActiveProject(project)
+
+    expect(appState.tests.get('t-checkout')?.kind).toBe('flow')
+    const result = await saveRecording(win, project, withCheck(checkout()))
+    expect(result).toEqual({ success: false, error: FLOW_CHECK_ERROR })
+  })
+
+  it('does not write a flow through the test writer', async () => {
+    await setActiveProject(project)
+    const result = await saveRecording(win, project, { ...checkout(), kind: 'flow' })
+    expect(result.success).toBe(false)
+    expect(await exists(join(project, 'spec'))).toBe(false)
+  })
+
+  it('saves a new flow to flows/<stem>_flow.rb and keeps it a flow on every save', async () => {
+    await mkdir(join(project, 'flows'))
+    await writeFile(join(project, 'flows', 'flow_helper.rb'), '# helper\n')
+    await setActiveProject(project)
+
+    const first = await saveRecording(win, project, { ...checkout('f-new'), kind: 'flow' })
+    expect(first).toMatchObject({
+      success: true,
+      test: { kind: 'flow', file: 'flows/checkout_flow.rb' }
+    })
+    // The renderer leaves kind out on an autosave: main's record keeps it a flow
+    const again = await saveRecording(win, project, { ...checkout('f-new'), name: 'Pay' })
+    expect(again).toMatchObject({
+      success: true,
+      test: { kind: 'flow', file: 'flows/checkout_flow.rb' }
+    })
+    expect((await readSidecar(project, 'flows/checkout_flow.rb'))?.kind).toBe('flow')
+    expect(await exists(join(project, 'spec'))).toBe(false)
+
+    // A new recording while the recorder records a flow is a flow too
+    recordFlow()
+    const fromMode = await saveRecording(win, project, checkout('f-mode'))
+    expect(fromMode).toMatchObject({ success: true, test: { kind: 'flow' } })
+  })
+
+  it('refuses a flow whose steps give one input two values, saying which', async () => {
+    await mkdir(join(project, 'flows'))
+    await writeFile(join(project, 'flows', 'flow_helper.rb'), '# helper\n')
+    await setActiveProject(project)
+    const typing = (id: string, text: string): Test['steps'][number] => ({
+      id,
+      kind: 'type',
+      element: { strategy: 'id', value: 'hours' },
+      text,
+      inputName: 'hours'
+    })
+    const result = await saveRecording(win, project, {
+      ...checkout('f-clash'),
+      kind: 'flow',
+      steps: [typing('s1', '8'), typing('s2', '9')]
+    })
+    expect(result).toEqual({
+      success: false,
+      error: 'Two steps use the input hours with different values.'
+    })
+    expect(await exists(join(project, 'flows', 'checkout_flow.rb'))).toBe(false)
+  })
+
+  it('refuses a test whose id a flow also holds, saying so', async () => {
+    await mkdir(join(project, 'flows'))
+    await writeFile(join(project, 'flows', 'flow_helper.rb'), '# helper\n')
+    await setActiveProject(project)
+    await saveRecording(win, project, checkout())
+    const flow = await saveRecording(win, project, { ...checkout('f-copy'), kind: 'flow' })
+    const json = sidecarJson(flow.test!.file!)
+    await writeFile(
+      json,
+      JSON.stringify({ ...JSON.parse(await readFile(json, 'utf-8')), id: 't-checkout' })
+    )
+
+    const result = await saveRecording(win, project, { ...checkout(), name: 'Checkout 2' })
+    expect(result).toEqual({
+      success: false,
+      error: "Another test or flow uses the same id, so Raider can't save this one."
+    })
+    expect(await exists(join(project, 'spec', 'checkout_2_spec.rb'))).toBe(false)
+  })
+
+  it('says why a flow is not saved when its records folder is a link', async () => {
+    await mkdir(join(project, 'flows'))
+    await writeFile(join(project, 'flows', 'flow_helper.rb'), '# helper\n')
+    await mkdir(join(project, 'elsewhere'))
+    await mkdir(join(project, '.raider', 'tests'), { recursive: true })
+    await symlink(join(project, 'elsewhere'), join(project, '.raider', 'tests', 'flows'))
+    await setActiveProject(project)
+    const result = await saveRecording(win, project, { ...checkout('f-new'), kind: 'flow' })
+    expect(result).toEqual({
+      success: false,
+      error:
+        "Raider's flow records folder (.raider/tests/flows) is a link or not a folder, so the flow wasn't saved."
+    })
+    // A test still saves
+    expect((await saveRecording(win, project, checkout())).success).toBe(true)
+  })
+
+  it('tells the user to set up flows when flows/flow_helper.rb is missing', async () => {
+    await setActiveProject(project)
+    const result = await saveRecording(win, project, { ...checkout(), kind: 'flow' })
+    expect(result).toEqual({
+      success: false,
+      error: 'Set up flows first: run raider flow init in this project.'
+    })
+  })
+
+  it('refuses a malformed test as before, without throwing', async () => {
+    await setActiveProject(project)
+    for (const bad of [{ ...checkout(), steps: 'x' }, { ...checkout(), steps: [null] }, null]) {
+      const result = await saveRecording(win, project, bad as never)
+      expect(result.success).toBe(false)
+    }
   })
 })
 

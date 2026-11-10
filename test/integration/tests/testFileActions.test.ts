@@ -49,7 +49,7 @@ vi.mock('fs', async (importOriginal) => {
 
 import setActiveProject from '../../../src/main/handlers/project/setActiveProject'
 import { appState } from '../../../src/main/handlers/appState'
-import { saveRecordedTest } from '../../../src/main/handlers/tests/recordedTests'
+import { saveRecordedFlow, saveRecordedTest } from '../../../src/main/handlers/tests/recordedTests'
 import {
   MAX_TEST_FILE_BYTES,
   pasteTestFile,
@@ -435,5 +435,50 @@ describe('trashTest', () => {
     expect(await trashTest(project, 'spec/api_spec.rb')).toMatchObject({ success: false })
     expect(await exists(join(project, 'spec/api_spec.rb'))).toBe(true)
     expect(projectDeletions()).toEqual([])
+  })
+})
+
+describe('flows in the Tests list actions', () => {
+  const makeFlow = async (): Promise<string> => {
+    await mkdir(join(project, 'flows'))
+    await writeFile(join(project, 'flows', 'flow_helper.rb'), '# helper\n')
+    const saved = await saveRecordedFlow(project, appState.layout!, rec('fl', 'Fill'))
+    appState.tests.set('fl', { ...rec('fl', 'Fill'), file: saved.file, kind: 'flow' })
+    return saved.file
+  }
+
+  it('refuses Copy of a flow file', async () => {
+    const file = await makeFlow()
+    expect(await readTestFile(project, file)).toEqual({
+      success: false,
+      error: 'This test could not be found.'
+    })
+  })
+
+  it('refuses Paste (or Duplicate) of a flow file', async () => {
+    const file = await makeFlow()
+    const result = await pasteTestFile(project, { text: CODE, sourceFile: file })
+    expect(result).toEqual({ success: false, error: 'This test could not be pasted.' })
+    expect(await exists(join(project, 'flows', 'fill_copy_flow.rb'))).toBe(false)
+  })
+
+  it('moves a recorded flow and its record to the Trash', async () => {
+    const file = await makeFlow()
+    deletions.length = 0
+    expect(await trashTest(project, file)).toEqual({ success: true, testId: 'fl' })
+    expect(trashed.paths).toEqual([
+      join(project, file),
+      join(project, '.raider/tests', `${file}.json`)
+    ])
+    expect(appState.tests.has('fl')).toBe(false)
+  })
+
+  it('never trashes a flow file Raider has no record of, nor a non-flow path in flows/', async () => {
+    await mkdir(join(project, 'flows'))
+    await writeFile(join(project, 'flows', 'hand_flow.rb'), CODE)
+    await writeFile(join(project, 'flows', 'flow_helper.rb'), '# helper\n')
+    expect((await trashTest(project, 'flows/hand_flow.rb')).success).toBe(false)
+    expect((await trashTest(project, 'flows/flow_helper.rb')).success).toBe(false)
+    expect(trashItem).not.toHaveBeenCalled()
   })
 })

@@ -14,7 +14,12 @@ import type {
   LegacyRunResult,
   PrepareTestRunResult
 } from '@shared/types/prepareRun'
-import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
+import type {
+  CodeTestView,
+  ConvertToFlowResult,
+  ProjectFlowEntry,
+  ProjectTestEntry
+} from '@shared/types/projectTest'
 import type { ProjectFileResult } from '@shared/types/projectFiles'
 import type { ScaffoldParams, ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { QuickProject } from '@shared/types/quickProject'
@@ -139,12 +144,25 @@ export interface WindowApi extends RunApi {
 
   // --- Step Rendering ---
   /** Ruby for one step, in the active project's automation (Selenium or Watir). */
-  renderStep: (step: Step) => Promise<string>
+  /** `{ flow: true }` renders as in a flow file (a typed input reads flow_input) */
+  renderStep: (step: Step, options?: { flow: true }) => Promise<string>
 
   /** The active project's recorded tests, with their steps; [] without a project */
   getTests: () => Promise<Test[]>
   /** Every spec file of the active project (recorded or hand-written); [] without a project */
   listProjectTests: () => Promise<ProjectTestEntry[]>
+  /** The active project's flows (flows/<name>_flow.rb) with their inputs; [] without a project */
+  listProjectFlows: () => Promise<ProjectFlowEntry[]>
+  /** Whether the active project has flows set up (flows/flow_helper.rb) */
+  flowsReady: () => Promise<boolean>
+  /**
+   * Saves a copy of a recorded test as a new flow (the test stays). With checks it returns
+   * `has-checks` and their ids, unless `dropChecks` (confirmed by the user)
+   */
+  convertToFlow: (
+    projectPath: string,
+    request: { testId: string; dropChecks?: boolean }
+  ) => Promise<ConvertToFlowResult>
   /** Read-only view of a listed spec file; rejects for any other path */
   openCodeTest: (file: string) => Promise<CodeTestView>
   /** The recorded step a failed row's frames point into, or why there is none; never rejects */
@@ -216,7 +234,8 @@ export interface WindowApi extends RunApi {
   ) => Promise<{ success: boolean; path?: string; error?: string }>
 
   // --- Recording Session ---
-  startRecordingMain: () => Promise<{
+  /** `mode: 'flow'` records a flow: main then refuses checks */
+  startRecordingMain: (options?: { mode?: 'test' | 'flow' }) => Promise<{
     success: boolean
     url: string
     preloadPath: string
@@ -226,7 +245,8 @@ export interface WindowApi extends RunApi {
   replayStepsAndRecord: (
     testName: string,
     stepsToReplay: Step[],
-    rubyCommand: string
+    rubyCommand: string,
+    options?: { mode?: 'test' | 'flow' }
   ) => Promise<{
     success: boolean
     url?: string

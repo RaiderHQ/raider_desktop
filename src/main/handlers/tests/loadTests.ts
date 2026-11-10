@@ -1,10 +1,10 @@
 import { recordedOwnership } from './listProjectTests'
-import { isSafeRelPath, listSidecars } from './sidecar'
+import { listSidecars } from './sidecar'
+import { isRecordedRel } from './recordedTests'
+import { isFlowFileRel } from '../../../shared/flows'
 import { safeError } from '../../utils/safeLog'
 import type { Sidecar } from '../../../shared/types/projectTest'
 import type { Test } from '../../../shared/types/test'
-
-const isSpecRel = (rel: unknown): rel is string => isSafeRelPath(rel) && rel.endsWith('_spec.rb')
 
 async function testFor(projectPath: string, sidecar: Sidecar): Promise<Test> {
   const base = {
@@ -13,7 +13,12 @@ async function testFor(projectPath: string, sidecar: Sidecar): Promise<Test> {
     url: sidecar.url,
     steps: sidecar.steps,
     file: sidecar.file,
-    ...(sidecar.tags && { tags: sidecar.tags })
+    ...(sidecar.tags && { tags: sidecar.tags }),
+    // Where a record sits says what it is: a flow file's record is a flow
+    ...(isFlowFileRel(sidecar.file)
+      ? { kind: 'flow' as const }
+      : sidecar.kind && { kind: sidecar.kind }),
+    ...(sidecar.inputs && { inputs: sidecar.inputs })
   }
   try {
     const { ownership } = await recordedOwnership(projectPath, sidecar)
@@ -26,14 +31,14 @@ async function testFor(projectPath: string, sidecar: Sidecar): Promise<Test> {
 }
 
 /**
- * Every recorded test of the project, from its sidecars. A sidecar only counts where its own
+ * Every recorded test and flow of the project, from its sidecars. A sidecar only counts where its own
  * `file` says (the same rule as findSidecarById); a duplicate id resolves to the first.
  */
 export async function loadRecordedTests(projectPath: string): Promise<Test[]> {
   const seen = new Set<string>()
   const tests: Test[] = []
   for (const { fileRel, sidecar } of await listSidecars(projectPath)) {
-    if (!sidecar || sidecar.file !== fileRel || !isSpecRel(fileRel) || seen.has(sidecar.id)) {
+    if (!sidecar || sidecar.file !== fileRel || !isRecordedRel(fileRel) || seen.has(sidecar.id)) {
       continue
     }
     seen.add(sidecar.id)

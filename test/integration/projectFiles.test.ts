@@ -555,6 +555,24 @@ describe('recorded tests', () => {
     expect(await read('spec/login_spec.rb')).toBe('login')
   })
 
+  it('refuses to rename or trash a recorded flow, or the flows folder holding it', async () => {
+    await mkdir(join(project, 'flows'))
+    await writeFile(join(project, 'flows', 'fill_flow.rb'), 'flow')
+    await recordSidecar('flows/fill_flow.rb')
+    for (const rel of ['flows/fill_flow.rb', 'flows']) {
+      expect(await renameProjectEntry(project, rel, 'other')).toMatchObject({
+        success: false,
+        code: 'recorded'
+      })
+      expect(await trashProjectEntry(project, rel)).toMatchObject({
+        success: false,
+        code: 'recorded'
+      })
+    }
+    expect(trashItem).not.toHaveBeenCalled()
+    expect(await read('flows/fill_flow.rb')).toBe('flow')
+  })
+
   it('still renames and trashes what is not recorded, even next to a recorded spec', async () => {
     await recordSidecar('spec/login_spec.rb')
     expect((await renameProjectEntry(project, 'spec/pages', 'screens')).success).toBe(true)

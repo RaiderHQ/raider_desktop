@@ -106,7 +106,12 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
               headerExtra={
                 <>
                   <TagFilter rows={rows} value={activeTag} onChange={setTagFilter} />
-                  <TestsMoreMenu tag={activeTag} />
+                  <TestsMoreMenu
+                    tag={activeTag}
+                    onNewFlow={() =>
+                      void navigate('/overview/tests/new', { state: { kind: 'flow' } })
+                    }
+                  />
                 </>
               }
               selectedKey={selectedKey}

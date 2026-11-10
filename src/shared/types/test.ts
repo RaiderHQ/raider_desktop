@@ -1,6 +1,6 @@
 import type { Step } from './step'
 import type { TraceStep } from './traceStep'
-import type { Ownership } from './projectTest'
+import type { FlowInput, Ownership, RecordingKind } from './projectTest'
 
 export interface Test {
   id: string
@@ -15,4 +15,8 @@ export interface Test {
   file?: string
   /** Tags written as RSpec metadata on the describe line (recorded project tests) */
   tags?: string[]
+  /** Absent means a test */
+  kind?: RecordingKind
+  /** A flow's inputs */
+  inputs?: FlowInput[]
 }

@@ -6,7 +6,8 @@ import { appState } from '../appState'
 import { activationSettled } from '../project/setActiveProject'
 import deleteTrace from '../trace/deleteTrace'
 import { NO_PROJECT_ERROR, PROJECT_CHANGED_ERROR } from './recordedStore'
-import { inTestQueue, isSpecRel, specRoot } from './recordedTests'
+import { inTestQueue, isRecordedRel, isSpecRel, specRoot } from './recordedTests'
+import { isFlowFileRel } from '../../../shared/flows'
 import {
   assertRealInside,
   readSidecar,
@@ -273,10 +274,12 @@ export async function trashTest(
   try {
     const project = await openProject(projectPath)
     if ('error' in project) return project
-    if (!isSpecRel(fileRel)) return fail(NOT_FOUND)
+    if (!isRecordedRel(fileRel)) return fail(NOT_FOUND)
     const root = project.projectPath
     const record = await recordOf(root, fileRel)
-    if (!isListedSpec(project, fileRel, record)) return fail(NOT_FOUND)
+    // A flow file goes only when Raider recorded it; a spec as before
+    const listed = isFlowFileRel(fileRel) ? record !== null : isListedSpec(project, fileRel, record)
+    if (!listed) return fail(NOT_FOUND)
     const testId = record?.id
     const target = resolveInside(root, fileRel)
     const tests = appState.tests
