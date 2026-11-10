@@ -118,9 +118,24 @@ describe('scheduleArgs', () => {
       '--notify',
       '--input',
       'hours=5',
-      '--input',
       'who=a=b'
     ])
+  })
+
+  it('puts every input after a single --input (Thor keeps only the last repeated flag)', () => {
+    const s = validateSchedule({ ...base, inputs: { hours: '5', project: 'Apollo' } })
+    const args = scheduleArgs('log_hours', s)
+    expect(args.filter((a) => a === '--input')).toHaveLength(1)
+    expect(args.slice(-3)).toEqual(['--input', 'hours=5', 'project=Apollo'])
+  })
+
+  it('adds no --input when the flow has no inputs', () => {
+    expect(scheduleArgs('r', validateSchedule(base))).not.toContain('--input')
+  })
+
+  it('keeps a value that starts with - inside its name=value token', () => {
+    const s = validateSchedule({ ...base, inputs: { delta: '-5', flag: '--project' } })
+    expect(scheduleArgs('r', s).slice(-3)).toEqual(['--input', 'delta=-5', 'flag=--project'])
   })
 
   it('uses :MM for an hourly rule and adds --on for a weekly one', () => {
