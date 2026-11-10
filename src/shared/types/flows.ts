@@ -27,6 +27,14 @@ export interface FlowLastRun {
   resultsDir: string
 }
 
+/** A flow run's results, from the gem's run log (runs.jsonl) */
+export interface FlowLastResults {
+  /** Project-relative `flow-results/<name>/<stamp>`, checked to be that flow's own folder */
+  resultsDir: string
+  finishedAt: string
+  status: FlowLastRun['status']
+}
+
 export interface GemFlow {
   name: string
   file: string

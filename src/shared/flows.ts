@@ -59,7 +59,8 @@ export const FLOW_AT = /^([01]\d|2[0-3]):[0-5]\d$/
 const SCHEDULE_KEYS = ['every', 'at', 'on', 'retries', 'notify', 'inputs']
 const MAX_RETRIES = 3
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+/** True for a plain `{}` object (not an array, null or a class instance). */
+export const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
   const proto = Object.getPrototypeOf(value)
   return proto === Object.prototype || proto === null
@@ -127,4 +128,23 @@ export function scheduleArgs(name: string, s: FlowSchedule): string[] {
     ...(s.notify ? ['--notify'] : []),
     ...Object.entries(s.inputs).flatMap(([k, v]) => ['--input', `${k}=${v}`])
   ]
+}
+
+// --- A flow run's results (ruby_raider 4.1+) ---
+
+/** Where the gem writes each flow run's results: `flow-results/<name>/<UTC stamp>[-n]` */
+export const FLOW_RESULTS_ROOT = 'flow-results'
+/** The folder name of one flow run's results: a UTC stamp, `-n` when two runs share a second */
+export const FLOW_RESULTS_STAMP = /^\d{8}T\d{6}Z(-\d+)?$/
+const FLOW_RESULTS_DIR = /^flow-results\/([a-z0-9_]{1,60})\/(\d{8}T\d{6}Z(?:-\d+)?)$/
+
+/**
+ * The flow name of a project-relative results folder `flow-results/<name>/<stamp>`, or null.
+ * When `name` is given, the folder must belong to that flow.
+ */
+export function flowOfResultsDir(rel: unknown, name?: string): string | null {
+  if (typeof rel !== 'string') return null
+  const flow = FLOW_RESULTS_DIR.exec(rel)?.[1]
+  if (flow === undefined || !isFlowName(flow)) return null
+  return name === undefined || flow === name ? flow : null
 }
