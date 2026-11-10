@@ -5,8 +5,6 @@ interface ContextMenuItem {
   label: string
   onClick: () => void
   disabled?: boolean
-  /** Why the item is disabled, or what it does (shown on hover) */
-  title?: string
   /** Starts a new group: a line above the item */
   separatorBefore?: boolean
 }
@@ -111,7 +109,6 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
               onClose()
             }}
             disabled={item.disabled}
-            title={item.title}
             className="block w-full text-left px-3 py-1.5 text-sm text-neutral-dk hover:bg-ruby-sub hover:text-ruby focus:bg-ruby-sub focus:text-ruby focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {item.label}

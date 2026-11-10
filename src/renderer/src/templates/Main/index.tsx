@@ -180,18 +180,9 @@ const MainTemplate: React.FC = (): JSX.Element => {
       setProjectPath(projectPath)
       navigate('/overview')
     })
-    // A failed scheduled run's notification was clicked: the Flows tab of the open project.
-    // The same guards as New test, so the click never drops unsaved work or a recording
-    const offFocusFlows = window.api.onFocusFlowsTab(() => {
-      if (!useProjectStore.getState().projectPath) return
-      if (installModalOpen.current || modalOpen.current || pageModalOpen()) return
-      if (pageEditorDirty() || recorderBusy()) return
-      navigate('/overview', { state: { tab: 'flows' } })
-    })
     return (): void => {
       offMenu()
       offRecent()
-      offFocusFlows()
     }
   }, [])
 

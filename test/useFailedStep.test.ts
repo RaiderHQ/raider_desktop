@@ -206,59 +206,6 @@ describe('useFailedStep', () => {
     expect(readDirectory).toHaveBeenCalledWith('/p/raider-results')
   })
 
-  describe('for a flow', () => {
-    const DIR = 'flow-results/checkout/20261102T100000Z'
-    const flowTest: Test = { ...test, file: 'flows/checkout_flow.rb' }
-    const flowLastResults = vi.fn()
-    // This flow's own folder only: raider-results would answer too, so a wrong read shows
-    const flowReadDirectory = vi.fn(async (dir: string) =>
-      dir === `/p/${DIR}`
-        ? [{ name: 'run.json', type: 'file', path: `/p/${DIR}/run.json` }]
-        : readDirectory(dir)
-    )
-    const flowReadFile = vi.fn(async (path: string) =>
-      path === `/p/${DIR}/run.json`
-        ? { success: true, data: runJson('flows/checkout_flow.rb') }
-        : readFile(path)
-    )
-
-    beforeEach(() => {
-      flowLastResults.mockReset()
-      flowReadDirectory.mockClear()
-      flowReadFile.mockClear()
-      runs = { '/p': runJson('flows/checkout_flow.rb') }
-      window.api = {
-        mapFailedStep,
-        readDirectory: flowReadDirectory,
-        readFile: flowReadFile,
-        flowLastResults
-      } as unknown as typeof window.api
-    })
-
-    it("reads the flow's last run folder and passes it on to main", async () => {
-      flowLastResults.mockResolvedValue({
-        resultsDir: DIR,
-        finishedAt: '2026-11-02T10:00:00Z',
-        status: 'failed'
-      })
-      const { result } = mount('/p', flowTest)
-      await waitFor(() => expect(result.current.status).toBe('mapped'))
-      expect(flowLastResults).toHaveBeenCalledWith('checkout')
-      expect(flowReadDirectory).toHaveBeenCalledWith(`/p/${DIR}`)
-      expect(flowReadDirectory).not.toHaveBeenCalledWith('/p/raider-results')
-      expect(mapFailedStep.mock.calls[0][2]).toMatchObject({ resultsDir: DIR })
-    })
-
-    it('shows nothing when the flow has no last run, never raider-results', async () => {
-      flowLastResults.mockResolvedValue(null)
-      const { result } = mount('/p', flowTest)
-      await waitFor(() => expect(flowLastResults).toHaveBeenCalled())
-      await Promise.resolve()
-      expect(flowReadDirectory).not.toHaveBeenCalled()
-      expect(result.current.status).toBe('none')
-    })
-  })
-
   it('reloads after a run that included the test file, or the whole project', async () => {
     const { result } = mount()
     await waitFor(() => expect(result.current.status).toBe('mapped'))

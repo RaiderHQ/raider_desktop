@@ -14,8 +14,6 @@ export const DOCS_LINKS: Record<DocsLinkId, string> = {
   'docs.shortcuts': `${SITE}/docs/keyboard-shortcuts.html`,
   'docs.running': `${SITE}/docs/running-and-results.html`,
   'docs.dashboard': `${SITE}/docs/running-and-results.html#dashboard`,
-  'docs.flows': `${SITE}/docs/flows-and-schedules.html`,
-  'docs.schedules': `${SITE}/docs/flows-and-schedules.html#schedule-a-flow`,
   'docs.testScreen': `${SITE}/docs/files-and-settings.html`,
   'docs.errors': `${SITE}/docs/troubleshooting.html`,
   'docs.install': `${SITE}/docs/getting-started.html`,

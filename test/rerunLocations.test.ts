@@ -85,14 +85,6 @@ describe('failedLocations', () => {
   it('falls back to results with no run', () => {
     expect(failedLocations(null, [result('spec/b_spec.rb', 2)])).toEqual(['spec/b_spec.rb:2'])
   })
-  it('is empty after a flow run, never the older test failures in raider-results', () => {
-    const run = runWith([], 1)
-    run.finished = {
-      ...run.finished!,
-      flow: { name: 'hello', status: 'failed', resultsDir: null, failedStep: null }
-    }
-    expect(failedLocations(run, [result('spec/a_spec.rb', 5)])).toEqual([])
-  })
   it('removes duplicates', () => {
     const run = runWith([test('a', 'spec/a_spec.rb', 4), test('b', 'spec/a_spec.rb', 4)])
     expect(failedLocations(run, null)).toEqual(['spec/a_spec.rb:4'])

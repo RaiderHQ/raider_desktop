@@ -3,7 +3,6 @@ import type {
   ExampleStatus,
   RunCounts,
   RunEvent,
-  RunFinishedFlow,
   RunFinishedStatus,
   RunPhase,
   RunScope
@@ -48,8 +47,6 @@ export interface RunView {
     exitCode: number | null
     finishedAt: string
     truncated?: boolean
-    /** Set for a flow run: what the gem logged, with the run's own results folder */
-    flow?: RunFinishedFlow
   } | null
 }
 
@@ -152,8 +149,7 @@ export function reduceRun(
           counts: event.counts,
           exitCode: event.exitCode,
           finishedAt: event.finishedAt,
-          ...(event.truncated !== undefined ? { truncated: event.truncated } : {}),
-          ...(event.flow !== undefined ? { flow: event.flow } : {})
+          ...(event.truncated !== undefined ? { truncated: event.truncated } : {})
         }
       }
     }

@@ -68,26 +68,14 @@ describe('runFlowCli', () => {
     expect(options.shell).toBeUndefined()
   })
 
-  it('passes hostile input values as single argv elements, inputs before --project', async () => {
+  it('passes the schedule argv as single elements, then --project', async () => {
     const execFile = execDouble({ stdout: 'Scheduled report' })
-    const schedule = validateSchedule({
-      every: 'day',
-      at: '09:00',
-      retries: 0,
-      notify: false,
-      inputs: { cmd: '$(rm -rf ~)', semi: 'a; rm -rf /' }
-    })
+    const schedule = validateSchedule({ every: 'day', at: '09:00', retries: 0, notify: false })
     await runFlowCli(PROJECT, RBENV, scheduleArgs('report', schedule), {}, depsWith(execFile))
     const args: string[] = execFile.mock.calls[0][1]
-    expect(args).toContain('cmd=$(rm -rf ~)')
-    expect(args).toContain('semi=a; rm -rf /')
-    expect(args.slice(-5)).toEqual([
-      '--input',
-      'cmd=$(rm -rf ~)',
-      'semi=a; rm -rf /',
-      '--project',
-      PROJECT
-    ])
+    expect(args).not.toContain('--input')
+    expect(args.slice(-7)).toEqual(['day', '--at', '09:00', '--retries', '0', '--project', PROJECT])
+    expect(args.slice(-2)).toEqual(['--project', PROJECT])
   })
 
   it('returns stdout and parsed JSON on exit 0', async () => {

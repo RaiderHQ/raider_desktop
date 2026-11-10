@@ -3,9 +3,6 @@ import React, { useState, useRef, useEffect } from 'react'
 interface DropdownOption {
   label: string
   onClick: () => void
-  disabled?: boolean
-  /** Why the option is disabled (shown on hover) */
-  title?: string
 }
 
 interface DropdownProps {
@@ -34,7 +31,6 @@ const Dropdown: React.FC<DropdownProps> = ({
   }
 
   const handleOptionClick = (index: number): void => {
-    if (options[index].disabled) return
     setSelected(index)
     setIsOpen(false)
     options[index].onClick()
@@ -84,14 +80,10 @@ const Dropdown: React.FC<DropdownProps> = ({
                   e.preventDefault()
                   handleOptionClick(index)
                 }}
-                className={`block px-4 py-2 text-sm ${
-                  option.disabled
-                    ? 'text-neutral-md cursor-not-allowed'
-                    : 'text-neutral-dk hover:bg-neutral-lt'
-                } ${index === selected ? 'bg-neutral-bdr' : ''}`}
+                className={`block px-4 py-2 text-sm text-neutral-dk hover:bg-neutral-lt ${
+                  index === selected ? 'bg-neutral-bdr' : ''
+                }`}
                 role="menuitem"
-                aria-disabled={option.disabled || undefined}
-                title={option.title}
               >
                 {option.label}
               </a>

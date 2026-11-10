@@ -10,16 +10,6 @@ describe('recordingGuideSeen', () => {
     expect(hasSeenGuide()).toBe(true)
   })
 
-  it("keeps a flow's guide apart from a test's", () => {
-    markGuideSeen()
-    expect(hasSeenGuide('flow')).toBe(false)
-    markGuideSeen('flow')
-    expect(hasSeenGuide('flow')).toBe(true)
-    localStorage.clear()
-    markGuideSeen('flow')
-    expect(hasSeenGuide('test')).toBe(false)
-  })
-
   it('does not throw when localStorage does', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('blocked')

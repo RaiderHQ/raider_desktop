@@ -27,7 +27,6 @@ const toRow = (e: ProjectTestEntry): TestRow => ({
   testId: e.testId,
   ownership: e.ownership,
   ...(e.missingFile ? { missingFile: true as const } : {}),
-  ...(e.kind === 'flow' ? { kind: 'flow' as const } : {}),
   tags: e.tags ?? []
 })
 

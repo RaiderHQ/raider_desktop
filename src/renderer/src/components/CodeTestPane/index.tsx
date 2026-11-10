@@ -164,11 +164,8 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
   ) : null
 
   // The menu bar's Record, Run and Save act like the buttons, under the same rules
-  // A flow file is never recorded over: its steps could take a check (main refuses it too)
-  const isFlow = row.kind === 'flow'
   const canRecord =
     !recording.isRecording &&
-    !isFlow &&
     !confirmingRecord &&
     !!selected &&
     !busy &&
@@ -236,16 +233,11 @@ const CodeTestPane: React.FC<CodeTestPaneProps> = ({ row }) => {
                 </button>
               </Tooltip>
             ) : (
-              <Tooltip
-                content={t('tooltips.testPage.record')}
-                shortcut="record"
-                disabledReason={isFlow ? t('tooltips.testPage.flowNoRecord') : undefined}
-                position="bottom"
-              >
+              <Tooltip content={t('tooltips.testPage.record')} shortcut="record" position="bottom">
                 <button
                   onClick={() => setConfirmingRecord(true)}
                   // Not over steps that aren't saved yet: they'd be lost
-                  disabled={!selected || busy || recordingDisabled || !!recordedTest || isFlow}
+                  disabled={!selected || busy || recordingDisabled || !!recordedTest}
                   className={`${toolbarButton} text-red-600 hover:bg-red-50`}
                 >
                   {t('testPage.record')}

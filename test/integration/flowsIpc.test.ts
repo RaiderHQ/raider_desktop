@@ -26,7 +26,7 @@ const LAYOUT: ProjectLayout = {
   recordable: true
 }
 const LOCK = (v: string): string => `GEM\n  specs:\n    ruby_raider (${v})\n      thor\n`
-const SCHEDULE = { every: 'day', at: '09:30', retries: 0, notify: false, inputs: { hours: '5' } }
+const SCHEDULE = { every: 'day', at: '09:30', retries: 0, notify: false }
 
 type Handler = (event: unknown, ...args: unknown[]) => Promise<unknown>
 
@@ -196,21 +196,8 @@ describe('schedule-flow', () => {
       '--at',
       '09:30',
       '--retries',
-      '0',
-      '--input',
-      'hours=5'
+      '0'
     ])
-  })
-
-  it('passes two inputs after a single --input so the gem keeps both', async () => {
-    runFlowCli.mockResolvedValue({ ok: true, stdout: 'Scheduled report\n' })
-    await call('schedule-flow', RUBY, 'report', {
-      ...SCHEDULE,
-      inputs: { hours: '5', project: 'Apollo' }
-    })
-    const args: string[] = runFlowCli.mock.calls.at(-1)[2]
-    expect(args.filter((a) => a === '--input')).toHaveLength(1)
-    expect(args.slice(-3)).toEqual(['--input', 'hours=5', 'project=Apollo'])
   })
 
   it.each([
@@ -219,7 +206,7 @@ describe('schedule-flow', () => {
     ['a non-string name', ['report'], SCHEDULE],
     ['a missing flow file', 'missing', SCHEDULE],
     ['a bad schedule', 'report', { ...SCHEDULE, retries: 4 }],
-    ['an input with a newline', 'report', { ...SCHEDULE, inputs: { a: 'x\ny' } }]
+    ['an inputs field', 'report', { ...SCHEDULE, inputs: { a: 'x' } }]
   ])('refuses %s', async (_label, name, schedule) => {
     expect(await call('schedule-flow', RUBY, name, schedule)).toMatchObject({ error: 'invalid' })
     expect(runFlowCli).not.toHaveBeenCalled()

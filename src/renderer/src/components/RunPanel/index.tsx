@@ -86,11 +86,8 @@ function useFailedStepLines(run: RunView | null, projectPath: string | null): Ma
 
   useEffect(() => {
     if (!key || !projectPath || !failedKey || !startedAt) return
-    // A flow run's results are in its own folder; one the gem logged none for has nothing to read
-    const flow = run?.finished?.flow
-    if (flow && !flow.resultsDir) return
     let active = true
-    loadRaiderResults(projectPath, window.api, undefined, flow?.resultsDir ?? undefined)
+    loadRaiderResults(projectPath, window.api)
       .then(async (rows) => {
         const next = new Map<string, string>()
         const { failed: wanted, t: translate } = latest.current

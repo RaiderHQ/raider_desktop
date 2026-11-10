@@ -128,28 +128,6 @@ describe('runModel', () => {
     expect(progress(v)).toEqual({ done: 7, total: 7 })
   })
 
-  it("keeps a flow run's logged results on the finished run", () => {
-    const flow = {
-      name: 'hello',
-      status: 'failed' as const,
-      resultsDir: 'flow-results/hello/20261110T110856Z',
-      failedStep: { title: 'runs', line: 7 }
-    }
-    const v = fold([
-      started(false),
-      {
-        type: 'run:finished',
-        runId,
-        finishedAt: 'x',
-        exitCode: 1,
-        status: 'failed',
-        counts: counts(1),
-        flow
-      }
-    ])
-    expect(v.finished?.flow).toEqual(flow)
-  })
-
   it('turns queued and started tests into skipped when cancelled', () => {
     const cancel: RunEvent = {
       type: 'run:finished',

@@ -34,12 +34,9 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
   const [tagFilter, setTagFilter] = useState<string | null>(null)
 
   const selectedKey: TestKey | null = param ? fromRouteParam(param) || null : null
-  // Flows live on the Flows tab; they stay in the rows so Edit there can open a flow's page
-  const testRows = rows?.filter((r) => r.kind !== 'flow')
   // A tag nobody has any more (edited, reloaded, other project) falls back to all tests
-  const activeTag =
-    tagFilter && testRows?.some((r) => r.tags.includes(tagFilter)) ? tagFilter : null
-  const visibleRows = testRows?.filter((r) => !activeTag || r.tags.includes(activeTag))
+  const activeTag = tagFilter && rows?.some((r) => r.tags.includes(tagFilter)) ? tagFilter : null
+  const visibleRows = rows?.filter((r) => !activeTag || r.tags.includes(activeTag))
   const selectedRow = rows?.find((r) => testKeyOf(r) === selectedKey) ?? null
 
   // A test that went to the Trash (Delete, or Undo of a Paste) can't stay open
@@ -103,12 +100,12 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
         </div>
       ) : (
         <div className="w-72 shrink-0 border-r border-neutral-bdr min-h-0">
-          {testRows && visibleRows && (
+          {rows && (
             <TestsList
-              rows={visibleRows}
+              rows={visibleRows ?? rows}
               headerExtra={
                 <>
-                  <TagFilter rows={testRows} value={activeTag} onChange={setTagFilter} />
+                  <TagFilter rows={rows} value={activeTag} onChange={setTagFilter} />
                   <TestsMoreMenu tag={activeTag} />
                 </>
               }

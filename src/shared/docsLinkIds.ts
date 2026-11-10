@@ -9,8 +9,6 @@ export const DOCS_LINK_IDS = [
   'docs.shortcuts',
   'docs.running',
   'docs.dashboard',
-  'docs.flows',
-  'docs.schedules',
   'docs.testScreen',
   'docs.errors',
   'docs.install',

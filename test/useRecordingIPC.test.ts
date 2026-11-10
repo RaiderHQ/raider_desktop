@@ -79,29 +79,3 @@ describe('useRecordingIPC while picking for a check', () => {
     expect(s.isRecording).toBe(true)
   })
 })
-
-describe('useRecordingIPC while recording a flow', () => {
-  beforeEach(() => {
-    useRecorderStore.setState({
-      activeTest: { ...test1, kind: 'flow' },
-      recordingTarget: { kind: 'test' },
-      isRecording: true
-    })
-  })
-
-  it('adds no check or wait the menu sends, and asks for no expected text', async () => {
-    const setAssertionInfo = vi.fn()
-    renderHook(() => useRecordingIPC({ setAssertionInfo }))
-    await emit('add-assertion-step', { id: 'm', kind: 'assert', check: 'displayed' })
-    await emit('add-assertion-step', { pendingAssertion: 'titleEquals', text: 'Home' })
-    expect(useRecorderStore.getState().activeTest?.steps).toEqual(test1.steps)
-    expect(setAssertionInfo).not.toHaveBeenCalled()
-  })
-
-  it('still adds a check to a test', async () => {
-    useRecorderStore.setState({ activeTest: test1 })
-    renderHook(() => useRecordingIPC({ setAssertionInfo: vi.fn() }))
-    await emit('add-assertion-step', { id: 'm', kind: 'assert', check: 'displayed' })
-    expect(useRecorderStore.getState().activeTest?.steps.at(-1)?.id).toBe('m')
-  })
-})

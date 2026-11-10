@@ -100,11 +100,6 @@ const leftDuringStart = (target: RecordingTarget): boolean => store().recordingT
 const startFailedKey = (result: { reason?: 'unsupportedUrl' }): string =>
   result.reason === 'unsupportedUrl' ? 'recorder.unsupportedUrl' : 'recorder.noStartUrl'
 
-/** What main records: a flow refuses checks, so its recorder starts as one */
-const recorderMode = (test: Test | null | undefined): { mode: 'test' | 'flow' } => ({
-  mode: test?.kind === 'flow' ? 'flow' : 'test'
-})
-
 /** Stops a recording main started after the user left it, unless another one took its place */
 function stopAbandonedRecording(): void {
   if (store().recordingTarget === null) window.api.stopRecordingMain()
@@ -156,7 +151,7 @@ async function openAndPick(
 ): Promise<ElementTarget | RePickOutcome> {
   await window.api.loadUrlRequest(test.url ?? '')
   if (leftDuringStart(target)) return { kind: 'notStarted' }
-  const started = await window.api.startRecordingMain(recorderMode(test))
+  const started = await window.api.startRecordingMain()
   if (leftDuringStart(target)) {
     if (started.success) stopAbandonedRecording()
     return { kind: 'notStarted' }
@@ -562,7 +557,7 @@ export function useTestRecording(): TestRecording {
     await window.api.loadUrlRequest(test.url ?? '')
     // The user may have left while this was starting: leaving already saved what there was
     if (leftDuringStart(target)) return
-    const result = await window.api.startRecordingMain(recorderMode(test))
+    const result = await window.api.startRecordingMain()
     if (leftDuringStart(target)) {
       if (result.success) stopAbandonedRecording()
       return
@@ -591,7 +586,7 @@ export function useTestRecording(): TestRecording {
       await window.api.loadUrlRequest(test.url ?? '')
       // The user may have left while this was starting: leaving already saved what there was
       if (leftDuringStart(target)) return
-      const recResult = await window.api.startRecordingMain(recorderMode(test))
+      const recResult = await window.api.startRecordingMain()
       if (leftDuringStart(target)) {
         if (recResult.success) stopAbandonedRecording()
         return

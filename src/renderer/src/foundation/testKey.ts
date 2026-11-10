@@ -11,8 +11,6 @@ export interface TestRow {
   missingFile?: true
   /** From the sidecar or the describe line; [] when none */
   tags: string[]
-  /** A flow (flows/<name>_flow.rb): kept for its test page, shown on the Flows tab, not the list */
-  kind?: 'flow'
 }
 
 export const testKeyOf = (row: TestRow): TestKey =>

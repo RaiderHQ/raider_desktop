@@ -265,7 +265,6 @@
     },
     "tabs": {
       "tests": "Tests",
-      "flows": "Flows",
       "files": "Files",
       "dashboard": "Dashboard",
       "settings": "Settings"
@@ -401,7 +400,6 @@
     "view": "View",
     "restore": "Restore",
     "newTest": "New test",
-    "newFlow": "New flow",
     "startRecording": "Start recording",
     "editedInCode": "From file",
     "selectOrCreate": "Select a test, or create a new one.",
@@ -459,8 +457,7 @@
       "undoFailed": "Raider couldn't undo that. The new test is still in your project.",
       "undoOtherProject": "That test is in another project now, so nothing was undone.",
       "tagsNotCopied": "The test was pasted, but its tags couldn't be copied.",
-      "hiddenByTag": "The {{tag}} filter hides it.",
-      "flowNoCopy": "Flows can't be copied or duplicated yet."
+      "hiddenByTag": "The {{tag}} filter hides it."
     },
     "delete": {
       "title": "Delete test",
@@ -469,30 +466,9 @@
       "cancel": "Cancel"
     }
   },
-  "flows": {
-    "newFlow": "New flow",
-    "empty": "No flows yet. A flow is a recording with no checks that does a job for you.",
-    "unsupportedGem": "Flows need ruby_raider 4.1 or later. Update this project's Gemfile pin to ~> 4.1 and run bundle update ruby_raider.",
-    "unsupportedProject": "Flows need a Selenium web project.",
-    "setupIntro": "This project isn't set up for flows yet. Setting up adds a flows folder with a small helper file.",
-    "setUp": "Set up flows",
-    "settingUp": "Setting up…",
-    "retry": "Try again",
-    "noRuby": "Raider can't find Ruby on this computer, so it can't show flows yet.",
+  "schedules": {
+    "noRuby": "Raider can't find Ruby on this computer, so it can't schedule runs yet.",
     "cliFailed": "Ruby Raider couldn't answer. Try again in a moment.",
-    "listFailed": "Some results or schedules are missing: {{message}}",
-    "fileMissing": "File missing",
-    "runWithInputs": "Run…",
-    "schedule": "Schedule…",
-    "stopSchedule": "Stop schedule",
-    "stopped": "Stopped the schedule for {{name}}.",
-    "reschedule": "Re-schedule",
-    "osProblem": "The schedule needs attention: {{state}}",
-    "viewResults": "View results",
-    "resultsFailed": "Raider couldn't open the results folder.",
-    "moreLabel": "More actions for {{name}}",
-    "edit": "Edit",
-    "secretsMenu": "Secrets…",
     "cancel": "Cancel",
     "nextRun": "Next run {{when}}",
     "when": {
@@ -525,11 +501,6 @@
       "sat": "Saturday",
       "sun": "Sunday"
     },
-    "runModal": {
-      "title": "Run {{name}}",
-      "showBrowser": "Show the browser",
-      "run": "Run"
-    },
     "scheduleModal": {
       "title": "Schedule {{name}}",
       "everyLabel": "Repeat",
@@ -548,46 +519,14 @@
       "minuteInvalid": "Enter two digits from 00 to 59.",
       "retriesLabel": "Retries",
       "notify": "Notify me when a scheduled run fails",
-      "inputsHint": "Inputs are saved in plain text. Put passwords in Secrets…",
       "save": "Schedule",
       "scheduled": "Scheduled {{name}}."
-    },
-    "secrets": {
-      "title": "Flow secrets",
-      "explain": "Saved in .raider/flows/env on this computer (only you can read it). Flows read them as RAIDER_SECRET_… variables.",
-      "empty": "No secrets yet.",
-      "keyLabel": "Name",
-      "keyHint": "RAIDER_SECRET_ and then capital letters, digits or _ (or TEST_USER, TEST_PASSWORD).",
-      "keyInvalid": "Use RAIDER_SECRET_ and then capital letters, digits or _, or TEST_USER or TEST_PASSWORD.",
-      "valueLabel": "Value",
-      "replaceHint": "Saving replaces the value {{key}} has now.",
-      "save": "Save secret",
-      "saved": "Saved {{key}}.",
-      "remove": "Remove",
-      "removeLabel": "Remove {{key}}",
-      "removed": "Removed {{key}}.",
-      "removeConfirm": {
-        "title": "Remove secret?",
-        "message": "Flows that read it will fail until you add it again.",
-        "confirm": "Remove"
-      },
-      "done": "Done",
-      "error": {
-        "invalid": "That name or value can't be saved.",
-        "unsafe": "The secrets file or its folder isn't a plain file or folder, so Raider won't use it.",
-        "too-large": "The secrets file is too large.",
-        "value-unsupported": "That value can't be saved as it is. Try it without the quotes or spaces at its ends.",
-        "no-project": "Open a project first.",
-        "unsupported": "This project can't have flow secrets.",
-        "io": "Raider couldn't read or write the secrets file."
-      }
     }
   },
   "testPage": {
     "breadcrumb": "Breadcrumb",
     "breadcrumbRoot": "Tests",
     "name": "Test name",
-    "flowName": "Flow name",
     "tags": {
       "label": "Tags",
       "placeholder": "Add a tag",
@@ -600,7 +539,6 @@
     "url": "Start URL",
     "record": "Record",
     "autosaved": "Changes to this test are saved automatically.",
-    "autosavedFlow": "Changes to this flow are saved automatically.",
     "stop": "Stop & save",
     "addAssertion": "Add validation…",
     "assertPickStarting": "Getting ready to pick…",
@@ -615,21 +553,8 @@
     "more": "More",
     "startOver": "Start over",
     "startOverConfirm": "Start over? Recording again replaces this test's steps.",
-    "startOverConfirmFlow": "Start over? Recording again replaces this flow's steps.",
     "exportTest": "Export test",
-    "saveAsFlow": "Save as flow",
-    "saveAsFlowDropChecks_one": "Remove {{count}} check and save as flow",
-    "saveAsFlowDropChecks_other": "Remove {{count}} checks and save as flow",
-    "saveAsFlowConfirm": {
-      "message_one": "A flow has no checks. The flow leaves out this test's check; the test keeps it.",
-      "message_other": "A flow has no checks. The flow leaves out this test's {{count}} checks; the test keeps them.",
-      "confirm": "Remove and save",
-      "cancel": "Cancel"
-    },
-    "savedAsFlow": "Saved as a flow in {{file}}",
-    "saveAsFlowFailed": "Raider couldn't save this test as a flow. {{error}}",
     "deleteTest": "Delete test",
-    "deleteFlow": "Delete flow",
     "deleteFailed": "Raider couldn't delete this test. Nothing was changed.",
     "noSteps": "There are no steps to export.",
     "editCode": "View file",
@@ -642,12 +567,6 @@
     "recordOverFailed": "Raider couldn't save the recording into this file: {{error}}. Your steps are still here."
   },
   "recorder": {
-    "flowGuide": {
-      "title": "Recording a flow",
-      "line1": "A flow does a job; it has no checks.",
-      "line2": "Mark a typed value as an input to change it per run.",
-      "line3": "Save it, then run or schedule it from the Flows tab."
-    },
     "foundBy": {
       "role": "Found by role · {{role}} \"{{name}}\"",
       "label": "Found by label · \"{{text}}\"",
@@ -779,7 +698,6 @@
       "clickRegion": "Click an empty area of the page",
       "pressKey": "Press the {{key}} key on \"{{element}}\"",
       "typeText": "Type \"{{text}}\" into \"{{element}}\"",
-      "typeTextInput": "Type \"{{text}}\" into \"{{element}}\" as input {{name}}",
       "typeSecret": "Type secret (from {{name}}) into \"{{element}}\"",
       "switchToFrame": "Switch to frame \"{{element}}\"",
       "switchToDefaultContent": "Switch back to main content",
@@ -806,22 +724,7 @@
       "secretUnnamed": "This password step has no variable yet.",
       "secretMissing": "This step types a password from {{name}}, which isn't set on this computer. Set it, restart Raider, and try again.",
       "renderFailed": "Couldn't render code",
-      "editCommand": "Edit command",
-      "useAsInput": "Use as input…",
-      "changeInput": "Change input…",
-      "stopInput": "Stop using as input",
-      "inputModal": {
-        "titleNew": "Use as input",
-        "titleChange": "Change input",
-        "nameLabel": "Input name",
-        "nameHint": "Lowercase letters, digits or _, starting with a letter",
-        "nameInvalid": "Use up to 40 lowercase letters, digits or _, starting with a letter.",
-        "nameTaken": "Another step uses this name with a different value.",
-        "defaultLabel": "Default value",
-        "defaultHelp": "Runs use this value unless you give another.",
-        "save": "Save",
-        "cancel": "Cancel"
-      }
+      "editCommand": "Edit command"
     }
   },
   "guide": {
@@ -953,10 +856,6 @@
         "title": "Tests",
         "message": "Every test in your project is listed here.\n\nRecorded tests were made with the recorder — click Edit to change them.\n\nCode tests were written by a developer, and Code-owned tests were recorded and then changed by hand. You can view and run them, but only a developer can change them."
       },
-      "flows": {
-        "title": "Flows",
-        "message": "A flow is a recording with no checks that does a job for you, such as filling in a form.\n\nRun a flow here, give it new values for its inputs, or schedule it to run on its own. Each run keeps its results, so you can see what happened."
-      },
       "files": {
         "title": "Files & test settings",
         "message": "Browse all files in your project on the left — click any file to preview it on the right.\n\nUse the toolbar above to set which browser to use, whether to run headlessly, which tests to run, and the timeout.\n\nThese settings apply every time you run your tests."
@@ -988,7 +887,6 @@
       "implicitWait": "Seconds Selenium waits for an element to appear; 0 means no wait",
       "explicitWait": "Longest wait for one condition, such as a button becoming clickable",
       "tabTests": "Record, run and fix your tests",
-      "tabFlows": "Run and schedule flows: recordings that do a job for you",
       "tabFiles": "Browse and edit project files; set the browser and base URL",
       "tabDashboard": "See the last run's results",
       "openTerminal": "Run commands in this project's folder",
@@ -1007,31 +905,20 @@
       "steps": "Show the steps as cards",
       "ruby": "Show the generated Ruby code",
       "lastRun": "Show the output of the last run",
-      "more": "Start over, export, save as flow or delete this test",
-      "moreFlow": "Start over or delete this flow",
+      "more": "Start over, export or delete this test",
       "startRecording": "Open the page and start recording",
       "cancelNew": "Go back without starting a recording",
       "cancelPick": "Stop picking and keep recording",
       "addAssertion": "Pick something on the page and add a validation for it",
       "examples": "Pick which test in the file to work on",
-      "saveAsNew": "Keep these steps as a separate recorded test",
-      "saveAsFlow": "Keep a copy of these steps as a flow",
-      "saveAsFlowChecks": "Keep a copy as a flow, without the checks",
-      "flowNoRecord": "A flow written in code can't be recorded over"
+      "saveAsNew": "Keep these steps as a separate recorded test"
     },
     "steps": {
       "breakpoint": "Replay to here, then record the rest from this point",
       "recordFromHere": "Replay the steps above, then keep recording",
       "drag": "Drag to move this step; steps run top to bottom",
       "edit": "Edit this step's code",
-      "weakLocator": "Found by position, which can break when the page changes; re-record it",
-      "useAsInput": "Let each run give its own value for this typing",
-      "changeInput": "Rename the input runs use to give this value",
-      "stopInput": "Always type the recorded text again",
-      "inputName": "The name runs use to give their own value",
-      "inputSave": "Use this name for the input",
-      "inputSaveInvalid": "Enter a valid input name first",
-      "inputCancel": "Close without changing the input"
+      "weakLocator": "Found by position, which can break when the page changes; re-record it"
     },
     "failedStep": {
       "editValue": "Change the typed text",
@@ -1050,9 +937,6 @@
         "noTag": "Pick a tag first"
       },
       "newTest": "Start a new test: give it a name and a page, then record",
-      "flowsNotReady": "Set up flows first, on the flows tab",
-      "flowNoCopy": "Flows can't be copied or duplicated yet",
-      "flowNoDelete": "A flow written in code can't be deleted here",
       "restore": "Put this deleted test back",
       "rail": "Show the tests list again"
     },
@@ -1132,38 +1016,16 @@
     "modal": {
       "close": "Close"
     },
-    "flows": {
-      "newFlow": "Record a flow: steps that do a job, with no checks",
-      "setUp": "Add the flows folder and its helper to this project",
-      "retry": "Ask Ruby Raider again",
-      "runWithInputs": "Choose the inputs and whether to show the browser, then run this flow",
-      "runBusy": "Wait for the current run to finish",
-      "schedule": "Run this flow on its own at set times",
-      "stopSchedule": "Stop running this flow on a schedule",
-      "reschedule": "Schedule this flow again to fix the problem",
-      "viewResults": "Open the folder with this run's results",
-      "more": "Edit this flow or manage its secrets",
-      "edit": "Open the recording to change its steps",
-      "secrets": "Passwords and other values flows read without saving them in the project",
+    "schedules": {
       "cancel": "Close without changing anything",
-      "runNow": "Run the flow with these values",
-      "fixInputs": "Fix the inputs marked in red first",
-      "inputValue": "The value this run types for this input",
-      "showBrowser": "Show the browser window while the flow runs",
-      "every": "How often the flow runs",
+      "every": "How often it runs",
       "day": "The day of the week it runs",
       "time": "The time it runs, on the 24-hour clock",
       "minute": "The minute past each hour it runs",
       "retries": "How many times a failed run is tried again",
       "notify": "Show a notification when a scheduled run fails",
-      "scheduleSave": "Save the schedule; the flow runs even when Raider is closed",
-      "fixSchedule": "Fix the fields marked in red first",
-      "secretKey": "The name the flow reads the secret by",
-      "secretValue": "The secret itself; it is never shown again",
-      "secretSave": "Save this secret on this computer",
-      "secretIncomplete": "Enter a valid name and a value first",
-      "secretRemove": "Remove this secret from this computer",
-      "secretsDone": "Close the secrets"
+      "scheduleSave": "Save the schedule; it runs even when Raider is closed",
+      "fixSchedule": "Fix the fields marked in red first"
     }
   },
   "run": {
@@ -1501,9 +1363,7 @@
       "dashboard": "the dashboard",
       "runs": "running tests",
       "install": "installing Ruby Raider",
-      "raider": "Ruby Raider",
-      "flows": "flows",
-      "schedules": "scheduling flows"
+      "raider": "Ruby Raider"
     }
   },
   "errorToast": {

@@ -168,36 +168,6 @@ describe('RunPanel failed recorded tests', () => {
     expect(screen.queryByTestId('run-failed-step-line')).toBeNull()
   })
 
-  describe('a flow run', () => {
-    const DIR = 'flow-results/checkout/20261031T100005Z'
-    const flowFinished = (resultsDir: string | null): RunView['finished'] => ({
-      ...makeRun().finished!,
-      flow: { name: 'checkout', status: 'failed', resultsDir, failedStep: null }
-    })
-
-    it('reads its own results folder, not raider-results', async () => {
-      api.readDirectory.mockResolvedValue([
-        { name: 'run.json', type: 'file', path: `/work/shop/${DIR}/run.json` }
-      ])
-      setRun(makeRun({ finished: flowFinished(DIR) }))
-      render(ui)
-      expect(await screen.findByTestId('run-failed-step-line')).toHaveTextContent(
-        'Failed at step 1'
-      )
-      expect(api.readDirectory).toHaveBeenCalledWith(`/work/shop/${DIR}`)
-      expect(api.readDirectory).not.toHaveBeenCalledWith('/work/shop/raider-results')
-    })
-
-    it('reads nothing when the gem logged no results folder', async () => {
-      setRun(makeRun({ finished: flowFinished(null) }))
-      render(ui)
-      await Promise.resolve()
-      await Promise.resolve()
-      expect(api.readDirectory).not.toHaveBeenCalled()
-      expect(screen.queryByTestId('run-failed-step-line')).toBeNull()
-    })
-  })
-
   it("does not paint one run's line on the next run", async () => {
     setRun(makeRun())
     render(ui)
