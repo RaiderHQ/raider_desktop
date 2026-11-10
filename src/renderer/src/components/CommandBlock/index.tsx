@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@components/Tooltip'
 import Icon from '@components/Icon'
-import InputNameModal from '@components/InputNameModal'
 import type { Step } from '@shared/types/step'
 import { describeStep, foundBy } from '@shared/describeStep'
 import { isSecretStep, isValidSecretName, secretNameOf } from '@shared/secretSteps'
@@ -26,54 +25,6 @@ interface CommandBlockProps {
   latest?: boolean
   /** The step the last run failed at */
   failed?: boolean
-  /** A flow being edited: a typed step can become an input runs give a value for */
-  canUseInputs?: boolean
-  /** True when another step uses this input name with a different recorded text */
-  inputTaken?: (name: string) => boolean
-  /** The step belongs to a flow: the code view renders it as in a flow file */
-  flow?: boolean
-}
-
-type TypeStep = Extract<Step, { kind: 'type' }>
-
-/** A flow's typing step: use it as an input, rename that input, or stop using it as one. */
-const InputActions: React.FC<{
-  step: TypeStep
-  onName: () => void
-  onChange: (step: TypeStep) => void
-}> = ({ step, onName, onChange }) => {
-  const { t } = useTranslation()
-  const link = 'text-xs text-ruby hover:underline'
-  const stop = (): void => {
-    const rest = { ...step }
-    delete rest.inputName
-    onChange(rest)
-  }
-
-  return (
-    <span className="flex items-center gap-3 mt-1">
-      {step.inputName ? (
-        <>
-          <Tooltip content={t('tooltips.steps.changeInput')} position="bottom">
-            <button type="button" className={link} onClick={onName}>
-              {t('recorder.step.changeInput')}
-            </button>
-          </Tooltip>
-          <Tooltip content={t('tooltips.steps.stopInput')} position="bottom">
-            <button type="button" className={link} onClick={stop}>
-              {t('recorder.step.stopInput')}
-            </button>
-          </Tooltip>
-        </>
-      ) : (
-        <Tooltip content={t('tooltips.steps.useAsInput')} position="bottom">
-          <button type="button" className={link} onClick={onName}>
-            {t('recorder.step.useAsInput')}
-          </button>
-        </Tooltip>
-      )}
-    </span>
-  )
 }
 
 /** Lets the user change the environment variable a secret step reads, e.g. per test. */
@@ -149,10 +100,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   onRecordFromHere,
   readOnly = false,
   latest = false,
-  failed = false,
-  canUseInputs = false,
-  inputTaken,
-  flow = false
+  failed = false
 }) => {
   const { t } = useTranslation()
   // Ruby for the code view, rendered by the main process for the project's automation
@@ -164,10 +112,6 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isCancellingRef = useRef(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
-  const [namingInput, setNamingInput] = useState(false)
-  // A secret is never an input: its value comes from RAIDER_SECRET_
-  const inputStep =
-    canUseInputs && !readOnly && onEdit && step.kind === 'type' && !isSecretStep(step) ? step : null
 
   // The failure usually arrives after the steps render, so this runs when it does
   useEffect(() => {
@@ -179,10 +123,8 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
     let isMounted = true
     setCode(null)
     setRenderFailed(false)
-    const rendering = flow
-      ? window.api.renderStep(step, { flow: true })
-      : window.api.renderStep(step)
-    rendering
+    window.api
+      .renderStep(step)
       .then((ruby) => {
         if (isMounted) setCode(ruby)
       })
@@ -192,7 +134,7 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
     return (): void => {
       isMounted = false
     }
-  }, [step, showCode, flow])
+  }, [step, showCode])
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -376,14 +318,6 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
 
         {renderContent()}
 
-        {inputStep && (
-          <InputActions
-            step={inputStep}
-            onName={() => setNamingInput(true)}
-            onChange={(next) => onEdit?.(index, next)}
-          />
-        )}
-
         {!readOnly && (
           <div className="absolute top-2 right-2">
             <Tooltip content={t('tooltips.recorder.deleteStep')} position="top">
@@ -398,20 +332,6 @@ const CommandBlock: React.FC<CommandBlockProps> = ({
           </div>
         )}
       </div>
-
-      {/* Outside the draggable card: React events bubble through the portal to its owner */}
-      {inputStep && namingInput && (
-        <InputNameModal
-          initialName={inputStep.inputName ?? ''}
-          defaultValue={inputStep.text}
-          isTaken={inputTaken}
-          onSave={(inputName) => {
-            setNamingInput(false)
-            onEdit?.(index, { ...inputStep, inputName })
-          }}
-          onClose={() => setNamingInput(false)}
-        />
-      )}
 
       {!readOnly && isBreakpoint && onRecordFromHere && (
         <Tooltip content={t('tooltips.steps.recordFromHere')} position="bottom" className="ml-5">

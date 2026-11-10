@@ -126,8 +126,6 @@ export function useRecordingIPC({ setAssertionInfo }: RecordingIPCOptions): void
       if (picking()) return
       // A menu left open past Stop & save adds nothing
       if (!useRecorderStore.getState().isRecording) return
-      // A flow has no checks; main never sends one, and none is added if it did
-      if (useRecorderStore.getState().activeTest?.kind === 'flow') return
       if (isPendingAssertion(message)) {
         setAssertionInfo(message)
       } else {

@@ -179,11 +179,3 @@ describe('TestsMoreMenu', () => {
     await waitFor(() => expect(mockToast.error).toHaveBeenCalled())
   })
 })
-
-describe('TestsMoreMenu: New flow', () => {
-  it('has no New flow item: new flows start on the Flows tab', () => {
-    render(<TestsMoreMenu tag={null} />)
-    open()
-    expect(screen.queryByRole('menuitem', { name: /New flow/ })).not.toBeInTheDocument()
-  })
-})

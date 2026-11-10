@@ -186,26 +186,6 @@ describe('CodeTestPane', () => {
     expect(record).not.toHaveAttribute('title')
   })
 
-  it('never records over a flow file, and says why', async () => {
-    render(
-      <MemoryRouter initialEntries={['/overview/tests/x']}>
-        <Routes>
-          <Route
-            path="/overview/tests/:testKey"
-            element={
-              <CodeTestPane row={{ ...codeRow, file: 'flows/fill_flow.rb', kind: 'flow' }} />
-            }
-          />
-        </Routes>
-      </MemoryRouter>
-    )
-    const record = await screen.findByRole('button', { name: 'testPage.record' })
-    await screen.findByRole('button', { name: 'logs in' })
-    expect(record).toBeDisabled()
-    act(() => dispatchMenuCommand('record'))
-    expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull()
-  })
-
   it('lists the examples and selects the first one', async () => {
     renderPane()
     const first = await screen.findByRole('button', { name: 'logs in' })

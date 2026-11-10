@@ -3,21 +3,18 @@ import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import Button from '@components/Button'
 import Checkbox from '@components/Checkbox'
-import DocsLink from '@components/DocsLink'
 import InputField from '@components/InputField'
 import Tooltip from '@components/Tooltip'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { FLOW_AT, validateSchedule } from '@shared/schedules'
 import type { FlowDay, FlowEvery, FlowSchedule, GemScheduleRule } from '@shared/types/schedules'
-import type { FlowInput } from '@shared/types/projectTest'
-import FlowModal from '../Flows/FlowModal'
-import { cliErrorText, inputErrors } from './scheduleText'
+import ScheduleDialogShell from './ScheduleDialogShell'
+import { cliErrorText } from './scheduleText'
 
 interface ScheduleModalProps {
   name: string
   title: string
-  inputs: FlowInput[]
-  /** The flow's current schedule when re-scheduling; its values fill the form */
+  /** The current schedule when re-scheduling; its values fill the form */
   schedule: GemScheduleRule | null
   onClose: () => void
   /** After the gem accepted the schedule */
@@ -72,7 +69,6 @@ export function buildSchedule(form: {
   day: FlowDay
   retries: number
   notify: boolean
-  inputs: Record<string, string>
 }): FlowSchedule {
   return {
     every: form.every,
@@ -80,16 +76,14 @@ export function buildSchedule(form: {
     at: form.every === 'hour' ? `00:${form.time}` : form.time,
     ...(form.every === 'week' ? { on: form.day } : {}),
     retries: form.retries,
-    notify: form.notify,
-    inputs: form.inputs
+    notify: form.notify
   }
 }
 
-/** Schedule…: how often, when, retries, notify and the inputs, sent to `raider flow schedule`. */
+/** Schedule…: how often, when, retries and notify, sent to the gem's schedule command. */
 const ScheduleModal: React.FC<ScheduleModalProps> = ({
   name,
   title,
-  inputs,
   schedule,
   onClose,
   onScheduled
@@ -101,12 +95,6 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [day, setDay] = useState<FlowDay>(schedule?.on ?? 'mon')
   const [retries, setRetries] = useState(schedule?.retries ?? 0)
   const [notify, setNotify] = useState(schedule?.notify ?? true)
-  const [values, setValues] = useState<Record<string, string>>(() => ({
-    ...Object.fromEntries(inputs.map((i) => [i.name, i.default])),
-    ...(schedule?.inputs ?? {})
-  }))
-  // A schedule may hold an input the recording no longer has; it is shown so it can be changed
-  const fields = [...new Set([...inputs.map((i) => i.name), ...Object.keys(values)])]
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -114,12 +102,11 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const timeError = hourly
     ? MINUTE.test(minute)
       ? undefined
-      : t('flows.scheduleModal.minuteInvalid')
+      : t('schedules.scheduleModal.minuteInvalid')
     : FLOW_AT.test(time)
       ? undefined
-      : t('flows.scheduleModal.timeInvalid')
-  const errors = inputErrors(values)
-  const valid = !timeError && Object.keys(errors).length === 0
+      : t('schedules.scheduleModal.timeInvalid')
+  const valid = !timeError
 
   const submit = async (): Promise<void> => {
     if (!valid || saving) return
@@ -132,8 +119,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
           time: hourly ? minute : time,
           day,
           retries,
-          notify,
-          inputs: values
+          notify
         })
       )
     } catch (e) {
@@ -142,7 +128,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
     }
     const rubyCommand = useRubyStore.getState().rubyCommand
     if (!rubyCommand) {
-      setError(t('flows.noRuby'))
+      setError(t('schedules.noRuby'))
       return
     }
     setSaving(true)
@@ -152,7 +138,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
         setError(cliErrorText(t, result))
         return
       }
-      toast.success(result.message || t('flows.scheduleModal.scheduled', { name: title }))
+      toast.success(result.message || t('schedules.scheduleModal.scheduled', { name: title }))
       onScheduled()
       onClose()
     } catch (e) {
@@ -163,98 +149,82 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
   }
 
   return (
-    <FlowModal
-      title={t('flows.scheduleModal.title', { name: title })}
+    <ScheduleDialogShell
+      title={t('schedules.scheduleModal.title', { name: title })}
       onClose={onClose}
       footer={
         <>
-          <DocsLink id="docs.schedules" topic={t('docs.topics.schedules')} className="mr-auto" />
-          <Tooltip content={t('tooltips.flows.cancel')} position="top">
+          <Tooltip content={t('tooltips.schedules.cancel')} position="top">
             <Button type="secondary" onClick={onClose}>
-              {t('flows.cancel')}
+              {t('schedules.cancel')}
             </Button>
           </Tooltip>
           <Tooltip
-            content={t('tooltips.flows.scheduleSave')}
-            disabledReason={valid ? undefined : t('tooltips.flows.fixSchedule')}
+            content={t('tooltips.schedules.scheduleSave')}
+            disabledReason={valid ? undefined : t('tooltips.schedules.fixSchedule')}
             position="top"
           >
             <Button type="primary" onClick={() => void submit()} disabled={!valid || saving}>
-              {t('flows.scheduleModal.save')}
+              {t('schedules.scheduleModal.save')}
             </Button>
           </Tooltip>
         </>
       }
     >
       <Select
-        label={t('flows.scheduleModal.everyLabel')}
-        tooltip={t('tooltips.flows.every')}
+        label={t('schedules.scheduleModal.everyLabel')}
+        tooltip={t('tooltips.schedules.every')}
         value={every}
-        options={EVERY.map((e) => ({ value: e, text: t(`flows.scheduleModal.every.${e}`) }))}
+        options={EVERY.map((e) => ({ value: e, text: t(`schedules.scheduleModal.every.${e}`) }))}
         onChange={(v) => setEvery(v as FlowEvery)}
       />
       {every === 'week' && (
         <Select
-          label={t('flows.scheduleModal.dayLabel')}
-          tooltip={t('tooltips.flows.day')}
+          label={t('schedules.scheduleModal.dayLabel')}
+          tooltip={t('tooltips.schedules.day')}
           value={day}
-          options={DAYS.map((d) => ({ value: d, text: t(`flows.days.${d}`) }))}
+          options={DAYS.map((d) => ({ value: d, text: t(`schedules.days.${d}`) }))}
           onChange={(v) => setDay(v as FlowDay)}
         />
       )}
       {hourly ? (
         <InputField
-          label={t('flows.scheduleModal.minuteLabel')}
+          label={t('schedules.scheduleModal.minuteLabel')}
           value={minute}
           onChange={(e) => setMinute(e.target.value)}
-          hint={t('flows.scheduleModal.minuteHint')}
+          hint={t('schedules.scheduleModal.minuteHint')}
           error={timeError}
-          tooltip={t('tooltips.flows.minute')}
+          tooltip={t('tooltips.schedules.minute')}
         />
       ) : (
         <InputField
-          label={t('flows.scheduleModal.timeLabel')}
+          label={t('schedules.scheduleModal.timeLabel')}
           value={time}
           onChange={(e) => setTime(e.target.value)}
-          hint={t('flows.scheduleModal.timeHint')}
+          hint={t('schedules.scheduleModal.timeHint')}
           error={timeError}
-          tooltip={t('tooltips.flows.time')}
+          tooltip={t('tooltips.schedules.time')}
         />
       )}
       <Select
-        label={t('flows.scheduleModal.retriesLabel')}
-        tooltip={t('tooltips.flows.retries')}
+        label={t('schedules.scheduleModal.retriesLabel')}
+        tooltip={t('tooltips.schedules.retries')}
         value={String(retries)}
         options={[0, 1, 2, 3].map((n) => ({ value: String(n), text: String(n) }))}
         onChange={(v) => setRetries(Number(v))}
       />
       <Checkbox
-        label={t('flows.scheduleModal.notify')}
+        label={t('schedules.scheduleModal.notify')}
         checked={notify}
         onChange={setNotify}
-        tooltip={t('tooltips.flows.notify')}
+        tooltip={t('tooltips.schedules.notify')}
       />
-      {fields.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-xs text-neutral-dk">{t('flows.scheduleModal.inputsHint')}</p>
-          {fields.map((field) => (
-            <InputField
-              key={field}
-              label={field}
-              value={values[field] ?? ''}
-              onChange={(e) => setValues({ ...values, [field]: e.target.value })}
-              error={errors[field]}
-              tooltip={t('tooltips.flows.inputValue')}
-            />
-          ))}
-        </div>
-      )}
       {error && (
         <p role="alert" className="text-sm text-status-err" data-testid="schedule-error">
           {error}
         </p>
       )}
-    </FlowModal>
+    </ScheduleDialogShell>
   )
 }
 

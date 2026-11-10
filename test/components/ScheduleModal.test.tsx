@@ -52,8 +52,7 @@ const schedule = (patch: Partial<GemScheduleRule> = {}): GemScheduleRule => ({
 })
 
 const api = {
-  scheduleFlow: vi.fn(),
-  openDocs: vi.fn()
+  scheduleFlow: vi.fn()
 }
 
 beforeEach(() => {
@@ -105,13 +104,12 @@ describe('schedule texts', () => {
 
 describe('ScheduleModal', () => {
   it('builds a valid schedule for each preset', () => {
-    const base = { time: '08:00', day: 'tue' as const, retries: 2, notify: true, inputs: {} }
+    const base = { time: '08:00', day: 'tue' as const, retries: 2, notify: true }
     expect(validateSchedule(buildSchedule({ ...base, every: 'hour', time: '15' }))).toEqual({
       every: 'hour',
       at: '00:15',
       retries: 2,
-      notify: true,
-      inputs: {}
+      notify: true
     })
     for (const every of ['day', 'weekday'] as const) {
       expect(validateSchedule(buildSchedule({ ...base, every }))).toEqual(
@@ -129,7 +127,6 @@ describe('ScheduleModal', () => {
       <ScheduleModal
         name="fill_hours"
         title="Fill hours"
-        inputs={[{ name: 'hours', default: '8' }]}
         schedule={null}
         onClose={vi.fn()}
         onScheduled={onScheduled}
@@ -143,7 +140,7 @@ describe('ScheduleModal', () => {
     renderModal(onScheduled)
     fireEvent.change(screen.getByLabelText('Repeat'), { target: { value: 'hour' } })
     fireEvent.change(screen.getByLabelText('Minute past the hour'), { target: { value: '15' } })
-    expect(screen.getByText(en.flows.scheduleModal.inputsHint)).toBeInTheDocument()
+    expect(screen.queryByText(/input/i)).toBeNull()
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Schedule' }))
     })
@@ -151,8 +148,7 @@ describe('ScheduleModal', () => {
       every: 'hour',
       at: '00:15',
       retries: 0,
-      notify: true,
-      inputs: { hours: '8' }
+      notify: true
     })
     expect(toast.success).toHaveBeenCalledWith('Scheduled fill_hours')
     expect(onScheduled).toHaveBeenCalled()
@@ -161,7 +157,7 @@ describe('ScheduleModal', () => {
   it('shows a bad time inline and does not send', () => {
     renderModal()
     fireEvent.change(screen.getByLabelText('Time'), { target: { value: '25:00' } })
-    expect(screen.getByRole('alert')).toHaveTextContent(en.flows.scheduleModal.timeInvalid)
+    expect(screen.getByRole('alert')).toHaveTextContent(en.schedules.scheduleModal.timeInvalid)
     expect(screen.getByRole('button', { name: 'Schedule' })).toBeDisabled()
   })
 

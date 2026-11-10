@@ -6,7 +6,7 @@ import {
   validateSchedule
 } from '../src/shared/schedules'
 
-const base = { every: 'day', at: '09:30', retries: 1, notify: false, inputs: {} }
+const base = { every: 'day', at: '09:30', retries: 1, notify: false }
 
 describe('FLOW_INPUT_NAME', () => {
   it('takes a lower-case name of up to 40 starting with a letter', () => {
@@ -67,10 +67,7 @@ describe('validateFlowInputs', () => {
 
 describe('validateSchedule', () => {
   it('accepts a valid schedule and drops nothing', () => {
-    expect(validateSchedule({ ...base, inputs: { hours: '5' } })).toEqual({
-      ...base,
-      inputs: { hours: '5' }
-    })
+    expect(validateSchedule({ ...base })).toEqual(base)
   })
 
   it('accepts a weekly schedule with a day', () => {
@@ -94,8 +91,7 @@ describe('validateSchedule', () => {
     ['at 09:60', { ...base, at: '09:60' }],
     ['every month', { ...base, every: 'month' }],
     ['notify as string', { ...base, notify: 'yes' }],
-    ['missing inputs', { every: 'day', at: '09:30', retries: 0, notify: false }],
-    ['bad inputs', { ...base, inputs: { a: 'x\n' } }],
+    ['inputs', { ...base, inputs: { hours: '5' } }],
     ['not an object', 'daily'],
     ['an array', []]
   ])('refuses %s', (_label, value) => {
@@ -104,8 +100,8 @@ describe('validateSchedule', () => {
 })
 
 describe('scheduleArgs', () => {
-  it('builds the daily argv with inputs last', () => {
-    const s = validateSchedule({ ...base, notify: true, inputs: { hours: '5', who: 'a=b' } })
+  it('builds the daily argv', () => {
+    const s = validateSchedule({ ...base, notify: true })
     expect(scheduleArgs('report', s)).toEqual([
       'schedule',
       'report',
@@ -115,27 +111,12 @@ describe('scheduleArgs', () => {
       '09:30',
       '--retries',
       '1',
-      '--notify',
-      '--input',
-      'hours=5',
-      'who=a=b'
+      '--notify'
     ])
   })
 
-  it('puts every input after a single --input (Thor keeps only the last repeated flag)', () => {
-    const s = validateSchedule({ ...base, inputs: { hours: '5', project: 'Apollo' } })
-    const args = scheduleArgs('log_hours', s)
-    expect(args.filter((a) => a === '--input')).toHaveLength(1)
-    expect(args.slice(-3)).toEqual(['--input', 'hours=5', 'project=Apollo'])
-  })
-
-  it('adds no --input when the flow has no inputs', () => {
+  it('sends no --input', () => {
     expect(scheduleArgs('r', validateSchedule(base))).not.toContain('--input')
-  })
-
-  it('keeps a value that starts with - inside its name=value token', () => {
-    const s = validateSchedule({ ...base, inputs: { delta: '-5', flag: '--project' } })
-    expect(scheduleArgs('r', s).slice(-3)).toEqual(['--input', 'delta=-5', 'flag=--project'])
   })
 
   it('uses :MM for an hourly rule and adds --on for a weekly one', () => {

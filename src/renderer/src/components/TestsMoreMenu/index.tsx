@@ -39,6 +39,7 @@ const TestsMoreMenu: React.FC<TestsMoreMenuProps> = ({ tag }) => {
   })
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     const close = (e: MouseEvent): void => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)

@@ -5,13 +5,12 @@ import '@testing-library/jest-dom'
 import useTitleStore from '@foundation/Stores/titleStore'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
-import { Link, MemoryRouter, Route, Routes } from 'react-router'
+import { Link, MemoryRouter } from 'react-router'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import toast from 'react-hot-toast'
 import { useRunStore } from '@foundation/Stores/runStore'
 import type { RunView } from '@foundation/run/runModel'
-import type { RunFlow } from '@shared/types/runEvents'
 
 // Mocking necessary modules and hooks
 vi.mock('react-i18next', () => ({
@@ -55,10 +54,6 @@ vi.mock('@components/Library/Folder', () => ({
 
 vi.mock('@components/ProjectDashboard', () => ({
   default: (): JSX.Element => <div data-testid="project-dashboard">ProjectDashboard</div>
-}))
-
-vi.mock('@components/Flows/FlowsPane', () => ({
-  default: (): JSX.Element => <div data-testid="flows-pane-stub" />
 }))
 
 vi.mock('@components/Editor', () => ({
@@ -109,7 +104,6 @@ const openFilesTab = async (): Promise<void> => {
 }
 
 const mockApi = {
-  flowsReady: vi.fn().mockResolvedValue(false),
   openDocs: vi.fn().mockResolvedValue({ success: true }),
   listProjectTests: vi.fn().mockResolvedValue([]),
   getTests: vi.fn().mockResolvedValue([]),
@@ -200,7 +194,6 @@ describe('Overview Page', (): void => {
     })
     const tabs: [string, string][] = [
       ['overview.tabs.tests', 'tooltips.overview.tabTests'],
-      ['overview.tabs.flows', 'tooltips.overview.tabFlows'],
       ['overview.tabs.files', 'tooltips.overview.tabFiles'],
       ['overview.tabs.dashboard', 'tooltips.overview.tabDashboard']
     ]
@@ -210,85 +203,6 @@ describe('Overview Page', (): void => {
       expect(screen.getByRole('tooltip')).toHaveTextContent(key)
       fireEvent.blur(tab)
     }
-  })
-
-  it('has a Flows tab after Tests that shows the flows', async (): Promise<void> => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <Overview />
-        </MemoryRouter>
-      )
-    })
-    const names = screen
-      .getAllByRole('button', { name: /^overview\.tabs\./ })
-      .map((b) => b.textContent)
-    expect(names.slice(0, 2)).toEqual(['overview.tabs.tests', 'overview.tabs.flows'])
-    expect(screen.queryByTestId('flows-pane-stub')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'overview.tabs.flows' }))
-    expect(screen.getByTestId('flows-pane-stub')).toBeInTheDocument()
-  })
-
-  it("goes back to the Tests tab when a flow's page is opened again (Flows › Edit)", async () => {
-    const page = '/overview/tests/aWQ6dDE'
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={[page]}>
-          <Routes>
-            <Route
-              path="/overview/tests/:testKey"
-              element={
-                <>
-                  <Overview />
-                  {/* useNavigate is mocked in this file; a link changes the route for real */}
-                  <Link to={page}>edit-again</Link>
-                </>
-              }
-            />
-          </Routes>
-        </MemoryRouter>
-      )
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'overview.tabs.flows' }))
-    expect(screen.getByTestId('flows-pane-stub')).toBeInTheDocument()
-    await act(async () => {
-      fireEvent.click(screen.getByText('edit-again'))
-    })
-    expect(screen.queryByTestId('flows-pane-stub')).toBeNull()
-  })
-
-  it('shows the Flows tab when navigated with the Flows tab state, also from a test page', async () => {
-    const overview = (
-      <>
-        <Overview />
-        {/* useNavigate is mocked in this file; a link changes the route for real */}
-        <Link to="/overview" state={{ tab: 'flows' }}>
-          failed-run
-        </Link>
-      </>
-    )
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/overview/tests/aWQ6dDE']}>
-          <Routes>
-            <Route path="/overview" element={overview} />
-            <Route path="/overview/tests/:testKey" element={overview} />
-          </Routes>
-        </MemoryRouter>
-      )
-    })
-    expect(screen.queryByTestId('flows-pane-stub')).toBeNull()
-    await act(async () => {
-      fireEvent.click(screen.getByText('failed-run'))
-    })
-    expect(screen.getByTestId('flows-pane-stub')).toBeInTheDocument()
-    // Back on Tests, the same request again (a second click) shows Flows again
-    fireEvent.click(screen.getByRole('button', { name: 'overview.tabs.tests' }))
-    expect(screen.queryByTestId('flows-pane-stub')).toBeNull()
-    await act(async () => {
-      fireEvent.click(screen.getByText('failed-run'))
-    })
-    expect(screen.getByTestId('flows-pane-stub')).toBeInTheDocument()
   })
 
   it('navigates to /start-project if no project path is set', async (): Promise<void> => {
@@ -1216,69 +1130,6 @@ describe('Overview live runs', (): void => {
     await renderOverview()
     expect(screen.getByTestId('run-tests')).toBeDisabled()
     expect(screen.getByTestId('overview-rerun-failed-btn')).toBeDisabled()
-  })
-
-  describe('a finished flow run', () => {
-    const flowRun = (): RunView => ({
-      ...failedRun(),
-      scope: { kind: 'files', files: ['flows/fill_hours_flow.rb'] },
-      finished: {
-        ...failedRun().finished!,
-        flow: {
-          name: 'fill_hours',
-          status: 'failed',
-          resultsDir: null,
-          failedStep: null
-        }
-      }
-    })
-    const show = async (lastFlow: RunFlow | null): Promise<void> => {
-      useRunStore.setState({
-        run: flowRun(),
-        origin: { route: '/overview', label: 'Fill hours' },
-        lastFlow,
-        isActive: false
-      })
-      await act(async () => {
-        render(
-          <MemoryRouter>
-            <Overview />
-          </MemoryRouter>
-        )
-      })
-    }
-
-    it('runs again with the same flow payload', async () => {
-      const lastFlow = { name: 'fill_hours', inputs: { hours: '6' }, headed: true }
-      await show(lastFlow)
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('run-again'))
-      })
-      expect(mockApi.startRun).toHaveBeenCalledWith(
-        expect.objectContaining({
-          scope: { kind: 'files', files: ['flows/fill_hours_flow.rb'] },
-          flow: lastFlow
-        })
-      )
-      expect(useRunStore.getState().origin).toEqual({ route: '/overview', label: 'Fill hours' })
-    })
-
-    it('runs again with the recorded inputs once the payload is gone', async () => {
-      await show(null)
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('run-again'))
-      })
-      expect(mockApi.startRun.mock.calls[0][0].flow).toEqual({
-        name: 'fill_hours',
-        inputs: {},
-        headed: false
-      })
-    })
-
-    it('has no Re-run failed', async () => {
-      await show(null)
-      expect(screen.queryByTestId('run-rerun-failed')).toBeNull()
-    })
   })
 
   it('shows the run panel above every tab', async () => {

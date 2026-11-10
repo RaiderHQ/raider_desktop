@@ -25,7 +25,7 @@ import type {
   FlowsStatus,
   GemFlow
 } from '@shared/types/flows'
-import type { FlowCliError, FlowSchedule, GemSchedule } from '@shared/types/schedules'
+import type { GemCliError, FlowSchedule, GemSchedule } from '@shared/types/schedules'
 import type { ScaffoldParams, ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { RunApi } from '@shared/types/runEvents'
@@ -165,21 +165,21 @@ export interface WindowApi extends RunApi {
   /** Whether the active project has flows set up (flows/flow_helper.rb) */
   flowsReady: () => Promise<boolean>
   /** Whether the active project can use the Flows tab (ruby_raider 4.1+, set up); runs no gem */
-  flowsStatus: (rubyCommand: string) => Promise<FlowsStatus | FlowCliError>
+  flowsStatus: (rubyCommand: string) => Promise<FlowsStatus | GemCliError>
   /** `raider flow list`: the active project's flows with their last run */
-  listFlows: (rubyCommand: string) => Promise<{ flows: GemFlow[] } | FlowCliError>
+  listFlows: (rubyCommand: string) => Promise<{ flows: GemFlow[] } | GemCliError>
   /** `raider flow schedules`: the active project's scheduled flows */
-  listSchedules: (rubyCommand: string) => Promise<{ schedules: GemSchedule[] } | FlowCliError>
+  listSchedules: (rubyCommand: string) => Promise<{ schedules: GemSchedule[] } | GemCliError>
   /** `raider flow init`: sets flows up in the active project */
-  setupFlows: (rubyCommand: string) => Promise<{ ok: true } | FlowCliError>
+  setupFlows: (rubyCommand: string) => Promise<{ ok: true } | GemCliError>
   /** `raider flow schedule`: schedules an existing flow; `message` is the gem's confirmation */
   scheduleFlow: (
     rubyCommand: string,
     name: string,
     schedule: FlowSchedule
-  ) => Promise<{ ok: true; message: string } | FlowCliError>
+  ) => Promise<{ ok: true; message: string } | GemCliError>
   /** `raider flow unschedule`: removes a flow's schedule */
-  unscheduleFlow: (rubyCommand: string, name: string) => Promise<{ ok: true } | FlowCliError>
+  unscheduleFlow: (rubyCommand: string, name: string) => Promise<{ ok: true } | GemCliError>
   /** Opens a flow run's HTML report (`<resultsDir>/index.html`) in the default app */
   openFlowResults: (
     name: string,

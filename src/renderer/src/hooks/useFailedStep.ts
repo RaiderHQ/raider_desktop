@@ -9,7 +9,6 @@ import type { TestResult } from '@foundation/Types/testResult'
 import { describeStep, elementName } from '@shared/describeStep'
 import { failureReason, type FailureReason } from '@shared/failureReason'
 import type { Step } from '@shared/types/step'
-import { flowStemOf } from '@shared/flows'
 import type { Test } from '@shared/types/test'
 
 export type FailedStepState =
@@ -36,8 +35,7 @@ export async function resolveFailedStep(
     file: result.file ?? test.file ?? '',
     backtrace: failure.backtrace,
     appFrame: failure.appFrame,
-    finishedAt: result.finishedAt,
-    ...(result.resultsDir ? { resultsDir: result.resultsDir } : {})
+    finishedAt: result.finishedAt
   })
   if ('none' in map) {
     if (map.none === 'changedSinceRun') return { status: 'changedSinceRun', result }
@@ -114,17 +112,6 @@ const runTouches = (run: RunView, file: string): boolean => {
 }
 
 /**
- * The newest results that may hold this file: a flow's own last run (from its run log),
- * never raider-results; a test's raider-results.
- */
-async function lastResultsOf(projectPath: string, file: string): Promise<TestResult[] | null> {
-  const flow = flowStemOf(file)
-  if (flow === null) return loadRaiderResults(projectPath, window.api)
-  const last = await window.api.flowLastResults(flow)
-  return last ? loadRaiderResults(projectPath, window.api, undefined, last.resultsDir) : null
-}
-
-/**
  * The failed step of a test's newest run. Reloaded after each finished run that may
  * have included the test's file; nothing while it's being recorded.
  */
@@ -160,7 +147,7 @@ export function useFailedStep(
     if (recording) setLoaded({ key: null, result: null })
     if (!projectPath || !file || recording) return
     let active = true
-    lastResultsOf(projectPath, file)
+    loadRaiderResults(projectPath, window.api)
       .then((rows) => {
         const row = rows?.find((r) => FAILED.has(r.status) && r.file === file)
         if (active) setLoaded({ key, result: row ?? null })

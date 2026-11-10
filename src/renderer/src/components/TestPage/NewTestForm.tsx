@@ -10,8 +10,6 @@ interface NewTestFormProps {
   disabled?: boolean
   /** Why recording isn't possible, shown under the form */
   disabledReason?: string
-  /** What the new recording becomes: a flow's name field says so */
-  kind?: 'test' | 'flow'
 }
 
 const field =
@@ -22,8 +20,7 @@ const NewTestForm: React.FC<NewTestFormProps> = ({
   onStart,
   onCancel,
   disabled = false,
-  disabledReason,
-  kind = 'test'
+  disabledReason
 }) => {
   const { t } = useTranslation()
   const projectPath = useProjectStore((s) => s.projectPath)
@@ -46,7 +43,6 @@ const NewTestForm: React.FC<NewTestFormProps> = ({
     }
   }, [projectPath])
 
-  const nameKey = kind === 'flow' ? 'testPage.flowName' : 'testPage.name'
   const canStart = name.trim() !== '' && !disabled
   const start = (): void => {
     if (canStart) onStart(name.trim(), url.trim())
@@ -66,8 +62,8 @@ const NewTestForm: React.FC<NewTestFormProps> = ({
           className={field}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder={t(nameKey)}
-          aria-label={t(nameKey)}
+          placeholder={t('testPage.name')}
+          aria-label={t('testPage.name')}
           required
           autoFocus
         />

@@ -28,7 +28,7 @@ import type {
   FlowsStatus,
   GemFlow
 } from '../../../shared/types/flows'
-import type { FlowCliError, GemSchedule } from '../../../shared/types/schedules'
+import type { GemCliError, GemSchedule } from '../../../shared/types/schedules'
 
 // The Flows tab's channels. Only the main window may call them; the project is always the
 // active one (never a path from the renderer), and the renderer sends only its rubyCommand
@@ -46,12 +46,12 @@ export interface FlowsIpcDeps {
 const defaultDeps: FlowsIpcDeps = { runFlowCli: (...args) => runFlowCli(...args) }
 
 const MAX_MESSAGE = 500
-const INVALID: FlowCliError = { error: 'invalid' }
+const INVALID: GemCliError = { error: 'invalid' }
 
 const fromMainWindow = (event: IpcMainInvokeEvent): boolean =>
   event.sender.id === appState.mainWindow?.webContents.id
 
-const invalid = (message: string): FlowCliError => ({ error: 'invalid', message })
+const invalid = (message: string): GemCliError => ({ error: 'invalid', message })
 
 async function lockedVersion(projectPath: string): Promise<string | null> {
   const lock = await fs.readFile(path.join(projectPath, 'Gemfile.lock'), 'utf8').catch(() => '')
@@ -78,7 +78,7 @@ async function statusOf(
 async function gate(
   rubyCommand: unknown,
   allowSetup = false
-): Promise<{ projectPath: string; rubyCommand: string } | FlowCliError> {
+): Promise<{ projectPath: string; rubyCommand: string } | GemCliError> {
   if (!isValidRubyCommand(rubyCommand)) return invalid('Not a valid Ruby command.')
   const target = await flowsProject(allowSetup)
   return 'error' in target ? target : { projectPath: target.projectPath, rubyCommand }
@@ -97,7 +97,7 @@ async function flowsProject(
   return { projectPath }
 }
 
-const cliError = (result: Extract<FlowCliResult, { ok: false }>): FlowCliError =>
+const cliError = (result: Extract<FlowCliResult, { ok: false }>): GemCliError =>
   result.message === undefined
     ? { error: result.error }
     : { error: result.error, message: result.message }
@@ -105,7 +105,7 @@ const cliError = (result: Extract<FlowCliResult, { ok: false }>): FlowCliError =
 /** 'flows-status' */
 export async function flowsStatusHandler(
   event: IpcMainInvokeEvent
-): Promise<FlowsStatus | FlowCliError> {
+): Promise<FlowsStatus | GemCliError> {
   if (!fromMainWindow(event)) return INVALID
   await activationSettled()
   return statusOf(appState.projectPath, appState.layout)
@@ -116,7 +116,7 @@ export async function listFlowsHandler(
   event: IpcMainInvokeEvent,
   rubyCommand: unknown,
   deps: FlowsIpcDeps = defaultDeps
-): Promise<{ flows: GemFlow[] } | FlowCliError> {
+): Promise<{ flows: GemFlow[] } | GemCliError> {
   if (!fromMainWindow(event)) return INVALID
   const target = await gate(rubyCommand)
   if ('error' in target) return target
@@ -133,7 +133,7 @@ export async function listSchedulesHandler(
   event: IpcMainInvokeEvent,
   rubyCommand: unknown,
   deps: FlowsIpcDeps = defaultDeps
-): Promise<{ schedules: GemSchedule[] } | FlowCliError> {
+): Promise<{ schedules: GemSchedule[] } | GemCliError> {
   if (!fromMainWindow(event)) return INVALID
   const target = await gate(rubyCommand)
   if ('error' in target) return target
@@ -153,7 +153,7 @@ export async function setupFlowsHandler(
   event: IpcMainInvokeEvent,
   rubyCommand: unknown,
   deps: FlowsIpcDeps = defaultDeps
-): Promise<{ ok: true } | FlowCliError> {
+): Promise<{ ok: true } | GemCliError> {
   if (!fromMainWindow(event)) return INVALID
   const target = await gate(rubyCommand, true)
   if ('error' in target) return target
@@ -168,7 +168,7 @@ export async function scheduleFlowHandler(
   name: unknown,
   schedule: unknown,
   deps: FlowsIpcDeps = defaultDeps
-): Promise<{ ok: true; message: string } | FlowCliError> {
+): Promise<{ ok: true; message: string } | GemCliError> {
   if (!fromMainWindow(event)) return INVALID
   if (typeof name !== 'string' || !isFlowName(name)) return invalid('Not a valid flow name.')
   let valid
@@ -195,7 +195,7 @@ export async function unscheduleFlowHandler(
   rubyCommand: unknown,
   name: unknown,
   deps: FlowsIpcDeps = defaultDeps
-): Promise<{ ok: true } | FlowCliError> {
+): Promise<{ ok: true } | GemCliError> {
   if (!fromMainWindow(event)) return INVALID
   if (typeof name !== 'string' || !isFlowName(name)) return invalid('Not a valid flow name.')
   const target = await gate(rubyCommand)

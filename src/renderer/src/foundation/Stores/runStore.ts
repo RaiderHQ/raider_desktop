@@ -6,7 +6,7 @@ import useRubyStore from '@foundation/Stores/rubyStore'
 import { loadRunSettings, loginStateFor, workersFor } from '@foundation/run/runSettings'
 import { notifyRunFinished } from '@foundation/run/notifyRunFinished'
 import { reduceRun, viewFromActiveRun, type RunView } from '@foundation/run/runModel'
-import type { RunEvent, RunFlow, RunScope } from '@shared/types/runEvents'
+import type { RunEvent, RunScope } from '@shared/types/runEvents'
 
 /** Where a run was started from, so the panel can link back to it. */
 export interface RunOrigin {
@@ -17,8 +17,6 @@ export interface RunOrigin {
 interface RunStore {
   run: RunView | null
   origin: RunOrigin | null
-  /** The flow payload of the run last started here (null: not a flow run), for Run again */
-  lastFlow: RunFlow | null
   isActive: boolean
   freshLoginNext: boolean
   /** The run panel shows only its summary line; kept for the app session, never saved */
@@ -30,11 +28,7 @@ interface RunStore {
   setFreshLoginNext: (v: boolean) => void
   ingest: (e: RunEvent) => void
   restore: () => Promise<void>
-  start: (
-    scope: RunScope,
-    origin: RunOrigin,
-    flow?: RunFlow
-  ) => Promise<'started' | 'busy' | 'error'>
+  start: (scope: RunScope, origin: RunOrigin) => Promise<'started' | 'busy' | 'error'>
   cancel: () => Promise<void>
 }
 
@@ -49,7 +43,6 @@ export const useRunStore = create<RunStore>(
   (set, get): RunStore => ({
     run: null,
     origin: null,
-    lastFlow: null,
     isActive: false,
     freshLoginNext: false,
     resultsCollapsed: false,
@@ -78,11 +71,7 @@ export const useRunStore = create<RunStore>(
         console.error('Restoring the active run failed:', error)
       }
     },
-    start: async (
-      scope: RunScope,
-      origin: RunOrigin,
-      flow?: RunFlow
-    ): Promise<'started' | 'busy' | 'error'> => {
+    start: async (scope: RunScope, origin: RunOrigin): Promise<'started' | 'busy' | 'error'> => {
       const rubyCommand = useRubyStore.getState().rubyCommand
       const { projectPath } = useProjectStore.getState()
       if (!rubyCommand || !projectPath) {
@@ -98,11 +87,10 @@ export const useRunStore = create<RunStore>(
           workers: workersFor(settings, defaults, scope),
           rubyCommand,
           quarantinedFails: settings.quarantinedFails,
-          ...(loginState ? { loginState } : {}),
-          ...(flow ? { flow } : {})
+          ...(loginState ? { loginState } : {})
         })
         if ('runId' in result) {
-          set({ origin, lastFlow: flow ?? null, freshLoginNext: false })
+          set({ origin, freshLoginNext: false })
           return 'started'
         }
         if (result.error === 'busy') {

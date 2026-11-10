@@ -1,15 +1,20 @@
 import React, { useEffect, useId } from 'react'
 import ReactDOM from 'react-dom'
 
-interface FlowModalProps {
+interface ScheduleDialogShellProps {
   title: string
   onClose: () => void
   children: React.ReactNode
   footer: React.ReactNode
 }
 
-/** The frame the Flows tab's dialogs share: overlay, title, body, footer; Esc closes. */
-const FlowModal: React.FC<FlowModalProps> = ({ title, onClose, children, footer }) => {
+/** The schedule dialog's frame: overlay, title, body, footer; Esc closes. */
+const ScheduleDialogShell: React.FC<ScheduleDialogShellProps> = ({
+  title,
+  onClose,
+  children,
+  footer
+}) => {
   const titleId = useId()
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
@@ -47,4 +52,4 @@ const FlowModal: React.FC<FlowModalProps> = ({ title, onClose, children, footer 
   )
 }
 
-export default FlowModal
+export default ScheduleDialogShell

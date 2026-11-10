@@ -64,7 +64,6 @@ const emit = async (channel: string, ...args: unknown[]): Promise<void> => {
 }
 
 const api = {
-  flowsReady: vi.fn().mockResolvedValue(false),
   getTests: vi.fn(),
   listProjectTests: vi.fn(),
   saveRecording: vi.fn(),
@@ -362,46 +361,6 @@ describe('TestsWorkspace tag filter', () => {
     expect(screen.getByRole('button', { name: /Search products/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Checkout/ })).toBeInTheDocument()
     expect(screen.getByTestId('tag-filter')).toHaveValue('')
-  })
-
-  it('lists no flows, and their tags offer no filter; a flow page still opens', async () => {
-    api.listProjectTests.mockResolvedValue([
-      {
-        name: 'Search products',
-        file: 'spec/search_products_spec.rb',
-        testId: 't1',
-        ownership: 'recorded',
-        tags: []
-      },
-      {
-        name: 'Fill hours',
-        file: 'flows/fill_hours_flow.rb',
-        ownership: 'code',
-        tags: ['flowtag'],
-        kind: 'flow'
-      }
-    ])
-    render(
-      <MemoryRouter
-        initialEntries={[`/overview/tests/${toRouteParam('file:flows/fill_hours_flow.rb')}`]}
-      >
-        <Routes>
-          <Route
-            path="/overview/tests/:testKey"
-            element={
-              <TestsWorkspace
-                renderPane={(row) => <p data-testid="pane">{row?.name ?? 'nothing'}</p>}
-              />
-            }
-          />
-        </Routes>
-      </MemoryRouter>
-    )
-    await screen.findByRole('button', { name: /Search products/ })
-    expect(screen.queryByRole('button', { name: /Fill hours/ })).not.toBeInTheDocument()
-    expect(screen.queryByTestId('tag-filter')).not.toBeInTheDocument()
-    // The flow's own page, which Edit on the Flows tab opens, still resolves
-    expect(screen.getByTestId('pane')).toHaveTextContent('Fill hours')
   })
 
   it('gives Run tagged tests the filtered tag', async () => {

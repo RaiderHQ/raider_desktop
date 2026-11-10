@@ -65,11 +65,7 @@ interface RecorderStore {
   /** The test page should start the recorder as soon as the draft opens (quick record) */
   recordOnOpen: boolean
   /** Open a new, unsaved test with this name and start URL, ready to record */
-  startDraft: (
-    name: string,
-    url: string,
-    options?: { recordOnOpen?: boolean; kind?: 'test' | 'flow' }
-  ) => void
+  startDraft: (name: string, url: string, options?: { recordOnOpen?: boolean }) => void
   setRecordOnOpen: (value: boolean) => void
   setDraftTest: (test: Test | null) => void
   setUnsavedExample: (unsaved: UnsavedExample | null) => void
@@ -120,14 +116,7 @@ const useRecorderStore = create<RecorderStore>((set) => ({
   setRecordingBrowser: (browser): void =>
     set({ recordingUrl: browser?.url ?? null, preloadPath: browser?.preloadPath ?? null }),
   startDraft: (name, url, options): void => {
-    const draft: Test = {
-      id: crypto.randomUUID(),
-      name,
-      url,
-      steps: [],
-      // A new flow says so once; main keeps it a flow from its first save on
-      ...(options?.kind === 'flow' && { kind: 'flow' as const })
-    }
+    const draft: Test = { id: crypto.randomUUID(), name, url, steps: [] }
     set({
       draftTest: draft,
       recordOnOpen: options?.recordOnOpen ?? false,

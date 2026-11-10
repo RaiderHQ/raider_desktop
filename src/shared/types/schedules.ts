@@ -10,7 +10,6 @@ export interface FlowSchedule {
   on?: FlowDay
   retries: number
   notify: boolean
-  inputs: Record<string, string>
 }
 
 export interface FlowFailedStep {
@@ -55,7 +54,7 @@ export interface GemOrphanSchedule {
 
 export type GemSchedule = GemScheduleRule | GemOrphanSchedule
 
-export type FlowCliError = {
+export type GemCliError = {
   error: 'gem-output' | 'timeout' | 'ruby' | 'refused' | 'invalid' | 'no-project' | 'unsupported'
   message?: string
 }
