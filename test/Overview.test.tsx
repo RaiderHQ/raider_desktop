@@ -1728,10 +1728,7 @@ describe('Overview live runs', (): void => {
       act(() => dispatchMenuCommand('run'))
       expect(start).not.toHaveBeenCalled()
       expect(screen.getByTestId('overview-run-tag-input')).toBeVisible()
-      expect(screen.getByTestId('overview-settings-toggle')).toHaveAttribute(
-        'aria-expanded',
-        'true'
-      )
+      expect(screen.getByTestId('overview-settings-toggle')).toHaveAttribute('aria-expanded', 'true')
     })
 
     it('shows a bad address on the header while the settings are folded', async () => {
