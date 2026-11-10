@@ -202,6 +202,17 @@ describe('schedule-flow', () => {
     ])
   })
 
+  it('passes two inputs after a single --input so the gem keeps both', async () => {
+    runFlowCli.mockResolvedValue({ ok: true, stdout: 'Scheduled report\n' })
+    await call('schedule-flow', RUBY, 'report', {
+      ...SCHEDULE,
+      inputs: { hours: '5', project: 'Apollo' }
+    })
+    const args: string[] = runFlowCli.mock.calls.at(-1)[2]
+    expect(args.filter((a) => a === '--input')).toHaveLength(1)
+    expect(args.slice(-3)).toEqual(['--input', 'hours=5', 'project=Apollo'])
+  })
+
   it.each([
     ['a bad name', '../x', SCHEDULE],
     ['a reserved name', 'env', SCHEDULE],
