@@ -6,13 +6,13 @@ import { join } from 'path'
 vi.mock('electron', () => ({ Notification: class {} }))
 
 import {
-  createFlowWatcher,
-  isFlowsChange,
-  startFlowWatcher,
-  stopFlowWatcher,
+  createScheduleWatcher,
+  isScheduleChange,
+  startScheduleWatcher,
+  stopScheduleWatcher,
   SCHEDULE_FAILED_TITLE,
-  type FlowWatcher,
-  type FlowWatcherDeps
+  type ScheduleWatcher,
+  type ScheduleWatcherDeps
 } from '../../src/main/handlers/schedules/scheduleWatcher'
 
 interface FakeWatch {
@@ -25,7 +25,7 @@ interface FakeWatch {
 
 /** A fake fs.watch, Notification, window and timer; the file system is a real temp folder */
 function fakes(): {
-  deps: FlowWatcherDeps
+  deps: ScheduleWatcherDeps
   watches: FakeWatch[]
   notes: { title: string; body: string; click: () => void; closed: boolean }[]
   sent: string[]
@@ -44,7 +44,7 @@ function fakes(): {
   let pending: (() => void) | null = null
   const state = { timers: 0 }
   const win = { restore: vi.fn(), show: vi.fn(), focus: vi.fn(), minimized: true }
-  const deps: FlowWatcherDeps = {
+  const deps: ScheduleWatcherDeps = {
     watch: (dir, { recursive }, listener) => {
       let onError: () => void = () => undefined
       const w: FakeWatch = {
@@ -129,18 +129,18 @@ const line = (patch: Record<string, unknown> = {}): string =>
   }) + '\n'
 
 let dir: string
-let watcher: FlowWatcher | null
+let watcher: ScheduleWatcher | null
 const log = (name = 'broken'): string => join(dir, '.raider', 'flows', name, 'runs.jsonl')
 
 beforeEach(async () => {
-  dir = await realpath(await mkdtemp(join(tmpdir(), 'flow-watcher-')))
+  dir = await realpath(await mkdtemp(join(tmpdir(), 'schedule-watcher-')))
   await mkdir(join(dir, '.raider', 'flows', 'broken'), { recursive: true })
   watcher = null
 })
 
 afterEach(async () => {
   watcher?.stop()
-  stopFlowWatcher()
+  stopScheduleWatcher()
   await rm(dir, { recursive: true, force: true })
 })
 
@@ -151,10 +151,10 @@ async function change(f: ReturnType<typeof fakes>): Promise<void> {
   await watcher!.idle()
 }
 
-describe('flowWatcher', () => {
+describe('scheduleWatcher', () => {
   it('watches .raider/flows recursively', async () => {
     const f = fakes()
-    watcher = createFlowWatcher(dir, f.deps)
+    watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     expect(f.watches).toHaveLength(1)
     expect(f.watches[0]).toMatchObject({ dir: join(dir, '.raider', 'flows'), recursive: true })
@@ -166,7 +166,7 @@ describe('flowWatcher', () => {
       line({ run_id: 'aaaaaaaaaaaaaaaa' }) + line({ run_id: 'bbbbbbbbbbbbbbbb' })
     )
     const f = fakes()
-    watcher = createFlowWatcher(dir, f.deps)
+    watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     await change(f)
     expect(f.notes).toHaveLength(0)
@@ -185,7 +185,7 @@ describe('flowWatcher', () => {
   it('does not notify a line again after the gem trims (rewrites) the log', async () => {
     await writeFile(log(), line({ run_id: 'aaaaaaaaaaaaaaaa' }) + line())
     const f = fakes()
-    watcher = createFlowWatcher(dir, f.deps)
+    watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     await writeFile(log(), line())
     await change(f)
@@ -195,7 +195,7 @@ describe('flowWatcher', () => {
   it('does not notify old lines after a read that caught the log empty or missing', async () => {
     await writeFile(log(), line())
     const f = fakes()
-    watcher = createFlowWatcher(dir, f.deps)
+    watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     await writeFile(log(), '')
     await change(f)
@@ -208,7 +208,7 @@ describe('flowWatcher', () => {
 
   it('skips completed, busy, and manual or desktop runs; notifies a scheduled setup_error', async () => {
     const f = fakes()
-    watcher = createFlowWatcher(dir, f.deps)
+    watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     await appendFile(
       log(),
@@ -224,7 +224,7 @@ describe('flowWatcher', () => {
 
   it('names the step when the flow has a sidecar, else just the flow', async () => {
     const f = fakes()
-    watcher = createFlowWatcher(dir, f.deps)
+    watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     await appendFile(
       log(),
@@ -237,7 +237,7 @@ describe('flowWatcher', () => {
 
   it('keys a line by started_at when run_id is missing or not a run id', async () => {
     const f = fakes()
-    watcher = createFlowWatcher(dir, f.deps)
+    watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     await appendFile(
       log(),
@@ -258,7 +258,7 @@ describe('flowWatcher', () => {
 
   it('debounces: 5 events make one scan and one schedules-changed', async () => {
     const f = fakes()
-    watcher = createFlowWatcher(dir, f.deps)
+    watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     await appendFile(log(), line())
     for (let i = 0; i < 5; i++) f.watches[0].fire()
@@ -274,7 +274,7 @@ describe('flowWatcher', () => {
     await mkdir(join(dir, '.raider', 'flows', 'Bad-Name'), { recursive: true })
     await mkdir(join(dir, '.raider', 'flows', 'env'), { recursive: true })
     const f = fakes()
-    watcher = createFlowWatcher(dir, f.deps)
+    watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     await writeFile(join(dir, '.raider', 'flows', 'Bad-Name', 'runs.jsonl'), line())
     await writeFile(join(dir, '.raider', 'flows', 'env', 'runs.jsonl'), line())
@@ -306,7 +306,7 @@ describe('flowWatcher', () => {
     it('a failed first attempt that a retry fixes is not notified', async () => {
       await schedules(1)
       const f = fakes()
-      watcher = createFlowWatcher(dir, f.deps)
+      watcher = createScheduleWatcher(dir, f.deps)
       await watcher.idle()
       await appendFile(
         log(),
@@ -320,7 +320,7 @@ describe('flowWatcher', () => {
     it('with retries 2 and all three attempts failing, notifies once (the third)', async () => {
       await schedules(2)
       const f = fakes()
-      watcher = createFlowWatcher(dir, f.deps)
+      watcher = createScheduleWatcher(dir, f.deps)
       await watcher.idle()
       await appendFile(log(), line({ run_id: '1000000000000000', attempt: 1 }))
       await change(f)
@@ -337,7 +337,7 @@ describe('flowWatcher', () => {
 
     it('without schedules.yml (or a bad one) the first attempt is the last', async () => {
       const f = fakes()
-      watcher = createFlowWatcher(dir, f.deps)
+      watcher = createScheduleWatcher(dir, f.deps)
       await watcher.idle()
       await appendFile(log(), line({ run_id: '1000000000000000', attempt: 1 }))
       await change(f)
@@ -350,7 +350,7 @@ describe('flowWatcher', () => {
     it('clamps retries to 0..3 and needs a positive integer attempt', async () => {
       await schedules(99)
       const f = fakes()
-      watcher = createFlowWatcher(dir, f.deps)
+      watcher = createScheduleWatcher(dir, f.deps)
       await watcher.idle()
       await appendFile(
         log(),
@@ -364,7 +364,7 @@ describe('flowWatcher', () => {
     })
 
     it('ignores a linked schedules.yml', async () => {
-      const outside = await mkdtemp(join(tmpdir(), 'flow-outside-'))
+      const outside = await mkdtemp(join(tmpdir(), 'schedule-outside-'))
       try {
         await writeFile(
           join(outside, 'schedules.yml'),
@@ -375,7 +375,7 @@ describe('flowWatcher', () => {
           join(dir, '.raider', 'flows', 'schedules.yml')
         )
         const f = fakes()
-        watcher = createFlowWatcher(dir, f.deps)
+        watcher = createScheduleWatcher(dir, f.deps)
         await watcher.idle()
         await appendFile(log(), line({ run_id: '1000000000000000', attempt: 1 }))
         await change(f)
@@ -388,10 +388,10 @@ describe('flowWatcher', () => {
 
   describe('which changes count', () => {
     it('only run logs, schedules.yml and flow folders; a missing filename counts', () => {
-      expect(isFlowsChange('broken/runs.jsonl')).toBe(true)
-      expect(isFlowsChange('schedules.yml')).toBe(true)
-      expect(isFlowsChange('broken')).toBe(true)
-      expect(isFlowsChange(null)).toBe(true)
+      expect(isScheduleChange('broken/runs.jsonl')).toBe(true)
+      expect(isScheduleChange('schedules.yml')).toBe(true)
+      expect(isScheduleChange('broken')).toBe(true)
+      expect(isScheduleChange(null)).toBe(true)
       for (const churn of [
         'broken/scheduler.log',
         'broken.lock',
@@ -401,12 +401,12 @@ describe('flowWatcher', () => {
         'broken/sub/runs.jsonl',
         'env/runs.jsonl'
       ])
-        expect(isFlowsChange(churn), churn).toBe(false)
+        expect(isScheduleChange(churn), churn).toBe(false)
     })
 
     it('scheduler.log and lock churn push no schedules-changed', async () => {
       const f = fakes()
-      watcher = createFlowWatcher(dir, f.deps)
+      watcher = createScheduleWatcher(dir, f.deps)
       await watcher.idle()
       f.watches[0].fire('broken/scheduler.log')
       f.watches[0].fire('broken.lock')
@@ -422,9 +422,9 @@ describe('flowWatcher', () => {
     })
   })
 
-  it('a click shows and focuses the window and asks for the Flows tab', async () => {
+  it('a click shows and focuses the window and asks for the schedules', async () => {
     const f = fakes()
-    watcher = createFlowWatcher(dir, f.deps)
+    watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     await appendFile(log(), line())
     await change(f)
@@ -437,7 +437,7 @@ describe('flowWatcher', () => {
 
   it('after stop (a project switch) closes its banners and a late click opens nothing', async () => {
     const f = fakes()
-    watcher = createFlowWatcher(dir, f.deps)
+    watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     await appendFile(log(), line())
     await change(f)
@@ -452,7 +452,7 @@ describe('flowWatcher', () => {
   it('without .raider/flows watches .raider and arms when it is made', async () => {
     await rm(join(dir, '.raider', 'flows'), { recursive: true })
     const f = fakes()
-    watcher = createFlowWatcher(dir, f.deps)
+    watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     expect(f.watches[0]).toMatchObject({ dir: join(dir, '.raider'), recursive: false })
 
@@ -468,7 +468,7 @@ describe('flowWatcher', () => {
   it('without .raider watches the project root', async () => {
     await rm(join(dir, '.raider'), { recursive: true })
     const f = fakes()
-    watcher = createFlowWatcher(dir, f.deps)
+    watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     expect(f.watches[0]).toMatchObject({ dir, recursive: false })
     await mkdir(join(dir, '.raider'))
@@ -478,7 +478,7 @@ describe('flowWatcher', () => {
 
   it('re-arms when the watched folder goes away', async () => {
     const f = fakes()
-    watcher = createFlowWatcher(dir, f.deps)
+    watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     await rm(join(dir, '.raider', 'flows'), { recursive: true })
     f.watches[0].error()
@@ -489,12 +489,12 @@ describe('flowWatcher', () => {
   })
 
   it('never watches a linked .raider/flows or .raider', async () => {
-    const outside = await mkdtemp(join(tmpdir(), 'flow-outside-'))
+    const outside = await mkdtemp(join(tmpdir(), 'schedule-outside-'))
     try {
       await rm(join(dir, '.raider', 'flows'), { recursive: true })
       await symlink(outside, join(dir, '.raider', 'flows'))
       const f = fakes()
-      watcher = createFlowWatcher(dir, f.deps)
+      watcher = createScheduleWatcher(dir, f.deps)
       await watcher.idle()
       expect(f.watches).toHaveLength(0)
       watcher.stop()
@@ -502,7 +502,7 @@ describe('flowWatcher', () => {
       await rm(join(dir, '.raider'), { recursive: true })
       await symlink(outside, join(dir, '.raider'))
       const g = fakes()
-      watcher = createFlowWatcher(dir, g.deps)
+      watcher = createScheduleWatcher(dir, g.deps)
       await watcher.idle()
       expect(g.watches).toHaveLength(0)
     } finally {
@@ -512,7 +512,7 @@ describe('flowWatcher', () => {
 
   it('stop closes the watch and nothing more is sent', async () => {
     const f = fakes()
-    watcher = createFlowWatcher(dir, f.deps)
+    watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     await appendFile(log(), line())
     f.watches[0].fire()
@@ -525,19 +525,19 @@ describe('flowWatcher', () => {
   })
 
   it('a project switch closes the old watcher and watches only the new project; quit stops it', async () => {
-    const other = await realpath(await mkdtemp(join(tmpdir(), 'flow-other-')))
+    const other = await realpath(await mkdtemp(join(tmpdir(), 'schedule-other-')))
     try {
       await mkdir(join(other, '.raider', 'flows'), { recursive: true })
       const f = fakes()
-      startFlowWatcher(dir, f.deps)
+      startScheduleWatcher(dir, f.deps)
       await vi.waitFor(() => expect(f.watches).toHaveLength(1))
-      startFlowWatcher(other, f.deps)
+      startScheduleWatcher(other, f.deps)
       await vi.waitFor(() => expect(f.watches).toHaveLength(2))
       expect(f.watches[0]).toMatchObject({ dir: join(dir, '.raider', 'flows'), closed: true })
       expect(f.watches[1]).toMatchObject({ dir: join(other, '.raider', 'flows'), closed: false })
       // The same project again keeps its watcher
-      startFlowWatcher(other, f.deps)
-      stopFlowWatcher()
+      startScheduleWatcher(other, f.deps)
+      stopScheduleWatcher()
       expect(f.watches).toHaveLength(2)
       expect(f.watches[1].closed).toBe(true)
     } finally {

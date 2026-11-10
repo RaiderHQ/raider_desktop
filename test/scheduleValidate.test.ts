@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { scheduleArgs, validateSchedule } from '../src/shared/schedules'
+import { isScheduleName, scheduleArgs, validateSchedule } from '../src/shared/schedules'
 
 const base = { every: 'day', at: '09:30', retries: 1, notify: false }
 
@@ -83,4 +83,17 @@ describe('scheduleArgs', () => {
       '0'
     ])
   })
+})
+
+describe('isScheduleName', () => {
+  it.each(['hello', 'fill_hours', 'a', '0_9', 'x'.repeat(60)])('accepts %s', (name) => {
+    expect(isScheduleName(name)).toBe(true)
+  })
+
+  it.each(['', 'Hello', 'fill-hours', 'a b', '../x', 'x'.repeat(61), 'env'])(
+    'refuses %j',
+    (name) => {
+      expect(isScheduleName(name)).toBe(false)
+    }
+  )
 })

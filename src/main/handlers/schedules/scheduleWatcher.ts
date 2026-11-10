@@ -5,7 +5,7 @@ import yaml from 'js-yaml'
 import { appState } from '../appState'
 import { assertRealInside, resolveInside } from '../tests/sidecar'
 import { readRunLog } from './runLog'
-import { isFlowName } from '../../../shared/flows'
+import { isScheduleName } from '../../../shared/schedules'
 import { isPlainObject } from '../../../shared/schedules'
 
 // Scheduled runs (launchd) append to .raider/flows/<name>/runs.jsonl while the app is open.
@@ -48,7 +48,7 @@ export interface WindowHandle {
   focus(): void
   webContents: { isDestroyed(): boolean; send(channel: string): void }
 }
-export interface FlowWatcherDeps {
+export interface ScheduleWatcherDeps {
   /** `listener` gets the changed path relative to `dir`, or null when the platform omits it */
   watch: (
     dir: string,
@@ -64,7 +64,7 @@ export interface FlowWatcherDeps {
   clearTimer: (timer: unknown) => void
 }
 
-export interface FlowWatcher {
+export interface ScheduleWatcher {
   readonly projectPath: string
   stop(): void
   /** Resolves once the work queued so far (arming, scans) is done */
@@ -75,7 +75,7 @@ const isPositiveInt = (value: unknown): value is number =>
   Number.isSafeInteger(value) && (value as number) > 0
 
 /** The notification text for a run line of the flow `name` (a valid flow name). */
-export function flowFailedBody(name: string, line: Record<string, unknown>): string {
+export function scheduleFailedBody(name: string, line: Record<string, unknown>): string {
   const step = isPlainObject(line.failed_step) ? line.failed_step : {}
   if (isPositiveInt(step.number)) return failedAtStep(name, step.number)
   if (isPositiveInt(step.line)) return failedAtLine(name, step.line)
@@ -95,19 +95,19 @@ const isScheduledFailure = (line: Record<string, unknown>): boolean =>
   NOTIFY_STATUSES.includes(line.status)
 
 /**
- * Whether a change under .raider/flows/ can change what the Flows tab shows: a run log, the
- * schedules, or a flow folder coming or going. scheduler.log, locks, env and temp files churn
+ * Whether a change under .raider/flows/ can change what the schedules show: a run log, the
+ * schedules, or a job's folder coming or going. scheduler.log, locks, env and temp files churn
  * on every run and are ignored. Without a filename (some platforms) it always counts.
  */
-export function isFlowsChange(filename: string | null): boolean {
+export function isScheduleChange(filename: string | null): boolean {
   if (filename === null) return true
   const parts = filename.split(/[\\/]/)
-  if (parts.length === 1) return parts[0] === 'schedules.yml' || isFlowName(parts[0])
-  return parts.length === 2 && isFlowName(parts[0]) && parts[1] === 'runs.jsonl'
+  if (parts.length === 1) return parts[0] === 'schedules.yml' || isScheduleName(parts[0])
+  return parts.length === 2 && isScheduleName(parts[0]) && parts[1] === 'runs.jsonl'
 }
 
 /**
- * The retries of each scheduled flow, from the gem's .raider/flows/schedules.yml
+ * The retries of each scheduled job, from the gem's .raider/flows/schedules.yml
  * (`schedules: [{ name, retries, ... }]`), clamped to 0..3. Empty when the file is missing,
  * a link, too big, outside the project or unreadable.
  */
@@ -129,7 +129,7 @@ export async function readScheduleRetries(projectPath: string): Promise<Map<stri
     const entries = isPlainObject(parsed) ? parsed.schedules : null
     if (!Array.isArray(entries)) return retries
     for (const entry of entries) {
-      if (!isPlainObject(entry) || typeof entry.name !== 'string' || !isFlowName(entry.name))
+      if (!isPlainObject(entry) || typeof entry.name !== 'string' || !isScheduleName(entry.name))
         continue
       const value = Number.isSafeInteger(entry.retries) ? (entry.retries as number) : 0
       retries.set(entry.name, Math.min(Math.max(value, 0), MAX_RETRIES))
@@ -148,14 +148,17 @@ const isFinalAttempt = (line: Record<string, unknown>, retries: number): boolean
 
 const lstatOrNull = (file: string): Promise<Stats | null> => fs.lstat(file).catch(() => null)
 
-export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): FlowWatcher {
+export function createScheduleWatcher(
+  projectPath: string,
+  deps: ScheduleWatcherDeps
+): ScheduleWatcher {
   const raiderDir = path.join(projectPath, '.raider')
-  const flowsDir = path.join(raiderDir, 'flows')
+  const jobsDir = path.join(raiderDir, 'flows')
   const seen = new Map<string, Set<string>>()
   // Notifications are kept until clicked or closed, or their click handler can be collected
   const shown = new Set<NotificationHandle>()
   let handle: WatchHandle | null = null
-  let watchingFlows = false
+  let watchingJobs = false
   let timer: unknown = null
   let stopped = false
   let queue: Promise<void> = Promise.resolve()
@@ -167,7 +170,7 @@ export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): F
   const closeHandle = (): void => {
     handle?.close()
     handle = null
-    watchingFlows = false
+    watchingJobs = false
   }
 
   const schedule = (): void => {
@@ -183,7 +186,7 @@ export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): F
     try {
       // In .raider/flows/ only a change the tab shows counts; a parent watch waits for the folder
       handle = deps.watch(dir, { recursive }, (filename) => {
-        if (!recursive || isFlowsChange(filename)) schedule()
+        if (!recursive || isScheduleChange(filename)) schedule()
       })
       // A watched folder that goes away errors: arm again from what is there now
       handle.on('error', () => {
@@ -206,43 +209,43 @@ export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): F
     }
     // A link (or a file) is never followed
     if (!raider.isDirectory()) return
-    const flows = await lstatOrNull(flowsDir)
-    if (!flows) {
-      if (!stopped && watchDir(raiderDir, false) && (await lstatOrNull(flowsDir))) schedule()
+    const jobs = await lstatOrNull(jobsDir)
+    if (!jobs) {
+      if (!stopped && watchDir(raiderDir, false) && (await lstatOrNull(jobsDir))) schedule()
       return
     }
-    if (!flows.isDirectory()) return
-    const [realProject, realFlows] = await Promise.all([
+    if (!jobs.isDirectory()) return
+    const [realProject, realJobs] = await Promise.all([
       fs.realpath(projectPath),
-      fs.realpath(flowsDir)
+      fs.realpath(jobsDir)
     ]).catch(() => [null, null])
-    if (realProject === null || realFlows !== path.join(realProject, '.raider', 'flows')) return
+    if (realProject === null || realJobs !== path.join(realProject, '.raider', 'flows')) return
     if (stopped) return
-    watchingFlows = watchDir(flowsDir, true)
+    watchingJobs = watchDir(jobsDir, true)
   }
 
-  const flowNames = async (): Promise<string[]> => {
-    const entries = await fs.readdir(flowsDir, { withFileTypes: true }).catch(() => [])
-    return entries.filter((e) => e.isDirectory() && isFlowName(e.name)).map((e) => e.name)
+  const jobNames = async (): Promise<string[]> => {
+    const entries = await fs.readdir(jobsDir, { withFileTypes: true }).catch(() => [])
+    return entries.filter((e) => e.isDirectory() && isScheduleName(e.name)).map((e) => e.name)
   }
 
   const notify = (name: string, line: Record<string, unknown>): void => {
     if (!deps.notifications.isSupported()) return
     const notification = deps.notifications.create({
       title: SCHEDULE_FAILED_TITLE,
-      body: flowFailedBody(name, line)
+      body: scheduleFailedBody(name, line)
     })
     shown.add(notification)
     notification.on('click', () => {
       shown.delete(notification)
       // After a project switch this banner is another project's: it must not open the new one's tab
-      if (!stopped) focusFlowsTab()
+      if (!stopped) focusSchedules()
     })
     notification.on('close', () => shown.delete(notification))
     notification.show()
   }
 
-  const focusFlowsTab = (): void => {
+  const focusSchedules = (): void => {
     const win = deps.mainWindow()
     if (!win || win.isDestroyed()) return
     if (win.isMinimized()) win.restore()
@@ -251,7 +254,7 @@ export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): F
     if (!win.webContents.isDestroyed()) win.webContents.send('focus-schedules')
   }
 
-  const pushFlowsChanged = (): void => {
+  const pushSchedulesChanged = (): void => {
     const win = deps.mainWindow()
     if (win && !win.isDestroyed() && !win.webContents.isDestroyed())
       win.webContents.send('schedules-changed')
@@ -265,7 +268,7 @@ export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): F
   const scan = async (announce: boolean): Promise<void> => {
     // Read once per scan, and only when a new scheduled failure needs it
     let retries: Map<string, number> | null = null
-    for (const name of await flowNames()) {
+    for (const name of await jobNames()) {
       const lines = await readRunLog(projectPath, name, MAX_SCAN_BYTES)
       if (stopped) return
       const keys = seen.get(name) ?? new Set<string>()
@@ -289,15 +292,15 @@ export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): F
       if (failures.length === 0) continue
       retries ??= await readScheduleRetries(projectPath)
       if (stopped) return
-      const flowRetries = retries.get(name) ?? 0
-      for (const line of failures) if (isFinalAttempt(line, flowRetries)) notify(name, line)
+      const jobRetries = retries.get(name) ?? 0
+      for (const line of failures) if (isFinalAttempt(line, jobRetries)) notify(name, line)
     }
   }
 
   const settle = async (): Promise<void> => {
-    if (!watchingFlows || !(await lstatOrNull(flowsDir))?.isDirectory()) await arm()
+    if (!watchingJobs || !(await lstatOrNull(jobsDir))?.isDirectory()) await arm()
     if (stopped) return
-    pushFlowsChanged()
+    pushSchedulesChanged()
     await scan(true)
   }
 
@@ -322,7 +325,7 @@ export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): F
   }
 }
 
-const defaultDeps = (): FlowWatcherDeps => ({
+const defaultDeps = (): ScheduleWatcherDeps => ({
   watch: (dir, options, listener) =>
     fsWatch(dir, options, (_event, filename) => listener(filename ?? null)),
   notifications: {
@@ -334,16 +337,19 @@ const defaultDeps = (): FlowWatcherDeps => ({
   clearTimer: (timer) => clearTimeout(timer as ReturnType<typeof setTimeout>)
 })
 
-let current: FlowWatcher | null = null
+let current: ScheduleWatcher | null = null
 
-/** Watches the flows of the open project; a different project's watcher is closed first. */
-export function startFlowWatcher(projectPath: string, deps: FlowWatcherDeps = defaultDeps()): void {
+/** Watches the scheduled jobs of the open project; a different project's watcher is closed first. */
+export function startScheduleWatcher(
+  projectPath: string,
+  deps: ScheduleWatcherDeps = defaultDeps()
+): void {
   if (current?.projectPath === projectPath) return
-  stopFlowWatcher()
-  current = createFlowWatcher(projectPath, deps)
+  stopScheduleWatcher()
+  current = createScheduleWatcher(projectPath, deps)
 }
 
-export function stopFlowWatcher(): void {
+export function stopScheduleWatcher(): void {
   current?.stop()
   current = null
 }

@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import type { FlowLastRun, GemCliError, GemScheduleRule } from '@shared/types/schedules'
+import type { ScheduledLastRun, GemCliError, GemScheduleRule } from '@shared/types/schedules'
 
 type T = TFunction | ((key: string, options?: Record<string, unknown>) => string)
 
@@ -32,7 +32,7 @@ export function whenText(t: T, iso: string, now: Date): string {
 }
 
 /** "Completed 08:00 today", "Failed at step 4, 08:00 today", or "Not run yet". */
-export function lastResultText(t: T, last: FlowLastRun | null, now: Date): string {
+export function lastResultText(t: T, last: ScheduledLastRun | null, now: Date): string {
   if (!last) return t('schedules.last.never')
   const when = whenText(t, last.finishedAt, now)
   switch (last.status) {
