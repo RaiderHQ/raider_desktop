@@ -1,7 +1,9 @@
-import { watch as fsWatch, promises as fs, type Stats } from 'node:fs'
+import { constants, watch as fsWatch, promises as fs, type Stats } from 'node:fs'
 import path from 'node:path'
 import { Notification } from 'electron'
+import yaml from 'js-yaml'
 import { appState } from '../appState'
+import { assertRealInside, resolveInside } from '../tests/sidecar'
 import { readRunLog } from './flowRuns'
 import { isFlowName, isPlainObject } from '../../../shared/flows'
 
@@ -24,6 +26,9 @@ const MAX_SCAN_BYTES = 256 * 1024
 const MAX_SEEN = 500
 const RUN_ID = /^[0-9a-f]{16}$/
 const NOTIFY_STATUSES = ['failed', 'setup_error']
+const SCHEDULES_REL = '.raider/flows/schedules.yml'
+const MAX_SCHEDULES_BYTES = 256 * 1024
+const MAX_RETRIES = 3
 
 export interface WatchHandle {
   close(): void
@@ -42,7 +47,12 @@ export interface WindowHandle {
   webContents: { isDestroyed(): boolean; send(channel: string): void }
 }
 export interface FlowWatcherDeps {
-  watch: (dir: string, options: { recursive: boolean }, listener: () => void) => WatchHandle
+  /** `listener` gets the changed path relative to `dir`, or null when the platform omits it */
+  watch: (
+    dir: string,
+    options: { recursive: boolean },
+    listener: (filename: string | null) => void
+  ) => WatchHandle
   notifications: {
     isSupported(): boolean
     create(options: { title: string; body: string }): NotificationHandle
@@ -77,10 +87,62 @@ function lineKey(name: string, line: Record<string, unknown>): string | null {
   return null
 }
 
-const shouldNotify = (line: Record<string, unknown>): boolean =>
+const isScheduledFailure = (line: Record<string, unknown>): boolean =>
   line.trigger === 'schedule' &&
   typeof line.status === 'string' &&
   NOTIFY_STATUSES.includes(line.status)
+
+/**
+ * Whether a change under .raider/flows/ can change what the Flows tab shows: a run log, the
+ * schedules, or a flow folder coming or going. scheduler.log, locks, env and temp files churn
+ * on every run and are ignored. Without a filename (some platforms) it always counts.
+ */
+export function isFlowsChange(filename: string | null): boolean {
+  if (filename === null) return true
+  const parts = filename.split(/[\\/]/)
+  if (parts.length === 1) return parts[0] === 'schedules.yml' || isFlowName(parts[0])
+  return parts.length === 2 && isFlowName(parts[0]) && parts[1] === 'runs.jsonl'
+}
+
+/**
+ * The retries of each scheduled flow, from the gem's .raider/flows/schedules.yml
+ * (`schedules: [{ name, retries, ... }]`), clamped to 0..3. Empty when the file is missing,
+ * a link, too big, outside the project or unreadable.
+ */
+export async function readScheduleRetries(projectPath: string): Promise<Map<string, number>> {
+  const retries = new Map<string, number>()
+  let handle: fs.FileHandle | undefined
+  try {
+    const file = resolveInside(projectPath, SCHEDULES_REL)
+    await assertRealInside(projectPath, file)
+    if ((await fs.lstat(file)).isSymbolicLink()) return retries
+    handle = await fs.open(
+      file,
+      constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0)
+    )
+    const stat = await handle.stat()
+    if (!stat.isFile() || stat.size > MAX_SCHEDULES_BYTES) return retries
+    const text = (await handle.readFile()).toString('utf8')
+    const parsed = yaml.load(text, { schema: yaml.CORE_SCHEMA })
+    const entries = isPlainObject(parsed) ? parsed.schedules : null
+    if (!Array.isArray(entries)) return retries
+    for (const entry of entries) {
+      if (!isPlainObject(entry) || typeof entry.name !== 'string' || !isFlowName(entry.name))
+        continue
+      const value = Number.isSafeInteger(entry.retries) ? (entry.retries as number) : 0
+      retries.set(entry.name, Math.min(Math.max(value, 0), MAX_RETRIES))
+    }
+    return retries
+  } catch {
+    return retries
+  } finally {
+    await handle?.close().catch(() => undefined)
+  }
+}
+
+/** The gem notifies after a scheduled run's last attempt only; so does the app */
+const isFinalAttempt = (line: Record<string, unknown>, retries: number): boolean =>
+  isPositiveInt(line.attempt) && line.attempt >= retries + 1
 
 const lstatOrNull = (file: string): Promise<Stats | null> => fs.lstat(file).catch(() => null)
 
@@ -117,7 +179,10 @@ export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): F
 
   const watchDir = (dir: string, recursive: boolean): boolean => {
     try {
-      handle = deps.watch(dir, { recursive }, schedule)
+      // In .raider/flows/ only a change the tab shows counts; a parent watch waits for the folder
+      handle = deps.watch(dir, { recursive }, (filename) => {
+        if (!recursive || isFlowsChange(filename)) schedule()
+      })
       // A watched folder that goes away errors: arm again from what is there now
       handle.on('error', () => {
         closeHandle()
@@ -191,15 +256,18 @@ export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): F
 
   /**
    * Reads each flow's log and remembers its lines; with `announce`, a line not seen before
-   * that is a failed scheduled run is notified. Keys are only ever added (oldest dropped past
+   * that is the last attempt of a failed scheduled run is notified. Keys are only ever added (oldest dropped past
    * the cap), so a log caught mid-rewrite never makes old lines new again.
    */
   const scan = async (announce: boolean): Promise<void> => {
+    // Read once per scan, and only when a new scheduled failure needs it
+    let retries: Map<string, number> | null = null
     for (const name of await flowNames()) {
       const lines = await readRunLog(projectPath, name, MAX_SCAN_BYTES)
       if (stopped) return
       const keys = seen.get(name) ?? new Set<string>()
       seen.set(name, keys)
+      const failures: Record<string, unknown>[] = []
       for (const line of lines) {
         if (!isPlainObject(line)) continue
         const key = lineKey(name, line)
@@ -209,12 +277,17 @@ export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): F
           continue
         }
         keys.add(key)
-        if (announce && shouldNotify(line)) notify(name, line)
+        if (announce && isScheduledFailure(line)) failures.push(line)
       }
       for (const key of keys) {
         if (keys.size <= MAX_SEEN) break
         keys.delete(key)
       }
+      if (failures.length === 0) continue
+      retries ??= await readScheduleRetries(projectPath)
+      if (stopped) return
+      const flowRetries = retries.get(name) ?? 0
+      for (const line of failures) if (isFinalAttempt(line, flowRetries)) notify(name, line)
     }
   }
 
@@ -244,7 +317,8 @@ export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): F
 }
 
 const defaultDeps = (): FlowWatcherDeps => ({
-  watch: (dir, options, listener) => fsWatch(dir, options, listener),
+  watch: (dir, options, listener) =>
+    fsWatch(dir, options, (_event, filename) => listener(filename ?? null)),
   notifications: {
     isSupported: () => Notification.isSupported(),
     create: (options) => new Notification(options)

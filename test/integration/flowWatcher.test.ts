@@ -7,6 +7,7 @@ vi.mock('electron', () => ({ Notification: class {} }))
 
 import {
   createFlowWatcher,
+  isFlowsChange,
   startFlowWatcher,
   stopFlowWatcher,
   FLOW_FAILED_TITLE,
@@ -17,7 +18,7 @@ import {
 interface FakeWatch {
   dir: string
   recursive: boolean
-  fire: () => void
+  fire: (filename?: string | null) => void
   error: () => void
   closed: boolean
 }
@@ -49,7 +50,7 @@ function fakes(): {
       const w: FakeWatch = {
         dir,
         recursive,
-        fire: listener,
+        fire: (filename = null): void => listener(filename),
         error: () => onError(),
         closed: false
       }
@@ -287,6 +288,133 @@ describe('flowWatcher', () => {
     )
     await change(f)
     expect(f.notes.map((n) => n.body)).toEqual(['broken failed'])
+  })
+
+  describe('retries (the gem notifies after the last attempt only)', () => {
+    const schedules = (retries: unknown): Promise<void> =>
+      writeFile(
+        join(dir, '.raider', 'flows', 'schedules.yml'),
+        // The shape the gem writes (ruby_raider 4.1.0)
+        `---\nschedules:\n- name: broken\n  every: day\n  at: '09:30'\n  'on':\n  retries: ${retries}\n  inputs: []\n  notify: false\n- name: other\n  retries: 3\n`
+      )
+
+    it('a failed first attempt that a retry fixes is not notified', async () => {
+      await schedules(1)
+      const f = fakes()
+      watcher = createFlowWatcher(dir, f.deps)
+      await watcher.idle()
+      await appendFile(
+        log(),
+        line({ run_id: '1000000000000000', attempt: 1 }) +
+          line({ run_id: '2000000000000000', attempt: 2, status: 'completed' })
+      )
+      await change(f)
+      expect(f.notes).toHaveLength(0)
+    })
+
+    it('with retries 2 and all three attempts failing, notifies once (the third)', async () => {
+      await schedules(2)
+      const f = fakes()
+      watcher = createFlowWatcher(dir, f.deps)
+      await watcher.idle()
+      await appendFile(log(), line({ run_id: '1000000000000000', attempt: 1 }))
+      await change(f)
+      await appendFile(log(), line({ run_id: '2000000000000000', attempt: 2 }))
+      await change(f)
+      expect(f.notes).toHaveLength(0)
+      await appendFile(
+        log(),
+        line({ run_id: '3000000000000000', attempt: 3, failed_step: { number: 2 } })
+      )
+      await change(f)
+      expect(f.notes.map((n) => n.body)).toEqual(['broken failed at step 2'])
+    })
+
+    it('without schedules.yml (or a bad one) the first attempt is the last', async () => {
+      const f = fakes()
+      watcher = createFlowWatcher(dir, f.deps)
+      await watcher.idle()
+      await appendFile(log(), line({ run_id: '1000000000000000', attempt: 1 }))
+      await change(f)
+      await writeFile(join(dir, '.raider', 'flows', 'schedules.yml'), 'schedules: [: bad')
+      await appendFile(log(), line({ run_id: '2000000000000000', attempt: 1 }))
+      await change(f)
+      expect(f.notes).toHaveLength(2)
+    })
+
+    it('clamps retries to 0..3 and needs a positive integer attempt', async () => {
+      await schedules(99)
+      const f = fakes()
+      watcher = createFlowWatcher(dir, f.deps)
+      await watcher.idle()
+      await appendFile(
+        log(),
+        line({ run_id: '1000000000000000', attempt: 3 }) +
+          line({ run_id: '2000000000000000', attempt: 4 }) +
+          line({ run_id: '3000000000000000', attempt: '9' }) +
+          line({ run_id: '4000000000000000', attempt: undefined })
+      )
+      await change(f)
+      expect(f.notes).toHaveLength(1)
+    })
+
+    it('ignores a linked schedules.yml', async () => {
+      const outside = await mkdtemp(join(tmpdir(), 'flow-outside-'))
+      try {
+        await writeFile(
+          join(outside, 'schedules.yml'),
+          'schedules:\n- name: broken\n  retries: 3\n'
+        )
+        await symlink(
+          join(outside, 'schedules.yml'),
+          join(dir, '.raider', 'flows', 'schedules.yml')
+        )
+        const f = fakes()
+        watcher = createFlowWatcher(dir, f.deps)
+        await watcher.idle()
+        await appendFile(log(), line({ run_id: '1000000000000000', attempt: 1 }))
+        await change(f)
+        expect(f.notes).toHaveLength(1)
+      } finally {
+        await rm(outside, { recursive: true, force: true })
+      }
+    })
+  })
+
+  describe('which changes count', () => {
+    it('only run logs, schedules.yml and flow folders; a missing filename counts', () => {
+      expect(isFlowsChange('broken/runs.jsonl')).toBe(true)
+      expect(isFlowsChange('schedules.yml')).toBe(true)
+      expect(isFlowsChange('broken')).toBe(true)
+      expect(isFlowsChange(null)).toBe(true)
+      for (const churn of [
+        'broken/scheduler.log',
+        'broken.lock',
+        'env',
+        '.schedules.yml.a1b2c3d4e5f6.tmp',
+        'Bad-Name/runs.jsonl',
+        'broken/sub/runs.jsonl',
+        'env/runs.jsonl'
+      ])
+        expect(isFlowsChange(churn), churn).toBe(false)
+    })
+
+    it('scheduler.log and lock churn push no flows-changed', async () => {
+      const f = fakes()
+      watcher = createFlowWatcher(dir, f.deps)
+      await watcher.idle()
+      f.watches[0].fire('broken/scheduler.log')
+      f.watches[0].fire('broken.lock')
+      f.watches[0].fire('env')
+      expect(f.timers).toBe(0)
+      f.flush()
+      await watcher.idle()
+      expect(f.sent).toEqual([])
+      f.watches[0].fire('broken/runs.jsonl')
+      f.flush()
+      await watcher.idle()
+      expect(f.sent).toEqual(['flows-changed'])
+    })
   })
 
   it('a click shows and focuses the window and asks for the Flows tab', async () => {
