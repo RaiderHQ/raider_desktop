@@ -1,12 +1,12 @@
 import type { TFunction } from 'i18next'
+import type { GemFlow } from '@shared/types/flows'
 import type {
   FlowCliError,
   FlowLastRun,
-  GemFlow,
   GemSchedule,
   GemScheduleRule
-} from '@shared/types/flows'
-import { validateFlowInputs } from '@shared/flows'
+} from '@shared/types/schedules'
+import { validateFlowInputs } from '@shared/schedules'
 import type { FlowInput, ProjectFlowEntry } from '@shared/types/projectTest'
 
 type T = TFunction | ((key: string, options?: Record<string, unknown>) => string)

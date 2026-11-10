@@ -7,9 +7,10 @@ import Tooltip from '@components/Tooltip'
 import useProjectStore from '@foundation/Stores/projectStore'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { useRunStore } from '@foundation/Stores/runStore'
-import type { FlowCliError, FlowsStatus } from '@shared/types/flows'
+import type { FlowsStatus } from '@shared/types/flows'
+import type { FlowCliError } from '@shared/types/schedules'
 import FlowRow, { rowButton } from './FlowRow'
-import { cliErrorText, mergeFlows, type FlowRowData } from './flowText'
+import { cliErrorText, mergeFlows, type FlowRowData } from '../Schedules/scheduleText'
 
 type View =
   | { state: 'loading' }

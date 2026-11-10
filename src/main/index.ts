@@ -101,7 +101,7 @@ import setActiveProject, {
   getRecorderSettings,
   onActiveProjectChange
 } from './handlers/project/setActiveProject'
-import { startFlowWatcher, stopFlowWatcher } from './handlers/flows/flowWatcher'
+import { startFlowWatcher, stopFlowWatcher } from './handlers/schedules/scheduleWatcher'
 import { upgradeRubyRaider } from './handlers/project/upgradeRubyRaider'
 import {
   clearRecentProjects,

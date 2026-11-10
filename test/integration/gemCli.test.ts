@@ -10,9 +10,9 @@ import {
   runFlowCli,
   type ExecFileFn,
   type FlowCliDeps
-} from '../../src/main/handlers/flows/flowCli'
-import { parseGemFlows, parseGemSchedules } from '../../src/main/handlers/flows/gemJson'
-import { scheduleArgs, validateSchedule } from '../../src/shared/flows'
+} from '../../src/main/handlers/gem/gemCli'
+import { parseGemFlows, parseGemSchedules } from '../../src/main/handlers/gem/gemJson'
+import { scheduleArgs, validateSchedule } from '../../src/shared/schedules'
 
 const RUBY = '/opt/rubies/3.2.8/bin/ruby'
 const PROJECT = '/work/my project'

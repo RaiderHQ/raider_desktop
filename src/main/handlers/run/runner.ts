@@ -33,7 +33,8 @@ import { RunSession } from './runSession'
 import { OutputPrefixParser } from './outputPrefix'
 import { descendantProcesses, freshKillTargets, signalPid } from './processTree'
 import { flowRunById } from '../flows/flowRuns'
-import { flowFile, isFlowName, isPlainObject, validateFlowInputs } from '../../../shared/flows'
+import { flowFile, isFlowName } from '../../../shared/flows'
+import { isPlainObject, validateFlowInputs } from '../../../shared/schedules'
 
 export interface RunnerDeps {
   send(e: RunEvent): void

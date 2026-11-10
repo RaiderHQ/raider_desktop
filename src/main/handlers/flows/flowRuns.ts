@@ -1,13 +1,10 @@
 import { constants, promises as fs } from 'node:fs'
 import path from 'node:path'
 import { assertRealInside, resolveInside } from '../tests/sidecar'
-import {
-  FLOW_RESULTS_ROOT,
-  flowOfResultsDir,
-  isFlowName,
-  isPlainObject
-} from '../../../shared/flows'
-import type { FlowFailedStep, FlowLastResults, FlowLastRun } from '../../../shared/types/flows'
+import { FLOW_RESULTS_ROOT, flowOfResultsDir, isFlowName } from '../../../shared/flows'
+import { isPlainObject } from '../../../shared/schedules'
+import type { FlowLastResults } from '../../../shared/types/flows'
+import type { FlowFailedStep, FlowLastRun } from '../../../shared/types/schedules'
 
 // The gem's run log of a flow (.raider/flows/<name>/runs.jsonl, one JSON line per run) and the
 // results folder each line names. Both are written by project code, so nothing is trusted:

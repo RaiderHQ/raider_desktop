@@ -4,8 +4,9 @@ import { Notification } from 'electron'
 import yaml from 'js-yaml'
 import { appState } from '../appState'
 import { assertRealInside, resolveInside } from '../tests/sidecar'
-import { readRunLog } from './flowRuns'
-import { isFlowName, isPlainObject } from '../../../shared/flows'
+import { readRunLog } from '../flows/flowRuns'
+import { isFlowName } from '../../../shared/flows'
+import { isPlainObject } from '../../../shared/schedules'
 
 // Scheduled runs (launchd) append to .raider/flows/<name>/runs.jsonl while the app is open.
 // The open project's .raider/flows/ is watched: each settled change refreshes the Flows tab

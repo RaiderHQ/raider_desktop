@@ -8,7 +8,7 @@ import { useRunStore } from '@foundation/Stores/runStore'
 import { flowFile } from '@shared/flows'
 import type { FlowInput } from '@shared/types/projectTest'
 import FlowModal from './FlowModal'
-import { inputErrors } from './flowText'
+import { inputErrors } from '../Schedules/scheduleText'
 
 interface RunFlowModalProps {
   name: string

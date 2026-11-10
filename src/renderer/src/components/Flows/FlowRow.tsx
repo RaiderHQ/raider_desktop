@@ -7,7 +7,7 @@ import useRubyStore from '@foundation/Stores/rubyStore'
 import { useRunStore } from '@foundation/Stores/runStore'
 import { toRouteParam } from '@foundation/testKey'
 import RunFlowModal from './RunFlowModal'
-import ScheduleModal from './ScheduleModal'
+import ScheduleModal from '../Schedules/ScheduleModal'
 import FlowSecretsModal from './FlowSecretsModal'
 import {
   cliErrorText,
@@ -16,7 +16,7 @@ import {
   nextRunText,
   scheduleText,
   type FlowRowData
-} from './flowText'
+} from '../Schedules/scheduleText'
 
 interface FlowRowProps {
   row: FlowRowData
