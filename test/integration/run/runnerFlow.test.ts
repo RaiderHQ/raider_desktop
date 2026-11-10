@@ -26,6 +26,7 @@ vi.mock('../../../src/main/handlers/tests/projectTestIpc', () => ({
 }))
 
 import { appState } from '../../../src/main/handlers/appState'
+import { pushToLongship } from '../../../src/main/handlers/longship/pushToLongship'
 import {
   cancelRun,
   getActiveRun,
@@ -383,6 +384,28 @@ describe('runner: flows', () => {
       }
       const done = await run(flowRun())
       expect(done.counts.total).toBe(0)
+    })
+  })
+
+  describe('Longship', () => {
+    it("never pushes a flow run's output (it is a job, not a test result)", async () => {
+      vi.mocked(pushToLongship).mockClear()
+      mkdir(OURS_DIR)
+      script = {
+        steps: [
+          { stdout: 'typed 8 hours for Jane\n' },
+          {
+            flowLog: {
+              name: 'hello',
+              lines: [line({ ours: true, status: 'completed', results_dir: OURS_DIR })]
+            }
+          }
+        ]
+      }
+      const done = await run(flowRun())
+      expect(done.flow).toMatchObject({ status: 'completed' })
+      await new Promise((r) => setTimeout(r, 50))
+      expect(pushToLongship).not.toHaveBeenCalled()
     })
   })
 })

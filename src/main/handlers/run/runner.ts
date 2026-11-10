@@ -452,6 +452,8 @@ async function launch(
         }
       }
 
+      // A flow run is a job typing real data, not a test result: it never leaves the machine
+      if (run.flow) return
       const events = session.snapshot().events
       const finished = events[events.length - 1]
       const status = finished?.type === 'run:finished' ? finished.status : 'errored'
