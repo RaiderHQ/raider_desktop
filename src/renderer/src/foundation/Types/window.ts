@@ -10,10 +10,7 @@ import type { ProjectLayout } from '@shared/types/projectLayout'
 import type { UpgradeResult } from '@shared/types/upgradeResult'
 import type { RecentProjectEntry } from '@shared/types/recentProject'
 import type { PickResult } from '@shared/types/pick'
-import type {
-  LegacyRunResult,
-  PrepareTestRunResult
-} from '@shared/types/prepareRun'
+import type { LegacyRunResult, PrepareTestRunResult } from '@shared/types/prepareRun'
 import type {
   CodeTestView,
   ConvertToFlowResult,
@@ -23,6 +20,7 @@ import type {
 import type { ProjectFileResult } from '@shared/types/projectFiles'
 import type {
   FlowCliError,
+  FlowLastResults,
   FlowSchedule,
   FlowsStatus,
   GemFlow,
@@ -147,7 +145,11 @@ export interface WindowApi extends RunApi {
     test?: Test
   ) => Promise<LegacyRunResult>
   /** Saves `test` when needed and returns the spec file to run live; runs nothing */
-  prepareTestRun: (projectPath: string, testId: string, test?: Test) => Promise<PrepareTestRunResult>
+  prepareTestRun: (
+    projectPath: string,
+    testId: string,
+    test?: Test
+  ) => Promise<PrepareTestRunResult>
 
   // --- Step Rendering ---
   /** Ruby for one step, in the active project's automation (Selenium or Watir). */
@@ -178,6 +180,13 @@ export interface WindowApi extends RunApi {
   ) => Promise<{ ok: true; message: string } | FlowCliError>
   /** `raider flow unschedule`: removes a flow's schedule */
   unscheduleFlow: (rubyCommand: string, name: string) => Promise<{ ok: true } | FlowCliError>
+  /** Opens a flow run's HTML report (`<resultsDir>/index.html`) in the default app */
+  openFlowResults: (
+    name: string,
+    resultsDir: string
+  ) => Promise<{ success: boolean; error?: string }>
+  /** The results folder of the flow's newest run (from its run log); null when there is none */
+  flowLastResults: (name: string) => Promise<FlowLastResults | null>
   /**
    * Saves a copy of a recorded test as a new flow (the test stays). With checks it returns
    * `has-checks` and their ids, unless `dropChecks` (confirmed by the user)
@@ -228,10 +237,11 @@ export interface WindowApi extends RunApi {
 
   // --- Test Management ---
   /** `test` is the test as saved, with its project file when it has one */
-  saveRecording: (projectPath: string, testData: Test) => Promise<{ success: boolean; error?: string; test?: Test }>
-  deleteTest: (
-    testId: string
-  ) => Promise<{ success: boolean; error?: string; codeOwned?: boolean }>
+  saveRecording: (
+    projectPath: string,
+    testData: Test
+  ) => Promise<{ success: boolean; error?: string; test?: Test }>
+  deleteTest: (testId: string) => Promise<{ success: boolean; error?: string; codeOwned?: boolean }>
   /** The text of a spec file of the open project (`fileRel` is project-relative), for Copy */
   readTestFile: (
     projectPath: string,
@@ -302,7 +312,12 @@ export interface WindowApi extends RunApi {
   onRecorderPicked: (callback: (result: PickResult) => void) => () => void
   loadUrlRequest: (url: string) => Promise<CommandType>
   updateRecordingSettings: (
-    settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[]; testIdAttribute: string }>
+    settings: Partial<{
+      implicitWait: number
+      explicitWait: number
+      selectorPriority: string[]
+      testIdAttribute: string
+    }>
   ) => Promise<{ success: boolean; error?: string }>
   setActiveProject: (projectPath: string | null) => Promise<{
     success: boolean

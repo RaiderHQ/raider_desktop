@@ -96,6 +96,8 @@ describe('IPC Contract', () => {
     'setupFlows',
     'scheduleFlow',
     'unscheduleFlow',
+    'openFlowResults',
+    'flowLastResults',
     'convertToFlow',
     'mapFailedStep',
     'openCodeTest',

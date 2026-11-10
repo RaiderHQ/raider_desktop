@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import type { IpcMain, IpcMainInvokeEvent } from 'electron'
+import { shell, type IpcMain, type IpcMainInvokeEvent } from 'electron'
 import { appState } from '../appState'
 import { activationSettled } from '../project/setActiveProject'
 import { canRecordFiles } from '../tests/recordedStore'
@@ -9,10 +9,23 @@ import { assertRealInside, resolveInside } from '../tests/sidecar'
 import { rubyRaiderVersion, supportsFlows } from '../logins/rubyRaiderVersion'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
 import { runFlowCli, type FlowCliResult } from './flowCli'
+import { lastFlowResults, realResultsDir } from './flowRuns'
 import { parseGemFlows, parseGemSchedules, plainText } from './gemJson'
-import { flowFile, isFlowName, scheduleArgs, validateSchedule } from '../../../shared/flows'
+import {
+  flowFile,
+  flowOfResultsDir,
+  isFlowName,
+  scheduleArgs,
+  validateSchedule
+} from '../../../shared/flows'
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
-import type { FlowCliError, FlowsStatus, GemFlow, GemSchedule } from '../../../shared/types/flows'
+import type {
+  FlowCliError,
+  FlowLastResults,
+  FlowsStatus,
+  GemFlow,
+  GemSchedule
+} from '../../../shared/types/flows'
 
 // The Flows tab's channels. Only the main window may call them; the project is always the
 // active one (never a path from the renderer), and the renderer sends only its rubyCommand
@@ -180,6 +193,46 @@ export async function unscheduleFlowHandler(
   return result.ok ? { ok: true } : cliError(result)
 }
 
+/**
+ * 'open-flow-results': a flow run's HTML report (`<resultsDir>/index.html`) in the default
+ * app. The folder must be that flow's own, really inside the project, and the report a
+ * regular file (not a link).
+ */
+export async function openFlowResultsHandler(
+  event: IpcMainInvokeEvent,
+  name: unknown,
+  resultsDir: unknown
+): Promise<{ success: boolean; error?: string }> {
+  if (!fromMainWindow(event)) return { success: false, error: 'invalid' }
+  if (typeof name !== 'string' || !isFlowName(name)) return { success: false, error: 'invalid' }
+  if (flowOfResultsDir(resultsDir, name) === null) return { success: false, error: 'invalid' }
+  await activationSettled()
+  const { projectPath } = appState
+  if (!projectPath) return { success: false, error: 'no-project' }
+  const dir = await realResultsDir(projectPath, name, resultsDir)
+  if (!dir) return { success: false, error: 'not-found' }
+  const report = path.join(projectPath, dir, 'index.html')
+  const stat = await fs.lstat(report).catch(() => null)
+  if (!stat?.isFile()) return { success: false, error: 'not-found' }
+  // openPath answers with an error message (empty on success); it does not throw
+  const error = await shell.openPath(report)
+  return error
+    ? { success: false, error: plainText(error).slice(0, MAX_MESSAGE) }
+    : { success: true }
+}
+
+/** 'flow-last-results': the results folder of the flow's newest run, for its test page. */
+export async function flowLastResultsHandler(
+  event: IpcMainInvokeEvent,
+  name: unknown
+): Promise<FlowLastResults | null> {
+  if (!fromMainWindow(event)) return null
+  if (typeof name !== 'string' || !isFlowName(name)) return null
+  await activationSettled()
+  const { projectPath } = appState
+  return projectPath ? lastFlowResults(projectPath, name) : null
+}
+
 /** True when flows/<name>_flow.rb is a regular file really inside the project. */
 async function isFlowFile(projectPath: string, name: string): Promise<boolean> {
   try {
@@ -204,4 +257,8 @@ export function registerFlowsIpc(ipcMain: IpcMain, deps: FlowsIpcDeps = defaultD
   ipcMain.handle('unschedule-flow', (event, rubyCommand, name) =>
     unscheduleFlowHandler(event, rubyCommand, name, deps)
   )
+  ipcMain.handle('open-flow-results', (event, name, resultsDir) =>
+    openFlowResultsHandler(event, name, resultsDir)
+  )
+  ipcMain.handle('flow-last-results', (event, name) => flowLastResultsHandler(event, name))
 }

@@ -5,6 +5,8 @@ export interface FailedStepQuery {
   appFrame?: string
   /** The run's raw `finished_at` */
   finishedAt?: string
+  /** The project-relative results folder the row came from, when not raider-results: a flow run's `flow-results/<name>/<stamp>` */
+  resultsDir?: string
 }
 
 export type NoStepReason = 'notRecorded' | 'edited' | 'changedSinceRun' | 'outsideSteps' | 'noMap'

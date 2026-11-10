@@ -54,4 +54,6 @@ export interface TestResult {
   line?: number
   /** Raw `run.finished_at` of the results file this row came from */
   finishedAt?: string
+  /** Project-relative results folder of a flow run (`flow-results/<name>/<stamp>`); unset for raider-results */
+  resultsDir?: string
 }

@@ -8,14 +8,34 @@ import type {
   TraceSource
 } from '../../../shared/types/raiderTrace'
 import { appState } from '../appState'
+import { FLOW_RESULTS_ROOT, FLOW_RESULTS_STAMP, isFlowName } from '../../../shared/flows'
 import { validateFilePath } from '../../utils/validatePath'
 import { resolveAttachmentFile } from '../media/mediaProtocol'
 import { closeTrace, openTraceFile, readTraceEntry } from './traceArchive'
 
-// The active project's results folder, by real path.
+// The active project's results folder, by real path; null when it has none.
 const activeResultsDir = async (): Promise<string | null> => {
   if (!appState.projectPath) return null
-  return fs.promises.realpath(path.join(appState.projectPath, 'raider-results'))
+  return fs.promises.realpath(path.join(appState.projectPath, 'raider-results')).catch(() => null)
+}
+
+// The active project's flow-results folder, by real path; null when it has none.
+const activeFlowResultsRoot = async (): Promise<string | null> => {
+  if (!appState.projectPath) return null
+  return fs.promises.realpath(path.join(appState.projectPath, FLOW_RESULTS_ROOT)).catch(() => null)
+}
+
+// raider-results, or one flow run's flow-results / <flow> / <stamp>, of the active project
+const isActiveResultsDir = async (dir: string, p: path.PlatformPath): Promise<boolean> => {
+  const results = await activeResultsDir()
+  if (results !== null && dir === results) return true
+  const flowRoot = await activeFlowResultsRoot()
+  return (
+    flowRoot !== null &&
+    p.dirname(p.dirname(dir)) === flowRoot &&
+    isFlowName(p.basename(p.dirname(dir))) &&
+    FLOW_RESULTS_STAMP.test(p.basename(dir))
+  )
 }
 
 // A trace from run.json gets the attachment checks and must belong to the active
@@ -29,8 +49,8 @@ export const resolveTracePath = async (
       const real = await resolveAttachmentFile(source.path, platform)
       if (!real) return null
       const p = platform === 'win32' ? path.win32 : path.posix
-      // raider-results / attachments(-N) / <file>
-      return p.dirname(p.dirname(real)) === (await activeResultsDir()) ? real : null
+      // <results dir> / attachments(-N) / <file>
+      return (await isActiveResultsDir(p.dirname(p.dirname(real)), p)) ? real : null
     }
     const raw = source.path
     // Before ANY fs call: a UNC path would open an SMB connection to its host.

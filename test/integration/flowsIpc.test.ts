@@ -7,9 +7,10 @@ import path from 'node:path'
 vi.mock('electron', () => ({
   BrowserWindow: class {},
   app: { getPath: (): string => '/' },
-  shell: { trashItem: vi.fn() }
+  shell: { trashItem: vi.fn(), openPath: vi.fn(async () => '') }
 }))
 
+import { shell } from 'electron'
 import { appState } from '../../src/main/handlers/appState'
 import { registerFlowsIpc, type FlowsIpcDeps } from '../../src/main/handlers/flows/flowsIpc'
 import type { ProjectLayout } from '../../src/shared/types/projectLayout'
@@ -74,12 +75,19 @@ describe('sender check', () => {
     ['list-schedules', [RUBY]],
     ['setup-flows', [RUBY]],
     ['schedule-flow', [RUBY, 'report', SCHEDULE]],
-    ['unschedule-flow', [RUBY, 'report']]
+    ['unschedule-flow', [RUBY, 'report']],
+    ['open-flow-results', ['report', 'flow-results/report/20261110T110856Z']],
+    ['flow-last-results', ['report']]
   ])('%s refuses a sender that is not the main window', async (channel, args) => {
-    expect(await handlers.get(channel)!({ sender: { id: 99 } }, ...args)).toEqual({
-      error: 'invalid'
-    })
+    expect(await handlers.get(channel)!({ sender: { id: 99 } }, ...args)).toEqual(
+      channel === 'flow-last-results'
+        ? null
+        : channel === 'open-flow-results'
+          ? { success: false, error: 'invalid' }
+          : { error: 'invalid' }
+    )
     expect(runFlowCli).not.toHaveBeenCalled()
+    expect(vi.mocked(shell.openPath)).not.toHaveBeenCalled()
   })
 })
 
@@ -226,5 +234,120 @@ describe('unschedule-flow', () => {
   it('refuses a bad name', async () => {
     expect(await call('unschedule-flow', RUBY, 'Bad')).toMatchObject({ error: 'invalid' })
     expect(runFlowCli).not.toHaveBeenCalled()
+  })
+})
+
+const DIR = 'flow-results/report/20261110T110856Z'
+const logLine = (extra: Record<string, unknown>): string =>
+  JSON.stringify({
+    started_at: '2026-11-10T11:08:56.508Z',
+    attempt: 1,
+    trigger: 'manual',
+    run_id: '0123456789abcdef',
+    finished_at: '2026-11-10T11:08:59.480Z',
+    status: 'completed',
+    results_dir: DIR,
+    ...extra
+  })
+
+describe('open-flow-results', () => {
+  beforeEach(() => vi.mocked(shell.openPath).mockClear())
+
+  it("opens the run's index.html", async () => {
+    await write(`${DIR}/index.html`, '<html>')
+    expect(await call('open-flow-results', 'report', DIR)).toEqual({ success: true })
+    expect(shell.openPath).toHaveBeenCalledWith(path.join(project, DIR, 'index.html'))
+  })
+
+  it('passes on the error openPath answers with', async () => {
+    await write(`${DIR}/index.html`, '<html>')
+    vi.mocked(shell.openPath).mockResolvedValueOnce('No app')
+    expect(await call('open-flow-results', 'report', DIR)).toEqual({
+      success: false,
+      error: 'No app'
+    })
+  })
+
+  it.each([
+    ['a bad name', 'Report', DIR],
+    ["another flow's folder", 'report', 'flow-results/other/20261110T110856Z'],
+    ['a .. path', 'report', 'flow-results/report/../other/20261110T110856Z'],
+    ['raider-results', 'report', 'raider-results'],
+    ['a non-string folder', 'report', 42]
+  ])('refuses %s', async (_label, name, dir) => {
+    await write(`${DIR}/index.html`, '<html>')
+    await write('flow-results/other/20261110T110856Z/index.html', '<html>')
+    await write('raider-results/index.html', '<html>')
+    expect(await call('open-flow-results', name, dir)).toEqual({ success: false, error: 'invalid' })
+    expect(shell.openPath).not.toHaveBeenCalled()
+  })
+
+  it('refuses a symlinked index.html', async () => {
+    await write('elsewhere.html', '<html>')
+    await fs.mkdir(path.join(project, DIR), { recursive: true })
+    await fs.symlink(path.join(project, 'elsewhere.html'), path.join(project, DIR, 'index.html'))
+    expect(await call('open-flow-results', 'report', DIR)).toMatchObject({ success: false })
+    expect(shell.openPath).not.toHaveBeenCalled()
+  })
+
+  it("refuses a run folder that links to another flow's", async () => {
+    await write('flow-results/other/20261110T110856Z/index.html', '<html>')
+    await fs.mkdir(path.join(project, 'flow-results/report'), { recursive: true })
+    await fs.symlink(
+      path.join(project, 'flow-results/other/20261110T110856Z'),
+      path.join(project, DIR)
+    )
+    expect(await call('open-flow-results', 'report', DIR)).toMatchObject({ success: false })
+    expect(shell.openPath).not.toHaveBeenCalled()
+  })
+
+  it('refuses without a project', async () => {
+    await write(`${DIR}/index.html`, '<html>')
+    appState.projectPath = null
+    expect(await call('open-flow-results', 'report', DIR)).toMatchObject({ success: false })
+    expect(shell.openPath).not.toHaveBeenCalled()
+  })
+})
+
+describe('flow-last-results', () => {
+  const log = (...lines: string[]): Promise<void> =>
+    write('.raider/flows/report/runs.jsonl', `${lines.join('\n')}\n`)
+
+  it('gives the newest run that ran, skipping a busy line', async () => {
+    await write(`${DIR}/run.json`, '{}')
+    await write('flow-results/report/20261110T100000Z/run.json', '{}')
+    await log(
+      logLine({ results_dir: 'flow-results/report/20261110T100000Z' }),
+      logLine({ status: 'failed', failed_step: { title: 'runs', line: 7 } }),
+      logLine({ status: 'busy', results_dir: null })
+    )
+    expect(await call('flow-last-results', 'report')).toEqual({
+      resultsDir: DIR,
+      finishedAt: '2026-11-10T11:08:59.480Z',
+      status: 'failed'
+    })
+  })
+
+  it("is null when the newest run's folder is not valid, never an older run's", async () => {
+    await write('flow-results/report/20261110T100000Z/run.json', '{}')
+    await write('flow-results/other/20261110T110856Z/run.json', '{}')
+    await log(
+      logLine({ results_dir: 'flow-results/report/20261110T100000Z' }),
+      logLine({ results_dir: 'flow-results/other/20261110T110856Z' })
+    )
+    expect(await call('flow-last-results', 'report')).toBeNull()
+  })
+
+  it('is null without a log, for a bad name, and for a symlinked log', async () => {
+    expect(await call('flow-last-results', 'report')).toBeNull()
+    expect(await call('flow-last-results', '../report')).toBeNull()
+    await write(`${DIR}/run.json`, '{}')
+    await write('elsewhere.jsonl', `${logLine({})}\n`)
+    await fs.mkdir(path.join(project, '.raider/flows/report'), { recursive: true })
+    await fs.symlink(
+      path.join(project, 'elsewhere.jsonl'),
+      path.join(project, '.raider/flows/report/runs.jsonl')
+    )
+    expect(await call('flow-last-results', 'report')).toBeNull()
   })
 })

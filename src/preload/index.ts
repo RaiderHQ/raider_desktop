@@ -13,10 +13,7 @@ import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
 import type { PickResult } from '@shared/types/pick'
-import type {
-  LegacyRunResult,
-  PrepareTestRunResult
-} from '@shared/types/prepareRun'
+import type { LegacyRunResult, PrepareTestRunResult } from '@shared/types/prepareRun'
 import type {
   CodeTestView,
   ConvertToFlowResult,
@@ -26,6 +23,7 @@ import type {
 import type { ProjectFileResult } from '@shared/types/projectFiles'
 import type {
   FlowCliError,
+  FlowLastResults,
   FlowSchedule,
   FlowsStatus,
   GemFlow,
@@ -213,6 +211,13 @@ const api = {
     ipcRenderer.invoke('schedule-flow', rubyCommand, name, schedule),
   unscheduleFlow: (rubyCommand: string, name: string): Promise<{ ok: true } | FlowCliError> =>
     ipcRenderer.invoke('unschedule-flow', rubyCommand, name),
+  openFlowResults: (
+    name: string,
+    resultsDir: string
+  ): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('open-flow-results', name, resultsDir),
+  flowLastResults: (name: string): Promise<FlowLastResults | null> =>
+    ipcRenderer.invoke('flow-last-results', name),
   convertToFlow: (
     projectPath: string,
     request: { testId: string; dropChecks?: boolean }
@@ -250,8 +255,7 @@ const api = {
     imported?: number
     skipped?: number
     failed?: number
-  }> =>
-    ipcRenderer.invoke('import-project'),
+  }> => ipcRenderer.invoke('import-project'),
   setTestTags: (
     fileRel: string,
     tags: string[]
@@ -424,7 +428,12 @@ const api = {
   ): Promise<LegacyRunResult> =>
     ipcRenderer.invoke('run-test', testId, projectPath, rubyCommand, test),
   updateRecordingSettings: (
-    settings: Partial<{ implicitWait: number; explicitWait: number; selectorPriority: string[]; testIdAttribute: string }>
+    settings: Partial<{
+      implicitWait: number
+      explicitWait: number
+      selectorPriority: string[]
+      testIdAttribute: string
+    }>
   ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('update-recording-settings', settings),
   setActiveProject: (
