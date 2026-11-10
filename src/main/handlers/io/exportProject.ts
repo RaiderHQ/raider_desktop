@@ -30,8 +30,7 @@ export default async (): Promise<{ success: boolean; path?: string; error?: stri
   }
 
   // Taken once: the project may change while the files are written
-  // Flows are not tests: they are never exported as specs
-  const tests = Array.from(appState.tests.values()).filter((test) => test.kind !== 'flow')
+  const tests = Array.from(appState.tests.values())
   const activeProject = appState.projectPath
 
   try {

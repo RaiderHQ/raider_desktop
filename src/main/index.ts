@@ -114,7 +114,7 @@ import getProjectConfig from './handlers/config/getProjectConfig'
 import { spawnTerminal, writeTerminal, resizeTerminal, killTerminal } from './handlers/terminal/terminalManager'
 import type { ProjectCreationOptions } from '@shared/types/projectCreationTypes'
 import type { Step } from '@shared/types/step'
-import { renderStepHandler } from './handlers/recording/renderStepHandler'
+import { renderStep } from './codegen/steps'
 import { applyUtf8Locale } from './utils/locale'
 
 /** The recents list, or nothing: a bad file in userData must never break the app */
@@ -182,8 +182,6 @@ function createWindow(): void {
 
   resetRecordingOnWindowLoss(newMainWindow, () => {
     appState.recording = false
-    // A recorder left in flow mode by a lost page would make every new test a flow
-    appState.recordingMode = 'test'
     setRecordingMenuState(false)
   })
 
@@ -253,7 +251,7 @@ app.whenReady().then(() => {
         () => appState.mainWindow,
         (win) => void openTraceFromDialog(win)
       ),
-      // A constant string to the renderer, which acts through its own flows (D11)
+      // A constant string to the renderer, which acts through its own handlers (D11)
       onCommand: withLiveWindow(
         () => appState.mainWindow,
         (win, command) => win.webContents.send('menu-command', command)
@@ -339,8 +337,8 @@ app.whenReady().then(() => {
   ipcMain.handle('install-gems', (_event, rubyCommand: string, gems: string[]) =>
     installGems(rubyCommand, gems)
   )
-  ipcMain.handle('render-step', (_event, step: Step, options?: unknown) =>
-    renderStepHandler(step, options)
+  ipcMain.handle('render-step', (_event, step: Step) =>
+    renderStep(step, { testIdAttribute: appState.layout?.testIdAttribute })
   )
   ipcMain.handle('get-tests', getTests)
   ipcMain.handle('list-project-tests', listProjectTestsHandler)
@@ -429,12 +427,11 @@ app.whenReady().then(() => {
     return { selectorPriority, testIdAttribute }
   })
   ipcMain.handle('load-url-request', (_event, url: string) => loadUrlRequest(url))
-  // Only the options reach it: the IPC event must never be read as the recorder mode
-  ipcMain.handle('start-recording-main', (_event, options: unknown) => startRecordingMain(options))
+  ipcMain.handle('start-recording-main', startRecordingMain)
   ipcMain.handle(
     'replay-steps-and-record',
-    (event, testName: string, stepsToReplay: Step[], rubyCommand: string, options: unknown) =>
-      replayStepsAndRecord(event, testName, stepsToReplay, rubyCommand, options)
+    (event, testName: string, stepsToReplay: Step[], rubyCommand: string) =>
+      replayStepsAndRecord(event, testName, stepsToReplay, rubyCommand)
   )
   ipcMain.handle('cancel-replay', () => {
     if (appState.activeReplayProcess && !appState.activeReplayProcess.killed) {

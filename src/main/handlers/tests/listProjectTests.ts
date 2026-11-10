@@ -1,13 +1,13 @@
 import fs from 'fs/promises'
 import { posix } from 'path'
-import { isRaiderFile, isRecordedRel, markCodeOwned } from './recordedTests'
-import { FLOWS_DIR, isFlowFileRel } from '../../../shared/flows'
+import { isRaiderFile, markCodeOwned } from './recordedTests'
 import { assertRealInside, isSafeRelPath, listSidecars, resolveInside } from './sidecar'
 import { findDescribeLine, tagsFromDescribeLine } from '../../../shared/tags'
 import { safeError } from '../../utils/safeLog'
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
 import type { ProjectTestEntry, Sidecar } from '../../../shared/types/projectTest'
 
+const isSpecRel = (rel: unknown): rel is string => isSafeRelPath(rel) && rel.endsWith('_spec.rb')
 const DESCRIBE = /^\s*(?:RSpec\.)?describe\s*\(?\s*(['"])(.+?)\1/m
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'vendor', '.raider'])
@@ -32,56 +32,6 @@ async function specFilesUnder(projectPath: string, specPath: string): Promise<st
     const abs = resolveInside(projectPath, root)
     await assertRealInside(projectPath, abs)
     return await walkSpecs(abs, root)
-  } catch {
-    return []
-  }
-}
-
-/** True when `flows/` is a real folder (never a link) inside the project */
-async function flowsFolderIsReal(projectPath: string): Promise<boolean> {
-  try {
-    const dir = resolveInside(projectPath, FLOWS_DIR)
-    if (!(await fs.lstat(dir)).isDirectory()) return false
-    await assertRealInside(projectPath, dir)
-    return true
-  } catch {
-    return false
-  }
-}
-
-/**
- * A flow file a record names passes the walk's checks: `flows/` real, and the file a regular
- * file (never a link) inside the project, or missing (listed as a missing file).
- */
-async function recordedFlowListable(projectPath: string, file: string): Promise<boolean> {
-  if (!(await flowsFolderIsReal(projectPath))) return false
-  try {
-    const target = resolveInside(projectPath, file)
-    const stat = await fs.lstat(target).catch((e: NodeJS.ErrnoException) => {
-      if (e.code === 'ENOENT') return null
-      throw e
-    })
-    if (!stat) return true
-    if (!stat.isFile()) return false
-    await assertRealInside(projectPath, target)
-    return true
-  } catch {
-    return false
-  }
-}
-
-/**
- * The flow files directly in `flows/` (`<name>_flow.rb`, regular files only, no symlinks, no
- * subfolders). Only when `flows/` is a real folder inside the project.
- */
-async function flowFiles(projectPath: string): Promise<string[]> {
-  try {
-    if (!(await flowsFolderIsReal(projectPath))) return []
-    const dir = resolveInside(projectPath, FLOWS_DIR)
-    return (await fs.readdir(dir, { withFileTypes: true }))
-      .filter((entry) => entry.isFile())
-      .map((entry) => `${FLOWS_DIR}/${entry.name}`)
-      .filter(isFlowFileRel)
   } catch {
     return []
   }
@@ -146,15 +96,6 @@ async function entryFor(
   file: string,
   sidecar: Sidecar | null
 ): Promise<ProjectTestEntry> {
-  const entry = await plainEntryFor(projectPath, file, sidecar)
-  return isFlowFileRel(file) ? { ...entry, kind: 'flow' } : entry
-}
-
-async function plainEntryFor(
-  projectPath: string,
-  file: string,
-  sidecar: Sidecar | null
-): Promise<ProjectTestEntry> {
   try {
     if (!sidecar) {
       const content = await readSpec(projectPath, file)
@@ -185,13 +126,9 @@ export async function listProjectTests(
   // A sidecar only counts when it sits where its own `file` says
   const sidecars = new Map<string, Sidecar>()
   for (const { fileRel, sidecar } of await sidecarsOrNone(projectPath)) {
-    if (!sidecar || sidecar.file !== fileRel || !isRecordedRel(fileRel)) continue
-    // A record can't make a file behind a linked flows/ (or a linked file) listed, or runnable
-    if (isFlowFileRel(fileRel) && !(await recordedFlowListable(projectPath, fileRel))) continue
-    sidecars.set(fileRel, sidecar)
+    if (sidecar && sidecar.file === fileRel && isSpecRel(fileRel)) sidecars.set(fileRel, sidecar)
   }
   const files = new Set<string>(await specFilesUnder(projectPath, layout.specPath))
-  for (const file of await flowFiles(projectPath)) files.add(file)
   for (const file of sidecars.keys()) files.add(file)
 
   const queue = [...files]
@@ -202,13 +139,7 @@ export async function listProjectTests(
         entries.push(await entryFor(projectPath, file, sidecars.get(file) ?? null))
       } catch (error) {
         safeError(`Could not list ${file}:`, error)
-        entries.push({
-          file,
-          name: posix.basename(file),
-          ownership: 'code',
-          tags: [],
-          ...(isFlowFileRel(file) && { kind: 'flow' as const })
-        })
+        entries.push({ file, name: posix.basename(file), ownership: 'code', tags: [] })
       }
     }
   }

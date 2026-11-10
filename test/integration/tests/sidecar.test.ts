@@ -12,7 +12,6 @@ import {
   SidecarUnreadableError
 } from '../../../src/main/handlers/tests/sidecar'
 import type { Sidecar } from '../../../src/shared/types/projectTest'
-import { isStep } from '../../../src/shared/types/step'
 
 vi.mock('../../../src/main/utils/safeLog', () => ({
   safeError: vi.fn(),
@@ -271,145 +270,79 @@ describe('sidecar tags', () => {
   })
 })
 
-describe('flow sidecars', () => {
+// Records written by an older Raider can carry fields this one no longer has: a `kind`,
+// `inputs` and a step's `inputName`. They load as a test, without those fields.
+describe('records from an older Raider', () => {
   const field = { strategy: 'id' as const, value: 'hours' }
-  const rewrite = async (
-    file: string,
-    patch: (raw: Record<string, unknown>) => object
-  ): Promise<void> => {
-    const path = sidecarPath(project, file)
-    const raw = JSON.parse(await readFile(path, 'utf-8'))
-    await writeFile(path, JSON.stringify(patch(raw)))
+  const writeRaw = async (file: string, raw: object): Promise<void> => {
+    await mkdir(join(testsDir(), 'spec'), { recursive: true })
+    await writeFile(sidecarPath(project, file), JSON.stringify(raw))
   }
 
-  it('round-trips kind, inputs and a step input name', async () => {
-    const s = sidecar('flows/fill_flow.rb', {
+  it('loads an old flow record on a spec path as a test, without kind, inputs or inputName', async () => {
+    vi.mocked(safeWarn).mockClear()
+    await writeRaw('spec/a_spec.rb', {
+      ...sidecar('spec/a_spec.rb'),
       kind: 'flow',
       inputs: [{ name: 'hours', default: '8' }],
       steps: [{ id: 's1', kind: 'type', element: field, text: '8', inputName: 'hours' }]
     })
-    await writeSidecar(project, s)
-    const raw = JSON.parse(await readFile(sidecarPath(project, 'flows/fill_flow.rb'), 'utf-8'))
-    expect(raw.kind).toBe('flow')
-    expect(raw.inputs).toEqual([{ name: 'hours', default: '8' }])
-    expect(await readSidecar(project, 'flows/fill_flow.rb')).toEqual(s)
-  })
-
-  it('reads a sidecar without kind as it was written: no kind added', async () => {
-    const s = sidecar('spec/a_spec.rb')
-    await writeSidecar(project, s)
     const read = await readSidecar(project, 'spec/a_spec.rb')
-    expect(read).toEqual(s)
+    expect(read).toEqual(
+      sidecar('spec/a_spec.rb', {
+        steps: [{ id: 's1', kind: 'type', element: field, text: '8' }]
+      })
+    )
     expect(read).not.toHaveProperty('kind')
-  })
-
-  it('treats an unknown kind as a test and warns', async () => {
-    vi.mocked(safeWarn).mockClear()
-    await writeSidecar(project, sidecar('spec/a_spec.rb'))
-    await rewrite('spec/a_spec.rb', (raw) => ({ ...raw, kind: 'macro' }))
-    const read = await readSidecar(project, 'spec/a_spec.rb')
-    expect(read).toEqual(sidecar('spec/a_spec.rb'))
-    expect(read).not.toHaveProperty('kind')
-    expect(safeWarn).toHaveBeenCalledTimes(1)
-    expect(String(vi.mocked(safeWarn).mock.calls[0].join(' '))).toContain('spec/a_spec.rb')
-  })
-
-  it('drops bad inputs entries one by one', async () => {
-    await writeSidecar(project, sidecar('flows/a_flow.rb', { kind: 'flow' }))
-    await rewrite('flows/a_flow.rb', (raw) => ({
-      ...raw,
-      inputs: [
-        { name: 'hours', default: '8' },
-        { name: 'Hours', default: '8' },
-        { name: 'date', default: 3 },
-        'x',
-        null,
-        { name: 'hours', default: '9' },
-        { name: 'note', default: '' }
-      ]
-    }))
-    expect((await readSidecar(project, 'flows/a_flow.rb'))?.inputs).toEqual([
-      { name: 'hours', default: '8' },
-      { name: 'note', default: '' }
-    ])
-  })
-
-  it('drops inputs that are not an array, or left empty, and keeps the flow', async () => {
-    await writeSidecar(project, sidecar('flows/a_flow.rb', { kind: 'flow' }))
-    await rewrite('flows/a_flow.rb', (raw) => ({ ...raw, inputs: 'hours' }))
-    const read = await readSidecar(project, 'flows/a_flow.rb')
-    expect(read?.kind).toBe('flow')
     expect(read).not.toHaveProperty('inputs')
-    await rewrite('flows/a_flow.rb', (raw) => ({ ...raw, inputs: [{ name: '1x', default: '' }] }))
-    expect(await readSidecar(project, 'flows/a_flow.rb')).not.toHaveProperty('inputs')
+    expect(safeWarn).toHaveBeenCalledTimes(1)
+    const warning = vi.mocked(safeWarn).mock.calls[0].join(' ')
+    expect(warning).toBe('Sidecar spec/a_spec.rb has an unknown kind; reading it as a test.')
   })
 
-  it('drops an input name that fails the rule and keeps the step', async () => {
-    const good = { id: 'g', kind: 'type' as const, element: field, text: 'a', inputName: 'ok' }
-    await writeSidecar(project, sidecar('flows/a_flow.rb', { kind: 'flow', steps: [good] }))
-    await rewrite('flows/a_flow.rb', (raw) => ({
-      ...raw,
-      steps: [
-        good,
-        { id: 'b', kind: 'type', element: field, text: '8', inputName: 'Bad Name' },
-        { id: 'c', kind: 'type', element: field, text: '8', inputName: 42 },
-        { id: 'd', kind: 'type', element: field, text: '8', inputName: 'x'.repeat(41) }
-      ]
-    }))
-    const read = await readSidecar(project, 'flows/a_flow.rb')
-    expect(read?.steps).toEqual([
-      good,
-      { id: 'b', kind: 'type', element: field, text: '8' },
-      { id: 'c', kind: 'type', element: field, text: '8' },
-      { id: 'd', kind: 'type', element: field, text: '8' }
-    ])
+  it.each([
+    ['an unknown kind', 'macro'],
+    ['a non-string kind', 42],
+    ['a null kind', null]
+  ])('reads %s as a test and warns', async (_label, kind) => {
+    vi.mocked(safeWarn).mockClear()
+    await writeRaw('spec/a_spec.rb', { ...sidecar('spec/a_spec.rb'), kind })
+    expect(await readSidecar(project, 'spec/a_spec.rb')).toEqual(sidecar('spec/a_spec.rb'))
+    expect(safeWarn).toHaveBeenCalledTimes(1)
   })
 
-  it('drops the input name of a secret step: a secret never becomes an input', async () => {
-    await writeSidecar(project, sidecar('flows/a_flow.rb', { kind: 'flow' }))
-    const secret = {
-      id: 'p',
-      kind: 'type',
-      element: field,
-      text: '',
-      secret: true,
-      secretName: 'RAIDER_SECRET_1'
-    }
-    await rewrite('flows/a_flow.rb', (raw) => ({
-      ...raw,
-      steps: [{ ...secret, inputName: 'password' }]
-    }))
-    expect((await readSidecar(project, 'flows/a_flow.rb'))?.steps).toEqual([secret])
-  })
-})
-
-describe('isStep inputName', () => {
-  const field = { strategy: 'id' as const, value: 'hours' }
-  const typed = (over: object): Record<string, unknown> => ({
-    id: 's',
-    kind: 'type',
-    element: field,
-    text: '8',
-    ...over
+  it("reads kind 'test' without a warning and drops it", async () => {
+    vi.mocked(safeWarn).mockClear()
+    await writeRaw('spec/a_spec.rb', { ...sidecar('spec/a_spec.rb'), kind: 'test' })
+    expect(await readSidecar(project, 'spec/a_spec.rb')).toEqual(sidecar('spec/a_spec.rb'))
+    expect(safeWarn).not.toHaveBeenCalled()
   })
 
-  it('accepts a valid input name', () => {
-    expect(isStep(typed({ inputName: 'hours' }))).toBe(true)
-    expect(isStep(typed({ inputName: 'a' + 'b'.repeat(39) }))).toBe(true)
-    expect(isStep(typed({ inputName: 'week_2' }))).toBe(true)
+  it.each([
+    ['a bad input name', 'Bad Name'],
+    ['a non-string input name', 42],
+    ['an input name on a secret step', 'hours']
+  ])('never fails a record over %s', async (label, inputName) => {
+    const secret = label.includes('secret') ? { secret: true, secretName: 'RAIDER_SECRET_PW' } : {}
+    await writeRaw('spec/a_spec.rb', {
+      ...sidecar('spec/a_spec.rb'),
+      inputs: 'hours',
+      steps: [{ id: 's1', kind: 'type', element: field, text: '', ...secret, inputName }]
+    })
+    const read = await readSidecar(project, 'spec/a_spec.rb')
+    expect(read).not.toHaveProperty('inputs')
+    expect(read!.steps[0]).not.toHaveProperty('inputName')
   })
 
-  it('rejects a name that fails the rule', () => {
-    for (const inputName of ['', 'Hours', '1st', '_x', 'a-b', 'a'.repeat(41), 3]) {
-      expect(isStep(typed({ inputName }))).toBe(false)
-    }
-  })
-
-  it('rejects an input name together with secret', () => {
-    expect(
-      isStep(
-        typed({ text: '', secret: true, secretName: 'RAIDER_SECRET_1', inputName: 'password' })
-      )
-    ).toBe(false)
+  it('never writes kind, inputs or inputName back', async () => {
+    await writeRaw('spec/a_spec.rb', {
+      ...sidecar('spec/a_spec.rb'),
+      kind: 'flow',
+      inputs: [{ name: 'hours', default: '8' }],
+      steps: [{ id: 's1', kind: 'type', element: field, text: '8', inputName: 'hours' }]
+    })
+    await writeSidecar(project, (await readSidecar(project, 'spec/a_spec.rb'))!)
+    const raw = await readFile(sidecarPath(project, 'spec/a_spec.rb'), 'utf-8')
+    expect(raw).not.toMatch(/"kind":\s*"flow"|"inputs"|"inputName"/)
   })
 })

@@ -44,8 +44,6 @@ export function showAssertionContextMenu(
   }: AssertionMenuRequest
 ): void {
   if (!appState.mainWindow) return
-  // A flow has no checks: callers already refuse, this is the last line
-  if (appState.recordingMode === 'flow') return
 
   const element =
     toElementTarget(strategy, selector, {

@@ -288,27 +288,23 @@ const api = {
     }
   },
   // Recording Session Control
-  startRecordingMain: async (options?: {
-    mode?: 'test' | 'flow'
-  }): Promise<{
+  startRecordingMain: async (): Promise<{
     success: boolean
     url: string
     preloadPath: string
     reason?: 'unsupportedUrl'
-  }> => ipcRenderer.invoke('start-recording-main', options),
+  }> => ipcRenderer.invoke('start-recording-main'),
   replayStepsAndRecord: async (
     testName: string,
     stepsToReplay: Step[],
-    rubyCommand: string,
-    options?: { mode?: 'test' | 'flow' }
+    rubyCommand: string
   ): Promise<{
     success: boolean
     url?: string
     preloadPath?: string
     error?: string
     cancelled?: boolean
-  }> =>
-    ipcRenderer.invoke('replay-steps-and-record', testName, stepsToReplay, rubyCommand, options),
+  }> => ipcRenderer.invoke('replay-steps-and-record', testName, stepsToReplay, rubyCommand),
   cancelReplay: async (): Promise<{ success: boolean }> => ipcRenderer.invoke('cancel-replay'),
   replayInWebview: async (
     steps: Step[]
@@ -369,10 +365,7 @@ const api = {
   },
   loadUrlRequest: async (url: string): Promise<CommandType> =>
     ipcRenderer.invoke('load-url-request', url),
-  renderStep: (step: Step, options?: { flow: true }): Promise<string> =>
-    options
-      ? ipcRenderer.invoke('render-step', step, options)
-      : ipcRenderer.invoke('render-step', step),
+  renderStep: (step: Step): Promise<string> => ipcRenderer.invoke('render-step', step),
   exportTest: (
     testName: string,
     steps: Step[]

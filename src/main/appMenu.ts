@@ -27,7 +27,7 @@ export type MenuCommand =
 export interface MenuActions {
   /** File → Open trace…: a main-side dialog; the renderer never sends a path */
   onOpenTrace: () => void
-  /** Every other command goes to the renderer, which acts through its existing flows */
+  /** Every other command goes to the renderer, which acts through its existing handlers */
   onCommand: (command: MenuCommand) => void
   /** File → Open recent → a project: the path is one main stored itself */
   onOpenRecent: (projectPath: string) => void

@@ -442,6 +442,15 @@ describe('parseGemSchedules', () => {
   })
 
   it.each([
+    ['a list', ['hours']],
+    ['an object', { hours: '8' }]
+  ])('reads a row with inputs set (%s) and every rule field null as an orphan', (_l, inputs) => {
+    const [s] = parseGemSchedules([{ ...orphan[0], inputs }]) ?? []
+    expect(s).toMatchObject({ name: 'hello', orphan: true })
+    expect(s).not.toHaveProperty('inputs')
+  })
+
+  it.each([
     ['a bad name', { name: 'Bad Name' }],
     ['no os_state', { os_state: null }],
     ['one rule field set', { every: 'day' }],

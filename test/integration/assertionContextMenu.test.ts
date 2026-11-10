@@ -15,14 +15,12 @@ vi.mock('electron', () => ({
 
 vi.mock('../../src/main/handlers/appState', () => ({
   appState: {
-    recordingMode: 'test',
     mainWindow: { webContents: { send: (...args: unknown[]) => mockSend(...args) } }
   }
 }))
 
 import { englishText } from '../../src/shared/describeStepEnglish'
 import { showAssertionContextMenu } from '../../src/main/handlers/recording/assertionContextMenu'
-import { appState } from '../../src/main/handlers/appState'
 
 const t = (key: string): string => englishText(`assertions.menu.${key}`)
 
@@ -52,14 +50,6 @@ describe('showAssertionContextMenu', () => {
   beforeEach(() => {
     mockSend.mockClear()
     template = []
-    appState.recordingMode = 'test'
-  })
-
-  it('shows nothing while a flow is recorded', () => {
-    appState.recordingMode = 'flow'
-    showAssertionContextMenu(null, { selector: '#a', strategy: 'css', elementText: 'Save' })
-    expect(template).toEqual([])
-    expect(mockSend).not.toHaveBeenCalled()
   })
 
   it("keeps a well-formed locator on the assertion step's element", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtemp, mkdir, readFile, readdir, writeFile, rm, access } from 'fs/promises'
+import { mkdtemp, readFile, writeFile, rm, access } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -129,58 +129,6 @@ describe('prepareTestRun', () => {
 
     expect(await prepareTestRun(project, 't-new', checkout('t-new'))).toEqual({
       error: 'The test could not be saved, so it was not run.'
-    })
-  })
-
-  describe('never writes a flow as a test', () => {
-    const withCheck = (test: Test): Test => ({
-      ...test,
-      steps: [
-        ...test.steps,
-        { id: 'a1', kind: 'assert', check: 'displayed', element: { strategy: 'id', value: 'ok' } }
-      ]
-    })
-
-    /** A flow recorded under flows/, which the snapshot doesn't load (yet) */
-    async function flowOnDisk(id: string): Promise<string> {
-      await saveRecording(win, project, checkout())
-      const spec = JSON.parse(
-        await readFile(join(project, '.raider', 'tests', 'spec', 'checkout_spec.rb.json'), 'utf-8')
-      )
-      const json = join(project, '.raider', 'tests', 'flows', 'fill_flow.rb.json')
-      await mkdir(join(project, '.raider', 'tests', 'flows'), { recursive: true })
-      await writeFile(
-        json,
-        JSON.stringify({ ...spec, id, file: 'flows/fill_flow.rb', kind: 'flow' })
-      )
-      return json
-    }
-
-    it('refuses a check under the id of a flow stored on disk, writing nothing', async () => {
-      await setActiveProject(project)
-      const json = await flowOnDisk('t-flow')
-
-      for (const test of [withCheck(checkout('t-flow')), checkout('t-flow')]) {
-        expect(await prepareTestRun(project, 't-flow', test)).toEqual({
-          error: 'The test could not be saved, so it was not run.'
-        })
-      }
-      expect(await readdir(join(project, 'spec'))).toEqual(['checkout_spec.rb'])
-      expect(await readdir(join(project, '.raider', 'tests', 'spec'))).toEqual([
-        'checkout_spec.rb.json'
-      ])
-      expect(JSON.parse(await readFile(json, 'utf-8')).kind).toBe('flow')
-      expect(appState.tests.has('t-flow')).toBe(false)
-    })
-
-    it('refuses a check for a flow in the snapshot', async () => {
-      await setActiveProject(project)
-      appState.tests.set('t-flow', { ...checkout('t-flow'), kind: 'flow' })
-
-      expect(await prepareTestRun(project, 't-flow', withCheck(checkout('t-flow')))).toEqual({
-        error: 'The test could not be saved, so it was not run.'
-      })
-      expect(await exists(join(project, 'spec'))).toBe(false)
     })
   })
 

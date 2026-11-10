@@ -140,8 +140,7 @@ export interface WindowApi extends RunApi {
 
   // --- Step Rendering ---
   /** Ruby for one step, in the active project's automation (Selenium or Watir). */
-  /** `{ flow: true }` renders as in a flow file (a typed input reads flow_input) */
-  renderStep: (step: Step, options?: { flow: true }) => Promise<string>
+  renderStep: (step: Step) => Promise<string>
 
   /** The active project's recorded tests, with their steps; [] without a project */
   getTests: () => Promise<Test[]>
@@ -219,8 +218,7 @@ export interface WindowApi extends RunApi {
   ) => Promise<{ success: boolean; path?: string; error?: string }>
 
   // --- Recording Session ---
-  /** `mode: 'flow'` records a flow: main then refuses checks */
-  startRecordingMain: (options?: { mode?: 'test' | 'flow' }) => Promise<{
+  startRecordingMain: () => Promise<{
     success: boolean
     url: string
     preloadPath: string
@@ -230,8 +228,7 @@ export interface WindowApi extends RunApi {
   replayStepsAndRecord: (
     testName: string,
     stepsToReplay: Step[],
-    rubyCommand: string,
-    options?: { mode?: 'test' | 'flow' }
+    rubyCommand: string
   ) => Promise<{
     success: boolean
     url?: string
