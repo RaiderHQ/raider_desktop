@@ -18,6 +18,10 @@ const t = (key: string, options: Record<string, unknown> = {}): string => {
   return text.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(options[name] ?? ''))
 }
 
+// rubyStore loads versionStore, whose timer polls window.api; without a stub it can outlive the
+// test environment and fail the run with "window is not defined"
+;(window as unknown as { api: object }).api = {}
+
 vi.mock('react-i18next', () => ({ useTranslation: (): { t: typeof t } => ({ t }) }))
 vi.mock('react-hot-toast', () => ({ default: { error: vi.fn(), success: vi.fn() } }))
 
@@ -52,7 +56,7 @@ const schedule = (patch: Partial<GemScheduleRule> = {}): GemScheduleRule => ({
 
 // What the modal is given to send a schedule with: it never reaches window.api itself
 const api = {
-  scheduleFlow: vi.fn()
+  save: vi.fn()
 }
 
 beforeEach(() => {
@@ -129,13 +133,13 @@ describe('ScheduleModal', () => {
         schedule={null}
         onClose={vi.fn()}
         onScheduled={onScheduled}
-        save={api.scheduleFlow}
+        save={api.save}
       />
     )
   }
 
   it('sends an hourly schedule with notify on by default', async () => {
-    api.scheduleFlow.mockResolvedValue({ ok: true, message: 'Scheduled fill_hours' })
+    api.save.mockResolvedValue({ ok: true, message: 'Scheduled fill_hours' })
     const onScheduled = vi.fn()
     renderModal(onScheduled)
     fireEvent.change(screen.getByLabelText('Repeat'), { target: { value: 'hour' } })
@@ -144,7 +148,7 @@ describe('ScheduleModal', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Schedule' }))
     })
-    expect(api.scheduleFlow).toHaveBeenCalledWith('ruby', 'fill_hours', {
+    expect(api.save).toHaveBeenCalledWith('ruby', 'fill_hours', {
       every: 'hour',
       at: '00:15',
       retries: 0,
@@ -162,14 +166,14 @@ describe('ScheduleModal', () => {
   })
 
   it('asks for a day on a weekly schedule', async () => {
-    api.scheduleFlow.mockResolvedValue({ ok: true, message: '' })
+    api.save.mockResolvedValue({ ok: true, message: '' })
     renderModal()
     fireEvent.change(screen.getByLabelText('Repeat'), { target: { value: 'week' } })
     fireEvent.change(screen.getByLabelText('Day'), { target: { value: 'fri' } })
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Schedule' }))
     })
-    expect(api.scheduleFlow).toHaveBeenCalledWith(
+    expect(api.save).toHaveBeenCalledWith(
       'ruby',
       'fill_hours',
       expect.objectContaining({ every: 'week', on: 'fri' })
@@ -177,11 +181,30 @@ describe('ScheduleModal', () => {
   })
 
   it("shows the gem's refusal", async () => {
-    api.scheduleFlow.mockResolvedValue({ error: 'refused', message: 'Ruby not found' })
+    api.save.mockResolvedValue({ error: 'refused', message: 'Ruby not found' })
     renderModal()
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Schedule' }))
     })
     expect(screen.getByTestId('schedule-error')).toHaveTextContent('Ruby not found')
+  })
+
+  it('falls back to a plain message when the gem gives none', async () => {
+    api.save.mockResolvedValue({ error: 'gem-output' })
+    renderModal()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Schedule' }))
+    })
+    expect(screen.getByTestId('schedule-error')).toHaveTextContent(en.schedules.cliFailed)
+  })
+
+  it('says Ruby is missing and does not send', async () => {
+    useRubyStore.setState({ rubyCommand: null })
+    renderModal()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Schedule' }))
+    })
+    expect(screen.getByTestId('schedule-error')).toHaveTextContent(en.schedules.noRuby)
+    expect(api.save).not.toHaveBeenCalled()
   })
 })

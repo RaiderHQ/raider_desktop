@@ -311,6 +311,18 @@ describe('records from an older Raider', () => {
     expect(safeWarn).toHaveBeenCalledTimes(1)
   })
 
+  it('reads an old flows/ record without warning', async () => {
+    vi.mocked(safeWarn).mockClear()
+    await mkdir(join(testsDir(), 'flows'), { recursive: true })
+    await writeFile(
+      sidecarPath(project, 'flows/x_flow.rb'),
+      JSON.stringify({ ...sidecar('flows/x_flow.rb'), kind: 'flow' })
+    )
+    expect(await readSidecar(project, 'flows/x_flow.rb')).toEqual(sidecar('flows/x_flow.rb'))
+    await listSidecars(project)
+    expect(safeWarn).not.toHaveBeenCalled()
+  })
+
   it("reads kind 'test' without a warning and drops it", async () => {
     vi.mocked(safeWarn).mockClear()
     await writeRaw('spec/a_spec.rb', { ...sidecar('spec/a_spec.rb'), kind: 'test' })

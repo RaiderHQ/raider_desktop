@@ -41,7 +41,7 @@ export interface GemScheduleRule {
 }
 
 /**
- * A flow the OS still runs on a schedule that schedules.yml no longer lists (deleted .raider,
+ * A job the OS still runs on a schedule that schedules.yml no longer lists (deleted .raider,
  * git clean, a corrupt file): no rule to show, only the OS state and Stop schedule.
  */
 export interface GemOrphanSchedule {
