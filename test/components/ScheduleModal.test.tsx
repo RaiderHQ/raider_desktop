@@ -7,7 +7,7 @@ import ScheduleModal, { buildSchedule } from '@components/Schedules/ScheduleModa
 import { lastResultText, nextRunText, scheduleText } from '@components/Schedules/scheduleText'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { validateSchedule } from '@shared/schedules'
-import type { FlowLastRun, GemScheduleRule } from '@shared/types/schedules'
+import type { ScheduledLastRun, GemScheduleRule } from '@shared/types/schedules'
 
 /** en.json with {{placeholders}} filled, so the tests read the real copy */
 const t = (key: string, options: Record<string, unknown> = {}): string => {
@@ -29,7 +29,7 @@ const at = (hours: number, minutes: number, daysAgo = 0): string => {
 }
 const now = new Date(2026, 10, 10, 12, 0)
 
-const last = (patch: Partial<FlowLastRun> = {}): FlowLastRun => ({
+const last = (patch: Partial<ScheduledLastRun> = {}): ScheduledLastRun => ({
   status: 'completed',
   finishedAt: at(8, 0),
   failedStep: null,

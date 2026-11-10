@@ -1,6 +1,6 @@
 import { constants, promises as fs } from 'node:fs'
 import { assertRealInside, resolveInside } from '../tests/sidecar'
-import { isFlowName } from '../../../shared/flows'
+import { isScheduleName } from '../../../shared/schedules'
 
 // The gem's run log of a scheduled job (.raider/flows/<name>/runs.jsonl, one JSON line per
 // run). It is written by project code, so nothing is trusted: each line is parsed on its own.
@@ -19,7 +19,7 @@ export async function readRunLog(
   name: string,
   maxBytes = MAX_LOG_BYTES
 ): Promise<unknown[]> {
-  if (!isFlowName(name)) return []
+  if (!isScheduleName(name)) return []
   let handle: fs.FileHandle | undefined
   try {
     const file = resolveInside(projectPath, runLogRel(name))

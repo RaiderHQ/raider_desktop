@@ -6,11 +6,11 @@ import Checkbox from '@components/Checkbox'
 import InputField from '@components/InputField'
 import Tooltip from '@components/Tooltip'
 import useRubyStore from '@foundation/Stores/rubyStore'
-import { FLOW_AT, validateSchedule } from '@shared/schedules'
+import { SCHEDULE_AT, validateSchedule } from '@shared/schedules'
 import type {
-  FlowDay,
-  FlowEvery,
-  FlowSchedule,
+  ScheduleDay,
+  ScheduleEvery,
+  ScheduleSettings,
   GemCliError,
   GemScheduleRule
 } from '@shared/types/schedules'
@@ -29,12 +29,12 @@ interface ScheduleModalProps {
   save: (
     rubyCommand: string,
     name: string,
-    schedule: FlowSchedule
+    schedule: ScheduleSettings
   ) => Promise<{ ok: true; message: string } | GemCliError>
 }
 
-const EVERY: FlowEvery[] = ['hour', 'day', 'weekday', 'week']
-const DAYS: FlowDay[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+const EVERY: ScheduleEvery[] = ['hour', 'day', 'weekday', 'week']
+const DAYS: ScheduleDay[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 const MINUTE = /^[0-5]\d$/
 
 const selectClass =
@@ -76,12 +76,12 @@ const Select: React.FC<SelectProps> = ({ label, tooltip, value, options, onChang
 
 /** The schedule the form describes; `time` is HH:MM, or MM for an hourly one. */
 export function buildSchedule(form: {
-  every: FlowEvery
+  every: ScheduleEvery
   time: string
-  day: FlowDay
+  day: ScheduleDay
   retries: number
   notify: boolean
-}): FlowSchedule {
+}): ScheduleSettings {
   return {
     every: form.every,
     // The gem's hour rule is a minute; the shared check wants a whole time, so 00:MM
@@ -102,10 +102,10 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
   save
 }) => {
   const { t } = useTranslation()
-  const [every, setEvery] = useState<FlowEvery>(schedule?.every ?? 'weekday')
+  const [every, setEvery] = useState<ScheduleEvery>(schedule?.every ?? 'weekday')
   const [time, setTime] = useState(schedule && schedule.every !== 'hour' ? schedule.at : '08:00')
   const [minute, setMinute] = useState(schedule?.every === 'hour' ? schedule.at.slice(3) : '00')
-  const [day, setDay] = useState<FlowDay>(schedule?.on ?? 'mon')
+  const [day, setDay] = useState<ScheduleDay>(schedule?.on ?? 'mon')
   const [retries, setRetries] = useState(schedule?.retries ?? 0)
   const [notify, setNotify] = useState(schedule?.notify ?? true)
   const [error, setError] = useState<string | null>(null)
@@ -116,7 +116,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
     ? MINUTE.test(minute)
       ? undefined
       : t('schedules.scheduleModal.minuteInvalid')
-    : FLOW_AT.test(time)
+    : SCHEDULE_AT.test(time)
       ? undefined
       : t('schedules.scheduleModal.timeInvalid')
   const valid = !timeError
@@ -124,7 +124,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const submit = async (): Promise<void> => {
     if (!valid || saving) return
     setError(null)
-    let request: FlowSchedule
+    let request: ScheduleSettings
     try {
       request = validateSchedule(
         buildSchedule({
@@ -189,7 +189,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
         tooltip={t('tooltips.schedules.every')}
         value={every}
         options={EVERY.map((e) => ({ value: e, text: t(`schedules.scheduleModal.every.${e}`) }))}
-        onChange={(v) => setEvery(v as FlowEvery)}
+        onChange={(v) => setEvery(v as ScheduleEvery)}
       />
       {every === 'week' && (
         <Select
@@ -197,7 +197,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
           tooltip={t('tooltips.schedules.day')}
           value={day}
           options={DAYS.map((d) => ({ value: d, text: t(`schedules.days.${d}`) }))}
-          onChange={(v) => setDay(v as FlowDay)}
+          onChange={(v) => setDay(v as ScheduleDay)}
         />
       )}
       {hourly ? (

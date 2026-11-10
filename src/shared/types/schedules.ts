@@ -1,28 +1,28 @@
 // `raider flow schedule` (ruby_raider 4.1+): what main reads from the gem's JSON output and
 // what the renderer sends back to schedule a run.
 
-export type FlowEvery = 'hour' | 'day' | 'weekday' | 'week'
-export type FlowDay = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
+export type ScheduleEvery = 'hour' | 'day' | 'weekday' | 'week'
+export type ScheduleDay = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
 
-export interface FlowSchedule {
-  every: FlowEvery
+export interface ScheduleSettings {
+  every: ScheduleEvery
   at: string
-  on?: FlowDay
+  on?: ScheduleDay
   retries: number
   notify: boolean
 }
 
-export interface FlowFailedStep {
+export interface ScheduledFailedStep {
   number?: number
   title: string
   line: number
 }
 
-export interface FlowLastRun {
+export interface ScheduledLastRun {
   status: 'completed' | 'failed' | 'setup_error' | 'busy'
   finishedAt: string
   trigger?: 'manual' | 'schedule' | 'desktop'
-  failedStep: FlowFailedStep | null
+  failedStep: ScheduledFailedStep | null
   resultsDir: string
 }
 
@@ -30,14 +30,14 @@ export interface FlowLastRun {
 export interface GemScheduleRule {
   name: string
   orphan?: false
-  every: FlowEvery
+  every: ScheduleEvery
   at: string
-  on: FlowDay | null
+  on: ScheduleDay | null
   retries: number
   notify: boolean
   nextRunAt: string | null
   osState: string
-  last: FlowLastRun | null
+  last: ScheduledLastRun | null
 }
 
 /**
@@ -48,7 +48,7 @@ export interface GemOrphanSchedule {
   name: string
   orphan: true
   osState: string
-  last: FlowLastRun | null
+  last: ScheduledLastRun | null
 }
 
 export type GemSchedule = GemScheduleRule | GemOrphanSchedule
