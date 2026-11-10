@@ -37,6 +37,7 @@ export interface WatchHandle {
 export interface NotificationHandle {
   on(event: 'click' | 'close', listener: () => void): unknown
   show(): void
+  close(): void
 }
 export interface WindowHandle {
   isDestroyed(): boolean
@@ -233,7 +234,8 @@ export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): F
     shown.add(notification)
     notification.on('click', () => {
       shown.delete(notification)
-      focusFlowsTab()
+      // After a project switch this banner is another project's: it must not open the new one's tab
+      if (!stopped) focusFlowsTab()
     })
     notification.on('close', () => shown.delete(notification))
     notification.show()
@@ -311,6 +313,9 @@ export function createFlowWatcher(projectPath: string, deps: FlowWatcherDeps): F
       if (timer !== null) deps.clearTimer(timer)
       timer = null
       closeHandle()
+      // This project's banners go with it
+      for (const notification of Array.from(shown)) notification.close()
+      shown.clear()
     },
     idle: (): Promise<void> => queue
   }

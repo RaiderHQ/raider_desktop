@@ -82,6 +82,26 @@ describe('setActiveProject', () => {
     await setActiveProject(dir)
     expect(seen).toEqual([dir, null])
   })
+
+  it('a throwing listener neither fails the activation nor skips the next one', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const seen: (string | null)[] = []
+    const offBad = onActiveProjectChange(() => {
+      throw new Error('boom')
+    })
+    const offGood = onActiveProjectChange((projectPath) => seen.push(projectPath))
+    try {
+      const result = await setActiveProject(dir)
+      expect(result.success).toBe(true)
+      expect(appState.projectPath).toBe(dir)
+      expect(seen).toEqual([dir])
+    } finally {
+      offBad()
+      offGood()
+      warn.mockRestore()
+      await setActiveProject(null)
+    }
+  })
 })
 
 describe('recording start URL', () => {

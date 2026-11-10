@@ -2,7 +2,7 @@ import { appState } from '../appState'
 import { DEFAULT_RECORDER_SETTINGS, readRecorderSettings } from '../config/projectSettings'
 import { detectProjectLayout } from './projectLayout'
 import { loadRecordedTests } from '../tests/loadTests'
-import { safeError } from '../../utils/safeLog'
+import { safeError, safeWarn } from '../../utils/safeLog'
 import { migrateRecordedTests } from '../tests/migrateRecordedTests'
 import type { RecorderSettings } from '@shared/types/recorderSettings'
 import type { ProjectLayout } from '@shared/types/projectLayout'
@@ -66,7 +66,14 @@ export function onActiveProjectChange(listener: ActivationListener): () => void 
 }
 
 const announce = (projectPath: string | null): void => {
-  for (const listener of Array.from(activationListeners)) listener(projectPath)
+  for (const listener of Array.from(activationListeners)) {
+    // A listener's failure must not fail (or skip the others in) a good activation
+    try {
+      listener(projectPath)
+    } catch (error) {
+      safeWarn('Project change listener failed:', error instanceof Error ? error.message : error)
+    }
+  }
 }
 
 function clearActiveProject(): void {

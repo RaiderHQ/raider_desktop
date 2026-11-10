@@ -27,7 +27,7 @@ interface FakeWatch {
 function fakes(): {
   deps: FlowWatcherDeps
   watches: FakeWatch[]
-  notes: { title: string; body: string; click: () => void }[]
+  notes: { title: string; body: string; click: () => void; closed: boolean }[]
   sent: string[]
   win: {
     restore: ReturnType<typeof vi.fn>
@@ -39,7 +39,7 @@ function fakes(): {
   timers: number
 } {
   const watches: FakeWatch[] = []
-  const notes: { title: string; body: string; click: () => void }[] = []
+  const notes: { title: string; body: string; click: () => void; closed: boolean }[] = []
   const sent: string[] = []
   let pending: (() => void) | null = null
   const state = { timers: 0 }
@@ -68,12 +68,16 @@ function fakes(): {
       isSupported: () => true,
       create: ({ title, body }) => {
         const handlers: Record<string, () => void> = {}
-        notes.push({ title, body, click: () => handlers.click?.() })
+        const note = { title, body, click: (): void => handlers.click?.(), closed: false }
+        notes.push(note)
         return {
           on: (event, l): void => {
             handlers[event] = l
           },
-          show: (): void => undefined
+          show: (): void => undefined,
+          close: (): void => {
+            note.closed = true
+          }
         }
       }
     },
@@ -428,6 +432,20 @@ describe('flowWatcher', () => {
     expect(f.win.show).toHaveBeenCalled()
     expect(f.win.focus).toHaveBeenCalled()
     expect(f.sent).toEqual(['flows-changed', 'focus-flows-tab'])
+  })
+
+  it('after stop (a project switch) closes its banners and a late click opens nothing', async () => {
+    const f = fakes()
+    watcher = createFlowWatcher(dir, f.deps)
+    await watcher.idle()
+    await appendFile(log(), line())
+    await change(f)
+    expect(f.notes).toHaveLength(1)
+    watcher.stop()
+    expect(f.notes[0].closed).toBe(true)
+    f.notes[0].click()
+    expect(f.win.focus).not.toHaveBeenCalled()
+    expect(f.sent).toEqual(['flows-changed'])
   })
 
   it('without .raider/flows watches .raider and arms when it is made', async () => {
