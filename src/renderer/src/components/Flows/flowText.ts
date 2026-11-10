@@ -65,13 +65,16 @@ export function mergeFlows(
   return rows
 }
 
+// The copy is English, so the day and month names around it are too (as SavedLogins does)
+const LOCALE = 'en'
+
 const sameDay = (a: Date, b: Date): boolean =>
   a.getFullYear() === b.getFullYear() &&
   a.getMonth() === b.getMonth() &&
   a.getDate() === b.getDate()
 
 const clock = (d: Date): string =>
-  new Intl.DateTimeFormat(undefined, {
+  new Intl.DateTimeFormat(LOCALE, {
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23'
@@ -86,7 +89,7 @@ export function whenText(t: T, iso: string, now: Date): string {
   const yesterday = new Date(now)
   yesterday.setDate(now.getDate() - 1)
   if (sameDay(d, yesterday)) return t('flows.when.yesterday', { time })
-  const date = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(d)
+  const date = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short' }).format(d)
   return t('flows.when.date', { date, time })
 }
 
@@ -127,7 +130,7 @@ export function nextRunText(t: T, nextRunAt: string | null): string | null {
   if (!nextRunAt) return null
   const d = new Date(nextRunAt)
   if (Number.isNaN(d.getTime())) return null
-  const day = new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(d)
+  const day = new Intl.DateTimeFormat(LOCALE, { weekday: 'short' }).format(d)
   return t('flows.nextRun', { when: `${day} ${clock(d)}` })
 }
 

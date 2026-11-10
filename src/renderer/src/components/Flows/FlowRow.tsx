@@ -142,7 +142,7 @@ const FlowRow: React.FC<FlowRowProps> = ({ row, now, onChanged }) => {
             data-testid="flow-os-state"
           >
             <span>{t('flows.osProblem', { state: osProblem })}</span>
-            {!flowGoneFromOs(osProblem) && (
+            {!flowGoneFromOs(osProblem) && !row.missing && (
               <Tooltip content={t('tooltips.flows.reschedule')} position="bottom">
                 <button className={rowButton} onClick={() => setDialog('schedule')}>
                   {t('flows.reschedule')}

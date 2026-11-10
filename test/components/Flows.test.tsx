@@ -341,6 +341,13 @@ describe('FlowRow', () => {
     expect(screen.getByRole('button', { name: 'Stop schedule' })).toBeInTheDocument()
   })
 
+  it('offers only Stop schedule when the flow file is gone', () => {
+    renderRow(row({ missing: true, schedule: schedule({ osState: 'missing from launchd' }) }))
+    expect(screen.queryByRole('button', { name: 'Re-schedule' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Run' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Stop schedule' })).toBeInTheDocument()
+  })
+
   it('runs a flow with no inputs at once, headless', async () => {
     renderRow(row())
     await act(async () => {

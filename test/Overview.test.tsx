@@ -5,7 +5,7 @@ import '@testing-library/jest-dom'
 import useTitleStore from '@foundation/Stores/titleStore'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
-import { Link, MemoryRouter } from 'react-router'
+import { Link, MemoryRouter, Route, Routes } from 'react-router'
 import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import toast from 'react-hot-toast'
@@ -227,6 +227,34 @@ describe('Overview Page', (): void => {
     expect(screen.queryByTestId('flows-pane-stub')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'overview.tabs.flows' }))
     expect(screen.getByTestId('flows-pane-stub')).toBeInTheDocument()
+  })
+
+  it("goes back to the Tests tab when a flow's page is opened again (Flows › Edit)", async () => {
+    const page = '/overview/tests/aWQ6dDE'
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={[page]}>
+          <Routes>
+            <Route
+              path="/overview/tests/:testKey"
+              element={
+                <>
+                  <Overview />
+                  {/* useNavigate is mocked in this file; a link changes the route for real */}
+                  <Link to={page}>edit-again</Link>
+                </>
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      )
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'overview.tabs.flows' }))
+    expect(screen.getByTestId('flows-pane-stub')).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.click(screen.getByText('edit-again'))
+    })
+    expect(screen.queryByTestId('flows-pane-stub')).toBeNull()
   })
 
   it('navigates to /start-project if no project path is set', async (): Promise<void> => {

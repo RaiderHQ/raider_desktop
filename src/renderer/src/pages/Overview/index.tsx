@@ -122,10 +122,10 @@ const Overview: React.FC = () => {
     }
   }
 
-  // A test route always shows the Tests tab
+  // A test route always shows the Tests tab, also when the same test is opened again (Flows › Edit)
   useEffect(() => {
     if (testKey) setActiveTab('tests')
-  }, [testKey])
+  }, [testKey, locationKey])
 
   const [runMode, setRunMode] = useState<'all' | 'smoke' | 'regression' | 'custom'>('all')
   const [customTag, setCustomTag] = useState('')
