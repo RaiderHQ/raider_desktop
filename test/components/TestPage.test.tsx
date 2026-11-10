@@ -1589,7 +1589,7 @@ describe('Add validation…', () => {
         title: 'Recording a flow',
         line1: 'A flow does a job; it has no checks.',
         line2: 'Mark a typed value as an input to change it per run.',
-        line3: 'Save it, then run it from the Tests list.'
+        line3: 'Save it, then run or schedule it from the Flows tab.'
       })
     })
   })

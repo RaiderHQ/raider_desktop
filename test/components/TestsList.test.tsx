@@ -466,12 +466,9 @@ describe('flows in the list', () => {
     kind: 'flow'
   }
 
-  it('labels a flow, and only a flow', () => {
+  it('has no Flow label: flows are listed on the Flows tab', () => {
     setup({ rows: [...rows, flowRow] })
-    const labels = screen.getAllByTestId('flow-label')
-    expect(labels).toHaveLength(1)
-    expect(labels[0]).toHaveTextContent('tests.flowBadge')
-    expect(screen.getByText('Fill hours').closest('li')).toContainElement(labels[0])
+    expect(screen.queryByTestId('flow-label')).toBeNull()
   })
 
   it('turns Copy and Duplicate off for a flow, with a tooltip; Delete stays', () => {

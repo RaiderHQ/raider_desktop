@@ -402,7 +402,6 @@
     "restore": "Restore",
     "newTest": "New test",
     "newFlow": "New flow",
-    "flowBadge": "Flow",
     "startRecording": "Start recording",
     "editedInCode": "From file",
     "selectOrCreate": "Select a test, or create a new one.",
@@ -421,7 +420,6 @@
     "moreMenu": {
       "label": "More",
       "actions": "More test actions",
-      "newFlow": "New flow…",
       "runTagged": "Run tagged tests",
       "importTest": "Import test",
       "importProject": "Import project",
@@ -649,7 +647,7 @@
       "title": "Recording a flow",
       "line1": "A flow does a job; it has no checks.",
       "line2": "Mark a typed value as an input to change it per run.",
-      "line3": "Save it, then run it from the Tests list."
+      "line3": "Save it, then run or schedule it from the Flows tab."
     },
     "foundBy": {
       "role": "Found by role · {{role}} \"{{name}}\"",
@@ -1053,8 +1051,7 @@
         "noTag": "Pick a tag first"
       },
       "newTest": "Start a new test: give it a name and a page, then record",
-      "newFlow": "Record a flow: steps that do a job, with no checks",
-      "flowsNotReady": "Set up flows first: run raider flow init in this project",
+      "flowsNotReady": "Set up flows first, on the flows tab",
       "flowNoCopy": "Flows can't be copied or duplicated yet",
       "flowNoDelete": "A flow written in code can't be deleted here",
       "restore": "Put this deleted test back",

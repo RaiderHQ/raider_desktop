@@ -253,14 +253,6 @@ const TestsList: React.FC<TestsListProps> = ({
                 }`}
               >
                 <span className="flex-1 min-w-0 truncate text-neutral-dark">{row.name}</span>
-                {row.kind === 'flow' && (
-                  <span
-                    data-testid="flow-label"
-                    className="text-xs px-2 py-0.5 rounded-full bg-ruby-sub text-ruby font-medium whitespace-nowrap"
-                  >
-                    {t('tests.flowBadge')}
-                  </span>
-                )}
                 {editedInCode && !row.missingFile && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-lt text-neutral-dk font-medium whitespace-nowrap">
                     {t('tests.editedInCode')}
