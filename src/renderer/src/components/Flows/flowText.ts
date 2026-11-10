@@ -1,5 +1,11 @@
 import type { TFunction } from 'i18next'
-import type { FlowCliError, FlowLastRun, GemFlow, GemSchedule } from '@shared/types/flows'
+import type {
+  FlowCliError,
+  FlowLastRun,
+  GemFlow,
+  GemSchedule,
+  GemScheduleRule
+} from '@shared/types/flows'
 import { validateFlowInputs } from '@shared/flows'
 import type { FlowInput, ProjectFlowEntry } from '@shared/types/projectTest'
 
@@ -114,7 +120,10 @@ export function lastResultText(t: T, last: FlowLastRun | null, now: Date): strin
 }
 
 /** "Every weekday at 08:00", "Every hour at :15", "Every Monday at 08:00" (+ notify). */
-export function scheduleText(t: T, s: Pick<GemSchedule, 'every' | 'at' | 'on' | 'notify'>): string {
+export function scheduleText(
+  t: T,
+  s: Pick<GemScheduleRule, 'every' | 'at' | 'on' | 'notify'>
+): string {
   const minute = s.at.slice(3)
   const text =
     s.every === 'hour'

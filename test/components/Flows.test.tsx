@@ -21,7 +21,7 @@ import useProjectStore from '@foundation/Stores/projectStore'
 import { useRunStore } from '@foundation/Stores/runStore'
 import { toRouteParam } from '@foundation/testKey'
 import { validateSchedule } from '@shared/flows'
-import type { FlowLastRun, GemSchedule } from '@shared/types/flows'
+import type { FlowLastRun, GemOrphanSchedule, GemScheduleRule } from '@shared/types/flows'
 import type { ProjectFlowEntry } from '@shared/types/projectTest'
 
 /** en.json with {{placeholders}} filled, so the tests read the real copy */
@@ -57,7 +57,7 @@ const last = (patch: Partial<FlowLastRun> = {}): FlowLastRun => ({
   ...patch
 })
 
-const schedule = (patch: Partial<GemSchedule> = {}): GemSchedule => ({
+const schedule = (patch: Partial<GemScheduleRule> = {}): GemScheduleRule => ({
   name: 'fill_hours',
   every: 'weekday',
   at: '08:00',
@@ -67,6 +67,15 @@ const schedule = (patch: Partial<GemSchedule> = {}): GemSchedule => ({
   notify: false,
   nextRunAt: null,
   osState: 'ok',
+  last: null,
+  ...patch
+})
+
+// What the gem lists for a flow launchd still runs after schedules.yml lost it
+const orphan = (patch: Partial<GemOrphanSchedule> = {}): GemOrphanSchedule => ({
+  name: 'fill_hours',
+  orphan: true,
+  osState: 'missing from schedules.yml',
   last: null,
   ...patch
 })
@@ -224,6 +233,18 @@ describe('FlowsPane states', () => {
     expect(api.listFlows).toHaveBeenCalledWith('ruby')
   })
 
+  it('shows a schedule the OS still runs but schedules.yml lost, with Stop schedule only', async () => {
+    api.listProjectFlows.mockResolvedValue([entry()])
+    api.listSchedules.mockResolvedValue({ schedules: [orphan()] })
+    await renderPane()
+    const flow = screen.getByTestId('flow-row-fill_hours')
+    expect(within(flow).getByTestId('flow-os-state')).toHaveTextContent(
+      'The schedule needs attention: missing from schedules.yml'
+    )
+    expect(within(flow).getByRole('button', { name: 'Stop schedule' })).toBeInTheDocument()
+    expect(within(flow).queryByRole('button', { name: 'Schedule…' })).toBeNull()
+  })
+
   it('still lists the flows when the gem lists fail, and says so', async () => {
     api.listProjectFlows.mockResolvedValue([entry()])
     api.listSchedules.mockResolvedValue({ error: 'timeout' })
@@ -366,19 +387,48 @@ describe('FlowRow', () => {
   it('offers only Stop schedule when the flow file is gone', () => {
     renderRow(row({ missing: true, schedule: schedule({ osState: 'missing from launchd' }) }))
     expect(screen.queryByRole('button', { name: 'Re-schedule' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Run' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Run…' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Stop schedule' })).toBeInTheDocument()
   })
 
-  it('runs a flow with no inputs at once, headless', async () => {
-    renderRow(row())
+  it('an orphan schedule shows its warning and Stop schedule, no rule and no Re-schedule', async () => {
+    api.unscheduleFlow.mockResolvedValue({ ok: true })
+    renderRow(row({ schedule: orphan() }))
+    expect(screen.getByTestId('flow-os-state')).toHaveTextContent(
+      'The schedule needs attention: missing from schedules.yml'
+    )
+    expect(screen.queryByTestId('flow-schedule')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Re-schedule' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Schedule…' })).toBeNull()
+    // The flow file is still there, so it can still be run
+    expect(screen.getByRole('button', { name: 'Run…' })).toBeInTheDocument()
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Run' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Stop schedule' }))
+    })
+    expect(api.unscheduleFlow).toHaveBeenCalledWith('ruby', 'fill_hours')
+  })
+
+  it('an orphan schedule whose flow file is gone offers only Stop schedule', () => {
+    renderRow(row({ missing: true, schedule: orphan() }))
+    expect(screen.getByTestId('flow-os-state')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Run…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Re-schedule' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Stop schedule' })).toBeInTheDocument()
+  })
+
+  it('opens the Run modal for a flow with no inputs too, so it can run with the browser shown', async () => {
+    renderRow(row())
+    fireEvent.click(screen.getByRole('button', { name: 'Run…' }))
+    expect(api.startRun).not.toHaveBeenCalled()
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(within(dialog).getByLabelText('Show the browser'))
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Run' }))
     })
     expect(api.startRun).toHaveBeenCalledWith(
       expect.objectContaining({
         scope: { kind: 'files', files: ['flows/fill_hours_flow.rb'] },
-        flow: { name: 'fill_hours', inputs: {}, headed: false }
+        flow: { name: 'fill_hours', inputs: {}, headed: true }
       })
     )
   })
@@ -438,6 +488,21 @@ describe('RunFlowModal', () => {
       headed: true
     })
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('starts once on a double click while the start is in flight', async () => {
+    let resolveStart: (value: { runId: string }) => void = () => undefined
+    api.startRun.mockReturnValue(new Promise((resolve) => (resolveStart = resolve)))
+    render(<RunFlowModal name="fill_hours" title="Fill hours" inputs={[]} onClose={vi.fn()} />)
+    const button = screen.getByRole('button', { name: 'Run' })
+    await act(async () => {
+      fireEvent.click(button)
+      fireEvent.click(button)
+    })
+    await act(async () => {
+      resolveStart({ runId: 'r1' })
+    })
+    expect(api.startRun).toHaveBeenCalledTimes(1)
   })
 })
 

@@ -88,9 +88,23 @@ function parseInputs(value: unknown): Record<string, string> | null {
   return inputs
 }
 
+// The rule fields of a schedules row: all null for a flow the OS runs but schedules.yml lost
+const RULE_FIELDS = ['every', 'at', 'on', 'retries', 'inputs', 'notify', 'next_run_at'] as const
+
+const osStateText = (osState: string): string => plainText(osState.slice(0, MAX_STRING * 4))
+
 function parseSchedule(value: unknown): GemSchedule | null {
   if (!isObject(value) || !isName(value.name)) return null
   const { name, every, at, on, retries, notify, next_run_at, os_state } = value
+  if (RULE_FIELDS.every((field) => value[field] === null)) {
+    if (typeof os_state !== 'string') return null
+    return {
+      name,
+      orphan: true,
+      osState: osStateText(os_state),
+      last: parseLastRun(value.last, name)
+    }
+  }
   if (!EVERY.includes(every as FlowEvery)) return null
   if (typeof at !== 'string' || !FLOW_AT.test(at)) return null
   if (on !== null && !DAYS.includes(on as FlowDay)) return null
@@ -108,7 +122,7 @@ function parseSchedule(value: unknown): GemSchedule | null {
     inputs,
     notify,
     nextRunAt: next_run_at,
-    osState: plainText(os_state.slice(0, MAX_STRING * 4)),
+    osState: osStateText(os_state),
     last: parseLastRun(value.last, name)
   }
 }

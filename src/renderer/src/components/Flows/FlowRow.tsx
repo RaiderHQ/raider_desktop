@@ -6,7 +6,7 @@ import Tooltip from '@components/Tooltip'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { useRunStore } from '@foundation/Stores/runStore'
 import { toRouteParam } from '@foundation/testKey'
-import RunFlowModal, { runFlow } from './RunFlowModal'
+import RunFlowModal from './RunFlowModal'
 import ScheduleModal from './ScheduleModal'
 import FlowSecretsModal from './FlowSecretsModal'
 import {
@@ -52,15 +52,16 @@ const FlowRow: React.FC<FlowRowProps> = ({ row, now, onChanged }) => {
   }, [menuOpen])
 
   const { last, schedule } = row
-  const hasInputs = row.inputs.length > 0
+  // An orphan (the OS runs it, schedules.yml lost it) has no rule: its warning and Stop only
+  const rule = schedule && !schedule.orphan ? schedule : null
   const osProblem = schedule && schedule.osState !== 'ok' ? schedule.osState : null
-  const nextRun = schedule ? nextRunText(t, schedule.nextRunAt) : null
+  const nextRun = rule ? nextRunText(t, rule.nextRunAt) : null
   const resultsDir = last?.resultsDir
 
+  // Always through the Run modal, so "Show the browser" is there for a flow without inputs too
   const run = (): void => {
     if (runActive) return
-    if (hasInputs) setDialog('run')
-    else void runFlow(row.name, row.title, {}, false)
+    setDialog('run')
   }
 
   const stopSchedule = async (): Promise<void> => {
@@ -130,9 +131,9 @@ const FlowRow: React.FC<FlowRowProps> = ({ row, now, onChanged }) => {
             </Tooltip>
           )}
         </p>
-        {schedule && (
+        {rule && (
           <p className="text-xs text-neutral-dk" data-testid="flow-schedule">
-            {scheduleText(t, schedule)}
+            {scheduleText(t, rule)}
             {nextRun && <span className="text-neutral-md"> · {nextRun}</span>}
           </p>
         )}
@@ -142,7 +143,7 @@ const FlowRow: React.FC<FlowRowProps> = ({ row, now, onChanged }) => {
             data-testid="flow-os-state"
           >
             <span>{t('flows.osProblem', { state: osProblem })}</span>
-            {!flowGoneFromOs(osProblem) && !row.missing && (
+            {rule && !flowGoneFromOs(osProblem) && !row.missing && (
               <Tooltip content={t('tooltips.flows.reschedule')} position="bottom">
                 <button className={rowButton} onClick={() => setDialog('schedule')}>
                   {t('flows.reschedule')}
@@ -155,12 +156,12 @@ const FlowRow: React.FC<FlowRowProps> = ({ row, now, onChanged }) => {
       <div className="flex items-center gap-2 shrink-0">
         {!row.missing && (
           <Tooltip
-            content={t(hasInputs ? 'tooltips.flows.runWithInputs' : 'tooltips.flows.run')}
+            content={t('tooltips.flows.runWithInputs')}
             disabledReason={runActive ? t('tooltips.flows.runBusy') : undefined}
             position="bottom"
           >
             <button className={rowButton} disabled={runActive} onClick={run}>
-              {hasInputs ? t('flows.runWithInputs') : t('flows.run')}
+              {t('flows.runWithInputs')}
             </button>
           </Tooltip>
         )}
@@ -231,7 +232,7 @@ const FlowRow: React.FC<FlowRowProps> = ({ row, now, onChanged }) => {
           name={row.name}
           title={row.title}
           inputs={row.inputs}
-          schedule={schedule}
+          schedule={rule}
           onClose={() => setDialog(null)}
           onScheduled={onChanged}
         />

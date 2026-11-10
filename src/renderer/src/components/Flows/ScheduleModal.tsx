@@ -8,7 +8,7 @@ import InputField from '@components/InputField'
 import Tooltip from '@components/Tooltip'
 import useRubyStore from '@foundation/Stores/rubyStore'
 import { FLOW_AT, validateSchedule } from '@shared/flows'
-import type { FlowDay, FlowEvery, FlowSchedule, GemSchedule } from '@shared/types/flows'
+import type { FlowDay, FlowEvery, FlowSchedule, GemScheduleRule } from '@shared/types/flows'
 import type { FlowInput } from '@shared/types/projectTest'
 import FlowModal from './FlowModal'
 import { cliErrorText, inputErrors } from './flowText'
@@ -18,7 +18,7 @@ interface ScheduleModalProps {
   title: string
   inputs: FlowInput[]
   /** The flow's current schedule when re-scheduling; its values fill the form */
-  schedule: GemSchedule | null
+  schedule: GemScheduleRule | null
   onClose: () => void
   /** After the gem accepted the schedule */
   onScheduled: () => void

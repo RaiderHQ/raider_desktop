@@ -41,8 +41,10 @@ export interface GemFlow {
   last: FlowLastRun | null
 }
 
-export interface GemSchedule {
+/** A schedule in .raider/flows/schedules.yml, with what the OS says about it */
+export interface GemScheduleRule {
   name: string
+  orphan?: false
   every: FlowEvery
   at: string
   on: FlowDay | null
@@ -53,6 +55,19 @@ export interface GemSchedule {
   osState: string
   last: FlowLastRun | null
 }
+
+/**
+ * A flow the OS still runs on a schedule that schedules.yml no longer lists (deleted .raider,
+ * git clean, a corrupt file): no rule to show, only the OS state and Stop schedule.
+ */
+export interface GemOrphanSchedule {
+  name: string
+  orphan: true
+  osState: string
+  last: FlowLastRun | null
+}
+
+export type GemSchedule = GemScheduleRule | GemOrphanSchedule
 
 export type FlowsStatus =
   | { state: 'ready' }

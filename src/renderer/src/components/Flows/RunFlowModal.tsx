@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@components/Button'
 import Checkbox from '@components/Checkbox'
@@ -40,15 +40,22 @@ const RunFlowModal: React.FC<RunFlowModalProps> = ({ name, title, inputs, onClos
   )
   const [headed, setHeaded] = useState(false)
   const [starting, setStarting] = useState(false)
+  // A second click before the re-render must not start a second run
+  const inFlight = useRef(false)
   const errors = inputErrors(values)
   const valid = Object.keys(errors).length === 0
 
   const run = async (): Promise<void> => {
-    if (!valid || starting) return
+    if (!valid || inFlight.current) return
+    inFlight.current = true
     setStarting(true)
-    const result = await runFlow(name, title, values, headed)
-    setStarting(false)
-    if (result === 'started') onClose()
+    try {
+      const result = await runFlow(name, title, values, headed)
+      if (result === 'started') onClose()
+    } finally {
+      inFlight.current = false
+      setStarting(false)
+    }
   }
 
   return (

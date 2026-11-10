@@ -419,6 +419,38 @@ describe('parseGemSchedules', () => {
     expect(parseGemSchedules([{ ...real[0], ...patch }])).toEqual([])
   })
 
+  // gem 4.1.0, `flow schedules --json` after the entry was removed from schedules.yml by hand
+  // while launchd still had the job (captured 2026-11-10)
+  const orphan = JSON.parse(
+    '[{"name":"hello","every":null,"at":null,"on":null,"retries":null,"inputs":null,"notify":null,"next_run_at":null,"os_state":"missing from schedules.yml","last":{"status":"completed","finished_at":"2026-11-10T11:09:20.475Z","trigger":"manual","failed_step":null,"results_dir":"flow-results/hello/20261110T110919Z"}}]'
+  )
+
+  it('keeps a schedule the OS runs but schedules.yml lost, as an orphan', () => {
+    expect(parseGemSchedules(orphan)).toEqual([
+      {
+        name: 'hello',
+        orphan: true,
+        osState: 'missing from schedules.yml',
+        last: {
+          status: 'completed',
+          finishedAt: '2026-11-10T11:09:20.475Z',
+          trigger: 'manual',
+          failedStep: null,
+          resultsDir: 'flow-results/hello/20261110T110919Z'
+        }
+      }
+    ])
+  })
+
+  it.each([
+    ['a bad name', { name: 'Bad Name' }],
+    ['no os_state', { os_state: null }],
+    ['one rule field set', { every: 'day' }],
+    ['retries set', { retries: 0 }]
+  ])('drops an orphan with %s', (_label, patch) => {
+    expect(parseGemSchedules([{ ...orphan[0], ...patch }])).toEqual([])
+  })
+
   it('returns null for a non-array', () => {
     expect(parseGemSchedules(null)).toBeNull()
   })
