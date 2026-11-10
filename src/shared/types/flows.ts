@@ -64,3 +64,18 @@ export type FlowCliError = {
   error: 'gem-output' | 'timeout' | 'ruby' | 'refused' | 'invalid' | 'no-project' | 'unsupported'
   message?: string
 }
+
+/** Errors from the flow secrets file (.raider/flows/env) channels; never carries a value */
+export type FlowEnvError = {
+  error:
+    | 'invalid'
+    | 'unsafe'
+    | 'too-large'
+    | 'value-unsupported'
+    | 'no-project'
+    | 'unsupported'
+    | 'io'
+}
+
+/** The keys of the flow secrets file, in file order; values never leave the main process */
+export type FlowEnvKeys = { keys: string[] }

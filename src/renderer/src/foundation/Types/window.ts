@@ -20,6 +20,8 @@ import type {
 import type { ProjectFileResult } from '@shared/types/projectFiles'
 import type {
   FlowCliError,
+  FlowEnvError,
+  FlowEnvKeys,
   FlowLastResults,
   FlowSchedule,
   FlowsStatus,
@@ -187,6 +189,12 @@ export interface WindowApi extends RunApi {
   ) => Promise<{ success: boolean; error?: string }>
   /** The results folder of the flow's newest run (from its run log); null when there is none */
   flowLastResults: (name: string) => Promise<FlowLastResults | null>
+  /** Keys of the flow secrets file (.raider/flows/env), in file order; never values */
+  listFlowEnvKeys: () => Promise<FlowEnvKeys | FlowEnvError>
+  /** Adds or replaces a secret in .raider/flows/env (written 0600); answers keys only */
+  setFlowEnv: (entry: { key: string; value: string }) => Promise<FlowEnvKeys | FlowEnvError>
+  /** Removes a secret from .raider/flows/env; answers keys only */
+  removeFlowEnv: (entry: { key: string }) => Promise<FlowEnvKeys | FlowEnvError>
   /**
    * Saves a copy of a recorded test as a new flow (the test stays). With checks it returns
    * `has-checks` and their ids, unless `dropChecks` (confirmed by the user)

@@ -9,6 +9,13 @@ import { assertRealInside, resolveInside } from '../tests/sidecar'
 import { rubyRaiderVersion, supportsFlows } from '../logins/rubyRaiderVersion'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
 import { runFlowCli, type FlowCliResult } from './flowCli'
+import {
+  listFlowEnvKeys,
+  parseRemovePayload,
+  parseSetPayload,
+  removeFlowEnv,
+  setFlowEnv
+} from './flowEnv'
 import { lastFlowResults, realResultsDir } from './flowRuns'
 import { parseGemFlows, parseGemSchedules, plainText } from './gemJson'
 import {
@@ -21,6 +28,8 @@ import {
 import type { ProjectLayout } from '../../../shared/types/projectLayout'
 import type {
   FlowCliError,
+  FlowEnvError,
+  FlowEnvKeys,
   FlowLastResults,
   FlowsStatus,
   GemFlow,
@@ -77,13 +86,21 @@ async function gate(
   allowSetup = false
 ): Promise<{ projectPath: string; rubyCommand: string } | FlowCliError> {
   if (!isValidRubyCommand(rubyCommand)) return invalid('Not a valid Ruby command.')
+  const target = await flowsProject(allowSetup)
+  return 'error' in target ? target : { projectPath: target.projectPath, rubyCommand }
+}
+
+/** The active project when flows may be used (set up, or also before setup with `allowSetup`) */
+async function flowsProject(
+  allowSetup: boolean
+): Promise<{ projectPath: string } | { error: 'no-project' | 'unsupported' }> {
   await activationSettled()
   const { projectPath, layout } = appState
   const status = await statusOf(projectPath, layout)
   if (status.state === 'no-project') return { error: 'no-project' }
   const allowed = status.state === 'ready' || (allowSetup && status.state === 'needs-setup')
   if (!allowed || !projectPath) return { error: 'unsupported' }
-  return { projectPath, rubyCommand }
+  return { projectPath }
 }
 
 const cliError = (result: Extract<FlowCliResult, { ok: false }>): FlowCliError =>
@@ -233,6 +250,43 @@ export async function flowLastResultsHandler(
   return projectPath ? lastFlowResults(projectPath, name) : null
 }
 
+const ENV_INVALID: FlowEnvError = { error: 'invalid' }
+
+// The flow secrets file needs a ruby_raider with flows, not flows set up: the gem reads it at run time
+
+/** 'list-flow-env-keys': the keys of .raider/flows/env (never values) */
+export async function listFlowEnvKeysHandler(
+  event: IpcMainInvokeEvent
+): Promise<FlowEnvKeys | FlowEnvError> {
+  if (!fromMainWindow(event)) return ENV_INVALID
+  const target = await flowsProject(true)
+  return 'error' in target ? target : listFlowEnvKeys(target.projectPath)
+}
+
+/** 'set-flow-env': adds or replaces `{ key, value }` in .raider/flows/env; answers keys only */
+export async function setFlowEnvHandler(
+  event: IpcMainInvokeEvent,
+  payload: unknown
+): Promise<FlowEnvKeys | FlowEnvError> {
+  if (!fromMainWindow(event)) return ENV_INVALID
+  const entry = parseSetPayload(payload)
+  if (!entry) return ENV_INVALID
+  const target = await flowsProject(true)
+  return 'error' in target ? target : setFlowEnv(target.projectPath, entry.key, entry.value)
+}
+
+/** 'remove-flow-env': drops `{ key }` from .raider/flows/env; answers keys only */
+export async function removeFlowEnvHandler(
+  event: IpcMainInvokeEvent,
+  payload: unknown
+): Promise<FlowEnvKeys | FlowEnvError> {
+  if (!fromMainWindow(event)) return ENV_INVALID
+  const entry = parseRemovePayload(payload)
+  if (!entry) return ENV_INVALID
+  const target = await flowsProject(true)
+  return 'error' in target ? target : removeFlowEnv(target.projectPath, entry.key)
+}
+
 /** True when flows/<name>_flow.rb is a regular file really inside the project. */
 async function isFlowFile(projectPath: string, name: string): Promise<boolean> {
   try {
@@ -261,4 +315,7 @@ export function registerFlowsIpc(ipcMain: IpcMain, deps: FlowsIpcDeps = defaultD
     openFlowResultsHandler(event, name, resultsDir)
   )
   ipcMain.handle('flow-last-results', (event, name) => flowLastResultsHandler(event, name))
+  ipcMain.handle('list-flow-env-keys', (event) => listFlowEnvKeysHandler(event))
+  ipcMain.handle('set-flow-env', (event, payload) => setFlowEnvHandler(event, payload))
+  ipcMain.handle('remove-flow-env', (event, payload) => removeFlowEnvHandler(event, payload))
 }

@@ -23,6 +23,8 @@ import type {
 import type { ProjectFileResult } from '@shared/types/projectFiles'
 import type {
   FlowCliError,
+  FlowEnvError,
+  FlowEnvKeys,
   FlowLastResults,
   FlowSchedule,
   FlowsStatus,
@@ -218,6 +220,12 @@ const api = {
     ipcRenderer.invoke('open-flow-results', name, resultsDir),
   flowLastResults: (name: string): Promise<FlowLastResults | null> =>
     ipcRenderer.invoke('flow-last-results', name),
+  listFlowEnvKeys: (): Promise<FlowEnvKeys | FlowEnvError> =>
+    ipcRenderer.invoke('list-flow-env-keys'),
+  setFlowEnv: (entry: { key: string; value: string }): Promise<FlowEnvKeys | FlowEnvError> =>
+    ipcRenderer.invoke('set-flow-env', entry),
+  removeFlowEnv: (entry: { key: string }): Promise<FlowEnvKeys | FlowEnvError> =>
+    ipcRenderer.invoke('remove-flow-env', entry),
   convertToFlow: (
     projectPath: string,
     request: { testId: string; dropChecks?: boolean }
