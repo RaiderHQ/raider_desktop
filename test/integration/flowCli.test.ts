@@ -81,10 +81,9 @@ describe('runFlowCli', () => {
     const args: string[] = execFile.mock.calls[0][1]
     expect(args).toContain('cmd=$(rm -rf ~)')
     expect(args).toContain('semi=a; rm -rf /')
-    expect(args.slice(-6)).toEqual([
+    expect(args.slice(-5)).toEqual([
       '--input',
       'cmd=$(rm -rf ~)',
-      '--input',
       'semi=a; rm -rf /',
       '--project',
       PROJECT
