@@ -56,7 +56,7 @@ function parseLastRun(value: unknown, name: string): ScheduledLastRun | null {
   const { status, finished_at, trigger, failed_step, results_dir } = value
   if (!STATUSES.includes(status as ScheduledLastRun['status'])) return null
   if (!isString(finished_at) || !isString(results_dir)) return null
-  // Only this flow's own results folder: the renderer may open it
+  // Only this job's own results folder: the renderer may open it
   if (!new RegExp(`^flow-results/${name}/\\d{8}T\\d{6}Z(-\\d+)?$`).test(results_dir)) return null
   if (trigger !== undefined && !TRIGGERS.includes(trigger as never)) return null
   const failedStep = parseFailedStep(failed_step ?? null)

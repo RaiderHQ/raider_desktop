@@ -180,13 +180,16 @@ function isStepLines(value: unknown): value is StepLines {
 
 /**
  * Drops the fields an older Raider could write and this one doesn't have, so the record still
- * loads as a test: `kind` (warned about unless 'test'), `inputs` and a step's `inputName`.
+ * loads as a test: `kind`, `inputs` and a step's `inputName`. A `kind` other than 'test' is
+ * warned about only on a spec record; an old record outside spec/ (e.g. flows/) is never
+ * listed, so it is skipped silently instead of warning on every listing.
  */
 function dropRetiredFields(parsed: unknown, fileRel: string): void {
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return
   const s = parsed as Record<string, unknown>
   if ('kind' in s) {
-    if (s.kind !== 'test') safeWarn(`Sidecar ${fileRel} has an unknown kind; reading it as a test.`)
+    if (s.kind !== 'test' && fileRel.endsWith('_spec.rb'))
+      safeWarn(`Sidecar ${fileRel} has an unknown kind; reading it as a test.`)
     delete s.kind
   }
   delete s.inputs

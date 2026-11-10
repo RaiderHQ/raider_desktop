@@ -11,7 +11,7 @@ import { isPlainObject } from '../../../shared/schedules'
 // Scheduled runs (launchd) append to .raider/flows/<name>/runs.jsonl while the app is open.
 // The open project's .raider/flows/ is watched: each settled change tells the renderer
 // and a new scheduled run that failed shows a notification. The log is written by project
-// code, so only the folder's flow name and plain integers ever reach the notification.
+// code, so only the folder's schedule name and plain integers ever reach the notification.
 
 /** Shown by the notification for a scheduled run that failed */
 export const SCHEDULE_FAILED_TITLE = 'Scheduled run failed'
@@ -23,7 +23,7 @@ const failed = (name: string): string => `${name} failed`
 const DEBOUNCE_MS = 300
 /** Only the log's tail is read for new runs */
 const MAX_SCAN_BYTES = 256 * 1024
-/** Keys kept per flow; the gem keeps 50 lines, so this only bounds a hostile log */
+/** Keys kept per schedule; the gem keeps 50 lines, so this only bounds a hostile log */
 const MAX_SEEN = 500
 const RUN_ID = /^[0-9a-f]{16}$/
 const NOTIFY_STATUSES = ['failed', 'setup_error']
@@ -74,7 +74,7 @@ export interface ScheduleWatcher {
 const isPositiveInt = (value: unknown): value is number =>
   Number.isSafeInteger(value) && (value as number) > 0
 
-/** The notification text for a run line of the flow `name` (a valid flow name). */
+/** The notification text for a run line of the schedule `name` (a valid schedule name). */
 export function scheduleFailedBody(name: string, line: Record<string, unknown>): string {
   const step = isPlainObject(line.failed_step) ? line.failed_step : {}
   if (isPositiveInt(step.number)) return failedAtStep(name, step.number)
@@ -82,7 +82,7 @@ export function scheduleFailedBody(name: string, line: Record<string, unknown>):
   return line.status === 'setup_error' ? couldNotStart(name) : failed(name)
 }
 
-/** What makes a run line unique: its run id, else its start time within the flow */
+/** What makes a run line unique: its run id, else its start time within the schedule */
 function lineKey(name: string, line: Record<string, unknown>): string | null {
   if (typeof line.run_id === 'string' && RUN_ID.test(line.run_id)) return line.run_id
   if (typeof line.started_at === 'string') return `${name}\n${line.started_at}`
@@ -261,7 +261,7 @@ export function createScheduleWatcher(
   }
 
   /**
-   * Reads each flow's log and remembers its lines; with `announce`, a line not seen before
+   * Reads each schedule's log and remembers its lines; with `announce`, a line not seen before
    * that is the last attempt of a failed scheduled run is notified. Keys are only ever added (oldest dropped past
    * the cap), so a log caught mid-rewrite never makes old lines new again.
    */
