@@ -113,8 +113,14 @@ export function validateSchedule(value: unknown): FlowSchedule {
   return schedule
 }
 
-/** The `raider flow schedule` arguments for a validated schedule; the `--input`s come last. */
+/**
+ * The `raider flow schedule` arguments for a validated schedule; the inputs come last.
+ * The gem's `--input` is a Thor array option: it takes every `NAME=VALUE` after one flag, and a
+ * repeated `--input` replaces the earlier ones, so all pairs follow a single `--input`. Each pair
+ * starts with its name (a lower-case letter), so a value starting with `-` never reads as a flag.
+ */
 export function scheduleArgs(name: string, s: FlowSchedule): string[] {
+  const pairs = Object.entries(s.inputs).map(([k, v]) => `${k}=${v}`)
   return [
     'schedule',
     name,
@@ -126,7 +132,7 @@ export function scheduleArgs(name: string, s: FlowSchedule): string[] {
     '--retries',
     String(s.retries),
     ...(s.notify ? ['--notify'] : []),
-    ...Object.entries(s.inputs).flatMap(([k, v]) => ['--input', `${k}=${v}`])
+    ...(pairs.length > 0 ? ['--input', ...pairs] : [])
   ]
 }
 
