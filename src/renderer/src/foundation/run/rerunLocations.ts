@@ -6,6 +6,9 @@ const location = (file: string, line: number | null | undefined): string =>
 
 /** Locations of the last run's failures: from the live run when complete, else from raider-results. */
 export function failedLocations(run: RunView | null, results: TestResult[] | null): string[] {
+  // A flow is not re-run by location (it needs its inputs), and its failures are not in
+  // raider-results: whatever is there belongs to an older test run
+  if (run?.finished?.flow) return []
   const fromRun = run ? Object.values(run.tests).filter((t) => t.state === 'failed') : []
   const expected = run?.finished?.counts.failed ?? 0
   // A cancelled, errored or unfinished run only saw some of its failures
