@@ -21,6 +21,13 @@ import type {
   ProjectTestEntry
 } from '@shared/types/projectTest'
 import type { ProjectFileResult } from '@shared/types/projectFiles'
+import type {
+  FlowCliError,
+  FlowSchedule,
+  FlowsStatus,
+  GemFlow,
+  GemSchedule
+} from '@shared/types/flows'
 import type { ScaffoldParams, ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { QuickProject } from '@shared/types/quickProject'
 import type { RunApi } from '@shared/types/runEvents'
@@ -155,6 +162,22 @@ export interface WindowApi extends RunApi {
   listProjectFlows: () => Promise<ProjectFlowEntry[]>
   /** Whether the active project has flows set up (flows/flow_helper.rb) */
   flowsReady: () => Promise<boolean>
+  /** Whether the active project can use the Flows tab (ruby_raider 4.1+, set up); runs no gem */
+  flowsStatus: (rubyCommand: string) => Promise<FlowsStatus | FlowCliError>
+  /** `raider flow list`: the active project's flows with their last run */
+  listFlows: (rubyCommand: string) => Promise<{ flows: GemFlow[] } | FlowCliError>
+  /** `raider flow schedules`: the active project's scheduled flows */
+  listSchedules: (rubyCommand: string) => Promise<{ schedules: GemSchedule[] } | FlowCliError>
+  /** `raider flow init`: sets flows up in the active project */
+  setupFlows: (rubyCommand: string) => Promise<{ ok: true } | FlowCliError>
+  /** `raider flow schedule`: schedules an existing flow; `message` is the gem's confirmation */
+  scheduleFlow: (
+    rubyCommand: string,
+    name: string,
+    schedule: FlowSchedule
+  ) => Promise<{ ok: true; message: string } | FlowCliError>
+  /** `raider flow unschedule`: removes a flow's schedule */
+  unscheduleFlow: (rubyCommand: string, name: string) => Promise<{ ok: true } | FlowCliError>
   /**
    * Saves a copy of a recorded test as a new flow (the test stays). With checks it returns
    * `has-checks` and their ids, unless `dropChecks` (confirmed by the user)

@@ -56,6 +56,7 @@ import { mapFailedStepHandler } from './handlers/tests/mapFailedStep'
 import { runTestHandler } from './handlers/testing/runProjectTests'
 import getTests from './handlers/getTests'
 import { registerRunIpc } from './handlers/run/runIpc'
+import { registerFlowsIpc } from './handlers/flows/flowsIpc'
 import { openTraceFromDialog, registerTraceIpc } from './handlers/trace/traceIpc'
 import { makeBaselineConfirm } from './handlers/results/baselineConfirm'
 import { acceptBaseline } from './handlers/results/acceptBaseline'
@@ -360,6 +361,7 @@ app.whenReady().then(() => {
   )
   ipcMain.handle('map-failed-step', (_e, p, id, f) => mapFailedStepHandler(p, id, f))
   registerRunIpc(ipcMain)
+  registerFlowsIpc(ipcMain)
   registerTraceIpc(ipcMain)
   ipcMain.handle('accept-baseline', (event, actualPath: unknown, baselinePath: unknown) =>
     acceptBaseline(actualPath, baselinePath, makeBaselineConfirm(event.sender))

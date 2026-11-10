@@ -24,6 +24,13 @@ import type {
   ProjectTestEntry
 } from '@shared/types/projectTest'
 import type { ProjectFileResult } from '@shared/types/projectFiles'
+import type {
+  FlowCliError,
+  FlowSchedule,
+  FlowsStatus,
+  GemFlow,
+  GemSchedule
+} from '@shared/types/flows'
 import type { ScaffoldParams, ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
@@ -190,6 +197,22 @@ const api = {
   listProjectTests: (): Promise<ProjectTestEntry[]> => ipcRenderer.invoke('list-project-tests'),
   listProjectFlows: (): Promise<ProjectFlowEntry[]> => ipcRenderer.invoke('list-project-flows'),
   flowsReady: (): Promise<boolean> => ipcRenderer.invoke('flows-ready'),
+  flowsStatus: (rubyCommand: string): Promise<FlowsStatus | FlowCliError> =>
+    ipcRenderer.invoke('flows-status', rubyCommand),
+  listFlows: (rubyCommand: string): Promise<{ flows: GemFlow[] } | FlowCliError> =>
+    ipcRenderer.invoke('list-flows', rubyCommand),
+  listSchedules: (rubyCommand: string): Promise<{ schedules: GemSchedule[] } | FlowCliError> =>
+    ipcRenderer.invoke('list-schedules', rubyCommand),
+  setupFlows: (rubyCommand: string): Promise<{ ok: true } | FlowCliError> =>
+    ipcRenderer.invoke('setup-flows', rubyCommand),
+  scheduleFlow: (
+    rubyCommand: string,
+    name: string,
+    schedule: FlowSchedule
+  ): Promise<{ ok: true; message: string } | FlowCliError> =>
+    ipcRenderer.invoke('schedule-flow', rubyCommand, name, schedule),
+  unscheduleFlow: (rubyCommand: string, name: string): Promise<{ ok: true } | FlowCliError> =>
+    ipcRenderer.invoke('unschedule-flow', rubyCommand, name),
   convertToFlow: (
     projectPath: string,
     request: { testId: string; dropChecks?: boolean }

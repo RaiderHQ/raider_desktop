@@ -18,6 +18,7 @@ import checkBundle from '../ruby/checkBundle'
 import bundleInstall from '../ruby/bundleInstall'
 import { pushToLongship } from '../longship/pushToLongship'
 import { buildShellCommand } from '../../utils/shellCommand'
+import { cleanPath } from '../../utils/cleanPath'
 import { isValidRubyCommand } from '../../utils/rubyCommand'
 import { safeWarn } from '../../utils/safeLog'
 import { buildRunCommand, validateTags } from './runCommand'
@@ -92,14 +93,6 @@ function defaultDeps(): RunnerDeps {
     },
     graceMs: 10_000
   }
-}
-
-/** PATH without node_modules/.bin, so it can't shadow the project's Ruby tools. */
-function cleanPath(): string {
-  return (process.env.PATH || '')
-    .split(path.delimiter)
-    .filter((p) => !p.includes(path.join('node_modules', '.bin')))
-    .join(path.delimiter)
 }
 
 const message = (error: unknown): string => (error instanceof Error ? error.message : String(error))
