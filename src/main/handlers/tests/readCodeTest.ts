@@ -3,7 +3,6 @@ import { randomUUID } from 'crypto'
 import { posix } from 'path'
 import { migrateLegacySteps } from '../../codegen/legacy'
 import { assertRealInside, isSafeRelPath, resolveInside } from './sidecar'
-import { isFlowFileRel } from '../../../shared/flows'
 import type { CodeTestView } from '../../../shared/types/projectTest'
 import type { Step } from '../../../shared/types/step'
 
@@ -18,10 +17,6 @@ const isCode = (line: string): boolean => line.trim() !== '' && !line.trim().sta
 export async function assertSpecFile(projectPath: string, fileRel: string): Promise<string> {
   if (!isSafeRelPath(fileRel) || !fileRel.endsWith('_spec.rb'))
     throw new Error(`Not a spec file: ${fileRel}`)
-  return assertRegularInside(projectPath, fileRel)
-}
-
-async function assertRegularInside(projectPath: string, fileRel: string): Promise<string> {
   const target = resolveInside(projectPath, fileRel)
   await assertRealInside(projectPath, target)
   // Never open a FIFO or device: reading it could block forever
@@ -38,11 +33,7 @@ export async function readCodeTest(
   fileRel: string,
   testIdAttribute?: string
 ): Promise<CodeTestView> {
-  // A flow file (flows/<name>_flow.rb) is shown read-only too; only specs can be recorded over
-  const target =
-    isSafeRelPath(fileRel) && isFlowFileRel(fileRel)
-      ? await assertRegularInside(projectPath, fileRel)
-      : await assertSpecFile(projectPath, fileRel)
+  const target = await assertSpecFile(projectPath, fileRel)
   const lines = (await fs.readFile(target, 'utf-8')).split(/\r?\n/)
 
   const examples: CodeTestView['examples'] = []

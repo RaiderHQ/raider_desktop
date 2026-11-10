@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, symlink } from 'fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -8,20 +8,14 @@ vi.mock('electron', () => ({ BrowserWindow: class {}, app: { getPath: (): string
 vi.mock('../../../src/main/utils/safeExec', () => ({ safeExec: mockSafeExec }))
 
 import setActiveProject from '../../../src/main/handlers/project/setActiveProject'
+import { appState } from '../../../src/main/handlers/appState'
 import {
-  convertToFlowHandler,
-  flowsReadyHandler,
   getProjectLayoutHandler,
   listProjectTestsHandler,
   listedFiles,
   openCodeTestHandler,
   recordOverExampleHandler
 } from '../../../src/main/handlers/tests/projectTestIpc'
-import { appState } from '../../../src/main/handlers/appState'
-import { saveRecordedFlow, saveRecordedTest } from '../../../src/main/handlers/tests/recordedTests'
-import { readSidecar } from '../../../src/main/handlers/tests/sidecar'
-import { loadRecordedTests } from '../../../src/main/handlers/tests/loadTests'
-import type { Step } from '../../../src/shared/types/step'
 
 let project: string
 let outside: string
@@ -152,177 +146,58 @@ describe('project test IPC', () => {
   })
 })
 
-describe('flows over IPC', () => {
-  const setUpFlows = async (): Promise<void> => {
+// An older Raider could record into flows/<name>_flow.rb with its record under
+// .raider/tests/flows/. This one lists, loads, runs and rewrites only *_spec.rb records.
+describe('a project an older Raider recorded flows in', () => {
+  const FLOW_RUBY = "require_relative 'flow_helper'\n# Recorded with Raider.\nvisit 'x'\n"
+  const record = {
+    version: 1,
+    id: 'old-flow',
+    name: 'Fill hours',
+    url: 'https://x.test',
+    steps: [{ id: 's1', kind: 'navigate', url: 'https://x.test' }],
+    file: 'flows/x_flow.rb',
+    hash: 'abc',
+    codegen: 1,
+    kind: 'flow',
+    inputs: [{ name: 'hours', default: '8' }],
+    createdAt: '2026-10-26T00:00:00.000Z',
+    updatedAt: '2026-10-26T00:00:00.000Z'
+  }
+  const recordPath = (): string => join(project, '.raider', 'tests', 'flows', 'x_flow.rb.json')
+
+  beforeEach(async () => {
     await mkdir(join(project, 'flows'))
+    await writeFile(join(project, 'flows', 'x_flow.rb'), FLOW_RUBY)
     await writeFile(join(project, 'flows', 'flow_helper.rb'), '# helper\n')
-  }
-  const nav: Step = { id: 'n1', kind: 'navigate', url: 'https://x.test/' }
-  const check = (id: string): Step => ({
-    id,
-    kind: 'assert',
-    check: 'displayed',
-    element: { strategy: 'css', value: '#ok' }
+    await mkdir(join(project, '.raider', 'tests', 'flows'), { recursive: true })
+    await writeFile(recordPath(), JSON.stringify(record))
   })
-  const typed: Step = {
-    id: 't1',
-    kind: 'type',
-    element: { strategy: 'css', value: '#hours' },
-    text: '8',
-    inputName: 'hours'
-  }
 
-  it('flows-ready says whether flows/flow_helper.rb is set up', async () => {
+  it('lists only the specs: flows/ is not walked and the flow record is not listed', async () => {
     await setActiveProject(project)
-    expect(await flowsReadyHandler()).toBe(false)
-    await setUpFlows()
-    expect(await flowsReadyHandler()).toBe(true)
-    await setActiveProject(null)
-    expect(await flowsReadyHandler()).toBe(false)
+    const files = (await listProjectTestsHandler()).map((e) => e.file)
+    expect(files).toContain('spec/a_spec.rb')
+    expect(files.filter((f) => f.startsWith('flows/'))).toEqual([])
   })
 
-  it('lists flows with stem and inputs, and lets them run but never be recorded over', async () => {
-    await setUpFlows()
+  it('never loads the flow record as a test', async () => {
     await setActiveProject(project)
-    const made = await saveRecordedFlow(project, appState.layout!, {
-      id: 'f1',
-      name: 'Fill hours',
-      url: 'https://x.test',
-      steps: [nav, typed]
-    })
-    await writeFile(join(project, 'flows', 'manual_flow.rb'), "RSpec.describe 'Manual' do\nend\n")
-
-    const tests = await listProjectTestsHandler()
-    expect(tests.find((e) => e.file === made.file)?.kind).toBe('flow')
-    expect(tests.find((e) => e.file === 'spec/a_spec.rb')?.kind).toBeUndefined()
-
-    // Run validates through listedFiles: the flow file is a listed file
-    expect((await listedFiles([made.file, 'flows/manual_flow.rb'])).files).toHaveLength(2)
-    await expect(listedFiles(['flows/../spec/a_spec.rb'])).rejects.toThrow()
-    // Opened read-only like a code test
-    expect((await openCodeTestHandler('flows/manual_flow.rb')).file).toBe('flows/manual_flow.rb')
-    // Never recorded over: that could put a check into a flow
-    const before = await readFile(join(project, made.file), 'utf-8')
-    const res = await recordOverExampleHandler(made.file, 'runs', [check('a1')], 'ruby')
-    expect(res.success).toBe(false)
-    expect(await readFile(join(project, made.file), 'utf-8')).toBe(before)
+    expect(appState.tests.has('old-flow')).toBe(false)
   })
 
-  it('never runs a file a planted record names behind a linked flows/', async () => {
-    await setUpFlows()
+  it('refuses to run flows/x_flow.rb (listedFiles, which start-run checks)', async () => {
     await setActiveProject(project)
-    const made = await saveRecordedFlow(project, appState.layout!, {
-      id: 'f1',
-      name: 'Fill hours',
-      url: '',
-      steps: [nav]
-    })
-    await rm(join(project, 'flows'), { recursive: true })
-    await writeFile(join(outside, 'fill_hours_flow.rb'), 'puts 1\n')
-    await symlink(outside, join(project, 'flows'))
-    await expect(listedFiles([made.file])).rejects.toThrow('Not a project test')
+    await expect(listedFiles(['flows/x_flow.rb'])).rejects.toThrow()
+    await expect(listedFiles(['spec/a_spec.rb', 'flows/x_flow.rb'])).rejects.toThrow()
   })
 
-  describe('convert-to-flow', () => {
-    const saveTest = async (steps: Step[]): Promise<string> => {
-      const saved = await saveRecordedTest(project, appState.layout!, {
-        id: 'orig',
-        name: 'Book room',
-        url: 'https://x.test',
-        steps
-      })
-      appState.tests = new Map((await loadRecordedTests(project)).map((t) => [t.id, t]))
-      return saved.file
-    }
-
-    it('returns has-checks with their ids and changes nothing', async () => {
-      await setUpFlows()
-      await setActiveProject(project)
-      const file = await saveTest([nav, check('a1'), check('a2')])
-      const before = await readFile(join(project, file), 'utf-8')
-
-      expect(await convertToFlowHandler(project, { testId: 'orig' })).toEqual({
-        success: false,
-        error: 'has-checks',
-        stepIds: ['a1', 'a2']
-      })
-      expect(await readdir(join(project, 'flows'))).toEqual(['flow_helper.rb'])
-      expect(await readFile(join(project, file), 'utf-8')).toBe(before)
-    })
-
-    it('drops the checks in the copy only when asked, under a new id; the test stays', async () => {
-      await setUpFlows()
-      await setActiveProject(project)
-      const file = await saveTest([nav, check('a1'), typed])
-      const before = await readFile(join(project, file), 'utf-8')
-      const record = await readSidecar(project, file)
-
-      const result = await convertToFlowHandler(project, { testId: 'orig', dropChecks: true })
-      if (!result.success) throw new Error(result.error)
-      expect(result.test.id).not.toBe('orig')
-      expect(result.test).toMatchObject({
-        kind: 'flow',
-        file: 'flows/book_room_flow.rb',
-        name: 'Book room'
-      })
-      // A test keeps no input names (only a flow reads inputs), so the new flow starts with none
-      expect(result.test).not.toHaveProperty('inputs')
-      expect(result.test.steps.map((s) => s.id)).toEqual(['n1', 't1'])
-      expect(await readFile(join(project, file), 'utf-8')).toBe(before)
-      expect(await readSidecar(project, file)).toEqual(record)
-      expect(appState.tests.get(result.test.id)?.kind).toBe('flow')
-      expect(appState.tests.get('orig')?.kind).toBeUndefined()
-    })
-
-    it('converts a test without checks straight away', async () => {
-      await setUpFlows()
-      await setActiveProject(project)
-      await saveTest([nav])
-      const result = await convertToFlowHandler(project, { testId: 'orig' })
-      expect(result.success).toBe(true)
-    })
-
-    it('refuses a code-owned test, a flow, a project without flows, and bad payloads', async () => {
-      await setActiveProject(project)
-      const file = await saveTest([nav])
-      expect(await convertToFlowHandler(project, { testId: 'orig' })).toEqual({
-        success: false,
-        error: 'Set up flows first: run raider flow init in this project.'
-      })
-      await setUpFlows()
-      await writeFile(
-        join(project, file),
-        (await readFile(join(project, file), 'utf-8')) + '\n# x\nputs 1\n'
-      )
-      const owned = await convertToFlowHandler(project, { testId: 'orig' })
-      expect(owned).toEqual({
-        success: false,
-        error: "This test was changed in code, so Raider can't save it as a flow."
-      })
-      const flow = await saveRecordedFlow(project, appState.layout!, {
-        id: 'fl',
-        name: 'F',
-        url: '',
-        steps: [nav]
-      })
-      expect(flow.kind).toBe('flow')
-      expect((await convertToFlowHandler(project, { testId: 'fl' })).success).toBe(false)
-      for (const bad of [
-        null,
-        'orig',
-        [],
-        { testId: 3 },
-        { testId: '' },
-        { testId: 'x'.repeat(201) },
-        { testId: 'orig', dropChecks: 'yes' }
-      ]) {
-        expect(await convertToFlowHandler(project, bad)).toEqual({
-          success: false,
-          error: 'This test could not be saved as a flow.'
-        })
-      }
-      expect((await convertToFlowHandler('/elsewhere', { testId: 'orig' })).success).toBe(false)
-      expect(await readdir(join(project, 'flows'))).toEqual(['f_flow.rb', 'flow_helper.rb'])
-    })
+  it('never opens or records over the flow file, and rewrites neither it nor its record', async () => {
+    await setActiveProject(project)
+    await expect(openCodeTestHandler('flows/x_flow.rb')).rejects.toThrow('Not a project test')
+    const result = await recordOverExampleHandler('flows/x_flow.rb', 'x', [], 'ruby')
+    expect(result.success).toBe(false)
+    expect(await readFile(join(project, 'flows', 'x_flow.rb'), 'utf-8')).toBe(FLOW_RUBY)
+    expect(JSON.parse(await readFile(recordPath(), 'utf-8'))).toEqual(record)
   })
 })

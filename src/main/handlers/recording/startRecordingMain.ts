@@ -2,7 +2,7 @@ import { join } from 'path'
 import { mkdirSync } from 'fs'
 import { tmpdir } from 'os'
 import { randomUUID } from 'crypto'
-import { appState, type RecordingMode } from '../appState'
+import { appState } from '../appState'
 import { toRecordableUrl } from '../../../shared/recordUrl'
 
 /** The recorder webview's preload; the window guards pin every webview to it. */
@@ -16,14 +16,7 @@ export interface StartRecordingResult {
   reason?: 'unsupportedUrl'
 }
 
-/** The renderer's `{ mode }`, untrusted: only exactly `{ mode: 'flow' }` records a flow */
-export function recordingModeFrom(options: unknown): RecordingMode {
-  if (typeof options !== 'object' || options === null || Array.isArray(options)) return 'test'
-  return (options as Record<string, unknown>).mode === 'flow' ? 'flow' : 'test'
-}
-
-function startRecordingMain(options?: unknown): StartRecordingResult {
-  const mode = recordingModeFrom(options)
+function startRecordingMain(): StartRecordingResult {
   const saved = appState.sessionUrl ?? appState.recorderSettings.baseUrl
   // Nothing to open: the renderer tells the user to set a URL
   if (!saved) return { success: false, url: '', preloadPath: '' }
@@ -35,7 +28,6 @@ function startRecordingMain(options?: unknown): StartRecordingResult {
   const traceDir = join(tmpdir(), 'raider-traces', randomUUID())
   mkdirSync(traceDir, { recursive: true })
   appState.activeTraceDir = traceDir
-  appState.recordingMode = mode
 
   // Return the URL and preload path so the renderer can create an embedded webview
   const preloadPath = RECORDER_PRELOAD

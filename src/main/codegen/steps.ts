@@ -1,9 +1,4 @@
-import {
-  isValidInputName,
-  type ElementTarget,
-  type Locator,
-  type Step
-} from '../../shared/types/step'
+import type { ElementTarget, Locator, Step } from '../../shared/types/step'
 import { rubyString } from './ruby'
 import { isValidSecretName } from '../../shared/secretSteps'
 import { englishText } from '../../shared/describeStepEnglish'
@@ -81,8 +76,6 @@ export interface RenderOptions {
   receiver?: Receiver
   /** The project's test_id_attribute (config.yml); data-testid when absent */
   testIdAttribute?: string
-  /** Rendering a flow: a typed step with an input name reads it through flow_input */
-  flow?: boolean
 }
 
 function need<T>(value: T | undefined, what: string, check: string): T {
@@ -133,12 +126,6 @@ function secretVariable(step: Extract<Step, { kind: 'type' }>): string {
   return name
 }
 
-// flow_input(name, default) types RAIDER_INPUT_<NAME> when set, else the recorded text
-function flowInput(step: Extract<Step, { kind: 'type' }>, name: string): string {
-  if (!isValidInputName(name)) throw new Error(`Invalid flow input name: ${name}`)
-  return `flow_input(${rubyString(name)}, ${rubyString(step.text)})`
-}
-
 const WAIT_MATCHERS = { visible: 'be_visible', hidden: 'be_hidden', enabled: 'be_enabled' }
 
 /** Ruby for one step: one or more lines, no trailing newline, no indentation. */
@@ -153,13 +140,10 @@ export function renderStep(step: Step, opts: RenderOptions = {}): string {
     case 'click':
       return `${find(step.element)}.click`
     case 'type': {
-      // A secret's value is never in the step; the test reads it when it runs.
-      // A secret never becomes an input, and only a flow has inputs
+      // A secret's value is never in the step; the test reads it when it runs
       const text = step.secret
         ? `ENV.fetch(${rubyString(secretVariable(step))})`
-        : opts.flow && step.inputName !== undefined
-          ? flowInput(step, step.inputName)
-          : rubyString(step.text)
+        : rubyString(step.text)
       return `${find(step.element)}.clear\n${find(step.element)}.send_keys(${text})`
     }
     case 'pressKey':
