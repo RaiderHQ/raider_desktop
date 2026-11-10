@@ -357,6 +357,10 @@ export interface WindowApi extends RunApi {
   /** Menu bar commands as plain strings; returns an unsubscribe function */
   onMenuCommand: (callback: (command: string) => void) => () => void
   onOpenRecentProject: (callback: (projectPath: string) => void) => () => void
+  /** Something changed under the open project's .raider/flows/; returns an unsubscribe function */
+  onFlowsChanged: (callback: () => void) => () => void
+  /** The failed-run notification was clicked: show the Flows tab; returns an unsubscribe function */
+  onFocusFlowsTab: (callback: () => void) => () => void
   /** Traces opened from File → Open trace; returns an unsubscribe function */
   onTraceOpened: (callback: (result: TraceOpenResult) => void) => () => void
 

@@ -37,7 +37,11 @@ const isPositiveInt = (value: unknown): value is number =>
  * The log's lines, oldest first, each parsed on its own (a bad line is skipped). Empty when
  * the log is missing, unreadable, a link, or outside the project.
  */
-export async function readRunLog(projectPath: string, name: string): Promise<unknown[]> {
+export async function readRunLog(
+  projectPath: string,
+  name: string,
+  maxBytes = MAX_LOG_BYTES
+): Promise<unknown[]> {
   if (!isFlowName(name)) return []
   let handle: fs.FileHandle | undefined
   try {
@@ -51,7 +55,7 @@ export async function readRunLog(projectPath: string, name: string): Promise<unk
     )
     const stat = await handle.stat()
     if (!stat.isFile()) return []
-    const length = Math.min(stat.size, MAX_LOG_BYTES)
+    const length = Math.min(stat.size, maxBytes)
     const buffer = Buffer.alloc(length)
     const { bytesRead } = await handle.read(buffer, 0, length, stat.size - length)
     const lines = buffer.subarray(0, bytesRead).toString('utf8').split('\n')

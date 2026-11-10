@@ -109,7 +109,8 @@ const api = {
   getRunDefaults: vi.fn(),
   // A project switch in the project store loads the files and activates the project
   readDirectory: vi.fn(),
-  setActiveProject: vi.fn()
+  setActiveProject: vi.fn(),
+  onFlowsChanged: vi.fn()
 }
 
 beforeEach(() => {
@@ -125,6 +126,7 @@ beforeEach(() => {
   api.openFlowResults.mockResolvedValue({ success: true })
   api.readDirectory.mockResolvedValue([])
   api.setActiveProject.mockResolvedValue({ success: true })
+  api.onFlowsChanged.mockReturnValue(vi.fn())
   useRubyStore.setState({ rubyCommand: 'ruby' })
   useProjectStore.setState({ projectPath: '/proj' })
   useRunStore.setState({ run: null, origin: null, lastFlow: null, isActive: false })
@@ -245,6 +247,26 @@ describe('FlowsPane states', () => {
       answerFirst([entry({ name: 'Old answer' })])
     })
     expect(screen.queryByText('Old answer')).toBeNull()
+  })
+
+  it('refreshes when main says the flows changed, and unsubscribes on unmount', async () => {
+    const off = vi.fn()
+    api.onFlowsChanged.mockReturnValue(off)
+    api.listProjectFlows.mockResolvedValueOnce([]).mockResolvedValue([entry({ name: 'Ran' })])
+    let unmount: () => void = () => {}
+    await act(async () => {
+      ;({ unmount } = render(
+        <MemoryRouter>
+          <FlowsPane />
+        </MemoryRouter>
+      ))
+    })
+    expect(screen.queryByText('Ran')).toBeNull()
+    const listener = api.onFlowsChanged.mock.calls[api.onFlowsChanged.mock.calls.length - 1][0]
+    await act(async () => listener())
+    expect(screen.getByText('Ran')).toBeInTheDocument()
+    unmount()
+    expect(off).toHaveBeenCalled()
   })
 })
 

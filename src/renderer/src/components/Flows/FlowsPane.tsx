@@ -88,6 +88,9 @@ const FlowsPane: React.FC = () => {
     }
   }, [refresh, projectPath])
 
+  // A scheduled run or a schedule changed under .raider/flows/ (main watches the folder)
+  useEffect(() => window.api.onFlowsChanged(() => void refresh()), [refresh])
+
   // A flow run that finished has a new last result
   const finishedFlow = useRunStore((s) =>
     s.run?.finished?.flow ? s.run.finished.finishedAt : null

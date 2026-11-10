@@ -78,6 +78,7 @@ beforeAll(() => {
     onTestsUpdated: vi.fn(() => vi.fn()),
     onMenuCommand: vi.fn(() => vi.fn()),
     onOpenRecentProject: vi.fn(() => vi.fn()),
+    onFocusFlowsTab: vi.fn(() => vi.fn()),
     openDocs: vi.fn().mockResolvedValue({ success: true }),
     setDocumentEdited: vi.fn(),
     selectFolder: vi.fn().mockResolvedValue('/picked/project')
@@ -554,6 +555,75 @@ describe('MainTemplate tests updates', () => {
         expect(api().selectFolder).not.toHaveBeenCalled()
         act(() => menuListener()('new-test'))
         expect(screen.getByTestId('where')).toHaveTextContent('/overview/tests/new')
+      })
+    })
+
+    describe('a failed-run notification click (focus-flows-tab)', () => {
+      const focusFlows = (): void => {
+        const subscribe = api().onFocusFlowsTab
+        act(() => subscribe.mock.calls[subscribe.mock.calls.length - 1][0]())
+      }
+      const Tab = (): JSX.Element => (
+        <div data-testid="tab">{(useLocation().state as { tab?: string } | null)?.tab ?? ''}</div>
+      )
+      const renderWithTab = (path: string): void => {
+        render(
+          <MemoryRouter initialEntries={[path]}>
+            <Routes>
+              <Route element={<MainTemplate />}>
+                <Route
+                  path="*"
+                  element={
+                    <>
+                      <Where />
+                      <Tab />
+                    </>
+                  }
+                />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        )
+      }
+      afterEach(() => {
+        useEditorStore.setState({ pageDirty: false, inlineDirty: false })
+        useRecorderStore.setState({ isRecording: false })
+      })
+
+      it('opens the Overview on the Flows tab, from a test page or the start screen', () => {
+        renderWithTab('/overview/tests/aWQ6dDE')
+        focusFlows()
+        expect(screen.getByTestId('where')).toHaveTextContent(/^\/overview$/)
+        expect(screen.getByTestId('tab')).toHaveTextContent('flows')
+      })
+
+      it('also from the start screen while the project stays loaded', () => {
+        renderWithTab('/start-project')
+        focusFlows()
+        expect(screen.getByTestId('where')).toHaveTextContent(/^\/overview$/)
+        expect(screen.getByTestId('tab')).toHaveTextContent('flows')
+      })
+
+      it('stays put with unsaved page edits or a recording', () => {
+        useEditorStore.setState({ pageDirty: true })
+        renderWithTab('/file-editor')
+        focusFlows()
+        expect(screen.getByTestId('where')).toHaveTextContent('/file-editor')
+        useEditorStore.setState({ pageDirty: false })
+        useRecorderStore.setState({ isRecording: true })
+        focusFlows()
+        expect(screen.getByTestId('where')).toHaveTextContent('/file-editor')
+      })
+
+      it('does nothing without a project', () => {
+        projectState.projectPath = null as unknown as string
+        try {
+          renderWithTab('/')
+          focusFlows()
+          expect(screen.getByTestId('where')).toHaveTextContent(/^\/$/)
+        } finally {
+          projectState.projectPath = '/fake/project'
+        }
       })
     })
 

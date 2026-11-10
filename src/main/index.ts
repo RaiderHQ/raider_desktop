@@ -97,7 +97,11 @@ import { installCloseFlush } from './handlers/recording/closeFlush'
 import saveTrace from './handlers/trace/saveTrace'
 import loadTrace from './handlers/trace/loadTrace'
 import deleteTrace from './handlers/trace/deleteTrace'
-import setActiveProject, { getRecorderSettings } from './handlers/project/setActiveProject'
+import setActiveProject, {
+  getRecorderSettings,
+  onActiveProjectChange
+} from './handlers/project/setActiveProject'
+import { startFlowWatcher, stopFlowWatcher } from './handlers/flows/flowWatcher'
 import { upgradeRubyRaider } from './handlers/project/upgradeRubyRaider'
 import {
   clearRecentProjects,
@@ -244,7 +248,12 @@ app.whenReady().then(() => {
     quitting = true
     // The run is detached in its own process group, so it would outlive the app
     killActiveRun()
+    stopFlowWatcher()
   })
+  // Only the open project's flows are watched, for the Flows tab and failed scheduled runs
+  onActiveProjectChange((projectPath) =>
+    projectPath ? startFlowWatcher(projectPath) : stopFlowWatcher()
+  )
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

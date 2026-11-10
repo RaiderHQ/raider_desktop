@@ -51,6 +51,24 @@ export async function getRecorderSettings(): Promise<RecorderSettings> {
   return appState.recorderSettings
 }
 
+type ActivationListener = (projectPath: string | null) => void
+const activationListeners = new Set<ActivationListener>()
+
+/**
+ * Calls `listener` with the project each time one opens, and with null when it closes or
+ * fails to open. Returns the unsubscribe.
+ */
+export function onActiveProjectChange(listener: ActivationListener): () => void {
+  activationListeners.add(listener)
+  return (): void => {
+    activationListeners.delete(listener)
+  }
+}
+
+const announce = (projectPath: string | null): void => {
+  for (const listener of Array.from(activationListeners)) listener(projectPath)
+}
+
 function clearActiveProject(): void {
   appState.projectPath = null
   appState.recorderSettings = { ...DEFAULT_RECORDER_SETTINGS }
@@ -59,6 +77,7 @@ function clearActiveProject(): void {
   appState.projectFramework = null
   appState.tests = new Map()
   appState.mainWindow?.webContents.send('tests-updated', [])
+  announce(null)
 }
 
 async function activate(projectPath: string | null): Promise<ActivationResult> {
@@ -91,6 +110,7 @@ async function activate(projectPath: string | null): Promise<ActivationResult> {
       const send = (channel: string, ...args: unknown[]): void =>
         appState.mainWindow?.webContents.send(channel, ...args)
       send('tests-updated', Array.from(appState.tests.values()))
+      announce(projectPath)
     }
     return {
       success: true,

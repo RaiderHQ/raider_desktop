@@ -329,6 +329,10 @@ const api = {
   /** File › Open recent: the path of a project main stored; the renderer opens it like a row */
   onOpenRecentProject: (callback: (projectPath: string) => void): (() => void) =>
     subscribe('open-recent-project', callback),
+  /** Something changed under the open project's .raider/flows/ (a scheduled run, a schedule) */
+  onFlowsChanged: (callback: () => void): (() => void) => subscribe('flows-changed', callback),
+  /** The failed-run notification was clicked: show the Flows tab */
+  onFocusFlowsTab: (callback: () => void): (() => void) => subscribe('focus-flows-tab', callback),
   /** Subscribes to traces opened from the menu; the returned function removes only this one */
   onTraceOpened: (callback: (result: TraceOpenResult) => void): (() => void) => {
     const listener = (_event: IpcRendererEvent, result: TraceOpenResult): void => callback(result)

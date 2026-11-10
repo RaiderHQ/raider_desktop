@@ -103,7 +103,10 @@ const Overview: React.FC = () => {
   const { testKey } = useParams()
   const isNewTestRoute = useMatch('/overview/tests/new') !== null
   // Each navigation has its own key, so New test again at the same URL still lands here
-  const locationKey = useLocation().key
+  const location = useLocation()
+  const locationKey = location.key
+  // A failed scheduled run's notification asks for the Flows tab (navigated with this state)
+  const flowsRequested = (location.state as { tab?: unknown } | null)?.tab === 'flows'
   const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
     useRecorderSettings()
   const [activeTab, setActiveTab] = useState<OverviewTab>('tests')
@@ -614,6 +617,11 @@ const Overview: React.FC = () => {
   useEffect(() => {
     if (isNewTestRoute) switchTab('tests')
   }, [isNewTestRoute, locationKey])
+
+  // The notification's Flows tab; a dirty Files edit asks first
+  useEffect(() => {
+    if (flowsRequested) switchTab('flows')
+  }, [flowsRequested, locationKey])
 
   const handleOpenFile = (filePath: string): void => guardUnsaved(() => void loadFile(filePath))
 

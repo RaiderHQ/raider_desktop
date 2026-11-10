@@ -257,6 +257,40 @@ describe('Overview Page', (): void => {
     expect(screen.queryByTestId('flows-pane-stub')).toBeNull()
   })
 
+  it('shows the Flows tab when navigated with the Flows tab state, also from a test page', async () => {
+    const overview = (
+      <>
+        <Overview />
+        {/* useNavigate is mocked in this file; a link changes the route for real */}
+        <Link to="/overview" state={{ tab: 'flows' }}>
+          failed-run
+        </Link>
+      </>
+    )
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/overview/tests/aWQ6dDE']}>
+          <Routes>
+            <Route path="/overview" element={overview} />
+            <Route path="/overview/tests/:testKey" element={overview} />
+          </Routes>
+        </MemoryRouter>
+      )
+    })
+    expect(screen.queryByTestId('flows-pane-stub')).toBeNull()
+    await act(async () => {
+      fireEvent.click(screen.getByText('failed-run'))
+    })
+    expect(screen.getByTestId('flows-pane-stub')).toBeInTheDocument()
+    // Back on Tests, the same request again (a second click) shows Flows again
+    fireEvent.click(screen.getByRole('button', { name: 'overview.tabs.tests' }))
+    expect(screen.queryByTestId('flows-pane-stub')).toBeNull()
+    await act(async () => {
+      fireEvent.click(screen.getByText('failed-run'))
+    })
+    expect(screen.getByTestId('flows-pane-stub')).toBeInTheDocument()
+  })
+
   it('navigates to /start-project if no project path is set', async (): Promise<void> => {
     useProjectStore.setState({ projectPath: null, files: [] })
     await act(async () => {

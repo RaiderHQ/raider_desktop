@@ -1,0 +1,400 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { mkdtemp, mkdir, writeFile, appendFile, rm, symlink, realpath } from 'fs/promises'
+import { tmpdir } from 'os'
+import { join } from 'path'
+
+vi.mock('electron', () => ({ Notification: class {} }))
+
+import {
+  createFlowWatcher,
+  startFlowWatcher,
+  stopFlowWatcher,
+  FLOW_FAILED_TITLE,
+  type FlowWatcher,
+  type FlowWatcherDeps
+} from '../../src/main/handlers/flows/flowWatcher'
+
+interface FakeWatch {
+  dir: string
+  recursive: boolean
+  fire: () => void
+  error: () => void
+  closed: boolean
+}
+
+/** A fake fs.watch, Notification, window and timer; the file system is a real temp folder */
+function fakes(): {
+  deps: FlowWatcherDeps
+  watches: FakeWatch[]
+  notes: { title: string; body: string; click: () => void }[]
+  sent: string[]
+  win: {
+    restore: ReturnType<typeof vi.fn>
+    show: ReturnType<typeof vi.fn>
+    focus: ReturnType<typeof vi.fn>
+    minimized: boolean
+  }
+  flush: () => void
+  timers: number
+} {
+  const watches: FakeWatch[] = []
+  const notes: { title: string; body: string; click: () => void }[] = []
+  const sent: string[] = []
+  let pending: (() => void) | null = null
+  const state = { timers: 0 }
+  const win = { restore: vi.fn(), show: vi.fn(), focus: vi.fn(), minimized: true }
+  const deps: FlowWatcherDeps = {
+    watch: (dir, { recursive }, listener) => {
+      let onError: () => void = () => undefined
+      const w: FakeWatch = {
+        dir,
+        recursive,
+        fire: listener,
+        error: () => onError(),
+        closed: false
+      }
+      watches.push(w)
+      return {
+        close: (): void => {
+          w.closed = true
+        },
+        on: (_event, l): void => {
+          onError = (): void => l(new Error('gone'))
+        }
+      }
+    },
+    notifications: {
+      isSupported: () => true,
+      create: ({ title, body }) => {
+        const handlers: Record<string, () => void> = {}
+        notes.push({ title, body, click: () => handlers.click?.() })
+        return {
+          on: (event, l): void => {
+            handlers[event] = l
+          },
+          show: (): void => undefined
+        }
+      }
+    },
+    mainWindow: () => ({
+      isDestroyed: () => false,
+      isMinimized: () => win.minimized,
+      restore: win.restore,
+      show: win.show,
+      focus: win.focus,
+      webContents: { isDestroyed: () => false, send: (channel: string) => sent.push(channel) }
+    }),
+    setTimer: (callback) => {
+      state.timers++
+      pending = callback
+      return callback
+    },
+    clearTimer: (timer) => {
+      if (pending === timer) pending = null
+    }
+  }
+  return {
+    deps,
+    watches,
+    notes,
+    sent,
+    win,
+    flush: (): void => {
+      const run = pending
+      pending = null
+      run?.()
+    },
+    get timers(): number {
+      return state.timers
+    }
+  }
+}
+
+const line = (patch: Record<string, unknown> = {}): string =>
+  JSON.stringify({
+    started_at: '2026-11-10T11:12:35.478Z',
+    attempt: 1,
+    trigger: 'schedule',
+    run_id: 'c379fa6246da4274',
+    finished_at: '2026-11-10T11:12:37.714Z',
+    status: 'failed',
+    results_dir: 'flow-results/broken/20261110T111235Z',
+    failed_step: { title: 'runs', line: 7 },
+    ...patch
+  }) + '\n'
+
+let dir: string
+let watcher: FlowWatcher | null
+const log = (name = 'broken'): string => join(dir, '.raider', 'flows', name, 'runs.jsonl')
+
+beforeEach(async () => {
+  dir = await realpath(await mkdtemp(join(tmpdir(), 'flow-watcher-')))
+  await mkdir(join(dir, '.raider', 'flows', 'broken'), { recursive: true })
+  watcher = null
+})
+
+afterEach(async () => {
+  watcher?.stop()
+  stopFlowWatcher()
+  await rm(dir, { recursive: true, force: true })
+})
+
+/** Fires a change and waits for the settled scan */
+async function change(f: ReturnType<typeof fakes>): Promise<void> {
+  f.watches.filter((w) => !w.closed).forEach((w) => w.fire())
+  f.flush()
+  await watcher!.idle()
+}
+
+describe('flowWatcher', () => {
+  it('watches .raider/flows recursively', async () => {
+    const f = fakes()
+    watcher = createFlowWatcher(dir, f.deps)
+    await watcher.idle()
+    expect(f.watches).toHaveLength(1)
+    expect(f.watches[0]).toMatchObject({ dir: join(dir, '.raider', 'flows'), recursive: true })
+  })
+
+  it('does not notify lines that were there at start, only a new failed scheduled one', async () => {
+    await writeFile(
+      log(),
+      line({ run_id: 'aaaaaaaaaaaaaaaa' }) + line({ run_id: 'bbbbbbbbbbbbbbbb' })
+    )
+    const f = fakes()
+    watcher = createFlowWatcher(dir, f.deps)
+    await watcher.idle()
+    await change(f)
+    expect(f.notes).toHaveLength(0)
+    expect(f.sent).toEqual(['flows-changed'])
+
+    await appendFile(log(), line())
+    await change(f)
+    expect(f.notes).toEqual([
+      expect.objectContaining({ title: FLOW_FAILED_TITLE, body: 'broken failed at line 7' })
+    ])
+    await change(f)
+    expect(f.notes).toHaveLength(1)
+  })
+
+  it('does not notify a line again after the gem trims (rewrites) the log', async () => {
+    await writeFile(log(), line({ run_id: 'aaaaaaaaaaaaaaaa' }) + line())
+    const f = fakes()
+    watcher = createFlowWatcher(dir, f.deps)
+    await watcher.idle()
+    await writeFile(log(), line())
+    await change(f)
+    expect(f.notes).toHaveLength(0)
+  })
+
+  it('does not notify old lines after a read that caught the log empty or missing', async () => {
+    await writeFile(log(), line())
+    const f = fakes()
+    watcher = createFlowWatcher(dir, f.deps)
+    await watcher.idle()
+    await writeFile(log(), '')
+    await change(f)
+    await rm(log())
+    await change(f)
+    await writeFile(log(), line())
+    await change(f)
+    expect(f.notes).toHaveLength(0)
+  })
+
+  it('skips completed, busy, and manual or desktop runs; notifies a scheduled setup_error', async () => {
+    const f = fakes()
+    watcher = createFlowWatcher(dir, f.deps)
+    await watcher.idle()
+    await appendFile(
+      log(),
+      line({ run_id: '1000000000000000', status: 'completed', failed_step: undefined }) +
+        line({ run_id: '2000000000000000', status: 'busy' }) +
+        line({ run_id: '3000000000000000', trigger: 'desktop' }) +
+        line({ run_id: '4000000000000000', trigger: 'manual' }) +
+        line({ run_id: '5000000000000000', status: 'setup_error', failed_step: undefined })
+    )
+    await change(f)
+    expect(f.notes.map((n) => n.body)).toEqual(['broken could not start'])
+  })
+
+  it('names the step when the flow has a sidecar, else just the flow', async () => {
+    const f = fakes()
+    watcher = createFlowWatcher(dir, f.deps)
+    await watcher.idle()
+    await appendFile(
+      log(),
+      line({ run_id: '1000000000000000', failed_step: { title: 'x', line: 7, number: 3 } }) +
+        line({ run_id: '2000000000000000', failed_step: undefined })
+    )
+    await change(f)
+    expect(f.notes.map((n) => n.body)).toEqual(['broken failed at step 3', 'broken failed'])
+  })
+
+  it('keys a line by started_at when run_id is missing or not a run id', async () => {
+    const f = fakes()
+    watcher = createFlowWatcher(dir, f.deps)
+    await watcher.idle()
+    await appendFile(
+      log(),
+      line({ run_id: undefined, started_at: '2026-11-10T11:00:00.000Z' }) +
+        line({ run_id: 'NOT-A-RUN-ID', started_at: '2026-11-10T12:00:00.000Z' })
+    )
+    await change(f)
+    expect(f.notes).toHaveLength(2)
+    // The same two lines rewritten (as a trim does) are not new
+    await writeFile(
+      log(),
+      line({ run_id: undefined, started_at: '2026-11-10T11:00:00.000Z' }) +
+        line({ run_id: 'NOT-A-RUN-ID', started_at: '2026-11-10T12:00:00.000Z' })
+    )
+    await change(f)
+    expect(f.notes).toHaveLength(2)
+  })
+
+  it('debounces: 5 events make one scan and one flows-changed', async () => {
+    const f = fakes()
+    watcher = createFlowWatcher(dir, f.deps)
+    await watcher.idle()
+    await appendFile(log(), line())
+    for (let i = 0; i < 5; i++) f.watches[0].fire()
+    expect(f.timers).toBe(5)
+    f.flush()
+    f.flush()
+    await watcher.idle()
+    expect(f.sent).toEqual(['flows-changed'])
+    expect(f.notes).toHaveLength(1)
+  })
+
+  it('ignores hostile lines and folders; the body holds only the name and integers', async () => {
+    await mkdir(join(dir, '.raider', 'flows', 'Bad-Name'), { recursive: true })
+    await mkdir(join(dir, '.raider', 'flows', 'env'), { recursive: true })
+    const f = fakes()
+    watcher = createFlowWatcher(dir, f.deps)
+    await watcher.idle()
+    await writeFile(join(dir, '.raider', 'flows', 'Bad-Name', 'runs.jsonl'), line())
+    await writeFile(join(dir, '.raider', 'flows', 'env', 'runs.jsonl'), line())
+    await appendFile(
+      log(),
+      '{not json\n' +
+        'x'.repeat(300 * 1024) +
+        '\n' +
+        '[1,2]\n' +
+        line({
+          run_id: '1000000000000000',
+          name: '../../evil',
+          failed_step: { title: '<b>evil</b>', number: 1e21, line: '7' },
+          message: 'rm -rf /'
+        })
+    )
+    await change(f)
+    expect(f.notes.map((n) => n.body)).toEqual(['broken failed'])
+  })
+
+  it('a click shows and focuses the window and asks for the Flows tab', async () => {
+    const f = fakes()
+    watcher = createFlowWatcher(dir, f.deps)
+    await watcher.idle()
+    await appendFile(log(), line())
+    await change(f)
+    f.notes[0].click()
+    expect(f.win.restore).toHaveBeenCalled()
+    expect(f.win.show).toHaveBeenCalled()
+    expect(f.win.focus).toHaveBeenCalled()
+    expect(f.sent).toEqual(['flows-changed', 'focus-flows-tab'])
+  })
+
+  it('without .raider/flows watches .raider and arms when it is made', async () => {
+    await rm(join(dir, '.raider', 'flows'), { recursive: true })
+    const f = fakes()
+    watcher = createFlowWatcher(dir, f.deps)
+    await watcher.idle()
+    expect(f.watches[0]).toMatchObject({ dir: join(dir, '.raider'), recursive: false })
+
+    await mkdir(join(dir, '.raider', 'flows', 'broken'), { recursive: true })
+    await writeFile(log(), line())
+    await change(f)
+    expect(f.watches[0].closed).toBe(true)
+    expect(f.watches[1]).toMatchObject({ dir: join(dir, '.raider', 'flows'), recursive: true })
+    // Its first run is news: the folder was not there at start
+    expect(f.notes).toHaveLength(1)
+  })
+
+  it('without .raider watches the project root', async () => {
+    await rm(join(dir, '.raider'), { recursive: true })
+    const f = fakes()
+    watcher = createFlowWatcher(dir, f.deps)
+    await watcher.idle()
+    expect(f.watches[0]).toMatchObject({ dir, recursive: false })
+    await mkdir(join(dir, '.raider'))
+    await change(f)
+    expect(f.watches[1]).toMatchObject({ dir: join(dir, '.raider'), recursive: false })
+  })
+
+  it('re-arms when the watched folder goes away', async () => {
+    const f = fakes()
+    watcher = createFlowWatcher(dir, f.deps)
+    await watcher.idle()
+    await rm(join(dir, '.raider', 'flows'), { recursive: true })
+    f.watches[0].error()
+    f.flush()
+    await watcher.idle()
+    expect(f.watches[0].closed).toBe(true)
+    expect(f.watches[1]).toMatchObject({ dir: join(dir, '.raider'), recursive: false })
+  })
+
+  it('never watches a linked .raider/flows or .raider', async () => {
+    const outside = await mkdtemp(join(tmpdir(), 'flow-outside-'))
+    try {
+      await rm(join(dir, '.raider', 'flows'), { recursive: true })
+      await symlink(outside, join(dir, '.raider', 'flows'))
+      const f = fakes()
+      watcher = createFlowWatcher(dir, f.deps)
+      await watcher.idle()
+      expect(f.watches).toHaveLength(0)
+      watcher.stop()
+
+      await rm(join(dir, '.raider'), { recursive: true })
+      await symlink(outside, join(dir, '.raider'))
+      const g = fakes()
+      watcher = createFlowWatcher(dir, g.deps)
+      await watcher.idle()
+      expect(g.watches).toHaveLength(0)
+    } finally {
+      await rm(outside, { recursive: true, force: true })
+    }
+  })
+
+  it('stop closes the watch and nothing more is sent', async () => {
+    const f = fakes()
+    watcher = createFlowWatcher(dir, f.deps)
+    await watcher.idle()
+    await appendFile(log(), line())
+    f.watches[0].fire()
+    watcher.stop()
+    f.flush()
+    await watcher.idle()
+    expect(f.watches[0].closed).toBe(true)
+    expect(f.sent).toEqual([])
+    expect(f.notes).toEqual([])
+  })
+
+  it('a project switch closes the old watcher and watches only the new project; quit stops it', async () => {
+    const other = await realpath(await mkdtemp(join(tmpdir(), 'flow-other-')))
+    try {
+      await mkdir(join(other, '.raider', 'flows'), { recursive: true })
+      const f = fakes()
+      startFlowWatcher(dir, f.deps)
+      await vi.waitFor(() => expect(f.watches).toHaveLength(1))
+      startFlowWatcher(other, f.deps)
+      await vi.waitFor(() => expect(f.watches).toHaveLength(2))
+      expect(f.watches[0]).toMatchObject({ dir: join(dir, '.raider', 'flows'), closed: true })
+      expect(f.watches[1]).toMatchObject({ dir: join(other, '.raider', 'flows'), closed: false })
+      // The same project again keeps its watcher
+      startFlowWatcher(other, f.deps)
+      stopFlowWatcher()
+      expect(f.watches).toHaveLength(2)
+      expect(f.watches[1].closed).toBe(true)
+    } finally {
+      await rm(other, { recursive: true, force: true })
+    }
+  })
+})
