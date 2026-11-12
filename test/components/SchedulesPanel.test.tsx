@@ -122,7 +122,8 @@ describe('SchedulesPanel', () => {
     api.schedulesStatus.mockResolvedValue(status({ supported: false, version: '4.1.0' }))
     const onSupportedChange = vi.fn()
     await renderPanel({ onSupportedChange })
-    fireEvent.click(toggle())
+    // Open by default: it says why there are no schedules
+    expect(toggle()).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText(en.schedules.panel.needsUpdate)).toBeInTheDocument()
     expect(screen.getByText(en.schedules.panel.updateHint)).toBeInTheDocument()
     expect(screen.queryByText(en.schedules.panel.oldSchedules)).toBeNull()
@@ -134,7 +135,6 @@ describe('SchedulesPanel', () => {
   it('mentions 4.1 schedules when the project still has them', async () => {
     api.schedulesStatus.mockResolvedValue(status({ supported: false, oldSchedules: true }))
     await renderPanel()
-    fireEvent.click(toggle())
     expect(screen.getByText(en.schedules.panel.oldSchedules)).toBeInTheDocument()
   })
 
@@ -409,14 +409,12 @@ describe('SchedulesPanel', () => {
   it('maps a list error to copy', async () => {
     api.listSchedules.mockResolvedValue({ error: 'rubyCantRun' })
     await renderPanel()
-    fireEvent.click(toggle())
     expect(screen.getByRole('alert')).toHaveTextContent(en.schedules.errors.rubyCantRun)
   })
 
   it('says Ruby is missing instead of listing', async () => {
     useRubyStore.setState({ rubyCommand: null })
     await renderPanel()
-    fireEvent.click(toggle())
     expect(screen.getByRole('alert')).toHaveTextContent(en.schedules.noRuby)
     expect(api.listSchedules).not.toHaveBeenCalled()
   })

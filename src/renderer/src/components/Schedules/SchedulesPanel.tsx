@@ -159,7 +159,11 @@ const SchedulesPanel: React.FC<SchedulesPanelProps> = ({
 
   const schedules = load.state === 'ready' ? load.schedules : []
   const supported = load.state === 'ready'
-  const open = storedOpen !== null ? storedOpen === '1' : schedules.length > 0
+  // Nothing stored: open when there is something to read (schedules, or why there can't be)
+  const open =
+    storedOpen !== null
+      ? storedOpen === '1'
+      : schedules.length > 0 || load.state === 'unsupported' || load.state === 'error'
   const takenNames = schedules.map((s) => s.name)
   const tags = useMemo(
     () => [...new Set((testRows ?? []).flatMap((r) => r.tags ?? []))].sort(),

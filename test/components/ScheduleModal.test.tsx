@@ -378,6 +378,22 @@ describe('ScheduleModal', () => {
     expect(screen.getByLabelText('Ticked test (1)')).toBeChecked()
   })
 
+  it('an edit with every file gone starts on All tests, said above the form', async () => {
+    api.save.mockResolvedValue(ok)
+    renderModal({
+      editing: schedule({ selection: { kind: 'files', files: ['spec/gone_spec.rb'] } }),
+      files: [],
+      dropped: 1
+    })
+    expect(screen.getByTestId('schedule-files-dropped')).toHaveTextContent(
+      '1 missing test file was left out.'
+    )
+    expect(screen.getByLabelText('Ticked tests (0)')).toBeDisabled()
+    expect(screen.getByLabelText('All tests')).toBeChecked()
+    await clickSave('Save')
+    expect(sent()).toEqual(expect.objectContaining({ selection: { kind: 'all' } }))
+  })
+
   it('shows a bad time inline and does not send', () => {
     renderModal()
     fireEvent.change(screen.getByLabelText('Time'), { target: { value: '25:00' } })

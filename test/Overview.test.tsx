@@ -1159,6 +1159,61 @@ describe('Overview live runs', (): void => {
     expect(screen.getByTestId('run-panel')).toBeInTheDocument()
   })
 
+  it("the Tests list's Schedule… opens the Schedules dialog with the ticked tests", async () => {
+    mockApi.listProjectTests.mockResolvedValue([
+      { name: 'Login', file: 'spec/login_spec.rb', ownership: 'code', tags: [] }
+    ])
+    mockApi.schedulesStatus.mockResolvedValueOnce({
+      supported: true,
+      version: '4.2.0',
+      oldSchedules: false,
+      platform: 'darwin'
+    })
+    const listSchedules = vi.fn().mockResolvedValue({ notice: null, schedules: [] })
+    ;(window.api as unknown as Record<string, unknown>).listSchedules = listSchedules
+    try {
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/overview']}>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      fireEvent.click(await screen.findByRole('button', { name: 'tests.select' }))
+      fireEvent.click(await screen.findByRole('checkbox', { name: 'tests.tick' }))
+      fireEvent.click(screen.getByRole('button', { name: 'tests.scheduleTicked' }))
+      const dialog = await screen.findByRole('dialog')
+      expect(dialog).toHaveTextContent('schedules.scheduleModal.title')
+      expect(screen.getByTestId('schedule-files')).toHaveTextContent('spec/login_spec.rb')
+    } finally {
+      delete (window.api as unknown as Record<string, unknown>).listSchedules
+      mockApi.listProjectTests.mockResolvedValue([])
+    }
+  })
+
+  it('offers no Schedule… in the Tests list when ruby_raider is older than 4.2', async () => {
+    mockApi.listProjectTests.mockResolvedValue([
+      { name: 'Login', file: 'spec/login_spec.rb', ownership: 'code', tags: [] }
+    ])
+    try {
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/overview']}>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      fireEvent.click(await screen.findByRole('button', { name: 'tests.select' }))
+      expect(screen.getByRole('button', { name: 'tests.runTicked' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'tests.scheduleTicked' })).toBeNull()
+      expect(screen.getByText('schedules.panel.needsUpdate')).toBeInTheDocument()
+    } finally {
+      mockApi.listProjectTests.mockResolvedValue([])
+    }
+  })
+
   it("shows a tagged run started on the Tests tab in Overview's panel", async () => {
     mockApi.listProjectTests.mockResolvedValue([
       {
