@@ -10,6 +10,7 @@ import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import useRunOutputStore from '@foundation/Stores/runOutputStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import { useRunStore } from '@foundation/Stores/runStore'
+import { useTickedTestsStore } from '@foundation/Stores/tickedTestsStore'
 import type { Test } from '@foundation/Types/test'
 import en from '@assets/translations/en.json'
 
@@ -376,5 +377,64 @@ describe('TestsWorkspace tag filter', () => {
       { kind: 'tags', tags: ['smoke'] },
       { route: '/overview', label: 'Tests tagged smoke' }
     )
+  })
+})
+
+describe('TestsWorkspace ticking', () => {
+  afterEach(() => useProjectStore.setState({ projectPath: null }))
+  const renderTicking = (onScheduleTicked = vi.fn()): void => {
+    Object.assign(window.api, { setActiveProject: vi.fn().mockResolvedValue({ success: true }) })
+    useProjectStore.setState({
+      projectPath: '/p',
+      layout: {
+        framework: 'rspec',
+        automation: 'selenium',
+        specPath: 'spec',
+        featurePath: 'features',
+        helperPath: 'helpers',
+        recordable: false,
+        unsupportedReason: 'gemTooOld',
+        runtimeSupported: false
+      }
+    })
+    render(
+      <MemoryRouter initialEntries={['/overview/tests']}>
+        <Routes>
+          <Route
+            path="/overview/tests"
+            element={<TestsWorkspace onScheduleTicked={onScheduleTicked} />}
+          />
+        </Routes>
+      </MemoryRouter>
+    )
+  }
+
+  it('hands Schedule… the ticked files', async () => {
+    const onScheduleTicked = vi.fn()
+    renderTicking(onScheduleTicked)
+    await screen.findByRole('button', { name: /Checkout/ })
+    fireEvent.click(screen.getByRole('button', { name: en.tests.select }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Tick Checkout' }))
+    fireEvent.click(screen.getByRole('button', { name: en.tests.scheduleTicked }))
+    expect(onScheduleTicked).toHaveBeenCalledWith(['spec/checkout_spec.rb'])
+  })
+
+  it('recording folds the list away and ends Select mode', async () => {
+    renderTicking()
+    await screen.findByRole('button', { name: /Checkout/ })
+    fireEvent.click(screen.getByRole('button', { name: en.tests.select }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Tick Checkout' }))
+
+    act(() => useRecorderStore.setState({ isRecording: true }))
+    expect(screen.getByTestId('tests-rail')).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    act(() => useRecorderStore.setState({ isRecording: false }))
+
+    expect(screen.getByRole('button', { name: en.tests.select })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    )
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(useTickedTestsStore.getState().ticked('/p')).toEqual(['spec/checkout_spec.rb'])
   })
 })

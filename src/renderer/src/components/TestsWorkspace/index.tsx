@@ -19,10 +19,16 @@ interface TestsWorkspaceProps {
   /** The right-hand pane for the selected test (null: nothing selected). */
   renderPane?: (row: TestRow | null) => React.ReactNode
   onNewTest?: () => void
+  /** Schedule… in the list's Select mode: the ticked spec files (no handler, no button) */
+  onScheduleTicked?: (files: string[]) => void
 }
 
 /** The Tests tab: the list on the left, the routed selection on the right. */
-const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }) => {
+const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({
+  renderPane,
+  onNewTest,
+  onScheduleTicked
+}) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { testKey: param } = useParams()
@@ -112,6 +118,7 @@ const TestsWorkspace: React.FC<TestsWorkspaceProps> = ({ renderPane, onNewTest }
               selectedKey={selectedKey}
               onSelect={select}
               activeTag={activeTag}
+              onScheduleTicked={onScheduleTicked}
               onNewTest={
                 onNewTest ??
                 ((): void => {
