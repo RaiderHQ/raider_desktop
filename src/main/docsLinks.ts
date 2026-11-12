@@ -16,6 +16,8 @@ export const DOCS_LINKS: Record<DocsLinkId, string> = {
   'docs.dashboard': `${SITE}/docs/running-and-results.html#dashboard`,
   'docs.testScreen': `${SITE}/docs/files-and-settings.html`,
   'docs.errors': `${SITE}/docs/troubleshooting.html`,
+  'docs.scheduling': `${SITE}/docs/scheduling-tests.html`,
+  'docs.scheduling.browser': `${SITE}/docs/scheduling-tests.html#show-the-browser`,
   'docs.install': `${SITE}/docs/getting-started.html`,
   'docs.gem': 'https://github.com/RaiderHQ/ruby_raider#readme',
   'docs.site': `${SITE}/`

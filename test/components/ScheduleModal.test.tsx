@@ -68,22 +68,23 @@ beforeEach(() => {
 describe('schedule texts', () => {
   it('words the last result', () => {
     expect(lastResultText(t, null, now)).toBe('Not run yet')
-    expect(lastResultText(t, last(), now)).toBe('Completed 08:00 today')
+    expect(lastResultText(t, last({ status: 'setup_error' }), now)).toBe(
+      'Could not start · 08:00 today'
+    )
+    expect(lastResultText(t, last({ status: 'busy' }), now)).toBe(
+      'Skipped, another run was going · 08:00 today'
+    )
+    // 4.1-only results carry no counts yet, so they read as a setup error for now
+    expect(lastResultText(t, last(), now)).toBe('Could not start · 08:00 today')
     expect(
       lastResultText(
         t,
         last({ status: 'failed', failedStep: { number: 4, title: 'Save', line: 9 } }),
         now
       )
-    ).toBe('Failed at step 4, 08:00 today')
-    expect(
-      lastResultText(t, last({ status: 'failed', failedStep: { title: 'x', line: 7 } }), now)
-    ).toBe('Failed at line 7, 08:00 today')
-    expect(lastResultText(t, last({ status: 'setup_error' }), now)).toBe(
-      'Could not start, 08:00 today'
-    )
-    expect(lastResultText(t, last({ finishedAt: at(8, 0, 1) }), now)).toBe(
-      'Completed 08:00 yesterday'
+    ).toBe('Could not start · 08:00 today')
+    expect(lastResultText(t, last({ status: 'setup_error', finishedAt: at(8, 0, 1) }), now)).toBe(
+      'Could not start · 08:00 yesterday'
     )
   })
 

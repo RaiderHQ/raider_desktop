@@ -31,25 +31,14 @@ export function whenText(t: T, iso: string, now: Date): string {
   return t('schedules.when.date', { date, time })
 }
 
-/** "Completed 08:00 today", "Failed at step 4, 08:00 today", or "Not run yet". */
+/** "Could not start · 08:00 today", "Skipped, another run was going · …", or "Not run yet". */
+// Interim: 4.1 results (completed/failed without counts) read as "Could not start" until the
+// 4.2 last-run shape (passed/failed/total) lands
 export function lastResultText(t: T, last: ScheduledLastRun | null, now: Date): string {
   if (!last) return t('schedules.last.never')
   const when = whenText(t, last.finishedAt, now)
-  switch (last.status) {
-    case 'completed':
-      return t('schedules.last.completed', { when })
-    case 'setup_error':
-      return t('schedules.last.setupError', { when })
-    case 'busy':
-      return t('schedules.last.busy', { when })
-    default: {
-      const step = last.failedStep
-      if (step?.number !== undefined)
-        return t('schedules.last.failedStep', { step: step.number, when })
-      if (step) return t('schedules.last.failedLine', { line: step.line, when })
-      return t('schedules.last.failed', { when })
-    }
-  }
+  if (last.status === 'busy') return t('schedules.last.busy', { when })
+  return t('schedules.last.setupError', { when })
 }
 
 /** "Every weekday at 08:00", "Every hour at :15", "Every Monday at 08:00" (+ notify). */
