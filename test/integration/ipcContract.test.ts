@@ -192,6 +192,7 @@ describe('IPC Contract', () => {
     'addSchedule',
     'removeSchedule',
     'openScheduleReport',
+    'runScheduleNow',
 
     // App Lifecycle
     'closeApp'

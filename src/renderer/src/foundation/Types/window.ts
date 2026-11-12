@@ -15,12 +15,13 @@ import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { ProjectFileResult } from '@shared/types/projectFiles'
 import type { ScaffoldParams, ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { QuickProject } from '@shared/types/quickProject'
-import type { RunApi } from '@shared/types/runEvents'
+import type { RunApi, StartRunResult } from '@shared/types/runEvents'
 import type { AssertionMessage } from '@shared/types/pendingAssertion'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type {
   GemCliError,
+  RunScheduleNowRequest,
   ScheduleChangeResult,
   ScheduleRequest,
   SchedulesList,
@@ -206,6 +207,11 @@ export interface WindowApi extends RunApi {
   removeSchedule: (rubyCommand: string, name: string) => Promise<ScheduleChangeResult | GemCliError>
   /** The schedule's own last report, else raider-results/index.html; else `noReport` */
   openScheduleReport: (name: string) => Promise<{ ok: true } | GemCliError>
+  /** Runs the schedule's tests now as a normal app run; main reads the schedule itself */
+  runScheduleNow: (
+    rubyCommand: string,
+    request: RunScheduleNowRequest
+  ) => Promise<StartRunResult | GemCliError>
 
   // --- Test Management ---
   /** `test` is the test as saved, with its project file when it has one */

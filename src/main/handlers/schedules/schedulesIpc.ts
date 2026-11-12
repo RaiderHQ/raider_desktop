@@ -9,9 +9,13 @@ import { isValidRubyCommand } from '../../utils/rubyCommand'
 import { runGemCli, type GemCliResult } from '../gem/gemCli'
 import { parseScheduleList, plainText } from '../gem/gemJson'
 import { lastRunFromLog } from './runLog'
+import { startRun } from '../run/runner'
+import type { RunRequest, RunScope, StartRunResult } from '../../../shared/types/runEvents'
 import { isScheduleName, scheduleArgs, validateScheduleRequest } from '../../../shared/schedules'
 import type {
   GemCliError,
+  GemScheduleRule,
+  RunScheduleNowRequest,
   ScheduleChangeResult,
   ScheduleRequest,
   SchedulesList,
@@ -34,6 +38,8 @@ export interface SchedulesIpcDeps {
   listedFiles: (files: unknown[]) => Promise<{ projectPath: string; files: string[] }>
   /** shell.openPath: an error message, empty on success */
   openPath: (file: string) => Promise<string>
+  /** The runner's startRun, refusing unless `projectPath` is still the active project */
+  startRun: (request: RunRequest, projectPath: string) => Promise<StartRunResult>
   platform: NodeJS.Platform
 }
 
@@ -41,6 +47,7 @@ const defaultDeps: SchedulesIpcDeps = {
   runGemCli: (...args) => runGemCli(...args),
   listedFiles: (files) => listedFiles(files),
   openPath: (file) => shell.openPath(file),
+  startRun: (request, projectPath) => startRun(request, {}, projectPath),
   platform: process.platform
 }
 
@@ -269,6 +276,73 @@ export async function openScheduleReportHandler(
   return error ? { error: 'open-failed', message: oneLine(error) } : { ok: true }
 }
 
+type RunNowFields = Omit<RunScheduleNowRequest, 'name'> & { name: string }
+
+/** The allowed fields of a Run now payload; anything else (scope, headed…) is ignored. */
+function runNowFields(payload: unknown): RunNowFields | string {
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload))
+    return 'No schedule was given.'
+  const { name, workers, quarantinedFails, loginState } = payload as Record<string, unknown>
+  if (typeof name !== 'string' || !isScheduleName(name)) return 'Not a valid name.'
+  if (workers !== undefined && !(Number.isSafeInteger(workers) && (workers as number) >= 1))
+    return 'Not a valid worker count.'
+  if (quarantinedFails !== undefined && typeof quarantinedFails !== 'boolean')
+    return 'Not a valid quarantine option.'
+  if (loginState !== undefined && loginState !== 'off' && loginState !== 'refresh')
+    return 'Not a valid login option.'
+  return {
+    name,
+    ...(workers !== undefined ? { workers: workers as number } : {}),
+    ...(quarantinedFails !== undefined ? { quarantinedFails } : {}),
+    ...(loginState !== undefined ? { loginState } : {})
+  }
+}
+
+const scopeOf = (selection: GemScheduleRule['selection']): RunScope =>
+  selection.kind === 'all'
+    ? { kind: 'all' }
+    : selection.kind === 'tag'
+      ? { kind: 'tags', tags: [selection.tag] }
+      : { kind: 'files', files: [...selection.files] }
+
+/**
+ * 'run-schedule-now': a normal app run of the schedule's tests. The schedule (its tests and
+ * Show the browser) is read here from `raider schedule list`, never taken from the renderer;
+ * the renderer sends only its usual run settings. Writes no run log line.
+ */
+export async function runScheduleNowHandler(
+  event: IpcMainInvokeEvent,
+  rubyCommand: unknown,
+  payload: unknown,
+  deps: SchedulesIpcDeps = defaultDeps
+): Promise<StartRunResult | GemCliError> {
+  if (!fromMainWindow(event)) return INVALID
+  const fields = runNowFields(payload)
+  if (typeof fields === 'string') return invalid(fields)
+  const target = await gate(rubyCommand)
+  if ('error' in target) return target
+  const list = await listSchedules(target.projectPath, target.rubyCommand, deps)
+  if ('error' in list) return list
+  const row = list.schedules.find((schedule) => schedule.name === fields.name)
+  if (!row) return invalid('No schedule with that name.')
+  if (row.orphan) return invalid('This schedule has no rule to run.')
+
+  const scope = scopeOf(row.selection)
+  // One file runs serially, as a one-file run from the Tests list does
+  const serial = scope.kind === 'files' && scope.files.length <= 1
+  const request: RunRequest = {
+    scope,
+    ...(fields.workers !== undefined && !serial ? { workers: fields.workers } : {}),
+    rubyCommand: target.rubyCommand,
+    ...(fields.quarantinedFails !== undefined ? { quarantinedFails: fields.quarantinedFails } : {}),
+    ...(fields.loginState !== undefined ? { loginState: fields.loginState } : {}),
+    headed: deps.platform === 'linux' ? false : row.showBrowser
+  }
+  const result = await deps.startRun(request, target.projectPath)
+  if ('runId' in result || result.error === 'busy' || result.error === 'scheduleBusy') return result
+  return { error: 'refused', message: oneLine(result.error) }
+}
+
 export function registerSchedulesIpc(ipcMain: IpcMain, deps: SchedulesIpcDeps = defaultDeps): void {
   ipcMain.handle('schedules-status', (event) => schedulesStatusHandler(event, deps))
   ipcMain.handle('list-schedules', (event, rubyCommand) =>
@@ -282,5 +356,8 @@ export function registerSchedulesIpc(ipcMain: IpcMain, deps: SchedulesIpcDeps = 
   )
   ipcMain.handle('open-schedule-report', (event, name) =>
     openScheduleReportHandler(event, name, deps)
+  )
+  ipcMain.handle('run-schedule-now', (event, rubyCommand, payload) =>
+    runScheduleNowHandler(event, rubyCommand, payload, deps)
   )
 }

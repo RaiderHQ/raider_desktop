@@ -21,6 +21,7 @@ import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
 import type {
   GemCliError,
+  RunScheduleNowRequest,
   ScheduleChangeResult,
   ScheduleRequest,
   SchedulesList,
@@ -379,6 +380,11 @@ const api = {
     ipcRenderer.invoke('remove-schedule', rubyCommand, name),
   openScheduleReport: async (name: string): Promise<{ ok: true } | GemCliError> =>
     ipcRenderer.invoke('open-schedule-report', name),
+  runScheduleNow: async (
+    rubyCommand: string,
+    request: RunScheduleNowRequest
+  ): Promise<StartRunResult | GemCliError> =>
+    ipcRenderer.invoke('run-schedule-now', rubyCommand, request),
   /** Subscribes to live run events; the returned function removes only this subscription */
   onRunEvent: (callback: (event: RunEvent) => void): (() => void) => {
     const listener = (_event: IpcRendererEvent, runEvent: RunEvent): void => callback(runEvent)

@@ -731,9 +731,9 @@ describe('runner', () => {
     })
 
     it.each(['yes', 1, null, 'true'])('rejects headed %s without spawning', async (bad) => {
-      expect(
-        await startRun({ ...ALL, headed: bad } as unknown as RunRequest, deps)
-      ).toHaveProperty('error')
+      expect(await startRun({ ...ALL, headed: bad } as unknown as RunRequest, deps)).toHaveProperty(
+        'error'
+      )
       expect(deps.spawnCommand).not.toHaveBeenCalled()
       expect(events).toEqual([])
     })
@@ -819,7 +819,7 @@ describe('runner', () => {
       withRules()
       let finishInstall!: () => void
       deps.ensureBundle = (): Promise<{ ok: boolean }> =>
-        new Promise((resolve) => (finishInstall = () => resolve({ ok: true })))
+        new Promise((resolve) => (finishInstall = (): void => resolve({ ok: true })))
       const runId = await run()
       expect(fs.existsSync(file)).toBe(true)
       killActiveRun()

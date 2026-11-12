@@ -10,11 +10,16 @@ const project = vi.hoisted(() => ({
 vi.mock('@foundation/Stores/projectStore', () => ({
   default: { getState: () => project.state, subscribe: () => (): void => {} }
 }))
-vi.mock('i18next', () => ({ default: { t: (key: string) => key } }))
+vi.mock('i18next', () => ({
+  default: {
+    t: (key: string, opts?: { name?: string }): string => (opts?.name ? `${key}:${opts.name}` : key)
+  }
+}))
 vi.mock('react-hot-toast', () => ({ default: { error: vi.fn() } }))
 
 const api = {
   startRun: vi.fn(),
+  runScheduleNow: vi.fn(),
   getRunDefaults: vi.fn(),
   cancelRun: vi.fn(),
   getActiveRun: vi.fn()
@@ -49,6 +54,17 @@ describe('runStore.start', () => {
     expect(await useRunStore.getState().start(scope, origin)).toBe('busy')
     expect(toast.error).toHaveBeenCalledWith('run.busy')
     expect(useRunStore.getState().origin).toBeNull()
+  })
+  it('toasts schedules.errors.busy with the name while a scheduled run holds the project', async () => {
+    api.startRun.mockResolvedValue({ error: 'scheduleBusy', name: 'nightly' })
+    expect(await useRunStore.getState().start(scope, origin)).toBe('busy')
+    expect(toast.error).toHaveBeenCalledWith('schedules.errors.busy:nightly')
+    expect(useRunStore.getState().origin).toBeNull()
+  })
+  it('falls back to run.busy when the scheduled run has no name', async () => {
+    api.startRun.mockResolvedValue({ error: 'scheduleBusy' })
+    expect(await useRunStore.getState().start(scope, origin)).toBe('busy')
+    expect(toast.error).toHaveBeenCalledWith('run.busy')
   })
   it('toasts other errors and stays inactive', async () => {
     api.startRun.mockResolvedValue({ error: 'Not a project test: x' })
@@ -186,5 +202,43 @@ describe('runStore finish hook', () => {
     await useRunStore.getState().restore()
     expect(shown).toHaveLength(0)
     vi.unstubAllGlobals()
+  })
+})
+
+describe('runStore.startSchedule', () => {
+  const scheduleOrigin = { route: '/overview', label: 'nightly' }
+
+  it('sends the name and the usual run settings, never a scope or headed', async () => {
+    saveRunSettings('/proj', {
+      parallel: true,
+      workers: 3,
+      quarantinedFails: true,
+      reuseLogins: false
+    })
+    api.runScheduleNow.mockResolvedValue({ runId: 'r1' })
+    expect(await useRunStore.getState().startSchedule('nightly', scheduleOrigin)).toBe('started')
+    expect(api.runScheduleNow).toHaveBeenCalledWith('ruby', {
+      name: 'nightly',
+      workers: 3,
+      quarantinedFails: true,
+      loginState: 'off'
+    })
+    expect(useRunStore.getState().origin).toEqual(scheduleOrigin)
+    expect(api.startRun).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [{ error: 'busy' }, 'busy', 'run.busy'],
+    [{ error: 'scheduleBusy', name: 'other' }, 'busy', 'schedules.errors.busy:other'],
+    [{ error: 'needs42' }, 'error', 'schedules.errors.needs42'],
+    [{ error: 'rubyCantRun' }, 'error', 'schedules.errors.rubyCantRun'],
+    [{ error: 'ruby' }, 'error', 'schedules.noRuby'],
+    [{ error: 'refused', message: 'Invalid tag: x' }, 'error', 'Invalid tag: x'],
+    [{ error: 'timeout' }, 'error', 'schedules.cliFailed']
+  ])('maps %j', async (result, outcome, toastText) => {
+    api.runScheduleNow.mockResolvedValue(result)
+    expect(await useRunStore.getState().startSchedule('nightly', scheduleOrigin)).toBe(outcome)
+    expect(toast.error).toHaveBeenCalledWith(toastText)
+    expect(useRunStore.getState().origin).toBeNull()
   })
 })

@@ -27,6 +27,12 @@ export interface RunRequest {
   quarantinedFails?: boolean
   /** Sets RAIDER_LOGIN_STATE for this run (off: always log in, never save; refresh: log in and save). Unset: normal reuse; an inherited RAIDER_LOGIN_STATE is removed. */
   loginState?: 'off' | 'refresh'
+  /**
+   * Show the browser for this run (env only; config.yml is never written). false sets
+   * HEADLESS=true; true sets RAIDER_SHOW_BROWSER=1 and removes HEADLESS; unset leaves both
+   * as inherited (the project's own setting).
+   */
+  headed?: boolean
 }
 
 export type ExampleStatus = 'started' | 'passed' | 'failed' | 'quarantined' | 'pending' | 'skipped'
@@ -125,7 +131,14 @@ export type RunEvent =
       truncated?: boolean
     }
 
-export type StartRunResult = { runId: string } | { error: 'busy' | string }
+/**
+ * `busy`: an app run is going. `scheduleBusy`: a scheduled run holds
+ * .raider/schedules/running.json (`name` when it is a valid schedule name). Else a message.
+ */
+export type StartRunResult =
+  | { runId: string }
+  | { error: 'scheduleBusy'; name?: string }
+  | { error: 'busy' | string }
 
 export interface ActiveRun {
   runId: string

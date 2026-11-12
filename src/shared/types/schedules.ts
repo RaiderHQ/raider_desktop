@@ -117,3 +117,14 @@ export type GemCliError = {
     | 'open-failed'
   message?: string
 }
+
+/**
+ * `run-schedule-now`: the renderer's usual run fields plus the schedule's name. Main reads the
+ * schedule itself (scope, show the browser) from `raider schedule list`; nothing else is taken.
+ */
+export interface RunScheduleNowRequest {
+  name: string
+  workers?: number
+  quarantinedFails?: boolean
+  loginState?: 'off' | 'refresh'
+}

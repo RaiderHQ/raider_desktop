@@ -65,6 +65,7 @@ let handlers: Map<string, Handler>
 let deps: SchedulesIpcDeps & {
   runGemCli: ReturnType<typeof vi.fn>
   openPath: ReturnType<typeof vi.fn>
+  startRun: ReturnType<typeof vi.fn>
 }
 
 const main = { sender: { id: MAIN_ID } }
@@ -100,6 +101,7 @@ beforeEach(async () => {
     runGemCli: vi.fn(async () => ({ ok: true, stdout: '', stderr: '' })),
     listedFiles: (files) => listedFiles(files),
     openPath: vi.fn(async () => ''),
+    startRun: vi.fn(async () => ({ runId: 'run-1' })),
     platform: 'darwin'
   } as typeof deps
   register()
@@ -119,13 +121,15 @@ describe('sender check', () => {
     ['list-schedules', [RUBY]],
     ['add-schedule', [RUBY, REQUEST]],
     ['remove-schedule', [RUBY, 'nightly']],
-    ['open-schedule-report', ['nightly']]
+    ['open-schedule-report', ['nightly']],
+    ['run-schedule-now', [RUBY, { name: 'nightly' }]]
   ])('%s refuses any other sender and runs nothing', async (channel, args) => {
     await write('raider-results/index.html', '<html>')
     const result = await handlers.get(channel)!({ sender: { id: 99 } }, ...args)
     expect(result).toEqual({ error: 'invalid' })
     expect(deps.runGemCli).not.toHaveBeenCalled()
     expect(deps.openPath).not.toHaveBeenCalled()
+    expect(deps.startRun).not.toHaveBeenCalled()
   })
 })
 
@@ -578,6 +582,140 @@ describe('open-schedule-report', () => {
     expect(await call('open-schedule-report', 'nightly')).toEqual({
       error: 'open-failed',
       message: 'No app'
+    })
+  })
+})
+
+describe('run-schedule-now', () => {
+  const listing = (...rows: object[]): void => {
+    deps.runGemCli.mockResolvedValue({
+      ok: true,
+      json: { notice: null, schedules: rows },
+      stdout: '',
+      stderr: ''
+    })
+  }
+  const runRequest = (): Record<string, unknown> => deps.startRun.mock.calls[0][0]
+
+  it('reads the schedule from main, builds its scope and starts a normal run', async () => {
+    listing({ ...ROW, show_browser: true })
+    expect(
+      await call('run-schedule-now', RUBY, {
+        name: 'nightly',
+        workers: 3,
+        quarantinedFails: true,
+        loginState: 'refresh'
+      })
+    ).toEqual({ runId: 'run-1' })
+    expect(gemArgs()).toEqual(['schedule', 'list', '--json'])
+    expect(runRequest()).toEqual({
+      scope: { kind: 'all' },
+      workers: 3,
+      rubyCommand: RUBY,
+      quarantinedFails: true,
+      loginState: 'refresh',
+      headed: true
+    })
+    // Only for the project the schedule was read from
+    expect(deps.startRun.mock.calls[0][1]).toBe(project)
+  })
+
+  it('ignores a scope, headed or any other field the renderer sends', async () => {
+    listing(ROW)
+    await call('run-schedule-now', RUBY, {
+      name: 'nightly',
+      scope: { kind: 'locations', locations: ['spec/x_spec.rb:1'] },
+      headed: true,
+      rubyCommand: 'evil'
+    })
+    expect(runRequest()).toEqual({ scope: { kind: 'all' }, rubyCommand: RUBY, headed: false })
+  })
+
+  it('runs a tag schedule as a tags scope', async () => {
+    listing({ ...ROW, selection: { kind: 'tag', tag: 'smoke' } })
+    await call('run-schedule-now', RUBY, { name: 'nightly', workers: 2 })
+    expect(runRequest()).toMatchObject({ scope: { kind: 'tags', tags: ['smoke'] }, workers: 2 })
+  })
+
+  it('runs a files schedule as a files scope; one file runs serially', async () => {
+    listing({ ...ROW, selection: { kind: 'files', files: ['spec/login_spec.rb'] } })
+    await call('run-schedule-now', RUBY, { name: 'nightly', workers: 2 })
+    expect(runRequest().scope).toEqual({ kind: 'files', files: ['spec/login_spec.rb'] })
+    expect(runRequest()).not.toHaveProperty('workers')
+    deps.startRun.mockClear()
+    listing({
+      ...ROW,
+      selection: { kind: 'files', files: ['spec/login_spec.rb', 'spec/cart_spec.rb'] }
+    })
+    await call('run-schedule-now', RUBY, { name: 'nightly', workers: 2 })
+    expect(runRequest()).toMatchObject({ workers: 2 })
+  })
+
+  it('never shows the browser on Linux', async () => {
+    register({ platform: 'linux' })
+    listing({ ...ROW, show_browser: true })
+    await call('run-schedule-now', RUBY, { name: 'nightly' })
+    expect(runRequest().headed).toBe(false)
+  })
+
+  it('refuses an unknown name and an orphan row without running', async () => {
+    listing(ROW)
+    expect(await call('run-schedule-now', RUBY, { name: 'other' })).toMatchObject({
+      error: 'invalid'
+    })
+    listing({ name: 'nightly', orphan: true, os_state: 'loaded', last: null })
+    expect(await call('run-schedule-now', RUBY, { name: 'nightly' })).toMatchObject({
+      error: 'invalid'
+    })
+    expect(deps.startRun).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['no payload', undefined],
+    ['a bad name', { name: '../x' }],
+    ['bad workers', { name: 'nightly', workers: '2' }],
+    ['zero workers', { name: 'nightly', workers: 0 }],
+    ['bad quarantinedFails', { name: 'nightly', quarantinedFails: 'yes' }],
+    ['bad loginState', { name: 'nightly', loginState: 'reuse' }]
+  ])('refuses %s before calling the gem', async (_label, payload) => {
+    expect(await call('run-schedule-now', RUBY, payload)).toMatchObject({ error: 'invalid' })
+    expect(deps.runGemCli).not.toHaveBeenCalled()
+    expect(deps.startRun).not.toHaveBeenCalled()
+  })
+
+  it('is gated like the other gem channels', async () => {
+    expect(await call('run-schedule-now', 'rm -rf', { name: 'nightly' })).toMatchObject({
+      error: 'invalid'
+    })
+    await write('Gemfile.lock', LOCK('4.1.0'))
+    expect(await call('run-schedule-now', RUBY, { name: 'nightly' })).toEqual({
+      error: 'needs42'
+    })
+    expect(deps.runGemCli).not.toHaveBeenCalled()
+  })
+
+  it('passes a list error through', async () => {
+    deps.runGemCli.mockResolvedValue({ ok: false, error: 'timeout', message: 'slow' })
+    expect(await call('run-schedule-now', RUBY, { name: 'nightly' })).toEqual({
+      error: 'timeout',
+      message: 'slow'
+    })
+    expect(deps.startRun).not.toHaveBeenCalled()
+  })
+
+  it('passes busy codes through and turns any other run error into refused + message', async () => {
+    listing(ROW)
+    deps.startRun.mockResolvedValueOnce({ error: 'scheduleBusy', name: 'other' })
+    expect(await call('run-schedule-now', RUBY, { name: 'nightly' })).toEqual({
+      error: 'scheduleBusy',
+      name: 'other'
+    })
+    deps.startRun.mockResolvedValueOnce({ error: 'busy' })
+    expect(await call('run-schedule-now', RUBY, { name: 'nightly' })).toEqual({ error: 'busy' })
+    deps.startRun.mockResolvedValueOnce({ error: 'Invalid tag: a b' })
+    expect(await call('run-schedule-now', RUBY, { name: 'nightly' })).toEqual({
+      error: 'refused',
+      message: 'Invalid tag: a b'
     })
   })
 })

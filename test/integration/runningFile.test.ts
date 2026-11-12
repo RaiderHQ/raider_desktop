@@ -32,7 +32,7 @@ beforeEach(() => {
   dir = path.join(project, '.raider', 'schedules')
   file = path.join(dir, 'running.json')
   alive = new Set([OTHER])
-  deps = { pid: 1000, isAlive: (pid) => alive.has(pid) }
+  deps = { pid: 1000, isAlive: (pid): boolean => alive.has(pid) }
 })
 
 afterEach(() => {
