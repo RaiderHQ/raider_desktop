@@ -9,6 +9,8 @@ import type { ScheduledLastRun } from '../../../shared/types/schedules'
 
 /** Only the log's tail is read; the gem trims it to 50 lines anyway */
 const MAX_LOG_BYTES = 1024 * 1024
+/** The last run needs only the last line: a small tail, read once per listed schedule */
+const LAST_RUN_BYTES = 64 * 1024
 
 /**
  * Where run logs live: 4.2's folder, or 4.1's for the watcher until it moves (Task 5). A
@@ -70,6 +72,6 @@ export async function lastRunFromLog(
   projectPath: string,
   name: string
 ): Promise<ScheduledLastRun | null> {
-  const lines = await readRunLog(projectPath, name)
+  const lines = await readRunLog(projectPath, name, LAST_RUN_BYTES)
   return lines.length === 0 ? null : parseLastRun(lines[lines.length - 1])
 }

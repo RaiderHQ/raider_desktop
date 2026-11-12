@@ -425,6 +425,12 @@ describe('parseScheduleList', () => {
     ])
   })
 
+  it('lists a name once, the first row winning', () => {
+    const parsed = parseScheduleList({ notice: null, schedules: [row, { ...row, retries: 3 }] })
+    expect(parsed?.schedules).toHaveLength(1)
+    expect(parsed?.schedules[0]).toMatchObject({ retries: 1 })
+  })
+
   it('strips control characters from os_state and bounds it', () => {
     const parsed = parseScheduleList({
       notice: null,

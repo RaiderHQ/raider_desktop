@@ -56,6 +56,8 @@ const NO_SCHEDULE_COMMAND = /Could not find command "schedule"/
 const GEM_CANT_LOAD = [
   /bundler: (?:failed to load command|command not found): raider/,
   /Could not find (?:gem )?['"]?ruby_raider/,
+  /Could not find .+ in (?:locally installed gems|any of the sources)/,
+  /Could not locate Gemfile/,
   /Bundler::GemNotFound|Gem::MissingSpecError|Gem::LoadError/,
   /cannot load such file/,
   /\bLoadError\b/,

@@ -469,6 +469,9 @@ describe('refusals', () => {
   it.each([
     'bundler: failed to load command: raider (/x/bin/raider)\n/x/lib/a.rb:1: in `require`\n  from y',
     'Could not find ruby_raider-4.2.0 in locally installed gems\nRun `bundle install` to install missing gems.',
+    'Could not find nokogiri-1.16.0 in locally installed gems\nRun `bundle install` to install missing gems.',
+    "Could not find gem 'selenium-webdriver' in any of the sources.",
+    'Could not locate Gemfile or .bundle/ directory',
     "/x/kernel_require.rb:136:in `require': cannot load such file -- ruby_raider (LoadError)\n\tfrom /x/y.rb:2",
     'Your Ruby version is 3.1.0, but your Gemfile specified >= 3.2'
   ])('maps a gem that cannot load to rubyCantRun: %j', async (stderr) => {

@@ -138,11 +138,17 @@ export function parseScheduleList(value: unknown): SchedulesList | null {
   const { notice, schedules } = value as Json
   if (notice !== null && typeof notice !== 'string') return null
   if (!Array.isArray(schedules)) return null
+  // A name is listed once (the first row wins), so each schedule's log is read once
+  const seen = new Set<string>()
   return {
     notice: notice === null ? null : plainText(notice),
     schedules: schedules
       .slice(0, MAX_ENTRIES)
       .map(parseSchedule)
-      .filter((entry): entry is GemSchedule => entry !== null)
+      .filter((entry): entry is GemSchedule => {
+        if (entry === null || seen.has(entry.name)) return false
+        seen.add(entry.name)
+        return true
+      })
   }
 }
