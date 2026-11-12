@@ -313,11 +313,15 @@ export function createScheduleWatcher(
       if (stopped) return
       const keys = seen.get(name) ?? new Set<string>()
       seen.set(name, keys)
-      const failures: Record<string, unknown>[] = []
-      for (const line of lines) {
-        if (!isPlainObject(line)) continue
+      // Only the newest MAX_SEEN keyed lines count, seeding or not: an older line past the
+      // cap would be forgotten each scan and look new again
+      const keyed = lines.flatMap((line) => {
+        if (!isPlainObject(line)) return []
         const key = lineKey(name, line)
-        if (key === null) continue
+        return key === null ? [] : [{ key, line }]
+      })
+      let failure: Record<string, unknown> | null = null
+      for (const { key, line } of keyed.slice(-MAX_SEEN)) {
         if (keys.delete(key)) {
           keys.add(key)
           continue
@@ -325,19 +329,21 @@ export function createScheduleWatcher(
         keys.add(key)
         if (!announce) continue
         if (isScheduledWith(line, RESULT_STATUSES)) finished = true
-        if (isScheduledWith(line, BANNER_STATUSES)) failures.push(line)
+        // At most one banner per schedule per scan: its newest new failure
+        if (isScheduledWith(line, BANNER_STATUSES)) failure = line
       }
       for (const key of keys) {
         if (keys.size <= MAX_SEEN) break
         keys.delete(key)
       }
-      if (failures.length === 0) continue
+      if (failure === null) continue
       notify ??= await readScheduleNotify(projectPath)
       if (stopped) return
       // Unknown schedule or notify on (the gem shows its own): no banner
       if (notify.get(name) !== false) continue
-      for (const line of failures) banner(name, line)
+      banner(name, failure)
     }
+    // At most one per scan, whatever the number of new lines
     if (finished && !stopped) send('scheduled-run-finished', projectPath)
   }
 

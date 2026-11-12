@@ -297,15 +297,17 @@ describe('scheduleWatcher', () => {
   it('counts: one test, and a failed line whose counts are bad', async () => {
     const f = fakes()
     await started(f)
-    await appendFile(
-      log(),
-      line({ run_id: '1000000000000000', counts: { total: 1, passed: 0, failed: 1, skipped: 0 } }) +
-        line({ run_id: '2000000000000000', counts: { total: '12', failed: 3 } }) +
-        line({ run_id: '3000000000000000', counts: { total: 2, failed: -1 } }) +
-        line({ run_id: '4000000000000000', counts: { total: 2, failed: 3 } }) +
-        line({ run_id: '5000000000000000', counts: null })
-    )
-    await change(f)
+    // One run per scan (one banner per schedule per scan)
+    for (const [id, counts] of [
+      ['1000000000000000', { total: 1, passed: 0, failed: 1, skipped: 0 }],
+      ['2000000000000000', { total: '12', failed: 3 }],
+      ['3000000000000000', { total: 2, failed: -1 }],
+      ['4000000000000000', { total: 2, failed: 3 }],
+      ['5000000000000000', null]
+    ] as const) {
+      await appendFile(log(), line({ run_id: id, counts }))
+      await change(f)
+    }
     expect(f.notes.map((n) => n.body)).toEqual([
       'nightly: 1 of 1 test failed',
       'nightly failed',
@@ -341,10 +343,12 @@ describe('scheduleWatcher', () => {
   it('keys a line by started_at when run_id is missing or not a run id', async () => {
     const f = fakes()
     await started(f)
-    const two =
-      line({ run_id: undefined, started_at: '2026-11-10T11:00:00.000Z' }) +
-      line({ run_id: 'NOT-A-RUN-ID', started_at: '2026-11-10T12:00:00.000Z' })
-    await appendFile(log(), two)
+    const first = line({ run_id: undefined, started_at: '2026-11-10T11:00:00.000Z' })
+    const second = line({ run_id: 'NOT-A-RUN-ID', started_at: '2026-11-10T12:00:00.000Z' })
+    const two = first + second
+    await appendFile(log(), first)
+    await change(f)
+    await appendFile(log(), second)
     await change(f)
     expect(f.notes).toHaveLength(2)
     await writeFile(log(), two)
@@ -393,6 +397,36 @@ describe('scheduleWatcher', () => {
     )
     await change(f)
     expect(f.notes.map((n) => n.body)).toEqual(['nightly failed'])
+  })
+
+  it('a hostile log past the seen cap: only its newest lines count, one banner and one finished event', async () => {
+    const id = (n: number): string => n.toString(16).padStart(16, '0')
+    let text = ''
+    for (let n = 1; n <= 600; n++) text += line({ run_id: id(n) })
+    await writeFile(log(), text)
+    const f = fakes()
+    await started(f)
+    await appendFile(log(), line({ run_id: id(601) }))
+    await change(f)
+    expect(f.notes).toHaveLength(1)
+    expect(f.sent.filter((c) => c === 'scheduled-run-finished')).toHaveLength(1)
+    // A scan with nothing new shows nothing
+    await change(f)
+    expect(f.notes).toHaveLength(1)
+    expect(f.sent.filter((c) => c === 'scheduled-run-finished')).toHaveLength(1)
+  })
+
+  it('several new failures of one schedule in a scan show one banner, for the newest', async () => {
+    const f = fakes()
+    await started(f)
+    await appendFile(
+      log(),
+      line({ run_id: '1000000000000000' }) +
+        line({ run_id: '2000000000000000', status: 'setup_error' }) +
+        line({ run_id: '3000000000000000', status: 'passed' })
+    )
+    await change(f)
+    expect(f.notes.map((n) => n.body)).toEqual(['nightly could not start'])
   })
 
   describe('readScheduleNotify (schedules.yml)', () => {
