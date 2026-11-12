@@ -168,6 +168,9 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true })
 })
 
+/** The watches still open */
+const open = (f: ReturnType<typeof fakes>): FakeWatch[] => f.watches.filter((w) => !w.closed)
+
 /** Fires a change and waits for the settled scan */
 async function change(f: ReturnType<typeof fakes>): Promise<void> {
   f.watches.filter((w) => !w.closed).forEach((w) => w.fire())
@@ -539,35 +542,43 @@ describe('scheduleWatcher', () => {
     const f = fakes()
     await started(f)
     expect(f.watches[0]).toMatchObject({ dir: join(dir, '.raider'), recursive: false })
-    // Other .raider churn while waiting does nothing
+    // Other .raider churn while waiting settles but pushes nothing
     f.watches[0].fire('flows')
-    expect(f.timers).toBe(0)
+    f.flush()
+    await watcher!.idle()
+    expect(f.sent).toEqual([])
 
     await mkdir(join(schedulesDir(), 'nightly'), { recursive: true })
     await writeSchedules(['nightly', false])
     await writeFile(log(), line())
-    f.watches[0].fire('schedules')
+    // macOS can report the new entry as a change of the watched folder itself
+    open(f)[0].fire('.raider')
     f.flush()
     await watcher!.idle()
     expect(f.watches[0].closed).toBe(true)
-    expect(f.watches[1]).toMatchObject({ dir: schedulesDir(), recursive: true })
+    expect(open(f)).toEqual([expect.objectContaining({ dir: schedulesDir(), recursive: true })])
     // Its first run is news: the folder was not there at start
     expect(f.notes).toHaveLength(1)
     expect(f.sent).toEqual(['schedules-changed', 'scheduled-run-finished'])
   })
 
-  it('without .raider watches the project root, only for .raider', async () => {
+  it('without .raider watches the project root; its churn pushes nothing', async () => {
     await rm(join(dir, '.raider'), { recursive: true })
     const f = fakes()
     await started(f)
     expect(f.watches[0]).toMatchObject({ dir, recursive: false })
     f.watches[0].fire('README.md')
-    expect(f.timers).toBe(0)
-    await mkdir(join(dir, '.raider'))
-    f.watches[0].fire('.raider')
     f.flush()
     await watcher!.idle()
-    expect(f.watches[1]).toMatchObject({ dir: join(dir, '.raider'), recursive: false })
+    expect(f.sent).toEqual([])
+    expect(f.watches.filter((w) => !w.closed)).toHaveLength(1)
+    await mkdir(join(dir, '.raider'))
+    open(f)[0].fire('.raider')
+    f.flush()
+    await watcher!.idle()
+    expect(open(f)).toEqual([
+      expect.objectContaining({ dir: join(dir, '.raider'), recursive: false })
+    ])
     // Still nothing to show
     expect(f.sent).toEqual([])
   })
@@ -676,6 +687,17 @@ describe('scheduleWatcher', () => {
       expect(f.sent).toEqual(['schedules-changed'])
     } finally {
       await rm(outside, { recursive: true, force: true })
+    }
+  })
+
+  it('a stop while arming (a project switch mid-await) leaves no watch open', async () => {
+    for (let ticks = 0; ticks < 12; ticks++) {
+      const f = fakes()
+      const w = createScheduleWatcher(dir, f.deps)
+      for (let i = 0; i < ticks; i++) await new Promise((r) => setImmediate(r))
+      w.stop()
+      await w.idle()
+      expect(open(f), `after ${ticks} ticks`).toEqual([])
     }
   })
 

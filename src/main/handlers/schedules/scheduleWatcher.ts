@@ -190,15 +190,14 @@ export function createScheduleWatcher(
     }, DEBOUNCE_MS)
   }
 
-  /**
-   * Watches `dir`; `counts` says which reported names matter. A parent watch waits for one
-   * entry (.raider or schedules) and ignores the rest of the folder's churn.
-   */
+  /** Watches `dir`; `counts` says which reported names matter */
   const watchDir = (
     dir: string,
     recursive: boolean,
     counts: (filename: string | null) => boolean
   ): boolean => {
+    // An arm still awaiting when the project switched must not leave a watch behind
+    if (stopped) return false
     try {
       handle = deps.watch(dir, { recursive }, (filename) => {
         if (counts(filename)) schedule()
@@ -214,10 +213,12 @@ export function createScheduleWatcher(
     }
   }
 
-  const waitsFor =
-    (entry: string) =>
-    (filename: string | null): boolean =>
-      filename === null || filename === entry
+  /**
+   * A parent watch (waiting for .raider or schedules) settles on any change: platforms report
+   * the new entry under its own name, the watched folder's name or none. A settle there is a
+   * few lstats and pushes nothing until the folder is watched.
+   */
+  const anyChange = (): boolean => true
 
   /**
    * Whether .raider/schedules/ is a real folder of this project: no link on the way (.raider
@@ -238,11 +239,7 @@ export function createScheduleWatcher(
     closeHandle()
     const raider = await lstatOrNull(raiderDir)
     if (!raider) {
-      if (
-        !stopped &&
-        watchDir(projectPath, false, waitsFor('.raider')) &&
-        (await lstatOrNull(raiderDir))
-      )
+      if (!stopped && watchDir(projectPath, false, anyChange) && (await lstatOrNull(raiderDir)))
         schedule()
       return
     }
@@ -250,18 +247,14 @@ export function createScheduleWatcher(
     if (!raider.isDirectory()) return
     const jobs = await lstatOrNull(jobsDir)
     if (!jobs) {
-      if (
-        !stopped &&
-        watchDir(raiderDir, false, waitsFor('schedules')) &&
-        (await lstatOrNull(jobsDir))
-      )
+      if (!stopped && watchDir(raiderDir, false, anyChange) && (await lstatOrNull(jobsDir)))
         schedule()
       return
     }
     if (stopped) return
     // A linked .raider/schedules/ is never watched or read; .raider is, for it to be replaced
     if (!(await jobsDirIsReal())) {
-      if (!stopped) watchDir(raiderDir, false, waitsFor('schedules'))
+      if (!stopped) watchDir(raiderDir, false, anyChange)
       return
     }
     watchingJobs = watchDir(jobsDir, true, isScheduleChange)
