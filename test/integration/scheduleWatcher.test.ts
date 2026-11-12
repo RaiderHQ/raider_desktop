@@ -272,12 +272,12 @@ describe('scheduleWatcher', () => {
 
   it('ignores hostile lines and folders; the body holds only the name and integers', async () => {
     await mkdir(join(dir, '.raider', 'flows', 'Bad-Name'), { recursive: true })
-    await mkdir(join(dir, '.raider', 'flows', 'env'), { recursive: true })
+    await mkdir(join(dir, '.raider', 'flows', 'Env'), { recursive: true })
     const f = fakes()
     watcher = createScheduleWatcher(dir, f.deps)
     await watcher.idle()
     await writeFile(join(dir, '.raider', 'flows', 'Bad-Name', 'runs.jsonl'), line())
-    await writeFile(join(dir, '.raider', 'flows', 'env', 'runs.jsonl'), line())
+    await writeFile(join(dir, '.raider', 'flows', 'Env', 'runs.jsonl'), line())
     await appendFile(
       log(),
       '{not json\n' +
@@ -395,11 +395,11 @@ describe('scheduleWatcher', () => {
       for (const churn of [
         'broken/scheduler.log',
         'broken.lock',
-        'env',
+        'Env',
         '.schedules.yml.a1b2c3d4e5f6.tmp',
         'Bad-Name/runs.jsonl',
         'broken/sub/runs.jsonl',
-        'env/runs.jsonl'
+        'Env/runs.jsonl'
       ])
         expect(isScheduleChange(churn), churn).toBe(false)
     })
@@ -410,7 +410,7 @@ describe('scheduleWatcher', () => {
       await watcher.idle()
       f.watches[0].fire('broken/scheduler.log')
       f.watches[0].fire('broken.lock')
-      f.watches[0].fire('env')
+      f.watches[0].fire('Env')
       expect(f.timers).toBe(0)
       f.flush()
       await watcher.idle()

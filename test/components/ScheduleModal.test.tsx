@@ -34,10 +34,10 @@ const at = (hours: number, minutes: number, daysAgo = 0): string => {
 const now = new Date(2026, 10, 10, 12, 0)
 
 const last = (patch: Partial<ScheduledLastRun> = {}): ScheduledLastRun => ({
-  status: 'completed',
+  status: 'passed',
   finishedAt: at(8, 0),
-  failedStep: null,
-  resultsDir: 'flow-results/fill_hours/20261110T070000Z',
+  trigger: 'schedule',
+  counts: { total: 5, passed: 4, failed: 1, skipped: 0 },
   ...patch
 })
 
@@ -48,6 +48,8 @@ const schedule = (patch: Partial<GemScheduleRule> = {}): GemScheduleRule => ({
   on: null,
   retries: 0,
   notify: false,
+  showBrowser: false,
+  selection: { kind: 'all' },
   nextRunAt: null,
   osState: 'ok',
   last: null,
@@ -74,15 +76,8 @@ describe('schedule texts', () => {
     expect(lastResultText(t, last({ status: 'busy' }), now)).toBe(
       'Skipped, another run was going · 08:00 today'
     )
-    // 4.1-only results carry no counts yet, so they read as a setup error for now
-    expect(lastResultText(t, last(), now)).toBe('Could not start · 08:00 today')
-    expect(
-      lastResultText(
-        t,
-        last({ status: 'failed', failedStep: { number: 4, title: 'Save', line: 9 } }),
-        now
-      )
-    ).toBe('Could not start · 08:00 today')
+    expect(lastResultText(t, last(), now)).toBe('Passed 4 · 08:00 today')
+    expect(lastResultText(t, last({ status: 'failed' }), now)).toBe('Failed 1 of 5 · 08:00 today')
     expect(lastResultText(t, last({ status: 'setup_error', finishedAt: at(8, 0, 1) }), now)).toBe(
       'Could not start · 08:00 yesterday'
     )

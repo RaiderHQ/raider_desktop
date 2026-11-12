@@ -187,6 +187,11 @@ describe('IPC Contract', () => {
     // Saved logins
     'listSavedLogins',
     'forgetSavedLogin',
+    'schedulesStatus',
+    'listSchedules',
+    'addSchedule',
+    'removeSchedule',
+    'openScheduleReport',
 
     // App Lifecycle
     'closeApp'

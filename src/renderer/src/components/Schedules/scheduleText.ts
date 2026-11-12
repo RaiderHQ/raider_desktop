@@ -31,14 +31,24 @@ export function whenText(t: T, iso: string, now: Date): string {
   return t('schedules.when.date', { date, time })
 }
 
-/** "Could not start · 08:00 today", "Skipped, another run was going · …", or "Not run yet". */
-// Interim: 4.1 results (completed/failed without counts) read as "Could not start" until the
-// 4.2 last-run shape (passed/failed/total) lands
+/**
+ * "Passed 12 · 08:00 today", "Failed 2 of 12 · …", "Could not start · …", "Skipped, another
+ * run was going · …", or "Not run yet".
+ */
 export function lastResultText(t: T, last: ScheduledLastRun | null, now: Date): string {
   if (!last) return t('schedules.last.never')
   const when = whenText(t, last.finishedAt, now)
-  if (last.status === 'busy') return t('schedules.last.busy', { when })
-  return t('schedules.last.setupError', { when })
+  const { passed, failed, total } = last.counts
+  switch (last.status) {
+    case 'passed':
+      return t('schedules.last.passed', { passed, when })
+    case 'failed':
+      return t('schedules.last.failed', { failed, total, when })
+    case 'busy':
+      return t('schedules.last.busy', { when })
+    default:
+      return t('schedules.last.setupError', { when })
+  }
 }
 
 /** "Every weekday at 08:00", "Every hour at :15", "Every Monday at 08:00" (+ notify). */

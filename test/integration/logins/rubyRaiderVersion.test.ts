@@ -4,7 +4,8 @@ import {
   rubyRaiderPin,
   rubyRaiderVersion,
   supportsLoginReuse,
-  supportsRuntime
+  supportsRuntime,
+  supportsSchedules
 } from '../../../src/main/handlers/logins/rubyRaiderVersion'
 
 describe('rubyRaiderVersion', () => {
@@ -88,5 +89,19 @@ describe('supportsRuntime', () => {
     expect(supportsRuntime('2.12.0')).toBe(false)
     expect(supportsRuntime(null)).toBe(true)
     expect(supportsRuntime('')).toBe(true)
+  })
+})
+
+describe('supportsSchedules', () => {
+  it.each([
+    ['4.2.0', true],
+    ['4.2', true],
+    ['4.10.1', true],
+    ['5.0.0', true],
+    ['4.1.9', false],
+    ['3.15.0', false],
+    [null, false]
+  ])('%s → %s', (version, expected) => {
+    expect(supportsSchedules(version)).toBe(expected)
   })
 })

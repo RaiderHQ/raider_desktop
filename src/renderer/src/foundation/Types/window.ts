@@ -19,6 +19,13 @@ import type { RunApi } from '@shared/types/runEvents'
 import type { AssertionMessage } from '@shared/types/pendingAssertion'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
+import type {
+  GemCliError,
+  ScheduleChangeResult,
+  ScheduleRequest,
+  SchedulesList,
+  SchedulesStatus
+} from '@shared/types/schedules'
 import type { AcceptBaselineResult } from '@shared/types/acceptBaseline'
 import type {
   TraceEntryResult,
@@ -185,6 +192,20 @@ export interface WindowApi extends RunApi {
   /** The project's saved logins, without cookies or storage */
   listSavedLogins: () => Promise<SavedLoginsResult>
   forgetSavedLogin: (name: string) => Promise<{ ok: true } | { error: string }>
+
+  // --- Test schedules (active project, raider schedule, ruby_raider 4.2+) ---
+  /** Read from files only: whether the project's gem can schedule, and the platform */
+  schedulesStatus: () => Promise<SchedulesStatus | GemCliError>
+  /** The project's schedules, each with its last run (the run log's, busy included) */
+  listSchedules: (rubyCommand: string) => Promise<SchedulesList | GemCliError>
+  /** Adds the schedule, or replaces the one with its name */
+  addSchedule: (
+    rubyCommand: string,
+    request: ScheduleRequest
+  ) => Promise<ScheduleChangeResult | GemCliError>
+  removeSchedule: (rubyCommand: string, name: string) => Promise<ScheduleChangeResult | GemCliError>
+  /** The schedule's own last report, else raider-results/index.html; else `noReport` */
+  openScheduleReport: (name: string) => Promise<{ ok: true } | GemCliError>
 
   // --- Test Management ---
   /** `test` is the test as saved, with its project file when it has one */

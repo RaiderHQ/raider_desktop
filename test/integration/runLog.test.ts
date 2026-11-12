@@ -3,10 +3,10 @@ import { mkdtemp, mkdir, writeFile, rm, symlink, realpath } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-import { readRunLog } from '../../src/main/handlers/schedules/runLog'
+import { lastRunFromLog, readRunLog } from '../../src/main/handlers/schedules/runLog'
 
 let project: string
-const jobDir = (name: string): string => join(project, '.raider', 'flows', name)
+const jobDir = (name: string): string => join(project, '.raider', 'schedules', name)
 const writeLog = async (name: string, text: string): Promise<void> => {
   await mkdir(jobDir(name), { recursive: true })
   await writeFile(join(jobDir(name), 'runs.jsonl'), text)
@@ -30,7 +30,7 @@ describe('readRunLog', () => {
     ])
   })
 
-  it.each(['Fill_Hours', 'env', 'a b'])('reads nothing for the bad name %j', async (name) => {
+  it.each(['Fill_Hours', '../x', 'a b'])('reads nothing for the bad name %j', async (name) => {
     // A real, readable log sits where the bad name would resolve
     await writeLog(name, `${line(1)}\n`)
     expect(await readRunLog(project, name)).toEqual([])
@@ -64,5 +64,50 @@ describe('readRunLog', () => {
     expect(await readRunLog(project, 'fill_hours', maxBytes)).toEqual([
       { run_id: 'r3', status: 'completed' }
     ])
+  })
+})
+
+describe('readRunLog in the 4.1 folder (the watcher until Task 5)', () => {
+  it('reads .raider/flows/<name>/runs.jsonl only when asked to', async () => {
+    const dir = join(project, '.raider', 'flows', 'old')
+    await mkdir(dir, { recursive: true })
+    await writeFile(join(dir, 'runs.jsonl'), `${line(1)}\n`)
+    expect(await readRunLog(project, 'old')).toEqual([])
+    expect(await readRunLog(project, 'old', undefined, '.raider/flows')).toEqual([
+      { run_id: 'r1', status: 'completed' }
+    ])
+  })
+})
+
+describe('lastRunFromLog', () => {
+  const run = (patch: Record<string, unknown> = {}): string =>
+    JSON.stringify({
+      run_id: '0123456789abcdef',
+      started_at: '2026-11-12T08:00:00+01:00',
+      finished_at: '2026-11-12T08:01:00+01:00',
+      status: 'passed',
+      counts: { total: 3, passed: 3, failed: 0, skipped: 0 },
+      trigger: 'schedule',
+      results_dir: 'raider-results',
+      ...patch
+    })
+
+  it('is the last line, busy included', async () => {
+    await writeLog(
+      'nightly',
+      `${run()}\n${run({ status: 'busy', trigger: 'manual', counts: { total: 0, passed: 0, failed: 0, skipped: 0 } })}\n`
+    )
+    expect(await lastRunFromLog(project, 'nightly')).toEqual({
+      status: 'busy',
+      finishedAt: '2026-11-12T08:01:00+01:00',
+      trigger: 'manual',
+      counts: { total: 0, passed: 0, failed: 0, skipped: 0 }
+    })
+  })
+
+  it('is null without a log or when the last line does not fit', async () => {
+    expect(await lastRunFromLog(project, 'nightly')).toBeNull()
+    await writeLog('nightly', `${run()}\n${run({ status: 'completed' })}\n`)
+    expect(await lastRunFromLog(project, 'nightly')).toBeNull()
   })
 })

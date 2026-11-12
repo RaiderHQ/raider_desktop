@@ -1,14 +1,22 @@
 import { constants, promises as fs } from 'node:fs'
 import { assertRealInside, resolveInside } from '../tests/sidecar'
 import { isScheduleName } from '../../../shared/schedules'
+import { parseLastRun } from '../gem/gemJson'
+import type { ScheduledLastRun } from '../../../shared/types/schedules'
 
-// The gem's run log of a scheduled job (.raider/flows/<name>/runs.jsonl, one JSON line per
+// The gem's run log of a schedule (.raider/schedules/<name>/runs.jsonl, one JSON line per
 // run). It is written by project code, so nothing is trusted: each line is parsed on its own.
 
 /** Only the log's tail is read; the gem trims it to 50 lines anyway */
 const MAX_LOG_BYTES = 1024 * 1024
 
-const runLogRel = (name: string): string => `.raider/flows/${name}/runs.jsonl`
+/**
+ * Where run logs live: 4.2's folder, or 4.1's for the watcher until it moves (Task 5). A
+ * constant from main, never a value from the renderer.
+ */
+export type RunLogDir = '.raider/schedules' | '.raider/flows'
+
+const runLogRel = (dir: RunLogDir, name: string): string => `${dir}/${name}/runs.jsonl`
 
 /**
  * The log's lines, oldest first, each parsed on its own (a bad line is skipped). Empty when
@@ -17,12 +25,13 @@ const runLogRel = (name: string): string => `.raider/flows/${name}/runs.jsonl`
 export async function readRunLog(
   projectPath: string,
   name: string,
-  maxBytes = MAX_LOG_BYTES
+  maxBytes = MAX_LOG_BYTES,
+  dir: RunLogDir = '.raider/schedules'
 ): Promise<unknown[]> {
   if (!isScheduleName(name)) return []
   let handle: fs.FileHandle | undefined
   try {
-    const file = resolveInside(projectPath, runLogRel(name))
+    const file = resolveInside(projectPath, runLogRel(dir, name))
     await assertRealInside(projectPath, file)
     // O_NOFOLLOW refuses a link where it exists; the lstat covers platforms without it
     if ((await fs.lstat(file)).isSymbolicLink()) return []
@@ -51,4 +60,16 @@ export async function readRunLog(
   } finally {
     await handle?.close().catch(() => undefined)
   }
+}
+
+/**
+ * The schedule's last run from its log's last line (a busy line too, which the gem's list
+ * skips); null without a log or when that line doesn't fit.
+ */
+export async function lastRunFromLog(
+  projectPath: string,
+  name: string
+): Promise<ScheduledLastRun | null> {
+  const lines = await readRunLog(projectPath, name)
+  return lines.length === 0 ? null : parseLastRun(lines[lines.length - 1])
 }

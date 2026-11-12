@@ -269,7 +269,8 @@ export function createScheduleWatcher(
     // Read once per scan, and only when a new scheduled failure needs it
     let retries: Map<string, number> | null = null
     for (const name of await jobNames()) {
-      const lines = await readRunLog(projectPath, name, MAX_SCAN_BYTES)
+      // Still 4.1's folder: Task 5 moves the watcher to .raider/schedules/
+      const lines = await readRunLog(projectPath, name, MAX_SCAN_BYTES, '.raider/flows')
       if (stopped) return
       const keys = seen.get(name) ?? new Set<string>()
       seen.set(name, keys)
