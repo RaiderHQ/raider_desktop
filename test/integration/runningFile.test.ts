@@ -6,9 +6,12 @@ import os from 'node:os'
 import path from 'node:path'
 import {
   acquireRunning,
+  inspectRunning,
   pidAlive,
+  publishRunning,
   readRunning,
   releaseRunning,
+  removeIfSame,
   type RunningDeps
 } from '../../src/main/handlers/schedules/runningFile'
 
@@ -196,9 +199,20 @@ describe('acquireRunning: write and release', () => {
     expect(fs.readFileSync(target, 'utf8')).toBe('keep')
   })
 
-  it('treats a running.json it cannot replace as busy', () => {
+  it('treats a running.json it cannot replace as busy, and leaves it where it was', () => {
     fs.mkdirSync(file)
     expect(acquireRunning(project, deps)).toEqual({ ok: false })
+    expect(fs.statSync(file).isDirectory()).toBe(true)
+    expect(fs.readdirSync(dir).sort()).toEqual(['running.json', 'schedules.yml'])
+  })
+
+  it('leaves no temp or aside files behind', () => {
+    writeRunning({ pid: 777, run_id: 'old' })
+    const result = acquireRunning(project, deps)
+    if (!result.ok || !result.lock) throw new Error('not acquired')
+    expect(fs.readdirSync(dir).sort()).toEqual(['running.json', 'schedules.yml'])
+    releaseRunning(result.lock)
+    expect(fs.readdirSync(dir)).toEqual(['schedules.yml'])
   })
 
   it('release removes running.json only while it holds this run_id', () => {
@@ -215,5 +229,81 @@ describe('acquireRunning: write and release', () => {
     expect(fs.existsSync(file)).toBe(false)
     // Twice is harmless
     expect(() => releaseRunning(second.lock!)).not.toThrow()
+  })
+})
+
+describe('publishRunning: never visible empty', () => {
+  beforeEach(withSchedules)
+
+  it('links a complete file into place, 0600, and removes its temp name', () => {
+    const body = JSON.stringify({ pid: 1000, run_id: 'a' })
+    expect(publishRunning(file, body)).toBe(true)
+    expect(fs.readFileSync(file, 'utf8')).toBe(body)
+    if (process.platform !== 'win32') expect(fs.statSync(file).mode & 0o777).toBe(0o600)
+    expect(fs.statSync(file).nlink).toBe(1)
+    expect(fs.readdirSync(dir).sort()).toEqual(['running.json', 'schedules.yml'])
+  })
+
+  it('fails like O_EXCL when running.json appeared, keeping it and removing the temp', () => {
+    writeRunning({ pid: OTHER, run_id: 'theirs' })
+    expect(publishRunning(file, '{}')).toBe(false)
+    expect(onDisk().run_id).toBe('theirs')
+    expect(fs.readdirSync(dir).sort()).toEqual(['running.json', 'schedules.yml'])
+  })
+
+  it('fails like O_EXCL for a symlink at running.json, without writing through it', () => {
+    const target = path.join(project, 'target.json')
+    fs.symlinkSync(target, file)
+    expect(publishRunning(file, '{}')).toBe(false)
+    expect(fs.existsSync(target)).toBe(false)
+  })
+})
+
+describe('removeIfSame: only the file that was judged', () => {
+  beforeEach(withSchedules)
+
+  it('removes the file it inspected', () => {
+    writeRunning({ pid: 777, run_id: 'old' })
+    const seen = inspectRunning(file)!
+    expect(removeIfSame(file, seen.id)).toBe(true)
+    expect(fs.existsSync(file)).toBe(false)
+  })
+
+  it('keeps a file written after the inspection (stale replace race)', () => {
+    writeRunning({ pid: 777, run_id: 'old' })
+    const seen = inspectRunning(file)!
+    // The gem replaces it between our read and our removal
+    fs.unlinkSync(file)
+    writeRunning({ pid: OTHER, name: 'nightly', run_id: 'theirs' })
+    expect(removeIfSame(file, seen.id)).toBe(false)
+    expect(onDisk().run_id).toBe('theirs')
+    expect(fs.readdirSync(dir).sort()).toEqual(['running.json', 'schedules.yml'])
+  })
+
+  it('is true when the file is already gone', () => {
+    expect(removeIfSame(file, [0, 0])).toBe(true)
+  })
+
+  it('release keeps a file holding the same run_id that is a different file (release race)', () => {
+    const result = acquireRunning(project, deps)
+    if (!result.ok || !result.lock) throw new Error('not acquired')
+    const seen = inspectRunning(file)!
+    const copy = fs.readFileSync(file, 'utf8')
+    fs.unlinkSync(file)
+    fs.writeFileSync(file, copy)
+    // What release does after reading: remove only the inode it read
+    expect(removeIfSame(file, seen.id)).toBe(false)
+    expect(fs.existsSync(file)).toBe(true)
+  })
+
+  it('inspectRunning reports the lstat identity', () => {
+    writeRunning({ pid: 777 })
+    const stat = fs.lstatSync(file)
+    expect(inspectRunning(file)).toEqual({
+      id: [stat.dev, stat.ino],
+      data: { pid: 777 },
+      changed: false
+    })
+    expect(inspectRunning(path.join(dir, 'missing.json'))).toBeNull()
   })
 })

@@ -265,8 +265,6 @@ export async function startRun(
     const liveEvents = await readLiveEvents(projectPath)
 
     const deps = { ...defaultDeps(), ...overrides }
-    if (lastRunDir) await fs.rm(lastRunDir, { recursive: true, force: true }).catch(() => {})
-    lastRunDir = null
 
     // A scheduled run (the gem's wrapper) may hold the project; else this run says it holds it
     const claim = acquireRunning(projectPath)
@@ -276,6 +274,9 @@ export async function startRun(
         : { error: 'scheduleBusy', name: claim.name }
     }
     running = claim.lock
+
+    if (lastRunDir) await fs.rm(lastRunDir, { recursive: true, force: true }).catch(() => {})
+    lastRunDir = null
 
     const runId = randomUUID()
     const session = new RunSession({
@@ -536,10 +537,15 @@ export async function cancelRun(runId: string): Promise<void> {
   if (!active || active.runId !== runId || active.done || active.exited || active.cancelled) return
   active.cancelled = true
   active.session.requestCancel()
-  // Cancelled: a scheduled run may start (finish and quit remove it too)
-  releaseActive(active)
   const child = active.child
-  if (!child) return // not spawned yet; launch finishes the run as cancelled
+  if (!child) {
+    // Nothing spawned, so nothing can write raider-results/: a scheduled run may start.
+    // launch finishes the run as cancelled
+    releaseActive(active)
+    return
+  }
+  // With a child, running.json stays until it has exited (settle at close): rspec may
+  // still write raider-results/ during the grace period
   if (process.platform === 'win32') {
     kill(child, 'SIGINT')
     return

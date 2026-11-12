@@ -794,15 +794,36 @@ describe('runner', () => {
       expect(fs.existsSync(file)).toBe(false)
     })
 
-    it.skipIf(process.platform === 'win32')('removes it when the run is cancelled', async () => {
+    it.skipIf(process.platform === 'win32')(
+      'keeps it until a cancelled run has exited, then removes it',
+      async () => {
+        withRules()
+        // Ignores SIGINT: still running until the grace period's SIGKILL
+        script = { steps: [{ event: plan('t1') }], hang: true, ignoreSigint: true }
+        const runId = await run()
+        await waitFor(() => events.find((e) => e.type === 'run:planned'))
+        expect(fs.existsSync(file)).toBe(true)
+        await cancelRun(runId)
+        expect(fs.existsSync(file)).toBe(true)
+        await new Promise((resolve) => setTimeout(resolve, 100))
+        expect(fs.existsSync(file)).toBe(true)
+        await finishedEvent(runId)
+        expect(fs.existsSync(file)).toBe(false)
+      }
+    )
+
+    it('removes it when a run is cancelled before anything was spawned', async () => {
       withRules()
-      script = { steps: [{ event: plan('t1') }], hang: true }
+      let finishInstall!: () => void
+      deps.ensureBundle = (): Promise<{ ok: boolean }> =>
+        new Promise((resolve) => (finishInstall = (): void => resolve({ ok: true })))
       const runId = await run()
-      await waitFor(() => events.find((e) => e.type === 'run:planned'))
       expect(fs.existsSync(file)).toBe(true)
       await cancelRun(runId)
       expect(fs.existsSync(file)).toBe(false)
+      finishInstall()
       await finishedEvent(runId)
+      expect(deps.spawnCommand).not.toHaveBeenCalled()
     })
 
     it('removes it when a run ends before spawning (bundle install failed)', async () => {

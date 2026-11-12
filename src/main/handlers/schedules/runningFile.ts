@@ -45,29 +45,89 @@ const defaultDeps = (): RunningDeps => ({ pid: process.pid, isAlive: pidAlive })
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-/** Its JSON object; null when missing, a link, not a regular file, over 4 KB or not an object. */
-export function readRunning(file: string): Record<string, unknown> | null {
+/** Where a path's file is: same dev + ino means the same file (never through a link). */
+export type FileId = readonly [dev: number, ino: number]
+
+/**
+ * What is at running.json now: its identity (lstat), its JSON object when it is a small
+ * regular file, and `changed` when it was swapped between the lstat and the open. null when
+ * there is none. Mirrors the gem's RunLock#inspect_running.
+ */
+export function inspectRunning(
+  file: string
+): { id: FileId; data: Record<string, unknown> | null; changed: boolean } | null {
+  let id: FileId
+  let regular: boolean
+  try {
+    const stat = fs.lstatSync(file)
+    id = [stat.dev, stat.ino]
+    regular = stat.isFile()
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') return null
+    return { id: [-1, -1], data: null, changed: true }
+  }
+  if (!regular) return { id, data: null, changed: false }
   let fd: number
   try {
-    // lstat first: O_NOFOLLOW does not exist on Windows
-    if (!fs.lstatSync(file).isFile()) return null
+    // O_NOFOLLOW (POSIX) and the lstat above: never through a link; O_NONBLOCK: a fifo can't hang
     fd = fs.openSync(file, fs.constants.O_RDONLY | NOFOLLOW | NONBLOCK)
   } catch {
-    return null
+    return { id, data: null, changed: true }
   }
   try {
     const stat = fs.fstatSync(fd)
-    if (!stat.isFile() || stat.size > MAX_BYTES) return null
+    if (stat.dev !== id[0] || stat.ino !== id[1]) return { id, data: null, changed: true }
+    if (!stat.isFile() || stat.size > MAX_BYTES) return { id, data: null, changed: false }
     const buffer = Buffer.alloc(MAX_BYTES + 1)
     const read = fs.readSync(fd, buffer, 0, buffer.length, 0)
-    if (read > MAX_BYTES) return null
+    if (read > MAX_BYTES) return { id, data: null, changed: false }
     const data: unknown = JSON.parse(buffer.subarray(0, read).toString('utf8'))
-    return isPlainObject(data) ? data : null
+    return { id, data: isPlainObject(data) ? data : null, changed: false }
   } catch {
-    return null
+    return { id, data: null, changed: false }
   } finally {
     fs.closeSync(fd)
   }
+}
+
+/** Its JSON object; null when missing, a link, not a regular file, over 4 KB or not an object. */
+export function readRunning(file: string): Record<string, unknown> | null {
+  return inspectRunning(file)?.data ?? null
+}
+
+const sameId = (stat: fs.Stats, id: FileId): boolean => stat.dev === id[0] && stat.ino === id[1]
+
+/**
+ * Removes the file at `file` only if it is still the one with `id`: moves it aside, compares,
+ * and puts back (link never replaces a newer one) whatever was written there meanwhile. true
+ * when it is gone. Mirrors the gem's RunLock#remove_stale.
+ */
+export function removeIfSame(file: string, id: FileId): boolean {
+  const aside = `${file}.${randomBytes(6).toString('hex')}.stale`
+  try {
+    fs.renameSync(file, aside)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') return true
+    throw error
+  }
+  if (sameId(fs.lstatSync(aside), id)) {
+    try {
+      fs.unlinkSync(aside)
+    } catch (error) {
+      // Not removable (a directory): put it back as it was
+      fs.renameSync(aside, file)
+      throw error
+    }
+    return true
+  }
+  try {
+    fs.linkSync(aside, file)
+  } catch {
+    // a newer running.json is there already
+  } finally {
+    fs.unlinkSync(aside)
+  }
+  return false
 }
 
 /** The run named in `data` when it is another live process; else null (stale or none). */
@@ -98,28 +158,32 @@ const isRegularFile = (file: string): boolean => {
   }
 }
 
-/** Creates running.json exclusively; false when something is already there. Throws otherwise. */
-function create(file: string, body: string): boolean {
-  let fd: number
+/**
+ * Publishes running.json complete: writes a 0600 temp file beside it (O_EXCL, O_NOFOLLOW), then
+ * links it into place, which fails like O_EXCL when one is there; the temp name is removed
+ * either way. So no reader ever sees it empty. false when something was there.
+ */
+export function publishRunning(file: string, body: string): boolean {
+  const temp = `${file}.${randomBytes(6).toString('hex')}.tmp`
+  const fd = fs.openSync(
+    temp,
+    fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | NOFOLLOW,
+    0o600
+  )
   try {
-    fd = fs.openSync(
-      file,
-      fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | NOFOLLOW,
-      0o600
-    )
+    try {
+      fs.writeSync(fd, body)
+    } finally {
+      fs.closeSync(fd)
+    }
+    fs.linkSync(temp, file)
+    return true
   } catch (error) {
     if ((error as NodeJS.ErrnoException)?.code === 'EEXIST') return false
     throw error
+  } finally {
+    fs.rmSync(temp, { force: true })
   }
-  try {
-    fs.writeSync(fd, body)
-  } catch (error) {
-    fs.closeSync(fd)
-    fs.rmSync(file, { force: true })
-    throw error
-  }
-  fs.closeSync(fd)
-  return true
 }
 
 /**
@@ -135,7 +199,8 @@ export function acquireRunning(
   const dir = path.join(projectPath, ...SCHEDULES_DIR)
   if (!isRealDir(raider) || !isRealDir(dir)) return { ok: true, lock: null }
   const file = path.join(dir, RUNNING)
-  const busy = liveOther(readRunning(file), deps)
+  const seen = inspectRunning(file)
+  const busy = liveOther(seen?.data ?? null, deps)
   if (busy) return { ok: false, ...busy }
   if (!isRegularFile(path.join(dir, RULES))) return { ok: true, lock: null }
 
@@ -147,22 +212,22 @@ export function acquireRunning(
     started_at: new Date().toISOString()
   })
   try {
-    if (create(file, body)) return { ok: true, lock: { file, runId } }
-    const seen = liveOther(readRunning(file), deps)
-    if (seen) return { ok: false, ...seen }
-    // Stale (dead pid, our own leftover, unreadable): replace it once
-    fs.unlinkSync(file)
-    if (create(file, body)) return { ok: true, lock: { file, runId } }
+    // Swapped while read: someone is writing it now
+    if (seen?.changed) return { ok: false }
+    // Stale (dead pid, our own leftover, unreadable, a link): removed only if still that file
+    if (seen && !removeIfSame(file, seen.id)) return { ok: false }
+    if (publishRunning(file, body)) return { ok: true, lock: { file, runId } }
   } catch (error) {
     safeWarn('Could not write .raider/schedules/running.json:', String(error))
   }
   return { ok: false }
 }
 
-/** Removes running.json if it still holds this run's run_id. Never throws. */
+/** Removes running.json if it is still the file holding this run's run_id. Never throws. */
 export function releaseRunning(lock: RunningLock): void {
   try {
-    if (readRunning(lock.file)?.run_id === lock.runId) fs.unlinkSync(lock.file)
+    const seen = inspectRunning(lock.file)
+    if (seen && !seen.changed && seen.data?.run_id === lock.runId) removeIfSame(lock.file, seen.id)
   } catch (error) {
     safeWarn('Could not remove .raider/schedules/running.json:', String(error))
   }
