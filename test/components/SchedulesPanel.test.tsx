@@ -9,6 +9,7 @@ import useRubyStore from '@foundation/Stores/rubyStore'
 import { useRunStore } from '@foundation/Stores/runStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { useTickedTestsStore } from '@foundation/Stores/tickedTestsStore'
+import { useSchedulesFocusStore } from '@foundation/Stores/schedulesFocusStore'
 import type { TestRow } from '@foundation/testKey'
 import type { GemSchedule, GemScheduleRule, SchedulesStatus } from '@shared/types/schedules'
 
@@ -74,7 +75,8 @@ const api = {
   openDocs: vi.fn(),
   // The project store tells main about a project switch
   setActiveProject: vi.fn(),
-  readDirectory: vi.fn()
+  readDirectory: vi.fn(),
+  onSchedulesChanged: vi.fn()
 }
 const startSchedule = vi.fn()
 
@@ -101,6 +103,7 @@ beforeEach(() => {
   Object.values(api).forEach((f) => f.mockReset())
   api.setActiveProject.mockResolvedValue({ success: true })
   api.readDirectory.mockResolvedValue([])
+  api.onSchedulesChanged.mockImplementation(() => vi.fn())
   api.schedulesStatus.mockResolvedValue(status())
   list([])
   // @ts-expect-error - Mocking window.api
@@ -417,5 +420,35 @@ describe('SchedulesPanel', () => {
     await renderPanel()
     expect(screen.getByRole('alert')).toHaveTextContent(en.schedules.noRuby)
     expect(api.listSchedules).not.toHaveBeenCalled()
+  })
+
+  it('lists again when main says the schedules changed, and unsubscribes on unmount', async () => {
+    const off = vi.fn()
+    api.onSchedulesChanged.mockReturnValue(off)
+    const view = await renderPanel()
+    expect(api.listSchedules).toHaveBeenCalledTimes(1)
+    expect(api.onSchedulesChanged).toHaveBeenCalledTimes(1)
+    list([rule()])
+    await act(async () => api.onSchedulesChanged.mock.calls[0][0]())
+    expect(api.listSchedules).toHaveBeenCalledTimes(2)
+    expect(row('all_tests')).toBeInTheDocument()
+    view.unmount()
+    expect(off).toHaveBeenCalledTimes(1)
+  })
+
+  it('a banner click (focus request) opens the collapsed panel and remembers it', async () => {
+    localStorage.setItem(`schedulesPanelOpen:${PROJECT}`, '0')
+    await renderPanel()
+    expect(toggle()).toHaveAttribute('aria-expanded', 'false')
+    act(() => useSchedulesFocusStore.getState().focus(PROJECT))
+    expect(toggle()).toHaveAttribute('aria-expanded', 'true')
+    expect(localStorage.getItem(`schedulesPanelOpen:${PROJECT}`)).toBe('1')
+  })
+
+  it('a focus request from before it mounted does not reopen a panel collapsed since', async () => {
+    act(() => useSchedulesFocusStore.getState().focus(PROJECT))
+    localStorage.setItem(`schedulesPanelOpen:${PROJECT}`, '0')
+    await renderPanel()
+    expect(toggle()).toHaveAttribute('aria-expanded', 'false')
   })
 })

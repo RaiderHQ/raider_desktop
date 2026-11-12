@@ -385,6 +385,14 @@ const api = {
     request: RunScheduleNowRequest
   ): Promise<StartRunResult | GemCliError> =>
     ipcRenderer.invoke('run-schedule-now', rubyCommand, request),
+  /** Something changed under the open project's .raider/schedules/ (a run, a schedule) */
+  onSchedulesChanged: (callback: () => void): (() => void) =>
+    subscribe('schedules-changed', callback),
+  /** A failed scheduled run's banner was clicked: show the Tests tab's Schedules */
+  onFocusSchedules: (callback: () => void): (() => void) => subscribe('focus-schedules', callback),
+  /** A scheduled run of `projectPath` wrote raider-results: the Dashboard reloads */
+  onScheduledRunFinished: (callback: (projectPath: string) => void): (() => void) =>
+    subscribe('scheduled-run-finished', callback),
   /** Subscribes to live run events; the returned function removes only this subscription */
   onRunEvent: (callback: (event: RunEvent) => void): (() => void) => {
     const listener = (_event: IpcRendererEvent, runEvent: RunEvent): void => callback(runEvent)

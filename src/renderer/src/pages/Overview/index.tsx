@@ -7,6 +7,7 @@ import { FaChevronDown, FaChevronRight, FaTerminal } from 'react-icons/fa'
 import Folder from '@components/Library/Folder'
 import RecordingSettingsPanel from '@components/RecordingSettingsPanel'
 import SchedulesPanel from '@components/Schedules/SchedulesPanel'
+import { useSchedulesFocusStore } from '@foundation/Stores/schedulesFocusStore'
 import ContextMenu from '@components/ContextMenu'
 import FileNameDialog from '@components/FileNameDialog'
 import useFileClipboardStore, { copiedIn } from '@foundation/Stores/fileClipboardStore'
@@ -612,6 +613,16 @@ const Overview: React.FC = () => {
     if (tab === activeTab) return
     guardUnsaved(() => setActiveTab(tab))
   }
+
+  // A failed scheduled run's banner was clicked: the Tests tab, where the Schedules panel opens
+  // (a dirty Files edit asks first). Only a request made while this page is up counts.
+  const focusRequest = useSchedulesFocusStore((s) => s.request)
+  const focusSeen = useRef(focusRequest)
+  useEffect(() => {
+    if (focusRequest === focusSeen.current) return
+    focusSeen.current = focusRequest
+    switchTab('tests')
+  }, [focusRequest])
 
   // One write at a time; a ref so a repeat in the same tick can't start a second one
   const savingFileRef = useRef(false)

@@ -30,12 +30,13 @@ const active: ActiveRun = {
   events
 }
 
-const api = { getActiveRun: vi.fn(), onRunEvent: vi.fn() }
+const api = { getActiveRun: vi.fn(), onRunEvent: vi.fn(), onScheduledRunFinished: vi.fn() }
 
 beforeEach(() => {
   useRunStore.setState({ run: null, origin: null, isActive: false })
   api.getActiveRun.mockReset()
   api.onRunEvent.mockReset()
+  api.onScheduledRunFinished.mockReset()
   ;(window as unknown as { api: typeof api }).api = api
 })
 
@@ -99,14 +100,38 @@ describe('runStore', () => {
     expect(useRunStore.getState().isActive).toBe(false)
   })
 
-  it('subscribes exactly one listener and returns its unsubscribe', () => {
+  it('subscribes exactly one run listener and one scheduled-run listener; unsubscribes both', () => {
     const off = vi.fn()
+    const offScheduled = vi.fn()
     api.onRunEvent.mockReturnValue(off)
+    api.onScheduledRunFinished.mockReturnValue(offScheduled)
     api.getActiveRun.mockResolvedValue(null)
-    expect(subscribeRunEvents()).toBe(off)
+    const unsubscribe = subscribeRunEvents()
     expect(api.onRunEvent).toHaveBeenCalledTimes(1)
+    expect(api.onScheduledRunFinished).toHaveBeenCalledTimes(1)
     const listener = api.onRunEvent.mock.calls[0][0]
     listener(events[0])
     expect(useRunStore.getState().run?.runId).toBe('r1')
+    unsubscribe()
+    expect(off).toHaveBeenCalledTimes(1)
+    expect(offScheduled).toHaveBeenCalledTimes(1)
+  })
+
+  it('a finished scheduled run stamps scheduledRunAt with its project, a new stamp each time', () => {
+    api.onRunEvent.mockReturnValue(vi.fn())
+    api.onScheduledRunFinished.mockReturnValue(vi.fn())
+    api.getActiveRun.mockResolvedValue(null)
+    useRunStore.setState({ scheduledRunAt: null })
+    subscribeRunEvents()
+    const finished = api.onScheduledRunFinished.mock.calls[0][0]
+    finished('/proj')
+    const first = useRunStore.getState().scheduledRunAt
+    expect(first).toEqual({ projectPath: '/proj', at: expect.any(Number) })
+    finished('/proj')
+    expect(useRunStore.getState().scheduledRunAt).not.toBe(first)
+    expect(useRunStore.getState().scheduledRunAt!.at).toBeGreaterThan(first!.at)
+    // Only a string path is taken
+    finished(42 as unknown as string)
+    expect(useRunStore.getState().scheduledRunAt!.projectPath).toBe('/proj')
   })
 })

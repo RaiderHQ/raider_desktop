@@ -33,6 +33,12 @@ interface RunStore {
   /** Run now: runs the schedule's tests as a normal run; main reads the schedule itself */
   startSchedule: (name: string, origin: RunOrigin) => Promise<StartOutcome>
   cancel: () => Promise<void>
+  /**
+   * When a scheduled run of `projectPath` last wrote raider-results (main's watcher); the
+   * Dashboard reloads on it as it does on run.finished. `at` only grows, so each one is new.
+   */
+  scheduledRunAt: { projectPath: string; at: number } | null
+  scheduledRunFinished: (projectPath: string) => void
 }
 
 type StartOutcome = 'started' | 'busy' | 'error'
@@ -117,6 +123,12 @@ export const useRunStore = create<RunStore>((set, get): RunStore => {
     isActive: false,
     freshLoginNext: false,
     resultsCollapsed: false,
+    scheduledRunAt: null,
+    scheduledRunFinished: (projectPath: string): void => {
+      if (typeof projectPath !== 'string') return
+      const previous = get().scheduledRunAt?.at ?? 0
+      set({ scheduledRunAt: { projectPath, at: Math.max(Date.now(), previous + 1) } })
+    },
     setResultsCollapsed: (v: boolean): void => set({ resultsCollapsed: v }),
     hiddenRunStartedAt: null,
     hideCurrentRun: (): void => set({ hiddenRunStartedAt: get().run?.startedAt ?? null }),
@@ -170,9 +182,18 @@ export const useRunStore = create<RunStore>((set, get): RunStore => {
   }
 })
 
-/** Feeds run events into the store once, then restores a run already in progress. */
+/**
+ * Feeds run events (and scheduled runs that finished) into the store once, then restores a run
+ * already in progress. Returns one function removing both subscriptions.
+ */
 export function subscribeRunEvents(): () => void {
-  const unsubscribe = window.api.onRunEvent((e) => useRunStore.getState().ingest(e))
+  const offRun = window.api.onRunEvent((e) => useRunStore.getState().ingest(e))
+  const offScheduled = window.api.onScheduledRunFinished((projectPath) =>
+    useRunStore.getState().scheduledRunFinished(projectPath)
+  )
   void useRunStore.getState().restore()
-  return unsubscribe
+  return (): void => {
+    offRun()
+    offScheduled()
+  }
 }

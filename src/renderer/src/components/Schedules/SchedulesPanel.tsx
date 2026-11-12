@@ -9,6 +9,10 @@ import useRubyStore from '@foundation/Stores/rubyStore'
 import { useRunStore } from '@foundation/Stores/runStore'
 import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import { useTickedTestsStore } from '@foundation/Stores/tickedTestsStore'
+import {
+  schedulesPanelOpenKey,
+  useSchedulesFocusStore
+} from '@foundation/Stores/schedulesFocusStore'
 import type {
   GemCliError,
   GemSchedule,
@@ -28,7 +32,7 @@ import {
 } from './scheduleText'
 
 // Per project: whether the panel is open, and the gem's one-time 4.1 cleanup notice
-const openKey = (project: string): string => `schedulesPanelOpen:${project}`
+const openKey = schedulesPanelOpenKey
 const noticeKey = (project: string): string => `schedulesNotice:${project}`
 
 function readStored(key: string): string | null {
@@ -111,7 +115,7 @@ const SchedulesPanel: React.FC<SchedulesPanelProps> = ({
     [projectPath]
   )
 
-  /** Reads the status and the list again (Task 5's watcher calls this too). */
+  /** Reads the status and the list again (also on main's schedules-changed). */
   const reload = useCallback(async (): Promise<void> => {
     const mine = ++generation.current
     const t = tRef.current
@@ -157,6 +161,13 @@ const SchedulesPanel: React.FC<SchedulesPanelProps> = ({
     void reload()
   }, [projectPath, reload])
 
+  // Main's watcher saw .raider/schedules/ change (a scheduled run, a schedule added elsewhere)
+  useEffect(() => window.api.onSchedulesChanged(() => void reload()), [reload])
+
+  // A banner click asks for the panel open; a request from before this panel mounted is old
+  const focusRequest = useSchedulesFocusStore((s) => s.request)
+  const seenFocus = useRef(focusRequest)
+
   const schedules = load.state === 'ready' ? load.schedules : []
   const supported = load.state === 'ready'
   // Nothing stored: open when there is something to read (schedules, or why there can't be)
@@ -174,6 +185,12 @@ const SchedulesPanel: React.FC<SchedulesPanelProps> = ({
     if (projectPath) writeStored(openKey(projectPath), next ? '1' : '0')
     setStoredOpen(next ? '1' : '0')
   }
+
+  useEffect(() => {
+    if (focusRequest === seenFocus.current) return
+    seenFocus.current = focusRequest
+    setOpen(true)
+  }, [focusRequest])
 
   const openDialog = (state: DialogState): void => {
     setOpen(true)

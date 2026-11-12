@@ -67,15 +67,12 @@ describe('readRunLog', () => {
   })
 })
 
-describe('readRunLog in the 4.1 folder (the watcher until Task 5)', () => {
-  it('reads .raider/flows/<name>/runs.jsonl only when asked to', async () => {
+describe('readRunLog never reads the 4.1 folder', () => {
+  it('ignores .raider/flows/<name>/runs.jsonl', async () => {
     const dir = join(project, '.raider', 'flows', 'old')
     await mkdir(dir, { recursive: true })
     await writeFile(join(dir, 'runs.jsonl'), `${line(1)}\n`)
     expect(await readRunLog(project, 'old')).toEqual([])
-    expect(await readRunLog(project, 'old', undefined, '.raider/flows')).toEqual([
-      { run_id: 'r1', status: 'completed' }
-    ])
   })
 })
 

@@ -125,6 +125,7 @@ const api = {
   getRecorderSettings: vi.fn(),
   getRunDefaults: vi.fn(),
   onTestsUpdated: vi.fn(),
+  onSchedulesChanged: vi.fn(() => vi.fn()),
   readFile: vi.fn(),
   editFile: vi.fn(),
   createProjectEntry: vi.fn(),

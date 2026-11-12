@@ -212,6 +212,12 @@ export interface WindowApi extends RunApi {
     rubyCommand: string,
     request: RunScheduleNowRequest
   ) => Promise<StartRunResult | GemCliError>
+  /** Something changed under the open project's .raider/schedules/; returns an unsubscribe */
+  onSchedulesChanged: (callback: () => void) => () => void
+  /** A failed scheduled run's banner was clicked: show the Schedules; returns an unsubscribe */
+  onFocusSchedules: (callback: () => void) => () => void
+  /** A scheduled run of `projectPath` wrote raider-results; returns an unsubscribe */
+  onScheduledRunFinished: (callback: (projectPath: string) => void) => () => void
 
   // --- Test Management ---
   /** `test` is the test as saved, with its project file when it has one */

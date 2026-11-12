@@ -12,13 +12,7 @@ const MAX_LOG_BYTES = 1024 * 1024
 /** The last run needs only the last line: a small tail, read once per listed schedule */
 const LAST_RUN_BYTES = 64 * 1024
 
-/**
- * Where run logs live: 4.2's folder, or 4.1's for the watcher until it moves (Task 5). A
- * constant from main, never a value from the renderer.
- */
-export type RunLogDir = '.raider/schedules' | '.raider/flows'
-
-const runLogRel = (dir: RunLogDir, name: string): string => `${dir}/${name}/runs.jsonl`
+const runLogRel = (name: string): string => `.raider/schedules/${name}/runs.jsonl`
 
 /**
  * The log's lines, oldest first, each parsed on its own (a bad line is skipped). Empty when
@@ -27,13 +21,12 @@ const runLogRel = (dir: RunLogDir, name: string): string => `${dir}/${name}/runs
 export async function readRunLog(
   projectPath: string,
   name: string,
-  maxBytes = MAX_LOG_BYTES,
-  dir: RunLogDir = '.raider/schedules'
+  maxBytes = MAX_LOG_BYTES
 ): Promise<unknown[]> {
   if (!isScheduleName(name)) return []
   let handle: fs.FileHandle | undefined
   try {
-    const file = resolveInside(projectPath, runLogRel(dir, name))
+    const file = resolveInside(projectPath, runLogRel(name))
     await assertRealInside(projectPath, file)
     // O_NOFOLLOW refuses a link where it exists; the lstat covers platforms without it
     if ((await fs.lstat(file)).isSymbolicLink()) return []

@@ -127,6 +127,10 @@ const Index: React.FC = (): JSX.Element => {
   const lastRunFinishedAt = useRunStore((s) =>
     s.run && s.run.projectPath === projectPath ? (s.run.finished?.finishedAt ?? null) : null
   )
+  // So does a scheduled run of this project (main's watcher saw its run line)
+  const scheduledRunAt = useRunStore((s) =>
+    s.scheduledRunAt && s.scheduledRunAt.projectPath === projectPath ? s.scheduledRunAt.at : null
+  )
 
   const testByName = new Map<string, { id: string; hasTrace?: boolean }>()
   for (const test of tests) {
@@ -162,7 +166,7 @@ const Index: React.FC = (): JSX.Element => {
     return (): void => {
       active = false
     }
-  }, [projectPath, lastRunFinishedAt, t])
+  }, [projectPath, lastRunFinishedAt, scheduledRunAt, t])
 
   const recheck = async (): Promise<void> => {
     try {

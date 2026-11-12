@@ -10,6 +10,7 @@ import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import toast from 'react-hot-toast'
 import { useRunStore } from '@foundation/Stores/runStore'
+import { useSchedulesFocusStore } from '@foundation/Stores/schedulesFocusStore'
 import type { RunView } from '@foundation/run/runModel'
 
 // Mocking necessary modules and hooks
@@ -137,7 +138,8 @@ const mockApi = {
   duplicateProjectEntry: vi.fn().mockResolvedValue({ success: true, path: '' }),
   startRun: vi.fn().mockResolvedValue({ runId: 'r1' }),
   getRunDefaults: vi.fn().mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 }),
-  onTestsUpdated: vi.fn(() => vi.fn())
+  onTestsUpdated: vi.fn(() => vi.fn()),
+  onSchedulesChanged: vi.fn(() => vi.fn())
 }
 
 // Web controls only show once the layout is known
@@ -303,6 +305,24 @@ describe('Overview Page', (): void => {
     await openFilesTab()
 
     expect(screen.getByTestId('folder')).toBeInTheDocument()
+  })
+
+  it('a banner click (focus request) switches to the Tests tab with the Schedules panel open', async () => {
+    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+    localStorage.setItem('schedulesPanelOpen:/fake/project', '0')
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+    fireEvent.click(screen.getByText('overview.tabs.dashboard'))
+    expect(screen.queryByTestId('schedules-toggle')).toBeNull()
+    await act(async () => useSchedulesFocusStore.getState().focus('/fake/project'))
+    expect(screen.queryByTestId('project-dashboard')).toBeNull()
+    expect(await screen.findByTestId('schedules-toggle')).toHaveAttribute('aria-expanded', 'true')
+    localStorage.removeItem('schedulesPanelOpen:/fake/project')
   })
 
   it('shows ProjectDashboard when Dashboard tab is clicked', async (): Promise<void> => {
