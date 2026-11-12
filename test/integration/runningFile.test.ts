@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { execFileSync } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -25,6 +26,14 @@ let deps: RunningDeps
 const writeRunning = (data: unknown): void =>
   fs.writeFileSync(file, typeof data === 'string' ? data : JSON.stringify(data))
 const onDisk = (): Record<string, unknown> => JSON.parse(fs.readFileSync(file, 'utf8'))
+/**
+ * Takes running.json away but keeps its inode alive under another name (outside the schedules
+ * folder), so a file written there next is provably a different file: Linux reuses a freed
+ * inode number at once, and dev + ino could not tell them apart.
+ */
+const retire = (): void => {
+  fs.renameSync(file, path.join(project, `retired-${randomUUID()}.json`))
+}
 const withSchedules = (): void => {
   fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(path.join(dir, 'schedules.yml'), 'schedules: []\n')
@@ -273,7 +282,7 @@ describe('removeIfSame: only the file that was judged', () => {
     writeRunning({ pid: 777, run_id: 'old' })
     const seen = inspectRunning(file)!
     // The gem replaces it between our read and our removal
-    fs.unlinkSync(file)
+    retire()
     writeRunning({ pid: OTHER, name: 'nightly', run_id: 'theirs' })
     expect(removeIfSame(file, seen.id)).toBe(false)
     expect(onDisk().run_id).toBe('theirs')
@@ -289,7 +298,7 @@ describe('removeIfSame: only the file that was judged', () => {
     if (!result.ok || !result.lock) throw new Error('not acquired')
     const seen = inspectRunning(file)!
     const copy = fs.readFileSync(file, 'utf8')
-    fs.unlinkSync(file)
+    retire()
     fs.writeFileSync(file, copy)
     // What release does after reading: remove only the inode it read
     expect(removeIfSame(file, seen.id)).toBe(false)
@@ -388,7 +397,7 @@ describe('no hard links on this volume (FAT, exFAT, some SMB)', () => {
   it('removeIfSame puts a newer file back by rename when it cannot link', () => {
     writeRunning({ pid: 777, run_id: 'old' })
     const seen = inspectRunning(file)!
-    fs.unlinkSync(file)
+    retire()
     writeRunning({ pid: OTHER, name: 'nightly', run_id: 'theirs' })
     noLinks()
     expect(removeIfSame(file, seen.id)).toBe(false)
@@ -399,7 +408,7 @@ describe('no hard links on this volume (FAT, exFAT, some SMB)', () => {
   it('removeIfSame never replaces a file written while it was aside', () => {
     writeRunning({ pid: 777, run_id: 'old' })
     const seen = inspectRunning(file)!
-    fs.unlinkSync(file)
+    retire()
     writeRunning({ pid: OTHER, run_id: 'middle' })
     vi.spyOn(fs, 'linkSync').mockImplementation(() => {
       // Someone writes the newest one while ours is aside
