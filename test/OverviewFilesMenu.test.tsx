@@ -81,7 +81,11 @@ vi.mock('react-router', async () => ({
 vi.mock('@foundation/Stores/rubyStore', () => ({
   __esModule: true,
   default: Object.assign(
-    vi.fn(() => ({ rubyCommand: '/usr/bin/ruby', setRubyCommand: vi.fn() })),
+    // Honours a selector, as zustand does (a new object per call would re-run effects forever)
+    vi.fn((select?: (s: object) => unknown) => {
+      const state = { rubyCommand: '/usr/bin/ruby', setRubyCommand: vi.fn() }
+      return select ? select(state) : state
+    }),
     { getState: (): { rubyCommand: string } => ({ rubyCommand: '/usr/bin/ruby' }) }
   )
 }))
@@ -104,6 +108,13 @@ const tree: FileNode[] = [
 ]
 
 const api = {
+  // The Tests tab's Schedules panel: an older ruby_raider, so it never lists
+  schedulesStatus: vi.fn().mockResolvedValue({
+    supported: false,
+    version: null,
+    oldSchedules: false,
+    platform: 'darwin'
+  }),
   openDocs: vi.fn(),
   listProjectTests: vi.fn(),
   getTests: vi.fn(),

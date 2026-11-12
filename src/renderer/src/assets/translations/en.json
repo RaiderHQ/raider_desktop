@@ -494,8 +494,7 @@
       "hour": "Every hour at :{{minute}}",
       "day": "Every day at {{time}}",
       "weekday": "Every weekday at {{time}}",
-      "week": "Every {{day}} at {{time}}",
-      "withNotify": "{{text}}, notify on failure"
+      "week": "Every {{day}} at {{time}}"
     },
     "days": {
       "mon": "Monday",

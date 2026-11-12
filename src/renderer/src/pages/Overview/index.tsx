@@ -6,6 +6,7 @@ import { sample } from 'lodash'
 import { FaChevronDown, FaChevronRight, FaTerminal } from 'react-icons/fa'
 import Folder from '@components/Library/Folder'
 import RecordingSettingsPanel from '@components/RecordingSettingsPanel'
+import SchedulesPanel from '@components/Schedules/SchedulesPanel'
 import ContextMenu from '@components/ContextMenu'
 import FileNameDialog from '@components/FileNameDialog'
 import useFileClipboardStore, { copiedIn } from '@foundation/Stores/fileClipboardStore'
@@ -105,6 +106,10 @@ const Overview: React.FC = () => {
   const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
     useRecorderSettings()
   const [activeTab, setActiveTab] = useState<OverviewTab>('tests')
+  // Ticked files on their way from the Tests list's Schedule… to the Schedules panel
+  const [scheduleFiles, setScheduleFiles] = useState<string[] | null>(null)
+  // The list offers Schedule… only when the project's ruby_raider can schedule
+  const [schedulesSupported, setSchedulesSupported] = useState(false)
 
   // Until the project's settings load, the fields hold defaults that must not overwrite the config
   const saveWait = async (
@@ -1105,8 +1110,17 @@ const Overview: React.FC = () => {
             loaded={loaded}
             saveWait={saveWait}
           />
+          <SchedulesPanel
+            key={`schedules-${projectPath ?? ''}`}
+            pendingFiles={scheduleFiles}
+            onPendingTaken={() => setScheduleFiles(null)}
+            onSupportedChange={setSchedulesSupported}
+          />
           {/* A project switched in place (the project menu, File › Open recent) gets a fresh list */}
-          <TestsWorkspace key={projectPath ?? ''} />
+          <TestsWorkspace
+            key={projectPath ?? ''}
+            onScheduleTicked={schedulesSupported ? setScheduleFiles : undefined}
+          />
         </div>
       )}
 

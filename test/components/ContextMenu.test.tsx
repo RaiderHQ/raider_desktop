@@ -151,4 +151,22 @@ describe('ContextMenu', () => {
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'ArrowDown' })
     expect(screen.getByRole('menuitem', { name: 'New page object…' })).toHaveFocus()
   })
+
+  it('shows an item tooltip on hover, and the items still move with the arrow keys', async () => {
+    render(
+      <ContextMenu
+        x={10}
+        y={20}
+        items={[
+          { label: 'Edit', onClick: vi.fn(), tooltip: 'Change this schedule' },
+          { label: 'Stop schedule', onClick: vi.fn() }
+        ]}
+        onClose={vi.fn()}
+      />
+    )
+    fireEvent.mouseEnter(screen.getByRole('menuitem', { name: 'Edit' }).parentElement!)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Change this schedule')
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'ArrowDown' })
+    expect(screen.getByRole('menuitem', { name: 'Stop schedule' })).toHaveFocus()
+  })
 })
