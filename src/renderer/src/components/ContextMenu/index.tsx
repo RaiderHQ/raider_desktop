@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import ReactDOM from 'react-dom'
+import Tooltip from '@components/Tooltip'
 
 interface ContextMenuItem {
   label: string
@@ -7,6 +8,8 @@ interface ContextMenuItem {
   disabled?: boolean
   /** Starts a new group: a line above the item */
   separatorBefore?: boolean
+  /** What the item does, shown on hover and keyboard focus */
+  tooltip?: string
 }
 
 interface ContextMenuProps {
@@ -88,6 +91,21 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
     all[next[e.key]].focus()
   }
 
+  const renderItem = (item: ContextMenuItem): React.ReactNode => (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={() => {
+        item.onClick()
+        onClose()
+      }}
+      disabled={item.disabled}
+      className="block w-full text-left px-3 py-1.5 text-sm text-neutral-dk hover:bg-ruby-sub hover:text-ruby focus:bg-ruby-sub focus:text-ruby focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {item.label}
+    </button>
+  )
+
   return ReactDOM.createPortal(
     <div
       ref={menuRef}
@@ -101,18 +119,13 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
           {item.separatorBefore && index > 0 && (
             <div role="separator" className="my-1 border-t border-neutral-bdr" />
           )}
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              item.onClick()
-              onClose()
-            }}
-            disabled={item.disabled}
-            className="block w-full text-left px-3 py-1.5 text-sm text-neutral-dk hover:bg-ruby-sub hover:text-ruby focus:bg-ruby-sub focus:text-ruby focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {item.label}
-          </button>
+          {item.tooltip ? (
+            <Tooltip content={item.tooltip} position="right" className="w-full">
+              {renderItem(item)}
+            </Tooltip>
+          ) : (
+            renderItem(item)
+          )}
         </React.Fragment>
       ))}
     </div>,

@@ -187,6 +187,15 @@ describe('IPC Contract', () => {
     // Saved logins
     'listSavedLogins',
     'forgetSavedLogin',
+    'schedulesStatus',
+    'listSchedules',
+    'addSchedule',
+    'removeSchedule',
+    'openScheduleReport',
+    'runScheduleNow',
+    'onSchedulesChanged',
+    'onFocusSchedules',
+    'onScheduledRunFinished',
 
     // App Lifecycle
     'closeApp'
@@ -262,7 +271,10 @@ describe('IPC Contract', () => {
       onNewTraceStep: 'new-trace-step',
       onReplayFailed: 'replay-failed',
       onTerminalData: 'terminal-data',
-      onTerminalExit: 'terminal-exit'
+      onTerminalExit: 'terminal-exit',
+      onSchedulesChanged: 'schedules-changed',
+      onFocusSchedules: 'focus-schedules',
+      onScheduledRunFinished: 'scheduled-run-finished'
     }
 
     for (const [method, channel] of Object.entries(channels)) {

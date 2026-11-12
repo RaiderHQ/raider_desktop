@@ -17,6 +17,8 @@ const RESOLVE_TIMEOUT_MS = 20_000
 const CLI_TIMEOUT_MS = 60_000
 const MAX_STDOUT = 1024 * 1024
 const MAX_MESSAGE = 500
+/** What a caller gets of stderr: its tail, enough for a backtrace's first lines */
+const MAX_STDERR = 16 * 1024
 // eslint-disable-next-line no-control-regex -- matching control characters is the point
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/g
 // eslint-disable-next-line no-control-regex -- matching control characters is the point
@@ -43,12 +45,15 @@ export interface GemCliDeps {
 }
 
 export type GemCliResult =
-  | { ok: true; stdout: string; json?: unknown }
+  /** stderr: a successful command's warnings and notices (bounded), for the caller to pick from */
+  | { ok: true; stdout: string; stderr: string; json?: unknown }
   | {
       ok: false
       error: 'gem-output' | 'timeout' | 'ruby' | 'refused'
       message?: string
       exitCode?: number
+      /** A refusal's whole stderr (bounded), to tell a gem that can't load from a refusal */
+      stderr?: string
     }
 
 /**
@@ -82,15 +87,10 @@ const defaultDeps: GemCliDeps = {
 /**
  * The environment of a gem call: the app's own, with the selected ruby's folder first on
  * PATH and no node_modules/.bin. GEM_HOME / GEM_PATH stay (the gem copies them into the OS
- * schedule entry); BUNDLE_GEMFILE goes (the project's Gemfile is found from cwd), and so do
- * any RAIDER_FLOW_* / RAIDER_INPUT_* values inherited from the app's own environment: the
- * desktop sets none, and a stray one must never reach a gem command or a run it schedules.
+ * schedule entry); BUNDLE_GEMFILE goes (the project's Gemfile is found from cwd).
  */
 export function gemEnv(absRuby: string, base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...base }
-  for (const key of Object.keys(env)) {
-    if (key.startsWith('RAIDER_FLOW_') || key.startsWith('RAIDER_INPUT_')) delete env[key]
-  }
   delete env.BUNDLE_GEMFILE
   const rest = cleanPath(base.PATH)
   env.PATH = rest ? `${path.dirname(absRuby)}${path.delimiter}${rest}` : path.dirname(absRuby)
@@ -152,13 +152,20 @@ export async function runGemCli(
     }
     const message = refusalMessage(stderr)
     safeWarn(`raider ${command} exited ${error.code}: ${message}`)
-    return { ok: false, error: 'refused', message, exitCode: error.code }
+    return {
+      ok: false,
+      error: 'refused',
+      message,
+      exitCode: error.code,
+      stderr: stderr.slice(-MAX_STDERR)
+    }
   }
 
   if (stderr.trim()) safeWarn(`raider ${command} stderr: ${refusalMessage(stderr)}`)
-  if (!opts.json) return { ok: true, stdout }
+  const errText = stderr.slice(-MAX_STDERR)
+  if (!opts.json) return { ok: true, stdout, stderr: errText }
   try {
-    return { ok: true, stdout, json: JSON.parse(stdout.trim()) }
+    return { ok: true, stdout, stderr: errText, json: JSON.parse(stdout.trim()) }
   } catch {
     safeWarn(`raider ${command}: output is not JSON`)
     return { ok: false, error: 'gem-output' }

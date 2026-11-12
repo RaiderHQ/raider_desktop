@@ -6,6 +6,8 @@ import { sample } from 'lodash'
 import { FaChevronDown, FaChevronRight, FaTerminal } from 'react-icons/fa'
 import Folder from '@components/Library/Folder'
 import RecordingSettingsPanel from '@components/RecordingSettingsPanel'
+import SchedulesPanel from '@components/Schedules/SchedulesPanel'
+import { useSchedulesFocusStore } from '@foundation/Stores/schedulesFocusStore'
 import ContextMenu from '@components/ContextMenu'
 import FileNameDialog from '@components/FileNameDialog'
 import useFileClipboardStore, { copiedIn } from '@foundation/Stores/fileClipboardStore'
@@ -105,6 +107,10 @@ const Overview: React.FC = () => {
   const { implicitWait, setImplicitWait, explicitWait, setExplicitWait, loaded } =
     useRecorderSettings()
   const [activeTab, setActiveTab] = useState<OverviewTab>('tests')
+  // Ticked files on their way from the Tests list's Schedule… to the Schedules panel
+  const [scheduleFiles, setScheduleFiles] = useState<string[] | null>(null)
+  // The list offers Schedule… only when the project's ruby_raider can schedule
+  const [schedulesSupported, setSchedulesSupported] = useState(false)
 
   // Until the project's settings load, the fields hold defaults that must not overwrite the config
   const saveWait = async (
@@ -608,6 +614,16 @@ const Overview: React.FC = () => {
     guardUnsaved(() => setActiveTab(tab))
   }
 
+  // A failed scheduled run's banner was clicked: the Tests tab, where the Schedules panel opens
+  // (a dirty Files edit asks first). Only a request made while this page is up counts.
+  const focusRequest = useSchedulesFocusStore((s) => s.request)
+  const focusSeen = useRef(focusRequest)
+  useEffect(() => {
+    if (focusRequest === focusSeen.current) return
+    focusSeen.current = focusRequest
+    switchTab('tests')
+  }, [focusRequest])
+
   // One write at a time; a ref so a repeat in the same tick can't start a second one
   const savingFileRef = useRef(false)
   // A rename in flight: a save now would write to the old path
@@ -1105,8 +1121,17 @@ const Overview: React.FC = () => {
             loaded={loaded}
             saveWait={saveWait}
           />
+          <SchedulesPanel
+            key={`schedules-${projectPath ?? ''}`}
+            pendingFiles={scheduleFiles}
+            onPendingTaken={() => setScheduleFiles(null)}
+            onSupportedChange={setSchedulesSupported}
+          />
           {/* A project switched in place (the project menu, File › Open recent) gets a fresh list */}
-          <TestsWorkspace key={projectPath ?? ''} />
+          <TestsWorkspace
+            key={projectPath ?? ''}
+            onScheduleTicked={schedulesSupported ? setScheduleFiles : undefined}
+          />
         </div>
       )}
 

@@ -11,6 +11,8 @@ export const DOCS_LINK_IDS = [
   'docs.dashboard',
   'docs.testScreen',
   'docs.errors',
+  'docs.scheduling',
+  'docs.scheduling.browser',
   'docs.install',
   'docs.gem',
   'docs.site'

@@ -29,6 +29,7 @@ import { Translator } from './translate'
 import { RunSession } from './runSession'
 import { OutputPrefixParser } from './outputPrefix'
 import { descendantProcesses, freshKillTargets, signalPid } from './processTree'
+import { acquireRunning, releaseRunning, type RunningLock } from '../schedules/runningFile'
 
 export interface RunnerDeps {
   send(e: RunEvent): void
@@ -63,6 +64,8 @@ interface Active {
   graceMs: number
   /** Descendants seen when the cancel's SIGINT went out; killed too even if reparented. */
   cancelPids: number[]
+  /** This run's .raider/schedules/running.json, removed at every exit; null when none was written. */
+  running: RunningLock | null
 }
 
 /** The current or last run; one per app. */
@@ -113,12 +116,15 @@ const nonEmptyStrings = (value: unknown, what: string): string[] => {
 /** Checks the (untrusted) request; only listed project tests and safe tags may run. */
 async function validate(request: unknown): Promise<RunRequest> {
   if (typeof request !== 'object' || request === null) throw new Error('No run request was given.')
-  const { scope, rubyCommand, loginState } = request as RunRequest
+  const { scope, rubyCommand, loginState, headed } = request as RunRequest
   if (!isValidRubyCommand(rubyCommand)) {
     throw new Error('The Ruby command is not valid, so the tests were not run.')
   }
   if (loginState !== undefined && loginState !== 'off' && loginState !== 'refresh') {
     throw new Error('The login option is not valid, so the tests were not run.')
+  }
+  if (headed !== undefined && typeof headed !== 'boolean') {
+    throw new Error('The show the browser option is not valid, so the tests were not run.')
   }
   if (typeof scope !== 'object' || scope === null) throw new Error('No run scope was given.')
   const s = scope as RunScope
@@ -211,27 +217,46 @@ async function readLiveEvents(projectPath: string): Promise<boolean> {
   return supportsLiveEvents(reporterVersion(lock))
 }
 
+/** Removes the run's running.json (if still its own); safe to call at every exit. */
+function releaseActive(active: Active): void {
+  const running = active.running
+  active.running = null
+  if (running) releaseRunning(running)
+}
+
+/** The run is over: free the slot and the shared run signal. */
+function settle(active: Active): void {
+  active.done = true
+  releaseActive(active)
+}
+
+const PROJECT_CHANGED = 'The project changed, so the tests were not run.'
+
 /**
  * Starts a live run of the active project's tests. Resolves with the runId once
  * `run:started` is sent; the bundle check, spawn and events continue in the background.
+ * `expectedProject` (main callers): refuse unless the active project is that one.
  */
 export async function startRun(
   request: RunRequest,
-  overrides: Partial<RunnerDeps> = {}
+  overrides: Partial<RunnerDeps> = {},
+  expectedProject?: string
 ): Promise<StartRunResult> {
   if (starting || (current && !current.done)) return { error: 'busy' }
   starting = true
+  let running: RunningLock | null = null
   try {
     // A run asked for during a project switch waits for it, so it never runs the previous project
     await activationSettled()
     const projectPath = appState.projectPath
     if (!projectPath) throw new Error('No project is open.')
+    if (expectedProject !== undefined && projectPath !== expectedProject)
+      throw new Error(PROJECT_CHANGED)
     if (appState.layout?.unsupportedReason === 'mobile') throw new Error(MOBILE_UNSUPPORTED)
     if (appState.layout?.runtimeSupported === false) throw new Error(GEM_TOO_OLD)
     const valid = await validate(request)
     // The files were checked against the project open now; run only if it's still the same one
-    if (appState.projectPath !== projectPath)
-      throw new Error('The project changed, so the tests were not run.')
+    if (appState.projectPath !== projectPath) throw new Error(PROJECT_CHANGED)
     const { command, workers } = buildRunCommand({
       scope: valid.scope,
       workers: clampWorkers(valid.workers, runDefaults().maxWorkers),
@@ -240,6 +265,17 @@ export async function startRun(
     const liveEvents = await readLiveEvents(projectPath)
 
     const deps = { ...defaultDeps(), ...overrides }
+
+    // A scheduled run (the gem's wrapper) may hold the project; else this run says it holds it
+    const claim = acquireRunning(projectPath)
+    if (!claim.ok) {
+      if ('writeFailed' in claim) return { error: 'runningWriteFailed' }
+      return claim.name === undefined
+        ? { error: 'scheduleBusy' }
+        : { error: 'scheduleBusy', name: claim.name }
+    }
+    running = claim.lock
+
     if (lastRunDir) await fs.rm(lastRunDir, { recursive: true, force: true }).catch(() => {})
     lastRunDir = null
 
@@ -267,7 +303,8 @@ export async function startRun(
       done: false,
       killTimer: null,
       graceMs: deps.graceMs,
-      cancelPids: []
+      cancelPids: [],
+      running
     }
     current = active
     session.start()
@@ -277,10 +314,14 @@ export async function startRun(
       workers,
       liveEvents,
       rubyCommand: valid.rubyCommand,
-      loginState: valid.loginState
+      loginState: valid.loginState,
+      headed: valid.headed
     })
+    // Owned by the run now: its exits release it
+    running = null
     return { runId }
   } catch (error) {
+    if (running) releaseRunning(running)
     return { error: message(error) }
   } finally {
     starting = false
@@ -297,6 +338,7 @@ async function launch(
     liveEvents: boolean
     rubyCommand: string
     loginState?: RunRequest['loginState']
+    headed?: boolean
   }
 ): Promise<void> {
   const { session, runId } = active
@@ -306,7 +348,7 @@ async function launch(
     try {
       session.finish(exitCode)
     } finally {
-      active.done = true
+      settle(active)
     }
   }
 
@@ -341,6 +383,14 @@ async function launch(
     // Never inherit a login mode from the app's own environment
     if (run.loginState) env.RAIDER_LOGIN_STATE = run.loginState
     else delete env.RAIDER_LOGIN_STATE
+    // Show the browser per run: the gem drops --headless on RAIDER_SHOW_BROWSER
+    if (run.headed === false) {
+      env.HEADLESS = 'true'
+      delete env.RAIDER_SHOW_BROWSER
+    } else if (run.headed === true) {
+      env.RAIDER_SHOW_BROWSER = '1'
+      delete env.HEADLESS
+    }
     const child = deps.spawnCommand(
       buildShellCommand(run.projectPath, run.command),
       run.projectPath,
@@ -411,7 +461,7 @@ async function launch(
         try {
           session.finish(exitCode, fallback)
         } finally {
-          active.done = true
+          settle(active)
         }
       }
 
@@ -489,7 +539,14 @@ export async function cancelRun(runId: string): Promise<void> {
   active.cancelled = true
   active.session.requestCancel()
   const child = active.child
-  if (!child) return // not spawned yet; launch finishes the run as cancelled
+  if (!child) {
+    // Nothing spawned, so nothing can write raider-results/: a scheduled run may start.
+    // launch finishes the run as cancelled
+    releaseActive(active)
+    return
+  }
+  // With a child, running.json stays until it has exited (settle at close): rspec may
+  // still write raider-results/ during the grace period
   if (process.platform === 'win32') {
     kill(child, 'SIGINT')
     return
@@ -513,10 +570,11 @@ export async function cancelRun(runId: string): Promise<void> {
  * nothing when no child is alive.
  */
 export function killActiveRun(): void {
+  const active = current
+  if (!active || active.done) return
   try {
-    const active = current
-    const pid = active?.child?.pid
-    if (!active || active.done || active.exited || pid === undefined) return
+    const pid = active.child?.pid
+    if (active.exited || pid === undefined) return
     clearKillTimer(active)
     if (process.platform === 'win32') {
       spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'])
@@ -525,6 +583,9 @@ export function killActiveRun(): void {
     killTree(active.child!, active.cancelPids)
   } catch (error) {
     safeWarn('Could not stop the test run:', message(error))
+  } finally {
+    // Also before any child exists (bundle install): the app is quitting
+    releaseActive(active)
   }
 }
 

@@ -5,20 +5,22 @@ import yaml from 'js-yaml'
 import { appState } from '../appState'
 import { assertRealInside, resolveInside } from '../tests/sidecar'
 import { readRunLog } from './runLog'
-import { isScheduleName } from '../../../shared/schedules'
-import { isPlainObject } from '../../../shared/schedules'
+import { isPlainObject, isScheduleName } from '../../../shared/schedules'
 
-// Scheduled runs (launchd) append to .raider/flows/<name>/runs.jsonl while the app is open.
-// The open project's .raider/flows/ is watched: each settled change tells the renderer
-// and a new scheduled run that failed shows a notification. The log is written by project
-// code, so only the folder's schedule name and plain integers ever reach the notification.
+// Scheduled runs (`raider schedule run`, ruby_raider 4.2) append one line per run to
+// .raider/schedules/<name>/runs.jsonl while the app is open. The open project's
+// .raider/schedules/ is watched: each settled change tells the renderer, a new scheduled run
+// that wrote results tells the Dashboard, and a new failed one of a schedule with notify off
+// shows a banner (the gem notifies itself when notify is on). The log and schedules.yml are
+// written by project code, so only the folder's schedule name and plain integers ever reach
+// the banner.
 
-/** Shown by the notification for a scheduled run that failed */
+/** Shown by the banner for a scheduled run that failed */
 export const SCHEDULE_FAILED_TITLE = 'Scheduled run failed'
-const failedAtStep = (name: string, step: number): string => `${name} failed at step ${step}`
-const failedAtLine = (name: string, line: number): string => `${name} failed at line ${line}`
+const testsFailed = (name: string, failed: number, total: number): string =>
+  `${name}: ${failed} of ${total} ${total === 1 ? 'test' : 'tests'} failed`
 const couldNotStart = (name: string): string => `${name} could not start`
-const failed = (name: string): string => `${name} failed`
+const failedPlain = (name: string): string => `${name} failed`
 
 const DEBOUNCE_MS = 300
 /** Only the log's tail is read for new runs */
@@ -26,10 +28,12 @@ const MAX_SCAN_BYTES = 256 * 1024
 /** Keys kept per schedule; the gem keeps 50 lines, so this only bounds a hostile log */
 const MAX_SEEN = 500
 const RUN_ID = /^[0-9a-f]{16}$/
-const NOTIFY_STATUSES = ['failed', 'setup_error']
-const SCHEDULES_REL = '.raider/flows/schedules.yml'
+const BANNER_STATUSES = ['failed', 'setup_error']
+/** The statuses whose run wrote raider-results (busy only says another run held the lock) */
+const RESULT_STATUSES = ['passed', 'failed', 'setup_error']
+const SCHEDULES_DIR = '.raider/schedules'
+const SCHEDULES_REL = `${SCHEDULES_DIR}/schedules.yml`
 const MAX_SCHEDULES_BYTES = 256 * 1024
-const MAX_RETRIES = 3
 
 export interface WatchHandle {
   close(): void
@@ -46,7 +50,7 @@ export interface WindowHandle {
   restore(): void
   show(): void
   focus(): void
-  webContents: { isDestroyed(): boolean; send(channel: string): void }
+  webContents: { isDestroyed(): boolean; send(channel: string, ...args: unknown[]): void }
 }
 export interface ScheduleWatcherDeps {
   /** `listener` gets the changed path relative to `dir`, or null when the platform omits it */
@@ -71,15 +75,17 @@ export interface ScheduleWatcher {
   idle(): Promise<void>
 }
 
-const isPositiveInt = (value: unknown): value is number =>
-  Number.isSafeInteger(value) && (value as number) > 0
+const isCount = (value: unknown): value is number =>
+  Number.isSafeInteger(value) && (value as number) >= 0
 
-/** The notification text for a run line of the schedule `name` (a valid schedule name). */
+/** The banner text for a run line of the schedule `name` (a valid schedule name). */
 export function scheduleFailedBody(name: string, line: Record<string, unknown>): string {
-  const step = isPlainObject(line.failed_step) ? line.failed_step : {}
-  if (isPositiveInt(step.number)) return failedAtStep(name, step.number)
-  if (isPositiveInt(step.line)) return failedAtLine(name, step.line)
-  return line.status === 'setup_error' ? couldNotStart(name) : failed(name)
+  if (line.status === 'setup_error') return couldNotStart(name)
+  const counts = isPlainObject(line.counts) ? line.counts : {}
+  const { failed, total } = counts
+  if (isCount(failed) && isCount(total) && failed > 0 && failed <= total)
+    return testsFailed(name, failed, total)
+  return failedPlain(name)
 }
 
 /** What makes a run line unique: its run id, else its start time within the schedule */
@@ -89,15 +95,14 @@ function lineKey(name: string, line: Record<string, unknown>): string | null {
   return null
 }
 
-const isScheduledFailure = (line: Record<string, unknown>): boolean =>
-  line.trigger === 'schedule' &&
-  typeof line.status === 'string' &&
-  NOTIFY_STATUSES.includes(line.status)
+const isScheduledWith = (line: Record<string, unknown>, statuses: string[]): boolean =>
+  line.trigger === 'schedule' && typeof line.status === 'string' && statuses.includes(line.status)
 
 /**
- * Whether a change under .raider/flows/ can change what the schedules show: a run log, the
- * schedules, or a job's folder coming or going. scheduler.log, locks, env and temp files churn
- * on every run and are ignored. Without a filename (some platforms) it always counts.
+ * Whether a change under .raider/schedules/ can change what the schedules show: a run log,
+ * schedules.yml, or a schedule's folder coming or going. running.json, run.lock, the logs'
+ * locks, the report copies (<name>/last/), scheduler.log and temp files churn on every run and
+ * are ignored. Without a filename (some platforms) it always counts.
  */
 export function isScheduleChange(filename: string | null): boolean {
   if (filename === null) return true
@@ -107,44 +112,44 @@ export function isScheduleChange(filename: string | null): boolean {
 }
 
 /**
- * The retries of each scheduled job, from the gem's .raider/flows/schedules.yml
- * (`schedules: [{ name, retries, ... }]`), clamped to 0..3. Empty when the file is missing,
- * a link, too big, outside the project or unreadable.
+ * Each schedule's notify, from the gem's .raider/schedules/schedules.yml
+ * (`schedules: [{ name, notify, ... }]`, written by YAML.dump, always with notify). Only a
+ * boolean counts; a name listed twice that disagrees reads as true (no banner). Empty when the
+ * file is missing, a link, too big, outside the project or unreadable.
  */
-export async function readScheduleRetries(projectPath: string): Promise<Map<string, number>> {
-  const retries = new Map<string, number>()
+export async function readScheduleNotify(projectPath: string): Promise<Map<string, boolean>> {
+  const notify = new Map<string, boolean>()
   let handle: fs.FileHandle | undefined
   try {
     const file = resolveInside(projectPath, SCHEDULES_REL)
     await assertRealInside(projectPath, file)
-    if ((await fs.lstat(file)).isSymbolicLink()) return retries
+    if ((await fs.lstat(file)).isSymbolicLink()) return notify
     handle = await fs.open(
       file,
       constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0)
     )
     const stat = await handle.stat()
-    if (!stat.isFile() || stat.size > MAX_SCHEDULES_BYTES) return retries
-    const text = (await handle.readFile()).toString('utf8')
-    const parsed = yaml.load(text, { schema: yaml.CORE_SCHEMA })
+    if (!stat.isFile() || stat.size > MAX_SCHEDULES_BYTES) return notify
+    const buffer = Buffer.alloc(stat.size)
+    const { bytesRead } = await handle.read(buffer, 0, stat.size, 0)
+    const parsed = yaml.load(buffer.subarray(0, bytesRead).toString('utf8'), {
+      schema: yaml.CORE_SCHEMA
+    })
     const entries = isPlainObject(parsed) ? parsed.schedules : null
-    if (!Array.isArray(entries)) return retries
+    if (!Array.isArray(entries)) return notify
     for (const entry of entries) {
       if (!isPlainObject(entry) || typeof entry.name !== 'string' || !isScheduleName(entry.name))
         continue
-      const value = Number.isSafeInteger(entry.retries) ? (entry.retries as number) : 0
-      retries.set(entry.name, Math.min(Math.max(value, 0), MAX_RETRIES))
+      if (typeof entry.notify !== 'boolean') continue
+      notify.set(entry.name, (notify.get(entry.name) ?? false) || entry.notify)
     }
-    return retries
+    return notify
   } catch {
-    return retries
+    return notify
   } finally {
     await handle?.close().catch(() => undefined)
   }
 }
-
-/** The gem notifies after a scheduled run's last attempt only; so does the app */
-const isFinalAttempt = (line: Record<string, unknown>, retries: number): boolean =>
-  isPositiveInt(line.attempt) && line.attempt >= retries + 1
 
 const lstatOrNull = (file: string): Promise<Stats | null> => fs.lstat(file).catch(() => null)
 
@@ -153,12 +158,15 @@ export function createScheduleWatcher(
   deps: ScheduleWatcherDeps
 ): ScheduleWatcher {
   const raiderDir = path.join(projectPath, '.raider')
-  const jobsDir = path.join(raiderDir, 'flows')
+  const jobsDir = path.join(projectPath, SCHEDULES_DIR)
   const seen = new Map<string, Set<string>>()
-  // Notifications are kept until clicked or closed, or their click handler can be collected
+  // Banners are kept until clicked or closed, or their click handler can be collected
   const shown = new Set<NotificationHandle>()
   let handle: WatchHandle | null = null
   let watchingJobs = false
+  // Whether the last settle (or the start) found .raider/schedules/ to watch; an error closes
+  // the watch first, so this is what tells a folder that went away from one never there
+  let hadJobs = false
   let timer: unknown = null
   let stopped = false
   let queue: Promise<void> = Promise.resolve()
@@ -182,11 +190,17 @@ export function createScheduleWatcher(
     }, DEBOUNCE_MS)
   }
 
-  const watchDir = (dir: string, recursive: boolean): boolean => {
+  /** Watches `dir`; `counts` says which reported names matter */
+  const watchDir = (
+    dir: string,
+    recursive: boolean,
+    counts: (filename: string | null) => boolean
+  ): boolean => {
+    // An arm still awaiting when the project switched must not leave a watch behind
+    if (stopped) return false
     try {
-      // In .raider/flows/ only a change the tab shows counts; a parent watch waits for the folder
       handle = deps.watch(dir, { recursive }, (filename) => {
-        if (!recursive || isScheduleChange(filename)) schedule()
+        if (counts(filename)) schedule()
       })
       // A watched folder that goes away errors: arm again from what is there now
       handle.on('error', () => {
@@ -199,37 +213,60 @@ export function createScheduleWatcher(
     }
   }
 
-  /** Watches .raider/flows/ when it is a real folder in the project, else waits for it */
+  /**
+   * A parent watch (waiting for .raider or schedules) settles on any change: platforms report
+   * the new entry under its own name, the watched folder's name or none. A settle there is a
+   * few lstats and pushes nothing until the folder is watched.
+   */
+  const anyChange = (): boolean => true
+
+  /**
+   * Whether .raider/schedules/ is a real folder of this project: no link on the way (.raider
+   * or schedules itself), and its real path is the project's own. Checked before every read.
+   */
+  const jobsDirIsReal = async (): Promise<boolean> => {
+    const [raider, jobs] = await Promise.all([lstatOrNull(raiderDir), lstatOrNull(jobsDir)])
+    if (!raider?.isDirectory() || !jobs?.isDirectory()) return false
+    const [realProject, realJobs] = await Promise.all([
+      fs.realpath(projectPath),
+      fs.realpath(jobsDir)
+    ]).catch(() => [null, null])
+    return realProject !== null && realJobs === path.join(realProject, '.raider', 'schedules')
+  }
+
+  /** Watches .raider/schedules/ when it is a real folder in the project, else waits for it */
   const arm = async (): Promise<void> => {
     closeHandle()
     const raider = await lstatOrNull(raiderDir)
     if (!raider) {
-      if (!stopped && watchDir(projectPath, false) && (await lstatOrNull(raiderDir))) schedule()
+      if (!stopped && watchDir(projectPath, false, anyChange) && (await lstatOrNull(raiderDir)))
+        schedule()
       return
     }
     // A link (or a file) is never followed
     if (!raider.isDirectory()) return
     const jobs = await lstatOrNull(jobsDir)
     if (!jobs) {
-      if (!stopped && watchDir(raiderDir, false) && (await lstatOrNull(jobsDir))) schedule()
+      if (!stopped && watchDir(raiderDir, false, anyChange) && (await lstatOrNull(jobsDir)))
+        schedule()
       return
     }
-    if (!jobs.isDirectory()) return
-    const [realProject, realJobs] = await Promise.all([
-      fs.realpath(projectPath),
-      fs.realpath(jobsDir)
-    ]).catch(() => [null, null])
-    if (realProject === null || realJobs !== path.join(realProject, '.raider', 'flows')) return
     if (stopped) return
-    watchingJobs = watchDir(jobsDir, true)
+    // A linked .raider/schedules/ is never watched or read; .raider is, for it to be replaced
+    if (!(await jobsDirIsReal())) {
+      if (!stopped) watchDir(raiderDir, false, anyChange)
+      return
+    }
+    watchingJobs = watchDir(jobsDir, true, isScheduleChange)
   }
 
+  /** Schedule folders: real folders (never links) with a valid schedule name */
   const jobNames = async (): Promise<string[]> => {
     const entries = await fs.readdir(jobsDir, { withFileTypes: true }).catch(() => [])
     return entries.filter((e) => e.isDirectory() && isScheduleName(e.name)).map((e) => e.name)
   }
 
-  const notify = (name: string, line: Record<string, unknown>): void => {
+  const banner = (name: string, line: Record<string, unknown>): void => {
     if (!deps.notifications.isSupported()) return
     const notification = deps.notifications.create({
       title: SCHEDULE_FAILED_TITLE,
@@ -245,68 +282,85 @@ export function createScheduleWatcher(
     notification.show()
   }
 
+  const send = (channel: string, ...args: unknown[]): void => {
+    const win = deps.mainWindow()
+    if (win && !win.isDestroyed() && !win.webContents.isDestroyed())
+      win.webContents.send(channel, ...args)
+  }
+
   const focusSchedules = (): void => {
     const win = deps.mainWindow()
     if (!win || win.isDestroyed()) return
     if (win.isMinimized()) win.restore()
     win.show()
     win.focus()
-    if (!win.webContents.isDestroyed()) win.webContents.send('focus-schedules')
-  }
-
-  const pushSchedulesChanged = (): void => {
-    const win = deps.mainWindow()
-    if (win && !win.isDestroyed() && !win.webContents.isDestroyed())
-      win.webContents.send('schedules-changed')
+    send('focus-schedules')
   }
 
   /**
-   * Reads each schedule's log and remembers its lines; with `announce`, a line not seen before
-   * that is the last attempt of a failed scheduled run is notified. Keys are only ever added (oldest dropped past
-   * the cap), so a log caught mid-rewrite never makes old lines new again.
+   * Reads each schedule's log and remembers its lines; with `announce`, lines not seen before
+   * are news: a scheduled run that wrote results reloads the Dashboard (once per scan), and a
+   * failed one of a schedule with notify off shows a banner. Keys are only ever added (oldest
+   * dropped past the cap), so a log caught mid-rewrite never makes old lines new again.
    */
   const scan = async (announce: boolean): Promise<void> => {
+    if (!(await jobsDirIsReal())) return
     // Read once per scan, and only when a new scheduled failure needs it
-    let retries: Map<string, number> | null = null
+    let notify: Map<string, boolean> | null = null
+    let finished = false
     for (const name of await jobNames()) {
       const lines = await readRunLog(projectPath, name, MAX_SCAN_BYTES)
       if (stopped) return
       const keys = seen.get(name) ?? new Set<string>()
       seen.set(name, keys)
-      const failures: Record<string, unknown>[] = []
-      for (const line of lines) {
-        if (!isPlainObject(line)) continue
+      // Only the newest MAX_SEEN keyed lines count, seeding or not: an older line past the
+      // cap would be forgotten each scan and look new again
+      const keyed = lines.flatMap((line) => {
+        if (!isPlainObject(line)) return []
         const key = lineKey(name, line)
-        if (key === null) continue
+        return key === null ? [] : [{ key, line }]
+      })
+      let failure: Record<string, unknown> | null = null
+      for (const { key, line } of keyed.slice(-MAX_SEEN)) {
         if (keys.delete(key)) {
           keys.add(key)
           continue
         }
         keys.add(key)
-        if (announce && isScheduledFailure(line)) failures.push(line)
+        if (!announce) continue
+        if (isScheduledWith(line, RESULT_STATUSES)) finished = true
+        // At most one banner per schedule per scan: its newest new failure
+        if (isScheduledWith(line, BANNER_STATUSES)) failure = line
       }
       for (const key of keys) {
         if (keys.size <= MAX_SEEN) break
         keys.delete(key)
       }
-      if (failures.length === 0) continue
-      retries ??= await readScheduleRetries(projectPath)
+      if (failure === null) continue
+      notify ??= await readScheduleNotify(projectPath)
       if (stopped) return
-      const jobRetries = retries.get(name) ?? 0
-      for (const line of failures) if (isFinalAttempt(line, jobRetries)) notify(name, line)
+      // Unknown schedule or notify on (the gem shows its own): no banner
+      if (notify.get(name) !== false) continue
+      banner(name, failure)
     }
+    // At most one per scan, whatever the number of new lines
+    if (finished && !stopped) send('scheduled-run-finished', projectPath)
   }
 
   const settle = async (): Promise<void> => {
-    if (!watchingJobs || !(await lstatOrNull(jobsDir))?.isDirectory()) await arm()
-    if (stopped) return
-    pushSchedulesChanged()
+    if (!watchingJobs || !(await jobsDirIsReal())) await arm()
+    const had = hadJobs
+    hadJobs = watchingJobs
+    // Still waiting for the folder: nothing the schedules show has changed
+    if (stopped || (!had && !watchingJobs)) return
+    send('schedules-changed')
     await scan(true)
   }
 
   // Lines already in the logs when watching starts are not news
   enqueue(async () => {
     await arm()
+    hadJobs = watchingJobs
     await scan(false)
   })
 

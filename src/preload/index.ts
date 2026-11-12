@@ -19,6 +19,14 @@ import type { ProjectFileResult } from '@shared/types/projectFiles'
 import type { ScaffoldParams, ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
+import type {
+  GemCliError,
+  RunScheduleNowRequest,
+  ScheduleChangeResult,
+  ScheduleRequest,
+  SchedulesList,
+  SchedulesStatus
+} from '@shared/types/schedules'
 import type { AcceptBaselineResult } from '@shared/types/acceptBaseline'
 import type {
   TraceEntryResult,
@@ -355,6 +363,36 @@ const api = {
   listSavedLogins: async (): Promise<SavedLoginsResult> => ipcRenderer.invoke('list-saved-logins'),
   forgetSavedLogin: async (name: string): Promise<{ ok: true } | { error: string }> =>
     ipcRenderer.invoke('forget-saved-login', name),
+  // --- Test schedules (active project, raider schedule) ---
+  schedulesStatus: async (): Promise<SchedulesStatus | GemCliError> =>
+    ipcRenderer.invoke('schedules-status'),
+  listSchedules: async (rubyCommand: string): Promise<SchedulesList | GemCliError> =>
+    ipcRenderer.invoke('list-schedules', rubyCommand),
+  addSchedule: async (
+    rubyCommand: string,
+    request: ScheduleRequest
+  ): Promise<ScheduleChangeResult | GemCliError> =>
+    ipcRenderer.invoke('add-schedule', rubyCommand, request),
+  removeSchedule: async (
+    rubyCommand: string,
+    name: string
+  ): Promise<ScheduleChangeResult | GemCliError> =>
+    ipcRenderer.invoke('remove-schedule', rubyCommand, name),
+  openScheduleReport: async (name: string): Promise<{ ok: true } | GemCliError> =>
+    ipcRenderer.invoke('open-schedule-report', name),
+  runScheduleNow: async (
+    rubyCommand: string,
+    request: RunScheduleNowRequest
+  ): Promise<StartRunResult | GemCliError> =>
+    ipcRenderer.invoke('run-schedule-now', rubyCommand, request),
+  /** Something changed under the open project's .raider/schedules/ (a run, a schedule) */
+  onSchedulesChanged: (callback: () => void): (() => void) =>
+    subscribe('schedules-changed', callback),
+  /** A failed scheduled run's banner was clicked: show the Tests tab's Schedules */
+  onFocusSchedules: (callback: () => void): (() => void) => subscribe('focus-schedules', callback),
+  /** A scheduled run of `projectPath` wrote raider-results: the Dashboard reloads */
+  onScheduledRunFinished: (callback: (projectPath: string) => void): (() => void) =>
+    subscribe('scheduled-run-finished', callback),
   /** Subscribes to live run events; the returned function removes only this subscription */
   onRunEvent: (callback: (event: RunEvent) => void): (() => void) => {
     const listener = (_event: IpcRendererEvent, runEvent: RunEvent): void => callback(runEvent)

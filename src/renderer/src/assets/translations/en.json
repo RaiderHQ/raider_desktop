@@ -464,7 +464,14 @@
       "message": "Its file moves to the Trash, where you can restore it. Recorded tests take their recording with them.",
       "confirm": "Move to Trash",
       "cancel": "Cancel"
-    }
+    },
+    "select": "Select",
+    "ticked_one": "{{count}} ticked",
+    "ticked_other": "{{count}} ticked",
+    "runTicked": "Run",
+    "scheduleTicked": "Schedule…",
+    "clearTicked": "Clear",
+    "tick": "Tick {{name}}"
   },
   "schedules": {
     "noRuby": "Raider can't find Ruby on this computer, so it can't schedule runs yet.",
@@ -478,19 +485,16 @@
     },
     "last": {
       "never": "Not run yet",
-      "completed": "Completed {{when}}",
-      "failed": "Failed, {{when}}",
-      "failedStep": "Failed at step {{step}}, {{when}}",
-      "failedLine": "Failed at line {{line}}, {{when}}",
-      "setupError": "Could not start, {{when}}",
-      "busy": "Skipped because another run was going, {{when}}"
+      "failed": "Failed {{failed}} of {{total}} · {{when}}",
+      "setupError": "Could not start · {{when}}",
+      "busy": "Skipped, another run was going · {{when}}",
+      "passed": "Passed {{passed}} · {{when}}"
     },
     "every": {
       "hour": "Every hour at :{{minute}}",
       "day": "Every day at {{time}}",
       "weekday": "Every weekday at {{time}}",
-      "week": "Every {{day}} at {{time}}",
-      "withNotify": "{{text}}, notify on failure"
+      "week": "Every {{day}} at {{time}}"
     },
     "days": {
       "mon": "Monday",
@@ -502,7 +506,7 @@
       "sun": "Sunday"
     },
     "scheduleModal": {
-      "title": "Schedule {{name}}",
+      "title": "Schedule tests",
       "everyLabel": "Repeat",
       "every": {
         "hour": "Every hour",
@@ -517,10 +521,67 @@
       "minuteLabel": "Minute past the hour",
       "minuteHint": "00 to 59.",
       "minuteInvalid": "Enter two digits from 00 to 59.",
-      "retriesLabel": "Retries",
+      "retriesLabel": "Retry failed tests",
       "notify": "Notify me when a scheduled run fails",
       "save": "Schedule",
-      "scheduled": "Scheduled {{name}}."
+      "scheduled": "Scheduled {{name}}.",
+      "editTitle": "Edit {{name}}",
+      "nameLabel": "Name",
+      "nameHint": "Lowercase letters, digits and _, up to 60 characters.",
+      "nameInvalid": "Use 1 to 60 lowercase letters, digits or _.",
+      "nameTaken": "A schedule called {{name}} already exists. Saving replaces it.",
+      "runLabel": "Run",
+      "pickRun": "Choose what this schedule runs.",
+      "runAll": "All tests",
+      "runTag": "Tests tagged",
+      "runTicked_one": "Ticked test ({{count}})",
+      "runTicked_other": "Ticked tests ({{count}})",
+      "tagLabel": "Tag",
+      "tagPlaceholder": "Pick or type a tag",
+      "tagInvalid": "Use letters, digits, _, : or -.",
+      "showBrowser": "Show the browser",
+      "showBrowserHint": "A browser window opens while the scheduled run goes, whatever the project's Headless setting says. You need to be logged in to this computer.",
+      "retriesHint": "A failed test is tried again up to this many times, in the same run.",
+      "saveEdit": "Save",
+      "saved": "Saved {{name}}.",
+      "filesDropped_one": "{{count}} missing test file was left out.",
+      "filesDropped_other": "{{count}} missing test files were left out."
+    },
+    "panel": {
+      "title": "Schedules",
+      "titleCount": "Schedules ({{count}})",
+      "nextSummary": "next {{when}}",
+      "schedule": "Schedule…",
+      "empty": "No schedules yet. Schedule all tests, one tag or the tests you tick, and they run even when Raider is closed.",
+      "loading": "Loading schedules…",
+      "needsUpdate": "Scheduling needs ruby_raider 4.2 or later.",
+      "updateHint": "Update ruby_raider in this project to 4.2 to schedule tests.",
+      "oldSchedules": "This project has schedules from ruby_raider 4.1. Update to 4.2 to replace them.",
+      "dismiss": "Dismiss"
+    },
+    "row": {
+      "runsAll": "All tests",
+      "runsTag": "Tag {{tag}}",
+      "runsFiles_one": "{{count}} test",
+      "runsFiles_other": "{{count}} tests",
+      "browserShown": "browser shown",
+      "notifyOn": "notify on failure",
+      "viewReport": "View report",
+      "runNow": "Run now",
+      "more": "More actions for {{name}}",
+      "edit": "Edit",
+      "stop": "Stop schedule",
+      "stopped": "Stopped {{name}}.",
+      "reschedule": "Re-schedule",
+      "osState": "Schedule problem: {{state}}.",
+      "fileNotFound": "Test file not found: {{file}}"
+    },
+    "errors": {
+      "needs42": "Scheduling needs ruby_raider 4.2 or later in this project.",
+      "rubyCantRun": "This project's Ruby can't run ruby_raider 4.2.",
+      "busy": "A scheduled run ({{name}}) is going; try again when it finishes.",
+      "runningWrite": "Raider can't write to this project's .raider/schedules folder, so the run didn't start. Check that you can change files in the project folder.",
+      "noReport": "There's no report for this schedule yet."
     }
   },
   "testPage": {
@@ -1022,10 +1083,29 @@
       "day": "The day of the week it runs",
       "time": "The time it runs, on the 24-hour clock",
       "minute": "The minute past each hour it runs",
-      "retries": "How many times a failed run is tried again",
+      "retries": "How many times a failed test is tried again in the same run",
       "notify": "Show a notification when a scheduled run fails",
       "scheduleSave": "Save the schedule; it runs even when Raider is closed",
-      "fixSchedule": "Fix the fields marked in red first"
+      "fixSchedule": "Fix the fields marked in red first",
+      "panelToggle": "Show or hide this project's schedules",
+      "schedule": "Schedule all tests, one tag or ticked tests to run on their own",
+      "viewReport": "Open the report of this schedule's last run",
+      "runNow": "Run these tests now in Raider, with this schedule's browser setting",
+      "more": "Edit or stop this schedule",
+      "edit": "Change this schedule",
+      "stop": "Remove this schedule from the computer's scheduler",
+      "reschedule": "Save this schedule again so the computer's scheduler runs it",
+      "dismiss": "Hide this message",
+      "name": "The schedule's name, used by the computer's scheduler",
+      "run": "Which tests this schedule runs",
+      "tag": "Run the tests with this tag",
+      "showBrowser": "Open a browser window during scheduled runs"
+    },
+    "testsList": {
+      "select": "Tick tests to run or schedule them together",
+      "runTicked": "Run the ticked tests now",
+      "scheduleTicked": "Schedule the ticked tests",
+      "clearTicked": "Untick every test"
     }
   },
   "run": {
@@ -1363,7 +1443,9 @@
       "dashboard": "the dashboard",
       "runs": "running tests",
       "install": "installing Ruby Raider",
-      "raider": "Ruby Raider"
+      "raider": "Ruby Raider",
+      "scheduling": "scheduling tests",
+      "showBrowser": "showing the browser on scheduled runs"
     }
   },
   "errorToast": {

@@ -8,6 +8,7 @@ import useRecorderStore from '@foundation/Stores/recorderStore'
 import useTitleStore from '@foundation/Stores/titleStore'
 import useEditorStore from '@foundation/Stores/editorStore'
 import useOverlayStore from '@foundation/Stores/overlayStore'
+import { useSchedulesFocusStore } from '@foundation/Stores/schedulesFocusStore'
 
 vi.mock('react-i18next', () => ({
   useTranslation: (): { t: (key: string, opts?: object) => string } => ({
@@ -73,6 +74,8 @@ beforeAll(() => {
       .mockResolvedValue({ success: true, rubyCommand: 'ruby', rubyVersion: '3.2.0' }),
     closeApp: vi.fn(),
     onRunEvent: vi.fn(() => vi.fn()),
+    onScheduledRunFinished: vi.fn(() => vi.fn()),
+    onFocusSchedules: vi.fn(() => vi.fn()),
     getActiveRun: vi.fn().mockResolvedValue(null),
     onTraceOpened: vi.fn(() => vi.fn()),
     onTestsUpdated: vi.fn(() => vi.fn()),
@@ -178,6 +181,44 @@ describe('MainTemplate tests updates', () => {
         </MemoryRouter>
       )
     }
+
+    describe('a failed scheduled run banner click (focus-schedules)', () => {
+      const focusListener = (): (() => void) => {
+        const subscribe = api().onFocusSchedules
+        return subscribe.mock.calls[subscribe.mock.calls.length - 1][0]
+      }
+
+      it('from another page opens the Overview with the panel remembered open', () => {
+        localStorage.removeItem('schedulesPanelOpen:/fake/project')
+        const before = useSchedulesFocusStore.getState().request
+        renderAt('/start-project')
+        act(() => focusListener()())
+        expect(screen.getByTestId('where')).toHaveTextContent(/^\/overview$/)
+        expect(useSchedulesFocusStore.getState().request).toBe(before + 1)
+        expect(localStorage.getItem('schedulesPanelOpen:/fake/project')).toBe('1')
+      })
+
+      it('on the Overview (a test page too) stays there and asks for the panel', () => {
+        const before = useSchedulesFocusStore.getState().request
+        renderAt('/overview/tests/abc')
+        act(() => focusListener()())
+        expect(screen.getByTestId('where')).toHaveTextContent('/overview/tests/abc')
+        expect(useSchedulesFocusStore.getState().request).toBe(before + 1)
+      })
+
+      it('does nothing without a project', () => {
+        projectState.projectPath = null as unknown as string
+        try {
+          const before = useSchedulesFocusStore.getState().request
+          renderAt('/start-project')
+          act(() => focusListener()())
+          expect(screen.getByTestId('where')).toHaveTextContent('/start-project')
+          expect(useSchedulesFocusStore.getState().request).toBe(before)
+        } finally {
+          projectState.projectPath = '/fake/project'
+        }
+      })
+    })
 
     it('New project… opens the create page', () => {
       renderAt('/overview')

@@ -15,10 +15,18 @@ import type { CodeTestView, ProjectTestEntry } from '@shared/types/projectTest'
 import type { ProjectFileResult } from '@shared/types/projectFiles'
 import type { ScaffoldParams, ScaffoldResult } from '@shared/types/scaffoldTypes'
 import type { QuickProject } from '@shared/types/quickProject'
-import type { RunApi } from '@shared/types/runEvents'
+import type { RunApi, StartRunResult } from '@shared/types/runEvents'
 import type { AssertionMessage } from '@shared/types/pendingAssertion'
 import type { FailedStepMap, FailedStepQuery } from '@shared/types/failedStep'
 import type { SavedLoginsResult } from '@shared/types/savedLogins'
+import type {
+  GemCliError,
+  RunScheduleNowRequest,
+  ScheduleChangeResult,
+  ScheduleRequest,
+  SchedulesList,
+  SchedulesStatus
+} from '@shared/types/schedules'
 import type { AcceptBaselineResult } from '@shared/types/acceptBaseline'
 import type {
   TraceEntryResult,
@@ -185,6 +193,31 @@ export interface WindowApi extends RunApi {
   /** The project's saved logins, without cookies or storage */
   listSavedLogins: () => Promise<SavedLoginsResult>
   forgetSavedLogin: (name: string) => Promise<{ ok: true } | { error: string }>
+
+  // --- Test schedules (active project, raider schedule, ruby_raider 4.2+) ---
+  /** Read from files only: whether the project's gem can schedule, and the platform */
+  schedulesStatus: () => Promise<SchedulesStatus | GemCliError>
+  /** The project's schedules, each with its last run (the run log's, busy included) */
+  listSchedules: (rubyCommand: string) => Promise<SchedulesList | GemCliError>
+  /** Adds the schedule, or replaces the one with its name */
+  addSchedule: (
+    rubyCommand: string,
+    request: ScheduleRequest
+  ) => Promise<ScheduleChangeResult | GemCliError>
+  removeSchedule: (rubyCommand: string, name: string) => Promise<ScheduleChangeResult | GemCliError>
+  /** The schedule's own last report, else raider-results/index.html; else `noReport` */
+  openScheduleReport: (name: string) => Promise<{ ok: true } | GemCliError>
+  /** Runs the schedule's tests now as a normal app run; main reads the schedule itself */
+  runScheduleNow: (
+    rubyCommand: string,
+    request: RunScheduleNowRequest
+  ) => Promise<StartRunResult | GemCliError>
+  /** Something changed under the open project's .raider/schedules/; returns an unsubscribe */
+  onSchedulesChanged: (callback: () => void) => () => void
+  /** A failed scheduled run's banner was clicked: show the Schedules; returns an unsubscribe */
+  onFocusSchedules: (callback: () => void) => () => void
+  /** A scheduled run of `projectPath` wrote raider-results; returns an unsubscribe */
+  onScheduledRunFinished: (callback: (projectPath: string) => void) => () => void
 
   // --- Test Management ---
   /** `test` is the test as saved, with its project file when it has one */

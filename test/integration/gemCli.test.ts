@@ -11,8 +11,8 @@ import {
   type ExecFileFn,
   type GemCliDeps
 } from '../../src/main/handlers/gem/gemCli'
-import { parseGemSchedules } from '../../src/main/handlers/gem/gemJson'
-import { scheduleArgs, validateSchedule } from '../../src/shared/schedules'
+import { parseScheduleList } from '../../src/main/handlers/gem/gemJson'
+import { scheduleArgs, validateScheduleRequest } from '../../src/shared/schedules'
 
 const RUBY = '/opt/rubies/3.2.8/bin/ruby'
 const PROJECT = '/work/my project'
@@ -68,20 +68,38 @@ describe('runGemCli', () => {
     expect(options.shell).toBeUndefined()
   })
 
-  it('passes the schedule argv as single elements, then --project', async () => {
+  it('passes the schedule argv as single elements, files after NAME, then --project', async () => {
     const execFile = execDouble({ stdout: 'Scheduled report' })
-    const schedule = validateSchedule({ every: 'day', at: '09:00', retries: 0, notify: false })
-    await runGemCli(
-      PROJECT,
-      RBENV,
-      ['flow', ...scheduleArgs('report', schedule)],
-      {},
-      depsWith(execFile)
-    )
+    const req = validateScheduleRequest({
+      name: 'report',
+      every: 'day',
+      at: '09:00',
+      retries: 0,
+      notify: false,
+      showBrowser: false,
+      selection: { kind: 'files', files: ['spec/a b_spec.rb'] }
+    })
+    await runGemCli(PROJECT, RBENV, scheduleArgs(req), {}, depsWith(execFile))
     const args: string[] = execFile.mock.calls[0][1]
-    expect(args).not.toContain('--input')
-    expect(args.slice(-7)).toEqual(['day', '--at', '09:00', '--retries', '0', '--project', PROJECT])
-    expect(args.slice(-2)).toEqual(['--project', PROJECT])
+    expect(args).toEqual([
+      '-S',
+      'bundle',
+      'exec',
+      'raider',
+      'schedule',
+      'add',
+      'report',
+      'spec/a b_spec.rb',
+      '--every',
+      'day',
+      '--at',
+      '09:00',
+      '--retries',
+      '0',
+      '--no-notify',
+      '--project',
+      PROJECT
+    ])
   })
 
   it('passes a hostile argument as one argv element, never through a shell', async () => {
@@ -117,8 +135,16 @@ describe('runGemCli', () => {
     ).toEqual({
       ok: true,
       stdout: ' [1] \n',
+      stderr: '',
       json: [1]
     })
+  })
+
+  it('hands a successful command its stderr', async () => {
+    const execFile = execDouble({ stdout: 'Removed x\n', stderr: 'Removed 1 schedule made…\n' })
+    expect(
+      await runGemCli(PROJECT, RBENV, ['schedule', 'remove', 'x'], {}, depsWith(execFile))
+    ).toEqual({ ok: true, stdout: 'Removed x\n', stderr: 'Removed 1 schedule made…\n' })
   })
 
   it('reports gem-output for stdout that is not JSON', async () => {
@@ -154,7 +180,8 @@ describe('runGemCli', () => {
       ok: false,
       error: 'refused',
       message: 'Unknown flow: nope[0m',
-      exitCode: 2
+      exitCode: 2,
+      stderr: 'warning: something\nUnknown flow: nope\u001b[0m\n\n'
     })
     expect(JSON.stringify(warn.mock.calls)).not.toContain('SECRET')
     warn.mockRestore()
@@ -233,8 +260,6 @@ describe('gemEnv', () => {
     GEM_PATH: '/gems:/more',
     RUBYOPT: '-W0',
     BUNDLE_GEMFILE: '/elsewhere/Gemfile',
-    RAIDER_INPUT_HOURS: '5',
-    RAIDER_FLOW_TRIGGER: 'schedule',
     HOME: '/home/me'
   }
 
@@ -243,10 +268,8 @@ describe('gemEnv', () => {
     expect(env.PATH).toBe(['/opt/rubies/3.2.8/bin', '/usr/bin', '/bin'].join(path.delimiter))
   })
 
-  it('drops inherited RAIDER_INPUT_* / RAIDER_FLOW_* and BUNDLE_GEMFILE, keeps gem paths', () => {
+  it('drops BUNDLE_GEMFILE, keeps gem paths', () => {
     const env = gemEnv(RUBY, base)
-    expect(env.RAIDER_INPUT_HOURS).toBeUndefined()
-    expect(env.RAIDER_FLOW_TRIGGER).toBeUndefined()
     expect(env.BUNDLE_GEMFILE).toBeUndefined()
     expect(env).toMatchObject({
       GEM_HOME: '/gems',
@@ -263,11 +286,11 @@ describe('gemEnv', () => {
 
   it('is what runGemCli passes', async () => {
     const execFile = execDouble()
-    process.env.RAIDER_INPUT_LEAK = 'x'
-    await runGemCli(PROJECT, RBENV, ['flow', 'init'], {}, depsWith(execFile))
-    delete process.env.RAIDER_INPUT_LEAK
+    process.env.BUNDLE_GEMFILE = '/elsewhere/Gemfile'
+    await runGemCli(PROJECT, RBENV, ['schedule', 'list'], {}, depsWith(execFile))
+    delete process.env.BUNDLE_GEMFILE
     const env = execFile.mock.calls[0][2].env
-    expect(env.RAIDER_INPUT_LEAK).toBeUndefined()
+    expect(env.BUNDLE_GEMFILE).toBeUndefined()
     expect(env.PATH.startsWith('/opt/rubies/3.2.8/bin')).toBe(true)
   })
 })
@@ -323,143 +346,162 @@ describe('makeRubyResolver', () => {
   })
 })
 
-describe('parseGemSchedules', () => {
-  const real = JSON.parse(
-    '[{"name":"broken","every":"hour","at":"00:07","on":null,"retries":0,"inputs":["hours=5"],"notify":true,"next_run_at":"2026-11-10T13:07:00+01:00","os_state":"ok","last":{"status":"failed","finished_at":"2026-11-10T11:09:19.448Z","trigger":"manual","failed_step":{"title":"runs","line":7},"results_dir":"flow-results/broken/20261110T110917Z"}}]'
-  )
+describe('parseScheduleList', () => {
+  // The shape `raider schedule list --json` prints in 4.2.0 (checked against the real gem)
+  const row = {
+    name: 'nightly',
+    every: 'weekday',
+    at: '08:00',
+    on: null,
+    retries: 1,
+    notify: false,
+    show_browser: true,
+    selection: { kind: 'files', files: ['spec/login_spec.rb'] },
+    next_run_at: '2026-11-13T08:00:00+01:00',
+    os_state: 'ok',
+    last: {
+      status: 'failed',
+      finished_at: '2026-11-12T08:01:10+01:00',
+      trigger: 'schedule',
+      counts: { total: 4, passed: 3, failed: 1, skipped: 0 }
+    }
+  }
+  const orphan = {
+    name: 'lost',
+    every: null,
+    at: null,
+    on: null,
+    retries: null,
+    notify: null,
+    show_browser: null,
+    selection: null,
+    next_run_at: null,
+    os_state: 'missing from schedules.yml',
+    last: null
+  }
 
-  it('maps the real 4.1.0 shape to camelCase, without inputs', () => {
-    expect(parseGemSchedules(real)).toEqual([
-      {
-        name: 'broken',
-        every: 'hour',
-        at: '00:07',
-        on: null,
-        retries: 0,
-        notify: true,
-        nextRunAt: '2026-11-10T13:07:00+01:00',
-        osState: 'ok',
-        last: {
-          status: 'failed',
-          finishedAt: '2026-11-10T11:09:19.448Z',
-          trigger: 'manual',
-          failedStep: { title: 'runs', line: 7 },
-          resultsDir: 'flow-results/broken/20261110T110917Z'
+  it('maps a listed row to camelCase', () => {
+    expect(parseScheduleList({ notice: null, schedules: [row] })).toEqual({
+      notice: null,
+      schedules: [
+        {
+          name: 'nightly',
+          every: 'weekday',
+          at: '08:00',
+          on: null,
+          retries: 1,
+          notify: false,
+          showBrowser: true,
+          selection: { kind: 'files', files: ['spec/login_spec.rb'] },
+          nextRunAt: '2026-11-13T08:00:00+01:00',
+          osState: 'ok',
+          last: {
+            status: 'failed',
+            finishedAt: '2026-11-12T08:01:10+01:00',
+            trigger: 'schedule',
+            counts: { total: 4, passed: 3, failed: 1, skipped: 0 }
+          }
         }
-      }
+      ]
+    })
+  })
+
+  it('keeps an OS-only row as an orphan and the notice as one plain line', () => {
+    expect(
+      parseScheduleList({ notice: 'Removed 1 schedule\u001b made…', schedules: [orphan] })
+    ).toEqual({
+      notice: 'Removed 1 schedule made…',
+      schedules: [{ name: 'lost', orphan: true, osState: 'missing from schedules.yml', last: null }]
+    })
+  })
+
+  it('keeps tag and all selections and a weekly day', () => {
+    const tag = { ...row, every: 'week', on: 'fri', selection: { kind: 'tag', tag: 'smoke' } }
+    const all = { ...row, name: 'all_of_them', selection: { kind: 'all' } }
+    const parsed = parseScheduleList({ notice: null, schedules: [tag, all] })
+    expect(parsed?.schedules.map((s) => (s.orphan ? null : [s.on, s.selection]))).toEqual([
+      ['fri', { kind: 'tag', tag: 'smoke' }],
+      [null, { kind: 'all' }]
     ])
   })
 
-  it.each([[['hours']], [{ hours: '5' }], [null], [undefined]])(
-    'ignores an inputs field (%j): the desktop never reads or sends inputs',
-    (inputs) => {
-      const [s] = parseGemSchedules([{ ...real[0], inputs }]) ?? []
-      expect(s).toMatchObject({ name: 'broken', every: 'hour' })
-      expect(s).not.toHaveProperty('inputs')
-    }
-  )
-
-  it('keeps a failed step number and a null failed step', () => {
-    const last = { ...real[0].last, failed_step: { number: 3, title: 't', line: 2 } }
-    expect(parseGemSchedules([{ ...real[0], last }])?.[0].last?.failedStep).toEqual({
-      number: 3,
-      title: 't',
-      line: 2
-    })
-    const none = { ...real[0].last, failed_step: null, status: 'completed' }
-    expect(parseGemSchedules([{ ...real[0], last: none }])?.[0].last?.failedStep).toBeNull()
-  })
-
-  it.each([
-    ['a ../ results dir', { results_dir: 'flow-results/broken/../../etc' }],
-    ['another job’s results dir', { results_dir: 'flow-results/hello/20261110T110917Z' }],
-    ['an unknown status', { status: 'exploded' }],
-    ['a huge string', { finished_at: 'x'.repeat(1001) }],
-    ['a float line', { failed_step: { title: 'a', line: 1.5 } }],
-    ['a string line', { failed_step: { title: 'a', line: '7' } }],
-    ['an unknown trigger', { trigger: 'cron' }]
-  ])('nulls the last run for %s', (_label, patch) => {
-    const last = { ...real[0].last, ...patch }
-    expect(parseGemSchedules([{ ...real[0], last }])?.[0].last).toBeNull()
-  })
-
-  it('accepts a numbered results dir', () => {
-    const last = { ...real[0].last, results_dir: 'flow-results/broken/20261110T110917Z-2' }
-    expect(parseGemSchedules([{ ...real[0], last }])?.[0].last?.resultsDir).toBe(
-      'flow-results/broken/20261110T110917Z-2'
-    )
+  it('lists a name once, the first row winning', () => {
+    const parsed = parseScheduleList({ notice: null, schedules: [row, { ...row, retries: 3 }] })
+    expect(parsed?.schedules).toHaveLength(1)
+    expect(parsed?.schedules[0]).toMatchObject({ retries: 1 })
   })
 
   it('strips control characters from os_state and bounds it', () => {
-    const [s] =
-      parseGemSchedules([{ ...real[0], os_state: 'loaded\u001b[31m\n' + 'x'.repeat(2000) }]) ?? []
-    expect([...s.osState].some((c) => c.charCodeAt(0) < 0x20)).toBe(false)
-    expect(s.osState.length).toBeLessThanOrEqual(1000)
-  })
-
-  it('keeps a weekly day and a null next run', () => {
-    const [s] =
-      parseGemSchedules([
-        { ...real[0], every: 'week', at: '09:00', on: 'mon', next_run_at: null }
-      ]) ?? []
-    expect(s).toMatchObject({ every: 'week', on: 'mon', nextRunAt: null })
+    const parsed = parseScheduleList({
+      notice: null,
+      schedules: [{ ...row, os_state: 'unknown (\u001b[31mboom\n)' + 'x'.repeat(5000) }]
+    })
+    const osState = parsed?.schedules[0].osState ?? ''
+    expect(osState.startsWith('unknown ([31mboom)')).toBe(true)
+    expect(osState.length).toBe(1000)
   })
 
   it.each([
-    ['a bad name', { name: 'Bad Name' }],
-    ['an unknown every', { every: 'month' }],
-    ['a bad at', { at: '25:00' }],
-    ['a bad day', { on: 'monday' }],
-    ['a float retries', { retries: 0.5 }],
-    ['an infinite retries', { retries: Number.POSITIVE_INFINITY }],
-    ['notify as a string', { notify: 'true' }],
-    ['a huge next run', { next_run_at: 'x'.repeat(1001) }]
-  ])('drops an entry with %s', (_label, patch) => {
-    expect(parseGemSchedules([{ ...real[0], ...patch }])).toEqual([])
+    ['a list', [row]],
+    ['null', null],
+    ['a string', 'x'],
+    ['no schedules', { notice: null }],
+    ['schedules not a list', { notice: null, schedules: {} }],
+    ['notice a number', { notice: 3, schedules: [] }],
+    ['no notice', { schedules: [] }]
+  ])('refuses a root that is %s', (_label, value) => {
+    expect(parseScheduleList(value)).toBeNull()
   })
 
-  // gem 4.1.0, `flow schedules --json` after the entry was removed from schedules.yml by hand
-  // while launchd still had the job (captured 2026-11-10)
-  const orphan = JSON.parse(
-    '[{"name":"hello","every":null,"at":null,"on":null,"retries":null,"inputs":null,"notify":null,"next_run_at":null,"os_state":"missing from schedules.yml","last":{"status":"completed","finished_at":"2026-11-10T11:09:20.475Z","trigger":"manual","failed_step":null,"results_dir":"flow-results/hello/20261110T110919Z"}}]'
-  )
-
-  it('keeps a schedule the OS runs but schedules.yml lost, as an orphan', () => {
-    expect(parseGemSchedules(orphan)).toEqual([
+  it.each([
+    ['null', null],
+    ['a string', 'nightly'],
+    ['a bad name', { ...row, name: '../x' }],
+    ['retries 4', { ...row, retries: 4 }],
+    ['retries as a string', { ...row, retries: '1' }],
+    ['notify as a string', { ...row, notify: 'false' }],
+    ['show_browser missing', { ...row, show_browser: undefined }],
+    ['at 8:00', { ...row, at: '8:00' }],
+    ['every month', { ...row, every: 'month' }],
+    ['a day on a daily rule', { ...row, every: 'day', on: 'mon' }],
+    ['a hostile tag', { ...row, selection: { kind: 'tag', tag: '--project' } }],
+    [
+      'a file out of the project',
+      { ...row, selection: { kind: 'files', files: ['../a_spec.rb'] } }
+    ],
+    ['an absolute file', { ...row, selection: { kind: 'files', files: ['/a_spec.rb'] } }],
+    [
+      'tag and files together',
+      { ...row, selection: { kind: 'tag', tag: 'a', files: ['spec/a_spec.rb'] } }
+    ],
+    [
+      '201 files',
       {
-        name: 'hello',
-        orphan: true,
-        osState: 'missing from schedules.yml',
-        last: {
-          status: 'completed',
-          finishedAt: '2026-11-10T11:09:20.475Z',
-          trigger: 'manual',
-          failedStep: null,
-          resultsDir: 'flow-results/hello/20261110T110919Z'
+        ...row,
+        selection: {
+          kind: 'files',
+          files: Array.from({ length: 201 }, (_, i) => `spec/t${i}_spec.rb`)
         }
       }
-    ])
+    ],
+    ['os_state missing', { ...row, os_state: null }],
+    ['next_run_at a number', { ...row, next_run_at: 3 }],
+    ['an orphan without os_state', { ...orphan, os_state: 1 }]
+  ])('drops a row that is %s', (_label, bad) => {
+    expect(parseScheduleList({ notice: null, schedules: [bad, row] })?.schedules).toHaveLength(1)
   })
 
   it.each([
-    ['a list', ['hours']],
-    ['an object', { hours: '8' }]
-  ])('reads a row with inputs set (%s) and every rule field null as an orphan', (_l, inputs) => {
-    const [s] = parseGemSchedules([{ ...orphan[0], inputs }]) ?? []
-    expect(s).toMatchObject({ name: 'hello', orphan: true })
-    expect(s).not.toHaveProperty('inputs')
-  })
-
-  it.each([
-    ['a bad name', { name: 'Bad Name' }],
-    ['no os_state', { os_state: null }],
-    ['one rule field set', { every: 'day' }],
-    ['retries set', { retries: 0 }]
-  ])('drops an orphan with %s', (_label, patch) => {
-    expect(parseGemSchedules([{ ...orphan[0], ...patch }])).toEqual([])
-  })
-
-  it('returns null for a non-array', () => {
-    expect(parseGemSchedules(null)).toBeNull()
+    ['an unknown status', { status: 'completed' }],
+    ['an unknown trigger', { trigger: 'desktop' }],
+    ['no counts', { counts: undefined }],
+    ['a negative count', { counts: { total: -1, passed: 0, failed: 0, skipped: 0 } }],
+    ['no finished_at', { finished_at: undefined }]
+  ])('makes a last run with %s null', (_label, patch) => {
+    const parsed = parseScheduleList({
+      notice: null,
+      schedules: [{ ...row, last: { ...row.last, ...patch } }]
+    })
+    expect(parsed?.schedules[0].last).toBeNull()
   })
 })

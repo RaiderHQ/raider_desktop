@@ -693,4 +693,232 @@ describe('runner', () => {
       fs.rmSync(other, { recursive: true, force: true })
     }
   })
+
+  describe('headed', () => {
+    const inherited = { HEADLESS: process.env.HEADLESS, SHOW: process.env.RAIDER_SHOW_BROWSER }
+    beforeEach(() => {
+      process.env.HEADLESS = 'inherited'
+      process.env.RAIDER_SHOW_BROWSER = 'inherited'
+    })
+    afterEach(() => {
+      if (inherited.HEADLESS === undefined) delete process.env.HEADLESS
+      else process.env.HEADLESS = inherited.HEADLESS
+      if (inherited.SHOW === undefined) delete process.env.RAIDER_SHOW_BROWSER
+      else process.env.RAIDER_SHOW_BROWSER = inherited.SHOW
+    })
+    const envOf = async (request: RunRequest): Promise<NodeJS.ProcessEnv> => {
+      script = { steps: [], exitCode: 0 }
+      await finishedEvent(await run(request))
+      return deps.spawnCommand.mock.calls[0][2]
+    }
+
+    it('false sets HEADLESS=true and drops an inherited RAIDER_SHOW_BROWSER', async () => {
+      const env = await envOf({ ...ALL, headed: false })
+      expect(env.HEADLESS).toBe('true')
+      expect(env).not.toHaveProperty('RAIDER_SHOW_BROWSER')
+    })
+
+    it('true sets RAIDER_SHOW_BROWSER=1 and drops an inherited HEADLESS', async () => {
+      const env = await envOf({ ...ALL, headed: true })
+      expect(env.RAIDER_SHOW_BROWSER).toBe('1')
+      expect(env).not.toHaveProperty('HEADLESS')
+    })
+
+    it('unset passes both inherited values unchanged', async () => {
+      const env = await envOf(ALL)
+      expect(env.HEADLESS).toBe('inherited')
+      expect(env.RAIDER_SHOW_BROWSER).toBe('inherited')
+    })
+
+    it.each(['yes', 1, null, 'true'])('rejects headed %s without spawning', async (bad) => {
+      expect(await startRun({ ...ALL, headed: bad } as unknown as RunRequest, deps)).toHaveProperty(
+        'error'
+      )
+      expect(deps.spawnCommand).not.toHaveBeenCalled()
+      expect(events).toEqual([])
+    })
+  })
+
+  it('refuses when the project is not the one the caller expected', async () => {
+    expect(await startRun(ALL, deps, path.join(project, 'other'))).toEqual({
+      error: 'The project changed, so the tests were not run.'
+    })
+    expect(deps.spawnCommand).not.toHaveBeenCalled()
+    expect(await startRun(ALL, deps, project)).toHaveProperty('runId')
+  })
+
+  describe('running.json', () => {
+    let dir: string
+    let file: string
+    const DEAD = 4_000_000
+    const readFile = (): Record<string, unknown> => JSON.parse(fs.readFileSync(file, 'utf8'))
+    const writeFile = (data: object): void => fs.writeFileSync(file, JSON.stringify(data))
+    const withRules = (): void => fs.writeFileSync(path.join(dir, 'schedules.yml'), '')
+
+    beforeEach(() => {
+      dir = path.join(project, '.raider', 'schedules')
+      file = path.join(dir, 'running.json')
+      fs.mkdirSync(dir, { recursive: true })
+    })
+
+    it('refuses a run while a live scheduled run holds it, and spawns nothing', async () => {
+      // The parent process: alive, not ours
+      writeFile({ pid: process.ppid, name: 'nightly', run_id: 'abc', started_at: 'x' })
+      expect(await startRun(ALL, deps)).toEqual({ error: 'scheduleBusy', name: 'nightly' })
+      expect(deps.spawnCommand).not.toHaveBeenCalled()
+      expect(events).toEqual([])
+      // Also without schedules.yml, and for any scope
+      withRules()
+      expect(
+        await startRun({ scope: { kind: 'tags', tags: ['smoke'] }, rubyCommand: 'ruby' }, deps)
+      ).toEqual({ error: 'scheduleBusy', name: 'nightly' })
+      expect(readFile().run_id).toBe('abc')
+    })
+
+    it('writes nothing in a project without schedules.yml', async () => {
+      script = { steps: [], hang: true }
+      const runId = await run()
+      await waitFor(() => events.find((e) => e.type === 'run:phase' && e.phase === 'booting'))
+      expect(fs.existsSync(file)).toBe(false)
+      await cancelRun(runId)
+      await finishedEvent(runId)
+    })
+
+    it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+      'refuses with runningWriteFailed when running.json cannot be written, and spawns nothing',
+      async () => {
+        withRules()
+        fs.chmodSync(dir, 0o500)
+        try {
+          expect(await startRun(ALL, deps)).toEqual({ error: 'runningWriteFailed' })
+        } finally {
+          fs.chmodSync(dir, 0o700)
+        }
+        expect(deps.spawnCommand).not.toHaveBeenCalled()
+        expect(events).toEqual([])
+        expect(await startRun(ALL, deps)).toHaveProperty('runId')
+      }
+    )
+
+    it('runs when the volume has no hard links (link fails with EPERM)', async () => {
+      withRules()
+      const link = vi.spyOn(fs, 'linkSync').mockImplementation(() => {
+        throw Object.assign(new Error('EPERM'), { code: 'EPERM' })
+      })
+      try {
+        script = { steps: [{ event: plan('t1') }, { delay: 300 }], exitCode: 0 }
+        const runId = await run()
+        expect(readFile()).toMatchObject({ pid: process.pid, name: 'desktop' })
+        await finishedEvent(runId)
+        expect(fs.existsSync(file)).toBe(false)
+      } finally {
+        link.mockRestore()
+      }
+    })
+
+    it('holds it during the run and removes it when the run finishes', async () => {
+      withRules()
+      writeFile({ pid: DEAD, name: 'nightly', run_id: 'stale' })
+      script = { steps: [{ event: plan('t1') }, { delay: 300 }], exitCode: 0 }
+      const runId = await run()
+      expect(readFile()).toMatchObject({ pid: process.pid, name: 'desktop' })
+      await finishedEvent(runId)
+      expect(fs.existsSync(file)).toBe(false)
+    })
+
+    it.skipIf(process.platform === 'win32')(
+      'keeps it until a cancelled run has exited, then removes it',
+      async () => {
+        withRules()
+        // Ignores SIGINT: still running until the grace period's SIGKILL
+        script = { steps: [{ event: plan('t1') }], hang: true, ignoreSigint: true }
+        const runId = await run()
+        await waitFor(() => events.find((e) => e.type === 'run:planned'))
+        expect(fs.existsSync(file)).toBe(true)
+        await cancelRun(runId)
+        expect(fs.existsSync(file)).toBe(true)
+        await new Promise((resolve) => setTimeout(resolve, 100))
+        expect(fs.existsSync(file)).toBe(true)
+        await finishedEvent(runId)
+        expect(fs.existsSync(file)).toBe(false)
+      }
+    )
+
+    it('removes it when a run is cancelled before anything was spawned', async () => {
+      withRules()
+      let finishInstall!: () => void
+      deps.ensureBundle = (): Promise<{ ok: boolean }> =>
+        new Promise((resolve) => (finishInstall = (): void => resolve({ ok: true })))
+      const runId = await run()
+      expect(fs.existsSync(file)).toBe(true)
+      await cancelRun(runId)
+      expect(fs.existsSync(file)).toBe(false)
+      finishInstall()
+      await finishedEvent(runId)
+      expect(deps.spawnCommand).not.toHaveBeenCalled()
+    })
+
+    it('removes it when a run ends before spawning (bundle install failed)', async () => {
+      withRules()
+      deps.ensureBundle = async (): Promise<{ ok: boolean; error?: string }> => ({
+        ok: false,
+        error: 'nope'
+      })
+      await finishedEvent(await run())
+      expect(fs.existsSync(file)).toBe(false)
+    })
+
+    it('removes it on quit while the bundle is still installing (no child yet)', async () => {
+      withRules()
+      let finishInstall!: () => void
+      deps.ensureBundle = (): Promise<{ ok: boolean }> =>
+        new Promise((resolve) => (finishInstall = (): void => resolve({ ok: true })))
+      const runId = await run()
+      expect(fs.existsSync(file)).toBe(true)
+      killActiveRun()
+      expect(fs.existsSync(file)).toBe(false)
+      await cancelRun(runId)
+      finishInstall()
+      await finishedEvent(runId)
+    })
+
+    it.skipIf(process.platform === 'win32')('removes it on quit during a run', async () => {
+      withRules()
+      script = { steps: [{ event: plan('t1') }], hang: true }
+      const runId = await run()
+      await waitFor(() => events.find((e) => e.type === 'run:planned'))
+      killActiveRun()
+      expect(fs.existsSync(file)).toBe(false)
+      await finishedEvent(runId)
+    })
+
+    it.skipIf(process.platform === 'win32')(
+      'keeps a running.json that another run wrote over it, at every exit',
+      async () => {
+        withRules()
+        const theirs = { pid: DEAD, name: 'nightly', run_id: 'theirs' }
+        // finish
+        script = { steps: [{ delay: 300 }], exitCode: 0 }
+        let runId = await run()
+        writeFile(theirs)
+        await finishedEvent(runId)
+        expect(readFile().run_id).toBe('theirs')
+        // cancel
+        script = { steps: [{ event: plan('t1') }], hang: true }
+        runId = await run()
+        await waitFor(() => events.find((e) => e.type === 'run:planned' && e.runId === runId))
+        writeFile(theirs)
+        await cancelRun(runId)
+        await finishedEvent(runId)
+        expect(readFile().run_id).toBe('theirs')
+        // quit
+        runId = await run()
+        await waitFor(() => events.find((e) => e.type === 'run:planned' && e.runId === runId))
+        writeFile(theirs)
+        killActiveRun()
+        await finishedEvent(runId)
+        expect(readFile().run_id).toBe('theirs')
+      }
+    )
+  })
 })

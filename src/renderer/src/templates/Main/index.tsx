@@ -18,6 +18,7 @@ import { useTestsListStore } from '@foundation/Stores/testsListStore'
 import useOverlayStore from '@foundation/Stores/overlayStore'
 import { subscribeRunEvents } from '@foundation/Stores/runStore'
 import useTitleStore from '@foundation/Stores/titleStore'
+import { useSchedulesFocusStore } from '@foundation/Stores/schedulesFocusStore'
 import { windowTitle } from '@shared/windowTitle'
 import { platformFrom } from '@shared/shortcuts'
 import { dispatchMenuCommand, isMenuCommand } from '@foundation/menuCommands'
@@ -185,6 +186,22 @@ const MainTemplate: React.FC = (): JSX.Element => {
       offRecent()
     }
   }, [])
+
+  // A failed scheduled run's banner was clicked: the Tests tab with the Schedules panel open.
+  // Off the Overview it opens the Overview, unless leaving would drop an edit or a recording.
+  useEffect(
+    () =>
+      window.api.onFocusSchedules(() => {
+        const projectPath = useProjectStore.getState().projectPath
+        if (!projectPath) return
+        useSchedulesFocusStore.getState().focus(projectPath)
+        if (onOverview.current) return
+        if (installModalOpen.current || pageModalOpen() || anyEditorDirty() || recorderBusy())
+          return
+        navigate('/overview')
+      }),
+    []
+  )
 
   // The home page's How Ruby Raider works link: the same modal as the menu's, never a second one
   const conceptsRequest = useOverlayStore((state) => state.conceptsRequest)

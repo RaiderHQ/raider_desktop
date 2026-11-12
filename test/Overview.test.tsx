@@ -10,6 +10,7 @@ import useRecorderStore from '@foundation/Stores/recorderStore'
 import useProjectStore from '@foundation/Stores/projectStore'
 import toast from 'react-hot-toast'
 import { useRunStore } from '@foundation/Stores/runStore'
+import { useSchedulesFocusStore } from '@foundation/Stores/schedulesFocusStore'
 import type { RunView } from '@foundation/run/runModel'
 
 // Mocking necessary modules and hooks
@@ -88,10 +89,11 @@ vi.mock('react-router', async () => {
 vi.mock('@foundation/Stores/rubyStore', () => ({
   __esModule: true,
   default: Object.assign(
-    vi.fn(() => ({
-      rubyCommand: '/usr/bin/ruby',
-      setRubyCommand: vi.fn()
-    })),
+    // Honours a selector, as zustand does (a new object per call would re-run effects forever)
+    vi.fn((select?: (s: object) => unknown) => {
+      const state = { rubyCommand: '/usr/bin/ruby', setRubyCommand: vi.fn() }
+      return select ? select(state) : state
+    }),
     { getState: (): { rubyCommand: string } => ({ rubyCommand: '/usr/bin/ruby' }) }
   )
 }))
@@ -104,6 +106,13 @@ const openFilesTab = async (): Promise<void> => {
 }
 
 const mockApi = {
+  // The Tests tab's Schedules panel: an older ruby_raider, so it never lists
+  schedulesStatus: vi.fn().mockResolvedValue({
+    supported: false,
+    version: null,
+    oldSchedules: false,
+    platform: 'darwin'
+  }),
   openDocs: vi.fn().mockResolvedValue({ success: true }),
   listProjectTests: vi.fn().mockResolvedValue([]),
   getTests: vi.fn().mockResolvedValue([]),
@@ -129,7 +138,8 @@ const mockApi = {
   duplicateProjectEntry: vi.fn().mockResolvedValue({ success: true, path: '' }),
   startRun: vi.fn().mockResolvedValue({ runId: 'r1' }),
   getRunDefaults: vi.fn().mockResolvedValue({ recommendedWorkers: 2, maxWorkers: 8 }),
-  onTestsUpdated: vi.fn(() => vi.fn())
+  onTestsUpdated: vi.fn(() => vi.fn()),
+  onSchedulesChanged: vi.fn(() => vi.fn())
 }
 
 // Web controls only show once the layout is known
@@ -295,6 +305,24 @@ describe('Overview Page', (): void => {
     await openFilesTab()
 
     expect(screen.getByTestId('folder')).toBeInTheDocument()
+  })
+
+  it('a banner click (focus request) switches to the Tests tab with the Schedules panel open', async () => {
+    useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+    localStorage.setItem('schedulesPanelOpen:/fake/project', '0')
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Overview />
+        </MemoryRouter>
+      )
+    })
+    fireEvent.click(screen.getByText('overview.tabs.dashboard'))
+    expect(screen.queryByTestId('schedules-toggle')).toBeNull()
+    await act(async () => useSchedulesFocusStore.getState().focus('/fake/project'))
+    expect(screen.queryByTestId('project-dashboard')).toBeNull()
+    expect(await screen.findByTestId('schedules-toggle')).toHaveAttribute('aria-expanded', 'true')
+    localStorage.removeItem('schedulesPanelOpen:/fake/project')
   })
 
   it('shows ProjectDashboard when Dashboard tab is clicked', async (): Promise<void> => {
@@ -1149,6 +1177,61 @@ describe('Overview live runs', (): void => {
     expect(screen.getByTestId('run-panel')).toBeInTheDocument()
     fireEvent.click(screen.getByText('overview.tabs.dashboard'))
     expect(screen.getByTestId('run-panel')).toBeInTheDocument()
+  })
+
+  it("the Tests list's Schedule… opens the Schedules dialog with the ticked tests", async () => {
+    mockApi.listProjectTests.mockResolvedValue([
+      { name: 'Login', file: 'spec/login_spec.rb', ownership: 'code', tags: [] }
+    ])
+    mockApi.schedulesStatus.mockResolvedValueOnce({
+      supported: true,
+      version: '4.2.0',
+      oldSchedules: false,
+      platform: 'darwin'
+    })
+    const listSchedules = vi.fn().mockResolvedValue({ notice: null, schedules: [] })
+    ;(window.api as unknown as Record<string, unknown>).listSchedules = listSchedules
+    try {
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/overview']}>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      fireEvent.click(await screen.findByRole('button', { name: 'tests.select' }))
+      fireEvent.click(await screen.findByRole('checkbox', { name: 'tests.tick' }))
+      fireEvent.click(screen.getByRole('button', { name: 'tests.scheduleTicked' }))
+      const dialog = await screen.findByRole('dialog')
+      expect(dialog).toHaveTextContent('schedules.scheduleModal.title')
+      expect(screen.getByTestId('schedule-files')).toHaveTextContent('spec/login_spec.rb')
+    } finally {
+      delete (window.api as unknown as Record<string, unknown>).listSchedules
+      mockApi.listProjectTests.mockResolvedValue([])
+    }
+  })
+
+  it('offers no Schedule… in the Tests list when ruby_raider is older than 4.2', async () => {
+    mockApi.listProjectTests.mockResolvedValue([
+      { name: 'Login', file: 'spec/login_spec.rb', ownership: 'code', tags: [] }
+    ])
+    try {
+      useProjectStore.setState({ projectPath: '/fake/project', files: [] })
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/overview']}>
+            <Overview />
+          </MemoryRouter>
+        )
+      })
+      fireEvent.click(await screen.findByRole('button', { name: 'tests.select' }))
+      expect(screen.getByRole('button', { name: 'tests.runTicked' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'tests.scheduleTicked' })).toBeNull()
+      expect(screen.getByText('schedules.panel.needsUpdate')).toBeInTheDocument()
+    } finally {
+      mockApi.listProjectTests.mockResolvedValue([])
+    }
   })
 
   it("shows a tagged run started on the Tests tab in Overview's panel", async () => {

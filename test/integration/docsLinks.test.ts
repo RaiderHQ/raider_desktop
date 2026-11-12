@@ -85,6 +85,20 @@ describe('openDocs', () => {
     expect(isAllowedDocsUrl(url)).toBe(false)
   })
 
+  it('links scheduling tests and its show-the-browser section', async () => {
+    expect(DOCS_LINKS['docs.scheduling']).toBe(
+      'https://ruby-raider.onrender.com/docs/scheduling-tests.html'
+    )
+    expect(DOCS_LINKS['docs.scheduling.browser']).toBe(
+      'https://ruby-raider.onrender.com/docs/scheduling-tests.html#show-the-browser'
+    )
+    for (const id of ['docs.scheduling', 'docs.scheduling.browser'] as const) {
+      expect(DOCS_LINK_IDS).toContain(id)
+      expect(await openDocs(id, open)).toBe(true)
+      expect(open).toHaveBeenCalledWith(DOCS_LINKS[id])
+    }
+  })
+
   it('every table URL passes the guard', () => {
     for (const url of Object.values(DOCS_LINKS)) expect(isAllowedDocsUrl(url)).toBe(true)
   })

@@ -40,3 +40,10 @@ export function supportsRuntime(version: string | null): boolean {
   const [major = 0] = version.split('.').map(Number)
   return major >= 4
 }
+
+/** Scheduling tests (`raider schedule`) needs 4.2 or later; an unknown version can't schedule. */
+export function supportsSchedules(version: string | null): boolean {
+  if (!version) return false
+  const [major = 0, minor = 0] = version.split('.').map(Number)
+  return major > 4 || (major === 4 && minor >= 2)
+}

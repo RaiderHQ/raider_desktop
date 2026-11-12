@@ -53,6 +53,7 @@ import { mapFailedStepHandler } from './handlers/tests/mapFailedStep'
 import { runTestHandler } from './handlers/testing/runProjectTests'
 import getTests from './handlers/getTests'
 import { registerRunIpc } from './handlers/run/runIpc'
+import { registerSchedulesIpc } from './handlers/schedules/schedulesIpc'
 import { openTraceFromDialog, registerTraceIpc } from './handlers/trace/traceIpc'
 import { makeBaselineConfirm } from './handlers/results/baselineConfirm'
 import { acceptBaseline } from './handlers/results/acceptBaseline'
@@ -93,7 +94,11 @@ import { installCloseFlush } from './handlers/recording/closeFlush'
 import saveTrace from './handlers/trace/saveTrace'
 import loadTrace from './handlers/trace/loadTrace'
 import deleteTrace from './handlers/trace/deleteTrace'
-import setActiveProject, { getRecorderSettings } from './handlers/project/setActiveProject'
+import setActiveProject, {
+  getRecorderSettings,
+  onActiveProjectChange
+} from './handlers/project/setActiveProject'
+import { startScheduleWatcher, stopScheduleWatcher } from './handlers/schedules/scheduleWatcher'
 import { upgradeRubyRaider } from './handlers/project/upgradeRubyRaider'
 import {
   clearRecentProjects,
@@ -239,6 +244,12 @@ app.whenReady().then(() => {
     // The run is detached in its own process group, so it would outlive the app
     killActiveRun()
   })
+  // A quit can still be cancelled at before-quit (unsaved changes), so the watcher stops here
+  app.on('will-quit', () => stopScheduleWatcher())
+  // Only the open project's schedules are watched: its scheduled runs and failed-run banners
+  onActiveProjectChange((projectPath) =>
+    projectPath ? startScheduleWatcher(projectPath) : stopScheduleWatcher()
+  )
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
@@ -349,6 +360,7 @@ app.whenReady().then(() => {
   )
   ipcMain.handle('map-failed-step', (_e, p, id, f) => mapFailedStepHandler(p, id, f))
   registerRunIpc(ipcMain)
+  registerSchedulesIpc(ipcMain)
   registerTraceIpc(ipcMain)
   ipcMain.handle('accept-baseline', (event, actualPath: unknown, baselinePath: unknown) =>
     acceptBaseline(actualPath, baselinePath, makeBaselineConfirm(event.sender))

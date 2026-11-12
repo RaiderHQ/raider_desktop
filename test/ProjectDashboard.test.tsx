@@ -259,7 +259,7 @@ describe('ProjectDashboard after a live run', () => {
     readDirectory.mock.calls.filter(([dir]) => dir === '/proj/raider-results').length
 
   const setup = async (): Promise<ReturnType<typeof vi.fn>> => {
-    useRunStore.setState({ run: null, origin: null, isActive: false })
+    useRunStore.setState({ run: null, origin: null, isActive: false, scheduledRunAt: null })
     useProjectStore.setState({ projectPath: '/proj' })
     const readDirectory = vi.fn().mockResolvedValue([])
     window.api = {
@@ -285,6 +285,21 @@ describe('ProjectDashboard after a live run', () => {
     act(() => {
       useRunStore.setState({ run: finishedRun('/other', '2026-01-01T00:01:00Z') })
     })
+    await new Promise((r) => setTimeout(r, 20))
+    expect(resultsReads(readDirectory)).toBe(1)
+  })
+
+  it('reloads the results when a scheduled run of the open project finishes', async () => {
+    const readDirectory = await setup()
+    act(() => useRunStore.getState().scheduledRunFinished('/proj'))
+    await waitFor(() => expect(resultsReads(readDirectory)).toBe(2))
+    act(() => useRunStore.getState().scheduledRunFinished('/proj'))
+    await waitFor(() => expect(resultsReads(readDirectory)).toBe(3))
+  })
+
+  it('ignores a scheduled run of another project', async () => {
+    const readDirectory = await setup()
+    act(() => useRunStore.getState().scheduledRunFinished('/other'))
     await new Promise((r) => setTimeout(r, 20))
     expect(resultsReads(readDirectory)).toBe(1)
   })

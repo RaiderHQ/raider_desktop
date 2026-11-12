@@ -1,14 +1,18 @@
 import { constants, promises as fs } from 'node:fs'
 import { assertRealInside, resolveInside } from '../tests/sidecar'
 import { isScheduleName } from '../../../shared/schedules'
+import { parseLastRun } from '../gem/gemJson'
+import type { ScheduledLastRun } from '../../../shared/types/schedules'
 
-// The gem's run log of a scheduled job (.raider/flows/<name>/runs.jsonl, one JSON line per
+// The gem's run log of a schedule (.raider/schedules/<name>/runs.jsonl, one JSON line per
 // run). It is written by project code, so nothing is trusted: each line is parsed on its own.
 
 /** Only the log's tail is read; the gem trims it to 50 lines anyway */
 const MAX_LOG_BYTES = 1024 * 1024
+/** The last run needs only the last line: a small tail, read once per listed schedule */
+const LAST_RUN_BYTES = 64 * 1024
 
-const runLogRel = (name: string): string => `.raider/flows/${name}/runs.jsonl`
+const runLogRel = (name: string): string => `.raider/schedules/${name}/runs.jsonl`
 
 /**
  * The log's lines, oldest first, each parsed on its own (a bad line is skipped). Empty when
@@ -51,4 +55,16 @@ export async function readRunLog(
   } finally {
     await handle?.close().catch(() => undefined)
   }
+}
+
+/**
+ * The schedule's last run from its log's last line (a busy line too, which the gem's list
+ * skips); null without a log or when that line doesn't fit.
+ */
+export async function lastRunFromLog(
+  projectPath: string,
+  name: string
+): Promise<ScheduledLastRun | null> {
+  const lines = await readRunLog(projectPath, name, LAST_RUN_BYTES)
+  return lines.length === 0 ? null : parseLastRun(lines[lines.length - 1])
 }
