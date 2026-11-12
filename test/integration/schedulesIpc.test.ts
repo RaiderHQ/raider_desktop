@@ -712,6 +712,10 @@ describe('run-schedule-now', () => {
     })
     deps.startRun.mockResolvedValueOnce({ error: 'busy' })
     expect(await call('run-schedule-now', RUBY, { name: 'nightly' })).toEqual({ error: 'busy' })
+    deps.startRun.mockResolvedValueOnce({ error: 'runningWriteFailed' })
+    expect(await call('run-schedule-now', RUBY, { name: 'nightly' })).toEqual({
+      error: 'runningWriteFailed'
+    })
     deps.startRun.mockResolvedValueOnce({ error: 'Invalid tag: a b' })
     expect(await call('run-schedule-now', RUBY, { name: 'nightly' })).toEqual({
       error: 'refused',

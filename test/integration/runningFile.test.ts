@@ -307,3 +307,106 @@ describe('removeIfSame: only the file that was judged', () => {
     expect(inspectRunning(path.join(dir, 'missing.json'))).toBeNull()
   })
 })
+
+describe('no hard links on this volume (FAT, exFAT, some SMB)', () => {
+  beforeEach(withSchedules)
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  const errno = (code: string): NodeJS.ErrnoException => Object.assign(new Error(code), { code })
+  const noLinks = (code = 'EPERM'): void => {
+    vi.spyOn(fs, 'linkSync').mockImplementation(() => {
+      throw errno(code)
+    })
+  }
+
+  it.each(['EPERM', 'ENOTSUP', 'EXDEV', 'EMLINK', 'ENOSYS'])(
+    'publishRunning creates running.json directly when link fails with %s',
+    (code) => {
+      noLinks(code)
+      const body = JSON.stringify({ pid: 1000, run_id: 'a' })
+      expect(publishRunning(file, body)).toBe(true)
+      expect(fs.readFileSync(file, 'utf8')).toBe(body)
+      if (process.platform !== 'win32') expect(fs.statSync(file).mode & 0o777).toBe(0o600)
+      expect(fs.readdirSync(dir).sort()).toEqual(['running.json', 'schedules.yml'])
+    }
+  )
+
+  it('the direct create still fails like O_EXCL when running.json is there (taken)', () => {
+    noLinks()
+    writeRunning({ pid: OTHER, run_id: 'theirs' })
+    expect(publishRunning(file, '{}')).toBe(false)
+    expect(onDisk().run_id).toBe('theirs')
+    const target = path.join(project, 'target.json')
+    fs.unlinkSync(file)
+    fs.symlinkSync(target, file)
+    expect(publishRunning(file, '{}')).toBe(false)
+    expect(fs.existsSync(target)).toBe(false)
+  })
+
+  it('acquireRunning starts the run through the fallback', () => {
+    noLinks()
+    writeRunning({ pid: 777, run_id: 'old' })
+    const result = acquireRunning(project, deps)
+    if (!result.ok || !result.lock) throw new Error('not acquired')
+    expect(onDisk()).toMatchObject({ pid: 1000, name: 'desktop', run_id: result.lock.runId })
+    releaseRunning(result.lock)
+    expect(fs.readdirSync(dir)).toEqual(['schedules.yml'])
+  })
+
+  it('acquireRunning says writeFailed when running.json cannot be written at all', () => {
+    noLinks()
+    const open = fs.openSync
+    vi.spyOn(fs, 'openSync').mockImplementation(((target: fs.PathLike, ...rest: unknown[]) => {
+      if (target === file) throw errno('EACCES')
+      return (open as (...args: unknown[]) => number)(target, ...rest)
+    }) as typeof fs.openSync)
+    expect(acquireRunning(project, deps)).toEqual({ ok: false, writeFailed: true })
+    expect(fs.readdirSync(dir)).toEqual(['schedules.yml'])
+  })
+
+  it('acquireRunning says writeFailed when the schedules folder is read-only', () => {
+    if (process.platform === 'win32' || process.getuid?.() === 0) return
+    fs.chmodSync(dir, 0o500)
+    try {
+      expect(acquireRunning(project, deps)).toEqual({ ok: false, writeFailed: true })
+    } finally {
+      fs.chmodSync(dir, 0o700)
+    }
+  })
+
+  it('a failed temp cleanup does not turn a publish into taken', () => {
+    vi.spyOn(fs, 'rmSync').mockImplementation(() => {
+      throw errno('EBUSY')
+    })
+    const result = acquireRunning(project, deps)
+    if (!result.ok || !result.lock) throw new Error('not acquired')
+    expect(onDisk().run_id).toBe(result.lock.runId)
+  })
+
+  it('removeIfSame puts a newer file back by rename when it cannot link', () => {
+    writeRunning({ pid: 777, run_id: 'old' })
+    const seen = inspectRunning(file)!
+    fs.unlinkSync(file)
+    writeRunning({ pid: OTHER, name: 'nightly', run_id: 'theirs' })
+    noLinks()
+    expect(removeIfSame(file, seen.id)).toBe(false)
+    expect(onDisk().run_id).toBe('theirs')
+    expect(fs.readdirSync(dir).sort()).toEqual(['running.json', 'schedules.yml'])
+  })
+
+  it('removeIfSame never replaces a file written while it was aside', () => {
+    writeRunning({ pid: 777, run_id: 'old' })
+    const seen = inspectRunning(file)!
+    fs.unlinkSync(file)
+    writeRunning({ pid: OTHER, run_id: 'middle' })
+    vi.spyOn(fs, 'linkSync').mockImplementation(() => {
+      // Someone writes the newest one while ours is aside
+      writeRunning({ pid: OTHER, run_id: 'newest' })
+      throw errno('EPERM')
+    })
+    expect(removeIfSame(file, seen.id)).toBe(false)
+    expect(onDisk().run_id).toBe('newest')
+  })
+})

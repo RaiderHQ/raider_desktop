@@ -47,7 +47,8 @@ type StartOutcome = 'started' | 'busy' | 'error'
 const SCHEDULE_ERRORS: Record<string, string> = {
   needs42: 'schedules.errors.needs42',
   rubyCantRun: 'schedules.errors.rubyCantRun',
-  ruby: 'schedules.noRuby'
+  ruby: 'schedules.noRuby',
+  runningWriteFailed: 'schedules.errors.runningWrite'
 }
 
 /** The toast for a refused start, and whether it was busy (another run going). */
@@ -56,6 +57,8 @@ function refusal(result: { error: string; name?: string; message?: string }): {
   busy: boolean
 } {
   if (result.error === 'busy') return { text: i18n.t('run.busy'), busy: true }
+  if (result.error === 'runningWriteFailed')
+    return { text: i18n.t('schedules.errors.runningWrite'), busy: false }
   if (result.error === 'scheduleBusy') {
     // The copy names the scheduled run; without a valid name the plain busy line reads better
     const text = result.name

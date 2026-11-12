@@ -66,6 +66,12 @@ describe('runStore.start', () => {
     expect(await useRunStore.getState().start(scope, origin)).toBe('busy')
     expect(toast.error).toHaveBeenCalledWith('run.busy')
   })
+  it('toasts schedules.errors.runningWrite when running.json cannot be written', async () => {
+    api.startRun.mockResolvedValue({ error: 'runningWriteFailed' })
+    expect(await useRunStore.getState().start(scope, origin)).toBe('error')
+    expect(toast.error).toHaveBeenCalledWith('schedules.errors.runningWrite')
+    expect(useRunStore.getState().origin).toBeNull()
+  })
   it('toasts other errors and stays inactive', async () => {
     api.startRun.mockResolvedValue({ error: 'Not a project test: x' })
     expect(await useRunStore.getState().start(scope, origin)).toBe('error')
@@ -230,6 +236,7 @@ describe('runStore.startSchedule', () => {
   it.each([
     [{ error: 'busy' }, 'busy', 'run.busy'],
     [{ error: 'scheduleBusy', name: 'other' }, 'busy', 'schedules.errors.busy:other'],
+    [{ error: 'runningWriteFailed' }, 'error', 'schedules.errors.runningWrite'],
     [{ error: 'needs42' }, 'error', 'schedules.errors.needs42'],
     [{ error: 'rubyCantRun' }, 'error', 'schedules.errors.rubyCantRun'],
     [{ error: 'ruby' }, 'error', 'schedules.noRuby'],

@@ -28,7 +28,13 @@ export interface RunningLock {
   runId: string
 }
 
-export type AcquireResult = { ok: true; lock: RunningLock | null } | { ok: false; name?: string }
+/** `writeFailed`: running.json could not be written at all (not busy), so the run must not start. */
+export type AcquireResult =
+  | { ok: true; lock: RunningLock | null }
+  | { ok: false; name?: string }
+  | { ok: false; writeFailed: true }
+
+const errorCode = (error: unknown): string | undefined => (error as NodeJS.ErrnoException)?.code
 
 /** kill(pid, 0) only checks: EPERM means alive but not ours to signal. */
 export function pidAlive(pid: number): boolean {
@@ -99,8 +105,9 @@ const sameId = (stat: fs.Stats, id: FileId): boolean => stat.dev === id[0] && st
 
 /**
  * Removes the file at `file` only if it is still the one with `id`: moves it aside, compares,
- * and puts back (link never replaces a newer one) whatever was written there meanwhile. true
- * when it is gone. Mirrors the gem's RunLock#remove_stale.
+ * and puts back (link never replaces a newer one) whatever was written there meanwhile. Without
+ * hard links it is renamed back, only while the path is still free. true when it is gone.
+ * Mirrors the gem's RunLock#remove_stale.
  */
 export function removeIfSame(file: string, id: FileId): boolean {
   const aside = `${file}.${randomBytes(6).toString('hex')}.stale`
@@ -122,12 +129,25 @@ export function removeIfSame(file: string, id: FileId): boolean {
   }
   try {
     fs.linkSync(aside, file)
-  } catch {
-    // a newer running.json is there already
-  } finally {
-    fs.unlinkSync(aside)
+  } catch (error) {
+    // EEXIST: a newer running.json is there already. Else no hard links on this volume: rename
+    // it back while nothing took its place (rename would replace a newer one)
+    if (errorCode(error) !== 'EEXIST' && !exists(file)) {
+      fs.renameSync(aside, file)
+      return false
+    }
   }
+  fs.unlinkSync(aside)
   return false
+}
+
+const exists = (file: string): boolean => {
+  try {
+    fs.lstatSync(file)
+    return true
+  } catch (error) {
+    return errorCode(error) !== 'ENOENT'
+  }
 }
 
 /** The run named in `data` when it is another live process; else null (stale or none). */
@@ -158,38 +178,74 @@ const isRegularFile = (file: string): boolean => {
   }
 }
 
-/**
- * Publishes running.json complete: writes a 0600 temp file beside it (O_EXCL, O_NOFOLLOW), then
- * links it into place, which fails like O_EXCL when one is there; the temp name is removed
- * either way. So no reader ever sees it empty. false when something was there.
- */
-export function publishRunning(file: string, body: string): boolean {
-  const temp = `${file}.${randomBytes(6).toString('hex')}.tmp`
+/** Creates `file` (O_EXCL, O_NOFOLLOW, 0600) holding `body`. Throws EEXIST when one is there. */
+function createExclusive(file: string, body: string): void {
   const fd = fs.openSync(
-    temp,
+    file,
     fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | NOFOLLOW,
     0o600
   )
+  let id: FileId | null = null
   try {
-    try {
-      fs.writeSync(fd, body)
-    } finally {
-      fs.closeSync(fd)
+    const stat = fs.fstatSync(fd)
+    id = [stat.dev, stat.ino]
+    fs.writeSync(fd, body)
+  } catch (error) {
+    fs.closeSync(fd)
+    // Ours but not written: remove it while it is still ours, then fail
+    if (id) {
+      try {
+        removeIfSame(file, id)
+      } catch {
+        // left for the next stale check
+      }
     }
+    throw error
+  }
+  fs.closeSync(fd)
+}
+
+/**
+ * Publishes running.json complete: writes a 0600 temp file beside it, then links it into place,
+ * which fails like O_EXCL when one is there; so no reader sees it empty. Where the volume has
+ * no hard links (FAT, exFAT, some SMB) it falls back to the gem's own direct O_EXCL create.
+ * false when something was there; throws when running.json can't be written at all.
+ */
+export function publishRunning(file: string, body: string): boolean {
+  const temp = `${file}.${randomBytes(6).toString('hex')}.tmp`
+  let tempMade = false
+  try {
+    createExclusive(temp, body)
+    tempMade = true
     fs.linkSync(temp, file)
     return true
   } catch (error) {
-    if ((error as NodeJS.ErrnoException)?.code === 'EEXIST') return false
-    throw error
+    if (tempMade && errorCode(error) === 'EEXIST') return false
+    // No hard links here (or no temp file): fall through to the direct create
   } finally {
-    fs.rmSync(temp, { force: true })
+    if (tempMade) {
+      try {
+        fs.rmSync(temp, { force: true })
+      } catch (error) {
+        // A leftover temp must not hide a published running.json
+        safeWarn('Could not remove a temp file beside running.json:', String(error))
+      }
+    }
+  }
+  try {
+    createExclusive(file, body)
+    return true
+  } catch (error) {
+    if (errorCode(error) === 'EEXIST') return false
+    throw error
   }
 }
 
 /**
  * Before an app run: refuses when another live run holds running.json; in a project with
  * .raider/schedules/schedules.yml, writes its own (replacing a stale one). Never creates
- * .raider/schedules. Anything it can't write or replace counts as busy (fail closed).
+ * .raider/schedules. Anything it can't replace counts as busy; a running.json it can't write
+ * at all is `writeFailed`. Either way the run doesn't start (fail closed).
  */
 export function acquireRunning(
   projectPath: string,
@@ -216,11 +272,16 @@ export function acquireRunning(
     if (seen?.changed) return { ok: false }
     // Stale (dead pid, our own leftover, unreadable, a link): removed only if still that file
     if (seen && !removeIfSame(file, seen.id)) return { ok: false }
-    if (publishRunning(file, body)) return { ok: true, lock: { file, runId } }
+  } catch (error) {
+    safeWarn('Could not replace .raider/schedules/running.json:', String(error))
+    return { ok: false }
+  }
+  try {
+    return publishRunning(file, body) ? { ok: true, lock: { file, runId } } : { ok: false }
   } catch (error) {
     safeWarn('Could not write .raider/schedules/running.json:', String(error))
+    return { ok: false, writeFailed: true }
   }
-  return { ok: false }
 }
 
 /** Removes running.json if it is still the file holding this run's run_id. Never throws. */

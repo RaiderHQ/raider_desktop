@@ -531,6 +531,7 @@
       "nameInvalid": "Use 1 to 60 lowercase letters, digits or _.",
       "nameTaken": "A schedule called {{name}} already exists. Saving replaces it.",
       "runLabel": "Run",
+      "pickRun": "Choose what this schedule runs.",
       "runAll": "All tests",
       "runTag": "Tests tagged",
       "runTicked_one": "Ticked test ({{count}})",
@@ -579,6 +580,7 @@
       "needs42": "Scheduling needs ruby_raider 4.2 or later in this project.",
       "rubyCantRun": "This project's Ruby can't run ruby_raider 4.2.",
       "busy": "A scheduled run ({{name}}) is going; try again when it finishes.",
+      "runningWrite": "Raider can't write to this project's .raider/schedules folder, so the run didn't start. Check that you can change files in the project folder.",
       "noReport": "There's no report for this schedule yet."
     }
   },

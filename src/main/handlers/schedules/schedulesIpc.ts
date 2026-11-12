@@ -339,7 +339,13 @@ export async function runScheduleNowHandler(
     headed: deps.platform === 'linux' ? false : row.showBrowser
   }
   const result = await deps.startRun(request, target.projectPath)
-  if ('runId' in result || result.error === 'busy' || result.error === 'scheduleBusy') return result
+  if (
+    'runId' in result ||
+    result.error === 'busy' ||
+    result.error === 'scheduleBusy' ||
+    result.error === 'runningWriteFailed'
+  )
+    return result
   return { error: 'refused', message: oneLine(result.error) }
 }
 

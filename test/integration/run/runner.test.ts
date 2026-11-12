@@ -784,6 +784,38 @@ describe('runner', () => {
       await finishedEvent(runId)
     })
 
+    it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+      'refuses with runningWriteFailed when running.json cannot be written, and spawns nothing',
+      async () => {
+        withRules()
+        fs.chmodSync(dir, 0o500)
+        try {
+          expect(await startRun(ALL, deps)).toEqual({ error: 'runningWriteFailed' })
+        } finally {
+          fs.chmodSync(dir, 0o700)
+        }
+        expect(deps.spawnCommand).not.toHaveBeenCalled()
+        expect(events).toEqual([])
+        expect(await startRun(ALL, deps)).toHaveProperty('runId')
+      }
+    )
+
+    it('runs when the volume has no hard links (link fails with EPERM)', async () => {
+      withRules()
+      const link = vi.spyOn(fs, 'linkSync').mockImplementation(() => {
+        throw Object.assign(new Error('EPERM'), { code: 'EPERM' })
+      })
+      try {
+        script = { steps: [{ event: plan('t1') }, { delay: 300 }], exitCode: 0 }
+        const runId = await run()
+        expect(readFile()).toMatchObject({ pid: process.pid, name: 'desktop' })
+        await finishedEvent(runId)
+        expect(fs.existsSync(file)).toBe(false)
+      } finally {
+        link.mockRestore()
+      }
+    })
+
     it('holds it during the run and removes it when the run finishes', async () => {
       withRules()
       writeFile({ pid: DEAD, name: 'nightly', run_id: 'stale' })

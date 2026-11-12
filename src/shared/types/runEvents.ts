@@ -133,11 +133,13 @@ export type RunEvent =
 
 /**
  * `busy`: an app run is going. `scheduleBusy`: a scheduled run holds
- * .raider/schedules/running.json (`name` when it is a valid schedule name). Else a message.
+ * .raider/schedules/running.json (`name` when it is a valid schedule name).
+ * `runningWriteFailed`: running.json could not be written, so the run did not start. Else a message.
  */
 export type StartRunResult =
   | { runId: string }
   | { error: 'scheduleBusy'; name?: string }
+  | { error: 'runningWriteFailed' }
   | { error: 'busy' | string }
 
 export interface ActiveRun {

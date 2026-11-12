@@ -378,7 +378,7 @@ describe('ScheduleModal', () => {
     expect(screen.getByLabelText('Ticked test (1)')).toBeChecked()
   })
 
-  it('an edit with every file gone starts on All tests, said above the form', async () => {
+  it('an edit with every file gone starts with no Run choice, and Save waits for one', async () => {
     api.save.mockResolvedValue(ok)
     renderModal({
       editing: schedule({ selection: { kind: 'files', files: ['spec/gone_spec.rb'] } }),
@@ -389,9 +389,54 @@ describe('ScheduleModal', () => {
       '1 missing test file was left out.'
     )
     expect(screen.getByLabelText('Ticked tests (0)')).toBeDisabled()
-    expect(screen.getByLabelText('All tests')).toBeChecked()
+    expect(screen.getByLabelText('All tests')).not.toBeChecked()
+    expect(screen.getByLabelText('Tests tagged')).not.toBeChecked()
+    expect(screen.getByTestId('schedule-pick-run')).toHaveTextContent(
+      en.schedules.scheduleModal.pickRun
+    )
+    expect(saveButton('Save')).toBeDisabled()
     await clickSave('Save')
-    expect(sent()).toEqual(expect.objectContaining({ selection: { kind: 'all' } }))
+    expect(api.save).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByLabelText('All tests'))
+    expect(screen.queryByTestId('schedule-pick-run')).toBeNull()
+    expect(saveButton('Save')).toBeEnabled()
+    await clickSave('Save')
+    expect(sent()).toEqual(
+      expect.objectContaining({ name: 'fill_hours', selection: { kind: 'all' } })
+    )
+  })
+
+  it('an edit with every file gone can pick Tests tagged instead', async () => {
+    api.save.mockResolvedValue(ok)
+    renderModal({
+      editing: schedule({ selection: { kind: 'files', files: ['spec/gone_spec.rb'] } }),
+      files: [],
+      dropped: 1
+    })
+    fireEvent.click(screen.getByLabelText('Tests tagged'))
+    expect(saveButton('Save')).toBeDisabled()
+    fireEvent.change(screen.getByLabelText('Tag'), { target: { value: 'smoke' } })
+    await clickSave('Save')
+    expect(sent()).toEqual(expect.objectContaining({ selection: { kind: 'tag', tag: 'smoke' } }))
+  })
+
+  it('says why Save is off while no Run choice is picked', () => {
+    vi.useFakeTimers()
+    try {
+      renderModal({
+        editing: schedule({ selection: { kind: 'files', files: ['spec/gone_spec.rb'] } }),
+        files: [],
+        dropped: 1
+      })
+      fireEvent.mouseEnter(saveButton('Save').parentElement as HTMLElement)
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+      expect(screen.getByRole('tooltip')).toHaveTextContent(en.schedules.scheduleModal.pickRun)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('shows a bad time inline and does not send', () => {

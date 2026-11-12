@@ -269,6 +269,7 @@ export async function startRun(
     // A scheduled run (the gem's wrapper) may hold the project; else this run says it holds it
     const claim = acquireRunning(projectPath)
     if (!claim.ok) {
+      if ('writeFailed' in claim) return { error: 'runningWriteFailed' }
       return claim.name === undefined
         ? { error: 'scheduleBusy' }
         : { error: 'scheduleBusy', name: claim.name }

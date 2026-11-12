@@ -113,10 +113,16 @@ export function buildSchedule(form: {
   }
 }
 
-const startKind = (editing: GemScheduleRule | null, initial: RunKind, files: string[]): RunKind => {
+const startKind = (
+  editing: GemScheduleRule | null,
+  initial: RunKind,
+  files: string[]
+): RunKind | null => {
   const kind = editing ? editing.selection.kind : initial
-  // Nothing left to run as files (all gone): start from All tests instead
-  return kind === 'files' && files.length === 0 ? 'all' : kind
+  if (kind !== 'files' || files.length > 0) return kind
+  // An edited schedule's files are all gone: the user picks what it runs now, never widened
+  // to all tests by one click. A new schedule with nothing ticked starts on All tests.
+  return editing ? null : 'all'
 }
 
 /** Schedule…: what runs, when, and how; sent to the gem's schedule command. */
@@ -135,7 +141,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const tagListId = useId()
-  const [kind, setKind] = useState<RunKind>(() => startKind(editing, initialKind, files))
+  const [kind, setKind] = useState<RunKind | null>(() => startKind(editing, initialKind, files))
   const [tag, setTag] = useState(editing?.selection.kind === 'tag' ? editing.selection.tag : '')
   // A suggested name follows the Run choice until the user types one; an edit keeps its own
   const [typedName, setTypedName] = useState<string | null>(editing?.name ?? null)
@@ -150,9 +156,15 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [saving, setSaving] = useState(false)
 
   const linux = platform === 'linux'
-  const selection: ScheduleSelection =
-    kind === 'tag' ? { kind, tag: tag.trim() } : kind === 'files' ? { kind, files } : { kind }
-  const name = typedName ?? suggestName(selection, takenNames)
+  const selection: ScheduleSelection | null =
+    kind === null
+      ? null
+      : kind === 'tag'
+        ? { kind, tag: tag.trim() }
+        : kind === 'files'
+          ? { kind, files }
+          : { kind }
+  const name = typedName ?? suggestName(selection ?? { kind: 'all' }, takenNames)
   const nameError = isScheduleName(name) ? undefined : t('schedules.scheduleModal.nameInvalid')
   const nameTaken = takenNames.includes(name) && name !== editing?.name
   const tagError =
@@ -168,10 +180,10 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
     : SCHEDULE_AT.test(time)
       ? undefined
       : t('schedules.scheduleModal.timeInvalid')
-  const valid = !timeError && !nameError && selectionReady(selection)
+  const valid = !timeError && !nameError && selection !== null && selectionReady(selection)
 
   const submit = async (): Promise<void> => {
-    if (!valid || saving) return
+    if (!valid || saving || selection === null) return
     setError(null)
     let request: ScheduleRequest
     try {
@@ -253,7 +265,13 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
           </Tooltip>
           <Tooltip
             content={t('tooltips.schedules.scheduleSave')}
-            disabledReason={valid ? undefined : t('tooltips.schedules.fixSchedule')}
+            disabledReason={
+              valid
+                ? undefined
+                : kind === null
+                  ? t('schedules.scheduleModal.pickRun')
+                  : t('tooltips.schedules.fixSchedule')
+            }
             position="top"
           >
             <Button type="primary" onClick={() => void submit()} disabled={!valid || saving}>
@@ -293,6 +311,11 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
             )}
           </div>
         </Tooltip>
+        {kind === null && (
+          <p className="text-xs text-neutral-md mt-1" data-testid="schedule-pick-run">
+            {t('schedules.scheduleModal.pickRun')}
+          </p>
+        )}
         {kind === 'tag' && (
           <div className="mt-2 pl-6">
             <label htmlFor={`${tagListId}-input`} className={labelClass}>
